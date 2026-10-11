@@ -1,14 +1,14 @@
 import type { Locator } from '@playwright/test'
-import type { AgentComposerEnvVariable } from '../../agent-v2/support/agent-soul'
-import type { DifyWorld } from '../../support/world'
+import type { AgentComposerEnvVariable } from '../../agent-v2/support/agent-soul.ts'
+import type { DifyWorld } from '../../support/world.ts'
 import { zPostAgentByAgentIdConfigFilesResponse } from '@dify/contracts/api/console/agent/zod.gen'
 import { expect } from '@playwright/test'
-import { uploadAgentConfigSkillToDraft } from '../../agent-v2/support/agent-drive'
-import { normalAgentPrompt } from '../../agent-v2/support/agent-soul'
+import { normalAgentPrompt } from '../../agent-v2/support/agent-soul.ts'
+import { uploadAgentConfigSkillToDraft } from '../../agent-v2/support/config-assets.ts'
 import {
   agentBuilderTestMaterials,
   getAgentBuilderTestMaterialPath,
-} from '../../agent-v2/support/test-materials'
+} from '../../agent-v2/support/test-materials.ts'
 
 export const getCurrentAgentId = (world: DifyWorld) => {
   const agentId = world.createdAgentIds.at(-1)
@@ -224,7 +224,6 @@ export const expectAgentEnvVariableRows = async (
   for (const variableRow of variableRows) {
     await expect(variableRow.getByRole('textbox', { name: 'Key' })).toHaveValue(key)
     await expect(variableRow.getByRole('textbox', { name: 'Value' })).toHaveValue(value)
-    await expect(variableRow.getByText('Plain', { exact: true })).toBeVisible()
   }
 }
 

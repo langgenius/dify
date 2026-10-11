@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import ConfigCredential from '../config-credentials'
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
@@ -24,7 +24,7 @@ vi.mock('../../../utils/to-form-schema', () => ({
   addDefaultValue: (value: Record<string, unknown>, _schemas: unknown[]) => ({ ...value }),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   default: { notify: vi.fn() },
 }))
 
@@ -86,7 +86,7 @@ describe('ConfigCredential', () => {
         onSaved={mockOnSaved}
       />,
     )
-    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(screen.getByRole('progressbar')).toBeInTheDocument()
 
     await waitFor(() => {
       expect(screen.getByTestId('form')).toBeInTheDocument()

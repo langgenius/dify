@@ -1,4 +1,3 @@
-/* oxlint-disable typescript/no-explicit-any */
 import { act, renderHook } from '@testing-library/react'
 import { AgentStrategy } from '@/types/app'
 import {
@@ -70,6 +69,46 @@ describe('configuration debug hooks', () => {
     })
   })
 
+  it('should restore persisted multiple-model debug settings', () => {
+    localStorage.setItem(
+      'app-debug-with-single-or-multiple-models',
+      JSON.stringify({
+        'app-1': {
+          multiple: true,
+          configs: [
+            {
+              id: 'model-1',
+              model: 'gpt-4o',
+              provider: 'langgenius/openai/openai',
+              parameters: { temperature: 0.7 },
+            },
+          ],
+        },
+      }),
+    )
+
+    const { result } = renderHook(() => useDebugWithSingleOrMultipleModel('app-1'))
+
+    expect(result.current.debugWithMultipleModel).toBe(true)
+    expect(result.current.multipleModelConfigs).toEqual([
+      {
+        id: 'model-1',
+        model: 'gpt-4o',
+        provider: 'langgenius/openai/openai',
+        parameters: { temperature: 0.7 },
+      },
+    ])
+  })
+
+  it.each(['{', 'null'])('should fall back to default settings for stored value %s', (value) => {
+    localStorage.setItem('app-debug-with-single-or-multiple-models', value)
+
+    const { result } = renderHook(() => useDebugWithSingleOrMultipleModel('app-1'))
+
+    expect(result.current.debugWithMultipleModel).toBe(false)
+    expect(result.current.multipleModelConfigs).toEqual([])
+  })
+
   it('should derive chat config data from the debug context', () => {
     mockUseDebugConfigurationContext.mockReturnValue({
       isAdvancedMode: false,
@@ -85,13 +124,6 @@ describe('configuration debug hooks', () => {
           prompt_variables: [{ key: 'name', name: 'Name', type: 'string', required: true }],
         },
         more_like_this: { enabled: true },
-        system_parameters: {
-          audio_file_size_limit: 1,
-          file_size_limit: 1,
-          image_file_size_limit: 1,
-          video_file_size_limit: 1,
-          workflow_file_upload_limit: 1,
-        },
       },
       appId: 'app-1',
       promptMode: 'simple',

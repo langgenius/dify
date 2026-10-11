@@ -1,15 +1,17 @@
 """Enterprise Gateway adapter for the working-environment protocol.
 
-The existing Gateway can allocate, reconnect to, and delete a sandbox, but it
-does not expose immutable Home Snapshot operations. One physical sandbox owns
-both the materialized Home and Workspace, so their cleanup is coupled. Runtime
-access remains operation-local and is routed through the Gateway's shellctl
-proxy.
+The Gateway owns immutable Home Snapshot capture, restore, and deletion, in
+addition to allocating, reconnecting to, and deleting a sandbox. Restore
+arrives as a `homeSnapshotRef` parameter on sandbox creation rather than its
+own call. One physical sandbox owns both the materialized Home and Workspace,
+so their cleanup is coupled. Runtime access remains operation-local and is
+routed through the Gateway's shellctl proxy.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from http import HTTPStatus
 import logging
 import shlex
 from typing import cast
@@ -24,6 +26,8 @@ from dify_agent.runtime_backend.errors import (
     BindingCreateError,
     BindingDestroyError,
     BindingLostError,
+    HomeSnapshotCreateError,
+    HomeSnapshotTooLargeError,
     SharedWorkspaceUnsupportedError,
     WorkspacePreservationUnsupportedError,
 )
@@ -31,7 +35,6 @@ from dify_agent.runtime_backend.protocols import (
     ExecutionBindingAllocation,
     ExecutionBindingCreateSpec,
     ExecutionBindingDestroySpec,
-    FileSystem,
     HomeSnapshotCreateSpec,
     RuntimeLayout,
     RuntimeLease,
@@ -44,22 +47,110 @@ from dify_agent.runtime_backend.shellctl import (
 
 logger = logging.getLogger(__name__)
 
+_GATEWAY_AUTH_HEADER = "X-Inner-Api-Key"
 
-def _not_implemented() -> NotImplementedError:
-    return NotImplementedError("Enterprise Gateway does not implement immutable Home Snapshot operations")
+
+class _GatewayStatusError(RuntimeError):
+    """One failed Gateway control-plane call, with its reason when it sent one."""
+
+    def __init__(self, response: httpx.Response) -> None:
+        self.status_code = response.status_code
+        self.reason = ""
+        detail = response.text
+        try:
+            payload = response.json()
+        except ValueError:
+            payload = None
+        if isinstance(payload, dict):
+            reason = payload.get("reason")
+            message = payload.get("message")
+            if isinstance(reason, str):
+                self.reason = reason
+            if isinstance(message, str) and message:
+                detail = message
+        self.detail = detail
+        super().__init__(f"{self.status_code} {self.reason or 'gateway_error'}: {detail}")
+
+
+async def _gateway_request(
+    *,
+    endpoint: str,
+    auth_token: str,
+    timeout: float,
+    method: str,
+    path: str,
+    json_body: dict[str, object] | None = None,
+    absent_status: int | None = None,
+) -> dict[str, object] | None:
+    """Call one Gateway control-plane endpoint and decode its reply."""
+    headers = {_GATEWAY_AUTH_HEADER: auth_token} if auth_token else {}
+    async with httpx.AsyncClient(
+        base_url=endpoint.rstrip("/"),
+        headers=headers,
+        timeout=httpx.Timeout(timeout),
+    ) as client:
+        response = await client.request(method, path, json=json_body)
+    if absent_status is not None and response.status_code == absent_status:
+        return None
+    if response.status_code >= 400:
+        raise _GatewayStatusError(response)
+    if not response.content:
+        return None
+    try:
+        payload = response.json()
+    except ValueError:
+        return None
+    return payload if isinstance(payload, dict) else None
 
 
 @dataclass(slots=True)
 class EnterpriseHomeSnapshotBackend:
-    """Reject Home Snapshot operations until the Gateway exposes immutable snapshots."""
+    """Manage immutable Home Snapshots through the Gateway's snapshot endpoints."""
+
+    gateway_endpoint: str
+    auth_token: str
+    snapshot_timeout: float = 35.0
 
     async def create_from_runtime(self, *, spec: HomeSnapshotCreateSpec, source: RuntimeLease) -> str:
-        del spec, source
-        raise _not_implemented()
+        """Capture the source lease's Home through the Gateway's snapshot endpoint."""
+        if not isinstance(source, EnterpriseRuntimeLease):
+            raise HomeSnapshotCreateError("Enterprise Home Snapshot requires an Enterprise RuntimeLease")
+        try:
+            payload = await _gateway_request(
+                endpoint=self.gateway_endpoint,
+                auth_token=self.auth_token,
+                timeout=self.snapshot_timeout,
+                method="POST",
+                path=f"/v1/sandboxes/{quote(source.handle, safe='')}/home-snapshots",
+                json_body={
+                    "tenantId": spec.tenant_id,
+                    "agentId": spec.agent_id,
+                    "homeSnapshotId": spec.home_snapshot_id,
+                },
+            )
+        except _GatewayStatusError as exc:
+            if exc.status_code == HTTPStatus.REQUEST_ENTITY_TOO_LARGE:
+                raise HomeSnapshotTooLargeError(exc.detail) from exc
+            raise HomeSnapshotCreateError(str(exc)) from exc
+        except (httpx.TimeoutException, httpx.RequestError) as exc:
+            raise HomeSnapshotCreateError(str(exc)) from exc
+        snapshot_ref = payload.get("snapshotRef") if isinstance(payload, dict) else None
+        if not isinstance(snapshot_ref, str) or not snapshot_ref:
+            raise HomeSnapshotCreateError("Enterprise Gateway returned an invalid snapshot ref")
+        return snapshot_ref
 
     async def delete(self, snapshot_ref: str) -> None:
-        del snapshot_ref
-        raise _not_implemented()
+        """Delete one snapshot's artifacts."""
+        try:
+            _ = await _gateway_request(
+                endpoint=self.gateway_endpoint,
+                auth_token=self.auth_token,
+                timeout=self.snapshot_timeout,
+                method="DELETE",
+                path=f"/v1/home-snapshots/{quote(snapshot_ref, safe='/')}",
+            )
+        except (_GatewayStatusError, httpx.TimeoutException, httpx.RequestError) as exc:
+            raise BindingDestroyError(str(exc)) from exc
 
 
 @dataclass(slots=True)
@@ -70,29 +161,30 @@ class EnterpriseExecutionBindingBackend:
     auth_token: str
     gateway_timeout: float = 30.0
     proxy_timeout: float = 60.0
+    snapshot_timeout: float = 35.0
     layout: RuntimeLayout = field(
-        default_factory=lambda: RuntimeLayout(home_dir="/home/dify", workspace_dir="/home/dify/workspace")
+        default_factory=lambda: RuntimeLayout(home_dir="/home/dify", workspace_dir="/workspace")
     )
 
     async def create_binding(self, spec: ExecutionBindingCreateSpec) -> ExecutionBindingAllocation:
         """Create a default Gateway sandbox and initialize its canonical layout."""
         if spec.existing_workspace_ref is not None:
             raise SharedWorkspaceUnsupportedError("current Enterprise backend cannot attach to an existing Workspace")
-        if spec.home_snapshot_ref is not None:
-            raise BindingCreateError("current Enterprise backend cannot materialize an immutable Home Snapshot")
 
         sandbox_id: str | None = None
         data_plane: ShellctlRuntimeLease | None = None
-        headers = {"X-Inner-Api-Key": self.auth_token} if self.auth_token else {}
         try:
-            async with httpx.AsyncClient(
-                base_url=self.gateway_endpoint.rstrip("/"),
-                headers=headers,
-                timeout=httpx.Timeout(self.gateway_timeout),
-            ) as client:
-                response = await client.post("/v1/sandboxes", json={"tenantId": spec.tenant_id})
-                _ = response.raise_for_status()
-                payload = response.json()
+            create_body: dict[str, object] = {"tenantId": spec.tenant_id}
+            if spec.home_snapshot_ref is not None:
+                create_body["homeSnapshotRef"] = spec.home_snapshot_ref
+            payload = await _gateway_request(
+                endpoint=self.gateway_endpoint,
+                auth_token=self.auth_token,
+                timeout=self.snapshot_timeout if spec.home_snapshot_ref is not None else self.gateway_timeout,
+                method="POST",
+                path="/v1/sandboxes",
+                json_body=create_body,
+            )
             sandbox_id_value = payload.get("sandboxId") if isinstance(payload, dict) else None
             if not isinstance(sandbox_id_value, str) or not sandbox_id_value:
                 raise BindingCreateError("Enterprise Gateway returned an invalid sandbox id")
@@ -100,13 +192,17 @@ class EnterpriseExecutionBindingBackend:
 
             data_plane = await self._create_data_plane(sandbox_id)
             result = await run_shellctl_control_command(
-                ShellctlCommands(client=data_plane.client),
+                ShellctlCommands(
+                    client=data_plane.client,
+                    home_dir=self.layout.home_dir,
+                    workspace_dir=self.layout.workspace_dir,
+                ),
                 "\n".join(
                     [
                         "set -eu",
+                        "exec 2>&1",
                         f"mkdir -p {shlex.quote(self.layout.home_dir)}",
-                        f"rm -rf -- {shlex.quote(self.layout.workspace_dir)}",
-                        f"mkdir -p {shlex.quote(self.layout.workspace_dir)}",
+                        f"find {shlex.quote(self.layout.workspace_dir)} -mindepth 1 -maxdepth 1 -exec rm -rf -- {{}} +",
                         f"chmod 700 {shlex.quote(self.layout.home_dir)} {shlex.quote(self.layout.workspace_dir)}",
                     ]
                 ),
@@ -180,21 +276,18 @@ class EnterpriseExecutionBindingBackend:
 
         try:
             await self._delete_sandbox(spec.binding_ref)
-        except (httpx.TimeoutException, httpx.RequestError, httpx.HTTPStatusError) as exc:
+        except (_GatewayStatusError, httpx.TimeoutException, httpx.RequestError) as exc:
             raise BindingDestroyError(str(exc)) from exc
 
     async def _delete_sandbox(self, sandbox_id: str) -> None:
-        headers = {"X-Inner-Api-Key": self.auth_token} if self.auth_token else {}
-        encoded_sandbox_id = quote(sandbox_id, safe="")
-        async with httpx.AsyncClient(
-            base_url=self.gateway_endpoint.rstrip("/"),
-            headers=headers,
-            timeout=httpx.Timeout(self.gateway_timeout),
-        ) as client:
-            response = await client.delete(f"/v1/sandboxes/{encoded_sandbox_id}")
-            if response.status_code == 404:
-                return
-            _ = response.raise_for_status()
+        _ = await _gateway_request(
+            endpoint=self.gateway_endpoint,
+            auth_token=self.auth_token,
+            timeout=self.gateway_timeout,
+            method="DELETE",
+            path=f"/v1/sandboxes/{quote(sandbox_id, safe='')}",
+            absent_status=404,
+        )
 
     async def _delete_sandbox_best_effort(self, sandbox_id: str) -> None:
         try:
@@ -254,10 +347,6 @@ class EnterpriseRuntimeLease:
     @property
     def commands(self) -> ShellCommandProtocol:
         return self.data_plane.commands
-
-    @property
-    def files(self) -> FileSystem:
-        return self.data_plane.files
 
 
 def _is_missing_sandbox(exc: ShellProviderError) -> bool:

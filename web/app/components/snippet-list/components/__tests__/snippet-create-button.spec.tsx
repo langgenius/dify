@@ -28,7 +28,7 @@ vi.mock('@/next/navigation', () => ({
   }),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     success: mockToastSuccess,
     error: mockToastError,
@@ -57,7 +57,7 @@ vi.mock('@/service/use-snippets', () => ({
   }),
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleClient: {
     snippets: {
       bySnippetId: {
@@ -96,6 +96,7 @@ describe('SnippetCreateButton', () => {
     render(<SnippetCreateButton />)
 
     fireEvent.click(screen.getByRole('button', { name: 'snippet.create' }))
+    expect(screen.getByRole('dialog', { name: 'snippet.createFrom' })).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'snippet.createFromBlank' }))
     expect(screen.getByText('workflow.snippet.createDialogTitle')).toBeInTheDocument()
 
@@ -136,8 +137,6 @@ describe('SnippetCreateButton', () => {
     await waitFor(() => {
       expect(mockPush).toHaveBeenCalledWith('/snippets/snippet-123/orchestrate')
     })
-
-    expect(mockToastSuccess).toHaveBeenCalledWith('workflow.snippet.createSuccess')
   })
 
   it('should import a snippet from a DSL URL', async () => {
@@ -152,9 +151,9 @@ describe('SnippetCreateButton', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'snippet.create' }))
     fireEvent.click(screen.getByRole('button', { name: 'snippet.importDSLFile' }))
-    expect(screen.getByText('snippet.importDialogTitle')).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'snippet.importDialogTitle' })).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'snippet.importFromDSLUrl' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'snippet.importFromDSLUrl' }))
     fireEvent.change(screen.getByPlaceholderText('snippet.importFromDSLUrlPlaceholder'), {
       target: { value: 'https://example.com/snippet.yml' },
     })
@@ -167,7 +166,6 @@ describe('SnippetCreateButton', () => {
         yamlUrl: 'https://example.com/snippet.yml',
       })
     })
-    expect(mockToastSuccess).toHaveBeenCalledWith('snippet.importSuccess')
     expect(mockPush).toHaveBeenCalledWith('/snippets/snippet-imported/orchestrate')
   })
 })

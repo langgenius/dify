@@ -24,7 +24,7 @@ const mockMutationOptions = vi.fn((options: Record<string, unknown>) => ({
   ...options,
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   default: {
     notify: (...args: unknown[]) => mockNotify(...args),
   },
@@ -36,7 +36,7 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
   },
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     workspaces: {
       current: {
@@ -144,10 +144,6 @@ describe('useChangeProviderPriority', () => {
       expect(mockUpdateModelList).toHaveBeenCalledTimes(2)
       expect(mockUpdateModelList).toHaveBeenNthCalledWith(1, ModelTypeEnum.textGeneration)
       expect(mockUpdateModelList).toHaveBeenNthCalledWith(2, ModelTypeEnum.textEmbedding)
-      expect(mockNotify).toHaveBeenCalledWith({
-        type: 'success',
-        message: 'common.actionMsg.modifiedSuccessfully',
-      })
       expect(result.current.isChangingPriority).toBe(false)
     })
 

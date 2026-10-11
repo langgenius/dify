@@ -93,7 +93,7 @@ class DatasourceParameter(PluginParameter):
         :param required: if the parameter is required
         :param options: the options of the parameter
         """
-        # convert options to ToolParameterOption
+        # convert options to PluginParameterOption
         # FIXME fix the type error
         if options:
             option_objs = [

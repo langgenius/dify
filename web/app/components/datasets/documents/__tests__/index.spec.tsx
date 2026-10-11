@@ -1,12 +1,23 @@
+import type { ReactNode } from 'react'
 import type { DocumentListResponse } from '@/models/datasets'
+import { QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, screen } from '@testing-library/react'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
-import { useProviderContext } from '@/context/provider-context'
 import { DataSourceType } from '@/models/datasets'
 import { useDocumentList } from '@/service/knowledge/use-document'
-import { render } from '@/test/console/render'
+import { createAccountProfileQueryClient } from '@/test/console/account-profile'
+import { render as renderWithConsoleState } from '@/test/console/render'
 import { useDocumentsPageState } from '../hooks/use-documents-page-state'
 import Documents from '../index'
+
+const render = (ui: Parameters<typeof renderWithConsoleState>[0]) => {
+  const queryClient = createAccountProfileQueryClient({ id: 'test-user' })
+  return renderWithConsoleState(ui, {
+    wrapper: ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    ),
+  })
+}
 
 // Type for mock selector function - use `as MockState` to bypass strict type checking in tests
 type MockSelector = Parameters<typeof useDatasetDetailContextWithSelector>[0]
@@ -42,20 +53,6 @@ vi.mock('@/context/dataset-detail', () => ({
   }),
 }))
 
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: vi.fn(() => ({
-    plan: { type: 'professional' },
-  })),
-}))
-
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-
-  return createAccountStateModuleMock(() => ({
-    userProfile: { id: 'test-user' },
-    workspacePermissionKeys: ['dataset.create_and_management'],
-  }))
-})
 vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
 
@@ -189,7 +186,6 @@ vi.mock('../components/documents-header', () => ({
     datasetId: string
     dataSourceType?: string
     embeddingAvailable: boolean
-    isFreePlan: boolean
     statusFilterValue: string
     sortValue: string
     inputValue: string
@@ -714,16 +710,6 @@ describe('Documents', () => {
       render(<Documents {...defaultProps} />)
 
       expect(screen.getByTestId('header-embedding-available')).toHaveTextContent('false')
-    })
-
-    it('should handle free plan user', () => {
-      vi.mocked(useProviderContext).mockReturnValueOnce({
-        plan: { type: 'sandbox' },
-      } as ReturnType<typeof useProviderContext>)
-
-      render(<Documents {...defaultProps} />)
-
-      expect(screen.getByTestId('documents-header')).toBeInTheDocument()
     })
   })
 

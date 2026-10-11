@@ -10,9 +10,8 @@ vi.mock('react-i18next', () => ({
   useTranslation: () => mockUseTranslation(),
 }))
 
-vi.mock('@/app/components/base/input', () => ({
-  __esModule: true,
-  default: (props: {
+vi.mock('@langgenius/dify-ui/input', () => ({
+  Input: (props: {
     value: string
     placeholder?: string
     disabled?: boolean
@@ -27,7 +26,7 @@ vi.mock('@/app/components/base/input', () => ({
   ),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   __esModule: true,
   toast: {
     success: (message: string) => mockNotify({ type: 'success', message }),
@@ -122,7 +121,7 @@ describe('UserActionItem', () => {
       target: { value: '   ' },
     })
     fireEvent.click(screen.getByText('change-style'))
-    fireEvent.click(screen.getAllByRole('button')[1]!)
+    fireEvent.click(screen.getByRole('button', { name: 'operation.delete' }))
 
     expect(onChange).toHaveBeenNthCalledWith(1, expect.objectContaining({ id: '' }))
     expect(onChange).toHaveBeenNthCalledWith(
@@ -135,6 +134,6 @@ describe('UserActionItem', () => {
 
     expect(screen.getByTestId('nodes.humanInput.userActions.actionNamePlaceholder'))!.toBeDisabled()
     expect(screen.getByTestId('nodes.humanInput.userActions.buttonTextPlaceholder'))!.toBeDisabled()
-    expect(screen.getAllByRole('button')).toHaveLength(1)
+    expect(screen.queryByRole('button', { name: 'operation.delete' })).not.toBeInTheDocument()
   })
 })

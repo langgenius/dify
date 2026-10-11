@@ -8,7 +8,7 @@ type CornerLabelsProps = {
 }
 
 const CornerLabels = ({ dataset }: CornerLabelsProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['dataset'])
 
   if (!dataset.embedding_available) {
     return (

@@ -13,6 +13,7 @@ import InstructionEditor from './instruction-editor'
 type Props = Readonly<{
   nodeId: string
   value: string
+  'aria-labelledby'?: string
   editorKey: string
   onChange: (text: string) => void
   generatorType: GeneratorType
@@ -20,6 +21,7 @@ type Props = Readonly<{
 }>
 
 const InstructionEditorInWorkflow: FC<Props> = ({
+  'aria-labelledby': ariaLabelledBy,
   nodeId,
   value,
   editorKey,
@@ -48,6 +50,7 @@ const InstructionEditorInWorkflow: FC<Props> = ({
 
   return (
     <InstructionEditor
+      aria-labelledby={ariaLabelledBy}
       value={value}
       onChange={onChange}
       editorKey={editorKey}

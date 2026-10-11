@@ -11,13 +11,13 @@ from collections.abc import Callable, Iterator
 from datetime import UTC, datetime
 from enum import StrEnum
 
-from agenton.compositor import CompositorSessionSnapshot
 from dify_agent.protocol import (
     CancelRunRequest,
     CancelRunResponse,
     CreateRunRequest,
     CreateRunResponse,
-    DeferredToolCallPayload,
+    RunCancelledEvent,
+    RunCancelledEventData,
     RunEvent,
     RunFailedEvent,
     RunFailedEventData,
@@ -26,6 +26,7 @@ from dify_agent.protocol import (
     RunSucceededEvent,
     RunSucceededEventData,
 )
+from dify_agent.protocol.snapshot import SessionSnapshot
 
 _FIXED_TIME = datetime(2026, 1, 1, tzinfo=UTC)
 
@@ -39,7 +40,6 @@ class FakeAgentBackendScenario(StrEnum):
 
     SUCCESS = "success"
     FAILED = "failed"
-    PAUSED = "paused"
 
 
 class FakeAgentBackendRunClient:
@@ -68,6 +68,28 @@ class FakeAgentBackendRunClient:
         """Return a deterministic cancellation response."""
         del request
         return CancelRunResponse(run_id=run_id, status="cancelled")
+
+    def cancel_run_and_wait(
+        self,
+        run_id: str,
+        request: CancelRunRequest | None = None,
+        *,
+        after: str | None = None,
+    ) -> RunCancelledEvent:
+        """Return a deterministic cleanup-complete cancellation event."""
+        del after
+        request = request or CancelRunRequest()
+        _ = self.cancel_run(run_id, request)
+        return RunCancelledEvent(
+            id="cancel-0",
+            run_id=run_id,
+            created_at=_FIXED_TIME,
+            data=RunCancelledEventData(
+                reason=request.reason,
+                message=request.message,
+                session_snapshot=SessionSnapshot(),
+            ),
+        )
 
     def stream_events(
         self,
@@ -103,13 +125,6 @@ class FakeAgentBackendRunClient:
                     updated_at=_FIXED_TIME,
                     error="fake failure",
                 )
-            case FakeAgentBackendScenario.PAUSED:
-                return RunStatusResponse(
-                    run_id=run_id,
-                    status="succeeded",
-                    created_at=_FIXED_TIME,
-                    updated_at=_FIXED_TIME,
-                )
 
     def _events(self, run_id: str) -> tuple[RunEvent, ...]:
         match self.scenario:
@@ -122,7 +137,7 @@ class FakeAgentBackendRunClient:
                         created_at=_FIXED_TIME,
                         data=RunSucceededEventData(
                             output={"text": "hello agent"},
-                            session_snapshot=CompositorSessionSnapshot(layers=[]),
+                            session_snapshot=SessionSnapshot(),
                         ),
                     ),
                 )
@@ -133,24 +148,10 @@ class FakeAgentBackendRunClient:
                         id="2-0",
                         run_id=run_id,
                         created_at=_FIXED_TIME,
-                        data=RunFailedEventData(error="fake failure", reason="unit_test"),
-                    ),
-                )
-            case FakeAgentBackendScenario.PAUSED:
-                return (
-                    RunStartedEvent(id="1-0", run_id=run_id, created_at=_FIXED_TIME),
-                    RunSucceededEvent(
-                        id="2-0",
-                        run_id=run_id,
-                        created_at=_FIXED_TIME,
-                        data=RunSucceededEventData(
-                            deferred_tool_call=DeferredToolCallPayload(
-                                tool_call_id="fake-ask-human-1",
-                                tool_name="ask_human",
-                                args={"question": "Agent requested human input."},
-                                metadata={"layer_type": "dify.ask_human", "schema_version": 1},
-                            ),
-                            session_snapshot=CompositorSessionSnapshot(layers=[]),
+                        data=RunFailedEventData(
+                            error="fake failure",
+                            reason="unit_test",
+                            session_snapshot=SessionSnapshot(),
                         ),
                     ),
                 )

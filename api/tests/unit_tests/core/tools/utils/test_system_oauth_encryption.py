@@ -4,6 +4,7 @@ import pytest
 
 from core.tools.utils import system_encryption as encryption
 from core.tools.utils.system_encryption import EncryptionError, SystemEncrypter
+from tests.unit_tests.config_override import apply_config_overrides
 
 
 def test_system_encrypter_roundtrip():
@@ -36,7 +37,7 @@ def test_system_encrypter_raises_error_for_invalid_ciphertext():
 
 def test_system_helpers_use_global_cached_instance(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(encryption, "_encrypter", None)
-    monkeypatch.setattr("core.tools.utils.system_encryption.dify_config.SECRET_KEY", "global-secret")
+    apply_config_overrides(monkeypatch, SECRET_KEY="global-secret")
 
     first = encryption.get_system_encrypter()
     second = encryption.get_system_encrypter()

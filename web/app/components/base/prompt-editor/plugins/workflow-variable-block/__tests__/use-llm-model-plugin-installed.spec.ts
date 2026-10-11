@@ -1,15 +1,28 @@
+import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { WorkflowNodesMap } from '@/app/components/base/prompt-editor/types'
-import { renderHook } from '@testing-library/react'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, renderHookWithConsoleQuery } from '@/test/console/query-data'
 import { useLlmModelPluginInstalled } from '../use-llm-model-plugin-installed'
 
-let mockModelProviders: Array<{ provider: string }> = []
+const providerSummaryFixture = {
+  provider: 'openai',
+  plugin_id: 'langgenius/openai',
+  label: { en_US: 'OpenAI' },
+  configurate_methods: ['predefined-model'],
+  supported_model_types: ['llm'],
+  preferred_provider_type: 'custom',
+  is_configured: true,
+  system_configuration: { enabled: false },
+  custom_configuration: {
+    status: 'active',
+    available_credentials: [],
+    current_credential_usable: true,
+    has_custom_models: false,
+  },
+} satisfies ModelProviderSummaryResponse
 
-vi.mock('@/context/provider-context', () => ({
-  useProviderContextSelector: <T>(
-    selector: (state: { modelProviders: Array<{ provider: string }> }) => T,
-  ): T => selector({ modelProviders: mockModelProviders }),
-}))
+let mockModelProviders: Array<{ provider: string }> = []
 
 const createWorkflowNodesMap = (node: Record<string, unknown>): WorkflowNodesMap =>
   ({
@@ -19,6 +32,18 @@ const createWorkflowNodesMap = (node: Record<string, unknown>): WorkflowNodesMap
       ...node,
     },
   }) as unknown as WorkflowNodesMap
+
+const renderHook: typeof renderHookWithConsoleQuery = (callback, options) => {
+  const queryClient = createConsoleQueryClient()
+  queryClient.setQueryData(consoleQuery.workspaces.current.modelProviders.summary.get.queryKey(), {
+    data: mockModelProviders.map(
+      (provider) =>
+        ({ ...providerSummaryFixture, ...provider }) satisfies ModelProviderSummaryResponse,
+    ),
+    plugins: {},
+  })
+  return renderHookWithConsoleQuery(callback, { ...options, queryClient })
+}
 
 describe('useLlmModelPluginInstalled', () => {
   beforeEach(() => {

@@ -31,14 +31,14 @@ describe('FeatureCard', () => {
   it('should render a switch toggle', () => {
     render(<FeatureCard {...defaultProps} />)
 
-    expect(screen.getByRole('switch')).toBeInTheDocument()
+    expect(screen.getByRole('switch', { name: 'Test Feature' })).toBeInTheDocument()
   })
 
   it('should call onChange when switch is toggled', () => {
     const onChange = vi.fn()
     render(<FeatureCard {...defaultProps} onChange={onChange} />)
 
-    fireEvent.click(screen.getByRole('switch'))
+    fireEvent.click(screen.getByRole('switch', { name: 'Test Feature' }))
 
     expect(onChange).toHaveBeenCalledTimes(1)
   })
@@ -90,7 +90,7 @@ describe('FeatureCard', () => {
   it('should handle disabled state', () => {
     render(<FeatureCard {...defaultProps} disabled={true} />)
 
-    const switchElement = screen.getByRole('switch')
+    const switchElement = screen.getByRole('switch', { name: 'Test Feature' })
     expect(switchElement).toBeInTheDocument()
   })
 
@@ -98,6 +98,8 @@ describe('FeatureCard', () => {
     render(<FeatureCard {...defaultProps} />)
 
     // Should not throw when switch is clicked without onChange
-    expect(() => fireEvent.click(screen.getByRole('switch'))).not.toThrow()
+    expect(() =>
+      fireEvent.click(screen.getByRole('switch', { name: 'Test Feature' })),
+    ).not.toThrow()
   })
 })

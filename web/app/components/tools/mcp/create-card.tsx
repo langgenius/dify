@@ -35,7 +35,7 @@ function useMCPCreateAction({ handleCreate }: Props) {
 }
 
 export function NewMCPButton({ handleCreate }: Props) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['tools'])
   const addMCPServerLabel = t(($) => $['mcp.create.cardTitle'], { ns: 'tools' })
   const { canManageMCP, create, setShowModal, showModal } = useMCPCreateAction({ handleCreate })
 
@@ -49,7 +49,6 @@ export function NewMCPButton({ handleCreate }: Props) {
         data-step-by-step-tour-target={STEP_BY_STEP_TOUR_TARGETS.integrationMcpAdd}
         onClick={() => setShowModal(true)}
         title={addMCPServerLabel}
-        aria-label={addMCPServerLabel}
       >
         <span aria-hidden className="i-ri-add-line size-4 shrink-0" />
         {addMCPServerLabel}
@@ -62,7 +61,7 @@ export function NewMCPButton({ handleCreate }: Props) {
 }
 
 const NewMCPCard = ({ handleCreate }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['tools'])
   const docLink = useDocLink()
   const { canManageMCP, create, setShowModal, showModal } = useMCPCreateAction({ handleCreate })
 

@@ -8,7 +8,7 @@ on:
       - reopened
       - synchronize
   merge_group:
-    branches: ["main"]
+    branches: ['main']
     types: [checks_requested]
 
 jobs:

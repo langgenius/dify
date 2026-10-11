@@ -1,15 +1,19 @@
 import type { ModelAndParameter } from '../../types'
+import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import type { ChatConfig, ChatItem as ChatItemType, OnSend } from '@/app/components/base/chat/types'
 import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import Log from '@/app/components/base/chat/chat/log'
 import { TransferMethod } from '@/app/components/base/chat/types'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { renderWithAccountProfile as render } from '@/test/console/account-profile'
 import { APP_CHAT_WITH_MULTIPLE_MODEL, APP_CHAT_WITH_MULTIPLE_MODEL_RESTART } from '../../types'
 import ChatItem from '../chat-item'
+import { DebugWithMultipleModelContextProvider } from '../context-provider'
 
 const mockConsoleStateReader = vi.fn()
 const mockUseDebugConfigurationContext = vi.fn()
-const mockUseProviderContext = vi.fn()
+const mockModelListQuery = vi.fn()
 const mockUseFeatures = vi.fn()
 const mockUseConfigFromDebugContext = vi.fn()
 const mockUseFormattingChangedSubscription = vi.fn()
@@ -18,8 +22,12 @@ const mockUseEventEmitterContextContext = vi.fn()
 const mockFetchConversationMessages = vi.fn()
 const mockFetchSuggestedQuestions = vi.fn()
 const mockStopChatMessageResponding = vi.fn()
+const { mockToastError } = vi.hoisted(() => ({
+  mockToastError: vi.fn(),
+}))
 
 let capturedChatProps: {
+  onOpenLog: (item: IChatItem) => void
   config: ChatConfig
   chatList: ChatItemType[]
   isResponding: boolean
@@ -36,8 +44,9 @@ vi.mock('@/context/debug-configuration', () => ({
   useDebugConfigurationContext: () => mockUseDebugConfigurationContext(),
 }))
 
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => mockUseProviderContext(),
+vi.mock('@tanstack/react-query', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@tanstack/react-query')>()),
+  useQuery: () => mockModelListQuery(),
 }))
 
 vi.mock('@/app/components/base/features/hooks', () => ({
@@ -64,6 +73,12 @@ vi.mock('@/service/debug', () => ({
   stopChatMessageResponding: (...args: unknown[]) => mockStopChatMessageResponding(...args),
 }))
 
+vi.mock('@/app/components/app/configuration/toast', () => ({
+  toast: {
+    error: mockToastError,
+  },
+}))
+
 vi.mock('@/app/components/base/chat/utils', () => ({
   getLastAnswer: (chatList: ChatItemType[]) => chatList.find((item) => item.isAnswer),
 }))
@@ -77,6 +92,7 @@ vi.mock('@/app/components/base/chat/chat', () => ({
     capturedChatProps = props
     return (
       <div data-testid="chat-component">
+        {props?.chatList[0] && <Log logItem={props.chatList[0]} onOpenLog={props.onOpenLog} />}
         <span data-testid="chat-list-length">{props?.chatList?.length || 0}</span>
         <span data-testid="is-responding">{props?.isResponding ? 'yes' : 'no'}</span>
         <button
@@ -128,8 +144,8 @@ const createDefaultMocks = () => {
     canTestAndRun: true,
   })
 
-  mockUseProviderContext.mockReturnValue({
-    textGenerationModelList: [
+  mockModelListQuery.mockReturnValue({
+    data: [
       {
         provider: 'openai',
         models: [
@@ -197,6 +213,25 @@ describe('ChatItem', () => {
     capturedChatProps = null
     eventSubscriptionCallback = null
     createDefaultMocks()
+  })
+
+  it('opens this model result through the owning debug session', async () => {
+    const user = userEvent.setup()
+    const onOpenLog = vi.fn()
+    render(
+      <DebugWithMultipleModelContextProvider
+        multipleModelConfigs={[]}
+        onMultipleModelConfigsChange={vi.fn()}
+        onDebugWithMultipleModelChange={vi.fn()}
+        onOpenLog={onOpenLog}
+      >
+        <ChatItem modelAndParameter={createModelAndParameter()} />
+      </DebugWithMultipleModelContextProvider>,
+    )
+    await user.click(screen.getByRole('button', { name: 'common.operation.log' }))
+    expect(onOpenLog).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ id: 'msg-1', isAnswer: true }),
+    )
   })
 
   describe('rendering', () => {
@@ -338,8 +373,16 @@ describe('ChatItem', () => {
           query: 'Hello',
           inputs: { key: 'value' },
         }),
-        expect.any(Object),
+        expect.objectContaining({
+          onNotifyError: expect.any(Function),
+        }),
       )
+
+      const callbacks = handleSend.mock.calls[0]![2] as {
+        onNotifyError: (message: string) => void
+      }
+      callbacks.onNotifyError('Base model not found')
+      expect(mockToastError).toHaveBeenCalledWith('Base model not found')
     })
 
     it('should handle APP_CHAT_WITH_MULTIPLE_MODEL_RESTART event', () => {
@@ -412,8 +455,8 @@ describe('ChatItem', () => {
     })
 
     it('should not include files when vision is not supported', () => {
-      mockUseProviderContext.mockReturnValue({
-        textGenerationModelList: [
+      mockModelListQuery.mockReturnValue({
+        data: [
           {
             provider: 'openai',
             models: [
@@ -607,8 +650,8 @@ describe('ChatItem', () => {
 
   describe('edge cases', () => {
     it('should handle missing provider in textGenerationModelList', () => {
-      mockUseProviderContext.mockReturnValue({
-        textGenerationModelList: [],
+      mockModelListQuery.mockReturnValue({
+        data: [],
       })
 
       const handleSend = vi.fn()

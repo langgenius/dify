@@ -1,10 +1,10 @@
 import type { AvatarSize } from '@langgenius/dify-ui/avatar'
 import type { FC } from 'react'
 import { AvatarFallback, AvatarImage, AvatarRoot } from '@langgenius/dify-ui/avatar'
-import { useAtomValue } from 'jotai'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { memo } from 'react'
 import { getUserColor } from '@/app/components/workflow/collaboration/utils/user-color'
-import { userProfileIdAtom } from '@/context/account-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 
 type User = {
   id: string
@@ -33,7 +33,10 @@ const avatarSizeToPx: Record<AvatarSize, number> = {
 
 export const UserAvatarList: FC<UserAvatarListProps> = memo(
   ({ users, maxVisible = 3, size = 'sm', className = '', showCount = true }) => {
-    const currentUserId = useAtomValue(userProfileIdAtom)
+    const { data: currentUserId } = useSuspenseQuery({
+      ...userProfileQueryOptions(),
+      select: (data) => data.profile.id,
+    })
     if (!users.length) return null
 
     const shouldShowCount = showCount && users.length > maxVisible

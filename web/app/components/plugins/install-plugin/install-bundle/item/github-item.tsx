@@ -1,7 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import type { GitHubItemAndMarketPlaceDependency, Plugin } from '../../../types'
-import type { VersionProps } from '@/app/components/plugins/types'
+import type { GitHubItemAndMarketPlaceDependency, Plugin, VersionProps } from '../../../types'
 import * as React from 'react'
 import { useEffect } from 'react'
 import { useUploadGitHub } from '@/service/use-plugins'

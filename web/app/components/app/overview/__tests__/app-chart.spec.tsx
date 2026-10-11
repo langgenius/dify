@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react'
 import Chart, { MessagesChart } from '../app-chart'
 
 const reactEChartsMock = vi.fn()
-vi.mock('echarts-for-react', () => ({
+vi.mock('echarts-for-react/esm/core', () => ({
   default: (props: { option: unknown; opts?: unknown }) => {
     reactEChartsMock(props)
     return <div role="img" aria-label="Chart" />
@@ -11,19 +11,8 @@ vi.mock('echarts-for-react', () => ({
 
 const mockUseAppDailyMessages = vi.fn()
 
-vi.mock('@/service/use-apps', () => ({
-  useAppAverageResponseTime: vi.fn(),
-  useAppAverageSessionInteractions: vi.fn(),
-  useAppDailyConversations: vi.fn(),
-  useAppDailyEndUsers: vi.fn(),
-  useAppDailyMessages: (...args: unknown[]) => mockUseAppDailyMessages(...args),
-  useAppSatisfactionRate: vi.fn(),
-  useAppTokenCosts: vi.fn(),
-  useAppTokensPerSecond: vi.fn(),
-  useWorkflowAverageInteractions: vi.fn(),
-  useWorkflowDailyConversations: vi.fn(),
-  useWorkflowDailyTerminals: vi.fn(),
-  useWorkflowTokenCosts: vi.fn(),
+vi.mock('@tanstack/react-query', () => ({
+  useQuery: (...args: unknown[]) => mockUseAppDailyMessages(...args),
 }))
 
 describe('app-chart', () => {
@@ -51,7 +40,7 @@ describe('app-chart', () => {
         />,
       )
 
-      expect(screen.getByText('Cost title'))!.toBeInTheDocument()
+      expect(screen.getByText('Cost title')).toHaveAttribute('title', 'Cost title')
       expect(screen.getByText('300'))!.toBeInTheDocument()
       expect(screen.queryByText('Last 7 days'))!.not.toBeInTheDocument()
       expect(screen.getByText(/\$3\.7500/))!.toBeInTheDocument()

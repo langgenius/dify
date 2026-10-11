@@ -10,7 +10,7 @@ import {
 } from '@/app/components/workflow/note-node/note-editor'
 
 const NoteNode = ({ data }: NodeProps<NoteNodeType>) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const ref = useRef<HTMLDivElement | null>(null)
   const theme = data.theme
 

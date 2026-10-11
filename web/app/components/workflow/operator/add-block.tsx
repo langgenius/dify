@@ -1,8 +1,6 @@
-import type { ReactElement } from 'react'
 import type { BlockSelectorProps } from '@/app/components/workflow/block-selector'
 import type { Node, OnSelectBlock } from '@/app/components/workflow/types'
-import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { memo, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStoreApi } from 'reactflow'
@@ -23,20 +21,21 @@ import {
 
 type AddBlockProps = {
   renderTrigger?: BlockSelectorProps['trigger']
+  triggerClassName?: BlockSelectorProps['triggerClassName']
   sideOffset?: BlockSelectorProps['sideOffset']
   alignOffset?: BlockSelectorProps['alignOffset']
   onClose?: () => void
   isolateKeyboardEvents?: boolean
 }
-type BlockSelectorTriggerRender = Exclude<NonNullable<BlockSelectorProps['trigger']>, ReactElement>
 const AddBlock = ({
   renderTrigger,
+  triggerClassName,
   sideOffset,
   alignOffset,
   onClose,
   isolateKeyboardEvents,
 }: AddBlockProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
   const isChatMode = useIsChatMode()
@@ -85,27 +84,17 @@ const AddBlock = ({
     [store, workflowStore, nodesMetaDataMap],
   )
 
-  const renderTriggerElement = useCallback<BlockSelectorTriggerRender>(
-    (props, state) => {
-      return (
-        <Button
-          {...props}
-          variant="ghost"
-          size="small"
-          disabled={nodesReadOnly}
-          focusableWhenDisabled
-          className={cn(
-            'size-8 p-0 text-text-tertiary hover:text-text-secondary',
-            'data-disabled:text-text-disabled data-disabled:hover:bg-transparent data-disabled:hover:text-text-disabled',
-            state.open && 'bg-state-accent-active text-text-accent',
-            props.className,
-          )}
-        >
-          <span aria-hidden className="i-ri-add-circle-fill size-4" />
-        </Button>
-      )
-    },
-    [nodesReadOnly],
+  const renderTriggerElement = (
+    <IconButton
+      aria-label={t(($) => $['common.addBlock'], { ns: 'workflow' })}
+      size="lg"
+      disabled={nodesReadOnly}
+      focusableWhenDisabled
+      data-block-selector-open={open ? '' : undefined}
+      className="rounded-md data-block-selector-open:bg-state-accent-active data-block-selector-open:text-text-accent"
+    >
+      <span aria-hidden className="i-ri-add-circle-fill size-4" />
+    </IconButton>
   )
 
   return (
@@ -118,8 +107,12 @@ const AddBlock = ({
       sideOffset={sideOffset ?? 4}
       alignOffset={alignOffset ?? -8}
       trigger={renderTrigger || renderTriggerElement}
+      triggerClassName={triggerClassName}
       triggerAriaLabel={t(($) => $['common.addBlock'], { ns: 'workflow' })}
-      triggerTooltip={t(($) => $['common.addBlock'], { ns: 'workflow' })}
+      // A caller-provided trigger, such as a menu row, already shows its own label.
+      triggerTooltip={
+        renderTrigger ? undefined : t(($) => $['common.addBlock'], { ns: 'workflow' })
+      }
       popupClassName="min-w-[256px]!"
       availableBlocksTypes={availableNextBlocks}
       showStartTab={showStartTab}

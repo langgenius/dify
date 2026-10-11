@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next'
 import type { InputVar } from '@/app/components/workflow/types'
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
 import { withSelectorKey } from '@/test/i18n-mock'
@@ -64,7 +65,7 @@ describe('before-run-form helpers', () => {
   it('should report required and uploading file errors', () => {
     const t = withSelectorKey(
       (key: string, options?: Record<string, unknown>) => `${key}:${options?.field ?? ''}`,
-    )
+    ) as TFunction<['appDebug', 'workflow']>
 
     expect(
       getFormErrorMessage(

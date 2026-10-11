@@ -4,7 +4,7 @@ import type { QueryClient } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 import type { AgentWorkingDirectorySource } from '../working-directory-panel'
 import { useState } from 'react'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { AgentWorkingDirectoryPanel } from '../working-directory-panel'
 
 export function invalidateAgentWorkingDirectoryFiles({

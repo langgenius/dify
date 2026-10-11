@@ -12,18 +12,16 @@ class TestPassportService:
     """Test PassportService JWT operations"""
 
     @pytest.fixture
-    def passport_service(self):
+    def passport_service(self, config_overrides):
         """Create PassportService instance with test secret key"""
-        with patch("libs.passport.dify_config") as mock_config:
-            mock_config.SECRET_KEY = "test-secret-key-for-testing"
-            return PassportService()
+        config_overrides(SECRET_KEY="test-secret-key-for-testing")
+        return PassportService()
 
     @pytest.fixture
-    def another_passport_service(self):
+    def another_passport_service(self, config_overrides):
         """Create another PassportService instance with different secret key"""
-        with patch("libs.passport.dify_config") as mock_config:
-            mock_config.SECRET_KEY = "another-secret-key-for-testing"
-            return PassportService()
+        config_overrides(SECRET_KEY="another-secret-key-for-testing")
+        return PassportService()
 
     # Core functionality tests
     def test_should_issue_and_verify_token(self, passport_service):
@@ -98,10 +96,8 @@ class TestPassportService:
         payload = {"user_id": "123"}
 
         # Create token with different algorithm
-        with patch("libs.passport.dify_config") as mock_config:
-            mock_config.SECRET_KEY = "test-secret-key-for-testing"
-            # Create token with HS512 instead of HS256
-            wrong_alg_token = jwt.encode(payload, mock_config.SECRET_KEY, algorithm="HS512")
+        # Create token with HS512 instead of HS256
+        wrong_alg_token = jwt.encode(payload, "test-secret-key-for-testing", algorithm="HS512")
 
         # Should fail because service expects HS256
         # InvalidAlgorithmError is now caught by PyJWTError handler
@@ -134,20 +130,17 @@ class TestPassportService:
         past_time = datetime.now(UTC) - timedelta(hours=1)
         payload = {"user_id": "123", "exp": past_time.timestamp()}
 
-        with patch("libs.passport.dify_config") as mock_config:
-            mock_config.SECRET_KEY = "test-secret-key-for-testing"
-            token = jwt.encode(payload, mock_config.SECRET_KEY, algorithm="HS256")
+        token = jwt.encode(payload, "test-secret-key-for-testing", algorithm="HS256")
 
         with pytest.raises(Unauthorized) as exc_info:
             passport_service.verify(token)
         assert str(exc_info.value) == "401 Unauthorized: Token has expired."
 
     # Configuration tests
-    def test_should_use_configured_secret_key_without_policy_validation(self):
+    def test_should_use_configured_secret_key_without_policy_validation(self, config_overrides):
         """Test that policy decisions are owned by config, not PassportService."""
-        with patch("libs.passport.dify_config") as mock_config:
-            mock_config.SECRET_KEY = "configured"
-            service = PassportService()
+        config_overrides(SECRET_KEY="configured")
+        service = PassportService()
 
         assert service.sk == "configured"
 

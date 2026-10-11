@@ -1,8 +1,14 @@
 import pytest
-from flask import Flask
+from flask import Flask, request
 from sqlalchemy.orm import Session
 
 from controllers.console.app import generator as generator_module
+from controllers.console.app.generator import (
+    InstructionGeneratePayload,
+    RuleCodeGeneratePayload,
+    RuleGeneratePayload,
+    RuleStructuredOutputPayload,
+)
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from graphon.model_runtime.errors.invoke import InvokeError
 
@@ -47,7 +53,7 @@ def test_rule_generate_exceptions(app: Flask, monkeypatch: pytest.MonkeyPatch) -
             json={"instruction": "do it", "model_config": _model_config_payload()},
         ):
             with pytest.raises(expected_exception):
-                method(api, "t1")
+                method(api, RuleGeneratePayload.model_validate(request.get_json()), "t1")
 
 
 def test_rule_code_generate_exceptions(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -73,7 +79,7 @@ def test_rule_code_generate_exceptions(app: Flask, monkeypatch: pytest.MonkeyPat
             json={"instruction": "do it", "model_config": _model_config_payload()},
         ):
             with pytest.raises(expected_exception):
-                method(api, "t1")
+                method(api, RuleCodeGeneratePayload.model_validate(request.get_json()), "t1")
 
 
 def test_structured_output_generate_exceptions(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -100,7 +106,7 @@ def test_structured_output_generate_exceptions(app: Flask, monkeypatch: pytest.M
             json={"instruction": "do it", "model_config": _model_config_payload()},
         ):
             with pytest.raises(expected_exception):
-                method(api, "t1")
+                method(api, RuleStructuredOutputPayload.model_validate(request.get_json()), "t1")
 
 
 @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
@@ -138,4 +144,4 @@ def test_instruction_generate_exceptions(
             },
         ):
             with pytest.raises(expected_exception):
-                method(api, sqlite_session, "t1")
+                method(api, InstructionGeneratePayload.model_validate(request.get_json()), sqlite_session, "t1")

@@ -56,7 +56,8 @@ def invoke_llm_with_structured_output(
     stop: list[str] | None = None,
     stream: Literal[True],
     callbacks: list[Callback] | None = None,
-) -> Generator[LLMResultChunkWithStructuredOutput, None, None]: ...
+    request_metadata: Mapping[str, object] | None = None,
+) -> Generator[LLMResultChunkWithStructuredOutput]: ...
 @overload
 def invoke_llm_with_structured_output(
     *,
@@ -70,6 +71,7 @@ def invoke_llm_with_structured_output(
     stop: list[str] | None = None,
     stream: Literal[False],
     callbacks: list[Callback] | None = None,
+    request_metadata: Mapping[str, object] | None = None,
 ) -> LLMResultWithStructuredOutput: ...
 @overload
 def invoke_llm_with_structured_output(
@@ -84,7 +86,8 @@ def invoke_llm_with_structured_output(
     stop: list[str] | None = None,
     stream: bool = True,
     callbacks: list[Callback] | None = None,
-) -> LLMResultWithStructuredOutput | Generator[LLMResultChunkWithStructuredOutput, None, None]: ...
+    request_metadata: Mapping[str, object] | None = None,
+) -> LLMResultWithStructuredOutput | Generator[LLMResultChunkWithStructuredOutput]: ...
 def invoke_llm_with_structured_output(
     *,
     provider: str,
@@ -97,7 +100,8 @@ def invoke_llm_with_structured_output(
     stop: list[str] | None = None,
     stream: bool = True,
     callbacks: list[Callback] | None = None,
-) -> LLMResultWithStructuredOutput | Generator[LLMResultChunkWithStructuredOutput, None, None]:
+    request_metadata: Mapping[str, object] | None = None,
+) -> LLMResultWithStructuredOutput | Generator[LLMResultChunkWithStructuredOutput]:
     """
     Invoke large language model with structured output
     1. This method invokes model_instance.invoke_llm with json_schema
@@ -139,6 +143,7 @@ def invoke_llm_with_structured_output(
         stop=stop,
         stream=stream,
         callbacks=callbacks,
+        request_metadata=request_metadata,
     )
 
     if isinstance(llm_result, LLMResult):
@@ -157,7 +162,7 @@ def invoke_llm_with_structured_output(
         )
     else:
 
-        def generator() -> Generator[LLMResultChunkWithStructuredOutput, None, None]:
+        def generator() -> Generator[LLMResultChunkWithStructuredOutput]:
             result_text: str = ""
             prompt_messages: Sequence[PromptMessage] = []
             system_fingerprint: str | None = None

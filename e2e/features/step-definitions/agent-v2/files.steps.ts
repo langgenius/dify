@@ -1,13 +1,13 @@
-import type { DifyWorld } from '../../support/world'
+import type { DifyWorld } from '../../support/world.ts'
 import { Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
-import { agentBuilderTestMaterials } from '../../agent-v2/support/test-materials'
+import { agentBuilderTestMaterials } from '../../agent-v2/support/test-materials.ts'
 import {
   expectAgentConfigFileHidden,
   expectAgentConfigFileSaved,
   expectAgentConfigFileVisible,
   uploadAgentConfigFile,
-} from './configure-helpers'
+} from './configure-helpers.ts'
 
 When('I upload the small Agent v2 file from the Files section', async function (this: DifyWorld) {
   await uploadAgentConfigFile(this, 'smallFile')
@@ -62,8 +62,9 @@ Then(
   async function (this: DifyWorld) {
     const page = this.getPage()
     const dialog = page.getByRole('dialog', { name: 'Upload file' })
+    const notifications = page.getByRole('region', { name: 'Notifications' })
 
-    await expect(page.getByText('Upload one file.')).toBeVisible()
+    await expect(notifications.getByRole('dialog')).toBeVisible()
     await expect(dialog.getByRole('button', { name: 'Upload' })).toBeDisabled()
     await expect(
       dialog.getByText(agentBuilderTestMaterials.smallFile, { exact: true }),

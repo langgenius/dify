@@ -1,4 +1,5 @@
 'use client'
+
 import type { NotionPage } from '@/models/common'
 import type {
   CrawlOptions,
@@ -7,24 +8,25 @@ import type {
   FileItem,
 } from '@/models/datasets'
 import type { RETRIEVE_METHOD } from '@/types/app'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
 import { useAtomValue } from 'jotai'
 import { useQueryState } from 'nuqs'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import {
   settingsQueryParamName,
   settingsQueryParser,
 } from '@/app/components/header/account-setting/query-params'
-import { userProfileIdAtom } from '@/context/account-state'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import {
   workspacePermissionKeysAtom,
   workspacePermissionKeysLoadingAtom,
 } from '@/context/permission-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { DataSourceProvider } from '@/models/common'
 import { DataSourceType } from '@/models/datasets'
 import { useRouter } from '@/next/navigation'
@@ -52,11 +54,14 @@ const DEFAULT_CRAWL_OPTIONS: CrawlOptions = {
 }
 
 const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetCreation'])
   const router = useRouter()
   const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
   const datasetDetail = useDatasetDetailContextWithSelector((state) => state.dataset)
-  const currentUserId = useAtomValue(userProfileIdAtom)
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
   const isLoadingWorkspacePermissionKeys = useAtomValue(workspacePermissionKeysLoadingAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { data: embeddingsDefaultModel } = useDefaultModel(ModelTypeEnum.textEmbedding)
@@ -142,7 +147,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
   }, [datasetId, router, shouldRedirectToDocuments])
 
   if ((!!datasetId && isLoadingWorkspacePermissionKeys) || shouldRedirectToDocuments)
-    return <Loading type="app" />
+    return <LoadingPlaceholder className="h-full" />
 
   if (fetchingAuthedDataSourceListError)
     return (
@@ -156,7 +161,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-components-panel-bg">
       <TopBar activeIndex={step - 1} datasetId={datasetId} />
       <div className="min-h-0 flex-1">
-        {isLoadingAuthedDataSourceList && <Loading type="app" />}
+        {isLoadingAuthedDataSourceList && <LoadingPlaceholder className="h-full" />}
         {!isLoadingAuthedDataSourceList && (
           <>
             {step === 1 && (

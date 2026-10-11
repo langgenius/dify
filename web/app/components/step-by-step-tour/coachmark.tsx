@@ -140,8 +140,24 @@ export function StepByStepTourCoachmark({
   const measuredRectMatchesGuide =
     measuredTargetElement === targetElement &&
     targetElement.matches(getStepByStepTourTargetSelector(guide.target))
+  const currentOverlayReady = highlightPartsReady && rectSettled && measuredRectMatchesGuide
+  const currentOverlay = currentOverlayReady
+    ? {
+        coachmarkPosition,
+        guide,
+        highlightRect,
+        onComplete,
+        onSkip,
+        placement: coachmarkPosition.placement,
+        skipLabel,
+        interactionPolicy,
+        stepLabel,
+      }
+    : undefined
 
-  if (highlightPartsReady && rectSettled && measuredRectMatchesGuide) {
+  useLayoutEffect(() => {
+    if (!currentOverlayReady) return
+
     stableOverlayRef.current = {
       coachmarkPosition,
       guide,
@@ -153,9 +169,19 @@ export function StepByStepTourCoachmark({
       interactionPolicy,
       stepLabel,
     }
-  }
+  }, [
+    coachmarkPosition,
+    currentOverlayReady,
+    guide,
+    highlightRect,
+    interactionPolicy,
+    onComplete,
+    onSkip,
+    skipLabel,
+    stepLabel,
+  ])
 
-  const stableOverlay = stableOverlayRef.current
+  const stableOverlay = currentOverlay ?? stableOverlayRef.current
   const isActionGuide = stableOverlay
     ? getStepByStepTourGuideKind(stableOverlay.guide) === 'action'
     : false
@@ -252,7 +278,7 @@ export function StepByStepTourCoachmark({
       {stableOverlay?.interactionPolicy === 'target-only' ? (
         targetBlockerStyles.map((style, index) => (
           <div
-            // eslint-disable-next-line react/no-array-index-key -- The four blocker slices are static and positional.
+            // oxlint-disable-next-line react/no-array-index-key -- The four blocker slices are static and positional.
             key={index}
             aria-hidden="true"
             data-step-by-step-tour-backdrop=""

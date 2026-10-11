@@ -116,6 +116,19 @@ describe('InstallFromMarketplace Component', () => {
   })
 
   describe('Rendering', () => {
+    it('announces the number of recommended integrations after a search finishes', () => {
+      vi.mocked(useMarketplaceAllPlugins).mockReturnValue({
+        plugins: mockPlugins,
+        isLoading: false,
+      })
+
+      render(<InstallFromMarketplace providers={mockProviders} searchText="plugin" />)
+
+      expect(screen.getByRole('status')).toHaveTextContent(
+        'modelProvider.modelProvider.installDataSource: plugin.marketplace.pluginsResult:{"num":1}',
+      )
+    })
+
     it('should render correctly when not loading and not collapsed', () => {
       // Arrange
       vi.mocked(useMarketplaceAllPlugins).mockReturnValue({
@@ -127,17 +140,24 @@ describe('InstallFromMarketplace Component', () => {
       render(<InstallFromMarketplace providers={mockProviders} searchText="" />)
 
       // Assert
-      expect(screen.getByText('common.modelProvider.installDataSource')).toBeInTheDocument()
-      expect(screen.getByText('common.modelProvider.discoverMore')).toBeInTheDocument()
+      expect(screen.getByText('modelProvider.modelProvider.installDataSource')).toBeInTheDocument()
+      expect(screen.getByText('modelProvider.modelProvider.discoverMore')).toBeInTheDocument()
       expect(screen.getByTestId('mock-link')).toHaveAttribute(
         'href',
         'https://marketplace.url/plugins/datasource?theme=light',
       )
       expect(screen.getByTestId('mock-list')).toBeInTheDocument()
-      expect(screen.getByTestId('mock-list')).toHaveClass('grid', 'grid-cols-3', 'gap-2')
+      expect(screen.getByTestId('mock-list')).toHaveClass(
+        'grid',
+        'grid-cols-1',
+        'sm:grid-cols-2',
+        'lg:grid-cols-3',
+        'xl:grid-cols-4',
+        'gap-2',
+      )
       expect(screen.getByTestId('mock-provider-card-plugin-1')).toHaveClass('h-36.5')
       expect(screen.queryByTestId('mock-provider-card-bundle-1')).not.toBeInTheDocument()
-      expect(screen.queryByRole('status')).not.toBeInTheDocument()
+      expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
     })
 
     it('should show loading state when marketplace plugins are loading and component is not collapsed', () => {
@@ -151,7 +171,7 @@ describe('InstallFromMarketplace Component', () => {
       render(<InstallFromMarketplace providers={mockProviders} searchText="" />)
 
       // Assert
-      expect(screen.getByRole('status')).toBeInTheDocument()
+      expect(screen.getByRole('progressbar')).toBeInTheDocument()
       expect(screen.queryByTestId('mock-list')).not.toBeInTheDocument()
     })
   })
@@ -164,7 +184,7 @@ describe('InstallFromMarketplace Component', () => {
         isLoading: false,
       })
       render(<InstallFromMarketplace providers={mockProviders} searchText="" />)
-      const toggleHeader = screen.getByText('common.modelProvider.installDataSource')
+      const toggleHeader = screen.getByText('modelProvider.modelProvider.installDataSource')
 
       // Act (Collapse)
       fireEvent.click(toggleHeader)
@@ -184,13 +204,13 @@ describe('InstallFromMarketplace Component', () => {
         isLoading: true,
       })
       render(<InstallFromMarketplace providers={mockProviders} searchText="" />)
-      const toggleHeader = screen.getByText('common.modelProvider.installDataSource')
+      const toggleHeader = screen.getByText('modelProvider.modelProvider.installDataSource')
 
       // Act (Collapse)
       fireEvent.click(toggleHeader)
 
       // Assert
-      expect(screen.queryByRole('status')).not.toBeInTheDocument()
+      expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
     })
 
     it('should use the marketplace callback action when provided', () => {

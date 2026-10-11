@@ -6,9 +6,9 @@ import type {
   TriggerSubscriptionBuilder,
 } from '@/app/components/workflow/block-selector/types'
 import type { ConfigureTriggerOAuthPayload } from '@/service/use-triggers'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { openOAuthPopup } from '@/hooks/use-oauth'
 import {
   useConfigureTriggerOAuth,
@@ -77,7 +77,7 @@ export const useOAuthClientState = ({
   onOpenChange,
   showOAuthCreateModal,
 }: UseOAuthClientStateParams): UseOAuthClientStateReturn => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin', 'pluginTrigger'])
 
   // State management
   const [subscriptionBuilder, setSubscriptionBuilder] = useState<

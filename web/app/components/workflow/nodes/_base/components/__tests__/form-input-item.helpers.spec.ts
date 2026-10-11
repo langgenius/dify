@@ -12,7 +12,6 @@ import {
   getCheckboxListValue,
   getFilterVar,
   getFormInputState,
-  getNumberInputValue,
   getSelectedLabels,
   getTargetVarType,
   getVarKindType,
@@ -123,6 +122,26 @@ describe('form-input-item helpers', () => {
     ).toBeUndefined()
   })
 
+  it('should expose date field state', () => {
+    const dateState = getFormInputState(createSchema({ type: FormTypeEnum.date }), {
+      type: VarKindType.constant,
+      value: '2024-01-01',
+    })
+    expect(dateState.isDate).toBe(true)
+    expect(dateState.isDateRange).toBe(false)
+    expect(getTargetVarType(dateState)).toBe(VarType.string)
+    expect(getVarKindType(dateState)).toBe(VarKindType.constant)
+    expect(getFilterVar(dateState)?.({ type: VarType.string } as Var)).toBe(true)
+
+    const rangeState = getFormInputState(createSchema({ type: FormTypeEnum.dateRange }), {
+      type: VarKindType.constant,
+      value: '{}',
+    })
+    expect(rangeState.isDateRange).toBe(true)
+    expect(rangeState.isDate).toBe(false)
+    expect(getVarKindType(rangeState)).toBe(VarKindType.constant)
+  })
+
   it('should filter and map visible options using show_on rules', () => {
     const options = [
       createOption('always'),
@@ -158,11 +177,7 @@ describe('form-input-item helpers', () => {
     expect(getCheckboxListValue(['alpha', 'missing'], ['beta'], options)).toEqual(['alpha'])
   })
 
-  it('should normalize number and variable selector values', () => {
-    expect(getNumberInputValue(Number.NaN)).toBe('')
-    expect(getNumberInputValue(2)).toBe(2)
-    expect(getNumberInputValue('3')).toBe('3')
-    expect(getNumberInputValue(undefined)).toBe('')
+  it('should normalize variable selector values', () => {
     expect(normalizeVariableSelectorValue([])).toEqual([])
     expect(normalizeVariableSelectorValue(['node', 'answer'])).toEqual(['node', 'answer'])
     expect(normalizeVariableSelectorValue('')).toBe('')

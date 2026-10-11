@@ -23,7 +23,7 @@ type Props = Readonly<{
 }>
 
 const PluginsPicker: FC<Props> = ({ updateMode, value, onChange, integrationCategory }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['plugin'])
   const { data } = useInstalledPluginList()
   const pluginCategoryById = useMemo(() => {
     return new Map(data?.plugins.map((plugin) => [plugin.plugin_id, plugin.declaration.category]))

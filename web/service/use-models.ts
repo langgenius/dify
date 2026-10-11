@@ -35,6 +35,8 @@ export const useGetProviderCredential = (
       get<ProviderCredential>(
         `/workspaces/current/model-providers/${provider}/credentials${credentialId ? `?credential_id=${credentialId}` : ''}`,
       ),
+    staleTime: 0,
+    gcTime: 0,
   })
 }
 
@@ -127,7 +129,7 @@ export const useDeleteModelCredential = (provider: string) => {
       del<{ result: string }>(
         `/workspaces/current/model-providers/${provider}/models/credentials`,
         {
-          body: data,
+          params: data,
         },
       ),
   })
@@ -137,7 +139,7 @@ export const useDeleteModel = (provider: string) => {
   return useMutation({
     mutationFn: (data: { model: string; model_type: ModelTypeEnum }) =>
       del<{ result: string }>(`/workspaces/current/model-providers/${provider}/models`, {
-        body: data,
+        params: data,
       }),
   })
 }

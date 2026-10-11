@@ -255,7 +255,7 @@ def test_message_suggested_questions_success(
     message_id = str(uuid4())
 
     with patch(
-        "controllers.console.app.message.MessageService.get_suggested_questions_after_answer",
+        "services.message_suggested_questions_adapters.MessageSuggestedQuestionsRuntime.get_suggested_questions",
         return_value=["q1", "q2"],
     ):
         response = test_client_with_containers.get(
@@ -291,7 +291,7 @@ def test_message_suggested_questions_errors(
     message_id = str(uuid4())
 
     with patch(
-        "controllers.console.app.message.MessageService.get_suggested_questions_after_answer",
+        "services.message_suggested_questions_adapters.MessageSuggestedQuestionsRuntime.get_suggested_questions",
         side_effect=exc,
     ):
         response = test_client_with_containers.get(

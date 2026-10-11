@@ -9,6 +9,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from core.rag.models.document import Document
+from models.dataset import Dataset
 
 
 def _build_fake_vikingdb_modules():
@@ -255,12 +256,10 @@ def test_delete_drops_index_and_collection_when_present(vikingdb_module):
 
 def test_vikingdb_factory_validates_config_and_builds_vector(vikingdb_module, monkeypatch: pytest.MonkeyPatch):
     factory = vikingdb_module.VikingDBVectorFactory()
-    dataset_with_index = SimpleNamespace(
-        id="dataset-1",
-        index_struct_dict={"vector_store": {"class_prefix": "EXISTING_COLLECTION"}},
-        index_struct=None,
+    dataset_with_index = Dataset(
+        id="dataset-1", index_struct=json.dumps({"vector_store": {"class_prefix": "EXISTING_COLLECTION"}})
     )
-    dataset_without_index = SimpleNamespace(id="dataset-2", index_struct_dict=None, index_struct=None)
+    dataset_without_index = Dataset(id="dataset-2")
 
     monkeypatch.setattr(vikingdb_module.Dataset, "gen_collection_name_by_id", lambda _id: "AUTO_COLLECTION")
 
@@ -273,8 +272,8 @@ def test_vikingdb_factory_validates_config_and_builds_vector(vikingdb_module, mo
         monkeypatch.setattr(vikingdb_module.dify_config, "VIKINGDB_CONNECTION_TIMEOUT", 10)
         monkeypatch.setattr(vikingdb_module.dify_config, "VIKINGDB_SOCKET_TIMEOUT", 20)
 
-        result_1 = factory.init_vector(dataset_with_index, attributes=[], embeddings=MagicMock())
-        result_2 = factory.init_vector(dataset_without_index, attributes=[], embeddings=MagicMock())
+        result_1 = factory.init_vector(dataset_with_index, attributes=[], embeddings=MagicMock(), session=None)
+        result_2 = factory.init_vector(dataset_without_index, attributes=[], embeddings=MagicMock(), session=None)
 
     assert result_1 == "vector"
     assert result_2 == "vector"
@@ -297,9 +296,7 @@ def test_vikingdb_factory_raises_when_required_config_missing(
     vikingdb_module, monkeypatch: pytest.MonkeyPatch, field, message
 ):
     factory = vikingdb_module.VikingDBVectorFactory()
-    dataset = SimpleNamespace(
-        id="dataset-1", index_struct_dict={"vector_store": {"class_prefix": "existing"}}, index_struct=None
-    )
+    dataset = Dataset(id="dataset-1", index_struct=json.dumps({"vector_store": {"class_prefix": "existing"}}))
 
     monkeypatch.setattr(vikingdb_module.dify_config, "VIKINGDB_ACCESS_KEY", "ak")
     monkeypatch.setattr(vikingdb_module.dify_config, "VIKINGDB_SECRET_KEY", "sk")
@@ -309,4 +306,4 @@ def test_vikingdb_factory_raises_when_required_config_missing(
     monkeypatch.setattr(vikingdb_module.dify_config, field, None)
 
     with pytest.raises(ValueError, match=message):
-        factory.init_vector(dataset, attributes=[], embeddings=MagicMock())
+        factory.init_vector(dataset, attributes=[], embeddings=MagicMock(), session=None)

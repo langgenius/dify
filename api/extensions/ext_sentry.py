@@ -1,5 +1,6 @@
 from configs import dify_config
 from dify_app import DifyApp
+from enums import DeploymentEdition
 
 
 def init_app(app: DifyApp):
@@ -47,7 +48,7 @@ def init_app(app: DifyApp):
             before_send=before_send,
         )
 
-        if dify_config.BILLING_ENABLED:
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
             # Cloud only. `opentelemetry.context.detach()` catches its own failures and reports
             # them through `logger.exception`, so a double-detach surfaces as an error event
             # rather than as a raised exception. Under gevent this can fire about once per

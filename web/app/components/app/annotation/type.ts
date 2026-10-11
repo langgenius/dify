@@ -33,11 +33,14 @@ export type EmbeddingModelConfig = {
   embedding_model_name: string
 }
 
-export enum AnnotationEnableStatus {
-  enable = 'enable',
-  disable = 'disable',
-}
+export const AnnotationEnableStatus = {
+  enable: 'enable',
+  disable: 'disable',
+} as const
 
-export enum JobStatus {
-  completed = 'completed',
-}
+export type AnnotationEnableStatus =
+  (typeof AnnotationEnableStatus)[keyof typeof AnnotationEnableStatus]
+
+export const JobStatus = {
+  completed: 'completed',
+} as const

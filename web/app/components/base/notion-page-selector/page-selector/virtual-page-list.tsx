@@ -1,7 +1,7 @@
 'use client'
 
 import type { NotionPageRow, NotionPageSelectionMode } from './types'
-import { RadioGroup } from '@langgenius/dify-ui/radio'
+import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -34,7 +34,7 @@ const VirtualPageList = ({
   selectionMode,
   showPreview,
 }: VirtualPageListProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const scrollRef = useRef<HTMLDivElement>(null)
 
   const rowVirtualizer = useVirtualizer({

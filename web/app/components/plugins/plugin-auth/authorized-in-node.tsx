@@ -20,7 +20,7 @@ const AuthorizedInNode = ({
   credentialId,
   onDefaultCredentialChange,
 }: AuthorizedInNodeProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin'])
   const [isOpen, setIsOpen] = useState(false)
   const {
     canApiKey,
@@ -48,7 +48,12 @@ const AuthorizedInNode = ({
 
         const defaultCredential = credentials.find((c) => c.is_default)
 
-        if (defaultCredential?.not_allowed_to_use) {
+        if (isLoading) {
+          color = 'disabled'
+        } else if (!defaultCredential) {
+          color = 'error'
+          defaultUnavailable = true
+        } else if (defaultCredential.not_allowed_to_use) {
           color = 'disabled'
           defaultUnavailable = true
         }

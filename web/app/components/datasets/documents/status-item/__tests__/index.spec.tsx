@@ -1,6 +1,6 @@
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import StatusItem from '../index'
 
 const toastMocks = vi.hoisted(() => {
@@ -37,7 +37,7 @@ vi.mock('use-context-selector', () => ({
   useContextSelector: (context: unknown, selector: (state: unknown) => unknown) => selector({}),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: toastMocks.api,
 }))
 
@@ -125,12 +125,12 @@ describe('StatusItem', () => {
   describe('error message tooltip', () => {
     it('should show tooltip trigger when error message is provided', () => {
       render(<StatusItem status="error" errorMessage="Test error message" />)
-      expect(screen.getByLabelText('Test error message')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Error' })).toBeInTheDocument()
     })
 
     it('should not show tooltip trigger when no error message', () => {
       render(<StatusItem status="error" />)
-      expect(screen.queryByLabelText('Test error message')).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Error' })).not.toBeInTheDocument()
     })
   })
 
@@ -149,9 +149,7 @@ describe('StatusItem', () => {
           canEdit
         />,
       )
-      // Switch component should be present in detail scene
-      const switchElement = document.querySelector('[role="switch"]')
-      expect(switchElement).toBeInTheDocument()
+      expect(screen.getByRole('switch', { name: 'Available' })).toBeInTheDocument()
     })
 
     it('should not show switch in list scene', () => {
@@ -334,38 +332,6 @@ describe('StatusItem', () => {
       // Should not call any operation because archived is true
       expect(mockEnable).not.toHaveBeenCalled()
       expect(mockDisable).not.toHaveBeenCalled()
-      vi.useRealTimers()
-    })
-
-    it('should show success notification after successful operation', async () => {
-      vi.useFakeTimers()
-      render(
-        <StatusItem
-          status="available"
-          scene="detail"
-          detail={{
-            enabled: false,
-            archived: false,
-            id: 'doc-1',
-          }}
-          datasetId="dataset-1"
-          canEdit
-          onUpdate={mockOnUpdate}
-        />,
-      )
-      const switchElement = document.querySelector('[role="switch"]')
-      await act(async () => {
-        fireEvent.click(switchElement!)
-      })
-      await act(async () => {
-        vi.advanceTimersByTime(600)
-        // Flush promises
-        await Promise.resolve()
-      })
-      expect(toastMocks.record).toHaveBeenCalledWith({
-        type: 'success',
-        message: 'common.actionMsg.modifiedSuccessfully',
-      })
       vi.useRealTimers()
     })
 

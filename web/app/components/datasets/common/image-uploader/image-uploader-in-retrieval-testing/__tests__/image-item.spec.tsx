@@ -1,6 +1,6 @@
 import type { FileEntity } from '../../types'
 import { fireEvent, render } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import ImageItem from '../image-item'
 
 const createMockFile = (overrides: Partial<FileEntity> = {}): FileEntity =>

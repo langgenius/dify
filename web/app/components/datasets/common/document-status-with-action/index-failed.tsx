@@ -34,7 +34,7 @@ const indexStateReducer = (state: IIndexState, action: IAction) => {
 }
 
 const RetryButton: FC<Props> = ({ datasetId }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['dataset'])
   const [indexState, dispatch] = useReducer(indexStateReducer, { value: 'success' })
   const { data: errorDocs, isLoading, refetch: refetchErrorDocs } = useDatasetErrorDocs(datasetId)
 

@@ -1,6 +1,6 @@
 import type { HumanInputFilledFormData } from '@/types/workflow'
 import { render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import { InputVarType } from '@/app/components/workflow/types'
 import { TransferMethod } from '@/types/app'
 import { SubmittedHumanInputContent } from '../submitted'
@@ -28,7 +28,9 @@ describe('SubmittedHumanInputContent Integration', () => {
     // Verify ExecutedAction rendering
     expect(screen.getByTestId('executed-action')).toBeInTheDocument()
     // Trans component for triggered action. The mock usually renders the key.
-    expect(screen.getByText('workflow.nodes.humanInput.userActions.triggered')).toBeInTheDocument()
+    expect(
+      screen.getByText('workflowHumanInput.nodes.humanInput.userActions.triggered'),
+    ).toBeInTheDocument()
   })
 
   it('should prefer structured form data over rendered markdown when available', () => {

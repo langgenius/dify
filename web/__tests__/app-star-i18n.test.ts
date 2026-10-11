@@ -1,14 +1,13 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
-const I18N_DIR = path.join(__dirname, '../i18n')
+const I18N_DIR = path.join(__dirname, '../i18n/locales')
 
 const REQUIRED_APP_STAR_KEYS = [
   'studio.allApps',
   'studio.starApp',
   'studio.starFailed',
   'studio.starred',
-  'studio.unstarApp',
 ] as const
 
 type AppTranslations = Record<string, unknown>

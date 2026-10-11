@@ -25,9 +25,13 @@
 }
 
 .optionWrap {
-  display: none;
+  display: flex;
+  opacity: 0;
+  pointer-events: none;
 }
 
-.boxHeader:hover .optionWrap {
-  display: flex;
+.boxHeader:hover .optionWrap,
+.optionWrap:focus-within {
+  opacity: 1;
+  pointer-events: auto;
 }

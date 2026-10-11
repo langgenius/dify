@@ -70,7 +70,7 @@ const nodeDefault: NodeDefault<LLMNodeType> = {
   },
   checkValid(
     payload: LLMNodeType,
-    t: TFunction<'workflow'>,
+    t: TFunction<['workflow']>,
     moreDataForCheckValid?: {
       flowType?: FlowType
       environmentVariables?: EnvironmentVariable[]

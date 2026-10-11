@@ -16,12 +16,16 @@ import { useCustomModels } from './hooks'
 type ManageCustomModelCredentialsProps = {
   provider: ModelProvider
   currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields
+  isOpen?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 const ManageCustomModelCredentials = ({
   provider,
   currentCustomConfigurationModelFixedFields,
+  isOpen,
+  onOpenChange,
 }: ManageCustomModelCredentialsProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'modelProvider'])
   const customModels = useCustomModels(provider)
   const noModels = !customModels.length
 
@@ -33,7 +37,7 @@ const ManageCustomModelCredentials = ({
           size="small"
           className={cn('mr-0.5 text-text-tertiary', open && 'bg-components-button-ghost-bg-hover')}
         >
-          {t(($) => $['modelProvider.auth.manageCredentials'], { ns: 'common' })}
+          {t(($) => $['modelProvider.auth.manageCredentials'], { ns: 'modelProvider' })}
         </Button>
       )
       return Item
@@ -59,17 +63,19 @@ const ManageCustomModelCredentials = ({
           : undefined,
       }))}
       renderTrigger={renderTrigger}
+      isOpen={isOpen}
+      onOpenChange={onOpenChange}
       authParams={{
         isModelCredential: true,
         mode: ModelModalModeEnum.configModelCredential,
       }}
       hideAddAction
       disableItemClick
-      popupTitle={t(($) => $['modelProvider.auth.customModelCredentials'], { ns: 'common' })}
+      popupTitle={t(($) => $['modelProvider.auth.customModelCredentials'], { ns: 'modelProvider' })}
       showModelTitle
       disableDeleteButShowAction
       disableDeleteTip={t(($) => $['modelProvider.auth.customModelCredentialsDeleteTip'], {
-        ns: 'common',
+        ns: 'modelProvider',
       })}
     />
   )

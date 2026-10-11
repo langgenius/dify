@@ -2,10 +2,11 @@ import type { DataSourceNodeType } from '../nodes/data-source/types'
 import type { ToolNodeType } from '../nodes/tool/types'
 import type { PluginTriggerNodeType } from '../nodes/trigger-plugin/types'
 import type { CommonNodeType } from '../types'
+import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useMemo } from 'react'
 import useWorkspacePluginInstallPermission from '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission'
 import { CollectionType } from '@/app/components/tools/types'
-import { useInvalidDataSourceList } from '@/service/use-pipeline'
+import { consoleQuery } from '@/service/console'
 import {
   useAllBuiltInTools,
   useAllCustomTools,
@@ -168,8 +169,8 @@ const useDataSourceInstallation = (
   _enabled: boolean,
   canInstallPlugin: boolean,
 ): InstallationState => {
+  const queryClient = useQueryClient()
   const dataSourceList = useStore((s) => s.dataSourceList)
-  const invalidateDataSourceList = useInvalidDataSourceList()
 
   const { plugin_unique_identifier, plugin_id, provider_name } = data
   const matchedPlugin = useMemo(() => {
@@ -182,8 +183,10 @@ const useDataSourceInstallation = (
   const canInstall = Boolean(data.plugin_unique_identifier) && canInstallPlugin
 
   const onInstallSuccess = useCallback(() => {
-    invalidateDataSourceList()
-  }, [invalidateDataSourceList])
+    queryClient.invalidateQueries({
+      queryKey: consoleQuery.rag.pipelines.datasourcePlugins.get.key(),
+    })
+  }, [queryClient])
 
   const hasLoadedList = dataSourceList !== undefined
 

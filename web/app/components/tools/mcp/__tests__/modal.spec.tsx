@@ -1,7 +1,11 @@
+import type { SsoProtocol } from '@dify/contracts/api/console/system-features/types.gen'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { zSsoProtocol } from '@dify/contracts/api/console/system-features/zod.gen'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { mockEmojiData, renderWithEmoji as render } from '@/test/emoji-picker'
 import MCPModal from '../modal'
 
 // Mock the service API
@@ -10,7 +14,7 @@ vi.mock('@/service/common', () => ({
 }))
 
 const mockToastError = vi.hoisted(() => vi.fn())
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: mockToastError,
   },
@@ -22,7 +26,7 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 // toggle stays hidden even when sso_enforced_for_signin is true.
 const mockSystemFeatures = vi.hoisted(() => ({
   sso_enforced_for_signin: false,
-  sso_enforced_for_signin_protocol: '' as 'oidc' | 'oauth2' | 'saml' | '',
+  sso_enforced_for_signin_protocol: null as SsoProtocol | null,
 }))
 describe('MCPModal', () => {
   beforeEach(() => {
@@ -678,65 +682,41 @@ describe('MCPModal', () => {
     it('should open app icon picker when app icon is clicked', async () => {
       render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
 
-      // Find the app icon container with cursor-pointer and rounded-2xl classes
-      const appIconContainer = document.querySelector(
-        '[class*="rounded-2xl"][class*="cursor-pointer"]',
-      )
+      await userEvent
+        .setup()
+        .click(screen.getByRole('button', { name: 'tools.mcp.modal.changeIcon' }))
 
-      if (appIconContainer) {
-        fireEvent.click(appIconContainer)
-
-        await waitFor(() => {
-          expect(screen.getByPlaceholderText('Search emojis...'))!.toBeInTheDocument()
-        })
-      }
+      expect(await screen.findByPlaceholderText('app.iconPicker.search')).toBeInTheDocument()
     })
 
     it('should close app icon picker and update icon when selecting an icon', async () => {
       render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
 
-      // Open the icon picker
-      const appIconContainer = document.querySelector(
-        '[class*="rounded-2xl"][class*="cursor-pointer"]',
-      )
+      await userEvent
+        .setup()
+        .click(screen.getByRole('button', { name: 'tools.mcp.modal.changeIcon' }))
+      expect(await screen.findByPlaceholderText('app.iconPicker.search')).toBeInTheDocument()
 
-      if (appIconContainer) {
-        fireEvent.click(appIconContainer)
+      fireEvent.click(screen.getByRole('radio', { name: 'app.iconPicker.color.green' }))
+      fireEvent.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
 
-        await waitFor(() => {
-          expect(screen.getByPlaceholderText('Search emojis...'))!.toBeInTheDocument()
-        })
-
-        fireEvent.click(screen.getByRole('button', { name: '#E4FBCC' }))
-        fireEvent.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
-
-        await waitFor(() => {
-          expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
-        })
-      }
+      await waitFor(() => {
+        expect(screen.queryByPlaceholderText('app.iconPicker.search')).not.toBeInTheDocument()
+      })
     })
 
-    it('should close app icon picker and reset icon when close button is clicked', async () => {
+    it('should close app icon picker and reset icon when Escape is pressed', async () => {
       render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
 
-      // Open the icon picker
-      const appIconContainer = document.querySelector(
-        '[class*="rounded-2xl"][class*="cursor-pointer"]',
-      )
+      const user = userEvent.setup()
+      await user.click(screen.getByRole('button', { name: 'tools.mcp.modal.changeIcon' }))
+      expect(await screen.findByPlaceholderText('app.iconPicker.search')).toBeInTheDocument()
 
-      if (appIconContainer) {
-        fireEvent.click(appIconContainer)
+      await user.keyboard('{Escape}')
 
-        await waitFor(() => {
-          expect(screen.getByPlaceholderText('Search emojis...'))!.toBeInTheDocument()
-        })
-
-        fireEvent.click(screen.getByRole('button', { name: /iconPicker\.cancel/ }))
-
-        await waitFor(() => {
-          expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
-        })
-      }
+      await waitFor(() => {
+        expect(screen.queryByPlaceholderText('app.iconPicker.search')).not.toBeInTheDocument()
+      })
     })
   })
 
@@ -744,14 +724,14 @@ describe('MCPModal', () => {
   describe('Forward-user-identity toggle', () => {
     beforeEach(() => {
       mockSystemFeatures.sso_enforced_for_signin = false
-      mockSystemFeatures.sso_enforced_for_signin_protocol = ''
+      mockSystemFeatures.sso_enforced_for_signin_protocol = null
     })
 
     // Helper: turn SSO on with a refresh-capable protocol so the toggle is
     // visible. Use this for any test that needs the field rendered.
     const enableRefreshCapableSSO = () => {
       mockSystemFeatures.sso_enforced_for_signin = true
-      mockSystemFeatures.sso_enforced_for_signin_protocol = 'oidc'
+      mockSystemFeatures.sso_enforced_for_signin_protocol = zSsoProtocol.enum.oidc
     }
 
     const fillRequiredFields = () => {
@@ -781,14 +761,14 @@ describe('MCPModal', () => {
 
     it('does not render the toggle when SSO protocol is SAML (no refresh model)', () => {
       mockSystemFeatures.sso_enforced_for_signin = true
-      mockSystemFeatures.sso_enforced_for_signin_protocol = 'saml'
+      mockSystemFeatures.sso_enforced_for_signin_protocol = zSsoProtocol.enum.saml
       render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
       expect(screen.queryByText('tools.mcp.modal.forwardUserIdentity')).not.toBeInTheDocument()
     })
 
     it('renders the toggle when SSO protocol is OAuth2', () => {
       mockSystemFeatures.sso_enforced_for_signin = true
-      mockSystemFeatures.sso_enforced_for_signin_protocol = 'oauth2'
+      mockSystemFeatures.sso_enforced_for_signin_protocol = zSsoProtocol.enum.oauth2
       render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
       expect(screen.getByText('tools.mcp.modal.forwardUserIdentity')).toBeInTheDocument()
     })
@@ -896,3 +876,5 @@ describe('MCPModal', () => {
     })
   })
 })
+
+mockEmojiData()

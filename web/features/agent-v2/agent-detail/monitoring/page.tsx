@@ -2,7 +2,9 @@
 
 import type { AgentLogSourceResponse } from '@dify/contracts/api/console/agent/types.gen'
 import type { ReactNode } from 'react'
+import type { AgentMonitoringPeriod } from './time-range-picker'
 import { Button } from '@langgenius/dify-ui/button'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import {
   ScrollArea,
   ScrollAreaContent,
@@ -12,18 +14,20 @@ import {
 } from '@langgenius/dify-ui/scroll-area'
 import {
   Select,
-  SelectContent,
   SelectItem,
   SelectItemIndicator,
   SelectItemText,
+  SelectList,
+  SelectPopup,
+  SelectPortal,
+  SelectPositioner,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useDocLink } from '@/context/i18n'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { AgentDetailSectionSurface } from '../section-surface'
 import { AgentMonitoringChart } from './chart'
 import { getAgentMonitoringMetrics } from './metrics'
@@ -51,10 +55,9 @@ const getDefaultPeriodQuery = () => {
 }
 
 export function AgentMonitoringPage({ agentId }: AgentMonitoringPageProps) {
-  const { t } = useTranslation('agentV2')
-  const { t: tCommon } = useTranslation('common')
-  const docLink = useDocLink()
-  const [period, setPeriod] = useState(() => ({
+  const { t } = useTranslation(['agentV2'])
+  const { t: tCommon } = useTranslation(['common'])
+  const [period, setPeriod] = useState<AgentMonitoringPeriod>(() => ({
     name: t(($) => $['agentDetail.monitoring.timeRanges.today']),
     query: getDefaultPeriodQuery(),
   }))
@@ -99,79 +102,71 @@ export function AgentMonitoringPage({ agentId }: AgentMonitoringPageProps) {
 
   return (
     <AgentDetailSectionSurface label={t(($) => $['agentDetail.sections.monitoring'])}>
-      <header className="h-26.5 shrink-0 px-6 pt-3 pb-2">
-        <div className="min-w-0">
-          <h2 className="system-xl-semibold text-text-primary">
-            {t(($) => $['agentDetail.monitoring.title'])}
-          </h2>
-          <p className="mt-1 flex min-w-0 flex-wrap items-center gap-x-0.5 system-xs-regular text-text-tertiary">
-            <span>{t(($) => $['agentDetail.monitoring.description'])}</span>
-            <a
-              href={docLink('/use-dify/monitor/logs')}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex shrink-0 items-center gap-0.5 rounded-sm text-text-accent hover:underline focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-            >
-              {t(($) => $['agentDetail.monitoring.learnMore'])}
-              <span aria-hidden className="i-ri-external-link-line size-3" />
-            </a>
-          </p>
-        </div>
-
-        <div className="mt-3 flex min-w-0 flex-wrap items-center gap-2">
-          <AgentMonitoringTimeRangePicker value={period} onChange={setPeriod} />
-
-          <AgentMonitoringSourceFilter
-            value={sourceFilter}
-            items={sourceItems}
-            label={t(($) => $['agentDetail.metadata.sourceLabel'])}
-            onSelect={(item) => {
-              setSourceFilter(item.value)
-            }}
-            onClear={() => {
-              setSourceFilter('all')
-            }}
-          />
-        </div>
-      </header>
-
       <ScrollArea className="min-h-0 flex-1 overflow-hidden">
         <ScrollAreaViewport>
-          <ScrollAreaContent className="px-6 pt-2 pb-3">
-            {shouldShowInitialSkeleton && <AgentMonitoringSkeletonGrid />}
-            {shouldShowError && (
-              <AgentMonitoringState>
-                <div className="flex items-center justify-center gap-2">
-                  <span>{t(($) => $['agentDetail.monitoring.loadFailed'])}</span>
-                  <Button
-                    variant="secondary"
-                    size="small"
-                    onClick={() => {
-                      void statisticsQuery.refetch()
-                    }}
-                  >
-                    {tCommon(($) => $['operation.retry'])}
-                  </Button>
-                </div>
-              </AgentMonitoringState>
-            )}
-            {!shouldShowInitialSkeleton && !shouldShowError && (
-              <div className="grid w-full grid-cols-1 gap-3 xl:grid-cols-2">
-                {metrics.map((metric) => (
-                  <AgentMonitoringChart
-                    key={metric.id}
-                    titleKey={metric.titleKey}
-                    explanationKey={metric.explanationKey}
-                    summaryValue={metric.summaryValue}
-                    rows={metric.rows}
-                    chartType={metric.chartType}
-                    valueKey={metric.valueKey}
-                    unitKey={metric.unitKey}
-                    yMaxWhenEmpty={metric.yMaxWhenEmpty}
-                  />
-                ))}
+          <ScrollAreaContent className="pb-3">
+            <header className="px-6 pt-3 pb-2">
+              <div className="min-w-0">
+                <h2 className="system-xl-semibold text-text-primary">
+                  {t(($) => $['agentDetail.monitoring.title'])}
+                </h2>
+                <p className="mt-1 system-xs-regular text-text-tertiary">
+                  {t(($) => $['agentDetail.monitoring.description'])}
+                </p>
               </div>
-            )}
+
+              <div className="mt-3 flex min-w-0 flex-wrap items-center gap-2">
+                <AgentMonitoringTimeRangePicker value={period} onChange={setPeriod} />
+
+                <AgentMonitoringSourceFilter
+                  value={sourceFilter}
+                  items={sourceItems}
+                  label={t(($) => $['agentDetail.metadata.sourceLabel'])}
+                  onSelect={(item) => {
+                    setSourceFilter(item.value)
+                  }}
+                  onClear={() => {
+                    setSourceFilter('all')
+                  }}
+                />
+              </div>
+            </header>
+            <div className="px-6 pt-2">
+              {shouldShowInitialSkeleton && <AgentMonitoringSkeletonGrid />}
+              {shouldShowError && (
+                <AgentMonitoringState>
+                  <div className="flex items-center justify-center gap-2">
+                    <span role="alert">{t(($) => $['agentDetail.monitoring.loadFailed'])}</span>
+                    <Button
+                      variant="secondary"
+                      size="small"
+                      onClick={() => {
+                        void statisticsQuery.refetch()
+                      }}
+                    >
+                      {tCommon(($) => $['operation.retry'])}
+                    </Button>
+                  </div>
+                </AgentMonitoringState>
+              )}
+              {!shouldShowInitialSkeleton && !shouldShowError && (
+                <div className="grid w-full grid-cols-1 gap-3 xl:grid-cols-2">
+                  {metrics.map((metric) => (
+                    <AgentMonitoringChart
+                      key={metric.id}
+                      titleKey={metric.titleKey}
+                      explanationKey={metric.explanationKey}
+                      summaryValue={metric.summaryValue}
+                      rows={metric.rows}
+                      chartType={metric.chartType}
+                      valueKey={metric.valueKey}
+                      unitKey={metric.unitKey}
+                      yMaxWhenEmpty={metric.yMaxWhenEmpty}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
           </ScrollAreaContent>
         </ScrollAreaViewport>
         <ScrollAreaScrollbar>
@@ -195,7 +190,7 @@ function AgentMonitoringSourceFilter({
   onSelect: (item: SourceFilterItem) => void
   onClear: () => void
 }) {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common'])
   const selectedItem = items.find((item) => Object.is(item.value, value))
   const selectedName = selectedItem?.name ?? ''
   const triggerLabel = selectedName ? `${label} ${selectedName}` : label
@@ -216,10 +211,10 @@ function AgentMonitoringSourceFilter({
         if (selected) onSelect(selected)
       }}
     >
-      <div className="relative w-fit max-w-full">
+      <div className="flex w-fit max-w-full items-center gap-1">
         <SelectTrigger
           aria-label={triggerLabel}
-          className="h-auto min-h-8 w-fit max-w-full min-w-53 cursor-pointer items-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-2 py-1 pr-6 shadow-xs hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover! data-popup-open:border-components-button-secondary-border-hover! data-popup-open:bg-components-button-secondary-bg-hover! data-popup-open:hover:border-components-button-secondary-border-hover data-popup-open:hover:bg-components-button-secondary-bg-hover! [&>*:last-child]:hidden"
+          className="h-auto min-h-8 w-fit max-w-full min-w-53 cursor-pointer items-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-2 py-1 shadow-xs hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover! data-popup-open:border-components-button-secondary-border-hover! data-popup-open:bg-components-button-secondary-bg-hover! data-popup-open:hover:border-components-button-secondary-border-hover data-popup-open:hover:bg-components-button-secondary-bg-hover! [&>*:last-child]:hidden"
         >
           <span className="flex min-w-0 grow items-center gap-1 text-left">
             <span className="flex min-w-0 grow items-center gap-1 px-1">
@@ -228,30 +223,23 @@ function AgentMonitoringSourceFilter({
             </span>
           </span>
         </SelectTrigger>
-        <button
-          type="button"
-          aria-label={clearLabel}
-          className="group/clear absolute top-1/2 right-1.5 flex size-5 -translate-y-1/2 cursor-pointer touch-manipulation items-center justify-center rounded-md border-none bg-transparent p-0 outline-hidden focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid"
-          onClick={onClear}
-        >
-          <span
-            aria-hidden
-            className="i-ri-close-circle-fill block size-3.5 text-text-quaternary group-hover/clear:text-text-tertiary"
-          />
-        </button>
-        <SelectContent
-          placement="bottom-start"
-          sideOffset={4}
-          popupClassName="relative w-61 rounded-xl border-[0.5px] bg-components-panel-bg-blur p-0 text-sm text-text-secondary shadow-lg outline-hidden backdrop-blur-[5px] focus:outline-hidden focus-visible:outline-hidden"
-          listClassName="max-h-72 p-1"
-        >
-          {items.map((item) => (
-            <SelectItem key={item.value} value={item.value}>
-              <SelectItemText title={item.name}>{item.name}</SelectItemText>
-              <SelectItemIndicator />
-            </SelectItem>
-          ))}
-        </SelectContent>
+        <IconButton aria-label={clearLabel} size="md" className="shrink-0" onClick={onClear}>
+          <span aria-hidden="true" className="i-ri-close-circle-fill size-3.5" />
+        </IconButton>
+        <SelectPortal>
+          <SelectPositioner placement="bottom-start" sideOffset={4}>
+            <SelectPopup className="relative w-61 rounded-xl border-[0.5px] bg-components-panel-bg-blur p-0 text-sm text-text-secondary shadow-lg outline-hidden backdrop-blur-[5px] focus:outline-hidden focus-visible:outline-hidden">
+              <SelectList className="max-h-72 p-1">
+                {items.map((item) => (
+                  <SelectItem key={item.value} value={item.value}>
+                    <SelectItemText title={item.name}>{item.name}</SelectItemText>
+                    <SelectItemIndicator />
+                  </SelectItem>
+                ))}
+              </SelectList>
+            </SelectPopup>
+          </SelectPositioner>
+        </SelectPortal>
       </div>
     </Select>
   )

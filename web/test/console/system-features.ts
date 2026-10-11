@@ -18,7 +18,7 @@ const baseSystemFeatures = {
   deployment_edition: 'COMMUNITY',
   enable_app_deploy: false,
   sso_enforced_for_signin: false,
-  sso_enforced_for_signin_protocol: '',
+  sso_enforced_for_signin_protocol: null,
   enable_marketplace: false,
   enable_email_code_login: false,
   enable_email_password_login: true,
@@ -41,7 +41,7 @@ const baseSystemFeatures = {
     enabled: false,
     allow_sso: false,
     sso_config: {
-      protocol: '',
+      protocol: null,
     },
     allow_email_code_login: false,
     allow_email_password_login: false,
@@ -61,6 +61,7 @@ const baseSystemFeatures = {
 
 const baseSystemFeaturesLicense = {
   status: zLicenseStatus.enum.none,
+  license_expiry_notice_enabled: false,
   expired_at: '',
   workspaces: {
     enabled: false,

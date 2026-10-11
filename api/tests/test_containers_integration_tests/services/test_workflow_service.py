@@ -6,17 +6,30 @@ TestContainers to ensure realistic database interactions and proper isolation.
 """
 
 import json
-from unittest.mock import MagicMock
+from dataclasses import dataclass
 
 import pytest
 from faker import Faker
 from sqlalchemy.orm import Session
 
+from graphon.enums import BuiltinNodeTypes, ErrorStrategy, WorkflowNodeExecutionStatus
 from models import Account, AccountStatus, App, TenantStatus, Workflow
+from models.enums import CreatorUserRole
 from models.model import AppMode
 from models.workflow import WorkflowType
 from services.workflow_ref_service import WorkflowRef
 from services.workflow_service import WorkflowService
+from tests.unit_tests.core.model_fixtures import make_model_instance
+
+
+@dataclass(frozen=True)
+class _ExecutedNode:
+    """Node metadata consumed by single-step result formatting tests."""
+
+    node_type: str
+    title: str
+    error_strategy: ErrorStrategy | None
+    default_value_dict: dict[str, object]
 
 
 class TestWorkflowService:
@@ -74,7 +87,7 @@ class TestWorkflowService:
         db_session_with_containers.commit()
 
         # Set the current tenant for the account
-        account.current_tenant = tenant
+        account.set_current_tenant_with_session(tenant, session=db_session_with_containers)
 
         return account
 
@@ -158,7 +171,6 @@ class TestWorkflowService:
         workflow = self._create_test_workflow(db_session_with_containers, app, account, fake)
 
         # Create a mock node execution record
-        from models.enums import CreatorUserRole
         from models.workflow import WorkflowNodeExecutionModel
 
         node_execution = WorkflowNodeExecutionModel()
@@ -870,13 +882,12 @@ class TestWorkflowService:
         from unittest.mock import patch
 
         with patch("flask_login.utils._get_user", return_value=account, autospec=True):
-            result, retirement_candidates = workflow_service.publish_workflow(
+            result = workflow_service.publish_workflow(
                 session=db_session_with_containers, app_model=app, account=account
             )
 
         # Assert
         assert result is not None
-        assert retirement_candidates == set()
         assert result.version != Workflow.VERSION_DRAFT
         # Version should be a timestamp format like '2025-08-22 00:10:24.722051'
         assert isinstance(result.version, str)
@@ -1434,7 +1445,7 @@ class TestWorkflowService:
         )
 
         # Assert
-        assert result is True
+        assert result == []
 
         # Verify workflow is actually deleted
         deleted_workflow = db_session_with_containers.query(Workflow).filter_by(id=workflow.id).first()
@@ -1558,14 +1569,13 @@ class TestWorkflowService:
 
         from unittest.mock import patch
 
-        from core.model_manager import ModelInstance
         from core.workflow.node_factory import DifyNodeFactory
 
         # Act
         with patch.object(
             DifyNodeFactory,
             "_build_model_instance_for_llm_node",
-            return_value=MagicMock(spec=ModelInstance),
+            return_value=make_model_instance(provider="openai", model="gpt-3.5-turbo"),
             autospec=True,
         ):
             result = workflow_service.run_free_workflow_node(
@@ -1637,16 +1647,12 @@ class TestWorkflowService:
             import uuid
             from datetime import datetime
 
-            from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
             from graphon.graph_events import NodeRunSucceededEvent
             from graphon.node_events import NodeRunResult
-            from graphon.nodes.base.node import Node
 
-            # Create mock node
-            mock_node = MagicMock(spec=Node)
-            mock_node.node_type = BuiltinNodeTypes.START
-            mock_node.title = "Test Node"
-            mock_node.error_strategy = None
+            node = _ExecutedNode(
+                node_type=BuiltinNodeTypes.START, title="Test Node", error_strategy=None, default_value_dict={}
+            )
 
             # Create mock result with valid metadata
             mock_result = NodeRunResult(
@@ -1670,7 +1676,7 @@ class TestWorkflowService:
             def event_generator():
                 yield mock_event
 
-            return mock_node, event_generator()
+            return node, event_generator()
 
         workflow_service = WorkflowService()
 
@@ -1682,12 +1688,10 @@ class TestWorkflowService:
         # Assert
         assert result is not None
         assert result.node_id == node_id
-        from graphon.enums import BuiltinNodeTypes
 
         assert result.node_type == BuiltinNodeTypes.START  # Should match the mock node type
         assert result.title == "Test Node"
         # Import the enum for comparison
-        from graphon.enums import WorkflowNodeExecutionStatus
 
         assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
         assert result.inputs is not None
@@ -1712,16 +1716,12 @@ class TestWorkflowService:
             import uuid
             from datetime import datetime
 
-            from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
             from graphon.graph_events import NodeRunFailedEvent
             from graphon.node_events import NodeRunResult
-            from graphon.nodes.base.node import Node
 
-            # Create mock node
-            mock_node = MagicMock(spec=Node)
-            mock_node.node_type = BuiltinNodeTypes.LLM
-            mock_node.title = "Test Node"
-            mock_node.error_strategy = None
+            node = _ExecutedNode(
+                node_type=BuiltinNodeTypes.LLM, title="Test Node", error_strategy=None, default_value_dict={}
+            )
 
             # Create mock failed result
             mock_result = NodeRunResult(
@@ -1744,7 +1744,7 @@ class TestWorkflowService:
             def event_generator():
                 yield mock_event
 
-            return mock_node, event_generator()
+            return node, event_generator()
 
         workflow_service = WorkflowService()
 
@@ -1757,7 +1757,6 @@ class TestWorkflowService:
         assert result is not None
         assert result.node_id == node_id
         # Import the enum for comparison
-        from graphon.enums import WorkflowNodeExecutionStatus
 
         assert result.status == WorkflowNodeExecutionStatus.FAILED
         assert result.error is not None
@@ -1781,17 +1780,15 @@ class TestWorkflowService:
             import uuid
             from datetime import datetime
 
-            from graphon.enums import BuiltinNodeTypes, ErrorStrategy, WorkflowNodeExecutionStatus
             from graphon.graph_events import NodeRunFailedEvent
             from graphon.node_events import NodeRunResult
-            from graphon.nodes.base.node import Node
 
-            # Create mock node with continue_on_error
-            mock_node = MagicMock(spec=Node)
-            mock_node.node_type = BuiltinNodeTypes.TOOL
-            mock_node.title = "Test Node"
-            mock_node.error_strategy = ErrorStrategy.DEFAULT_VALUE
-            mock_node.default_value_dict = {"default_output": "default_value"}
+            node = _ExecutedNode(
+                node_type=BuiltinNodeTypes.TOOL,
+                title="Test Node",
+                error_strategy=ErrorStrategy.DEFAULT_VALUE,
+                default_value_dict={"default_output": "default_value"},
+            )
 
             # Create mock failed result
             mock_result = NodeRunResult(
@@ -1814,7 +1811,7 @@ class TestWorkflowService:
             def event_generator():
                 yield mock_event
 
-            return mock_node, event_generator()
+            return node, event_generator()
 
         workflow_service = WorkflowService()
 
@@ -1827,7 +1824,6 @@ class TestWorkflowService:
         assert result is not None
         assert result.node_id == node_id
         # Import the enum for comparison
-        from graphon.enums import WorkflowNodeExecutionStatus
 
         assert result.status == WorkflowNodeExecutionStatus.EXCEPTION  # Should be EXCEPTION, not FAILED
         assert result.outputs is not None

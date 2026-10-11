@@ -13,7 +13,7 @@ from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset
 from models.model import App, AppAnnotationSetting, MessageAnnotation
-from services.dataset_service import DatasetCollectionBindingService
+from services.knowledge.dataset_service import DatasetCollectionBindingService
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +31,7 @@ def batch_import_annotations_task(job_id: str, content_list: list[dict], app_id:
     """
     logger.info(click.style(f"Start batch import annotation: {job_id}", fg="green"))
     start_at = time.perf_counter()
-    indexing_cache_key = f"app_annotation_batch_import_{str(job_id)}"
+    indexing_cache_key = f"app_annotation_batch_import_{job_id}"
     active_jobs_key = f"annotation_import_active:{tenant_id}"
 
     with session_factory.create_session() as session:
@@ -94,7 +94,7 @@ def batch_import_annotations_task(job_id: str, content_list: list[dict], app_id:
             except Exception as e:
                 session.rollback()
                 redis_client.setex(indexing_cache_key, 600, "error")
-                indexing_error_msg_key = f"app_annotation_batch_import_error_msg_{str(job_id)}"
+                indexing_error_msg_key = f"app_annotation_batch_import_error_msg_{job_id}"
                 redis_client.setex(indexing_error_msg_key, 600, str(e))
                 logger.exception("Build index for batch import annotations failed")
             finally:

@@ -1,5 +1,5 @@
 import type { DataSet } from '@/models/datasets'
-import { createEvent, fireEvent, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
@@ -8,8 +8,6 @@ import { RETRIEVE_METHOD } from '@/types/app'
 import { DatasetACLPermission } from '@/utils/permission'
 import DatasetInfo from '..'
 import Dropdown from '../dropdown'
-import Menu from '../menu'
-import MenuItem from '../menu-item'
 
 let mockDataset: DataSet
 const mockPush = vi.fn()
@@ -19,7 +17,6 @@ const mockInvalidDatasetDetail = vi.fn()
 const mockExportPipeline = vi.fn()
 const mockCheckIsUsedInApp = vi.fn()
 const mockDeleteDataset = vi.fn()
-const TestEditIcon = () => <span aria-hidden className="i-ri-edit-line" />
 let mockIsRbacEnabled = true
 const mockConsoleState = vi.hoisted(() => ({
   current: {
@@ -119,10 +116,6 @@ vi.mock('@/context/dataset-detail', () => ({
     selector({ dataset: mockDataset }),
 }))
 
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => mockConsoleState.current)
-})
 vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
   return createPermissionStateModuleMock(() => mockConsoleState.current)
@@ -215,184 +208,13 @@ describe('DatasetInfo', () => {
       expect(screen.queryByText('dataset.chunkingMode.general')).not.toBeInTheDocument()
     })
 
-    it('should hide detailed fields when collapsed', () => {
+    it('should keep the dataset name available when collapsed and omit detailed fields', () => {
       // Arrange
       render(<DatasetInfo expand={false} />)
 
       // Assert
-      expect(screen.queryByText('Dataset Name')).not.toBeInTheDocument()
+      expect(screen.getByText('Dataset Name')).toBeInTheDocument()
       expect(screen.queryByText('Dataset description')).not.toBeInTheDocument()
-    })
-  })
-})
-
-describe('MenuItem', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  // Event handling for menu item interactions.
-  describe('Interactions', () => {
-    it('should call handler when clicked', async () => {
-      const user = userEvent.setup()
-      const handleClick = vi.fn()
-      // Arrange
-      render(<MenuItem name="Edit" Icon={TestEditIcon} handleClick={handleClick} />)
-
-      // Act
-      await user.click(screen.getByText('Edit'))
-
-      // Assert
-      expect(handleClick).toHaveBeenCalledTimes(1)
-    })
-
-    it('should stop propagation before invoking the handler', () => {
-      const parentClick = vi.fn()
-      const handleClick = vi.fn()
-
-      render(
-        <div role="button" tabIndex={0} onClick={parentClick} onKeyDown={parentClick}>
-          <MenuItem name="Edit" Icon={TestEditIcon} handleClick={handleClick} />
-        </div>,
-      )
-
-      fireEvent.click(screen.getByText('Edit'))
-
-      expect(handleClick).toHaveBeenCalledTimes(1)
-      expect(parentClick).not.toHaveBeenCalled()
-    })
-
-    it('should prevent the default action when no click handler is provided', () => {
-      render(<MenuItem name="Edit" Icon={TestEditIcon} />)
-
-      const event = createEvent.click(screen.getByText('Edit'))
-      fireEvent(screen.getByText('Edit'), event)
-
-      expect(event.defaultPrevented).toBe(true)
-    })
-  })
-})
-
-describe('Menu', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockDataset = createDataset()
-  })
-
-  // Rendering of menu options based on runtime mode and delete visibility.
-  describe('Rendering', () => {
-    it('should show edit, export, and delete options when rag pipeline and deletable', () => {
-      // Arrange
-      mockDataset = createDataset({ runtime_mode: 'rag_pipeline' })
-      render(
-        <Menu
-          showDelete
-          openRenameModal={vi.fn()}
-          handleExportPipeline={vi.fn()}
-          detectIsUsedByApp={vi.fn()}
-        />,
-      )
-
-      // Assert
-      expect(screen.getByText('common.operation.edit')).toBeInTheDocument()
-      expect(screen.getByText('datasetPipeline.operations.exportPipeline')).toBeInTheDocument()
-      expect(screen.getByText('common.operation.delete')).toBeInTheDocument()
-    })
-
-    it('should show resource access option when enabled', () => {
-      render(
-        <Menu
-          showDelete={false}
-          showAccessConfig
-          openRenameModal={vi.fn()}
-          handleExportPipeline={vi.fn()}
-          detectIsUsedByApp={vi.fn()}
-          openAccessConfig={vi.fn()}
-        />,
-      )
-
-      expect(screen.getByText('common.settings.resourceAccess')).toBeInTheDocument()
-    })
-
-    it('should hide export and delete options when not rag pipeline and not deletable', () => {
-      // Arrange
-      mockDataset = createDataset({ runtime_mode: 'general' })
-      render(
-        <Menu
-          showDelete={false}
-          openRenameModal={vi.fn()}
-          handleExportPipeline={vi.fn()}
-          detectIsUsedByApp={vi.fn()}
-        />,
-      )
-
-      // Assert
-      expect(screen.getByText('common.operation.edit')).toBeInTheDocument()
-      expect(
-        screen.queryByText('datasetPipeline.operations.exportPipeline'),
-      ).not.toBeInTheDocument()
-      expect(screen.queryByText('common.operation.delete')).not.toBeInTheDocument()
-    })
-  })
-
-  describe('Interactions', () => {
-    it('should invoke the rename callback when edit is clicked', async () => {
-      const user = userEvent.setup()
-      const openRenameModal = vi.fn()
-
-      render(
-        <Menu
-          showDelete
-          openRenameModal={openRenameModal}
-          handleExportPipeline={vi.fn()}
-          detectIsUsedByApp={vi.fn()}
-        />,
-      )
-
-      await user.click(screen.getByText('common.operation.edit'))
-
-      expect(openRenameModal).toHaveBeenCalledTimes(1)
-    })
-
-    it('should invoke export and delete callbacks from their menu items', async () => {
-      const user = userEvent.setup()
-      const handleExportPipeline = vi.fn()
-      const detectIsUsedByApp = vi.fn()
-
-      render(
-        <Menu
-          showDelete
-          openRenameModal={vi.fn()}
-          handleExportPipeline={handleExportPipeline}
-          detectIsUsedByApp={detectIsUsedByApp}
-        />,
-      )
-
-      await user.click(screen.getByText('datasetPipeline.operations.exportPipeline'))
-      await user.click(screen.getByText('common.operation.delete'))
-
-      expect(handleExportPipeline).toHaveBeenCalledTimes(1)
-      expect(detectIsUsedByApp).toHaveBeenCalledTimes(1)
-    })
-
-    it('should invoke access config callback from its menu item', async () => {
-      const user = userEvent.setup()
-      const openAccessConfig = vi.fn()
-
-      render(
-        <Menu
-          showDelete={false}
-          showAccessConfig
-          openRenameModal={vi.fn()}
-          handleExportPipeline={vi.fn()}
-          detectIsUsedByApp={vi.fn()}
-          openAccessConfig={openAccessConfig}
-        />,
-      )
-
-      await user.click(screen.getByText('common.settings.resourceAccess'))
-
-      expect(openAccessConfig).toHaveBeenCalledTimes(1)
     })
   })
 })
@@ -451,7 +273,7 @@ describe('Dropdown', () => {
       await openMenu(user)
 
       // Assert
-      expect(screen.getByText('common.settings.resourceAccess')).toBeInTheDocument()
+      expect(screen.getByText('navigation.settings.resourceAccess')).toBeInTheDocument()
       expect(screen.queryByText('common.operation.edit')).not.toBeInTheDocument()
       expect(screen.queryByText('common.operation.delete')).not.toBeInTheDocument()
     })
@@ -471,7 +293,7 @@ describe('Dropdown', () => {
 
       // Assert
       expect(screen.getByText('common.operation.delete')).toBeInTheDocument()
-      expect(screen.queryByText('common.settings.resourceAccess')).not.toBeInTheDocument()
+      expect(screen.queryByText('navigation.settings.resourceAccess')).not.toBeInTheDocument()
     })
   })
 
@@ -556,7 +378,7 @@ describe('Dropdown', () => {
 
       // Act
       await openMenu(user)
-      await user.click(screen.getByText('common.settings.resourceAccess'))
+      await user.click(screen.getByText('navigation.settings.resourceAccess'))
 
       // Assert
       expect(mockPush).toHaveBeenCalledWith('/datasets/dataset-1/access-config')

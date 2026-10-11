@@ -1,32 +1,28 @@
 'use client'
 import type { FC } from 'react'
-import type { StructuredOutput } from '../../../../../llm/types'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
 import Field from './field'
 
 type Props = Readonly<{
-  payload: StructuredOutput
+  payload: { schema: unknown }
   rootClassName?: string
 }>
 
 const ShowPanel: FC<Props> = ({ payload, rootClassName }) => {
-  const { t } = useTranslation()
-  const schema = {
-    ...payload,
-    schema: {
-      ...payload.schema,
-      description: t(($) => $['structOutput.LLMResponse'], { ns: 'app' }),
-    },
-  }
+  const schema = payload.schema
+  if (!schema || typeof schema !== 'object' || !('properties' in schema)) return null
+  const properties = schema.properties
+  if (!properties || typeof properties !== 'object' || Array.isArray(properties)) return null
+  const required = 'required' in schema && Array.isArray(schema.required) ? schema.required : []
+
   return (
     <div className="relative -left-1.75">
-      {Object.keys(schema.schema.properties!).map((name) => (
+      {Object.entries(properties).map(([name, field]: [string, unknown]) => (
         <Field
           key={name}
           name={name}
-          payload={schema.schema.properties![name]!}
-          required={!!schema.schema.required?.includes(name)}
+          payload={field}
+          required={required.includes(name)}
           rootClassName={rootClassName}
         />
       ))}

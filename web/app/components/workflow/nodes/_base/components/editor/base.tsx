@@ -4,13 +4,13 @@ import type { CodeLanguage } from '../../../code/types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
 import { useCallback, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import PromptEditorHeightResizeWrap from '@/app/components/app/configuration/config-prompt/prompt-editor-height-resize-wrap'
-import ActionButton from '@/app/components/base/action-button'
 import FileListInLog from '@/app/components/base/file-uploader/file-list-in-log'
-import { Copy, CopyCheck } from '@/app/components/base/icons/src/vender/line/files'
 import useToggleExpend from '@/app/components/workflow/nodes/_base/hooks/use-toggle-expend'
 import CodeGeneratorButton from '../code-generator-button'
 import ToggleExpandBtn from '../toggle-expand-btn'
@@ -58,6 +58,7 @@ const Base: FC<Props> = ({
   tip,
   footer,
 }) => {
+  const { t } = useTranslation(['common'])
   const ref = useRef<HTMLDivElement>(null)
   const { wrapClassName, wrapStyle, isExpand, setIsExpand, editorExpandHeight } = useToggleExpend({
     ref,
@@ -109,13 +110,20 @@ const Base: FC<Props> = ({
                 />
               </div>
             )}
-            <ActionButton className="ml-1" onClick={handleCopy}>
+            <IconButton
+              aria-label={t(($) => $['operation.copy'], { ns: 'common' })}
+              className="ml-1"
+              onClick={handleCopy}
+            >
               {!isCopied ? (
-                <Copy className="size-4 cursor-pointer" />
+                <span
+                  aria-hidden="true"
+                  className="i-custom-vender-line-files-copy size-4 cursor-pointer"
+                />
               ) : (
-                <CopyCheck className="size-4" />
+                <span aria-hidden="true" className="i-custom-vender-line-files-copy-check size-4" />
               )}
-            </ActionButton>
+            </IconButton>
             <div className="ml-1">
               <ToggleExpandBtn isExpand={isExpand} onExpandChange={setIsExpand} />
             </div>

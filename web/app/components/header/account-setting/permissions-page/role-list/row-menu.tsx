@@ -2,11 +2,11 @@
 import type { Role, RoleCategory } from '@/models/access-control'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import {
@@ -16,11 +16,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { toast } from '@langgenius/dify-ui/toast'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useAtomValue } from 'jotai'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import {
   useCopyWorkspaceRole,
@@ -37,7 +36,7 @@ type RowMenuProps = {
 }
 
 const RowMenu = ({ roleCategory, role, onView, onEdit }: RowMenuProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'permission'])
   const [open, setOpen] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showCopyMembersConfirm, setShowCopyMembersConfirm] = useState(false)
@@ -73,13 +72,12 @@ const RowMenu = ({ roleCategory, role, onView, onEdit }: RowMenuProps) => {
         },
         {
           onSuccess: () => {
-            toast.success(t(($) => $['role.duplicated'], { ns: 'permission' }))
             setShowCopyMembersConfirm(false)
           },
         },
       )
     },
-    [canManageRoles, copyRole, role.id, t],
+    [canManageRoles, copyRole, role.id],
   )
 
   const { mutateAsync: deleteRole, isPending: isDeletingRole } = useDeleteWorkspaceRole()
@@ -96,11 +94,10 @@ const RowMenu = ({ roleCategory, role, onView, onEdit }: RowMenuProps) => {
 
     deleteRole(role.id, {
       onSuccess: () => {
-        toast.success(t(($) => $['role.deleted'], { ns: 'permission' }))
         setShowDeleteConfirm(false)
       },
     })
-  }, [canManageRoles, deleteRole, role.id, t])
+  }, [canManageRoles, deleteRole, role.id])
 
   const hasViewAction = roleCategory === 'global_system_default'
   const hasEditAction = roleCategory === 'global_custom'
@@ -111,16 +108,16 @@ const RowMenu = ({ roleCategory, role, onView, onEdit }: RowMenuProps) => {
       <DropdownMenu open={open} onOpenChange={setOpen}>
         <DropdownMenuTrigger
           render={
-            <ActionButton
-              size="m"
+            <IconButton
+              size="md"
               className="shrink-0 data-popup-open:bg-state-base-hover"
               aria-label={t(($) => $['operation.moreActions'], { ns: 'common' })}
-            />
+            >
+              <span aria-hidden className="i-ri-more-fill h-4 w-4 text-text-tertiary" />
+            </IconButton>
           }
-        >
-          <span aria-hidden className="i-ri-more-fill h-4 w-4 text-text-tertiary" />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="min-w-[160px]">
+        />
+        <DropdownMenuContent placement="bottom-end" sideOffset={4} className="min-w-40">
           {hasViewAction && (
             <DropdownMenuItem
               className="system-sm-semibold text-text-secondary"
@@ -173,14 +170,14 @@ const RowMenu = ({ roleCategory, role, onView, onEdit }: RowMenuProps) => {
               {t(($) => $['role.deleteDescription'], { ns: 'permission' })}
             </AlertDialogDescription>
           </div>
-          <AlertDialogActions>
+          <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton disabled={isDeletingRole} onClick={handleDelete}>
               {t(($) => $['operation.delete'], { ns: 'common' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
       {showCopyMembersConfirm && (

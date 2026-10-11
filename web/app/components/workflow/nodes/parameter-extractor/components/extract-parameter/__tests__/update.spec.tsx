@@ -1,11 +1,12 @@
 import type { Param } from '../../../types'
-import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { ChangeType } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
 import { ParamType } from '../../../types'
-import Update from '../update'
+import { ParameterDialog } from '../update'
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     success: vi.fn(),
     error: vi.fn(),
@@ -32,12 +33,14 @@ describe('parameter-extractor/extract-parameter/update', () => {
   it('opens from the add trigger and saves a new parameter', async () => {
     const handleSave = vi.fn()
 
-    render(<Update type="add" onSave={handleSave} />)
+    render(<ParameterDialog type="add" onSave={handleSave} />)
 
     const existingDialogs = screen.queryAllByRole('dialog').length
 
     fireEvent.click(
-      screen.getByRole('button', { name: 'workflow.nodes.parameterExtractor.addExtractParameter' }),
+      screen.getByRole('button', {
+        name: 'workflowModels.nodes.parameterExtractor.addExtractParameter',
+      }),
     )
     const dialogs = await waitFor(() => {
       const nextDialogs = screen.getAllByRole('dialog')
@@ -45,9 +48,9 @@ describe('parameter-extractor/extract-parameter/update', () => {
       return nextDialogs
     })
     const dialog = dialogs.at(-1)!
-    const nameInput = within(dialog).getByPlaceholderText(
-      'workflow.nodes.parameterExtractor.addExtractParameterContent.namePlaceholder',
-    )
+    const nameInput = within(dialog).getByRole('textbox', {
+      name: 'workflowModels.nodes.parameterExtractor.addExtractParameterContent.name',
+    })
     const descriptionInput = within(dialog).getByPlaceholderText(
       'workflow.nodes.parameterExtractor.addExtractParameterContent.descriptionPlaceholder',
     )
@@ -83,12 +86,14 @@ describe('parameter-extractor/extract-parameter/update', () => {
     const user = userEvent.setup()
     const handleSave = vi.fn()
 
-    render(<Update type="add" onSave={handleSave} />)
+    render(<ParameterDialog type="add" onSave={handleSave} />)
 
     const existingDialogs = screen.queryAllByRole('dialog').length
 
     await user.click(
-      screen.getByRole('button', { name: 'workflow.nodes.parameterExtractor.addExtractParameter' }),
+      screen.getByRole('button', {
+        name: 'workflowModels.nodes.parameterExtractor.addExtractParameter',
+      }),
     )
     const dialogs = await waitFor(() => {
       const nextDialogs = screen.getAllByRole('dialog')
@@ -98,9 +103,9 @@ describe('parameter-extractor/extract-parameter/update', () => {
     const dialog = dialogs.at(-1)!
 
     fireEvent.change(
-      within(dialog).getByPlaceholderText(
-        'workflow.nodes.parameterExtractor.addExtractParameterContent.namePlaceholder',
-      ),
+      within(dialog).getByRole('textbox', {
+        name: 'workflowModels.nodes.parameterExtractor.addExtractParameterContent.name',
+      }),
       {
         target: { value: '1bad' },
       },
@@ -109,18 +114,18 @@ describe('parameter-extractor/extract-parameter/update', () => {
     expect(handleSave).not.toHaveBeenCalled()
     expect(mockToast.error).toHaveBeenCalled()
     expect(
-      within(dialog).getByPlaceholderText(
-        'workflow.nodes.parameterExtractor.addExtractParameterContent.namePlaceholder',
-      ),
+      within(dialog).getByRole('textbox', {
+        name: 'workflowModels.nodes.parameterExtractor.addExtractParameterContent.name',
+      }),
     ).toHaveValue('')
   })
 
-  it('renders the edit modal immediately and validates required fields', async () => {
+  it('validates required fields without closing the edit dialog', async () => {
     const user = userEvent.setup()
     const handleSave = vi.fn()
 
     render(
-      <Update
+      <ParameterDialog
         type="edit"
         payload={createParam({
           name: '',
@@ -130,7 +135,9 @@ describe('parameter-extractor/extract-parameter/update', () => {
       />,
     )
 
+    await user.click(screen.getByRole('button', { name: /^common.operation.edit/ }))
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
 
     expect(handleSave).not.toHaveBeenCalled()
     await waitFor(() => {
@@ -143,7 +150,7 @@ describe('parameter-extractor/extract-parameter/update', () => {
     const handleSave = vi.fn()
 
     render(
-      <Update
+      <ParameterDialog
         type="edit"
         payload={createParam({
           type: ParamType.select,
@@ -154,11 +161,49 @@ describe('parameter-extractor/extract-parameter/update', () => {
       />,
     )
 
+    await user.click(screen.getByRole('button', { name: /^common.operation.edit/ }))
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
 
     expect(handleSave).not.toHaveBeenCalled()
     await waitFor(() => {
       expect(mockToast.error).toHaveBeenCalled()
     })
+  })
+  it('discards canceled drafts and reopens from the latest committed parameter', async () => {
+    const user = userEvent.setup()
+    const { rerender } = render(
+      <ParameterDialog type="edit" payload={createParam()} onSave={vi.fn()} />,
+    )
+    await user.click(screen.getByRole('button', { name: 'common.operation.edit city' }))
+    expect(screen.getByRole('dialog', { name: 'common.operation.edit city' })).toBeInTheDocument()
+    await user.type(screen.getByRole('textbox', { name: /Content.name$/ }), '_draft')
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    rerender(
+      <ParameterDialog type="edit" payload={createParam({ name: 'country' })} onSave={vi.fn()} />,
+    )
+    await user.click(screen.getByRole('button', { name: 'common.operation.edit country' }))
+    expect(screen.getByRole('textbox', { name: /Content.name$/ })).toHaveValue('country')
+  })
+
+  it('preserves the original rename source after typing and editing other fields, then submits with Enter', async () => {
+    const user = userEvent.setup()
+    const onSave = vi.fn()
+    render(<ParameterDialog type="edit" payload={createParam()} onSave={onSave} />)
+    await user.click(screen.getByRole('button', { name: 'common.operation.edit city' }))
+    const name = screen.getByRole('textbox', { name: /Content.name$/ })
+    await user.type(name, '_name')
+    await user.type(screen.getByRole('textbox', { name: /Content.description$/ }), ' updated')
+    await user.click(name)
+    await user.keyboard('{Enter}')
+    expect(onSave).toHaveBeenCalledExactlyOnceWith(
+      createParam({ name: 'city_name', description: 'City name updated' }),
+      {
+        type: ChangeType.changeVarName,
+        payload: { beforeKey: 'city', afterKey: 'city_name' },
+      },
+    )
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 })

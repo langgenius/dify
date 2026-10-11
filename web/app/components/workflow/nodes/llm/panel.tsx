@@ -9,9 +9,9 @@ import {
   SelectItemText,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
-import { toast } from '@langgenius/dify-ui/toast'
+import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
-import { useCallback, useRef } from 'react'
+import { useCallback, useLayoutEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import { useHooksStore } from '@/app/components/workflow/hooks-store/store'
@@ -19,13 +19,14 @@ import Field from '@/app/components/workflow/nodes/_base/components/field'
 import FormInputTypeSwitch from '@/app/components/workflow/nodes/_base/components/form-input-type-switch'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import VarList from '@/app/components/workflow/nodes/_base/components/variable/var-list'
-import { useProviderContextSelector } from '@/context/provider-context'
+import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
+import { toast } from '@/app/notifications'
+import { consoleQuery } from '@/service/console'
 import { FlowType } from '@/types/common'
 import { fetchAndMergeValidCompletionParams } from '@/utils/completion-params'
 import { extractPluginId } from '../../utils/plugin'
 import ConfigVision from '../_base/components/config-vision'
 import VarReferencePicker from '../_base/components/variable/var-reference-picker'
-import { VarType } from '../tool/types'
 import ConfigPrompt from './components/config-prompt'
 import PanelMemorySection from './components/panel-memory-section'
 import PanelOutputSection from './components/panel-output-section'
@@ -45,7 +46,7 @@ const getModelSelectionKey = (
   `${source}:${environmentVariableName}:${provider}:${modelName}:${JSON.stringify(completionParams)}`
 
 const Panel: FC<NodePanelProps<LLMNodeType>> = ({ id, data }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow', 'modelProvider', 'workflowModels'])
   const flowType = useHooksStore((s) => s.configsMap?.flowType)
   const {
     readOnly,
@@ -87,15 +88,17 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({ id, data }) => {
     handleReasoningFormatChange,
   } = useConfig(id, data)
 
-  const isModelProviderInstalled = useProviderContextSelector((state) => {
-    const modelIssue = getLLMModelIssue({ modelProvider: model?.provider })
-    if (modelIssue === LLMModelIssueCode.providerRequired) return true
-
-    const modelProviderPluginId = extractPluginId(model.provider)
-    return state.modelProviders.some(
-      (provider) => extractPluginId(provider.provider) === modelProviderPluginId,
-    )
-  })
+  const isProviderRequired =
+    getLLMModelIssue({ modelProvider: model?.provider }) === LLMModelIssueCode.providerRequired
+  const { data: isModelProviderInstalled = isProviderRequired } = useQuery(
+    consoleQuery.workspaces.current.modelProviders.summary.get.queryOptions({
+      select: (response) =>
+        isProviderRequired ||
+        response.data.some(
+          (provider) => extractPluginId(provider.provider) === extractPluginId(model.provider),
+        ),
+    }),
+  )
   const hasModelWarning =
     getLLMModelIssue({
       modelProvider: model?.provider,
@@ -111,7 +114,9 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({ id, data }) => {
   )
   const modelSelectionKeyRef = useRef(modelSelectionKey)
   const modelSelectionRequestGenerationRef = useRef(0)
-  modelSelectionKeyRef.current = modelSelectionKey
+  useLayoutEffect(() => {
+    modelSelectionKeyRef.current = modelSelectionKey
+  }, [modelSelectionKey])
 
   const handleModelChange = useCallback(
     (model: { provider: string; modelId: string; mode?: string }) => {
@@ -133,7 +138,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({ id, data }) => {
           const keys = Object.keys(removedDetails)
           if (keys.length)
             toast.warning(
-              `${t(($) => $['modelProvider.parametersInvalidRemoved'], { ns: 'common' })}: ${keys.map((k) => `${k} (${removedDetails[k]})`).join(', ')}`,
+              `${t(($) => $['modelProvider.parametersInvalidRemoved'], { ns: 'modelProvider' })}: ${keys.map((k) => `${k} (${removedDetails[k]})`).join(', ')}`,
             )
           handleModelChanged(model, filtered)
         } catch {
@@ -184,7 +189,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({ id, data }) => {
           const keys = Object.keys(removedDetails)
           if (keys.length)
             toast.warning(
-              `${t(($) => $['modelProvider.parametersInvalidRemoved'], { ns: 'common' })}: ${keys.map((key) => `${key} (${removedDetails[key]})`).join(', ')}`,
+              `${t(($) => $['modelProvider.parametersInvalidRemoved'], { ns: 'modelProvider' })}: ${keys.map((key) => `${key} (${removedDetails[key]})`).join(', ')}`,
             )
           handleModelSelectorChange(modelSelector, filtered)
         } catch {
@@ -204,16 +209,16 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({ id, data }) => {
     <div className="mt-2">
       <div className="space-y-4 px-4 pb-4">
         <Field
-          title={t(($) => $[`${i18nPrefix}.model`], { ns: 'workflow' })}
+          title={t(($) => $[`${i18nPrefix}.model`], { ns: 'workflowModels' })}
           required
           warningDot={hasModelWarning}
           operations={
             flowType === FlowType.snippet && !isEnvironmentModelSource ? undefined : (
               <FormInputTypeSwitch
-                value={isEnvironmentModelSource ? VarType.variable : VarType.constant}
+                value={isEnvironmentModelSource ? VarKindType.variable : VarKindType.constant}
                 readonly={readOnly}
                 onChange={(value) => {
-                  const useEnvironmentVariable = value === VarType.variable
+                  const useEnvironmentVariable = value === VarKindType.variable
                   if (useEnvironmentVariable === isEnvironmentModelSource) return
                   modelSelectionRequestGenerationRef.current++
                   handleModelSourceChange(useEnvironmentVariable)
@@ -230,7 +235,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({ id, data }) => {
                 onValueChange={(nextValue) => nextValue && handleEnvironmentModelChange(nextValue)}
               >
                 <SelectTrigger
-                  aria-label={t(($) => $[`${i18nPrefix}.model`], { ns: 'workflow' })}
+                  aria-label={t(($) => $[`${i18nPrefix}.model`], { ns: 'workflowModels' })}
                   className="w-full"
                 >
                   {selectedEnvironmentVariableName ??
@@ -267,8 +272,8 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({ id, data }) => {
 
         {/* knowledge */}
         <Field
-          title={t(($) => $[`${i18nPrefix}.context`], { ns: 'workflow' })}
-          tooltip={t(($) => $[`${i18nPrefix}.contextTooltip`], { ns: 'workflow' })!}
+          title={t(($) => $[`${i18nPrefix}.context`], { ns: 'workflowModels' })}
+          tooltip={t(($) => $[`${i18nPrefix}.contextTooltip`], { ns: 'workflowModels' })!}
         >
           <>
             <VarReferencePicker
@@ -281,7 +286,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({ id, data }) => {
             />
             {shouldShowContextTip && (
               <div className="text-xs leading-4.5 font-normal text-[#DC6803]">
-                {t(($) => $[`${i18nPrefix}.notSetContextInPromptTip`], { ns: 'workflow' })}
+                {t(($) => $[`${i18nPrefix}.notSetContextInPromptTip`], { ns: 'workflowModels' })}
               </div>
             )}
           </>

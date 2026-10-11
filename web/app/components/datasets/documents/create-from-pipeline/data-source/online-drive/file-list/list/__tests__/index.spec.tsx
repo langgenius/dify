@@ -1,6 +1,6 @@
-import type { Mock } from 'vitest'
+import type { Mock } from 'vite-plus/test'
 import type { OnlineDriveFile } from '@/models/pipeline'
-import { RadioGroup } from '@langgenius/dify-ui/radio'
+import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { OnlineDriveFileType } from '@/models/pipeline'
@@ -190,7 +190,7 @@ describe('List', () => {
 
       render(<List {...props} />)
 
-      expect(screen.getByRole('status')).toBeInTheDocument()
+      expect(screen.getByRole('progressbar')).toBeInTheDocument()
     })
 
     it('should render EmptyFolder when folder is empty and not loading', () => {
@@ -373,7 +373,7 @@ describe('List', () => {
 
           switch (expected) {
             case 'isAllLoading':
-              expect(screen.getByRole('status')).toBeInTheDocument()
+              expect(screen.getByRole('progressbar')).toBeInTheDocument()
               break
             case 'isPartialLoading':
               expect(screen.getByRole('status')).toBeInTheDocument()
@@ -824,11 +824,11 @@ describe('List', () => {
         const { rerender } = render(<List {...props1} />)
 
         // Assert initial loading state
-        expect(screen.getByRole('status')).toBeInTheDocument()
+        expect(screen.getByRole('progressbar')).toBeInTheDocument()
 
         rerender(<List {...props2} />)
 
-        expect(screen.queryByRole('status')).not.toBeInTheDocument()
+        expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
         expect(screen.getByTestId('empty-folder')).toBeInTheDocument()
       })
 
@@ -840,11 +840,11 @@ describe('List', () => {
         const { rerender } = render(<List {...props1} />)
 
         // Assert initial loading state
-        expect(screen.getByRole('status')).toBeInTheDocument()
+        expect(screen.getByRole('progressbar')).toBeInTheDocument()
 
         rerender(<List {...props2} />)
 
-        expect(screen.queryByRole('status')).not.toBeInTheDocument()
+        expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
         expect(screen.getByTestId('item-file-1')).toBeInTheDocument()
       })
 
@@ -934,7 +934,7 @@ describe('List', () => {
 
         switch (expectedState) {
           case 'all-loading':
-            expect(screen.getByRole('status')).toBeInTheDocument()
+            expect(screen.getByRole('progressbar')).toBeInTheDocument()
             break
           case 'partial-loading':
             expect(screen.getByRole('status')).toBeInTheDocument()
@@ -1056,13 +1056,6 @@ describe('EmptySearchResult', () => {
       expect(screen.getByRole('button')).toBeInTheDocument()
       expect(screen.getByText(/datasetPipeline\.onlineDrive\.resetKeywords/)).toBeInTheDocument()
     })
-
-    it('should render search icon', () => {
-      const onResetKeywords = vi.fn()
-      const { container } = render(<ActualEmptySearchResult onResetKeywords={onResetKeywords} />)
-      const svgElement = container.querySelector('svg')
-      expect(svgElement).toBeInTheDocument()
-    })
   })
 
   describe('Props', () => {
@@ -1104,64 +1097,6 @@ describe('EmptySearchResult', () => {
 })
 
 // FileIcon Component Tests (using actual component)
-describe('FileIcon', () => {
-  // Get real component for testing
-  type FileIconProps = {
-    type: OnlineDriveFileType
-    fileName: string
-    size?: 'sm' | 'md' | 'lg' | 'xl'
-    className?: string
-  }
-  let ActualFileIcon: React.ComponentType<FileIconProps>
-
-  beforeAll(async () => {
-    const mod = await vi.importActual<{ default: React.ComponentType<FileIconProps> }>(
-      '../file-icon',
-    )
-    ActualFileIcon = mod.default
-  })
-
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  describe('Rendering', () => {
-    it('should render bucket icon for bucket type', () => {
-      const { container } = render(
-        <ActualFileIcon type={OnlineDriveFileType.bucket} fileName="my-bucket" />,
-      )
-      const svg = container.querySelector('svg')
-      expect(svg).toBeInTheDocument()
-    })
-
-    it('should render folder icon for folder type', () => {
-      const { container } = render(
-        <ActualFileIcon type={OnlineDriveFileType.folder} fileName="Documents" />,
-      )
-      const svg = container.querySelector('svg')
-      expect(svg).toBeInTheDocument()
-    })
-  })
-
-  describe('Icon Type Determination', () => {
-    it('should render bucket icon regardless of fileName', () => {
-      const { container } = render(
-        <ActualFileIcon type={OnlineDriveFileType.bucket} fileName="file.pdf" />,
-      )
-      const svg = container.querySelector('svg')
-      expect(svg).toBeInTheDocument()
-    })
-
-    it('should render folder icon regardless of fileName', () => {
-      const { container } = render(
-        <ActualFileIcon type={OnlineDriveFileType.folder} fileName="document.pdf" />,
-      )
-      const svg = container.querySelector('svg')
-      expect(svg).toBeInTheDocument()
-    })
-  })
-})
-
 // Item Component Tests (using actual component)
 describe('Item', () => {
   // Get real component for testing

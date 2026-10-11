@@ -4,6 +4,7 @@ import math
 from typing import Any, TypedDict, override
 
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
 from tcvdb_text.encoder import BM25Encoder  # type: ignore
 from tcvectordb import RPCVectorDBClient, VectorDBException  # type: ignore
 from tcvectordb.model import document, enum  # type: ignore
@@ -202,6 +203,11 @@ class TencentVector(BaseVector):
                 if metadatas is None:
                     continue
                 metadata = metadatas[i] or {}
+                if metadata.get("is_summary") is True:
+                    # Tencent VectorDB JSON fields do not support boolean values.
+                    # Use an integer only for the summary marker so other metadata
+                    # and other vector backends keep their existing types.
+                    metadata = {**metadata, "is_summary": 1}
                 doc = document.Document(
                     id=metadata.get("doc_id"),
                     vector=embeddings[i],
@@ -332,7 +338,9 @@ class TencentVector(BaseVector):
 
 class TencentVectorFactory(AbstractVectorFactory):
     @override
-    def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> TencentVector:
+    def init_vector(
+        self, dataset: Dataset, attributes: list, embeddings: Embeddings, *, session: Session | None
+    ) -> TencentVector:
         if dataset.index_struct_dict:
             class_prefix: str = dataset.index_struct_dict["vector_store"]["class_prefix"]
             collection_name = class_prefix.lower()

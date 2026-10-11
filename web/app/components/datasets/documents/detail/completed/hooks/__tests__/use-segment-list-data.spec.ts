@@ -107,7 +107,7 @@ vi.mock('../../../context', () => ({
   },
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     success: (message: string) => mockNotify({ type: 'success', message }),
     error: (message: string) => mockNotify({ type: 'error', message }),
@@ -440,10 +440,7 @@ describe('useSegmentListData', () => {
       })
 
       expect(mockEnableSegment).toHaveBeenCalled()
-      expect(mockNotify).toHaveBeenCalledWith({
-        type: 'success',
-        message: 'common.actionMsg.modifiedSuccessfully',
-      })
+      expect(mockNotify).not.toHaveBeenCalled()
     })
 
     it('should call disableSegment when enable is false', async () => {
@@ -490,6 +487,10 @@ describe('useSegmentListData', () => {
         expect.objectContaining({ segmentIds: ['seg-1', 'seg-2'] }),
         expect.any(Object),
       )
+      expect(mockNotify).toHaveBeenCalledWith({
+        type: 'success',
+        message: 'common.actionMsg.modifiedSuccessfully',
+      })
     })
 
     it('should notify error on failure', async () => {

@@ -1,28 +1,31 @@
 import type { DataSet } from '@/models/datasets'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { toast } from '@langgenius/dify-ui/toast'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { userProfileIdAtom } from '@/context/account-state'
+import { toast } from '@/app/notifications'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter } from '@/next/navigation'
 import { checkIsUsedInApp, deleteDataset } from '@/service/datasets'
@@ -31,9 +34,7 @@ import { useInvalid } from '@/service/use-base'
 import { useExportPipelineDSL } from '@/service/use-pipeline'
 import { downloadBlob } from '@/utils/download'
 import { getDatasetACLCapabilities } from '@/utils/permission'
-import ActionButton from '../../base/action-button'
 import RenameDatasetModal from '../../datasets/rename-modal'
-import Menu from './menu'
 
 type DropDownProps = {
   expand: boolean
@@ -61,7 +62,7 @@ const getErrorMessage = async (error: unknown) => {
 }
 
 const DropDown = ({ expand, triggerClassName }: DropDownProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['app', 'common', 'dataset', 'datasetPipeline', 'navigation'])
   const { push, replace } = useRouter()
   const [open, setOpen] = useState(false)
   const [showRenameModal, setShowRenameModal] = useState(false)
@@ -69,7 +70,10 @@ const DropDown = ({ expand, triggerClassName }: DropDownProps) => {
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
 
   const dataset = useDatasetDetailContextWithSelector((state) => state.dataset) as DataSet
-  const currentUserId = useAtomValue(userProfileIdAtom)
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const isRbacEnabled = systemFeatures.rbac_enabled
@@ -171,30 +175,47 @@ const DropDown = ({ expand, triggerClassName }: DropDownProps) => {
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger
         render={
-          <ActionButton
+          <IconButton
             aria-label={t(($) => $['operation.more'], { ns: 'common' })}
-            size={expand ? 'l' : 'm'}
+            size={expand ? 'lg' : 'md'}
             className={cn('data-popup-open:bg-state-base-hover', triggerClassName)}
-          />
+          >
+            <span aria-hidden className="i-ri-more-fill size-4" />
+          </IconButton>
         }
-      >
-        <span aria-hidden className="i-ri-more-fill size-4" />
-      </DropdownMenuTrigger>
+      />
       <DropdownMenuContent
         placement={expand ? 'bottom-end' : 'right-start'}
         sideOffset={4}
-        popupClassName="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
+        className="w-50"
       >
-        <Menu
-          showEdit={datasetACLCapabilities.canEdit}
-          showDelete={datasetACLCapabilities.canDelete}
-          showExportPipeline={datasetACLCapabilities.canImportExportDSL}
-          showAccessConfig={datasetACLCapabilities.canAccessConfig}
-          openRenameModal={openRenameModal}
-          handleExportPipeline={handleExportPipeline}
-          detectIsUsedByApp={detectIsUsedByApp}
-          openAccessConfig={openAccessConfig}
-        />
+        {datasetACLCapabilities.canEdit && (
+          <DropdownMenuItem onClick={openRenameModal}>
+            <span aria-hidden className="i-ri-edit-line size-4 text-text-tertiary" />
+            {t(($) => $['operation.edit'], { ns: 'common' })}
+          </DropdownMenuItem>
+        )}
+        {datasetACLCapabilities.canImportExportDSL && dataset.runtime_mode === 'rag_pipeline' && (
+          <DropdownMenuItem onClick={() => void handleExportPipeline()}>
+            <span aria-hidden className="i-ri-file-download-line size-4 text-text-tertiary" />
+            {t(($) => $['operations.exportPipeline'], { ns: 'datasetPipeline' })}
+          </DropdownMenuItem>
+        )}
+        {datasetACLCapabilities.canAccessConfig && (
+          <DropdownMenuItem onClick={openAccessConfig}>
+            <span aria-hidden className="i-ri-lock-2-line size-4 text-text-tertiary" />
+            {t(($) => $['settings.resourceAccess'], { ns: 'navigation' })}
+          </DropdownMenuItem>
+        )}
+        {datasetACLCapabilities.canDelete && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem variant="destructive" onClick={detectIsUsedByApp}>
+              <span aria-hidden className="i-ri-delete-bin-line size-4 text-text-tertiary" />
+              {t(($) => $['operation.delete'], { ns: 'common' })}
+            </DropdownMenuItem>
+          </>
+        )}
       </DropdownMenuContent>
       {showRenameModal && (
         <RenameDatasetModal
@@ -217,14 +238,14 @@ const DropDown = ({ expand, triggerClassName }: DropDownProps) => {
               {confirmMessage}
             </AlertDialogDescription>
           </div>
-          <AlertDialogActions>
+          <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton onClick={onConfirmDelete}>
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </DropdownMenu>

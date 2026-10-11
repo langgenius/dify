@@ -1,5 +1,5 @@
 import { renderHook, waitFor } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { usePipelineInit } from '../use-pipeline-init'
 
 const mockWorkflowStoreGetState = vi.fn()
@@ -154,6 +154,14 @@ describe('usePipelineInit', () => {
 
       await waitFor(() => {
         expect(mockSetSyncWorkflowDraftHash).toHaveBeenCalledWith('test-hash')
+      })
+    })
+
+    it('should mark workflow data as loaded after a successful fetch', async () => {
+      renderHook(() => usePipelineInit())
+
+      await waitFor(() => {
+        expect(mockWorkflowStoreSetState).toHaveBeenCalledWith({ isWorkflowDataLoaded: true })
       })
     })
   })

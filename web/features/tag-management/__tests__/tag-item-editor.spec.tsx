@@ -44,7 +44,7 @@ vi.mock('@tanstack/react-query', () => ({
   }),
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     tags: {
       byTagId: {
@@ -70,7 +70,7 @@ vi.mock('@/service/client', () => ({
   },
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: tagMocks.api,
 }))
 
@@ -113,11 +113,13 @@ describe('TagItemEditor', () => {
 
   // Rendering behavior for initial tag display.
   describe('Rendering', () => {
-    it('should render tag name and binding count', () => {
+    it('shows a resource-neutral explanation for the binding count', async () => {
+      const user = userEvent.setup()
       render(<TagItemEditor tag={baseTag} />)
 
       expect(screen.getByText('Frontend')).toBeInTheDocument()
-      expect(screen.getByText('3')).toBeInTheDocument()
+      await user.hover(screen.getByText('3'))
+      expect(await screen.findByText('common.tag.boundItems')).toBeVisible()
     })
   })
 
@@ -134,7 +136,7 @@ describe('TagItemEditor', () => {
       expect(screen.getByRole('textbox', { name: i18n.renameTag })).toHaveValue('Frontend')
     })
 
-    it('should update tag and notify success when submitting a new name', async () => {
+    it('should update tag and leave edit mode when submitting a new name', async () => {
       const user = userEvent.setup()
       render(<TagItemEditor tag={baseTag} />)
 
@@ -148,10 +150,6 @@ describe('TagItemEditor', () => {
 
       await waitFor(() => {
         expect(tagMocks.updateTag).toHaveBeenCalledWith('tag-1', 'Frontend V2')
-      })
-      expect(tagMocks.record).toHaveBeenCalledWith({
-        type: 'success',
-        message: 'common.actionMsg.modifiedSuccessfully',
       })
       expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
     })

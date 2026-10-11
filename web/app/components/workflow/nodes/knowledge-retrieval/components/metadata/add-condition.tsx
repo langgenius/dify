@@ -1,79 +1,64 @@
 import type { MetadataShape } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
-import type { MetadataInDoc } from '@/models/datasets'
 import { Button } from '@langgenius/dify-ui/button'
-import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { RiAddLine } from '@remixicon/react'
-import { useCallback, useMemo, useState } from 'react'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuEmpty,
+  DropdownMenuFilterProvider,
+  DropdownMenuInput,
+  DropdownMenuInputGroup,
+  DropdownMenuItem,
+  DropdownMenuList,
+  DropdownMenuTrigger,
+} from '@langgenius/dify-ui/dropdown-menu'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
 import MetadataIcon from './metadata-icon'
 
 const AddCondition = ({
   metadataList,
   handleAddCondition,
 }: Pick<MetadataShape, 'handleAddCondition' | 'metadataList'>) => {
-  const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
-  const [searchText, setSearchText] = useState('')
-
-  const filteredMetadataList = useMemo(() => {
-    return metadataList?.filter((metadata) => metadata.name.includes(searchText))
-  }, [metadataList, searchText])
-
-  const handleAddConditionWrapped = useCallback(
-    (item: MetadataInDoc) => {
-      handleAddCondition?.(item)
-      setOpen(false)
-    },
-    [handleAddCondition],
-  )
+  const { t } = useTranslation(['common', 'workflowModels'])
+  const searchLabel = t(($) => $['nodes.knowledgeRetrieval.metadata.panel.search'], {
+    ns: 'workflowModels',
+  })
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger
-        render={
-          <Button size="small" variant="secondary">
-            <RiAddLine className="size-3.5" />
-            {t(($) => $['nodes.knowledgeRetrieval.metadata.panel.add'], { ns: 'workflow' })}
-          </Button>
-        }
-      />
-      <PopoverContent
-        placement="bottom-start"
-        sideOffset={12}
-        popupClassName="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
-      >
-        <div className="w-[320px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg">
-          <div className="p-2 pb-1">
-            <Input
-              showLeftIcon
-              placeholder={t(($) => $['nodes.knowledgeRetrieval.metadata.panel.search'], {
-                ns: 'workflow',
-              })}
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
+    <DropdownMenuFilterProvider>
+      <DropdownMenu>
+        <DropdownMenuTrigger render={<Button size="small" variant="secondary" />}>
+          <span aria-hidden="true" className="i-ri-add-line size-3.5" />
+          {t(($) => $['nodes.knowledgeRetrieval.metadata.panel.add'], { ns: 'workflowModels' })}
+        </DropdownMenuTrigger>
+        <DropdownMenuContent placement="bottom-start" sideOffset={12} className="w-80">
+          <DropdownMenuInputGroup>
+            <span
+              aria-hidden="true"
+              className="i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder"
             />
-          </div>
-          <div className="p-1">
-            {filteredMetadataList?.map((metadata) => (
-              <div
+            <DropdownMenuInput aria-label={searchLabel} placeholder={searchLabel} />
+          </DropdownMenuInputGroup>
+          <DropdownMenuEmpty>{t(($) => $.noData, { ns: 'common' })}</DropdownMenuEmpty>
+          <DropdownMenuList>
+            {metadataList?.map((metadata) => (
+              <DropdownMenuItem
                 key={metadata.name}
-                className="flex h-6 cursor-pointer items-center rounded-md px-3 system-sm-medium text-text-secondary hover:bg-state-base-hover"
-                onClick={() => handleAddConditionWrapped(metadata)}
+                label={metadata.name}
+                onClick={() => handleAddCondition?.(metadata)}
               >
-                <div className="mr-1 p-px">
-                  <MetadataIcon type={metadata.type} />
-                </div>
-                <div className="grow truncate" title={metadata.name}>
+                <MetadataIcon type={metadata.type} />
+                <span className="grow truncate" title={metadata.name}>
                   {metadata.name}
-                </div>
-                <div className="shrink-0 system-xs-regular text-text-tertiary">{metadata.type}</div>
-              </div>
+                </span>
+                <span className="shrink-0 system-xs-regular text-text-tertiary">
+                  {metadata.type}
+                </span>
+              </DropdownMenuItem>
             ))}
-          </div>
-        </div>
-      </PopoverContent>
-    </Popover>
+          </DropdownMenuList>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </DropdownMenuFilterProvider>
   )
 }
 

@@ -1,0 +1,23 @@
+{
+  "allTags": "ແທັກທັງໝົດ",
+  "clearSelectedTags": "ລ້າງແທັກທີ່ເລືອກ: {{tags}}",
+  "searchTags": "ຄົ້ນຫາແທັກ",
+  "tags.agent": "ຕົວແທນ (Agent)",
+  "tags.business": "ທຸລະກິດ",
+  "tags.design": "ການອອກແບບ",
+  "tags.education": "ການສຶກສາ",
+  "tags.entertainment": "ຄວາມບັນເທີງ",
+  "tags.finance": "ການເງິນ",
+  "tags.image": "ຮູບພາບ",
+  "tags.medical": "ການແພດ",
+  "tags.news": "ຂ່າວ",
+  "tags.other": "ອື່ນໆ",
+  "tags.productivity": "ປະສິດທິພາບ",
+  "tags.rag": "RAG",
+  "tags.search": "ຄົ້ນຫາ",
+  "tags.social": "ໂຊຊຽວ",
+  "tags.travel": "ການທ່ອງທ່ຽວ",
+  "tags.utilities": "ເຄື່ອງມືອຳນວຍຄວາມສະດວກ",
+  "tags.videos": "ວິດີໂອ",
+  "tags.weather": "ສະພາບອາກາດ"
+}

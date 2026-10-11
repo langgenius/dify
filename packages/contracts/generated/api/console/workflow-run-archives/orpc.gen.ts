@@ -8,7 +8,7 @@ import {
   zGetWorkflowRunArchivesResponse,
   zPostWorkflowRunArchivesDownloadsBody,
   zPostWorkflowRunArchivesDownloadsResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 /**
  * Get a temporary workflow-run archive download task

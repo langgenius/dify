@@ -1,6 +1,6 @@
-import type { TryAppInfo } from '@/service/try-app'
+import type { TrialAppDetailResponse } from '@dify/contracts/api/console/trial-apps/types.gen'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 import TryApp from '../chat'
 
 const mockRemoveConversationIdInfo = vi.fn()
@@ -27,7 +27,9 @@ vi.mock('@/app/components/base/chat/embedded-chatbot/inputs-form/view-form-dropd
   default: () => <div data-testid="view-form-dropdown">ViewFormDropdown</div>,
 }))
 
-const createMockAppDetail = (overrides: Partial<TryAppInfo> = {}): TryAppInfo =>
+const createMockAppDetail = (
+  overrides: Partial<TrialAppDetailResponse> = {},
+): TrialAppDetailResponse =>
   ({
     id: 'test-app-id',
     name: 'Test Chat App',
@@ -57,7 +59,7 @@ const createMockAppDetail = (overrides: Partial<TryAppInfo> = {}): TryAppInfo =>
       user_input_form: [],
     },
     ...overrides,
-  }) as unknown as TryAppInfo
+  }) as unknown as TrialAppDetailResponse
 
 describe('TryApp (chat.tsx)', () => {
   beforeEach(() => {
@@ -84,7 +86,9 @@ describe('TryApp (chat.tsx)', () => {
     })
 
     it('renders app name with title attribute', () => {
-      const appDetail = createMockAppDetail({ name: 'Long App Name' } as Partial<TryAppInfo>)
+      const appDetail = createMockAppDetail({
+        name: 'Long App Name',
+      } as Partial<TrialAppDetailResponse>)
 
       render(<TryApp appId="test-app-id" appDetail={appDetail} className="test-class" />)
 
@@ -154,7 +158,7 @@ describe('TryApp (chat.tsx)', () => {
 
       fireEvent.click(screen.getByRole('button', { name: 'share.chat.resetChat' }))
 
-      expect(mockRemoveConversationIdInfo).toHaveBeenCalledWith('test-app-id')
+      expect(mockRemoveConversationIdInfo).toHaveBeenCalledWith()
       expect(mockHandleNewConversation).toHaveBeenCalled()
     })
   })
@@ -238,7 +242,7 @@ describe('TryApp (chat.tsx)', () => {
 
       render(<TryApp appId="my-app-id" appDetail={appDetail} className="test-class" />)
 
-      expect(mockRemoveConversationIdInfo).toHaveBeenCalledWith('my-app-id')
+      expect(mockRemoveConversationIdInfo).toHaveBeenCalledWith()
     })
   })
 })

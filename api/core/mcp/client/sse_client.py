@@ -261,7 +261,7 @@ def sse_client(
     headers: dict[str, Any] | None = None,
     timeout: float = 5.0,
     sse_read_timeout: float = 1 * 60,
-) -> Generator[tuple[ReadQueue, WriteQueue], None, None]:
+) -> Generator[tuple[ReadQueue, WriteQueue]]:
     """
     Client transport for SSE.
     `sse_read_timeout` determines how long (in seconds) the client will wait for a new
@@ -297,6 +297,13 @@ def sse_client(
         if exc.response.status_code == 401:
             raise MCPAuthError(response=exc.response)
         raise MCPConnectionError()
+    except httpx.RequestError as exc:
+        # Transport-level failures (refused connection, DNS, protocol errors, timeouts)
+        # must keep the MCP error contract: MCPClient only falls back to streamable
+        # HTTP on MCPConnectionError, and the console API only turns MCP errors into
+        # a 4xx. A raw httpx error skips both and surfaces as an opaque 500.
+        logger.exception("Error connecting to SSE endpoint")
+        raise MCPConnectionError(f"Failed to connect to SSE endpoint: {exc}") from exc
     except Exception:
         logger.exception("Error connecting to SSE endpoint")
         raise
@@ -345,7 +352,7 @@ def send_message(http_client: httpx.Client, endpoint_url: str, session_message: 
 
 def read_messages(
     sse_client: SSEClient,
-) -> Generator[SessionMessage | Exception, None, None]:
+) -> Generator[SessionMessage | Exception]:
     """
     Read messages from the SSE client.
 

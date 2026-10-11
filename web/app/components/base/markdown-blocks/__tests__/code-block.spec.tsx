@@ -2,7 +2,7 @@ import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as echarts from 'echarts'
 import { Theme } from '@/types/app'
-import CodeBlock from '../code-block'
+import { CodeBlock } from '../code-block'
 
 const { mockHighlightCode } = vi.hoisted(() => ({
   mockHighlightCode: vi.fn(),
@@ -74,6 +74,10 @@ vi.mock('@/hooks/use-theme', () => ({
 
 vi.mock('../shiki-highlight', () => ({
   highlightCode: mockHighlightCode,
+}))
+
+vi.mock('../../svg-gallery', () => ({
+  default: ({ content }: { content: string }) => <div data-testid="svg-renderer">{content}</div>,
 }))
 
 vi.mock('echarts', () => ({
@@ -251,12 +255,13 @@ describe('CodeBlock', () => {
       const user = userEvent.setup()
       render(<CodeBlock className="language-svg">{'<svg/>'}</CodeBlock>)
 
-      expect(await screen.findByText(/Error rendering SVG/i))!.toBeInTheDocument()
+      expect(await screen.findByTestId('svg-renderer')).toHaveTextContent('<svg/>')
+      const svgToggleButton = screen.getByRole('button', { name: 'SVG' })
+      expect(svgToggleButton).toHaveAttribute('aria-pressed', 'true')
+      await user.click(svgToggleButton)
 
-      const svgToggleButton = screen.getAllByRole('button')[0]
-      await user.click(svgToggleButton!)
-
-      expect(screen.queryByText(/Error rendering SVG/i)).not.toBeInTheDocument()
+      expect(svgToggleButton).toHaveAttribute('aria-pressed', 'false')
+      expect(screen.queryByTestId('svg-renderer')).not.toBeInTheDocument()
     })
 
     it('should render syntax-highlighted output when language is standard and app theme is dark', async () => {

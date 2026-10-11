@@ -1,8 +1,8 @@
 import type {
-  DefaultModel,
-  Model,
-  ModelItem,
-} from '@/app/components/header/account-setting/model-provider-page/declarations'
+  ProviderModelWithStatusEntity,
+  ProviderWithModelsResponse,
+} from '@dify/contracts/api/console/workspaces/types.gen'
+import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import {
   ConfigurationMethodEnum,
   ModelFeatureEnum,
@@ -14,7 +14,10 @@ import { checkShowMultiModalTip } from '../index'
 
 describe('checkShowMultiModalTip', () => {
   // Helper to create a model item with specific features
-  const createModelItem = (model: string, features: ModelFeatureEnum[] = []): ModelItem => ({
+  const createModelItem = (
+    model: string,
+    features: ModelFeatureEnum[] = [],
+  ): ProviderModelWithStatusEntity => ({
     model,
     label: { en_US: model, zh_Hans: model },
     model_type: ModelTypeEnum.textEmbedding,
@@ -27,7 +30,11 @@ describe('checkShowMultiModalTip', () => {
   })
 
   // Helper to create a model provider
-  const createModelProvider = (provider: string, models: ModelItem[]): Model => ({
+  const createModelProvider = (
+    provider: string,
+    models: ProviderModelWithStatusEntity[],
+  ): ProviderWithModelsResponse => ({
+    tenant_id: 'test-workspace',
     provider,
     label: { en_US: provider, zh_Hans: provider },
     icon_small: { en_US: '', zh_Hans: '' },
@@ -223,7 +230,7 @@ describe('checkShowMultiModalTip', () => {
     })
 
     it('should handle model with undefined features', () => {
-      const modelItem: ModelItem = {
+      const modelItem: ProviderModelWithStatusEntity = {
         model: 'test-model',
         label: { en_US: 'test', zh_Hans: 'test' },
         model_type: ModelTypeEnum.textEmbedding,
@@ -243,7 +250,7 @@ describe('checkShowMultiModalTip', () => {
     })
 
     it('should handle model with null features', () => {
-      const modelItem: ModelItem = {
+      const modelItem: ProviderModelWithStatusEntity = {
         model: 'text-embedding-ada-002',
         label: { en_US: 'test', zh_Hans: 'test' },
         model_type: ModelTypeEnum.textEmbedding,

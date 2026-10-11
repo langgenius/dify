@@ -1,5 +1,3 @@
-from unittest.mock import MagicMock
-
 from core.datasource.entities.datasource_entities import DatasourceInvokeMeta
 from core.datasource.errors import (
     DatasourceApiSchemaError,
@@ -50,9 +48,9 @@ class TestErrors:
         assert isinstance(error, ValueError)
 
     def test_datasource_engine_invoke_error(self):
-        mock_meta = MagicMock(spec=DatasourceInvokeMeta)
-        error = DatasourceEngineInvokeError(meta=mock_meta)
-        assert error.meta == mock_meta
+        meta = DatasourceInvokeMeta.error_instance("Invoke failed")
+        error = DatasourceEngineInvokeError(meta=meta)
+        assert error.meta == meta
         assert isinstance(error, Exception)
 
     def test_datasource_engine_invoke_error_init(self):

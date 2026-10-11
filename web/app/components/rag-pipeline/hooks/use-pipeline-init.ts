@@ -53,6 +53,7 @@ export const usePipelineInit = () => {
       )
       setSyncWorkflowDraftHash(res.hash)
       setRagPipelineVariables?.(res.rag_pipeline_variables || [])
+      workflowStore.setState({ isWorkflowDataLoaded: true })
       setIsLoading(false)
     } catch (error: any) {
       if (error && error.json && !error.bodyUsed && datasetId) {

@@ -38,7 +38,7 @@ func TestCommandHelp(t *testing.T) {
 		{
 			name: "root",
 			args: []string{"--help"},
-			want: []string{"Usage:", "dify-agent", "config", "connect", "drive", "file"},
+			want: []string{"Usage:", "dify-agent", "config", "connect", "file"},
 		},
 		{
 			name: "connect",
@@ -53,7 +53,12 @@ func TestCommandHelp(t *testing.T) {
 		{
 			name: "file upload",
 			args: []string{"file", "upload", "--help"},
-			want: []string{"dify-agent file upload", "Upload one sandbox-local file"},
+			want: []string{
+				"dify-agent file upload",
+				"Upload one sandbox-local file",
+				"--no-download-link",
+				"Skip creating a public download link after upload.",
+			},
 		},
 		{
 			name: "file download",
@@ -61,24 +66,9 @@ func TestCommandHelp(t *testing.T) {
 			want: []string{"dify-agent file download", "Download one workflow file", "--to"},
 		},
 		{
-			name: "drive",
-			args: []string{"drive", "--help"},
-			want: []string{"dify-agent drive", "list", "pull", "push"},
-		},
-		{
-			name: "drive list",
-			args: []string{"drive", "list", "--help"},
-			want: []string{"dify-agent drive list", "List drive files", "--json"},
-		},
-		{
-			name: "drive pull",
-			args: []string{"drive", "pull", "--help"},
-			want: []string{"dify-agent drive pull", "Pull one or more drive", "--to", "--json"},
-		},
-		{
-			name: "drive push",
-			args: []string{"drive", "push", "--help"},
-			want: []string{"dify-agent drive push", "Upload one local file or directory", "--kind", "--json"},
+			name: "file public-url",
+			args: []string{"file", "public-url", "--help"},
+			want: []string{"dify-agent file public-url", "Create a browser-visible download URL"},
 		},
 		{
 			name: "config",

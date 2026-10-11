@@ -1,7 +1,6 @@
 import type { ScheduleMode } from '../types'
-import * as React from 'react'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
-import { Asterisk, CalendarCheckLine } from '@/app/components/base/icons/src/vender/workflow'
 
 type ModeToggleProps = {
   mode: ScheduleMode
@@ -9,7 +8,7 @@ type ModeToggleProps = {
 }
 
 const ModeToggle = ({ mode, onChange }: ModeToggleProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflowIntegrations'])
 
   const handleToggle = () => {
     const newMode = mode === 'visual' ? 'cron' : 'visual'
@@ -18,10 +17,13 @@ const ModeToggle = ({ mode, onChange }: ModeToggleProps) => {
 
   const currentText =
     mode === 'visual'
-      ? t(($) => $['nodes.triggerSchedule.useCronExpression'], { ns: 'workflow' })
-      : t(($) => $['nodes.triggerSchedule.useVisualPicker'], { ns: 'workflow' })
+      ? t(($) => $['nodes.triggerSchedule.useCronExpression'], { ns: 'workflowIntegrations' })
+      : t(($) => $['nodes.triggerSchedule.useVisualPicker'], { ns: 'workflowIntegrations' })
 
-  const currentIcon = mode === 'visual' ? Asterisk : CalendarCheckLine
+  const iconClassName =
+    mode === 'visual'
+      ? 'i-custom-vender-workflow-asterisk'
+      : 'i-custom-vender-workflow-calendar-check-line'
 
   return (
     <button
@@ -29,7 +31,7 @@ const ModeToggle = ({ mode, onChange }: ModeToggleProps) => {
       onClick={handleToggle}
       className="flex cursor-pointer items-center gap-1 rounded-lg px-2 py-1 text-sm text-text-secondary hover:bg-state-base-hover"
     >
-      {React.createElement(currentIcon, { className: 'w-4 h-4' })}
+      <span aria-hidden className={cn(iconClassName, 'size-4')} />
       <span>{currentText}</span>
     </button>
   )

@@ -4,6 +4,7 @@ import type { ComponentProps, RefObject } from 'react'
 import type { StepByStepTourTaskId, StepByStepTourTaskView } from './types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { PopoverDescription, PopoverTitle } from '@langgenius/dify-ui/popover'
 import { useEffect } from 'react'
 
@@ -80,16 +81,14 @@ export function FloatingChecklist({
               >
                 {skipLabel}
               </Button>
-              <Button
+              <IconButton
                 ref={closeButtonRef}
-                variant="ghost"
-                size="small"
-                className="size-6 px-0 text-text-tertiary hover:text-text-secondary"
+                size="md"
                 aria-label={minimizeLabel}
                 onClick={onMinimize}
               >
                 <span aria-hidden className="i-ri-arrow-left-down-line size-4" />
-              </Button>
+              </IconButton>
             </>
           )}
         </div>
@@ -174,7 +173,7 @@ export function MinimizedTourPill({
       {...props}
       type="button"
       className={cn(
-        'inline-flex h-8 w-45.75 max-w-[calc(100vw-16px)] items-center gap-2 overflow-hidden rounded-full border-[0.5px] border-components-panel-border bg-background-section px-3 py-2 text-saas-dify-blue-inverted outline-hidden transition-colors hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+        'inline-flex h-8 w-45.75 max-w-[calc(100vw-16px)] items-center gap-2 overflow-hidden rounded-full border-[0.5px] border-components-panel-border bg-background-section px-3 py-2 text-saas-dify-blue-inverted transition-colors hover:bg-state-base-hover',
         className,
       )}
     >

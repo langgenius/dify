@@ -4,6 +4,7 @@ from celery import shared_task
 from opentelemetry import metrics
 
 from configs import dify_config
+from enums import DeploymentEdition
 from services.billing_service import BillingService
 
 logger = logging.getLogger(__name__)
@@ -19,7 +20,7 @@ _refresh_counter = metrics.get_meter(__name__).create_counter(
 @shared_task(queue="dataset", bind=True, max_retries=_MAX_RETRIES, default_retry_delay=_RETRY_DELAY_SECONDS)
 def refresh_billing_vector_space_task(self, tenant_id: str) -> None:
     """Refresh billing vector-space usage after vector cleanup has completed."""
-    if not dify_config.BILLING_ENABLED:
+    if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
         return
 
     try:
@@ -49,7 +50,7 @@ def refresh_billing_vector_space_task(self, tenant_id: str) -> None:
 
 def schedule_billing_vector_space_refresh(tenant_id: str) -> None:
     """Dispatch a best-effort billing refresh without changing cleanup status."""
-    if not dify_config.BILLING_ENABLED:
+    if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
         return
 
     try:

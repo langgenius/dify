@@ -1,8 +1,8 @@
-import type { DifyWorld } from '../../support/world'
+import type { DifyWorld } from '../../support/world.ts'
 import { Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
-import { adminCredentials } from '../../../fixtures/auth'
-import { e2eBrowser } from '../../../test-env'
+import { adminCredentials } from '../../../fixtures/auth.ts'
+import { e2eBrowser } from '../../../test-env.ts'
 
 const getAccountMenuTrigger = (world: DifyWorld) =>
   world.getPage().getByRole('button', { name: 'Account' })

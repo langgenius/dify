@@ -10,7 +10,7 @@ import useConfig from './use-config'
 const i18nPrefix = 'nodes.end'
 
 const Panel: FC<NodePanelProps<EndNodeType>> = ({ id, data }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflow'])
 
   const { readOnly, inputs, handleVarListChange, handleAddVariable } = useConfig(id, data)
 

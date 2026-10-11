@@ -3,11 +3,11 @@
 import type { SnippetDetail } from '@/models/snippet'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import {
@@ -17,7 +17,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { toast } from '@langgenius/dify-ui/toast'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -26,6 +26,7 @@ import {
   canCreateAndModifySnippets,
   canManageSnippets,
 } from '@/app/components/snippets/utils/permission'
+import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useRouter } from '@/next/navigation'
 import {
@@ -40,7 +41,7 @@ type SnippetInfoDropdownProps = {
 }
 
 const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
-  const { t } = useTranslation('snippet')
+  const { t } = useTranslation(['snippet', 'common'])
   const { replace } = useRouter()
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const [open, setOpen] = React.useState(false)
@@ -91,7 +92,6 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
         },
         {
           onSuccess: () => {
-            toast.success(t(($) => $.editDone))
             setIsEditDialogOpen(false)
           },
           onError: (error) => {
@@ -126,10 +126,17 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
   return (
     <>
       <DropdownMenu open={open} onOpenChange={setOpen}>
-        <DropdownMenuTrigger className="action-btn action-btn-m size-6 rounded-md text-text-tertiary data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary">
-          <span aria-hidden className="i-ri-more-fill size-4" />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-[180px] p-1">
+        <DropdownMenuTrigger
+          render={
+            <IconButton
+              aria-label={t(($) => $['operation.more'], { ns: 'common' })}
+              className="data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary"
+            >
+              <span aria-hidden className="i-ri-more-fill size-4" />
+            </IconButton>
+          }
+        />
+        <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-45 p-1">
           {canCreateAndModifySnippet && (
             <>
               <DropdownMenuItem className="mx-0 gap-2" onClick={handleOpenEditDialog}>
@@ -188,7 +195,7 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
               {t(($) => $.deleteConfirmContent)}
             </AlertDialogDescription>
           </div>
-          <AlertDialogActions className="pt-0">
+          <AlertDialogFooter className="pt-0">
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
@@ -198,7 +205,7 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
             >
               {t(($) => $['menu.deleteSnippet'])}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>

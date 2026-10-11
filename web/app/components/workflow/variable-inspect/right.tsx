@@ -1,23 +1,16 @@
 import type { currentVarType } from './panel'
 import type { GenRes } from '@/service/debug'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton, iconButtonVariants } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import {
-  RiArrowGoBackLine,
-  RiCloseLine,
-  RiFileDownloadFill,
-  RiMenuLine,
-  RiSparklingFill,
-} from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { produce } from 'immer'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import GetAutomaticResModal from '@/app/components/app/configuration/config/automatic/get-automatic-res'
-import ActionButton from '@/app/components/base/action-button'
 import Badge from '@/app/components/base/badge'
-import CopyFeedback from '@/app/components/base/copy-feedback'
-import Loading from '@/app/components/base/loading'
+import { CopyFeedback } from '@/app/components/base/copy-feedback'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { VariableIconWithColor } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
@@ -45,7 +38,7 @@ type Props = Readonly<{
 }>
 
 const Right = ({ nodeId, currentNodeVar, handleOpenMenu, isValueFetching }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workflowDebug', 'appGeneration'])
   const bottomPanelWidth = useStore((s) => s.bottomPanelWidth)
   const setShowVariableInspectPanel = useStore((s) => s.setShowVariableInspectPanel)
   const setCurrentFocusNodeId = useStore((s) => s.setCurrentFocusNodeId)
@@ -145,9 +138,13 @@ const Right = ({ nodeId, currentNodeVar, handleOpenMenu, isValueFetching }: Prop
       {/* header */}
       <div className="flex shrink-0 items-center justify-between gap-1 px-2 pt-2">
         {bottomPanelWidth < 488 && (
-          <ActionButton className="shrink-0" onClick={handleOpenMenu}>
-            <RiMenuLine className="size-4" />
-          </ActionButton>
+          <IconButton
+            aria-label={t(($) => $['debug.variableInspect.title'], { ns: 'workflowDebug' })}
+            className="shrink-0"
+            onClick={handleOpenMenu}
+          >
+            <span aria-hidden className="i-ri-menu-line size-4" />
+          </IconButton>
         )}
         <div className="flex w-0 grow items-center gap-1">
           {currentNodeVar?.var && (
@@ -212,12 +209,15 @@ const Right = ({ nodeId, currentNodeVar, handleOpenMenu, isValueFetching }: Prop
                         className="cursor-pointer rounded-md p-1 hover:bg-state-accent-active"
                         onClick={handleShowPromptGenerator}
                       >
-                        <RiSparklingFill className="size-4 text-components-input-border-active-prompt-1" />
+                        <span
+                          aria-hidden
+                          className="i-ri-sparkling-fill size-4 text-components-input-border-active-prompt-1"
+                        />
                       </div>
                     }
                   />
                   <TooltipContent>
-                    {t(($) => $['generate.optimizePromptTooltip'], { ns: 'appDebug' })}
+                    {t(($) => $['generate.optimizePromptTooltip'], { ns: 'appGeneration' })}
                   </TooltipContent>
                 </Tooltip>
               )}
@@ -225,27 +225,29 @@ const Right = ({ nodeId, currentNodeVar, handleOpenMenu, isValueFetching }: Prop
                 <Tooltip>
                   <TooltipTrigger
                     render={
-                      <ActionButton>
-                        <a
-                          href={fullContent?.download_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          <RiFileDownloadFill className="size-4" />
-                        </a>
-                      </ActionButton>
+                      <a
+                        aria-label={t(($) => $['debug.variableInspect.exportToolTip'], {
+                          ns: 'workflowDebug',
+                        })}
+                        href={fullContent?.download_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={iconButtonVariants({ size: 'md' })}
+                      >
+                        <span aria-hidden className="i-ri-file-download-fill size-4" />
+                      </a>
                     }
                   />
                   <TooltipContent>
-                    {t(($) => $['debug.variableInspect.exportToolTip'], { ns: 'workflow' })}
+                    {t(($) => $['debug.variableInspect.exportToolTip'], { ns: 'workflowDebug' })}
                   </TooltipContent>
                 </Tooltip>
               )}
               {!isTruncated && currentNodeVar.var.edited && (
                 <Badge>
                   <span className="mr-[4.5px] ml-[2.5px] h-0.75 w-0.75 rounded-sm bg-text-accent-secondary"></span>
-                  <span className="system-2xs-semibold-uupercase">
-                    {t(($) => $['debug.variableInspect.edited'], { ns: 'workflow' })}
+                  <span>
+                    {t(($) => $['debug.variableInspect.edited'], { ns: 'workflowDebug' })}
                   </span>
                 </Badge>
               )}
@@ -255,13 +257,18 @@ const Right = ({ nodeId, currentNodeVar, handleOpenMenu, isValueFetching }: Prop
                   <Tooltip>
                     <TooltipTrigger
                       render={
-                        <ActionButton onClick={resetValue}>
-                          <RiArrowGoBackLine className="size-4" />
-                        </ActionButton>
+                        <IconButton
+                          aria-label={t(($) => $['debug.variableInspect.reset'], {
+                            ns: 'workflowDebug',
+                          })}
+                          onClick={resetValue}
+                        >
+                          <span aria-hidden className="i-ri-arrow-go-back-line size-4" />
+                        </IconButton>
                       }
                     />
                     <TooltipContent>
-                      {t(($) => $['debug.variableInspect.reset'], { ns: 'workflow' })}
+                      {t(($) => $['debug.variableInspect.reset'], { ns: 'workflowDebug' })}
                     </TooltipContent>
                   </Tooltip>
                 )}
@@ -271,14 +278,19 @@ const Right = ({ nodeId, currentNodeVar, handleOpenMenu, isValueFetching }: Prop
                   <Tooltip>
                     <TooltipTrigger
                       render={
-                        <ActionButton onClick={handleClear}>
-                          <RiArrowGoBackLine className="size-4" />
-                        </ActionButton>
+                        <IconButton
+                          aria-label={t(($) => $['debug.variableInspect.resetConversationVar'], {
+                            ns: 'workflowDebug',
+                          })}
+                          onClick={handleClear}
+                        >
+                          <span aria-hidden className="i-ri-arrow-go-back-line size-4" />
+                        </IconButton>
                       }
                     />
                     <TooltipContent>
                       {t(($) => $['debug.variableInspect.resetConversationVar'], {
-                        ns: 'workflow',
+                        ns: 'workflowDebug',
                       })}
                     </TooltipContent>
                   </Tooltip>
@@ -288,9 +300,12 @@ const Right = ({ nodeId, currentNodeVar, handleOpenMenu, isValueFetching }: Prop
               )}
             </>
           )}
-          <ActionButton onClick={handleClose}>
-            <RiCloseLine className="size-4" />
-          </ActionButton>
+          <IconButton
+            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+            onClick={handleClose}
+          >
+            <span aria-hidden className="i-ri-close-line size-4" />
+          </IconButton>
         </div>
       </div>
       {/* content */}
@@ -298,7 +313,7 @@ const Right = ({ nodeId, currentNodeVar, handleOpenMenu, isValueFetching }: Prop
         {!currentNodeVar?.var && <Empty />}
         {isValueFetching && (
           <div className="flex h-full items-center justify-center">
-            <Loading />
+            <LoadingPlaceholder />
           </div>
         )}
         {currentNodeVar?.var && !isValueFetching && (

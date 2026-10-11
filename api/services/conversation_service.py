@@ -7,16 +7,16 @@ from sqlalchemy import asc, desc, func, or_, select
 from sqlalchemy.orm import Session
 
 from configs import dify_config
-from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.entities.app_invoke_entities import InvokeFrom, get_credit_usage_app_type
 from core.llm_generator.llm_generator import LLMGenerator
+from core.model_context import use_credit_usage_metadata
 from factories import variable_factory
 from graphon.variables.types import SegmentType
 from libs.datetime_utils import naive_utc_now
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models import Account, ConversationVariable
-from models.agent import AgentWorkspaceOwnerType
 from models.model import App, Conversation, EndUser, Message
-from services.agent.workspace_service import AgentWorkspaceNotFoundError, AgentWorkspaceService, WorkspaceOwnerScope
+from repositories.conversation_lifecycle import retire_conversation
 from services.errors.conversation import (
     ConversationNotExistsError,
     ConversationVariableNotExistsError,
@@ -139,7 +139,7 @@ class ConversationService:
         return conversation
 
     @classmethod
-    def auto_generate_name(cls, app_model: App, conversation: Conversation, *, session: Session):
+    def auto_generate_name(cls, app_model: App, conversation: Conversation, *, session: Session) -> Conversation:
         # get conversation first message
         message = session.scalar(
             select(Message)
@@ -153,14 +153,23 @@ class ConversationService:
 
         # generate conversation name
         with contextlib.suppress(Exception):
-            name = LLMGenerator.generate_conversation_name(
-                app_model.tenant_id, message.query, conversation.id, app_model.id
+            conversation.name = cls.generate_name(
+                tenant_id=app_model.tenant_id,
+                app_id=app_model.id,
+                conversation_id=conversation.id,
+                query=message.query,
+                app_mode=app_model.mode,
             )
-            conversation.name = name
 
         session.commit()
 
         return conversation
+
+    @staticmethod
+    def generate_name(*, tenant_id: str, app_id: str, conversation_id: str, query: str, app_mode: str) -> str:
+        """Generate a conversation title with the appropriate credit usage metadata."""
+        with use_credit_usage_metadata({"app_type": get_credit_usage_app_type(app_mode)}):
+            return LLMGenerator.generate_conversation_name(tenant_id, query, conversation_id, app_id)
 
     @classmethod
     def get_conversation(
@@ -185,7 +194,7 @@ class ConversationService:
         return conversation
 
     @classmethod
-    def delete(cls, app_model: App, conversation_id: str, user: Account | EndUser | None, *, session: Session):
+    def delete(cls, app_model: App, conversation_id: str, user: Account | EndUser | None, *, session: Session) -> None:
         """
         Delete a conversation only if it belongs to the given user and app context.
 
@@ -196,49 +205,33 @@ class ConversationService:
             ConversationNotExistsError: When the conversation is not visible to the current user.
         """
         conversation = cls.get_conversation(app_model, conversation_id, user, session=session)
-        binding_id = conversation.agent_workspace_binding_id
-        retired_binding_id: str | None = None
-        if binding_id is not None:
-            owner_scope = WorkspaceOwnerScope(
-                tenant_id=app_model.tenant_id,
-                app_id=app_model.id,
-                owner_type=AgentWorkspaceOwnerType.CONVERSATION,
-                owner_id=conversation.id,
-            )
-            binding = AgentWorkspaceService.get_active_binding(
-                session=session,
-                tenant_id=app_model.tenant_id,
-                binding_id=binding_id,
-                expected_owner_scope=owner_scope,
-            )
-            if binding is None:
-                raise AgentWorkspaceNotFoundError("Conversation participant Binding is unavailable")
-
+        tenant_id = app_model.tenant_id
         try:
-            logger.info(
-                "Initiating conversation deletion for app_name %s, conversation_id: %s",
-                app_model.name,
-                conversation_id,
-            )
-            if binding_id is not None:
-                retired_binding_id = AgentWorkspaceService.retire_binding(
-                    session=session,
-                    tenant_id=app_model.tenant_id,
-                    binding_id=binding_id,
-                )
-                if retired_binding_id is None:
-                    raise AgentWorkspaceNotFoundError("Conversation participant Binding is unavailable")
-            session.delete(conversation)
+            retired_workspace_ids = retire_conversation(app_model=app_model, conversation=conversation, session=session)
             session.commit()
         except Exception:
             session.rollback()
             raise
-        if retired_binding_id is not None:
+        cls.enqueue_delete_cleanup(
+            tenant_id=tenant_id,
+            conversation_id=conversation_id,
+            retired_workspace_ids=retired_workspace_ids,
+        )
+
+    @staticmethod
+    def enqueue_delete_cleanup(*, tenant_id: str, conversation_id: str, retired_workspace_ids: tuple[str, ...]) -> None:
+        """Dispatch resource collection only after the lifecycle transaction commits."""
+        if retired_workspace_ids:
             enqueue_agent_resource_collection(
-                tenant_id=app_model.tenant_id,
-                binding_ids=(retired_binding_id,),
+                tenant_id=tenant_id,
+                workspace_ids=retired_workspace_ids,
             )
-        delete_conversation_related_data.delay(conversation.id)
+        try:
+            delete_conversation_related_data.delay(conversation_id)
+        except Exception:
+            # The soft-deleted row is a durable cleanup marker picked up by the
+            # periodic sweeper, so a broker outage must not resurrect or expose it.
+            logger.exception("Failed to enqueue cleanup for conversation %s", conversation_id)
 
     @classmethod
     def get_conversational_variable(
@@ -302,6 +295,7 @@ class ConversationService:
                 "created_at": row.created_at,
                 "updated_at": row.updated_at,
                 **row.to_variable().model_dump(),
+                "id": row.id,
             }
             for row in rows
         ]
@@ -386,4 +380,5 @@ class ConversationService:
             "created_at": existing_variable.created_at,
             "updated_at": naive_utc_now(),  # Update timestamp
             **updated_variable.model_dump(),
+            "id": existing_variable.id,
         }

@@ -1,7 +1,7 @@
 import type { PluginPayload } from '../types'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import {
   useDeletePluginCredentialHook,
   useSetPluginDefaultCredentialHook,
@@ -9,7 +9,7 @@ import {
 } from '../hooks/use-credential'
 
 export const usePluginAuthAction = (pluginPayload: PluginPayload, onUpdate?: () => void) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const pendingOperationCredentialId = useRef<string | null>(null)
   const [deleteCredentialId, setDeleteCredentialId] = useState<string | null>(null)
   const { mutateAsync: deletePluginCredential } = useDeletePluginCredentialHook(pluginPayload)

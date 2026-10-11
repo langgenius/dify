@@ -5,7 +5,8 @@ import type {
   MemberInviteSuccessResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
-import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -17,7 +18,7 @@ type IInvitedModalProps = {
   onCancel: () => void
 }
 const InvitedModal = ({ invitationResults, onCancel }: IInvitedModalProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'workspaceMembers'])
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,
@@ -40,7 +41,7 @@ const InvitedModal = ({ invitationResults, onCancel }: IInvitedModalProps) => {
     failedInvitationResults.length === 0
   const description = t(
     ($) => $[onlyAlreadyMembers ? 'members.alreadyInTeamTip' : 'members.invitationSentTip'],
-    { ns: 'common' },
+    { ns: 'workspaceMembers' },
   )
 
   return (
@@ -51,7 +52,17 @@ const InvitedModal = ({ invitationResults, onCancel }: IInvitedModalProps) => {
       }}
     >
       <DialogContent backdropProps={{ forceRender: true }} className="w-120 p-8">
-        <DialogCloseButton className="top-8 right-8" />
+        <DialogClose
+          render={
+            <IconButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              size="lg"
+              className="absolute top-8 right-8"
+            >
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </IconButton>
+          }
+        />
         <div className="mb-3 flex justify-between">
           <div className="flex h-12 w-12 items-center justify-center rounded-xl border-[0.5px] border-components-panel-border bg-background-section-burn shadow-xl">
             <div className="i-heroicons-check-circle-solid h-5.5 w-5.5 text-[#039855]" />
@@ -61,7 +72,7 @@ const InvitedModal = ({ invitationResults, onCancel }: IInvitedModalProps) => {
           {t(
             ($) =>
               $[onlyAlreadyMembers ? 'members.noNewInvitationsSent' : 'members.invitationSent'],
-            { ns: 'common' },
+            { ns: 'workspaceMembers' },
           )}
         </DialogTitle>
         {isCloudEdition && <div className="mb-5 text-sm text-text-tertiary">{description}</div>}
@@ -74,7 +85,7 @@ const InvitedModal = ({ invitationResults, onCancel }: IInvitedModalProps) => {
               {isNonCloudEdition && !!successInvitationResults.length && (
                 <>
                   <div className="py-2 text-sm font-medium text-text-primary">
-                    {t(($) => $['members.invitationLink'], { ns: 'common' })}
+                    {t(($) => $['members.invitationLink'], { ns: 'workspaceMembers' })}
                   </div>
                   {successInvitationResults.map((item) => (
                     <InvitationLink key={item.email} value={item} />
@@ -84,11 +95,11 @@ const InvitedModal = ({ invitationResults, onCancel }: IInvitedModalProps) => {
               {!!alreadyMemberInvitationResults.length && (
                 <>
                   <div className="py-2 text-sm font-medium text-text-primary">
-                    {t(($) => $['members.alreadyInTeam'], { ns: 'common' })}
+                    {t(($) => $['members.alreadyInTeam'], { ns: 'workspaceMembers' })}
                   </div>
                   {!onlyAlreadyMembers && (
                     <div className="text-sm text-text-tertiary">
-                      {t(($) => $['members.alreadyInTeamTip'], { ns: 'common' })}
+                      {t(($) => $['members.alreadyInTeamTip'], { ns: 'workspaceMembers' })}
                     </div>
                   )}
                   <div className="flex flex-wrap justify-between gap-y-1">
@@ -106,7 +117,7 @@ const InvitedModal = ({ invitationResults, onCancel }: IInvitedModalProps) => {
               {isNonCloudEdition && !!failedInvitationResults.length && (
                 <>
                   <div className="py-2 text-sm font-medium text-text-primary">
-                    {t(($) => $['members.failedInvitationEmails'], { ns: 'common' })}
+                    {t(($) => $['members.failedInvitationEmails'], { ns: 'workspaceMembers' })}
                   </div>
                   <div className="flex flex-wrap justify-between gap-y-1">
                     {failedInvitationResults.map((item) => (
@@ -135,7 +146,7 @@ const InvitedModal = ({ invitationResults, onCancel }: IInvitedModalProps) => {
         )}
         <div className="flex justify-end">
           <Button className="w-24" onClick={onCancel} variant="primary">
-            {t(($) => $['members.ok'], { ns: 'common' })}
+            {t(($) => $['members.ok'], { ns: 'workspaceMembers' })}
           </Button>
         </div>
       </DialogContent>

@@ -1,13 +1,16 @@
+import type { ModelProviderSummaryResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ModelProvider, PreferredProviderTypeEnum } from '../declarations'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { consoleQuery } from '@/service/client'
+import { toast } from '@/app/notifications'
+import { consoleQuery } from '@/service/console'
 import { ConfigurationMethodEnum } from '../declarations'
 import { useUpdateModelList, useUpdateModelProviders } from '../hooks'
 
-export function useChangeProviderPriority(provider: ModelProvider | undefined) {
-  const { t } = useTranslation()
+export function useChangeProviderPriority(
+  provider: ModelProvider | ModelProviderSummaryResponse | undefined,
+) {
+  const { t } = useTranslation(['common'])
   const queryClient = useQueryClient()
   const updateModelList = useUpdateModelList()
   const updateModelProviders = useUpdateModelProviders()
@@ -24,7 +27,6 @@ export function useChangeProviderPriority(provider: ModelProvider | undefined) {
     consoleQuery.workspaces.current.modelProviders.byProvider.preferredProviderType.post.mutationOptions(
       {
         onSuccess: () => {
-          toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
           queryClient.invalidateQueries({
             queryKey: modelProviderModelListQueryKey,
             exact: true,

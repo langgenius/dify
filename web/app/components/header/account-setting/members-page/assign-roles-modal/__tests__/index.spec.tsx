@@ -62,7 +62,7 @@ describe('AssignRolesModal', () => {
       )
 
       expect(
-        screen.queryByText(/common\.members\.assignRolesModal\.selectedCount/i),
+        screen.queryByText(/workspaceMembers\.members\.assignRolesModal\.selectedCount/i),
       ).not.toBeInTheDocument()
     })
 
@@ -77,10 +77,10 @@ describe('AssignRolesModal', () => {
       )
 
       expect(
-        screen.getByText(/common\.members\.assignRolesModal\.singleDescription/i),
+        screen.getByText(/workspaceMembers\.members\.assignRolesModal\.singleDescription/i),
       ).toBeInTheDocument()
       expect(
-        screen.queryByText(/common\.members\.assignRolesModal\.description/i),
+        screen.queryByText(/workspaceMembers\.members\.assignRolesModal\.description/i),
       ).not.toBeInTheDocument()
     })
 

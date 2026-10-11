@@ -278,7 +278,9 @@ describe('HITLInputComponentUI', () => {
       fireEvent.change(textbox, { target: { value: 'existing_name' } })
 
       expect(
-        screen.getByText('workflow.nodes.humanInput.insertInputField.variableNameDuplicated'),
+        screen.getByText(
+          'workflowHumanInput.nodes.humanInput.insertInputField.variableNameDuplicated',
+        ),
       ).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'common.operation.save' })).toBeDisabled()
 

@@ -10,10 +10,18 @@ export const zApiBaseUrlResponse = z.object({
 })
 
 /**
+ * DatasetApiKeyCreatePayload
+ */
+export const zDatasetApiKeyCreatePayload = z.object({
+  dataset_ids: z.array(z.string()).optional(),
+})
+
+/**
  * ApiKeyItem
  */
 export const zApiKeyItem = z.object({
   created_at: z.int().nullish(),
+  dataset_ids: z.array(z.string()).optional().default([]),
   id: z.string(),
   last_used_at: z.int().nullish(),
   token: z.string(),
@@ -36,14 +44,14 @@ export const zSegmentBatchImportStatusResponse = z.object({
 })
 
 /**
- * BatchImportPayload
- */
-export const zBatchImportPayload = z.object({
-  upload_file_id: z.string(),
-})
-
-/**
  * ExternalDatasetCreatePayload
+ *
+ * Validated fields required to create an external dataset binding.
+ *
+ * The console controller owns HTTP concerns, but the service also needs this
+ * contract when creating the tenant-scoped dataset and external knowledge
+ * binding. Keep it outside controllers so service imports do not depend on
+ * Flask blueprint initialization.
  */
 export const zExternalDatasetCreatePayload = z.object({
   description: z.string().max(400).nullish(),
@@ -78,16 +86,6 @@ export const zIndexingEstimatePayload = z.object({
   doc_language: z.string().optional().default('English'),
   indexing_technique: z.string(),
   info_list: z.record(z.string(), z.unknown()),
-  process_rule: z.record(z.string(), z.unknown()),
-})
-
-/**
- * NotionEstimatePayload
- */
-export const zNotionEstimatePayload = z.object({
-  doc_form: z.string().optional().default('text_model'),
-  doc_language: z.string().optional().default('English'),
-  notion_info_list: z.array(z.record(z.string(), z.unknown())),
   process_rule: z.record(z.string(), z.unknown()),
 })
 
@@ -192,6 +190,13 @@ export const zSegmentCreatePayload = z.object({
   attachment_ids: z.array(z.string()).nullish(),
   content: z.string(),
   keywords: z.array(z.string()).nullish(),
+})
+
+/**
+ * BatchImportPayload
+ */
+export const zBatchImportPayload = z.object({
+  upload_file_id: z.string(),
 })
 
 /**
@@ -541,8 +546,8 @@ export const zDocumentResponse = z.object({
   created_at: z.int().nullish(),
   created_by: z.string().nullish(),
   created_from: z.string().nullish(),
-  data_source_detail_dict: z.unknown().optional(),
-  data_source_info: z.unknown().optional(),
+  data_source_detail_dict: z.record(z.string(), z.unknown()),
+  data_source_info: z.record(z.string(), z.unknown()).nullish(),
   data_source_type: z.string().nullish(),
   dataset_process_rule_id: z.string().nullish(),
   disabled_at: z.int().nullish(),
@@ -581,8 +586,8 @@ export const zDocumentWithSegmentsResponse = z.object({
   created_at: z.int().nullish(),
   created_by: z.string().nullish(),
   created_from: z.string().nullish(),
-  data_source_detail_dict: z.unknown().optional(),
-  data_source_info: z.unknown().optional(),
+  data_source_detail_dict: z.record(z.string(), z.unknown()),
+  data_source_info: z.record(z.string(), z.unknown()).nullish(),
   data_source_type: z.string().nullish(),
   dataset_process_rule_id: z.string().nullish(),
   disabled_at: z.int().nullish(),
@@ -814,14 +819,6 @@ export const zRetrievalMethod = z.enum([
 ])
 
 /**
- * PreProcessingRule
- */
-export const zPreProcessingRule = z.object({
-  enabled: z.boolean(),
-  id: z.enum(['remove_extra_spaces', 'remove_stopwords', 'remove_urls_emails']),
-})
-
-/**
  * Segmentation
  */
 export const zSegmentation = z.object({
@@ -831,37 +828,10 @@ export const zSegmentation = z.object({
 })
 
 /**
- * Rule
- */
-export const zRule = z.object({
-  parent_mode: z.enum(['full-doc', 'paragraph']).nullish(),
-  pre_processing_rules: z.array(zPreProcessingRule).nullish(),
-  segmentation: zSegmentation.nullish(),
-  subchunk_segmentation: zSegmentation.nullish(),
-})
-
-/**
- * ProcessRuleResponse
- */
-export const zProcessRuleResponse = z.object({
-  limits: z.record(z.string(), z.unknown()),
-  mode: zProcessRuleMode,
-  rules: zRule.nullish(),
-})
-
-/**
- * ProcessRule
- */
-export const zProcessRule = z.object({
-  mode: zProcessRuleMode,
-  rules: zRule.nullish(),
-})
-
-/**
  * MetadataDetail
  */
 export const zMetadataDetail = z.object({
-  id: z.string(),
+  id: z.uuid(),
   name: z.string(),
   value: z.union([z.string(), z.int(), z.number()]).nullish(),
 })
@@ -870,7 +840,7 @@ export const zMetadataDetail = z.object({
  * DocumentMetadataOperation
  */
 export const zDocumentMetadataOperation = z.object({
-  document_id: z.string(),
+  document_id: z.uuid(),
   metadata_list: z.array(zMetadataDetail),
   partial_update: z.boolean().optional().default(false),
 })
@@ -1010,49 +980,6 @@ export const zDatasetRetrievalModelResponse = z.object({
 })
 
 /**
- * DatasetDetailResponse
- */
-export const zDatasetDetailResponse = z.object({
-  app_count: z.int(),
-  author_name: z.string().nullable(),
-  built_in_field_enabled: z.boolean(),
-  chunk_structure: z.string().nullable(),
-  created_at: z.int(),
-  created_by: z.string(),
-  data_source_type: z.string().nullable(),
-  description: z.string().nullable(),
-  doc_form: z.string().nullable(),
-  doc_metadata: z.array(zDatasetDocMetadataResponse),
-  document_count: z.int(),
-  embedding_available: z.boolean().nullish(),
-  embedding_model: z.string().nullable(),
-  embedding_model_provider: z.string().nullable(),
-  enable_api: z.boolean(),
-  external_knowledge_info: zDatasetExternalKnowledgeInfoResponse.optional(),
-  external_retrieval_model: zDatasetExternalRetrievalModelResponse.nullable(),
-  icon_info: zDatasetIconInfoResponse.optional(),
-  id: z.string(),
-  indexing_technique: z.string().nullable(),
-  is_multimodal: z.boolean(),
-  is_published: z.boolean(),
-  maintainer: z.string().nullish(),
-  name: z.string(),
-  permission: z.string(),
-  permission_keys: z.array(z.string()).optional(),
-  pipeline_id: z.string().nullable(),
-  provider: z.string(),
-  retrieval_model_dict: zDatasetRetrievalModelResponse,
-  runtime_mode: z.string().nullable(),
-  summary_index_setting: zDatasetSummaryIndexSettingResponse.optional(),
-  tags: z.array(zDatasetTagResponse),
-  total_available_documents: z.int(),
-  total_documents: z.int(),
-  updated_at: z.int(),
-  updated_by: z.string().nullable(),
-  word_count: z.int(),
-})
-
-/**
  * DatasetDetailWithPartialMembersResponse
  */
 export const zDatasetDetailWithPartialMembersResponse = z.object({
@@ -1081,6 +1008,49 @@ export const zDatasetDetailWithPartialMembersResponse = z.object({
   maintainer: z.string().nullish(),
   name: z.string(),
   partial_member_list: z.array(z.string()).nullish(),
+  permission: z.string(),
+  permission_keys: z.array(z.string()).optional(),
+  pipeline_id: z.string().nullable(),
+  provider: z.string(),
+  retrieval_model_dict: zDatasetRetrievalModelResponse,
+  runtime_mode: z.string().nullable(),
+  summary_index_setting: zDatasetSummaryIndexSettingResponse.optional(),
+  tags: z.array(zDatasetTagResponse),
+  total_available_documents: z.int(),
+  total_documents: z.int(),
+  updated_at: z.int(),
+  updated_by: z.string().nullable(),
+  word_count: z.int(),
+})
+
+/**
+ * DatasetDetailResponse
+ */
+export const zDatasetDetailResponse = z.object({
+  app_count: z.int(),
+  author_name: z.string().nullable(),
+  built_in_field_enabled: z.boolean(),
+  chunk_structure: z.string().nullable(),
+  created_at: z.int(),
+  created_by: z.string(),
+  data_source_type: z.string().nullable(),
+  description: z.string().nullable(),
+  doc_form: z.string().nullable(),
+  doc_metadata: z.array(zDatasetDocMetadataResponse),
+  document_count: z.int(),
+  embedding_available: z.boolean().nullish(),
+  embedding_model: z.string().nullable(),
+  embedding_model_provider: z.string().nullable(),
+  enable_api: z.boolean(),
+  external_knowledge_info: zDatasetExternalKnowledgeInfoResponse.optional(),
+  external_retrieval_model: zDatasetExternalRetrievalModelResponse.nullable(),
+  icon_info: zDatasetIconInfoResponse.optional(),
+  id: z.string(),
+  indexing_technique: z.string().nullable(),
+  is_multimodal: z.boolean(),
+  is_published: z.boolean(),
+  maintainer: z.string().nullish(),
+  name: z.string(),
   permission: z.string(),
   permission_keys: z.array(z.string()).optional(),
   pipeline_id: z.string().nullable(),
@@ -1262,6 +1232,79 @@ export const zHitTestingPayload = z.object({
     .nullish(),
   query: z.string().max(250),
   retrieval_model: zRetrievalModel.nullish(),
+})
+
+/**
+ * NotionPageType
+ */
+export const zNotionPageType = z.enum(['database', 'page'])
+
+/**
+ * NotionEstimatePagePayload
+ */
+export const zNotionEstimatePagePayload = z.object({
+  page_id: z.string().min(1),
+  type: zNotionPageType,
+})
+
+/**
+ * NotionEstimateWorkspacePayload
+ */
+export const zNotionEstimateWorkspacePayload = z.object({
+  credential_id: z.string().min(1),
+  pages: z.array(zNotionEstimatePagePayload).min(1),
+  workspace_id: z.string().min(1),
+})
+
+/**
+ * NotionEstimatePayload
+ */
+export const zNotionEstimatePayload = z.object({
+  doc_form: z.string().optional().default('text_model'),
+  doc_language: z.string().optional().default('English'),
+  notion_info_list: z.array(zNotionEstimateWorkspacePayload).min(1),
+  process_rule: z.record(z.string(), z.unknown()),
+})
+
+export const zPreProcessingRuleKey = z.enum([
+  'remove_extra_spaces',
+  'remove_stopwords',
+  'remove_urls_emails',
+])
+
+/**
+ * PreProcessingRule
+ */
+export const zPreProcessingRule = z.object({
+  enabled: z.boolean(),
+  id: zPreProcessingRuleKey,
+})
+
+/**
+ * Rule
+ */
+export const zRule = z.object({
+  parent_mode: z.enum(['full-doc', 'paragraph']).nullish(),
+  pre_processing_rules: z.array(zPreProcessingRule).nullish(),
+  segmentation: zSegmentation.nullish(),
+  subchunk_segmentation: zSegmentation.nullish(),
+})
+
+/**
+ * ProcessRuleResponse
+ */
+export const zProcessRuleResponse = z.object({
+  limits: z.record(z.string(), z.unknown()),
+  mode: zProcessRuleMode,
+  rules: zRule.nullish(),
+})
+
+/**
+ * ProcessRule
+ */
+export const zProcessRule = z.object({
+  mode: zProcessRuleMode,
+  rules: zRule.nullish(),
 })
 
 /**
@@ -1462,7 +1505,7 @@ export const zPostDatasetsBody = zDatasetCreatePayload
 /**
  * Dataset created successfully
  */
-export const zPostDatasetsResponse = zDatasetDetailResponse
+export const zPostDatasetsResponse = zDatasetDetailWithPartialMembersResponse
 
 /**
  * API base info retrieved successfully
@@ -1473,6 +1516,8 @@ export const zGetDatasetsApiBaseInfoResponse = zApiBaseUrlResponse
  * API keys retrieved successfully
  */
 export const zGetDatasetsApiKeysResponse = zApiKeyList
+
+export const zPostDatasetsApiKeysBody = zDatasetApiKeyCreatePayload
 
 /**
  * API key created successfully
@@ -1496,17 +1541,6 @@ export const zGetDatasetsBatchImportStatusByJobIdPath = z.object({
  * Batch import status
  */
 export const zGetDatasetsBatchImportStatusByJobIdResponse = zSegmentBatchImportStatusResponse
-
-export const zPostDatasetsBatchImportStatusByJobIdBody = zBatchImportPayload
-
-export const zPostDatasetsBatchImportStatusByJobIdPath = z.object({
-  job_id: z.uuid(),
-})
-
-/**
- * Batch import started
- */
-export const zPostDatasetsBatchImportStatusByJobIdResponse = zSegmentBatchImportStatusResponse
 
 export const zPostDatasetsExternalBody = zExternalDatasetCreatePayload
 
@@ -1972,17 +2006,6 @@ export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsQuery = z.objec
  */
 export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse =
   zConsoleSegmentListResponse
-
-export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportPath = z.object({
-  dataset_id: z.uuid(),
-  document_id: z.uuid(),
-})
-
-/**
- * Batch import status
- */
-export const zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponse =
-  zSegmentBatchImportStatusResponse
 
 export const zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportBody =
   zBatchImportPayload

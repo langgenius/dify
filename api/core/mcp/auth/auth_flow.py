@@ -531,7 +531,9 @@ def register_client(
         headers={"Content-Type": "application/json"},
     )
     if not response.is_success:
-        response.raise_for_status()
+        # Callers only translate RequestError/ValueError into a user-facing error,
+        # so a raise_for_status() here would escape as an opaque 500.
+        raise ValueError(f"Client registration failed: HTTP {response.status_code}, Response: {response.text}")
     return OAuthClientInformationFull.model_validate(response.json())
 
 

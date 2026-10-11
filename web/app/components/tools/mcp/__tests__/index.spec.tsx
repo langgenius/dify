@@ -1,11 +1,12 @@
+import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { act, fireEvent, screen } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { render } from '@/test/console/render'
 import MCPList from '../index'
 
 type MockProvider = {
   id: string
-  name: string | Record<string, string>
+  name: string
   type: string
 }
 
@@ -15,7 +16,7 @@ type MockDetail = MockProvider | undefined
 const mockRefetch = vi.fn()
 const mockUpdateMCP = vi.fn()
 const mockDeleteMCP = vi.fn()
-const mockUseAllToolProviders = vi.fn()
+const mockUseAllMCPTools = vi.fn()
 let mockProviders: MockProvider[] = []
 let mockIsLoadingToolProviders = false
 const mockConsoleState = vi.hoisted(() => ({
@@ -23,8 +24,8 @@ const mockConsoleState = vi.hoisted(() => ({
 }))
 
 vi.mock('@/service/use-tools', () => ({
-  useAllToolProviders: (enabled?: boolean) => {
-    mockUseAllToolProviders(enabled)
+  useAllMCPTools: (enabled?: boolean) => {
+    mockUseAllMCPTools(enabled)
     return {
       data: mockProviders,
       isLoading: mockIsLoadingToolProviders,
@@ -89,11 +90,10 @@ vi.mock('../provider-card', () => ({
     onEdit: (id: string) => void
     onDelete: (id: string) => void
   }) => {
-    const displayName = typeof data.name === 'string' ? data.name : Object.values(data.name)[0]
     return (
       <div data-testid={`provider-card-${data.id}`}>
         <button type="button" onClick={() => handleSelect(data.id)}>
-          {displayName}
+          {data.name}
         </button>
         <button data-testid={`edit-btn-${data.id}`} onClick={() => onEdit(data.id)}>
           Edit
@@ -124,11 +124,7 @@ vi.mock('../detail/provider-detail', () => ({
     isTriggerAuthorize: boolean
     onFirstCreate: () => void
   }) => {
-    const displayName = detail?.name
-      ? typeof detail.name === 'string'
-        ? detail.name
-        : Object.values(detail.name)[0]
-      : ''
+    const displayName = detail?.name ?? ''
     return (
       <div data-testid="detail-panel">
         <div data-testid="detail-name">{displayName}</div>
@@ -198,6 +194,19 @@ describe('MCPList', () => {
   })
 
   describe('Rendering', () => {
+    it('uses parent-provided MCP data without starting its fallback query', () => {
+      const providers = [
+        { id: '1', name: 'Provider 1', type: 'mcp' },
+      ] as unknown as ToolWithProvider[]
+
+      render(
+        <MCPList providers={providers} isLoading={false} onRefresh={mockRefetch} searchText="" />,
+      )
+
+      expect(mockUseAllMCPTools).toHaveBeenCalledWith(false)
+      expect(screen.getByTestId('provider-card-1')).toBeInTheDocument()
+    })
+
     it('should render create card', () => {
       render(<MCPList searchText="" />)
 
@@ -210,7 +219,7 @@ describe('MCPList', () => {
 
       render(<MCPList searchText="" />)
 
-      expect(mockUseAllToolProviders).toHaveBeenCalledWith(undefined)
+      expect(mockUseAllMCPTools).toHaveBeenCalledWith(true)
       expect(screen.getByTestId('provider-card-1')).toBeInTheDocument()
       expect(screen.queryByTestId('create-card')).not.toBeInTheDocument()
     })
@@ -306,9 +315,9 @@ describe('MCPList', () => {
   describe('Search Filtering', () => {
     beforeEach(() => {
       mockProviders = [
-        { id: '1', name: { 'en-US': 'Search Tool' }, type: 'mcp' },
-        { id: '2', name: { 'en-US': 'Another Provider' }, type: 'mcp' },
-        { id: '3', name: { 'en-US': 'Search API Tool' }, type: 'api' },
+        { id: '1', name: 'Search Tool', type: 'mcp' },
+        { id: '2', name: 'Another Provider', type: 'mcp' },
+        { id: '3', name: 'Search API Tool', type: 'api' },
       ]
     })
 

@@ -69,7 +69,7 @@ vi.mock('../../../context', () => ({
   },
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     success: (message: string) => mockNotify({ type: 'success', message }),
     error: (message: string) => mockNotify({ type: 'error', message }),
@@ -327,10 +327,6 @@ describe('useChildSegmentData', () => {
       })
 
       expect(mockUpdateChildSegment).toHaveBeenCalled()
-      expect(mockNotify).toHaveBeenCalledWith({
-        type: 'success',
-        message: 'common.actionMsg.modifiedSuccessfully',
-      })
       expect(onCloseChildSegmentDetail).toHaveBeenCalled()
       expect(updateSegmentInCache).toHaveBeenCalled()
       expect(refreshChunkListDataWithDetailChanged).toHaveBeenCalled()

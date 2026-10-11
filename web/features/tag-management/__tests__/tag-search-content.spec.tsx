@@ -1,6 +1,6 @@
 import type { TagResponse as Tag, TagType } from '@dify/contracts/api/console/tags/types.gen'
 import type { TagComboboxItem } from '../components/tag-combobox-item'
-import { Combobox } from '@langgenius/dify-ui/combobox'
+import { Combobox, createComboboxItems } from '@langgenius/dify-ui/combobox'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useMemo, useState } from 'react'
@@ -52,8 +52,6 @@ type PanelHarnessProps = {
   onOpenTagManagement?: () => void
 }
 
-const tagToString = (tag: TagComboboxItem) => tag.name
-const isSameTag = (item: TagComboboxItem, value: TagComboboxItem) => item.id === value.id
 const tagFilter = (tag: TagComboboxItem, query: string) => tag.name.includes(query)
 
 const PanelHarness = ({
@@ -63,7 +61,7 @@ const PanelHarness = ({
   canBindOrUnbindTags,
   onOpenTagManagement,
 }: PanelHarnessProps) => {
-  const [selectedTags, setSelectedTags] = useState<Tag[]>(value)
+  const [selectedTagIds, setSelectedTagIds] = useState(() => value.map((tag) => tag.id))
   const [inputValue, setInputValue] = useState('')
   const items = useMemo<TagComboboxItem[]>(() => {
     const tags = tagList.filter((tag) => tag.type === type)
@@ -81,27 +79,36 @@ const PanelHarness = ({
       ...tags,
     ]
   }, [inputValue, tagList, type])
+  const itemById = useMemo(() => new Map(items.map((tag) => [tag.id, tag])), [items])
+  const comboboxItems = useMemo(
+    () =>
+      createComboboxItems(items, {
+        getValue: (tag) => tag.id,
+        getLabel: (tag) => tag.name,
+      }),
+    [items],
+  )
 
   return (
-    <Combobox
-      items={items}
+    <Combobox<string, true, TagComboboxItem>
+      items={comboboxItems}
       multiple
-      value={selectedTags}
-      onValueChange={(nextTags) => {
-        onValueChangeSpy(nextTags)
-        if (nextTags.some(isCreateTagOption)) return
-        setSelectedTags(nextTags)
+      value={selectedTagIds}
+      onValueChange={(nextTagIds) => {
+        onValueChangeSpy(nextTagIds)
+        const hasCreateOption = nextTagIds.some((tagId) => {
+          const tag = itemById.get(tagId)
+          return tag ? isCreateTagOption(tag) : false
+        })
+        if (hasCreateOption) return
+        setSelectedTagIds(nextTagIds)
       }}
       inputValue={inputValue}
       onInputValueChange={setInputValue}
       filter={tagFilter}
-      itemToStringLabel={tagToString}
-      isItemEqualToValue={isSameTag}
     >
       <TagSearchContent
         type={type}
-        inputValue={inputValue}
-        onInputValueChange={setInputValue}
         canBindOrUnbindTags={canBindOrUnbindTags}
         onOpenTagManagement={onOpenTagManagement}
       />
@@ -135,25 +142,6 @@ describe('TagSearchContent', () => {
     expect(screen.queryByRole('option', { name: /API/i })).not.toBeInTheDocument()
   })
 
-  it('clears only the search input from the input clear button', async () => {
-    const user = userEvent.setup()
-    render(<PanelHarness />)
-
-    const input = screen.getByRole('combobox', { name: i18n.selectorPlaceholder })
-    await user.type(input, 'Back')
-    expect(input).toHaveValue('Back')
-    vi.clearAllMocks()
-
-    await user.click(screen.getByRole('button', { name: i18n.operationClear }))
-
-    expect(input).toHaveValue('')
-    expect(onValueChangeSpy).not.toHaveBeenCalled()
-    expect(screen.getByRole('option', { name: /Frontend/i })).toHaveAttribute(
-      'aria-selected',
-      'true',
-    )
-  })
-
   it('shows a create option when the query is not an existing tag name', async () => {
     const user = userEvent.setup()
     render(<PanelHarness />)
@@ -179,12 +167,10 @@ describe('TagSearchContent', () => {
     render(<PanelHarness />)
 
     await user.click(screen.getByRole('option', { name: /Backend/i }))
-    expect(onValueChangeSpy).toHaveBeenLastCalledWith(
-      expect.arrayContaining([expect.objectContaining({ id: 'tag-2' })]),
-    )
+    expect(onValueChangeSpy).toHaveBeenLastCalledWith(expect.arrayContaining(['tag-2']))
 
     await user.click(screen.getByRole('option', { name: /Backend/i }))
-    expect(onValueChangeSpy).toHaveBeenLastCalledWith([expect.objectContaining({ id: 'tag-1' })])
+    expect(onValueChangeSpy).toHaveBeenLastCalledWith(['tag-1'])
   })
 
   it('routes create option activation through the combobox value change API', async () => {
@@ -196,12 +182,7 @@ describe('TagSearchContent', () => {
     await user.click(screen.getByRole('option', { name: /BrandNewTag/i }))
 
     expect(onValueChangeSpy).toHaveBeenLastCalledWith(
-      expect.arrayContaining([
-        expect.objectContaining({
-          isCreateOption: true,
-          name: 'BrandNewTag',
-        }),
-      ]),
+      expect.arrayContaining(['__create_tag__:BrandNewTag']),
     )
   })
 
@@ -248,9 +229,7 @@ describe('TagSearchContent', () => {
 
     await user.click(screen.getByRole('option', { name: /Backend/i }))
 
-    expect(onValueChangeSpy).toHaveBeenLastCalledWith(
-      expect.arrayContaining([expect.objectContaining({ id: 'tag-2' })]),
-    )
+    expect(onValueChangeSpy).toHaveBeenLastCalledWith(expect.arrayContaining(['tag-2']))
     expect(screen.queryByRole('button', { name: i18n.manageTags })).not.toBeInTheDocument()
   })
 

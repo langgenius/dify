@@ -1,9 +1,11 @@
+import type { RagPipelineDatasourceProviderResponse } from '@dify/contracts/api/console/rag/types.gen'
 import type { TriggerWithProvider } from '../block-selector/types'
 import type { DataSourceNodeType } from '../nodes/data-source/types'
 import type { ToolNodeType } from '../nodes/tool/types'
 import type { PluginTriggerNodeType } from '../nodes/trigger-plugin/types'
 import type { Node, ToolWithProvider } from '../types'
 import { useCallback, useMemo } from 'react'
+import { resolveDatasourceIcon } from '@/app/components/rag-pipeline/utils/datasource-icon'
 import { CollectionType } from '@/app/components/tools/types'
 import useTheme from '@/hooks/use-theme'
 import {
@@ -14,8 +16,10 @@ import {
 } from '@/service/use-tools'
 import { useAllTriggerPlugins } from '@/service/use-triggers'
 import { canFindTool } from '@/utils'
+import { matchesProviderReference } from '@/utils/provider-reference'
 import { useStore, useWorkflowStore } from '../store'
 import { BlockEnum } from '../types'
+import { matchDataSource } from '../utils/plugin-install-check'
 
 const isTriggerPluginNode = (data: Node['data']): data is PluginTriggerNodeType =>
   data.type === BlockEnum.TriggerPlugin
@@ -26,7 +30,7 @@ const isDataSourceNode = (data: Node['data']): data is DataSourceNodeType =>
   data.type === BlockEnum.DataSource
 
 type IconValue = ToolWithProvider['icon']
-type ToolCollections = {
+export type ToolIconCollections = {
   buildInTools?: ToolWithProvider[]
   customTools?: ToolWithProvider[]
   workflowTools?: ToolWithProvider[]
@@ -60,7 +64,7 @@ const findTriggerPluginIcon = (
 
 const getPrimaryToolCollection = (
   providerType: CollectionType | undefined,
-  collections: ToolCollections,
+  collections: ToolIconCollections,
 ) => {
   switch (providerType) {
     case CollectionType.custom:
@@ -77,7 +81,7 @@ const getPrimaryToolCollection = (
 
 const getCollectionsToSearch = (
   providerType: CollectionType | undefined,
-  collections: ToolCollections,
+  collections: ToolIconCollections,
 ) => {
   return [
     getPrimaryToolCollection(providerType, collections),
@@ -99,7 +103,7 @@ const findToolInCollections = (
 
     seen.add(collection)
     const matched = collection.find((toolWithProvider) => {
-      if (canFindTool(toolWithProvider.id, data.provider_id)) return true
+      if (matchesProviderReference(toolWithProvider, data.provider_id)) return true
       if (data.plugin_id && toolWithProvider.plugin_id === data.plugin_id) return true
       return data.provider_name === toolWithProvider.name
     })
@@ -116,7 +120,7 @@ const findToolNodeIcon = ({
   theme,
 }: {
   data: ToolNodeType
-  collections: ToolCollections
+  collections: ToolIconCollections
   theme?: string
 }) => {
   const matched = findToolInCollections(
@@ -131,12 +135,15 @@ const findToolNodeIcon = ({
   return resolveIconByTheme(theme, data.provider_icon, data.provider_icon_dark)
 }
 
-const findDataSourceIcon = (data: DataSourceNodeType, dataSourceList?: ToolWithProvider[]) => {
-  return dataSourceList?.find((toolWithProvider) => toolWithProvider.plugin_id === data.plugin_id)
-    ?.icon
+const findDataSourceIcon = (
+  data: DataSourceNodeType,
+  dataSourceList?: RagPipelineDatasourceProviderResponse[],
+) => {
+  const provider = matchDataSource(dataSourceList ?? [], data)
+  return provider ? resolveDatasourceIcon(provider.declaration.identity.icon) : undefined
 }
 
-const findNodeIcon = ({
+export const findNodeIcon = ({
   data,
   collections,
   dataSourceList,
@@ -144,8 +151,8 @@ const findNodeIcon = ({
   theme,
 }: {
   data?: Node['data']
-  collections: ToolCollections
-  dataSourceList?: ToolWithProvider[]
+  collections: ToolIconCollections
+  dataSourceList?: RagPipelineDatasourceProviderResponse[]
   triggerPlugins?: TriggerWithProvider[]
   theme?: string
 }) => {

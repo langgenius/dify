@@ -11,13 +11,16 @@ from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.workflow.command_channels import (
     CelerySignalCommandChannel,
     CombinedCommandChannel,
+    StopFlagCommandChannel,
 )
+from core.app.apps.workflow.stop_aware_ready_queue import attach_stop_aware_ready_queue
 from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
 from core.app.entities.app_invoke_entities import (
     AdvancedChatAppGenerateEntity,
     AppGenerateEntity,
     DifyRunContext,
     InvokeFrom,
+    get_credit_usage_app_type,
 )
 from core.app.entities.queue_entities import (
     QueueAnnotationReplyEvent,
@@ -139,6 +142,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
                 user_id=self.application_generate_entity.user_id,
                 invoke_from=invoke_from,
                 user_from=user_from,
+                app_type=get_credit_usage_app_type(app_config.app_mode),
                 trace_session_id=self.application_generate_entity.extras.get("trace_session_id"),
             )
         elif self.application_generate_entity.single_iteration_run or self.application_generate_entity.single_loop_run:
@@ -148,6 +152,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
                 single_iteration_run=self.application_generate_entity.single_iteration_run,
                 single_loop_run=self.application_generate_entity.single_loop_run,
                 user_id=self.application_generate_entity.user_id,
+                app_type=get_credit_usage_app_type(app_config.app_mode),
                 trace_session_id=self.application_generate_entity.extras.get("trace_session_id"),
             )
         else:
@@ -218,6 +223,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
                 user_from=user_from,
                 invoke_from=invoke_from,
                 root_node_id=root_node_id,
+                app_type=get_credit_usage_app_type(app_config.app_mode),
                 trace_session_id=self.application_generate_entity.extras.get("trace_session_id"),
             )
 
@@ -229,9 +235,11 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             shutdown_state_getter=celery_warm_shutdown_started,
             abort_reason=WORKFLOW_WARM_SHUTDOWN_ABORT_REASON,
         )
+        attach_stop_aware_ready_queue(graph_runtime_state, task_id=task_id)
         command_channel = CombinedCommandChannel(
             (
                 RedisChannel(redis_client, channel_key),
+                StopFlagCommandChannel(task_id=task_id),
                 celery_signal_channel,
             )
         )
@@ -276,6 +284,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
                     user_id=self.application_generate_entity.user_id,
                     user_from=user_from,
                     invoke_from=invoke_from,
+                    app_type=get_credit_usage_app_type(app_config.app_mode),
                     trace_session_id=self.application_generate_entity.extras.get("trace_session_id"),
                 )
             )
@@ -470,9 +479,12 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         :param existing_variables: List of existing conversation variables
         :return: Updated list including any newly created variables
         """
-        # Get IDs of existing and workflow variables
+        # Compare stored primary keys. A non-UUID author id is rewritten by
+        # ConversationVariable.storage_id, so the workflow id itself will not match.
         existing_ids = {var.id for var in existing_variables}
-        workflow_variables = {var.id: var for var in self._workflow.conversation_variables}
+        workflow_variables = {
+            ConversationVariable.storage_id(variable): variable for variable in self._workflow.conversation_variables
+        }
 
         # Find missing variable IDs
         missing_ids = set(workflow_variables.keys()) - existing_ids

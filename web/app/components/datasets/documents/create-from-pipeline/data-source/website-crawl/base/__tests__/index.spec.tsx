@@ -1,5 +1,5 @@
 import type { CrawlResultItem as CrawlResultItemType } from '@/models/datasets'
-import { RadioGroup } from '@langgenius/dify-ui/radio'
+import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
@@ -62,13 +62,13 @@ describe('CheckboxWithLabel', () => {
     it('should render tooltip when provided', () => {
       render(<CheckboxWithLabel {...defaultProps} tooltip="Helpful tooltip text" />)
 
-      expect(screen.getByLabelText('Helpful tooltip text'))!.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Test Label' }))!.toBeInTheDocument()
     })
 
     it('should not render tooltip when not provided', () => {
       render(<CheckboxWithLabel {...defaultProps} />)
 
-      expect(screen.queryByLabelText('Helpful tooltip text')).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Test Label' })).not.toBeInTheDocument()
     })
   })
 

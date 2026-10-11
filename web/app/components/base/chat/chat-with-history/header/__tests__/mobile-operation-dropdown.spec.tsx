@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import MobileOperationDropdown from '../mobile-operation-dropdown'
 
 describe('MobileOperationDropdown Component', () => {
@@ -18,19 +18,15 @@ describe('MobileOperationDropdown Component', () => {
     const user = userEvent.setup()
     render(<MobileOperationDropdown {...defaultProps} />)
 
-    // Trigger button should be present (ActionButton renders a button)
     const trigger = screen.getByRole('button', { name: 'common.operation.more' })
     expect(trigger).toBeInTheDocument()
 
-    // Menu should be hidden initially
     expect(screen.queryByText('share.chat.resetChat')).not.toBeInTheDocument()
 
-    // Click to open
     await user.click(trigger)
     expect(screen.getByText('share.chat.resetChat')).toBeInTheDocument()
     expect(screen.getByText('share.chat.viewChatSettings')).toBeInTheDocument()
 
-    // Click to close
     await user.click(trigger)
     expect(screen.queryByText('share.chat.resetChat')).not.toBeInTheDocument()
   })
@@ -51,31 +47,27 @@ describe('MobileOperationDropdown Component', () => {
 
     await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
 
-    // Reset Chat
     await user.click(screen.getByText('share.chat.resetChat'))
     await waitFor(() => {
       expect(defaultProps.handleResetChat).toHaveBeenCalledTimes(1)
     })
 
     await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
-    // View Chat Settings
     await user.click(screen.getByText('share.chat.viewChatSettings'))
     await waitFor(() => {
       expect(defaultProps.handleViewChatSettings).toHaveBeenCalledTimes(1)
     })
   })
 
-  it('applies hover state to ActionButton when open', async () => {
+  it('exposes popup-open state on the trigger', async () => {
     const user = userEvent.setup()
     render(<MobileOperationDropdown {...defaultProps} />)
     const trigger = screen.getByRole('button', { name: 'common.operation.more' })
 
-    // closed state
-    expect(trigger).not.toHaveClass('action-btn-hover')
+    expect(trigger).not.toHaveAttribute('data-popup-open')
 
-    // open state
     await user.click(trigger)
-    expect(trigger).toHaveClass('action-btn-hover')
+    expect(trigger).toHaveAttribute('data-popup-open')
   })
 
   it('closes the menu after clicking an action', async () => {

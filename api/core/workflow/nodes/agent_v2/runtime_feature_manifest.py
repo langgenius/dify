@@ -17,15 +17,13 @@ SUPPORTED_AGENT_BACKEND_FEATURES = frozenset(
         "knowledge",
         "env",
         "sandbox",
-        # ENG-635: human involvement is exposed at runtime as the dify.ask_human
-        # deferred tool; a call pauses via the existing HITL form mechanism.
-        "human",
     }
 )
 
 RESERVED_AGENT_BACKEND_FEATURES = frozenset(
     {
         "memory",
+        "human",
     }
 )
 
@@ -36,9 +34,9 @@ def build_runtime_feature_manifest(agent_soul: AgentSoulConfig) -> dict[str, Any
     soul_dump = agent_soul.model_dump(mode="json", exclude_none=True, exclude_defaults=True)
     for section in sorted(RESERVED_AGENT_BACKEND_FEATURES):
         value = _get_nested(soul_dump, section)
-        has_value = bool(value)
+        has_value = value
         if isinstance(value, dict):
-            has_value = any(bool(item) for item in value.values())
+            has_value = any(item for item in value.values())
         if has_value:
             warnings.append(
                 {
@@ -54,7 +52,6 @@ def build_runtime_feature_manifest(agent_soul: AgentSoulConfig) -> dict[str, Any
     reserved_status["tools.cli_tools"] = "supported_by_shell_bootstrap"
     reserved_status["env"] = "supported_by_shell_bootstrap"
     reserved_status["sandbox"] = "forwarded_to_shell_layer_config"
-    reserved_status["human"] = "supported_by_ask_human_hitl" if agent_soul.human.contacts else "not_configured"
 
     return {
         "supported": sorted(SUPPORTED_AGENT_BACKEND_FEATURES),

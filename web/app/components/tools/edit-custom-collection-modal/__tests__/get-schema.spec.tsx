@@ -7,7 +7,7 @@ vi.mock('@/service/tools', () => ({
   importSchemaFromURL: vi.fn(),
 }))
 const mockToastError = vi.hoisted(() => vi.fn())
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: mockToastError,
   },
@@ -41,6 +41,31 @@ describe('GetSchema', () => {
 
     fireEvent.click(screen.getByText('common.operation.ok'))
 
+    await waitFor(() => {
+      expect(mockOnChange).toHaveBeenCalledWith('result-schema')
+    })
+  })
+
+  it('keeps the OK label while importing', async () => {
+    let resolveImport!: (value: { schema: string }) => void
+    importSchemaFromURLMock.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveImport = resolve
+        }),
+    )
+    fireEvent.click(screen.getByText('tools.createTool.importFromUrl'))
+    fireEvent.change(screen.getByPlaceholderText('tools.createTool.importFromUrlPlaceHolder'), {
+      target: { value: 'https://example.com' },
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.ok' }))
+
+    const importButton = screen.getByRole('button', { name: 'common.operation.ok' })
+    expect(importButton).toHaveTextContent('common.operation.ok')
+    expect(importButton).toHaveAttribute('aria-disabled', 'true')
+
+    resolveImport({ schema: 'result-schema' })
     await waitFor(() => {
       expect(mockOnChange).toHaveBeenCalledWith('result-schema')
     })

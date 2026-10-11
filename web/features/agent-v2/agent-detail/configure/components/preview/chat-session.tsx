@@ -1,6 +1,6 @@
 'use client'
 
-import type { AgentIconType, AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
+import type { AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
 import type { ReactNode, Ref } from 'react'
 import type {
   AgentChatMessageSender,
@@ -23,13 +23,12 @@ import { deploymentEditionAtom } from '@/features/system-features/state'
 import { buildChatConfig, getAgentSoulInputs, getAgentSoulInputsForm } from './chat-config'
 import { AgentPreviewChatConversation } from './chat-conversation'
 
+const chatMaxWidthClassName = 'max-w-150 min-[1920px]:max-w-200 min-[2560px]:max-w-240'
+
 export function AgentPreviewChatSession({
   conversationSessionKey,
   agentId,
   answerActionPosition,
-  agentIcon,
-  agentIconBackground,
-  agentIconType,
   agentName,
   agentSoulConfig,
   clearChatList,
@@ -55,10 +54,7 @@ export function AgentPreviewChatSession({
   conversationSessionKey: string
   agentId: string
   answerActionPosition?: AgentChatRuntimeProps['answerActionPosition']
-  agentIcon?: string | null
-  agentIconBackground?: string | null
-  agentIconType?: AgentIconType | null
-  agentName?: string
+  agentName?: AgentChatRuntimeProps['agentName']
   agentSoulConfig?: AgentSoulConfig
   clearChatList: boolean
   controllerRef?: Ref<AgentPreviewChatController>
@@ -80,7 +76,7 @@ export function AgentPreviewChatSession({
   onSaveDraftBeforeRun?: () => Promise<AgentSoulConfig | void>
   onSendInterrupted?: () => void
 }) {
-  const { t } = useTranslation('agentV2')
+  const { t } = useTranslation(['agentV2'])
   const prompt = useAtomValue(agentComposerPromptAtom)
   const currentModel = useAtomValue(agentComposerModelAtom)
   const composerDraft = useAtomValue(agentComposerDraftAtom)
@@ -158,9 +154,9 @@ export function AgentPreviewChatSession({
     <ChatInputArea
       botName={agentName || 'Agent'}
       customPlaceholder={inputPlaceholder}
+      inputLabel={inputPlaceholder}
       disabled={disabled || (isEmptyChat && isResponding)}
-      // Build chat opts out so it does not steal focus from the configure editor.
-      // oxlint-disable-next-line jsx-a11y/no-autofocus
+      // oxlint-disable-next-line jsx-a11y/no-autofocus -- Build chat opts out so it does not steal focus from the configure editor.
       autoFocus={isEmptyChat ? inputAutoFocus : undefined}
       sendButtonLoading={sendButtonLoading}
       showFileUpload={false}
@@ -181,7 +177,12 @@ export function AgentPreviewChatSession({
   )
 
   return (
-    <div className="relative mx-auto flex h-full min-h-0 w-full max-w-150 flex-col overflow-hidden">
+    <div
+      className={cn(
+        'relative mx-auto flex h-full min-h-0 w-full flex-col overflow-hidden',
+        chatMaxWidthClassName,
+      )}
+    >
       <div className="min-h-0 flex-1">
         <AgentPreviewChatConversation
           key={conversationSessionKey}
@@ -220,17 +221,13 @@ export function AgentPreviewChatSession({
         <div
           className={cn(
             isEmptyChat
-              ? 'flex w-full max-w-150 flex-col items-start text-left'
+              ? cn('flex w-full flex-col items-start text-left', chatMaxWidthClassName)
               : 'pointer-events-none relative w-full',
           )}
         >
           {isEmptyChat && (
             <div className="w-full p-3 pb-0">
               {renderEmptyState({
-                agentIcon,
-                agentIconBackground,
-                agentIconType,
-                agentName,
                 showUnconfiguredNotice,
               })}
             </div>

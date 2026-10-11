@@ -1,6 +1,6 @@
-"""Dify plugin-daemon provider for Pydantic AI LLM adapters.
+"""Dify API provider for Pydantic AI LLM adapters.
 
-The Pydantic AI provider represents daemon/plugin transport identity. Business
+The Pydantic AI provider represents API/plugin transport identity. Business
 model provider names such as ``openai`` are request-level model identity and are
 passed by ``DifyLLMAdapterModel`` for each invocation instead of being stored on
 this provider.
@@ -8,9 +8,12 @@ this provider.
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator, Callable, Mapping
+import json
+from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
-from typing import NoReturn
+from itertools import count
+from typing import NoReturn, Protocol, cast
+from uuid import NAMESPACE_URL, uuid5
 
 import httpx
 from graphon.model_runtime.entities.llm_entities import LLMResultChunk
@@ -21,13 +24,30 @@ from typing_extensions import override
 from pydantic_ai.exceptions import ModelAPIError, ModelHTTPError, UnexpectedModelBehavior, UserError
 from pydantic_ai.providers import Provider
 
+from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 from dify_agent.plugin_daemon_transport import (
     decode_plugin_daemon_error_payload,
     to_plugin_daemon_jsonable,
     unwrap_plugin_daemon_error,
 )
 
-_DEFAULT_DAEMON_TIMEOUT: float | httpx.Timeout | None = 600.0
+
+class DifyLLMClient(Protocol):
+    """Transport contract consumed by the Pydantic AI model adapter."""
+
+    http_client: httpx.AsyncClient
+
+    def iter_llm_result_chunks(
+        self,
+        *,
+        provider: str,
+        model: str,
+        prompt_messages: list[PromptMessage],
+        model_parameters: dict[str, object],
+        tools: list[PromptMessageTool] | None,
+        stop: list[str] | None,
+        stream: bool,
+    ) -> AsyncIterator[LLMResultChunk]: ...
 
 
 class PluginDaemonBasicResponse(BaseModel):
@@ -37,160 +57,139 @@ class PluginDaemonBasicResponse(BaseModel):
 
 
 @dataclass(slots=True)
-class DifyPluginDaemonLLMClient:
-    """HTTP client wrapper for plugin-daemon LLM dispatch requests."""
+class DifyApiLLMClient:
+    """HTTP client for the API-owned Agent LLM metering gateway."""
 
-    plugin_daemon_url: str
-    plugin_daemon_api_key: str
-    tenant_id: str
     plugin_id: str
-    user_id: str | None
+    inner_api_url: str
+    inner_api_key: str = field(repr=False)
+    execution_context: DifyExecutionContextLayerConfig
+    agent_run_id: str
     http_client: httpx.AsyncClient = field(repr=False)
+    _call_counter: count[int] = field(default_factory=lambda: count(1), init=False, repr=False)
 
     def __post_init__(self) -> None:
-        self.plugin_daemon_url = self.plugin_daemon_url.rstrip("/")
+        self.inner_api_url = self.inner_api_url.rstrip("/")
 
     async def iter_llm_result_chunks(
         self,
         *,
         provider: str,
         model: str,
-        credentials: dict[str, object],
         prompt_messages: list[PromptMessage],
         model_parameters: dict[str, object],
         tools: list[PromptMessageTool] | None,
         stop: list[str] | None,
         stream: bool,
     ) -> AsyncIterator[LLMResultChunk]:
-        async for item in self._iter_stream_response(
-            model_name=model,
-            path=f"plugin/{self.tenant_id}/dispatch/llm/invoke",
-            request_data={
-                "provider": provider,
-                "model_type": "llm",
-                "model": model,
-                "credentials": credentials,
-                "prompt_messages": prompt_messages,
-                "model_parameters": model_parameters,
-                "tools": tools,
-                "stop": stop,
-                "stream": stream,
-            },
-            response_model=LLMResultChunk,
-        ):
-            yield item
+        call_index = next(self._call_counter)
+        invocation_id = str(uuid5(NAMESPACE_URL, f"dify-agent:{self.agent_run_id}:llm:{call_index}"))
+        context = self.execution_context
+        missing = [
+            field_name
+            for field_name, value in (
+                ("user_id", context.user_id),
+                ("user_from", context.user_from),
+                ("app_id", context.app_id),
+            )
+            if value is None
+        ]
+        if missing:
+            raise UserError(f"Agent LLM Gateway requires execution context fields: {', '.join(missing)}")
 
-    async def _iter_stream_response[T: BaseModel](
-        self,
-        *,
-        model_name: str,
-        path: str,
-        request_data: Mapping[str, object],
-        response_model: type[T],
-    ) -> AsyncIterator[T]:
-        payload: dict[str, object] = {"data": to_plugin_daemon_jsonable(request_data)}
-        if self.user_id is not None:
-            payload["user_id"] = self.user_id
-
+        caller = context.model_dump(mode="json")
+        caller.update(
+            {
+                "invocation_id": invocation_id,
+                "agent_run_id": self.agent_run_id,
+                "call_index": call_index,
+            }
+        )
+        provider_id = provider if provider.count("/") == 2 else f"{self.plugin_id}/{provider}"
+        payload = to_plugin_daemon_jsonable(
+            {
+                "caller": caller,
+                "target": {
+                    "provider": provider_id,
+                    "model": model,
+                    "prompt_messages": prompt_messages,
+                    "model_parameters": model_parameters,
+                    "tools": tools,
+                    "stop": stop,
+                    "stream": stream,
+                },
+            }
+        )
+        url = f"{self.inner_api_url}/inner/api/agent/llm/invoke"
         headers = {
-            "X-Api-Key": self.plugin_daemon_api_key,
-            "X-Plugin-ID": self.plugin_id,
+            "X-Inner-Api-Key": self.inner_api_key,
             "Content-Type": "application/json",
         }
-        url = f"{self.plugin_daemon_url}/{path}"
 
-        async with self.http_client.stream("POST", url, headers=headers, json=payload) as response:
-            if response.is_error:
-                body = (await response.aread()).decode("utf-8", errors="replace")
-                error = decode_plugin_daemon_error_payload(body)
-                if error is not None:
-                    resolved_error = unwrap_plugin_daemon_error(
-                        error_type=error["error_type"],
-                        message=error["message"],
-                    )
-                    _raise_plugin_daemon_error(
-                        model_name=model_name,
-                        error_type=resolved_error["error_type"],
-                        message=resolved_error["message"],
+        try:
+            async with self.http_client.stream("POST", url, headers=headers, json=payload) as response:
+                if response.is_error:
+                    body = (await response.aread()).decode("utf-8", errors="replace")
+                    _raise_agent_gateway_http_error(
+                        model_name=model,
                         status_code=response.status_code,
-                        body=resolved_error,
+                        body=body,
                     )
-                raise ModelHTTPError(response.status_code, model_name, body or None)
 
-            async for raw_line in response.aiter_lines():
-                line = raw_line.strip()
-                if not line:
-                    continue
-                if line.startswith("data:"):
-                    line = line[5:].strip()
-
-                wrapped = PluginDaemonBasicResponse.model_validate_json(line)
-                if wrapped.code != 0:
-                    error = decode_plugin_daemon_error_payload(wrapped.message)
-                    if error is not None:
-                        resolved_error = unwrap_plugin_daemon_error(
-                            error_type=error["error_type"],
-                            message=error["message"],
-                        )
-                        _raise_plugin_daemon_error(
-                            model_name=model_name,
-                            error_type=resolved_error["error_type"],
-                            message=resolved_error["message"],
-                            body=resolved_error,
-                        )
-                    raise ModelAPIError(
-                        model_name,
-                        f"Plugin daemon returned error code {wrapped.code}: {wrapped.message}",
-                    )
-                if wrapped.data is None:
-                    raise UnexpectedModelBehavior("Plugin daemon returned an empty stream item")
-                yield response_model.model_validate(wrapped.data)
+                async for raw_line in response.aiter_lines():
+                    line = raw_line.strip()
+                    if not line:
+                        continue
+                    if line.startswith("data:"):
+                        line = line[5:].strip()
+                    wrapped = PluginDaemonBasicResponse.model_validate_json(line)
+                    if wrapped.code != 0:
+                        error = decode_plugin_daemon_error_payload(wrapped.message)
+                        if error is not None:
+                            resolved_error = unwrap_plugin_daemon_error(
+                                error_type=error["error_type"],
+                                message=error["message"],
+                            )
+                            _raise_plugin_daemon_error(
+                                model_name=model,
+                                error_type=resolved_error["error_type"],
+                                message=resolved_error["message"],
+                                body=resolved_error,
+                            )
+                        raise ModelAPIError(model, wrapped.message)
+                    if wrapped.data is None:
+                        raise UnexpectedModelBehavior("Agent LLM Gateway returned an empty stream item")
+                    yield LLMResultChunk.model_validate(wrapped.data)
+        except (httpx.InvalidURL, httpx.UnsupportedProtocol) as exc:
+            raise UserError(f"Agent LLM Gateway is misconfigured: {exc}") from exc
+        except httpx.TimeoutException as exc:
+            raise ModelHTTPError(504, model, "Agent LLM Gateway timed out") from exc
+        except httpx.RequestError as exc:
+            raise ModelHTTPError(503, model, f"Agent LLM Gateway request failed: {exc}") from exc
 
 
 @dataclass(slots=True, kw_only=True)
-class DifyPluginDaemonProvider(Provider[DifyPluginDaemonLLMClient]):
-    """Pydantic AI provider for Dify plugin-daemon dispatch requests.
+class DifyApiLLMProvider(Provider[DifyLLMClient]):
+    """Pydantic AI provider backed by Dify API's metered model gateway."""
 
-    The provider ``name`` identifies the daemon/plugin context. The business LLM
-    provider is supplied by each adapter model request so one daemon provider can
-    serve different model-provider selections without mutating transport state.
-    When ``http_client`` is omitted the provider owns an ``AsyncClient`` and the
-    Pydantic AI provider context manager closes it. When an external client is
-    supplied, ownership stays with the caller and provider exit leaves it open.
-    """
-
-    tenant_id: str
     plugin_id: str
-    plugin_daemon_url: str
-    plugin_daemon_api_key: str = field(repr=False)
-    user_id: str | None = None
-    timeout: float | httpx.Timeout | None = _DEFAULT_DAEMON_TIMEOUT
-    http_client: httpx.AsyncClient | None = field(default=None, repr=False)
-    _client: DifyPluginDaemonLLMClient = field(init=False, repr=False)
-    _own_http_client: httpx.AsyncClient | None = field(init=False, default=None, repr=False)
-    _http_client_factory: Callable[[], httpx.AsyncClient] | None = field(init=False, default=None, repr=False)
+    inner_api_url: str
+    inner_api_key: str = field(repr=False)
+    execution_context: DifyExecutionContextLayerConfig
+    agent_run_id: str
+    http_client: httpx.AsyncClient = field(repr=False)
+    _client: DifyLLMClient = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
-        self.plugin_daemon_url = self.plugin_daemon_url.rstrip("/")
-        if self.http_client is None:
-            self._http_client_factory = self._make_http_client
-            http_client = self._make_http_client()
-            self._own_http_client = http_client
-        else:
-            http_client = self.http_client
-            self._own_http_client = None
-            self._http_client_factory = None
-        self._client = DifyPluginDaemonLLMClient(
-            plugin_daemon_url=self.plugin_daemon_url,
-            plugin_daemon_api_key=self.plugin_daemon_api_key,
-            tenant_id=self.tenant_id,
+        self.inner_api_url = self.inner_api_url.rstrip("/")
+        self._client = DifyApiLLMClient(
             plugin_id=self.plugin_id,
-            user_id=self.user_id,
-            http_client=http_client,
+            inner_api_url=self.inner_api_url,
+            inner_api_key=self.inner_api_key,
+            execution_context=self.execution_context,
+            agent_run_id=self.agent_run_id,
+            http_client=self.http_client,
         )
-
-    def _make_http_client(self) -> httpx.AsyncClient:
-        return httpx.AsyncClient(timeout=self.timeout, trust_env=False)
 
     @override
     def _set_http_client(self, http_client: httpx.AsyncClient) -> None:
@@ -199,17 +198,31 @@ class DifyPluginDaemonProvider(Provider[DifyPluginDaemonLLMClient]):
     @property
     @override
     def name(self) -> str:
-        return f"DifyPlugin/{self.plugin_id}"
+        return f"DifyAPI/{self.plugin_id}"
 
     @property
     @override
     def base_url(self) -> str:
-        return self.plugin_daemon_url
+        return self.inner_api_url
 
     @property
     @override
-    def client(self) -> DifyPluginDaemonLLMClient:
+    def client(self) -> DifyLLMClient:
         return self._client
+
+
+def _raise_agent_gateway_http_error(*, model_name: str, status_code: int, body: str) -> NoReturn:
+    message = body or f"Agent LLM Gateway returned HTTP {status_code}"
+    try:
+        payload = cast(object, json.loads(body))
+    except json.JSONDecodeError:
+        payload = None
+    if isinstance(payload, dict):
+        typed_payload = cast(dict[str, object], payload)
+        candidate = typed_payload.get("message") or typed_payload.get("description")
+        if isinstance(candidate, str) and candidate:
+            message = candidate
+    raise ModelHTTPError(status_code, model_name, message)
 
 
 def _raise_plugin_daemon_error(
@@ -239,6 +252,8 @@ def _raise_plugin_daemon_error(
         case "PluginDaemonNotFoundError" | "PluginNotFoundError":
             raise ModelHTTPError(status_code or 404, model_name, http_error_body)
         case "InvokeRateLimitError":
+            raise ModelHTTPError(status_code or 429, model_name, http_error_body)
+        case "AgentLLMQuotaExceededError" | "QuotaExceededError":
             raise ModelHTTPError(status_code or 429, model_name, http_error_body)
         case "PluginDaemonInternalServerError" | "PluginDaemonInnerError":
             raise ModelHTTPError(status_code or 500, model_name, http_error_body)

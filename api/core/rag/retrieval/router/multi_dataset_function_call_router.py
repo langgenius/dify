@@ -1,12 +1,15 @@
 from typing import Union
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
+from core.credit_usage import CreditUsageCreatedBy
+from core.model_context import with_credit_usage_created_by
 from core.model_manager import ModelInstance
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from graphon.model_runtime.entities.message_entities import PromptMessageTool, SystemPromptMessage, UserPromptMessage
 
 
 class FunctionCallMultiDatasetRouter:
+    @with_credit_usage_created_by(CreditUsageCreatedBy.KNOWLEDGE_RETRIEVAL)
     def invoke(
         self,
         query: str,

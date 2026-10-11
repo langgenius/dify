@@ -4,6 +4,7 @@ import type { ToolParameter } from '@/app/components/tools/types'
 import type { ToolDefaultValue, ToolValue } from '@/app/components/workflow/block-selector/types'
 import type { ResourceVarInputs } from '@/app/components/workflow/nodes/_base/types'
 import { useCallback, useMemo, useState } from 'react'
+import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { CollectionType } from '@/app/components/tools/types'
 import {
   generateFormValue,
@@ -20,6 +21,7 @@ import {
   useInvalidateAllBuiltInTools,
 } from '@/service/use-tools'
 import { getIconFromMarketPlace } from '@/utils/get-icon'
+import { matchesProviderReference } from '@/utils/provider-reference'
 import { usePluginInstalledCheck } from './use-plugin-installed-check'
 
 export type TabType = 'settings' | 'params'
@@ -53,7 +55,10 @@ export function useToolSelector({ value, onSelect, onSelectMultiple }: UseToolSe
       ...(workflowTools || []),
       ...(mcpTools || []),
     ]
-    return mergedTools.find((toolWithProvider) => toolWithProvider.id === value?.provider_name)
+    // Historical shape: ``provider_name`` stores the provider reference, not a name.
+    return mergedTools.find((toolWithProvider) =>
+      matchesProviderReference(toolWithProvider, value?.provider_name),
+    )
   }, [value, buildInTools, customTools, workflowTools, mcpTools])
   const areToolProvidersSettled = [
     buildInToolsQuery,
@@ -245,7 +250,7 @@ export function useToolSelector({ value, onSelect, onSelectMultiple }: UseToolSe
       console.error('Failed to invalidate built-in tools cache', error)
     }
     try {
-      await invalidateInstalledPluginList()
+      await invalidateInstalledPluginList(PluginCategoryEnum.tool)
     } catch (error) {
       console.error('Failed to invalidate installed plugin list cache', error)
     }

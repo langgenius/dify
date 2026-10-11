@@ -20,7 +20,6 @@ export const DatasetCardTags = ({
   canBindOrUnbindTags,
 }: DatasetCardTagsProps) => (
   <TagSelector
-    placement="bottom-start"
     type="knowledge"
     targetId={datasetId}
     value={tags}

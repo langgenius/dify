@@ -8,7 +8,7 @@ WorkflowNodeExecutionModel operations using Aliyun SLS LogStore.
 import logging
 import time
 from collections.abc import Mapping, Sequence
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any, override
 
 from sqlalchemy.orm import sessionmaker
@@ -17,6 +17,7 @@ from extensions.logstore.aliyun_logstore import AliyunLogStore
 from extensions.logstore.repositories import safe_float, safe_int
 from extensions.logstore.sql_escape import escape_identifier, escape_logstore_query_value
 from graphon.enums import WorkflowNodeExecutionStatus
+from libs.datetime_utils import ensure_naive_utc, naive_utc_now
 from models.enums import CreatorUserRole
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
 from repositories.api_workflow_node_execution_repository import DifyAPIWorkflowNodeExecutionRepository
@@ -86,28 +87,29 @@ def _dict_to_workflow_node_execution_model(data: dict[str, Any]) -> WorkflowNode
     model.execution_metadata = data.get("execution_metadata")
 
     # Handle datetime fields
+    # Every branch must yield naive UTC, matching what the database path stores.
     created_at = data.get("created_at")
     match created_at:
         case None:
             # Provide default created_at if missing
-            model.created_at = datetime.now()
+            model.created_at = naive_utc_now()
         case str():
-            model.created_at = datetime.fromisoformat(created_at)
+            model.created_at = ensure_naive_utc(datetime.fromisoformat(created_at))
         case int() | float():
-            model.created_at = datetime.fromtimestamp(created_at)
+            model.created_at = datetime.fromtimestamp(created_at, tz=UTC).replace(tzinfo=None)
         case _:
-            model.created_at = created_at
+            model.created_at = ensure_naive_utc(created_at)
 
     finished_at = data.get("finished_at")
     match finished_at:
         case None:
             ...
         case str():
-            model.finished_at = datetime.fromisoformat(finished_at)
+            model.finished_at = ensure_naive_utc(datetime.fromisoformat(finished_at))
         case int() | float():
-            model.finished_at = datetime.fromtimestamp(finished_at)
+            model.finished_at = datetime.fromtimestamp(finished_at, tz=UTC).replace(tzinfo=None)
         case _:
-            model.finished_at = finished_at
+            model.finished_at = ensure_naive_utc(finished_at)
 
     return model
 

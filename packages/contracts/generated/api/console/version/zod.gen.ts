@@ -3,20 +3,9 @@
 import * as z from 'zod'
 
 /**
- * VersionFeatures
- */
-export const zVersionFeatures = z.object({
-  can_replace_logo: z.boolean(),
-  model_load_balancing_enabled: z.boolean(),
-})
-
-/**
  * VersionResponse
  */
 export const zVersionResponse = z.object({
-  can_auto_update: z.boolean(),
-  features: zVersionFeatures,
-  release_date: z.string(),
   release_notes: z.string(),
   version: z.string(),
 })

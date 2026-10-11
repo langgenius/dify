@@ -1,6 +1,10 @@
 import os
 import subprocess
+from dataclasses import replace
 from pathlib import Path
+from unittest.mock import MagicMock
+
+import pytest
 
 from tests.pytest_dify import (
     DEFAULT_LOG_FORMAT,
@@ -106,12 +110,65 @@ def test_builders_use_expected_compose_files(tmp_path: Path):
     middleware = build_middleware_stack(tmp_path, ["db_postgres"])
     vdb = build_vdb_stack(tmp_path, ["weaviate", "qdrant"])
 
-    assert middleware.compose_files == (tmp_path / "docker" / "docker-compose.middleware.yaml",)
+    assert middleware.compose_files == (
+        tmp_path / "docker" / "docker-compose.middleware.yaml",
+        tmp_path / "docker" / "docker-compose.pytest.middleware.yaml",
+    )
     assert middleware.env_file == tmp_path / "docker" / "middleware.env"
-    assert middleware.ready_delay_seconds == 5.0
+    assert middleware.warmup_urls == ("http://127.0.0.1:8194/health",)
     assert vdb.compose_files == (
         tmp_path / "docker" / "docker-compose.yaml",
         tmp_path / "docker" / "docker-compose.pytest.ports.yaml",
     )
     assert vdb.env_file == tmp_path / "docker" / ".env"
     assert vdb.profiles == ("weaviate", "qdrant")
+
+
+@pytest.mark.parametrize(
+    ("timeout", "expected_suffix"), [(None, ["down"]), (0, ["down", "--timeout", "0"]), (2, ["down", "--timeout", "2"])]
+)
+def test_stack_down_preserves_default_or_uses_explicit_timeout(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, timeout: int | None, expected_suffix: list[str]
+) -> None:
+    calls = []
+    monkeypatch.setattr(subprocess, "run", lambda args, **kwargs: calls.append((args, kwargs)))
+    stack = replace(
+        build_middleware_stack(tmp_path, ["db_postgres"]),
+        shutdown_timeout_seconds=timeout,
+    )
+
+    stack.down()
+
+    assert calls == [(stack._compose_command() + expected_suffix, {"cwd": tmp_path, "check": True})]
+    assert build_vdb_stack(tmp_path, ["weaviate"]).shutdown_timeout_seconds is None
+
+
+def test_stack_down_propagates_failure(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    failure = subprocess.CalledProcessError(1, ["docker", "compose", "down"])
+
+    def fail_run(*args: object, **kwargs: object) -> None:
+        raise failure
+
+    monkeypatch.setattr(subprocess, "run", fail_run)
+    stack = build_middleware_stack(tmp_path, ["redis"])
+
+    with pytest.raises(subprocess.CalledProcessError) as exc:
+        stack.down()
+
+    assert exc.value is failure
+
+
+def test_healthy_middleware_still_checks_http_readiness_without_fixed_sleep(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setattr(subprocess, "run", lambda args, **_kwargs: subprocess.CompletedProcess(args=args, returncode=0))
+    sleep = MagicMock()
+    monkeypatch.setattr("time.sleep", sleep)
+    urlopen = MagicMock()
+    urlopen.return_value.__enter__.return_value.status = 200
+    monkeypatch.setattr("urllib.request.urlopen", urlopen)
+
+    build_middleware_stack(tmp_path, ["redis", "sandbox"]).up()
+
+    urlopen.assert_called_once_with("http://127.0.0.1:8194/health", timeout=5)
+    sleep.assert_not_called()

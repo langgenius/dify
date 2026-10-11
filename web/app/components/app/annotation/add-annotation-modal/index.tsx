@@ -6,19 +6,23 @@ import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import {
   Drawer,
   DrawerBackdrop,
-  DrawerCloseButton,
+  DrawerClose,
   DrawerContent,
   DrawerPopup,
   DrawerPortal,
   DrawerTitle,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
-import { toast } from '@langgenius/dify-ui/toast'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { useQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AnnotationFull from '@/app/components/billing/annotation-full'
-import { useProviderContext } from '@/context/provider-context'
+import { toast } from '@/app/notifications'
+import { deploymentEditionAtom } from '@/features/system-features/state'
+import { consoleQuery } from '@/service/console'
 import EditItem, { EditItemType } from './edit-item'
 
 type Props = Readonly<{
@@ -28,10 +32,22 @@ type Props = Readonly<{
 }>
 
 const AddAnnotationModal: FC<Props> = ({ isShow, onHide, onAdd }) => {
-  const { t } = useTranslation()
-  const { plan, enableBilling } = useProviderContext()
+  const { t } = useTranslation(['appAnnotation', 'common'])
+  const deploymentEdition = useAtomValue(deploymentEditionAtom)
+  const { data: annotationQuota } = useQuery(
+    consoleQuery.features.get.queryOptions({
+      enabled: deploymentEdition === 'CLOUD',
+      select: (data) => data.annotation_quota_limit,
+    }),
+  )
+  const isAnnotationQuotaUnavailable =
+    deploymentEdition === 'CLOUD' && annotationQuota === undefined
+  // A limit of 0 means unlimited.
   const isAnnotationFull =
-    enableBilling && plan.usage.annotatedResponse >= plan.total.annotatedResponse
+    deploymentEdition === 'CLOUD' &&
+    annotationQuota !== undefined &&
+    annotationQuota.limit > 0 &&
+    annotationQuota.size >= annotationQuota.limit
   const [question, setQuestion] = useState('')
   const [answer, setAnswer] = useState('')
   const [isCreateNext, setIsCreateNext] = useState(false)
@@ -46,6 +62,7 @@ const AddAnnotationModal: FC<Props> = ({ isShow, onHide, onAdd }) => {
   }
 
   const handleSave = async () => {
+    if (isAnnotationQuotaUnavailable || isAnnotationFull) return
     const payload = {
       question,
       answer,
@@ -91,9 +108,15 @@ const AddAnnotationModal: FC<Props> = ({ isShow, onHide, onAdd }) => {
                     <DrawerTitle className="min-w-0 truncate system-xl-semibold text-text-primary">
                       {t(($) => $['addModal.title'], { ns: 'appAnnotation' })}
                     </DrawerTitle>
-                    <DrawerCloseButton
-                      aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                      className="size-6 rounded-md"
+                    <DrawerClose
+                      render={
+                        <IconButton
+                          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                          size="md"
+                        >
+                          <span aria-hidden="true" className="i-ri-close-line size-4" />
+                        </IconButton>
+                      }
                     />
                   </div>
                 </div>
@@ -123,7 +146,7 @@ const AddAnnotationModal: FC<Props> = ({ isShow, onHide, onAdd }) => {
                         variant="primary"
                         onClick={handleSave}
                         loading={isSaving}
-                        disabled={isAnnotationFull}
+                        disabled={isAnnotationQuotaUnavailable || isAnnotationFull}
                       >
                         {t(($) => $['operation.add'], { ns: 'common' })}
                       </Button>

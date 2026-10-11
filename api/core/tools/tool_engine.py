@@ -88,7 +88,7 @@ class ToolEngine:
 
             def message_callback(
                 invocation_meta_dict: dict[str, ToolInvokeMeta],
-                messages: Generator[ToolInvokeMessage | ToolInvokeMeta, None, None],
+                messages: Generator[ToolInvokeMessage | ToolInvokeMeta],
             ):
                 for message in messages:
                     if isinstance(message, ToolInvokeMeta):
@@ -167,7 +167,7 @@ class ToolEngine:
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
-    ) -> Generator[ToolInvokeMessage, None, None]:
+    ) -> Generator[ToolInvokeMessage]:
         """
         Workflow invokes the tool with the given arguments.
         """
@@ -211,7 +211,7 @@ class ToolEngine:
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
-    ) -> Generator[ToolInvokeMessage | ToolInvokeMeta, None, None]:
+    ) -> Generator[ToolInvokeMessage | ToolInvokeMeta]:
         """
         Invoke the tool with the given arguments.
         """
@@ -273,15 +273,22 @@ class ToolEngine:
 
         # Add JSON parts, avoiding duplicates from text parts.
         if json_parts:
-            existing_parts = set(parts)
-            parts.extend(p for p in json_parts if p not in existing_parts)
+
+            def normalize_json(text: str) -> str:
+                try:
+                    return json.dumps(json.loads(text), ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+                except (ValueError, RecursionError):
+                    return text
+
+            existing_parts = {normalize_json(p) for p in parts}
+            parts.extend(p for p in json_parts if normalize_json(p) not in existing_parts)
 
         return "".join(parts)
 
     @staticmethod
     def _extract_tool_response_binary_and_text(
         tool_response: list[ToolInvokeMessage],
-    ) -> Generator[ToolInvokeMessageBinary, None, None]:
+    ) -> Generator[ToolInvokeMessageBinary]:
         """
         Extract tool response binary
         """

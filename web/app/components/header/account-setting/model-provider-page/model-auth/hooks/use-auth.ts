@@ -6,13 +6,13 @@ import type {
   ModelModalModeEnum,
   ModelProvider,
 } from '../../declarations'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   useModelModalHandler,
   useRefreshModel,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { toast } from '@/app/notifications'
 import { useDeleteModel } from '@/service/use-models'
 import { useAuthService } from './use-auth-service'
 
@@ -38,7 +38,7 @@ export const useAuth = (
   } = {},
 ) => {
   const { isModelCredential, onUpdate, onRemove, mode } = extra
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const {
     getDeleteCredentialService,
     getActiveCredentialService,
@@ -158,7 +158,6 @@ export const useAuth = (
         }
         await deleteModelService(payload)
       }
-      toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
       handleRefreshModel(provider, undefined, true)
       onRemove?.(pendingOperationCredentialId.current ?? '')
       closeConfirmDelete()
@@ -166,7 +165,6 @@ export const useAuth = (
       handleSetDoingAction(false)
     }
   }, [
-    t,
     handleSetDoingAction,
     getDeleteCredentialService,
     isModelCredential,

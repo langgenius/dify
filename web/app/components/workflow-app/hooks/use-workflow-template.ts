@@ -13,7 +13,7 @@ import { useIsChatMode } from './use-is-chat-mode'
 export const useWorkflowTemplate = () => {
   const isChatMode = useIsChatMode()
   const appDetail = useAppStore((s) => s.appDetail)
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
 
   const createStartNode = () => {
     const { newNode: startNode } = generateNewNode({

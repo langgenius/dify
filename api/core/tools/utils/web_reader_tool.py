@@ -1,6 +1,5 @@
 import mimetypes
 import re
-from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
 from urllib.parse import unquote
@@ -101,15 +100,24 @@ def get_url(url: str, user_agent: str | None = None) -> str:
 class Article:
     title: str
     author: str
-    text: Sequence[dict]
+    text: str
 
 
 def extract_using_readabilipy(html: str):
     json_article: dict[str, Any] = simple_json_from_html_string(html, use_readability=False)
+    # readabilipy returns plain_text as a list of dicts whose "text" values
+    # contain the (possibly HTML-tagged) paragraph content; flatten them into
+    # a single clean text block.
+    plain_text = json_article.get("plain_text") or []
+    text = "\n".join(
+        stripped
+        for item in plain_text
+        if isinstance(item, dict) and (stripped := re.sub(r"<[^>]+>", "", str(item.get("text") or "")).strip())
+    )
     article = Article(
         title=json_article.get("title") or "",
         author=json_article.get("byline") or "",
-        text=json_article.get("plain_text") or [],
+        text=text,
     )
 
     return article

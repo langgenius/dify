@@ -5,7 +5,6 @@ from decimal import Decimal
 import pytest
 from sqlalchemy.orm import Session
 
-import core.ops.utils as utils_module
 from core.ops.utils import (
     filter_none_values,
     generate_dotted_order,
@@ -19,30 +18,21 @@ from core.ops.utils import (
 )
 from models.enums import ConversationFromSource
 from models.model import Message
-
-
-class _DatabaseBinding:
-    """Expose the real SQLite session used by the message lookup helper."""
-
-    session: Session
-
-    def __init__(self, session: Session) -> None:
-        self.session = session
+from tests.unit_tests.model_factories import make_message
 
 
 @pytest.fixture
-def message_session(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> Session:
-    """Bind the message lookup helper to the shared SQLite test session."""
-
-    monkeypatch.setattr(utils_module, "db", _DatabaseBinding(sqlite_session))
+def message_session(sqlite_session: Session) -> Session:
+    """Provide the shared SQLite test session for message lookups."""
     return sqlite_session
 
 
 def _message(message_id: str) -> Message:
-    message = Message(
-        id=message_id,
+    return make_message(
+        message_id=message_id,
         app_id="app-id",
         conversation_id="conversation-id",
+        inputs={},
         query="question",
         message={"role": "user", "content": "question"},
         answer="answer",
@@ -51,8 +41,6 @@ def _message(message_id: str) -> Message:
         currency="USD",
         from_source=ConversationFromSource.API,
     )
-    message._inputs = {}
-    return message
 
 
 class TestValidateUrl:
@@ -154,6 +142,30 @@ class TestValidateUrlWithPath:
         """Test URL without scheme raises ValueError"""
         with pytest.raises(ValueError, match="URL must start with https:// or http://"):
             validate_url_with_path("example.com", "https://default.com")
+
+    def test_restricted_scheme_accepts_allowed_scheme(self):
+        """Test https-only validation keeps the path of an https URL"""
+        result = validate_url_with_path(
+            "https://langsmith.internal/api", "https://default.com", allowed_schemes=("https",)
+        )
+        assert result == "https://langsmith.internal/api"
+
+    def test_restricted_scheme_rejects_http(self):
+        """Test https-only validation rejects http and names only https in the error"""
+        with pytest.raises(ValueError) as excinfo:
+            validate_url_with_path("http://langsmith.internal/api", "https://default.com", allowed_schemes=("https",))
+        assert str(excinfo.value) == "URL must start with https://"
+
+    def test_default_schemes_keep_original_error_message(self):
+        """Test the two-scheme default keeps the exact message existing providers assert on"""
+        with pytest.raises(ValueError) as excinfo:
+            validate_url_with_path("ftp://example.com", "https://default.com")
+        assert str(excinfo.value) == "URL must start with https:// or http://"
+
+    def test_surrounding_whitespace_is_stripped(self):
+        """Test surrounding whitespace is removed while the path is preserved"""
+        result = validate_url_with_path("  https://example.com/api/v1  ", "https://default.com")
+        assert result == "https://example.com/api/v1"
 
 
 class TestValidateProjectName:
@@ -268,7 +280,7 @@ class TestGetMessageData:
         message_session.add_all((target, unrelated))
         message_session.commit()
 
-        result = get_message_data("message-id")
+        result = get_message_data("message-id", message_session)
 
         assert result is target
         assert result.id == "message-id"

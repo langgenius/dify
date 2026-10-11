@@ -1,19 +1,20 @@
+import type { Ref } from 'react'
 import type { ConversationItem } from '@/models/share'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import AppIcon from '@/app/components/base/app-icon'
 import List from '@/app/components/base/chat/chat-with-history/sidebar/list'
 import RenameModal from '@/app/components/base/chat/chat-with-history/sidebar/rename-modal'
@@ -23,12 +24,13 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useChatWithHistoryContext } from '../context'
 
 type Props = Readonly<{
+  toggleButtonRef?: Ref<HTMLButtonElement>
   isPanel?: boolean
   panelVisible?: boolean
 }>
 
-const Sidebar = ({ isPanel }: Props) => {
-  const { t } = useTranslation()
+const Sidebar = ({ isPanel, toggleButtonRef }: Props) => {
+  const { t } = useTranslation(['common', 'layout', 'share'])
   const {
     isInstalledApp,
     appData,
@@ -106,14 +108,23 @@ const Sidebar = ({ isPanel }: Props) => {
           {appData?.site.title}
         </div>
         {!isMobile && isSidebarCollapsed && (
-          <ActionButton size="l" onClick={() => handleSidebarCollapse(false)}>
+          <IconButton
+            aria-label={t(($) => $['sidebar.expandSidebar'], { ns: 'layout' })}
+            size="lg"
+            onClick={() => handleSidebarCollapse(false)}
+          >
             <span aria-hidden className="i-ri-expand-right-line h-4.5 w-4.5" />
-          </ActionButton>
+          </IconButton>
         )}
         {!isMobile && !isSidebarCollapsed && (
-          <ActionButton size="l" onClick={() => handleSidebarCollapse(true)}>
+          <IconButton
+            ref={toggleButtonRef}
+            aria-label={t(($) => $['sidebar.collapseSidebar'], { ns: 'layout' })}
+            size="lg"
+            onClick={() => handleSidebarCollapse(true)}
+          >
             <span aria-hidden className="i-ri-layout-left-2-line h-4.5 w-4.5" />
-          </ActionButton>
+          </IconButton>
         )}
       </div>
       <div className="shrink-0 px-3 py-4">
@@ -192,14 +203,14 @@ const Sidebar = ({ isPanel }: Props) => {
                 {deleteConversationContent}
               </AlertDialogDescription>
             </div>
-            <AlertDialogActions>
+            <AlertDialogFooter>
               <AlertDialogCancelButton>
                 {t(($) => $['operation.cancel'], { ns: 'common' })}
               </AlertDialogCancelButton>
               <AlertDialogConfirmButton onClick={handleDelete}>
                 {t(($) => $['operation.confirm'], { ns: 'common' })}
               </AlertDialogConfirmButton>
-            </AlertDialogActions>
+            </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
         {showRename && (

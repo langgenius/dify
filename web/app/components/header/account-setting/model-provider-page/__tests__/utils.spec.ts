@@ -1,10 +1,9 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import { FormTypeEnum, ModelTypeEnum } from '../declarations'
 import {
   genModelNameFormSchema,
   genModelTypeFormSchema,
   modelTypeFormat,
-  providerToPluginId,
   sizeFormat,
 } from '../utils'
 
@@ -20,16 +19,6 @@ describe('utils', () => {
 
     it('should format size greater than 1000', () => {
       expect(sizeFormat(1500)).toBe('1K')
-    })
-  })
-
-  describe('providerToPluginId', () => {
-    it('should return the plugin id prefix when the provider key contains a provider segment', () => {
-      expect(providerToPluginId('langgenius/openai/openai')).toBe('langgenius/openai')
-    })
-
-    it('should return an empty string when the provider key has no plugin prefix', () => {
-      expect(providerToPluginId('openai')).toBe('')
     })
   })
 

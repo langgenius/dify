@@ -11,7 +11,7 @@ from core.tools.tool_file_manager import ToolFileManager
 from core.workflow.node_factory import DifyNodeFactory
 from core.workflow.node_runtime import DifyFileReferenceFactory
 from core.workflow.system_variables import build_system_variables
-from graphon.enums import WorkflowNodeExecutionStatus
+from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
 from graphon.file.file_manager import file_manager
 from graphon.graph import Graph
 from graphon.nodes.http_request import HttpRequestNode, HttpRequestNodeConfig, HttpRequestNodeData
@@ -193,7 +193,6 @@ def test_custom_authorization_header(setup_http_mock):
 def test_custom_auth_with_empty_api_key_raises_error(setup_http_mock):
     """Test: In custom authentication mode, when the api_key is empty, AuthorizationConfigError should be raised."""
     from core.workflow.system_variables import build_system_variables
-    from graphon.enums import BuiltinNodeTypes
     from graphon.nodes.http_request.entities import (
         HttpRequestNodeAuthorization,
         HttpRequestNodeData,

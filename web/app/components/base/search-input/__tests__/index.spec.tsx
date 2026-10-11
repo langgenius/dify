@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { createRef, useState } from 'react'
 import { SearchInput } from '..'
 
@@ -26,11 +27,34 @@ describe('SearchInput', () => {
       expect(screen.getByRole('searchbox', { name: 'Search providers' })).toBeInTheDocument()
     })
 
+    it('uses a custom form name', () => {
+      render(<SearchInput name="provider-query" value="" onValueChange={() => {}} />)
+      expect(screen.getByRole('searchbox')).toHaveAttribute('name', 'provider-query')
+    })
+
     it('exposes the input element through its ref', () => {
       const ref = createRef<HTMLInputElement>()
       render(<SearchInput ref={ref} value="" onValueChange={() => {}} />)
 
       expect(ref.current).toBe(screen.getByRole('searchbox', { name: 'common.operation.search' }))
+    })
+
+    it('cleans up callback refs when the owner replaces the ref or unmounts', () => {
+      const cleanup = vi.fn()
+      const ref = vi.fn(() => cleanup)
+      const nextRef = createRef<HTMLInputElement>()
+      const { rerender, unmount } = render(
+        <SearchInput ref={ref} value="" onValueChange={() => {}} />,
+      )
+      const input = screen.getByRole('searchbox')
+      expect(ref).toHaveBeenCalledWith(input)
+
+      rerender(<SearchInput ref={nextRef} value="" onValueChange={() => {}} />)
+      expect(cleanup).toHaveBeenCalledOnce()
+      expect(nextRef.current).toBe(input)
+
+      unmount()
+      expect(nextRef.current).toBeNull()
     })
 
     it('focuses the searchbox when autoFocus is enabled', () => {
@@ -157,20 +181,23 @@ describe('SearchInput', () => {
       expect(onValueChange).toHaveBeenCalledWith('')
     })
 
-    it('calls onValueChange with empty string when clear button is clicked', () => {
-      const onValueChange = vi.fn()
-      render(<SearchInput value="has value" onValueChange={onValueChange} />)
+    it('clears the value and returns focus to the searchbox', async () => {
+      const user = userEvent.setup()
+
+      function ControlledSearchInput() {
+        const [value, setValue] = useState('has value')
+
+        return <SearchInput value={value} onValueChange={setValue} />
+      }
+
+      render(<ControlledSearchInput />)
 
       const clearButton = screen.getByLabelText('common.operation.clear')
-      fireEvent.click(clearButton)
-      expect(onValueChange).toHaveBeenCalledWith('')
-    })
+      await user.click(clearButton)
 
-    it('uses dify-ui input spacing for the search adornment', () => {
-      render(<SearchInput value="" onValueChange={() => {}} />)
-      const input = screen.getByRole('searchbox', { name: 'common.operation.search' })
-      expect(input).toHaveClass('ps-7')
-      expect(input).not.toHaveClass('h-[18px]')
+      const searchbox = screen.getByRole('searchbox', { name: 'common.operation.search' })
+      expect(searchbox).toHaveValue('')
+      expect(searchbox).toHaveFocus()
     })
   })
 })

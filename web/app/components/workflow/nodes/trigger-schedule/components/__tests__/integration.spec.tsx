@@ -1,4 +1,3 @@
-/* oxlint-disable typescript/no-explicit-any */
 import type { ScheduleTriggerNodeType } from '../../types'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -72,7 +71,9 @@ describe('trigger-schedule components', () => {
       const onChange = vi.fn()
       render(<OnMinuteSelector value={15} onChange={onChange} />)
 
-      const slider = screen.getByLabelText('workflow.nodes.triggerSchedule.onMinute')
+      const slider = screen.getByRole('slider', {
+        name: 'workflowIntegrations.nodes.triggerSchedule.onMinute',
+      })
       slider.focus()
       await user.keyboard('{ArrowRight}')
 
@@ -104,9 +105,11 @@ describe('trigger-schedule components', () => {
       const onChange = vi.fn()
       render(<MonthlyDaysSelector selectedDays={[31]} onChange={onChange} />)
 
-      expect(screen.getByText('workflow.nodes.triggerSchedule.lastDayTooltip')).toBeInTheDocument()
+      expect(
+        screen.getByText('workflowIntegrations.nodes.triggerSchedule.lastDayTooltip'),
+      ).toBeInTheDocument()
 
-      await user.click(screen.getByText('workflow.nodes.triggerSchedule.lastDay'))
+      await user.click(screen.getByText('workflowIntegrations.nodes.triggerSchedule.lastDay'))
 
       expect(onChange).toHaveBeenCalled()
     })
@@ -115,7 +118,7 @@ describe('trigger-schedule components', () => {
       render(<NextExecutionTimes data={createData()} />)
 
       expect(
-        screen.getByText('workflow.nodes.triggerSchedule.nextExecutionTimes'),
+        screen.getByText('workflowIntegrations.nodes.triggerSchedule.nextExecutionTimes'),
       ).toBeInTheDocument()
       expect(screen.getAllByText(/^\d{2}$/).length).toBeGreaterThan(0)
     })

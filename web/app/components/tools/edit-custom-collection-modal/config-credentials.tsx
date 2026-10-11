@@ -5,7 +5,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import {
   Drawer,
   DrawerBackdrop,
-  DrawerCloseButton,
+  DrawerClose,
   DrawerContent,
   DrawerPopup,
   DrawerPortal,
@@ -14,8 +14,10 @@ import {
 } from '@langgenius/dify-ui/drawer'
 import { Field, FieldItem, FieldLabel } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Input } from '@langgenius/dify-ui/input'
-import { Radio, RadioGroup } from '@langgenius/dify-ui/radio'
+import { Radio, RadioGroup } from '@langgenius/dify-ui/radio-group'
 import {
   ScrollArea,
   ScrollAreaContent,
@@ -23,9 +25,8 @@ import {
   ScrollAreaThumb,
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 import { AuthHeaderPrefix, AuthType } from '@/app/components/tools/types'
 
 type Props = Readonly<{
@@ -60,7 +61,14 @@ function SelectItem<Value = string>({ text, value, isChecked }: ItemProps<Value>
 }
 
 export default function ConfigCredential({ positionCenter, credential, onChange, onHide }: Props) {
-  const { t } = useTranslation()
+  const queryLabelId = useId()
+  const headerLabelId = useId()
+
+  const { t } = useTranslation(['common', 'tools'])
+  const apiKeyHeaderInputId = useId()
+  const apiKeyHeaderValueInputId = useId()
+  const apiKeyQueryInputId = useId()
+  const apiKeyQueryValueInputId = useId()
   const [tempCredential, setTempCredential] = useState<Credential>(credential)
   const handleAuthTypeChange = (value: AuthType) => {
     if (value === AuthType.none) {
@@ -112,9 +120,15 @@ export default function ConfigCredential({ positionCenter, credential, onChange,
                   <DrawerTitle className="min-w-0 truncate system-xl-semibold text-text-primary">
                     {t(($) => $['createTool.authMethod.title'], { ns: 'tools' })}
                   </DrawerTitle>
-                  <DrawerCloseButton
-                    aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                    className="size-6 rounded-md"
+                  <DrawerClose
+                    render={
+                      <IconButton
+                        aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                        size="md"
+                      >
+                        <span aria-hidden="true" className="i-ri-close-line size-4" />
+                      </IconButton>
+                    }
                   />
                 </div>
               </div>
@@ -206,18 +220,18 @@ export default function ConfigCredential({ positionCenter, credential, onChange,
                         </Field>
                         <div>
                           <div className="flex items-center py-2 system-sm-medium text-text-primary">
-                            {t(($) => $['createTool.authMethod.key'], { ns: 'tools' })}
-                            <Infotip
-                              aria-label={t(($) => $['createTool.authMethod.keyTooltip'], {
-                                ns: 'tools',
-                              })}
-                              className="ml-0.5 size-4"
-                              popupClassName="w-[261px] text-text-tertiary"
-                            >
-                              {t(($) => $['createTool.authMethod.keyTooltip'], { ns: 'tools' })}
+                            <label id={headerLabelId} htmlFor={apiKeyHeaderInputId}>
+                              {t(($) => $['createTool.authMethod.key'], { ns: 'tools' })}
+                            </label>
+                            <Infotip>
+                              <InfotipTrigger aria-labelledby={headerLabelId} className="ml-0.5" />
+                              <InfotipContent aria-labelledby={headerLabelId} className="w-65.25">
+                                {t(($) => $['createTool.authMethod.keyTooltip'], { ns: 'tools' })}
+                              </InfotipContent>
                             </Infotip>
                           </div>
                           <Input
+                            id={apiKeyHeaderInputId}
                             value={tempCredential.api_key_header}
                             onChange={(e) =>
                               setTempCredential({
@@ -234,10 +248,14 @@ export default function ConfigCredential({ positionCenter, credential, onChange,
                           />
                         </div>
                         <div>
-                          <div className="py-2 system-sm-medium text-text-primary">
+                          <label
+                            htmlFor={apiKeyHeaderValueInputId}
+                            className="block py-2 system-sm-medium text-text-primary"
+                          >
                             {t(($) => $['createTool.authMethod.value'], { ns: 'tools' })}
-                          </div>
+                          </label>
                           <Input
+                            id={apiKeyHeaderValueInputId}
                             value={tempCredential.api_key_value}
                             onChange={(e) =>
                               setTempCredential({
@@ -259,20 +277,20 @@ export default function ConfigCredential({ positionCenter, credential, onChange,
                       <>
                         <div>
                           <div className="flex items-center py-2 system-sm-medium text-text-primary">
-                            {t(($) => $['createTool.authMethod.queryParam'], { ns: 'tools' })}
-                            <Infotip
-                              aria-label={t(($) => $['createTool.authMethod.queryParamTooltip'], {
-                                ns: 'tools',
-                              })}
-                              className="ml-0.5 size-4"
-                              popupClassName="w-[261px] text-text-tertiary"
-                            >
-                              {t(($) => $['createTool.authMethod.queryParamTooltip'], {
-                                ns: 'tools',
-                              })}
+                            <label id={queryLabelId} htmlFor={apiKeyQueryInputId}>
+                              {t(($) => $['createTool.authMethod.queryParam'], { ns: 'tools' })}
+                            </label>
+                            <Infotip>
+                              <InfotipTrigger aria-labelledby={queryLabelId} className="ml-0.5" />
+                              <InfotipContent aria-labelledby={queryLabelId} className="w-65.25">
+                                {t(($) => $['createTool.authMethod.queryParamTooltip'], {
+                                  ns: 'tools',
+                                })}
+                              </InfotipContent>
                             </Infotip>
                           </div>
                           <Input
+                            id={apiKeyQueryInputId}
                             value={tempCredential.api_key_query_param}
                             onChange={(e) =>
                               setTempCredential({
@@ -289,10 +307,14 @@ export default function ConfigCredential({ positionCenter, credential, onChange,
                           />
                         </div>
                         <div>
-                          <div className="py-2 system-sm-medium text-text-primary">
+                          <label
+                            htmlFor={apiKeyQueryValueInputId}
+                            className="block py-2 system-sm-medium text-text-primary"
+                          >
                             {t(($) => $['createTool.authMethod.value'], { ns: 'tools' })}
-                          </div>
+                          </label>
                           <Input
+                            id={apiKeyQueryValueInputId}
                             value={tempCredential.api_key_value}
                             onChange={(e) =>
                               setTempCredential({

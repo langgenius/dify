@@ -1,16 +1,15 @@
 """Normalize uploaded config skills into one canonical ToolFile reference.
 
-Config skills are Agent Soul-backed assets, not drive rows. This service keeps
-the existing skill package validation rules, enforces the requested stable name,
-stores the normalized archive as one ToolFile, and returns the persisted Soul
-reference metadata used by ``AgentConfigService``.
+This service keeps the existing skill package validation rules, enforces the
+requested stable name, stores the normalized archive as one ToolFile, and
+returns the persisted Soul reference metadata used by ``AgentConfigService``.
 """
 
 from __future__ import annotations
 
 from core.tools.tool_file_manager import ToolFileManager
 from models.agent_config_entities import AgentConfigSkillRefConfig, validate_config_skill_name
-from services.agent.skill_package_service import NormalizedSkillPackage, SkillPackageError, SkillPackageService
+from services.agent.skill_package_service import SkillPackageError, SkillPackageService
 
 
 class ConfigSkillNormalizeService:
@@ -33,7 +32,7 @@ class ConfigSkillNormalizeService:
         requested_name: str | None,
         tenant_id: str,
         user_id: str,
-    ) -> tuple[AgentConfigSkillRefConfig, NormalizedSkillPackage]:
+    ) -> AgentConfigSkillRefConfig:
         package = self._package.validate_and_normalize(content=content, filename=filename)
         normalized_name = validate_config_skill_name(requested_name or package.manifest.name)
         if package.manifest.name != normalized_name:
@@ -51,16 +50,13 @@ class ConfigSkillNormalizeService:
             mimetype="application/zip",
             filename=f"{normalized_name}.zip",
         )
-        return (
-            AgentConfigSkillRefConfig(
-                name=normalized_name,
-                description=package.manifest.description,
-                file_id=tool_file.id,
-                size=tool_file.size,
-                hash=package.manifest.hash,
-                mime_type=tool_file.mimetype,
-            ),
-            package,
+        return AgentConfigSkillRefConfig(
+            name=normalized_name,
+            description=package.manifest.description,
+            file_id=tool_file.id,
+            size=tool_file.size,
+            hash=package.manifest.hash,
+            mime_type=tool_file.mimetype,
         )
 
 

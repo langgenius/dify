@@ -1,3 +1,4 @@
+import json
 from types import SimpleNamespace
 
 import pytest
@@ -10,12 +11,12 @@ from core.workflow.variable_prefixes import (
     ENVIRONMENT_VARIABLE_NODE_ID,
 )
 from core.workflow.workflow_entry import WorkflowEntry
-from graphon.entities.graph_config import NodeConfigDictAdapter
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.nodes.code.code_node import CodeNode
 from graphon.nodes.code.limits import CodeNodeLimits
 from graphon.runtime import VariablePool
 from graphon.variables.variables import StringVariable
+from models.workflow import Workflow, WorkflowType
 
 
 @pytest.fixture(autouse=True)
@@ -116,18 +117,19 @@ class TestWorkflowEntry:
         }
         node_config = {"id": node_id, "data": node_data}
 
-        class StubWorkflow:
-            def __init__(self):
-                self.tenant_id = "tenant"
-                self.app_id = "app"
-                self.id = "workflow"
-                self.graph_dict = {"nodes": [node_config], "edges": []}
-
-            def get_node_config_by_id(self, target_id: str):
-                assert target_id == node_id
-                return NodeConfigDictAdapter.validate_python(node_config)
-
-        workflow = StubWorkflow()
+        workflow = Workflow.new(
+            tenant_id="tenant",
+            app_id="app",
+            type=WorkflowType.WORKFLOW,
+            version=Workflow.VERSION_DRAFT,
+            graph=json.dumps({"nodes": [node_config], "edges": []}),
+            features="{}",
+            created_by="account",
+            environment_variables=[],
+            conversation_variables=[],
+            rag_pipeline_variables=[],
+        )
+        workflow.id = "workflow"
         variable_pool = VariablePool.from_bootstrap(system_variables=default_system_variables(), user_inputs={})
         expected_limits = CodeNodeLimits(
             max_string_length=dify_config.CODE_MAX_STRING_LENGTH,

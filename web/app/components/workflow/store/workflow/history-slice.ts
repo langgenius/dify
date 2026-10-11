@@ -36,9 +36,9 @@ export const isWorkflowHistoryTemporalStateEqual = (
 
 export type HistorySliceShape = {
   workflowHistory: WorkflowHistoryState
+  initializedWorkflowHistory?: WorkflowHistoryState
+  initializeWorkflowHistory: (workflowHistory: WorkflowHistoryState) => void
   setWorkflowHistory: (workflowHistory: WorkflowHistoryState) => void
-  historyShortcutsEnabled: boolean
-  setHistoryShortcutsEnabled: (enabled: boolean) => void
   historyWorkflowData?: HistoryWorkflowData
   setHistoryWorkflowData: (historyWorkflowData?: HistoryWorkflowData) => void
   showRunHistory: boolean
@@ -54,9 +54,10 @@ export const createHistorySlice: StateCreator<HistorySliceShape> = (set) => ({
     workflowHistoryEvent: undefined,
     workflowHistoryEventMeta: undefined,
   },
+  initializedWorkflowHistory: undefined,
+  initializeWorkflowHistory: (workflowHistory) =>
+    set(() => ({ workflowHistory, initializedWorkflowHistory: workflowHistory })),
   setWorkflowHistory: (workflowHistory) => set(() => ({ workflowHistory })),
-  historyShortcutsEnabled: true,
-  setHistoryShortcutsEnabled: (historyShortcutsEnabled) => set(() => ({ historyShortcutsEnabled })),
   historyWorkflowData: undefined,
   setHistoryWorkflowData: (historyWorkflowData) => set(() => ({ historyWorkflowData })),
   showRunHistory: false,

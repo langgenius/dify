@@ -2,10 +2,10 @@
 
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { useCallback, useEffect, useState } from 'react'
@@ -19,7 +19,7 @@ type ConfirmType = {
 }
 
 const useAnthropicCheckPay = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const [confirm, setConfirm] = useState<ConfirmType | null>(null)
   const searchParams = useSearchParams()
   const providerName = searchParams.get('provider_name')
@@ -44,7 +44,7 @@ const useAnthropicCheckPay = () => {
 }
 
 const useBillingPay = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const [confirm, setConfirm] = useState<ConfirmType | null>(null)
   const searchParams = useSearchParams()
   const paymentType = searchParams.get('payment_type')
@@ -99,7 +99,7 @@ const useCheckNotion = () => {
 
 export const CheckModal = () => {
   const router = useRouter()
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common'])
   const [showPayStatusModal, setShowPayStatusModal] = useState(true)
   const anthropicConfirmInfo = useAnthropicCheckPay()
   const notionConfirmInfo = useCheckNotion()
@@ -132,7 +132,7 @@ export const CheckModal = () => {
             </AlertDialogDescription>
           )}
         </div>
-        <AlertDialogActions>
+        <AlertDialogFooter>
           <AlertDialogConfirmButton
             tone={confirmInfo.type !== 'info' ? 'destructive' : 'default'}
             onClick={handleCancelShowPayStatusModal}
@@ -141,7 +141,7 @@ export const CheckModal = () => {
               ? t(($) => $['operation.ok'], { ns: 'common' })
               : t(($) => $['operation.confirm'], { ns: 'common' })}
           </AlertDialogConfirmButton>
-        </AlertDialogActions>
+        </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
   )

@@ -1,11 +1,17 @@
 from types import SimpleNamespace
 from typing import override
-from unittest.mock import MagicMock
 
 import pytest
+from sqlalchemy.orm import Session
 
 from core.rag.datasource.keyword.keyword_base import BaseKeyword
 from core.rag.models.document import Document
+from models import Dataset
+from tests.unit_tests.model_factories import make_dataset
+
+
+def _dataset() -> Dataset:
+    return make_dataset()
 
 
 class _KeywordThatRaises(BaseKeyword):
@@ -64,9 +70,9 @@ class _KeywordForHelpers(BaseKeyword):
         return []
 
 
-def test_abstract_methods_raise_not_implemented():
-    keyword = _KeywordThatRaises(SimpleNamespace(id="dataset-1"))
-    session = MagicMock()
+def test_abstract_methods_raise_not_implemented(unbound_session: Session):
+    keyword = _KeywordThatRaises(_dataset())
+    session = unbound_session
 
     with pytest.raises(NotImplementedError):
         keyword.create([], session)
@@ -87,22 +93,22 @@ def test_abstract_methods_raise_not_implemented():
         keyword.search("query", session=session)
 
 
-def test_filter_duplicate_texts_removes_existing_doc_ids():
-    keyword = _KeywordForHelpers(SimpleNamespace(id="dataset-1"), existing_ids={"duplicate"})
+def test_filter_duplicate_texts_removes_existing_doc_ids(unbound_session: Session):
+    keyword = _KeywordForHelpers(_dataset(), existing_ids={"duplicate"})
     texts = [
         Document(page_content="keep", metadata={"doc_id": "keep"}),
         Document(page_content="duplicate", metadata={"doc_id": "duplicate"}),
         SimpleNamespace(page_content="without-metadata", metadata=None),
     ]
 
-    filtered = keyword._filter_duplicate_texts(texts, session=MagicMock())
+    filtered = keyword._filter_duplicate_texts(texts, session=unbound_session)
 
     assert [text.metadata["doc_id"] for text in filtered if text.metadata] == ["keep"]
     assert any(text.metadata is None for text in filtered)
 
 
 def test_get_uuids_returns_only_docs_with_metadata():
-    keyword = _KeywordForHelpers(SimpleNamespace(id="dataset-1"))
+    keyword = _KeywordForHelpers(_dataset())
     texts = [
         Document(page_content="doc-1", metadata={"doc_id": "doc-1"}),
         Document(page_content="doc-2", metadata={"doc_id": "doc-2"}),

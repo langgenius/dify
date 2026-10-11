@@ -32,7 +32,7 @@ vi.mock('@/context/permission-state', async () => {
   }))
 })
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: toastMocks,
 }))
 
@@ -73,7 +73,18 @@ describe('ImportSnippetDSLDialog', () => {
 
     render(<ImportSnippetDSLDialog isOpen onClose={onClose} />)
 
-    await user.click(screen.getByRole('button', { name: 'snippet.importFromDSLUrl' }))
+    expect(screen.getByRole('dialog', { name: 'snippet.importDialogTitle' })).toBeInTheDocument()
+    expect(screen.getByRole('tablist', { name: 'snippet.importDialogTitle' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'snippet.importFromDSLFile' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+
+    await user.click(screen.getByRole('tab', { name: 'snippet.importFromDSLUrl' }))
+    expect(screen.getByRole('tab', { name: 'snippet.importFromDSLUrl' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
     await user.type(
       screen.getByPlaceholderText('snippet.importFromDSLUrlPlaceholder'),
       'https://example.com/snippet.yml',
@@ -87,7 +98,6 @@ describe('ImportSnippetDSLDialog', () => {
         yamlUrl: 'https://example.com/snippet.yml',
       })
       expect(onClose).toHaveBeenCalledTimes(1)
-      expect(toastMocks.success).toHaveBeenCalledWith('snippet.importSuccess')
       expect(routerMocks.push).toHaveBeenCalledWith('/snippets/snippet-1/orchestrate')
     })
   })
@@ -147,7 +157,7 @@ describe('ImportSnippetDSLDialog', () => {
 
     render(<ImportSnippetDSLDialog isOpen onClose={vi.fn()} />)
 
-    await user.click(screen.getByRole('button', { name: 'snippet.importFromDSLUrl' }))
+    await user.click(screen.getByRole('tab', { name: 'snippet.importFromDSLUrl' }))
     await user.type(
       screen.getByPlaceholderText('snippet.importFromDSLUrlPlaceholder'),
       'https://example.com/snippet.yml',

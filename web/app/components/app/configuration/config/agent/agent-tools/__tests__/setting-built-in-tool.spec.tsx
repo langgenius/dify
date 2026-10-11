@@ -1,4 +1,3 @@
-/* oxlint-disable typescript/no-explicit-any */
 import type { Tool, ToolParameter } from '@/app/components/tools/types'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -173,16 +172,25 @@ describe('SettingBuiltInTool', () => {
     expect(await screen.findByText('Search Tool')).toBeInTheDocument()
   })
 
-  it('should switch between info and setting tabs', async () => {
+  it('preserves the settings draft when switching named tab panels', async () => {
+    const user = userEvent.setup()
     renderComponent()
     await waitFor(() => {
       expect(screen.getByTestId('mock-form')).toBeInTheDocument()
     })
 
-    await userEvent.click(screen.getByText('tools.setBuiltInTools.parameters'))
-    expect(screen.getByText('Info Param')).toBeInTheDocument()
-    await userEvent.click(screen.getByText('tools.setBuiltInTools.setting'))
-    expect(screen.getByTestId('mock-form')).toBeInTheDocument()
+    nextFormValue = { settingParam: 'unsaved draft' }
+    await user.click(screen.getByRole('button', { name: 'update-form' }))
+    await user.click(screen.getByRole('tab', { name: 'tools.setBuiltInTools.parameters' }))
+    expect(
+      screen.getByRole('tabpanel', { name: 'tools.setBuiltInTools.parameters' }),
+    ).toHaveTextContent('Info Param')
+    expect(screen.queryByTestId('mock-form')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('tab', { name: 'tools.setBuiltInTools.setting' }))
+    expect(
+      screen.getByRole('tabpanel', { name: 'tools.setBuiltInTools.setting' }),
+    ).toHaveTextContent('unsaved draft')
+    expect(screen.getByRole('dialog', { name: 'Search Tool' })).toBeInTheDocument()
   })
 
   it('should keep the setting tab hidden when readonly by default', async () => {
@@ -190,6 +198,8 @@ describe('SettingBuiltInTool', () => {
 
     expect(await screen.findByText('Info Param')).toBeInTheDocument()
     expect(screen.queryByText('tools.setBuiltInTools.setting')).not.toBeInTheDocument()
+    expect(screen.queryByRole('tablist')).not.toBeInTheDocument()
+    expect(screen.queryByRole('tabpanel')).not.toBeInTheDocument()
   })
 
   it('should expose readonly setting details when explicitly enabled', async () => {

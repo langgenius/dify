@@ -30,7 +30,7 @@ try {
  * E2E tests run against a real staging Dify server and require
  * DIFY_E2E_* environment variables to be set (see test/e2e/setup/env.ts).
  *
- * Run: bun vitest --config vitest.e2e.config.ts
+ * Run: vp test --config vitest.e2e.config.ts
  */
 export default defineConfig({
   resolve: {
@@ -40,17 +40,15 @@ export default defineConfig({
     },
   },
   pack: {
-    entry: ['src/index.ts'],
+    entry: ['src/main.ts'],
     format: ['esm'],
     outDir: 'dist',
-    target: 'node22',
+    target: 'node24',
     define: {
       __DIFYCTL_VERSION__: JSON.stringify(buildInfo.version),
       __DIFYCTL_COMMIT__: JSON.stringify(buildInfo.commit),
       __DIFYCTL_BUILD_DATE__: JSON.stringify(buildInfo.buildDate),
       __DIFYCTL_CHANNEL__: JSON.stringify(buildInfo.channel),
-      __DIFYCTL_MIN_DIFY__: JSON.stringify(buildInfo.minDify),
-      __DIFYCTL_MAX_DIFY__: JSON.stringify(buildInfo.maxDify),
     },
   },
   test: {

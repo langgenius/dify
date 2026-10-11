@@ -10,32 +10,43 @@ export const zBillingInvoiceResponse = z.object({
 })
 
 /**
- * PartnerTenantsPayload
+ * BillingOperationFailedErrorResponse
  */
-export const zPartnerTenantsPayload = z.object({
-  click_id: z.string(),
+export const zBillingOperationFailedErrorResponse = z.object({
+  code: z.literal('billing_operation_failed'),
+  message: z.string(),
+  status: z.literal(502),
 })
 
 /**
- * BillingResponse
+ * BillingUnavailableErrorResponse
  */
-export const zBillingResponse = z.record(z.string(), z.unknown())
+export const zBillingUnavailableErrorResponse = z.object({
+  code: z.literal('billing_unavailable'),
+  message: z.string(),
+  status: z.literal(503),
+})
+
+/**
+ * BillingSubscriptionResponse
+ */
+export const zBillingSubscriptionResponse = z.object({
+  url: z.string(),
+})
+
+/**
+ * BillingUnprocessableEntityErrorResponse
+ */
+export const zBillingUnprocessableEntityErrorResponse = z.object({
+  code: z.literal('unprocessable_entity'),
+  message: z.string(),
+  status: z.literal(422),
+})
 
 /**
  * Success
  */
 export const zGetBillingInvoicesResponse = zBillingInvoiceResponse
-
-export const zPutBillingPartnersByPartnerKeyTenantsBody = zPartnerTenantsPayload
-
-export const zPutBillingPartnersByPartnerKeyTenantsPath = z.object({
-  partner_key: z.string(),
-})
-
-/**
- * Tenants synced to partner successfully
- */
-export const zPutBillingPartnersByPartnerKeyTenantsResponse = zBillingResponse
 
 export const zGetBillingSubscriptionQuery = z.object({
   interval: z.enum(['month', 'year']),
@@ -45,4 +56,4 @@ export const zGetBillingSubscriptionQuery = z.object({
 /**
  * Success
  */
-export const zGetBillingSubscriptionResponse = zBillingResponse
+export const zGetBillingSubscriptionResponse = zBillingSubscriptionResponse

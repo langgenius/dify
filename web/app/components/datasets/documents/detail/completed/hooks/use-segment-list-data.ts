@@ -1,10 +1,10 @@
 import type { FileEntity } from '@/app/components/datasets/common/image-uploader/types'
 import type { SegmentDetailModel, SegmentsResponse, SegmentUpdater } from '@/models/datasets'
 import type { SegmentImportStatus } from '@/types/dataset'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { ChunkingMode } from '@/models/datasets'
 import { usePathname } from '@/next/navigation'
@@ -76,7 +76,7 @@ export const useSegmentListData = (
     onCloseSegmentDetail,
     clearSelection,
   } = options
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'datasetDocuments'])
   const pathname = usePathname()
   const { eventEmitter } = useEventEmitterContextContext()
   const queryClient = useQueryClient()
@@ -207,7 +207,9 @@ export const useSegmentListData = (
         { datasetId, documentId, segmentIds: targetIds },
         {
           onSuccess: () => {
-            toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
+            // A single segment is toggled from its switch, which already shows the result.
+            if (!segId)
+              toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
             updateSegmentsInCache(targetIds, (seg) => ({ ...seg, enabled: enable }))
             refreshChunkListWithStatusChanged()
           },

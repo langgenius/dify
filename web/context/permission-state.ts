@@ -2,12 +2,12 @@
 
 import { atom } from 'jotai'
 import { atomWithQuery } from 'jotai-tanstack-query'
-import { consoleQuery } from '@/service/client'
+import { consoleQuery } from '@/service/console'
 import { emptyWorkspacePermissionKeys } from './app-context-normalizers'
 
-const workspacePermissionKeysQueryAtom = atomWithQuery(() =>
-  consoleQuery.workspaces.current.rbac.myPermissions.get.queryOptions(),
-)
+const workspacePermissionKeysQueryAtom = atomWithQuery(() => {
+  return consoleQuery.workspaces.current.rbac.myPermissions.get.queryOptions()
+})
 
 export const workspacePermissionKeysAtom = atom((get) => {
   return (
@@ -18,6 +18,10 @@ export const workspacePermissionKeysAtom = atom((get) => {
 
 export const datasetDefaultPermissionKeysAtom = atom((get) => {
   return get(workspacePermissionKeysQueryAtom).data?.dataset?.default_permission_keys ?? []
+})
+
+export const agentDefaultPermissionKeysAtom = atom((get) => {
+  return get(workspacePermissionKeysQueryAtom).data?.agent?.default_permission_keys ?? []
 })
 
 export const workspacePermissionKeysLoadingAtom = atom((get) => {

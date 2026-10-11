@@ -1081,7 +1081,7 @@ class TestConversationServiceExport:
         Test conversation deletion with async cleanup.
 
         Deletion is a two-step process:
-        1. Immediately delete the conversation record from database
+        1. Immediately hide the conversation with a durable soft-delete marker
         2. Trigger async background task to clean up related data
            (messages, annotations, vector embeddings, file uploads)
         """
@@ -1102,9 +1102,10 @@ class TestConversationServiceExport:
         )
 
         # Assert - Verify two-step deletion process
-        # Step 1: Immediate database deletion
+        # Step 1: Immediate logical deletion
         deleted = db_session_with_containers.scalar(select(Conversation).where(Conversation.id == conversation_id))
-        assert deleted is None
+        assert deleted is not None
+        assert deleted.is_deleted is True
 
         # Step 2: Async cleanup task triggered
         # The Celery task will handle cleanup of messages, annotations, etc.
@@ -1166,8 +1167,8 @@ class TestConversationServiceExport:
         )
         conversation_id = conversation.id
 
-        # Act — force an error during the delete to exercise the rollback path
-        with patch.object(db_session_with_containers, "delete", side_effect=Exception("DB error")):
+        # Act — force an error during the soft-delete commit to exercise rollback
+        with patch.object(db_session_with_containers, "commit", side_effect=Exception("DB error")):
             with pytest.raises(Exception, match="DB error"):
                 ConversationService.delete(
                     app_model=app_model,

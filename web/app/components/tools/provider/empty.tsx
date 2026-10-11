@@ -6,7 +6,6 @@ import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import { useDocLink } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
 import Link from '@/next/link'
-import { NoToolPlaceholder } from '../../base/icons/src/vender/other'
 import { ToolType } from '../../workflow/block-selector/types'
 
 type Props = Readonly<{
@@ -31,7 +30,7 @@ const getLink = (type?: ToolType) => {
   }
 }
 const Empty = ({ type, isAgent }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['tools'])
   const docLink = useDocLink()
   const { theme } = useTheme()
 
@@ -64,14 +63,17 @@ const Empty = ({ type, isAgent }: Props) => {
           </div>
         </div>
         <div className="flex w-full flex-col items-center gap-4">
-          <div className="grid w-full grid-cols-1 justify-center gap-3 lg:grid-cols-[repeat(3,320px)]">
+          <ol className="grid w-full grid-cols-1 justify-center gap-3 lg:grid-cols-[repeat(3,320px)]">
             {workflowToolStepKeys.map((stepKey, index) => (
-              <div
+              <li
                 key={stepKey}
                 className="grid min-h-35 grid-rows-[24px_1fr] gap-3 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg px-8 py-6 shadow-xs"
               >
                 <div className="flex items-center gap-3">
-                  <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-state-base-hover text-[15px] font-semibold text-text-secondary">
+                  <div
+                    aria-hidden
+                    className="flex size-6 shrink-0 items-center justify-center rounded-full bg-state-base-hover text-[15px] font-semibold text-text-secondary"
+                  >
                     {index + 1}
                   </div>
                   <div className="h-px flex-1 bg-divider-subtle" />
@@ -79,9 +81,9 @@ const Empty = ({ type, isAgent }: Props) => {
                 <div className="text-left system-md-semibold text-text-secondary">
                   {t(($) => $[stepKey], { ns: 'tools' })}
                 </div>
-              </div>
+              </li>
             ))}
-          </div>
+          </ol>
           <Link
             href="/apps"
             className="flex h-7 items-center gap-1.5 py-1 system-sm-semibold text-text-accent hover:text-text-accent-secondary"
@@ -106,7 +108,13 @@ const Empty = ({ type, isAgent }: Props) => {
 
   return (
     <div className="flex flex-col items-center justify-center">
-      <NoToolPlaceholder className={theme === 'dark' ? 'invert' : ''} />
+      <span
+        aria-hidden
+        className={cn(
+          'i-custom-vender-other-no-tool-placeholder h-9 w-51',
+          theme === 'dark' ? 'invert' : '',
+        )}
+      />
       <div className="mt-2 mb-1 text-[13px] leading-4.5 font-medium text-text-primary">
         {hasTitle && renderType
           ? t(($) => $[`addToolModal.${renderType}.title`], { ns: 'tools' })

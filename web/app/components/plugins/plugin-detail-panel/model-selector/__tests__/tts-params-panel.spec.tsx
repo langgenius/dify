@@ -2,7 +2,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import TTSParamsPanel from '../tts-params-panel'
 
-vi.mock('@/i18n-config/language', () => ({
+vi.mock('@/i18n/language', () => ({
   languages: [
     { value: 'en-US', name: 'English', supported: true },
     { value: 'zh-Hans', name: 'Chinese', supported: true },

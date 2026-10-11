@@ -1,6 +1,6 @@
 # Component Interactions And Overlays
 
-Read this document when a change involves application hotkeys, focus, dialogs, menus, popovers, or other secondary surfaces. Overlay primitive selection and layering are owned by the [overlay guide].
+Read this document when a change involves application hotkeys, focus, dialogs, menus, popovers, or other secondary surfaces. Overlay primitive selection and layering are owned by the [overlay contract].
 
 ## Focus And Semantics
 
@@ -10,22 +10,18 @@ Read this document when a change involves application hotkeys, focus, dialogs, m
 
 ## Keyboard Commands
 
-- Distinguish application commands from widget-local keyboard semantics. Use `@tanstack/react-hotkeys` for application commands; keep menu navigation, dialog Escape handling, editor behavior, and ARIA widget keys in their local primitive or owner.
-- Use `useHotkey` or `useHotkeys` for registered commands. When an existing `onKeyDown` intentionally owns the command, use `matchesKeyboardEvent` rather than duplicating modifier parsing or adding another global listener.
-- Keep registration and keycap or menu display derived from one canonical command. Distinguish registered commands, held keys, and display-only accelerators.
-- Keep a single-owner command beside its component. Create a feature-local hotkey module only when several production files share it; tests alone do not justify extraction.
-- Make availability and scope explicit with `enabled`, `ignoreInputs`, and `target`. Put a target ref on the actual behavior owner rather than creating wrapper DOM solely for hotkey scope.
-- Preserve existing `preventDefault` and propagation behavior when migrating command APIs.
-- Test observable command behavior, disabled and input scope, target scope, and the registration/display contract at the owning feature boundary.
+- Keep widget navigation, dialog dismissal, and editor commands in their local primitive or owner.
+- For Web application commands, follow [Keyboard commands] for TanStack registration, typed bindings, targets, event consumption, display, and verification. Do not recreate that policy in a wrapper or a second command framework.
 
 ## Secondary Surfaces
 
-- Follow `web/docs/overlay.md` for primitive choice. Dify UI primitives are the default, with package-approved Web wrappers such as `Infotip` where the overlay guide allows them.
+- Follow the [overlay contract] for primitive choice and shared mechanics. The nearest consumer `AGENTS.md` owns application-specific composite reuse policy.
 - Separate behavior ownership from placement ownership: the action may own trigger, open state, and menu content while the caller owns slots, offsets, and alignment.
 - Keep menu and dialog surfaces as siblings when a menu command opens a dialog. Mount the dialog outside popup content.
-- Mount controlled overlays unconditionally unless unmounting is required for performance or reset semantics. Prefer keyed or owner-local reset over conditional wrappers.
-- Put query and mutation work inside dialog or alert-dialog content when it should mount only after opening.
-- Prefer uncontrolled roots when the primitive can own open state. Use controlled state only for business coordination, analytics, cleanup, or explicit reset behavior.
-- Do not add manual portals or call-site z-index escalation. Fix ownership and stacking structure at the shared boundary.
+- Use the [overlay contract] to determine content lifetime and preserve the Root's closing lifecycle. Follow [state ownership] for draft placement and semantic identity; portal placement alone does not locate the state owner.
+- Place query subscriptions and mutation observers at the owner whose lifetime matches when they should run. Mounted-session work may belong inside content; work that must start or stop exactly with `open` needs an explicit open-state condition.
+- Prefer primitive-owned open state unless another owner must observe or coordinate it. Analytics callbacks and local cleanup alone do not require a controlled root.
 
-[overlay guide]: ../../../../web/docs/overlay.md
+[overlay contract]: ../../../../packages/dify-ui/docs/overlays.md
+[Keyboard commands]: ../../../../web/docs/hotkeys.md
+[state ownership]: state.md

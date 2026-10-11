@@ -12,6 +12,7 @@ from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 import services
 from controllers.common.fields import SimpleResultResponse
+from controllers.common.rbac import AgentId, PlainApp, RBACCheck
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.agent.app_helpers import resolve_agent_runtime_app_model
@@ -26,9 +27,9 @@ from controllers.console.app.error import (
 from controllers.console.app.wraps import get_app_model, with_session
 from controllers.console.wraps import (
     RBACPermission,
-    RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
+    model_validate,
     rbac_permission_required,
     setup_required,
     with_current_tenant_id,
@@ -157,14 +158,14 @@ class CompletionMessageApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_user
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_TEST_AND_RUN, PlainApp()))
     @with_session
     @get_app_model(mode=AppMode.COMPLETION)
-    def post(self, session: Session, current_user: Account, app_model: App):
-        args_model = CompletionMessagePayload.model_validate(console_ns.payload)
-        args = args_model.model_dump(exclude_none=True, by_alias=True)
+    @model_validate(CompletionMessagePayload)
+    def post(self, req_data: CompletionMessagePayload, session: Session, current_user: Account, app_model: App):
+        args = req_data.model_dump(exclude_none=True, by_alias=True)
 
-        streaming = args_model.response_mode != "blocking"
+        streaming = req_data.response_mode != "blocking"
         args["auto_generate_name"] = False
 
         try:
@@ -239,7 +240,7 @@ class ChatMessageApi(Resource):
     @edit_permission_required
     @with_current_user
     @with_current_tenant_id
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
+    @rbac_permission_required(RBACCheck(RBACPermission.APP_TEST_AND_RUN, PlainApp()))
     @with_session
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.AGENT])
     def post(self, session: Session, current_tenant_id: str, current_user: Account, app_model: App):
@@ -261,7 +262,7 @@ class AgentChatMessageApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_TEST_AND_RUN, AgentId()))
     @with_current_user
     @with_current_tenant_id
     @with_session
@@ -290,7 +291,7 @@ class AgentBuildChatFinalizeApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_TEST_AND_RUN, AgentId()))
     @with_current_user
     @with_current_tenant_id
     @with_session
@@ -331,6 +332,7 @@ class AgentChatMessageStopApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_TEST_AND_RUN, AgentId()))
     @with_current_user_id
     @with_current_tenant_id
     @with_session(write=False)
@@ -470,7 +472,7 @@ def _create_build_chat_finalization_message(
     return {"result": "success"}, 200
 
 
-def _drain_streaming_generate_response(response: RateLimitGenerator | Generator[str, None, None]) -> None:
+def _drain_streaming_generate_response(response: RateLimitGenerator | Generator[str]) -> None:
     """Consume a streamed app-generate response until a terminal message event arrives.
 
     Finalize keeps the normal Agent App streaming path so the existing queue,
@@ -624,7 +626,7 @@ def _raise_agent_stream_error_before_response(response):
         return _prepend_stream_chunks(buffered, chunk, iterator)
 
 
-def _prepend_stream_chunks(buffered: list[Any], first: Any, iterator: Iterator[Any]) -> Generator[Any, None, None]:
+def _prepend_stream_chunks(buffered: list[Any], first: Any, iterator: Iterator[Any]) -> Generator[Any]:
     yield from buffered
     yield first
     yield from iterator

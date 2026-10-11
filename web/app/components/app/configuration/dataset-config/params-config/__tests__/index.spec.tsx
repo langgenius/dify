@@ -1,9 +1,9 @@
-import type { MockedFunction, MockInstance } from 'vitest'
+import type { MockedFunction, MockInstance } from 'vite-plus/test'
 import type { DatasetConfigs } from '@/models/debug'
-import { toast } from '@langgenius/dify-ui/toast'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
+import { toast } from '@/app/components/app/configuration/toast'
 import {
   useCurrentProviderAndModel,
   useModelListAndDefaultModelAndCurrentProviderAndModel,
@@ -20,21 +20,21 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => {
   type Props = {
-    defaultModel?: { provider: string; model: string }
-    onSelect?: (model: { provider: string; model: string }) => void
+    value?: { provider: string; model: string }
+    onValueChange?: (model: { provider: string; model: string }) => void
   }
 
-  const MockModelSelector = ({ defaultModel, onSelect }: Props) => (
+  const MockModelSelector = ({ value, onValueChange }: Props) => (
     <button
       type="button"
-      onClick={() => onSelect?.(defaultModel ?? { provider: 'mock-provider', model: 'mock-model' })}
+      onClick={() => onValueChange?.(value ?? { provider: 'mock-provider', model: 'mock-model' })}
     >
       Mock ModelSelector
     </button>
   )
 
   return {
-    default: MockModelSelector,
+    ModelSelector: MockModelSelector,
   }
 })
 

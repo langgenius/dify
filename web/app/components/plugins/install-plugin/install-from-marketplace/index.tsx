@@ -1,8 +1,8 @@
 'use client'
-
 import type { Dependency, Plugin, PluginCategoryEnum, PluginManifestInMarket } from '../../types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -34,7 +34,7 @@ const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({
   onSuccess,
   onClose,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'plugin'])
   // readyToInstall -> check installed -> installed/failed
   const [step, setStep] = useState<InstallStep>(InstallStep.readyToInstall)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
@@ -76,6 +76,8 @@ const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({
     [setIsInstalling],
   )
 
+  const completedSteps: InstallStep[] = [InstallStep.installed, InstallStep.installFailed]
+
   return (
     <Dialog
       open
@@ -86,14 +88,14 @@ const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({
       <DialogContent
         backdropProps={{ forceRender: true }}
         className={cn(
-          'w-140 max-w-none! overflow-hidden! text-left align-middle',
+          'w-140 overflow-hidden! text-left align-middle',
           cn(
             modalClassName,
-            'shadows-shadow-xl flex max-h-[calc(100dvh-48px)] min-w-140 flex-col items-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0',
+            'flex max-h-[calc(100dvh-48px)] flex-col items-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0',
           ),
         )}
       >
-        <div className="flex items-start gap-2 self-stretch pt-6 pr-14 pb-3 pl-6">
+        <div className="flex shrink-0 items-start gap-2 self-stretch pt-6 pr-14 pb-3 pl-6">
           <DialogTitle className="self-stretch title-2xl-semi-bold text-text-primary">
             {getTitle()}
           </DialogTitle>
@@ -121,7 +123,7 @@ const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({
                 onTaskStarted={foldIntoTaskTrigger}
               />
             )}
-            {[InstallStep.installed, InstallStep.installFailed].includes(step) && (
+            {completedSteps.includes(step) && (
               <Installed
                 payload={manifest!}
                 isMarketPayload
@@ -133,7 +135,17 @@ const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({
             )}
           </>
         )}
-        <DialogCloseButton />
+        <DialogClose
+          render={
+            <IconButton
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              size="lg"
+              className="absolute inset-e-6 top-6"
+            >
+              <span aria-hidden className="i-ri-close-line size-4" />
+            </IconButton>
+          }
+        />
       </DialogContent>
     </Dialog>
   )

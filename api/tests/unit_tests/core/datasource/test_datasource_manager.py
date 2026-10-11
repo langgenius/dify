@@ -1,32 +1,88 @@
-import types
-from collections.abc import Generator, Iterator
+from collections.abc import Generator
+from datetime import UTC, datetime
 
 import pytest
 from pytest_mock import MockerFixture
-from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from contexts.wrapper import RecyclableContextVar
 from core.datasource import datasource_manager as datasource_manager_module
 from core.datasource.datasource_manager import DatasourceManager
-from core.datasource.entities.datasource_entities import DatasourceMessage, DatasourceProviderType
+from core.datasource.entities.datasource_entities import (
+    DatasourceEntity,
+    DatasourceIdentity,
+    DatasourceMessage,
+    DatasourceProviderEntityWithPlugin,
+    DatasourceProviderIdentity,
+    DatasourceProviderType,
+    GetOnlineDocumentPageContentRequest,
+    OnlineDriveDownloadFileRequest,
+)
 from core.datasource.errors import DatasourceProviderNotFoundError
+from core.datasource.online_document.online_document_provider import OnlineDocumentDatasourcePluginProviderController
+from core.datasource.online_drive.online_drive_provider import OnlineDriveDatasourcePluginProviderController
+from core.plugin.entities.plugin_daemon import PluginDatasourceProviderEntity
+from core.tools.entities.common_entities import I18nObject
 from core.workflow.file_reference import parse_file_reference
+from extensions.storage.storage_type import StorageType
 from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.node_events import StreamChunkEvent, StreamCompletedEvent
-from models.base import TypeBase
+from graphon.runtime import VariablePool
+from models.enums import CreatorUserRole
+from models.model import UploadFile
 from models.tools import ToolFile
 
 
 @pytest.fixture
-def tool_file_session(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> Iterator[Session]:
-    """Bind datasource-owned lookups to a SQLite ToolFile table."""
-    TypeBase.metadata.create_all(sqlite_engine, tables=[TypeBase.metadata.tables[ToolFile.__tablename__]])
-    session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
-    monkeypatch.setattr(datasource_manager_module.session_factory, "create_session", session_maker)
-    with session_maker() as session:
-        yield session
+def provider_entity() -> PluginDatasourceProviderEntity:
+    label = I18nObject(en_US="Datasource")
+    declaration = DatasourceProviderEntityWithPlugin(
+        identity=DatasourceProviderIdentity(
+            author="author", name="provider", description=label, icon="icon.png", label=label
+        ),
+        provider_type=DatasourceProviderType.ONLINE_DOCUMENT,
+        datasources=[
+            DatasourceEntity(
+                identity=DatasourceIdentity(author="author", name="ds", label=label, provider="provider"),
+                description=label,
+            )
+        ],
+    )
+    return PluginDatasourceProviderEntity(
+        provider="provider", declaration=declaration, plugin_id="plugin", plugin_unique_identifier="uniq"
+    )
+
+
+@pytest.fixture
+def provider_controller(provider_entity):
+    return OnlineDocumentDatasourcePluginProviderController(
+        entity=provider_entity.declaration,
+        plugin_id=provider_entity.plugin_id,
+        plugin_unique_identifier=provider_entity.plugin_unique_identifier,
+        tenant_id="t1",
+    )
+
+
+@pytest.fixture
+def document_runtime(provider_controller):
+    return provider_controller.get_datasource("ds")
+
+
+@pytest.fixture
+def datasource_session(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+) -> Session:
+    """Bind datasource-owned lookups to the shared SQLite test database."""
+    monkeypatch.setattr(datasource_manager_module.session_factory, "create_session", sqlite_session_factory)
+    return sqlite_session
+
+
+@pytest.fixture
+def tool_file_session(datasource_session: Session) -> Session:
+    return datasource_session
 
 
 def _persist_tool_file(session: Session, *, file_id: str, tenant_id: str) -> ToolFile:
@@ -45,7 +101,28 @@ def _persist_tool_file(session: Session, *, file_id: str, tenant_id: str) -> Too
     return tool_file
 
 
-def _gen_messages_text_only(text: str) -> Generator[DatasourceMessage, None, None]:
+def _persist_upload_file(session: Session, *, file_id: str, tenant_id: str) -> UploadFile:
+    upload_file = UploadFile(
+        tenant_id=tenant_id,
+        storage_type=StorageType.LOCAL,
+        key="files/file.txt",
+        name="f",
+        size=1,
+        extension="txt",
+        mime_type="text/plain",
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="user-1",
+        created_at=datetime.now(UTC),
+        used=True,
+        source_url="http://x",
+    )
+    upload_file.id = file_id
+    session.add(upload_file)
+    session.commit()
+    return upload_file
+
+
+def _gen_messages_text_only(text: str) -> Generator[DatasourceMessage]:
     yield DatasourceMessage(
         type=DatasourceMessage.MessageType.TEXT,
         message=DatasourceMessage.TextMessage(text=text),
@@ -69,9 +146,9 @@ def _invalidate_recyclable_contextvars() -> None:
     RecyclableContextVar.increment_thread_recycles()
 
 
-def test_get_icon_url_calls_runtime(mocker: MockerFixture):
-    fake_runtime = mocker.Mock()
-    fake_runtime.get_icon_url.return_value = "https://icon"
+def test_get_icon_url_calls_runtime(mocker: MockerFixture, document_runtime, config_overrides):
+    config_overrides(CONSOLE_API_URL="https://console.example.com")
+    fake_runtime = document_runtime
     mocker.patch.object(DatasourceManager, "get_datasource_runtime", return_value=fake_runtime)
 
     url = DatasourceManager.get_icon_url(
@@ -80,13 +157,14 @@ def test_get_icon_url_calls_runtime(mocker: MockerFixture):
         datasource_name="ds",
         datasource_type="online_document",
     )
-    assert url == "https://icon"
+    assert (
+        url == "https://console.example.com/console/api/workspaces/current/plugin/icon?tenant_id=t1&filename=icon.png"
+    )
     DatasourceManager.get_datasource_runtime.assert_called_once()
 
 
-def test_get_datasource_runtime_delegates_to_provider_controller(mocker: MockerFixture):
-    provider_controller = mocker.Mock()
-    provider_controller.get_datasource.return_value = object()
+def test_get_datasource_runtime_delegates_to_provider_controller(mocker: MockerFixture, provider_controller):
+    get_datasource = mocker.spy(provider_controller, "get_datasource")
     mocker.patch.object(DatasourceManager, "get_datasource_plugin_provider", return_value=provider_controller)
 
     runtime = DatasourceManager.get_datasource_runtime(
@@ -95,8 +173,8 @@ def test_get_datasource_runtime_delegates_to_provider_controller(mocker: MockerF
         tenant_id="t1",
         datasource_type=DatasourceProviderType.ONLINE_DOCUMENT,
     )
-    assert runtime is provider_controller.get_datasource.return_value
-    provider_controller.get_datasource.assert_called_once_with("ds")
+    assert runtime is get_datasource.spy_return
+    get_datasource.assert_called_once_with("ds")
 
 
 @pytest.mark.parametrize(
@@ -121,11 +199,10 @@ def test_get_datasource_runtime_delegates_to_provider_controller(mocker: MockerF
     ],
 )
 def test_get_datasource_plugin_provider_creates_controller_and_caches(
-    mocker: MockerFixture, datasource_type, controller_path
+    mocker: MockerFixture, datasource_type, controller_path, provider_entity
 ):
     _invalidate_recyclable_contextvars()
 
-    provider_entity = types.SimpleNamespace(declaration=object(), plugin_id="plugin", plugin_unique_identifier="uniq")
     fetch = mocker.patch(
         "core.datasource.datasource_manager.PluginDatasourceManager.fetch_datasource_provider",
         return_value=provider_entity,
@@ -163,9 +240,8 @@ def test_get_datasource_plugin_provider_raises_when_provider_entity_missing(mock
         )
 
 
-def test_get_datasource_plugin_provider_raises_for_unsupported_type(mocker: MockerFixture):
+def test_get_datasource_plugin_provider_raises_for_unsupported_type(mocker: MockerFixture, provider_entity):
     _invalidate_recyclable_contextvars()
-    provider_entity = types.SimpleNamespace(declaration=object(), plugin_id="plugin", plugin_unique_identifier="uniq")
     mocker.patch(
         "core.datasource.datasource_manager.PluginDatasourceManager.fetch_datasource_provider",
         return_value=provider_entity,
@@ -175,13 +251,12 @@ def test_get_datasource_plugin_provider_raises_for_unsupported_type(mocker: Mock
         DatasourceManager.get_datasource_plugin_provider(
             provider_id="prov/x",
             tenant_id="t1",
-            datasource_type=types.SimpleNamespace(),  # not a DatasourceProviderType at runtime
+            datasource_type="unsupported",  # not a DatasourceProviderType at runtime
         )
 
 
-def test_get_datasource_plugin_provider_raises_when_controller_none(mocker: MockerFixture):
+def test_get_datasource_plugin_provider_raises_when_controller_none(mocker: MockerFixture, provider_entity):
     _invalidate_recyclable_contextvars()
-    provider_entity = types.SimpleNamespace(declaration=object(), plugin_id="plugin", plugin_unique_identifier="uniq")
     mocker.patch(
         "core.datasource.datasource_manager.PluginDatasourceManager.fetch_datasource_provider",
         return_value=provider_entity,
@@ -199,18 +274,14 @@ def test_get_datasource_plugin_provider_raises_when_controller_none(mocker: Mock
         )
 
 
-def test_stream_online_results_yields_messages_online_document(mocker: MockerFixture):
+def test_stream_online_results_yields_messages_online_document(mocker: MockerFixture, document_runtime, monkeypatch):
     # stub runtime to yield a text message
     def _doc_messages(**_):
         yield from _gen_messages_text_only("hello")
 
-    fake_runtime = mocker.Mock()
-    fake_runtime.get_online_document_page_content.side_effect = _doc_messages
+    fake_runtime = document_runtime
+    monkeypatch.setattr(fake_runtime, "get_online_document_page_content", _doc_messages)
     mocker.patch.object(DatasourceManager, "get_datasource_runtime", return_value=fake_runtime)
-    mocker.patch(
-        "core.datasource.datasource_manager.DatasourceProviderService.get_datasource_credentials",
-        return_value=None,
-    )
 
     gen = DatasourceManager.stream_online_results(
         user_id="u1",
@@ -218,31 +289,25 @@ def test_stream_online_results_yields_messages_online_document(mocker: MockerFix
         datasource_type="online_document",
         provider_id="p/x",
         tenant_id="t1",
-        provider="prov",
-        plugin_id="plug",
-        credential_id="",
-        datasource_param=types.SimpleNamespace(workspace_id="w", page_id="pg", type="t"),
+        datasource_param=GetOnlineDocumentPageContentRequest(workspace_id="w", page_id="pg", type="t"),
         online_drive_request=None,
+        credentials={},
     )
     msgs = list(gen)
     assert len(msgs) == 1
     assert msgs[0].message.text == "hello"
 
 
-def test_stream_online_results_sets_credentials_and_returns_empty_dict_online_document(mocker: MockerFixture):
-    class _Runtime:
-        def __init__(self) -> None:
-            self.runtime = types.SimpleNamespace(credentials=None)
+def test_stream_online_results_sets_credentials_and_returns_empty_dict_online_document(
+    mocker: MockerFixture, document_runtime, monkeypatch
+):
+    runtime = document_runtime
 
-        def get_online_document_page_content(self, **_kwargs):
-            yield from _gen_messages_text_only("hello")
+    def page_content(**_kwargs):
+        yield from _gen_messages_text_only("hello")
 
-    runtime = _Runtime()
+    monkeypatch.setattr(runtime, "get_online_document_page_content", page_content)
     mocker.patch.object(DatasourceManager, "get_datasource_runtime", return_value=runtime)
-    mocker.patch(
-        "core.datasource.datasource_manager.DatasourceProviderService.get_datasource_credentials",
-        return_value={"token": "t"},
-    )
 
     gen = DatasourceManager.stream_online_results(
         user_id="u1",
@@ -250,11 +315,9 @@ def test_stream_online_results_sets_credentials_and_returns_empty_dict_online_do
         datasource_type="online_document",
         provider_id="p/x",
         tenant_id="t1",
-        provider="prov",
-        plugin_id="plug",
-        credential_id="cred",
-        datasource_param=types.SimpleNamespace(workspace_id="w", page_id="pg", type="t"),
+        datasource_param=GetOnlineDocumentPageContentRequest(workspace_id="w", page_id="pg", type="t"),
         online_drive_request=None,
+        credentials={"token": "t"},
     )
     messages, final_value = _drain_generator(gen)
 
@@ -263,22 +326,8 @@ def test_stream_online_results_sets_credentials_and_returns_empty_dict_online_do
     assert final_value == {}
 
 
-def test_stream_online_results_raises_when_missing_params(mocker: MockerFixture):
-    class _Runtime:
-        def __init__(self) -> None:
-            self.runtime = types.SimpleNamespace(credentials=None)
-
-        def get_online_document_page_content(self, **_kwargs):
-            yield from _gen_messages_text_only("never")
-
-        def online_drive_download_file(self, **_kwargs):
-            yield from _gen_messages_text_only("never")
-
-    mocker.patch.object(DatasourceManager, "get_datasource_runtime", return_value=_Runtime())
-    mocker.patch(
-        "core.datasource.datasource_manager.DatasourceProviderService.get_datasource_credentials",
-        return_value={},
-    )
+def test_stream_online_results_raises_when_missing_params(mocker: MockerFixture, document_runtime):
+    mocker.patch.object(DatasourceManager, "get_datasource_runtime", return_value=document_runtime)
 
     with pytest.raises(ValueError, match="datasource_param is required for ONLINE_DOCUMENT streaming"):
         list(
@@ -288,11 +337,9 @@ def test_stream_online_results_raises_when_missing_params(mocker: MockerFixture)
                 datasource_type="online_document",
                 provider_id="p/x",
                 tenant_id="t1",
-                provider="prov",
-                plugin_id="plug",
-                credential_id="",
                 datasource_param=None,
                 online_drive_request=None,
+                credentials={},
             )
         )
 
@@ -304,29 +351,29 @@ def test_stream_online_results_raises_when_missing_params(mocker: MockerFixture)
                 datasource_type="online_drive",
                 provider_id="p/x",
                 tenant_id="t1",
-                provider="prov",
-                plugin_id="plug",
-                credential_id="",
                 datasource_param=None,
                 online_drive_request=None,
+                credentials={},
             )
         )
 
 
-def test_stream_online_results_yields_messages_and_returns_empty_dict_online_drive(mocker: MockerFixture):
-    class _Runtime:
-        def __init__(self) -> None:
-            self.runtime = types.SimpleNamespace(credentials=None)
-
-        def online_drive_download_file(self, **_kwargs):
-            yield from _gen_messages_text_only("drive")
-
-    runtime = _Runtime()
-    mocker.patch.object(DatasourceManager, "get_datasource_runtime", return_value=runtime)
-    mocker.patch(
-        "core.datasource.datasource_manager.DatasourceProviderService.get_datasource_credentials",
-        return_value={"token": "t"},
+def test_stream_online_results_yields_messages_and_returns_empty_dict_online_drive(
+    mocker: MockerFixture, provider_entity, monkeypatch
+):
+    controller = OnlineDriveDatasourcePluginProviderController(
+        entity=provider_entity.declaration,
+        plugin_id=provider_entity.plugin_id,
+        plugin_unique_identifier=provider_entity.plugin_unique_identifier,
+        tenant_id="t1",
     )
+    runtime = controller.get_datasource("ds")
+
+    def download_file(**_kwargs):
+        yield from _gen_messages_text_only("drive")
+
+    monkeypatch.setattr(runtime, "online_drive_download_file", download_file)
+    mocker.patch.object(DatasourceManager, "get_datasource_runtime", return_value=runtime)
 
     gen = DatasourceManager.stream_online_results(
         user_id="u1",
@@ -334,11 +381,9 @@ def test_stream_online_results_yields_messages_and_returns_empty_dict_online_dri
         datasource_type="online_drive",
         provider_id="p/x",
         tenant_id="t1",
-        provider="prov",
-        plugin_id="plug",
-        credential_id="cred",
         datasource_param=None,
-        online_drive_request=types.SimpleNamespace(id="fid", bucket="b"),
+        online_drive_request=OnlineDriveDownloadFileRequest(id="fid", bucket="b"),
+        credentials={"token": "t"},
     )
     messages, final_value = _drain_generator(gen)
 
@@ -347,12 +392,8 @@ def test_stream_online_results_yields_messages_and_returns_empty_dict_online_dri
     assert final_value == {}
 
 
-def test_stream_online_results_raises_for_unsupported_stream_type(mocker: MockerFixture):
-    mocker.patch.object(DatasourceManager, "get_datasource_runtime", return_value=mocker.Mock())
-    mocker.patch(
-        "core.datasource.datasource_manager.DatasourceProviderService.get_datasource_credentials",
-        return_value={},
-    )
+def test_stream_online_results_raises_for_unsupported_stream_type(mocker: MockerFixture, document_runtime):
+    mocker.patch.object(DatasourceManager, "get_datasource_runtime", return_value=document_runtime)
 
     with pytest.raises(ValueError, match="Unsupported datasource type for streaming"):
         list(
@@ -362,11 +403,9 @@ def test_stream_online_results_raises_for_unsupported_stream_type(mocker: Mocker
                 datasource_type="website_crawl",
                 provider_id="p/x",
                 tenant_id="t1",
-                provider="prov",
-                plugin_id="plug",
-                credential_id="",
                 datasource_param=None,
                 online_drive_request=None,
+                credentials={},
             )
         )
 
@@ -387,14 +426,12 @@ def test_stream_node_events_emits_events_online_document(mocker: MockerFixture):
             datasource_type="online_document",
             provider_id="p/x",
             tenant_id="t1",
-            provider="prov",
-            plugin_id="plug",
-            credential_id="",
             parameters_for_log={"k": "v"},
             datasource_info={"user_id": "u1"},
-            variable_pool=mocker.Mock(),
-            datasource_param=types.SimpleNamespace(workspace_id="w", page_id="pg", type="t"),
+            variable_pool=VariablePool(),
+            datasource_param=GetOnlineDocumentPageContentRequest(workspace_id="w", page_id="pg", type="t"),
             online_drive_request=None,
+            credentials={},
         )
     )
     # should contain one StreamChunkEvent then a final chunk (empty) and a completed event
@@ -464,7 +501,7 @@ def test_stream_node_events_builds_file_and_variables_from_messages(mocker: Mock
         return_value=built,
     )
 
-    variable_pool = mocker.Mock()
+    variable_pool = VariablePool()
 
     events = list(
         DatasourceManager.stream_node_events(
@@ -474,19 +511,17 @@ def test_stream_node_events_builds_file_and_variables_from_messages(mocker: Mock
             datasource_type="online_document",
             provider_id="p/x",
             tenant_id="t1",
-            provider="prov",
-            plugin_id="plug",
-            credential_id="",
             parameters_for_log={"k": "v"},
             datasource_info={"info": "x"},
             variable_pool=variable_pool,
-            datasource_param=types.SimpleNamespace(workspace_id="w", page_id="pg", type="t"),
+            datasource_param=GetOnlineDocumentPageContentRequest(workspace_id="w", page_id="pg", type="t"),
             online_drive_request=None,
+            credentials={},
         )
     )
 
     build_from_mapping.assert_called_once()
-    variable_pool.add.assert_not_called()
+    assert variable_pool.variable_dictionary == {}
 
     assert any(isinstance(e, StreamChunkEvent) and e.chunk == "hello" for e in events)
     assert any(isinstance(e, StreamChunkEvent) and e.chunk.startswith("Link: http") for e in events)
@@ -525,14 +560,12 @@ def test_stream_node_events_raises_when_toolfile_missing(mocker: MockerFixture, 
                 datasource_type="online_document",
                 provider_id="p/x",
                 tenant_id="t1",
-                provider="prov",
-                plugin_id="plug",
-                credential_id="",
                 parameters_for_log={},
                 datasource_info={},
-                variable_pool=mocker.Mock(),
-                datasource_param=types.SimpleNamespace(workspace_id="w", page_id="pg", type="t"),
+                variable_pool=VariablePool(),
+                datasource_param=GetOnlineDocumentPageContentRequest(workspace_id="w", page_id="pg", type="t"),
                 online_drive_request=None,
+                credentials={},
             )
         )
 
@@ -561,7 +594,7 @@ def test_stream_node_events_online_drive_sets_variable_pool_file_and_outputs(moc
         side_effect=_transformed,
     )
 
-    variable_pool = mocker.Mock()
+    variable_pool = VariablePool()
     events = list(
         DatasourceManager.stream_node_events(
             node_id="nodeA",
@@ -570,20 +603,18 @@ def test_stream_node_events_online_drive_sets_variable_pool_file_and_outputs(moc
             datasource_type="online_drive",
             provider_id="p/x",
             tenant_id="t1",
-            provider="prov",
-            plugin_id="plug",
-            credential_id="",
             parameters_for_log={},
             datasource_info={"k": "v"},
             variable_pool=variable_pool,
             datasource_param=None,
-            online_drive_request=types.SimpleNamespace(id="id", bucket="b"),
+            online_drive_request=OnlineDriveDownloadFileRequest(id="id", bucket="b"),
+            credentials={},
         )
     )
 
-    variable_pool.add.assert_called_once()
-    assert variable_pool.add.call_args[0][0] == ["nodeA", "file"]
-    assert variable_pool.add.call_args[0][1] == file_in
+    stored_file = variable_pool.get(["nodeA", "file"])
+    assert stored_file is not None
+    assert stored_file.value == file_in
 
     completed = events[-1]
     assert isinstance(completed, StreamCompletedEvent)
@@ -615,14 +646,12 @@ def test_stream_node_events_skips_file_build_for_non_online_types(mocker: Mocker
             datasource_type="website_crawl",
             provider_id="p/x",
             tenant_id="t1",
-            provider="prov",
-            plugin_id="plug",
-            credential_id="",
             parameters_for_log={},
             datasource_info={},
-            variable_pool=mocker.Mock(),
+            variable_pool=VariablePool(),
             datasource_param=None,
             online_drive_request=None,
+            credentials={},
         )
     )
 
@@ -631,52 +660,18 @@ def test_stream_node_events_skips_file_build_for_non_online_types(mocker: Mocker
     assert events[-1].node_run_result.outputs["file"] is None
 
 
-def test_get_upload_file_by_id_builds_file(mocker: MockerFixture):
-    # fake UploadFile row
-    fake_row = types.SimpleNamespace(
-        id="fid",
-        name="f",
-        extension="txt",
-        mime_type="text/plain",
-        size=1,
-        key="k",
-        source_url="http://x",
-    )
-
-    class _S:
-        def __init__(self, row):
-            self._row = row
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *exc):
-            return False
-
-        def scalar(self, *_args, **_kwargs):
-            return self._row
-
-    mocker.patch("core.datasource.datasource_manager.session_factory.create_session", return_value=_S(fake_row))
+def test_get_upload_file_by_id_builds_file(datasource_session: Session):
+    _persist_upload_file(datasource_session, file_id="fid", tenant_id="t1")
 
     f = DatasourceManager.get_upload_file_by_id(file_id="fid", tenant_id="t1")
     assert f.related_id == "fid"
     assert f.extension == ".txt"
     assert parse_file_reference(f.reference).storage_key is None
-    assert f.storage_key == "k"
+    assert f.storage_key == "files/file.txt"
 
 
-def test_get_upload_file_by_id_raises_when_missing(mocker: MockerFixture):
-    class _S:
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *exc):
-            return False
-
-        def scalar(self, *_args, **_kwargs):
-            return None
-
-    mocker.patch("core.datasource.datasource_manager.session_factory.create_session", return_value=_S())
+def test_get_upload_file_by_id_raises_when_missing(datasource_session: Session):
+    _persist_upload_file(datasource_session, file_id="fid", tenant_id="other-tenant")
 
     with pytest.raises(ValueError, match="UploadFile not found for file_id=fid, tenant_id=t1"):
         DatasourceManager.get_upload_file_by_id(file_id="fid", tenant_id="t1")

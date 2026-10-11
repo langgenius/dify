@@ -1,7 +1,7 @@
 import type { FormType } from '../../..'
 import type { CustomActionsProps } from '../actions'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { formContext } from '../../..'
 import Actions from '../actions'
 
@@ -58,6 +58,14 @@ describe('Actions', () => {
   it('should disable submit button when form cannot submit', () => {
     renderWithForm({ canSubmit: false })
     expect(screen.getByRole('button', { name: 'common.operation.submit' })).toBeDisabled()
+  })
+
+  it('should keep the pending submit button focusable when canSubmit includes submitting state', () => {
+    renderWithForm({ canSubmit: false, isSubmitting: true })
+    const submitButton = screen.getByRole('button', { name: 'common.operation.submit' })
+
+    expect(submitButton).not.toBeDisabled()
+    expect(submitButton).toHaveAttribute('aria-disabled', 'true')
   })
 
   it('should call form submit when users click submit button', async () => {

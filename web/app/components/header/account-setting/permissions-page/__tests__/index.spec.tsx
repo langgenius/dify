@@ -1,5 +1,4 @@
 import type { Role } from '@/models/access-control'
-import { toast } from '@langgenius/dify-ui/toast'
 import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import {
@@ -16,7 +15,7 @@ const mocks = vi.hoisted(() => ({
   updateWorkspaceRole: vi.fn(),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     success: vi.fn(),
   },
@@ -209,7 +208,6 @@ describe('PermissionsPage', () => {
       },
       expect.any(Object),
     )
-    expect(toast.success).toHaveBeenCalledWith('permission.role.created')
   })
 
   it('updates the selected workspace role from the edit modal', async () => {
@@ -230,6 +228,5 @@ describe('PermissionsPage', () => {
       },
       expect.any(Object),
     )
-    expect(toast.success).toHaveBeenCalledWith('permission.role.updated')
   })
 })

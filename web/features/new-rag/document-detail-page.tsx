@@ -6,9 +6,10 @@ import { useAtomValue } from 'jotai'
 import { createParser, useQueryState } from 'nuqs'
 import { useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { datasetDefaultPermissionKeysAtom } from '@/context/permission-state'
-import { consoleQuery } from '@/service/client'
+import useDocumentTitle from '@/hooks/use-document-title'
+import { consoleQuery } from '@/service/console'
 import { DatasetACLPermission, hasPermission } from '@/utils/permission'
 import { DocumentDetailHeader } from './document-detail-header'
 import { initialDocumentRevision, responseStatus } from './document-detail-model'
@@ -36,7 +37,7 @@ function ErrorState({
   onRetry?: () => void
   title: string
 }) {
-  const { t: tCommon } = useTranslation('common')
+  const { t: tCommon } = useTranslation(['common'])
   return (
     <div className="flex min-h-80 flex-col items-center justify-center px-6 text-center">
       <span aria-hidden className="i-ri-error-warning-line size-8 text-text-destructive" />
@@ -58,8 +59,8 @@ export function DocumentDetailPage({
   documentId: string
   knowledgeSpaceId: string
 }) {
-  const { i18n, t } = useTranslation('dataset')
-  const { t: tCommon } = useTranslation('common')
+  const { i18n, t } = useTranslation(['dataset'])
+  const { t: tCommon } = useTranslation(['common'])
   const permissionKeys = useAtomValue(datasetDefaultPermissionKeysAtom)
   const [selectedRevision, setSelectedRevision] = useQueryState('revision', documentRevisionParser)
   const titleRef = useRef<HTMLHeadingElement>(null)
@@ -76,6 +77,14 @@ export function DocumentDetailPage({
     [documentId, knowledgeSpaceId],
   )
   const documentQuery = useQuery(documentQueryOptions)
+  const knowledgeSpaceQuery = useQuery(
+    consoleQuery.knowledgeFs.getKnowledgeSpacesById.queryOptions({
+      input: { params: { id: knowledgeSpaceId } },
+    }),
+  )
+  const documentTitle = documentQuery.data?.title ?? t(($) => $['newKnowledge.documents'])
+  const knowledgeSpaceTitle = knowledgeSpaceQuery.data?.name ?? t(($) => $.knowledge)
+  useDocumentTitle(`${documentTitle} · ${knowledgeSpaceTitle}`)
   const revisionsQueryOptions = useMemo(
     () =>
       consoleQuery.knowledgeFs.getKnowledgeSpacesByIdDocumentsByDocumentIdRevisions.infiniteOptions(
@@ -155,7 +164,7 @@ export function DocumentDetailPage({
   if (documentQuery.isPending)
     return (
       <div className="flex min-h-80 items-center justify-center">
-        <Loading />
+        <LoadingPlaceholder />
         <span className="sr-only">{tCommon(($) => $.loading)}</span>
       </div>
     )
@@ -193,8 +202,6 @@ export function DocumentDetailPage({
         onRevisionChange={(revision) => void setSelectedRevision(revision)}
         reindexDisabled={
           !canEdit ||
-          reindexBusy ||
-          submissionPending ||
           taskIsActive ||
           tasksPending ||
           isFetchingNextTaskPage ||
@@ -206,7 +213,6 @@ export function DocumentDetailPage({
         reindexDisabledReasonId={!hasEditPermission ? REINDEX_RESTRICTION_ID : undefined}
         reindexing={reindexBusy || submissionPending}
         revisions={availableRevisions}
-        taskIsActive={taskIsActive}
         titleRef={titleRef}
       />
       {!hasEditPermission && (

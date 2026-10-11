@@ -3,7 +3,7 @@ import { usePipelineTemplateList } from '@/service/use-pipeline'
 import TemplateCard from './template-card'
 
 const CustomizedList = () => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetPipeline'])
   const { data: pipelineList, isLoading } = usePipelineTemplateList({ type: 'customized' })
   const list = pipelineList?.pipeline_templates || []
 

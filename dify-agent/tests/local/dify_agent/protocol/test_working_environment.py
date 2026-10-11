@@ -2,10 +2,11 @@ import pytest
 from pydantic import ValidationError
 
 from dify_agent.protocol import (
+    BindingFileListRequest,
+    BindingFileReadRequest,
     CreateExecutionBindingRequest,
     CreateHomeSnapshotFromBindingRequest,
     DestroyExecutionBindingRequest,
-    WorkspaceListRequest,
 )
 
 
@@ -64,7 +65,26 @@ def test_snapshot_and_file_requests_locate_binding_directly() -> None:
         home_snapshot_id="home-2",
         backend_binding_ref="binding-ref",
     )
-    listing = WorkspaceListRequest(backend_binding_ref="binding-ref", path="~/files")
+    listing = BindingFileListRequest(backend_binding_ref="binding-ref", path="~/files")
 
     assert snapshot.backend_binding_ref == "binding-ref"
     assert listing.path == "~/files"
+
+
+def test_binding_file_read_preview_uses_bounded_default_and_limit() -> None:
+    assert BindingFileReadRequest(backend_binding_ref="binding-ref", path="report.txt").max_bytes == 262144
+    assert (
+        BindingFileReadRequest(
+            backend_binding_ref="binding-ref",
+            path="report.txt",
+            max_bytes=262144,
+        ).max_bytes
+        == 262144
+    )
+
+    with pytest.raises(ValidationError, match="max_bytes"):
+        BindingFileReadRequest(
+            backend_binding_ref="binding-ref",
+            path="report.txt",
+            max_bytes=262145,
+        )

@@ -3,6 +3,7 @@ from typing import Any, override
 from uuid import uuid4
 
 from pydantic import BaseModel, model_validator
+from sqlalchemy.orm import Session
 from upstash_vector import Index, Vector
 
 from configs import dify_config
@@ -136,7 +137,9 @@ class UpstashVector(BaseVector):
 
 class UpstashVectorFactory(AbstractVectorFactory):
     @override
-    def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> UpstashVector:
+    def init_vector(
+        self, dataset: Dataset, attributes: list, embeddings: Embeddings, *, session: Session | None
+    ) -> UpstashVector:
         if dataset.index_struct_dict:
             class_prefix: str = dataset.index_struct_dict["vector_store"]["class_prefix"]
             collection_name = class_prefix.lower()

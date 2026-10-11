@@ -1,90 +1,187 @@
+import type { AgentRosterNodeData } from '../types'
+import { Button } from '@langgenius/dify-ui/button'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
-import { AgentSelectorContent } from '../agent-selector'
+import { render, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import {
+  AgentSelectorMenu,
+  AgentSelectorMenuContent,
+  AgentSelectorMenuTrigger,
+} from '../agent-selector'
 
 const mocks = vi.hoisted(() => ({
-  canManageAgents: true,
-  agents: [] as Array<{ id: string; name: string }>,
-}))
-
-vi.mock('@/features/agent-v2/permissions', () => ({
-  useCanManageAgents: () => mocks.canManageAgents,
+  agents: [] as Array<Record<string, unknown>>,
+  queryOptions: vi.fn(),
+  toastError: vi.fn(),
 }))
 
 vi.mock('@/app/components/workflow/hooks-store', () => ({
   useHooksStore: () => undefined,
 }))
 
-vi.mock('@/service/client', () => ({
+vi.mock('@/app/components/base/app-icon', () => ({
+  default: () => null,
+}))
+
+vi.mock('@/app/notifications', () => ({
+  toast: { error: mocks.toastError },
+}))
+
+vi.mock('@/service/console', () => ({
   consoleQuery: {
     agent: {
       inviteOptions: {
         get: {
-          queryOptions: () => ({
-            queryKey: ['agent-invite-options'],
-            queryFn: async () => ({ data: mocks.agents }),
-          }),
+          queryOptions: (args: unknown) => {
+            mocks.queryOptions(args)
+            return {
+              queryKey: ['agent-invite-options', args],
+              queryFn: async () => ({ data: mocks.agents }),
+            }
+          },
         },
       },
     },
   },
 }))
 
-const manageInConsoleLabel = /manageInAgentConsole/
-const startFromScratchLabel = /startFromScratch/
+const createAgent = (overrides: Record<string, unknown> = {}) => ({
+  id: 'agent-1',
+  name: 'Zoe',
+  description: 'Research assistant',
+  role: 'Researcher',
+  icon_type: 'emoji',
+  icon: '🤖',
+  icon_background: '#FFFFFF',
+  active_config_snapshot_id: 'snapshot-1',
+  ...overrides,
+})
 
-const renderSelector = async ({ onStartFromScratch }: { onStartFromScratch?: () => void } = {}) => {
+const renderMenu = async ({
+  onSelect = vi.fn<(agent: AgentRosterNodeData) => void>(),
+  onStartFromScratch,
+}: {
+  onSelect?: ReturnType<typeof vi.fn<(agent: AgentRosterNodeData) => void>>
+  onStartFromScratch?: () => void
+} = {}) => {
+  const user = userEvent.setup()
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
 
   render(
     <QueryClientProvider client={queryClient}>
-      <AgentSelectorContent
-        open
-        onOpenChange={vi.fn()}
-        onSelect={vi.fn()}
-        onStartFromScratch={onStartFromScratch}
-      />
+      <AgentSelectorMenu>
+        <AgentSelectorMenuTrigger>Open agents</AgentSelectorMenuTrigger>
+        <AgentSelectorMenuContent onSelect={onSelect} onStartFromScratch={onStartFromScratch} />
+      </AgentSelectorMenu>
     </QueryClientProvider>,
   )
 
-  await screen.findByRole('listbox')
+  await user.click(screen.getByRole('button', { name: 'Open agents' }))
+  const menu = await screen.findByRole('menu')
+
+  return { user, menu, onSelect }
 }
 
-describe('AgentSelectorContent', () => {
+describe('AgentSelectorMenu', () => {
   beforeEach(() => {
-    mocks.canManageAgents = true
     mocks.agents = []
+    mocks.queryOptions.mockClear()
+    mocks.toastError.mockClear()
   })
 
-  it('offers the Agent Console link with agent.manage', async () => {
-    await renderSelector()
+  it('lists agents and keeps the footer actions inside the menu', async () => {
+    mocks.agents = [createAgent(), createAgent({ id: 'agent-2', name: 'Bob' })]
+    const { menu } = await renderMenu({ onStartFromScratch: vi.fn() })
 
-    expect(screen.getByText(manageInConsoleLabel)).toBeInTheDocument()
+    expect(await within(menu).findByRole('menuitem', { name: /Zoe/ })).toBeInTheDocument()
+    expect(within(menu).getByRole('menuitem', { name: /Bob/ })).toBeInTheDocument()
+    expect(within(menu).getByRole('menuitem', { name: /startFromScratch/ })).toBeInTheDocument()
+    expect(within(menu).getByRole('menuitem', { name: /manageInAgentConsole/ })).toHaveAttribute(
+      'href',
+      '/agents',
+    )
   })
 
-  it('hides the Agent Console link without agent.manage', async () => {
-    mocks.canManageAgents = false
+  it('sends the typed keyword to the agent search', async () => {
+    const { user } = await renderMenu()
 
-    await renderSelector()
+    await user.type(screen.getByRole('searchbox'), 'zo')
 
-    expect(screen.queryByText(manageInConsoleLabel)).not.toBeInTheDocument()
+    await waitFor(() => {
+      expect(mocks.queryOptions).toHaveBeenCalledWith(
+        expect.objectContaining({
+          input: { query: expect.objectContaining({ keyword: 'zo' }) },
+        }),
+      )
+    })
   })
 
-  it('keeps start from scratch without agent.manage', async () => {
-    mocks.canManageAgents = false
+  it('reports the chosen agent as roster node data and closes', async () => {
+    mocks.agents = [createAgent()]
+    const { user, menu, onSelect } = await renderMenu()
 
-    await renderSelector({ onStartFromScratch: vi.fn() })
+    await user.click(await within(menu).findByRole('menuitem', { name: /Zoe/ }))
 
-    expect(screen.getByText(startFromScratchLabel)).toBeInTheDocument()
-    expect(screen.queryByText(manageInConsoleLabel)).not.toBeInTheDocument()
+    expect(onSelect).toHaveBeenCalledWith({
+      description: 'Research assistant',
+      icon: '🤖',
+      icon_background: '#FFFFFF',
+      icon_type: 'emoji',
+      id: 'agent-1',
+      name: 'Zoe',
+      role: 'Researcher',
+    })
+    await waitFor(() => {
+      expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+    })
   })
 
-  it('renders no action row when neither action is available', async () => {
-    mocks.canManageAgents = false
+  it('keeps the menu open and reports an agent without an active configuration', async () => {
+    mocks.agents = [createAgent({ active_config_snapshot_id: null })]
+    const { user, menu, onSelect } = await renderMenu()
 
-    await renderSelector()
+    await user.click(await within(menu).findByRole('menuitem', { name: /Zoe/ }))
 
-    expect(screen.queryByText(startFromScratchLabel)).not.toBeInTheDocument()
-    expect(screen.queryByText(manageInConsoleLabel)).not.toBeInTheDocument()
+    expect(mocks.toastError).toHaveBeenCalledOnce()
+    expect(onSelect).not.toHaveBeenCalled()
+    expect(screen.getByRole('menu')).toBeInTheDocument()
+  })
+
+  it('keeps a loading trigger focusable without opening the menu', async () => {
+    const user = userEvent.setup()
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <AgentSelectorMenu>
+          <AgentSelectorMenuContent onSelect={vi.fn()} />
+          <AgentSelectorMenuTrigger render={<Button loading />}>
+            Open agents
+          </AgentSelectorMenuTrigger>
+        </AgentSelectorMenu>
+      </QueryClientProvider>,
+    )
+
+    const trigger = screen.getByRole('button', { name: 'Open agents' })
+    expect(trigger).toHaveAttribute('aria-disabled', 'true')
+    expect(trigger).not.toHaveAttribute('disabled')
+
+    await user.tab()
+    expect(trigger).toHaveFocus()
+    await user.click(trigger)
+    await user.keyboard('{Enter}')
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+  })
+
+  it('reaches the footer actions with the arrow keys', async () => {
+    mocks.agents = [createAgent()]
+    const { user, menu } = await renderMenu({ onStartFromScratch: vi.fn() })
+    await within(menu).findByRole('menuitem', { name: /Zoe/ })
+
+    await user.keyboard('{ArrowDown}{ArrowDown}')
+
+    expect(within(menu).getByRole('menuitem', { name: /startFromScratch/ })).toHaveAttribute(
+      'data-highlighted',
+    )
   })
 })

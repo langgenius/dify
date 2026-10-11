@@ -3,9 +3,9 @@
 import type { Role } from '@/models/access-control'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -25,7 +25,7 @@ export function CopyMembersConfirmDialog({
   onOpenChange,
   onDuplicate,
 }: CopyMembersConfirmDialogProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'permission'])
   const { data: membersOfRole, isPending: isLoadingMembersOfRole } = useGetMembersOfRole({
     roleId: role.id,
     page: 1,
@@ -37,12 +37,7 @@ export function CopyMembersConfirmDialog({
 
   return (
     <AlertDialog open onOpenChange={onOpenChange}>
-      <AlertDialogContent
-        backdropProps={{
-          forceRender: true,
-          onClick: () => onOpenChange(false),
-        }}
-      >
+      <AlertDialogContent backdropProps={{ forceRender: true }}>
         <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
           <AlertDialogTitle className="w-full title-2xl-semi-bold text-text-primary">
             {t(($) => $['role.copyMembersTitle'], { ns: 'permission' })}
@@ -57,7 +52,7 @@ export function CopyMembersConfirmDialog({
                 })}
           </AlertDialogDescription>
         </div>
-        <AlertDialogActions>
+        <AlertDialogFooter>
           <Button
             variant="secondary"
             disabled={isActionDisabled}
@@ -67,13 +62,13 @@ export function CopyMembersConfirmDialog({
           </Button>
           <Button
             variant="primary"
-            disabled={isActionDisabled}
+            disabled={isLoadingMemberCount}
             loading={isCopyingRole}
             onClick={() => onDuplicate(true)}
           >
             {t(($) => $['operation.copy'], { ns: 'common' })}
           </Button>
-        </AlertDialogActions>
+        </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
   )

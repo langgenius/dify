@@ -1,25 +1,24 @@
-import type { App } from '@/types/app'
+import type { AppDetail } from '@dify/contracts/api/console/apps/types.gen'
+import type { ReactElement } from 'react'
+import { HotkeyManager } from '@tanstack/react-hotkeys'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { NEED_REFRESH_APP_LIST_KEY } from '@/app/components/apps/storage'
-import { useProviderContext } from '@/context/provider-context'
+import userEvent from '@testing-library/user-event'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { useRouter } from '@/next/navigation'
-import { createApp } from '@/service/apps'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { mockEmojiData } from '@/test/emoji-picker'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 import { trackCreateApp } from '@/utils/create-app-tracking'
 import CreateAppModal from '../index'
 
-const ahooksMocks = vi.hoisted(() => ({
-  keyPressHandlers: [] as Array<() => void>,
-}))
-const mockInvalidateAppList = vi.hoisted(() => vi.fn())
 const mockConsoleState = vi.hoisted(() => ({
   userProfile: { id: 'user-1' },
   workspacePermissionKeys: ['app.create_and_management'] as string[],
 }))
 const mockConsoleStateReader = vi.hoisted(() => vi.fn())
+const mockCreateApp = vi.hoisted(() => vi.fn())
 
 vi.mock('ahooks', () => ({
   useDebounceFn: <T extends (...args: unknown[]) => unknown>(fn: T) => {
@@ -30,12 +29,6 @@ vi.mock('ahooks', () => ({
   },
   useHover: () => false,
 }))
-vi.mock('@tanstack/react-hotkeys', () => ({
-  formatForDisplay: (key: string) => key,
-  useHotkey: (_hotkey: string, handler: () => void) => {
-    ahooksMocks.keyPressHandlers.push(handler)
-  },
-}))
 vi.mock('@/next/navigation', () => ({
   useRouter: vi.fn(),
   useParams: () => ({}),
@@ -43,17 +36,39 @@ vi.mock('@/next/navigation', () => ({
 vi.mock('@/utils/create-app-tracking', () => ({
   trackCreateApp: vi.fn(),
 }))
-vi.mock('@/service/apps', () => ({
-  createApp: vi.fn(),
-}))
-vi.mock('@/service/use-apps', () => ({
-  useInvalidateAppList: () => mockInvalidateAppList,
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+
+  return {
+    ...actual,
+    consoleQuery: {
+      ...actual.consoleQuery,
+      features: actual.consoleQuery.features,
+      files: actual.consoleQuery.files,
+      account: {
+        profile: {
+          get: {
+            queryKey: () => [['console', 'account', 'profile', 'get'], { type: 'query' }],
+          },
+        },
+      },
+      systemFeatures: actual.consoleQuery.systemFeatures,
+      apps: {
+        ...actual.consoleQuery.apps,
+        post: {
+          mutationOptions: () => ({
+            mutationFn: ({ body }: { body: Record<string, unknown> }) => mockCreateApp(body),
+          }),
+        },
+      },
+    },
+  }
+})
 const toastMocks = vi.hoisted(() => ({
   mockToastSuccess: vi.fn(),
   mockToastError: vi.fn(),
 }))
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     success: toastMocks.mockToastSuccess,
     error: toastMocks.mockToastError,
@@ -62,23 +77,10 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 vi.mock('@/app/components/billing/apps-full-in-dialog', () => ({
   default: () => <div>apps-full</div>,
 }))
-vi.mock('@/app/components/base/app-icon', () => ({
-  default: ({ onClick }: { onClick: () => void }) => (
-    <button type="button" onClick={onClick}>
-      open-icon-picker
-    </button>
-  ),
-}))
 vi.mock('@/utils/app-redirection', () => ({
   getRedirection: vi.fn(),
 }))
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: vi.fn(),
-}))
-vi.mock('@/context/account-state', async () => {
-  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
-  return createAccountStateModuleMock(() => mockConsoleState)
-})
+
 vi.mock('@/context/permission-state', async () => {
   const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
   return createPermissionStateModuleMock(() => mockConsoleState)
@@ -93,82 +95,54 @@ vi.mock('@/hooks/use-theme', () => ({
 
 const mockUseRouter = vi.mocked(useRouter)
 const mockPush = vi.fn()
-const mockCreateApp = vi.mocked(createApp)
 const mockTrackCreateApp = vi.mocked(trackCreateApp)
 const mockGetRedirection = vi.mocked(getRedirection)
-const mockUseProviderContext = vi.mocked(useProviderContext)
-const { mockToastSuccess, mockToastError } = toastMocks
+const { mockToastError } = toastMocks
 
-const defaultPlanUsage = {
-  buildApps: 0,
-  teamMembers: 0,
-  annotatedResponse: 0,
-  documentsUploadQuota: 0,
-  apiRateLimit: 0,
-  triggerEvents: 0,
-  vectorSpace: 0,
-}
+let appQuota = { size: 0, limit: 1 }
 
 const renderModal = () => {
   const onClose = vi.fn()
-  const onSuccess = vi.fn()
   const onCreateFromTemplate = vi.fn()
   render(
     <CreateAppModal
       show
       onClose={onClose}
-      onSuccess={onSuccess}
       onCreateFromTemplate={onCreateFromTemplate}
       defaultAppMode={AppModeEnum.ADVANCED_CHAT}
     />,
   )
-  return { onClose, onSuccess, onCreateFromTemplate }
+  return { onClose, onCreateFromTemplate }
+}
+
+function render(ui: ReactElement) {
+  return renderWithConsoleQuery(ui, {
+    systemFeatures: { deployment_edition: 'CLOUD' },
+    features: { apps: appQuota },
+  })
 }
 
 describe('CreateAppModal', () => {
-  const mockSetItem = vi.fn()
-
   beforeEach(() => {
     vi.clearAllMocks()
-    ahooksMocks.keyPressHandlers.length = 0
+    HotkeyManager.resetInstance()
     mockUseRouter.mockReturnValue({ push: mockPush } as unknown as ReturnType<typeof useRouter>)
-    mockUseProviderContext.mockReturnValue({
-      plan: {
-        type: AppModeEnum.ADVANCED_CHAT,
-        usage: defaultPlanUsage,
-        total: { ...defaultPlanUsage, buildApps: 1 },
-        reset: {},
-      },
-      enableBilling: true,
-    } as unknown as ReturnType<typeof useProviderContext>)
+    appQuota = { size: 0, limit: 1 }
     mockConsoleStateReader.mockReturnValue({
       userProfile: { id: 'user-1' },
       workspacePermissionKeys: ['app.create_and_management'],
     })
     mockConsoleState.userProfile = { id: 'user-1' }
     mockConsoleState.workspacePermissionKeys = ['app.create_and_management']
-    mockSetItem.mockClear()
-    Object.defineProperty(window, 'localStorage', {
-      value: {
-        setItem: mockSetItem,
-        getItem: vi.fn(),
-        removeItem: vi.fn(),
-        clear: vi.fn(),
-        key: vi.fn(),
-        length: 0,
-      },
-      writable: true,
-    })
   })
 
-  it('creates an app, notifies success, and fires callbacks', async () => {
-    const mockApp: Partial<App> = {
-      id: 'app-1',
+  it('creates an app and fires callbacks', async () => {
+    const mockApp = createAppDetailFixture({
       mode: AppModeEnum.ADVANCED_CHAT,
       maintainer: 'user-1',
-    }
-    mockCreateApp.mockResolvedValue(mockApp as App)
-    const { onClose, onSuccess } = renderModal()
+    })
+    mockCreateApp.mockResolvedValue(mockApp)
+    const { onClose } = renderModal()
 
     const nameInput = screen.getByPlaceholderText('app.newApp.appNamePlaceholder')
     fireEvent.change(nameInput, { target: { value: 'My App' } })
@@ -189,11 +163,7 @@ describe('CreateAppModal', () => {
       source: 'studio_blank',
       appMode: AppModeEnum.ADVANCED_CHAT,
     })
-    expect(mockToastSuccess).toHaveBeenCalledWith('app.newApp.appCreated')
-    expect(onSuccess).toHaveBeenCalled()
-    expect(onClose).toHaveBeenCalled()
-    await waitFor(() => expect(mockSetItem).toHaveBeenCalledWith(NEED_REFRESH_APP_LIST_KEY, '1'))
-    expect(mockInvalidateAppList).toHaveBeenCalledTimes(1)
+    expect(onClose).toHaveBeenCalledTimes(1)
     await waitFor(() =>
       expect(mockGetRedirection).toHaveBeenCalledWith(mockApp, mockPush, {
         currentUserId: 'user-1',
@@ -205,13 +175,12 @@ describe('CreateAppModal', () => {
   })
 
   it('waits for create_app tracking before redirecting after blank app creation', async () => {
-    const mockApp: Partial<App> = {
-      id: 'app-1',
+    const mockApp = createAppDetailFixture({
       mode: AppModeEnum.ADVANCED_CHAT,
       maintainer: 'user-1',
-    }
+    })
     let resolveTracking: (() => void) | undefined
-    mockCreateApp.mockResolvedValue(mockApp as App)
+    mockCreateApp.mockResolvedValue(mockApp)
     mockTrackCreateApp.mockReturnValue(
       new Promise<void>((resolve) => {
         resolveTracking = resolve
@@ -230,6 +199,11 @@ describe('CreateAppModal', () => {
         appMode: AppModeEnum.ADVANCED_CHAT,
       })
     })
+    const createButton = screen.getByRole('button', { name: /app\.newApp\.Create/ })
+    expect(createButton).toHaveAttribute('aria-disabled', 'true')
+    fireEvent.click(createButton)
+
+    expect(mockCreateApp).toHaveBeenCalledTimes(1)
     expect(mockGetRedirection).not.toHaveBeenCalled()
 
     resolveTracking?.()
@@ -253,15 +227,7 @@ describe('CreateAppModal', () => {
   })
 
   it('shows the apps-full notice and disables creation when the workspace quota is exhausted', () => {
-    mockUseProviderContext.mockReturnValue({
-      plan: {
-        type: AppModeEnum.ADVANCED_CHAT,
-        usage: { ...defaultPlanUsage, buildApps: 1 },
-        total: { ...defaultPlanUsage, buildApps: 1 },
-        reset: {},
-      },
-      enableBilling: true,
-    } as unknown as ReturnType<typeof useProviderContext>)
+    appQuota = { size: 1, limit: 1 }
 
     renderModal()
 
@@ -277,82 +243,131 @@ describe('CreateAppModal', () => {
     expect(onCreateFromTemplate).toHaveBeenCalled()
   })
 
-  it('creates a beginner chat app with the keyboard shortcut and selected icon style', async () => {
-    mockCreateApp.mockResolvedValue({ id: 'chat-app', mode: AppModeEnum.CHAT } as App)
-    renderModal()
+  it.each([
+    { platform: 'Win32', modifier: { ctrlKey: true } },
+    { platform: 'MacIntel', modifier: { metaKey: true } },
+  ])(
+    'creates a beginner chat app from its scoped $platform shortcut and selected icon style',
+    async ({ platform, modifier }) => {
+      vi.spyOn(navigator, 'platform', 'get').mockReturnValue(platform)
+      mockCreateApp.mockResolvedValue(
+        createAppDetailFixture({ id: 'chat-app', mode: AppModeEnum.CHAT }),
+      )
+      renderModal()
 
-    fireEvent.click(screen.getByText('app.newApp.forBeginners'))
-    fireEvent.click(screen.getByText('app.types.chatbot'))
-    fireEvent.click(screen.getByText('open-icon-picker'))
-    await waitFor(() => {
-      expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
-    })
-    fireEvent.click(screen.getByRole('button', { name: '#E4FBCC' }))
-    fireEvent.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
-    await waitFor(() => {
-      expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
-    })
-    fireEvent.change(screen.getByPlaceholderText('app.newApp.appNamePlaceholder'), {
-      target: { value: 'Keyboard App' },
-    })
-    fireEvent.change(screen.getByPlaceholderText('app.newApp.appDescriptionPlaceholder'), {
-      target: { value: 'Created from shortcut' },
-    })
-
-    ahooksMocks.keyPressHandlers.at(-1)?.()
-
-    await waitFor(() => {
-      expect(mockCreateApp).toHaveBeenCalledWith({
-        name: 'Keyboard App',
-        description: 'Created from shortcut',
-        icon_type: 'emoji',
-        icon: '🤖',
-        icon_background: '#E4FBCC',
-        mode: AppModeEnum.CHAT,
+      fireEvent.click(screen.getByText('app.newApp.forBeginners'))
+      fireEvent.click(screen.getByText('app.types.chatbot'))
+      fireEvent.change(screen.getByPlaceholderText('app.newApp.appNamePlaceholder'), {
+        target: { value: 'Keyboard App' },
       })
-    })
-  })
+      fireEvent.click(screen.getByRole('button', { name: 'app.iconPicker.title' }))
+      await waitFor(() => {
+        expect(screen.getByPlaceholderText('app.iconPicker.search')).toBeInTheDocument()
+      })
+      const pickerSearch = screen.getByPlaceholderText('app.iconPicker.search')
+      fireEvent.keyDown(pickerSearch, { key: 'Enter', code: 'Enter', ...modifier })
+      fireEvent.keyUp(pickerSearch, { key: 'Enter', code: 'Enter', ...modifier })
+      expect(mockCreateApp).not.toHaveBeenCalled()
+      fireEvent.click(screen.getByRole('radio', { name: 'app.iconPicker.color.green' }))
+      fireEvent.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
+      await waitFor(() => {
+        expect(screen.queryByPlaceholderText('app.iconPicker.search')).not.toBeInTheDocument()
+      })
+      fireEvent.change(screen.getByPlaceholderText('app.newApp.appDescriptionPlaceholder'), {
+        target: { value: 'Created from shortcut' },
+      })
 
-  it('shows validation feedback when the keyboard shortcut runs without a name', () => {
+      const nameInput = screen.getByPlaceholderText('app.newApp.appNamePlaceholder')
+      fireEvent.keyDown(nameInput, { key: 'Enter', code: 'Enter', ...modifier })
+      fireEvent.keyUp(nameInput, { key: 'Enter', code: 'Enter', ...modifier })
+
+      await waitFor(() => {
+        expect(mockCreateApp).toHaveBeenCalledWith({
+          name: 'Keyboard App',
+          description: 'Created from shortcut',
+          icon_type: 'emoji',
+          icon: '🤖',
+          icon_background: '#F3FEE7',
+          mode: AppModeEnum.CHAT,
+        })
+      })
+    },
+  )
+
+  it.each([
+    { platform: 'Win32', modifier: { ctrlKey: true } },
+    { platform: 'MacIntel', modifier: { metaKey: true } },
+  ])(
+    're-registers the $platform shortcut after the outer dialog remounts its content',
+    async ({ platform, modifier }) => {
+      vi.spyOn(navigator, 'platform', 'get').mockReturnValue(platform)
+      mockCreateApp.mockResolvedValue(
+        createAppDetailFixture({ id: 'reopened-app', mode: AppModeEnum.ADVANCED_CHAT }),
+      )
+      const onClose = vi.fn()
+      const modal = (show: boolean) => (
+        <CreateAppModal
+          show={show}
+          onClose={onClose}
+          onCreateFromTemplate={vi.fn()}
+          defaultAppMode={AppModeEnum.ADVANCED_CHAT}
+        />
+      )
+      const { rerender } = render(modal(true))
+      await userEvent.setup().click(screen.getByRole('button', { name: 'app.iconPicker.title' }))
+      const picker = screen.getByRole('dialog', { name: 'app.iconPicker.title' })
+      rerender(modal(false))
+      await waitFor(() => expect(picker).not.toBeInTheDocument())
+      rerender(modal(true))
+      const nameInput = screen.getByPlaceholderText('app.newApp.appNamePlaceholder')
+      fireEvent.change(nameInput, { target: { value: 'Reopened App' } })
+      fireEvent.keyDown(nameInput, { key: 'Enter', code: 'Enter', ...modifier })
+      fireEvent.keyUp(nameInput, { key: 'Enter', code: 'Enter', ...modifier })
+      await waitFor(() => expect(mockCreateApp).toHaveBeenCalledOnce())
+      expect(mockCreateApp).toHaveBeenCalledWith(expect.objectContaining({ name: 'Reopened App' }))
+      expect(onClose).toHaveBeenCalledOnce()
+    },
+  )
+
+  it('keeps creation unavailable from both the button and shortcut without a name', () => {
     renderModal()
 
-    ahooksMocks.keyPressHandlers.at(-1)?.()
+    const nameInput = screen.getByPlaceholderText('app.newApp.appNamePlaceholder')
+    fireEvent.keyDown(nameInput, { key: 'Enter', code: 'Enter', ctrlKey: true })
+    fireEvent.keyUp(nameInput, { key: 'Enter', code: 'Enter', ctrlKey: true })
 
-    expect(mockToastError).toHaveBeenCalledWith('app.newApp.nameNotEmpty')
+    expect(screen.getByRole('button', { name: /app\.newApp\.Create/ })).toBeDisabled()
+    expect(mockToastError).not.toHaveBeenCalled()
     expect(mockCreateApp).not.toHaveBeenCalled()
   })
 
   it('ignores the keyboard shortcut when the app quota is exhausted and closes the icon picker', async () => {
-    mockUseProviderContext.mockReturnValue({
-      plan: {
-        type: AppModeEnum.ADVANCED_CHAT,
-        usage: { ...defaultPlanUsage, buildApps: 1 },
-        total: { ...defaultPlanUsage, buildApps: 1 },
-        reset: {},
-      },
-      enableBilling: true,
-    } as unknown as ReturnType<typeof useProviderContext>)
+    appQuota = { size: 1, limit: 1 }
 
     renderModal()
 
-    fireEvent.click(screen.getByText('open-icon-picker'))
+    fireEvent.click(screen.getByRole('button', { name: 'app.iconPicker.title' }))
     await waitFor(() => {
-      expect(screen.getByPlaceholderText('Search emojis...')).toBeInTheDocument()
+      expect(screen.getByPlaceholderText('app.iconPicker.search')).toBeInTheDocument()
     })
-    fireEvent.click(screen.getByRole('button', { name: /iconPicker\.cancel/ }))
+    await userEvent.setup().keyboard('{Escape}')
     await waitFor(() => {
-      expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
+      expect(screen.queryByPlaceholderText('app.iconPicker.search')).not.toBeInTheDocument()
     })
 
-    expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
+    expect(screen.queryByPlaceholderText('app.iconPicker.search')).not.toBeInTheDocument()
 
-    ahooksMocks.keyPressHandlers.at(-1)?.()
+    const nameInput = screen.getByPlaceholderText('app.newApp.appNamePlaceholder')
+    fireEvent.keyDown(nameInput, { key: 'Enter', code: 'Enter', ctrlKey: true })
+    fireEvent.keyUp(nameInput, { key: 'Enter', code: 'Enter', ctrlKey: true })
 
     expect(mockCreateApp).not.toHaveBeenCalled()
   })
 
   it('should switch between app types before creating a completion app', async () => {
-    mockCreateApp.mockResolvedValue({ id: 'completion-app', mode: AppModeEnum.COMPLETION } as App)
+    mockCreateApp.mockResolvedValue(
+      createAppDetailFixture({ id: 'completion-app', mode: AppModeEnum.COMPLETION }),
+    )
     renderModal()
 
     fireEvent.click(screen.getByText('app.types.workflow'))
@@ -377,11 +392,11 @@ describe('CreateAppModal', () => {
   })
 
   it('should ignore duplicate create clicks while a request is in flight', async () => {
-    let resolveCreate: ((value: App) => void) | undefined
+    let resolveCreate: ((value: AppDetail) => void) | undefined
     mockCreateApp.mockImplementation(
       () =>
-        new Promise((resolve) => {
-          resolveCreate = resolve as (value: App) => void
+        new Promise<AppDetail>((resolve) => {
+          resolveCreate = resolve
         }),
     )
     renderModal()
@@ -392,13 +407,20 @@ describe('CreateAppModal', () => {
 
     const createButton = screen.getByRole('button', { name: /app\.newApp\.Create/ })
     fireEvent.click(createButton)
+    await waitFor(() => {
+      expect(mockCreateApp).toHaveBeenCalledTimes(1)
+    })
+
+    expect(createButton).toHaveAttribute('aria-disabled', 'true')
     fireEvent.click(createButton)
 
     expect(mockCreateApp).toHaveBeenCalledTimes(1)
 
-    resolveCreate?.({ id: 'slow-app', mode: AppModeEnum.ADVANCED_CHAT } as App)
+    resolveCreate?.(createAppDetailFixture({ id: 'slow-app', mode: AppModeEnum.ADVANCED_CHAT }))
     await waitFor(() => {
-      expect(mockToastSuccess).toHaveBeenCalledWith('app.newApp.appCreated')
+      expect(mockGetRedirection).toHaveBeenCalledTimes(1)
     })
   })
 })
+
+mockEmojiData()

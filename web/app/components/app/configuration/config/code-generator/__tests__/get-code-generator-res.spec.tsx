@@ -14,7 +14,7 @@ let mockDefaultModel: {
 } | null = null
 
 let mockInstructionTemplate: { data: string } | undefined
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/components/app/configuration/toast', () => ({
   toast: {
     error: (...args: unknown[]) => mockToastError(...args),
   },
@@ -26,10 +26,9 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
   }),
 }))
 
-vi.mock('@/service/use-apps', () => ({
-  useGenerateRuleTemplate: () => ({
-    data: mockInstructionTemplate,
-  }),
+vi.mock('@tanstack/react-query', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@tanstack/react-query')>()),
+  useQuery: () => ({ data: mockInstructionTemplate }),
 }))
 
 vi.mock('@/service/debug', () => ({
@@ -70,6 +69,7 @@ vi.mock('../../automatic/instruction-editor-in-workflow', () => ({
     <div>
       <div data-testid="workflow-editor">{value}</div>
       <button onClick={() => onChange('code instruction')}>set-code-instruction</button>
+      <button onClick={() => onChange('')}>clear-code-instruction</button>
     </div>
   ),
 }))
@@ -144,6 +144,35 @@ describe('GetCodeGeneratorResModal', () => {
 
     fireEvent.click(screen.getByText('change-params'))
     expect(localStorage.getItem('auto-gen-model')).toContain('"temperature":0.2')
+  })
+
+  it('should preserve an intentionally cleared template instruction', async () => {
+    mockInstructionTemplate = { data: 'code template' }
+
+    render(
+      <GetCodeGeneratorResModal
+        flowId="flow-1"
+        nodeId="node-1"
+        currentCode="print(1)"
+        mode={AppModeEnum.CHAT}
+        isShow
+        codeLanguages={CodeLanguage.python3}
+        onClose={mockOnClose}
+        onFinished={mockOnFinished}
+      />,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByTestId('workflow-editor')).toHaveTextContent('code template')
+    })
+    fireEvent.click(screen.getByText('clear-code-instruction'))
+    fireEvent.click(screen.getByText(/(?:^|\.)codegen\.generate(?=$|:)/))
+
+    expect(screen.getByTestId('workflow-editor')).toBeEmptyDOMElement()
+    expect(mockToastError).toHaveBeenCalledWith(
+      expect.stringMatching(/(?:^|\.)errorMsg\.fieldRequired(?=$|:)/),
+    )
+    expect(mockGenerateRule).not.toHaveBeenCalled()
   })
 
   it('should block generation when instruction is empty', () => {

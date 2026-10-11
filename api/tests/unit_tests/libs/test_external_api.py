@@ -1,5 +1,6 @@
+import pytest
 from flask import Blueprint, Flask
-from flask_restx import Resource
+from flask_restx import Api, Resource
 from werkzeug.exceptions import BadRequest, Unauthorized
 
 from constants import COOKIE_NAME_ACCESS_TOKEN, COOKIE_NAME_CSRF_TOKEN, COOKIE_NAME_REFRESH_TOKEN
@@ -221,3 +222,16 @@ def test_unauthorized_and_force_logout_clears_cookies():
     assert COOKIE_NAME_ACCESS_TOKEN in cookie_names_found
     assert COOKIE_NAME_CSRF_TOKEN in cookie_names_found
     assert COOKIE_NAME_REFRESH_TOKEN in cookie_names_found
+
+
+class _PassthroughFormatter:
+    def finalize(self, _e: Exception, data: dict[str, object], _status_code: int) -> dict[str, object]:
+        return data
+
+
+def test_missing_flask_restx_private_hook_fails_at_startup(monkeypatch: pytest.MonkeyPatch):
+    """The guard exists so a flask-restx upgrade breaks construction, not the first 404."""
+    monkeypatch.delattr(Api, "_should_use_fr_error_handler")
+
+    with pytest.raises(RuntimeError, match="_should_use_fr_error_handler"):
+        ExternalApi(Blueprint("guard", __name__), error_body_formatter=_PassthroughFormatter())

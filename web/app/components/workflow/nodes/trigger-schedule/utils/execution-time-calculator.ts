@@ -1,5 +1,5 @@
 import type { ScheduleTriggerNodeType } from '../types'
-import { convertTimezoneToOffsetStr } from '@/app/components/base/date-and-time-picker/utils/dayjs'
+import { convertTimezoneToOffsetStr } from '@/utils/timezone'
 import { isValidCronExpression, parseCronExpression } from './cron-parser'
 
 const DEFAULT_TIMEZONE = 'UTC'

@@ -31,7 +31,7 @@ def test_parse_index_selection_supports_comma_indexes():
     assert parse_index_selection("1, 3", ["a", "b", "c"]) == ["a", "c"]
 
 
-def test_print_wizard_step_adds_separator(monkeypatch):
+def test_print_wizard_step_adds_separator(monkeypatch: pytest.MonkeyPatch):
     output_lines = []
 
     monkeypatch.setattr("commands.data_migration.click.echo", output_lines.append)
@@ -45,7 +45,7 @@ def test_conflict_strategy_choices_exclude_replace():
     assert CONFLICT_STRATEGY_CHOICES == ["fail", "skip", "update"]
 
 
-def test_prompt_app_ids_explains_comma_selection_and_default(monkeypatch):
+def test_prompt_app_ids_explains_comma_selection_and_default(monkeypatch: pytest.MonkeyPatch):
     from commands.data_migration import _prompt_app_ids
 
     prompts = []
@@ -67,7 +67,7 @@ def test_prompt_app_ids_explains_comma_selection_and_default(monkeypatch):
     assert "Currently supported app types: workflow and chatflow." in output_lines
 
 
-def test_prompt_tool_category_marks_auto_discovered_tools(monkeypatch):
+def test_prompt_tool_category_marks_auto_discovered_tools(monkeypatch: pytest.MonkeyPatch):
     output_lines = []
 
     monkeypatch.setattr("commands.data_migration.click.echo", output_lines.append)
@@ -85,7 +85,7 @@ def test_prompt_tool_category_marks_auto_discovered_tools(monkeypatch):
     assert output_lines[:2] == ["", "==== Custom API tools ===="]
 
 
-def test_prompt_tool_category_explains_comma_selection_and_default(monkeypatch):
+def test_prompt_tool_category_explains_comma_selection_and_default(monkeypatch: pytest.MonkeyPatch):
     prompts = []
 
     def capture_prompt(text, **kwargs):
@@ -110,7 +110,7 @@ def test_prompt_tool_category_explains_comma_selection_and_default(monkeypatch):
     ]
 
 
-def test_prompt_output_file_shows_default(monkeypatch):
+def test_prompt_output_file_shows_default(monkeypatch: pytest.MonkeyPatch):
     prompts = []
 
     def capture_prompt(text, **kwargs):
@@ -124,7 +124,7 @@ def test_prompt_output_file_shows_default(monkeypatch):
     assert prompts[0][1]["show_default"] is True
 
 
-def test_prompt_tool_category_marks_auto_by_detail_and_supports_multi_select(monkeypatch):
+def test_prompt_tool_category_marks_auto_by_detail_and_supports_multi_select(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr("commands.data_migration.click.echo", lambda *_args, **_kwargs: None)
     monkeypatch.setattr("commands.data_migration.click.prompt", lambda *args, **kwargs: "1,2")
 
@@ -159,7 +159,7 @@ def test_prompt_tool_category_marks_auto_by_value():
     assert "1. [auto] embedded_workflow_as_tool (tool-1)" in output_lines
 
 
-def test_print_auto_tools_lists_each_category(monkeypatch):
+def test_print_auto_tools_lists_each_category(monkeypatch: pytest.MonkeyPatch):
     output_lines = []
 
     monkeypatch.setattr("commands.data_migration.click.echo", output_lines.append)
@@ -208,7 +208,7 @@ def test_resolve_mcp_tool_names_does_not_compare_non_uuid_identifier_to_uuid_id(
     assert resolved == {provider.name: provider.id}
 
 
-def test_prompt_additional_tools_prints_final_selection_when_skipped(monkeypatch):
+def test_prompt_additional_tools_prints_final_selection_when_skipped(monkeypatch: pytest.MonkeyPatch):
     output_lines = []
     confirm_prompts = []
 
@@ -236,7 +236,7 @@ def test_prompt_additional_tools_prints_final_selection_when_skipped(monkeypatch
     assert "- [auto] weather: 3bac3aa9-dd87-4351-9459-a7099137b028" in output_lines
 
 
-def test_final_tool_selection_deduplicates_manual_tool_already_auto(monkeypatch):
+def test_final_tool_selection_deduplicates_manual_tool_already_auto(monkeypatch: pytest.MonkeyPatch):
     output_lines = []
 
     monkeypatch.setattr("commands.data_migration.click.echo", output_lines.append)
@@ -259,7 +259,7 @@ def test_final_tool_selection_deduplicates_manual_tool_already_auto(monkeypatch)
     assert not any(line.startswith("- [manual]") for line in output_lines)
 
 
-def test_prompt_output_file_rejects_yes_no_typo(monkeypatch):
+def test_prompt_output_file_rejects_yes_no_typo(monkeypatch: pytest.MonkeyPatch):
     import click
     import pytest
 
@@ -269,7 +269,7 @@ def test_prompt_output_file_rejects_yes_no_typo(monkeypatch):
         _prompt_output_file()
 
 
-def test_confirm_wizard_summary_shows_conflict_strategy(monkeypatch):
+def test_confirm_wizard_summary_shows_conflict_strategy(monkeypatch: pytest.MonkeyPatch):
     output_lines = []
     confirm_prompts = []
 
@@ -298,7 +298,7 @@ def test_confirm_wizard_summary_shows_conflict_strategy(monkeypatch):
     assert confirm_prompts == [("Write migration package? [y/n, default: y]", {"default": True, "show_default": False})]
 
 
-def test_confirm_wizard_summary_shows_final_deduplicated_tool_selection(monkeypatch):
+def test_confirm_wizard_summary_shows_final_deduplicated_tool_selection(monkeypatch: pytest.MonkeyPatch):
     output_lines = []
 
     monkeypatch.setattr("commands.data_migration.click.echo", output_lines.append)
@@ -343,7 +343,7 @@ def test_confirm_wizard_summary_shows_final_deduplicated_tool_selection(monkeypa
     assert "- [manual] weather-id" not in output_lines
 
 
-def test_import_options_prompts_explain_secrets_reuse_and_conflicts(monkeypatch):
+def test_import_options_prompts_explain_secrets_reuse_and_conflicts(monkeypatch: pytest.MonkeyPatch):
     from commands.data_migration import _prompt_import_options
 
     output_lines = []

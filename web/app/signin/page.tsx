@@ -1,14 +1,19 @@
-'use client'
-import { useSearchParams } from '@/next/navigation'
-import NormalForm from './normal-form'
-import OneMoreStep from './one-more-step'
+import { getRouteMetadata } from '@/app/route-metadata'
+import SignInPage from './sign-in-page'
 
-const SignIn = () => {
-  const searchParams = useSearchParams()
-  const step = searchParams.get('step')
-
-  if (step === 'next') return <OneMoreStep />
-  return <NormalForm />
+type SignInPageProps = {
+  searchParams: Promise<{ step?: string | string[] }>
 }
 
-export default SignIn
+export async function generateMetadata({ searchParams }: SignInPageProps) {
+  const { step: stepParam } = await searchParams
+  const step = Array.isArray(stepParam) ? stepParam[0] : stepParam
+
+  return step === 'next'
+    ? getRouteMetadata('login', ($) => $.oneMoreStep)
+    : getRouteMetadata('login', ($) => $.signBtn)
+}
+
+export default function SignIn() {
+  return <SignInPage />
+}

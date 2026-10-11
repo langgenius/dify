@@ -16,6 +16,8 @@ from dify_trace_tencent.entities.tencent_trace_entity import SpanData
 from opentelemetry.sdk.trace import Event
 from opentelemetry.trace import SpanContext, Status, StatusCode, TraceFlags
 
+from enums import DeploymentEdition
+
 metric_reader_instances: list[DummyMetricReader] = []
 meter_provider_instances: list[DummyMeterProvider] = []
 
@@ -158,7 +160,7 @@ def patch_core_components(monkeypatch: pytest.MonkeyPatch) -> PatchedCoreCompone
         project=SimpleNamespace(version="test"),
         COMMIT_SHA="sha",
         DEPLOY_ENV="dev",
-        EDITION="cloud",
+        DEPLOYMENT_EDITION=DeploymentEdition.CLOUD,
     )
     monkeypatch.setattr(client_module, "dify_config", fake_config)
 

@@ -260,7 +260,7 @@ def make_request(
                         f"(e.g. SSRF_PROXY_ALLOW_PRIVATE_IPS=172.21.0.0/16 to "
                         f"allow 172.21.0.0/16). The URL resolves to a private, "
                         f"loopback, link-local, or otherwise non-public network "
-                        f"address. See https://github.com/infiniflow/ragflow/issues/38443."
+                        f"address. See https://github.com/langgenius/dify/issues/38443."
                     )
 
             if response.status_code not in STATUS_FORCELIST or max_retries == 0:

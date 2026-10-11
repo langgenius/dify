@@ -2,21 +2,21 @@ import type { FC } from 'react'
 import type { CreateExternalAPIReq, FormSchema } from '../declarations'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { toast } from '@langgenius/dify-ui/toast'
 import { RiBook2Line, RiCloseLine, RiInformation2Line, RiLock2Fill } from '@remixicon/react'
-import { memo, useState } from 'react'
+import { memo, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
+import { toast } from '@/app/notifications'
 import { createExternalAPI } from '@/service/datasets'
 import Form from './Form'
 
@@ -74,7 +74,8 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({
   isEditMode,
   onEdit,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'dataset'])
+  const formId = useId()
   const [loading, setLoading] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [formData, setFormData] = useState<CreateExternalAPIReq>(() =>
@@ -105,13 +106,9 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({
           ...formData,
           settings: { ...formData.settings, api_key: apiKeyToSend },
         })
-        toast.success('External API updated successfully')
       } else {
         const res = await createExternalAPI({ body: formData })
-        if (res && res.id) {
-          toast.success('External API saved successfully')
-          onSave(res)
-        }
+        if (res && res.id) onSave(res)
       }
       onCancel()
     } catch (error) {
@@ -121,6 +118,15 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({
       setLoading(false)
     }
   }
+
+  const handleSubmit = () => {
+    if (hasEmptyInputs || loading) return
+
+    if (isEditMode && (datasetBindings?.length ?? 0) > 0) setShowConfirm(true)
+    else if (isEditMode && onEdit) onEdit(formData)
+    else handleSave()
+  }
+
   return (
     <Dialog
       open
@@ -152,7 +158,7 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({
                       render={
                         <button
                           type="button"
-                          className="flex size-3.5 items-center justify-center rounded-sm outline-hidden hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
+                          className="flex size-3.5 items-center justify-center rounded-sm hover:bg-state-base-hover"
                         >
                           <RiInformation2Line className="size-3.5" />
                         </button>
@@ -160,7 +166,7 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({
                     />
                     <PopoverContent
                       placement="bottom"
-                      popupClassName="flex w-[320px] items-center self-stretch px-3 py-2"
+                      className="flex w-[320px] items-center self-stretch px-3 py-2"
                     >
                       <div className="p-1">
                         <div className="flex items-start self-stretch pt-1 pr-3 pb-0.5 pl-2">
@@ -184,12 +190,21 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({
               </div>
             )}
           </div>
-          <ActionButton className="absolute top-5 right-5" onClick={onCancel}>
-            <RiCloseLine className="h-4.5 w-4.5 shrink-0 text-text-tertiary" />
-          </ActionButton>
+          <IconButton
+            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+            className="absolute top-5 right-5"
+            onClick={onCancel}
+          >
+            <RiCloseLine aria-hidden className="h-4.5 w-4.5 shrink-0 text-text-tertiary" />
+          </IconButton>
           <Form
+            id={formId}
             value={formData}
             onChange={handleDataChange}
+            onSubmit={(event) => {
+              event.preventDefault()
+              handleSubmit()
+            }}
             formSchemas={formSchemas}
             className="min-h-0 w-full flex-1 overflow-y-auto px-6 py-3"
           />
@@ -198,14 +213,11 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({
               {t(($) => $['externalAPIForm.cancel'], { ns: 'dataset' })}
             </Button>
             <Button
+              form={formId}
               type="submit"
               variant="primary"
-              onClick={() => {
-                if (isEditMode && (datasetBindings?.length ?? 0) > 0) setShowConfirm(true)
-                else if (isEditMode && onEdit) onEdit(formData)
-                else handleSave()
-              }}
-              disabled={hasEmptyInputs || loading}
+              loading={loading}
+              disabled={hasEmptyInputs}
             >
               {t(($) => $['externalAPIForm.save'], { ns: 'dataset' })}
             </Button>
@@ -230,21 +242,24 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({
         >
           <AlertDialogContent>
             <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-              <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+              <AlertDialogTitle
+                className="w-full truncate title-2xl-semi-bold text-text-primary"
+                title="Warning"
+              >
                 Warning
               </AlertDialogTitle>
               <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
                 {`${t(($) => $['editExternalAPIConfirmWarningContent.front'], { ns: 'dataset' })} ${datasetBindings?.length} ${t(($) => $['editExternalAPIConfirmWarningContent.end'], { ns: 'dataset' })}`}
               </AlertDialogDescription>
             </div>
-            <AlertDialogActions>
+            <AlertDialogFooter>
               <AlertDialogCancelButton>
                 {t(($) => $['operation.cancel'], { ns: 'common' })}
               </AlertDialogCancelButton>
               <AlertDialogConfirmButton onClick={handleSave}>
                 {t(($) => $['operation.confirm'], { ns: 'common' })}
               </AlertDialogConfirmButton>
-            </AlertDialogActions>
+            </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
       </DialogContent>

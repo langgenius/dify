@@ -9,7 +9,7 @@ import {
   zPostForgotPasswordResponse,
   zPostForgotPasswordValidityBody,
   zPostForgotPasswordValidityResponse,
-} from './zod.gen'
+} from './zod.gen.ts'
 
 /**
  * Reset password with verification token

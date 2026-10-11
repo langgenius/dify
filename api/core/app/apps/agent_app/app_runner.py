@@ -3,7 +3,7 @@
 Unlike the legacy ``AgentChatAppRunner`` (which runs an in-process ReAct loop),
 this runner delegates to the Agent backend, consumes the streamed event flow,
 republishes the assistant answer through the existing EasyUI chat task
-pipeline, and saves the latest Agenton snapshot on the persistent Binding.
+pipeline, and saves the latest module state snapshot on the persistent Binding.
 """
 
 from __future__ import annotations
@@ -15,15 +15,13 @@ from collections.abc import Mapping
 from decimal import Decimal
 from typing import Any, Literal
 
-from dify_agent.layers.ask_human import AskHumanToolArgs
-from dify_agent.protocol import DeferredToolResultsPayload
 from pydantic import JsonValue
 
 from clients.agent_backend import (
     AgentBackendAgentMessageDeltaInternalEvent,
-    AgentBackendDeferredToolCallInternalEvent,
     AgentBackendError,
     AgentBackendInternalEventType,
+    AgentBackendRunCancelledInternalEvent,
     AgentBackendRunClient,
     AgentBackendRunEventAdapter,
     AgentBackendRunFailedError,
@@ -50,12 +48,15 @@ from core.app.entities.queue_entities import (
     QueueLLMChunkEvent,
     QueueMessageEndEvent,
 )
-from core.repositories.human_input_repository import HumanInputFormRepository, HumanInputFormRepositoryImpl
-from core.workflow.nodes.agent_v2.ask_human_hitl import AskHumanFormBuildError, create_ask_human_form
-from core.workflow.nodes.agent_v2.ask_human_resume import build_deferred_tool_results, resolve_ask_human_form
 from extensions.ext_database import db
+from graphon.file import File
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
-from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessage, UserPromptMessage
+from graphon.model_runtime.entities.message_entities import (
+    AssistantPromptMessage,
+    ImagePromptMessageContent,
+    PromptMessage,
+    UserPromptMessage,
+)
 from graphon.model_runtime.errors.invoke import (
     InvokeAuthorizationError,
     InvokeBadRequestError,
@@ -67,7 +68,7 @@ from graphon.model_runtime.errors.invoke import (
 from models.agent import AgentConfigVersionKind
 from models.agent_config_entities import AgentSoulConfig
 from models.enums import CreatorUserRole
-from models.model import MessageAgentThought
+from models.model import Message, MessageAgentThought
 
 logger = logging.getLogger(__name__)
 
@@ -89,9 +90,10 @@ _AGENT_BACKEND_INVOKE_ERROR_BY_REASON: Mapping[str, type[InvokeError]] = {
 
 
 def _agent_backend_failure_to_exception(event: AgentBackendRunFailedInternalEvent) -> Exception:
-    err_cls = _AGENT_BACKEND_INVOKE_ERROR_BY_REASON.get(event.reason or "")
-    if err_cls is not None:
-        return err_cls(event.error)
+    if event.error_type is None:
+        err_cls = _AGENT_BACKEND_INVOKE_ERROR_BY_REASON.get(event.reason or "")
+        if err_cls is not None:
+            return err_cls(event.error)
     message = event.error or "Agent backend run did not complete successfully."
     return AgentBackendRunFailedError(
         event.run_id,
@@ -101,6 +103,7 @@ def _agent_backend_failure_to_exception(event: AgentBackendRunFailedInternalEven
             "source_event_id": event.source_event_id,
         },
         message=message,
+        error_type=event.error_type,
         reason=event.reason,
         source_event_id=event.source_event_id,
     )
@@ -640,6 +643,8 @@ class AgentAppRunner:
         message_id: str,
         model_name: str,
         queue_manager: AppQueueManager,
+        files: list[File] | None = None,
+        image_detail_config: ImagePromptMessageContent.DETAIL | None = None,
         session_scope_snapshot_id: str | None | _DefaultSessionScopeSnapshotId = _DEFAULT_SESSION_SCOPE_SNAPSHOT_ID,
         build_draft_id: str | None = None,
     ) -> None:
@@ -653,8 +658,6 @@ class AgentAppRunner:
             agent_config_version_kind=AgentConfigVersionKind(agent_config_version_kind),
             build_draft_id=build_draft_id,
         )
-        # ENG-638: if a prior turn paused on ask_human and the form is now answered,
-        # resume by threading the human's reply into this run as deferred_tool_results.
         stored = self._session_store.load_or_create(scope)
         runtime = self._build_runtime(
             dify_context=dify_context,
@@ -666,9 +669,10 @@ class AgentAppRunner:
             backend_binding_ref=stored.backend_binding_ref,
             conversation_id=conversation_id,
             query=query,
+            files=tuple(files or ()),
+            image_detail_config=image_detail_config,
             idempotency_key=message_id,
             stored=stored,
-            message_id=message_id,
         )
 
         create_response = self._agent_backend_client.create_run(runtime.request)
@@ -679,29 +683,36 @@ class AgentAppRunner:
             queue_manager=queue_manager,
             model_name=model_name,
             query=query,
+            session_scope=scope,
+            binding_id=runtime.binding_id,
         )
 
-        if isinstance(terminal, AgentBackendDeferredToolCallInternalEvent):
-            # ENG-635: the agent asked a human. End this turn with the question and
-            # a conversation-owned HITL form; a form submission resumes the run.
-            self._pause_for_ask_human(
-                terminal=terminal,
-                scope=scope,
-                dify_context=dify_context,
-                agent_soul=agent_soul,
-                conversation_id=conversation_id,
+        terminal_usage = None
+        if isinstance(
+            terminal,
+            AgentBackendRunSucceededInternalEvent
+            | AgentBackendRunFailedInternalEvent
+            | AgentBackendRunCancelledInternalEvent,
+        ):
+            terminal_usage = _llm_usage_from_agent_backend(terminal.usage)
+            self._persist_message_usage(
                 message_id=message_id,
-                model_name=model_name,
-                runtime=runtime,
-                queue_manager=queue_manager,
-                query=query,
+                usage=terminal_usage,
             )
-            return
+
+        if isinstance(terminal, AgentBackendRunFailedInternalEvent | AgentBackendRunCancelledInternalEvent):
+            # None means no post-exit snapshot was produced; leave the previously stored session snapshot untouched.
+            if terminal.session_snapshot is not None:
+                self._save_session(
+                    scope=scope,
+                    binding_id=runtime.binding_id,
+                    snapshot=terminal.session_snapshot,
+                )
 
         if not isinstance(terminal, AgentBackendRunSucceededInternalEvent):
             if isinstance(terminal, AgentBackendRunFailedInternalEvent):
                 reason = terminal.reason
-                if reason == "binding_lost":
+                if terminal.error_type is None and reason == "binding_lost":
                     raise AgentBackendError("The retained agent working environment is no longer available.")
                 raise _agent_backend_failure_to_exception(terminal)
             raise AgentBackendError("Agent backend run did not complete successfully.")
@@ -722,7 +733,7 @@ class AgentAppRunner:
             model_name=model_name,
             answer=answer,
             query=query,
-            usage=_llm_usage_from_agent_backend(terminal.usage),
+            usage=terminal_usage,
         )
         self._save_session(
             scope=scope,
@@ -769,16 +780,12 @@ class AgentAppRunner:
         backend_binding_ref: str,
         conversation_id: str,
         query: str,
+        files: tuple[File, ...],
+        image_detail_config: ImagePromptMessageContent.DETAIL | None,
         idempotency_key: str,
         stored: StoredAgentAppSession,
-        message_id: str | None,
     ) -> AgentAppRuntimeRequest:
         session_snapshot = stored.session_snapshot
-        deferred_tool_results = (
-            self._resolve_pending_ask_human(stored=stored, dify_context=dify_context, message_id=message_id)
-            if message_id is not None
-            else None
-        )
         return self._request_builder.build(
             AgentAppRuntimeBuildContext(
                 dify_context=dify_context,
@@ -788,101 +795,14 @@ class AgentAppRunner:
                 agent_soul=agent_soul,
                 conversation_id=conversation_id,
                 user_query=query,
+                files=files,
+                image_detail_config=image_detail_config,
                 idempotency_key=idempotency_key,
                 binding_id=binding_id,
                 backend_binding_ref=backend_binding_ref,
                 session_snapshot=session_snapshot,
-                deferred_tool_results=deferred_tool_results,
             )
         )
-
-    def _pause_for_ask_human(
-        self,
-        *,
-        terminal: AgentBackendDeferredToolCallInternalEvent,
-        scope: AgentAppSessionScope,
-        dify_context: DifyRunContext,
-        agent_soul: AgentSoulConfig,
-        conversation_id: str,
-        message_id: str,
-        model_name: str,
-        runtime: AgentAppRuntimeRequest,
-        queue_manager: AppQueueManager,
-        query: str,
-    ) -> None:
-        """End the chat turn on a dify.ask_human call: create a conversation-owned
-        HITL form, persist the pause correlation, and surface the question."""
-        try:
-            created = create_ask_human_form(
-                deferred_tool_call=terminal.deferred_tool_call,
-                # Chat forms have no workflow node; key by the turn's message id.
-                node_id=message_id,
-                default_node_title="Agent",
-                contacts=agent_soul.human.contacts,
-                repository=self._build_form_repository(dify_context),
-                conversation_id=conversation_id,
-            )
-        except AskHumanFormBuildError as error:
-            raise AgentBackendError(f"Failed to build ask_human form for Agent App chat: {error}") from error
-
-        # Persist the snapshot + correlation so a form submission can start the
-        # second run with the human's answer (ENG-637/638 columns, conversation owner).
-        self._save_session(
-            scope=scope,
-            binding_id=runtime.binding_id,
-            snapshot=terminal.session_snapshot,
-            pending_form_id=created.form_id,
-            pending_tool_call_id=terminal.deferred_tool_call.tool_call_id,
-        )
-
-        # The structured form is delivered via the HITL surface(s); the chat turn
-        # ends by echoing the agent's question so the conversation reflects the ask.
-        self._publish_answer(
-            queue_manager=queue_manager,
-            model_name=model_name,
-            answer=self._ask_human_message(created.args),
-            query=query,
-        )
-
-    def _resolve_pending_ask_human(
-        self,
-        *,
-        stored: StoredAgentAppSession,
-        dify_context: DifyRunContext,
-        message_id: str,
-    ) -> DeferredToolResultsPayload | None:
-        """Build deferred_tool_results when a pending ask_human form is answered."""
-        if stored.pending_form_id is None or stored.pending_tool_call_id is None:
-            return None
-        outcome = resolve_ask_human_form(
-            form_id=stored.pending_form_id,
-            tenant_id=dify_context.tenant_id,
-            node_id=message_id,
-        )
-        if outcome is None or outcome.deferred_result is None:
-            # Form missing or still waiting — run a normal turn, no resume.
-            return None
-        return build_deferred_tool_results(
-            tool_call_id=stored.pending_tool_call_id,
-            result=outcome.deferred_result,
-        )
-
-    def _build_form_repository(self, dify_context: DifyRunContext) -> HumanInputFormRepository:
-        invoke_source = dify_context.invoke_from.value
-        return HumanInputFormRepositoryImpl(
-            tenant_id=dify_context.tenant_id,
-            app_id=dify_context.app_id,
-            workflow_execution_id=None,
-            invoke_source=invoke_source,
-            submission_actor_id=dify_context.user_id if invoke_source in {"debugger", "explore"} else None,
-        )
-
-    @staticmethod
-    def _ask_human_message(args: AskHumanToolArgs) -> str:
-        parts = [args.question]
-        if args.markdown:
-            parts.append(args.markdown)
-        return "\n\n".join(parts)
 
     def _consume_stream(
         self,
@@ -893,6 +813,8 @@ class AgentAppRunner:
         queue_manager: AppQueueManager,
         model_name: str,
         query: str | None,
+        session_scope: AgentAppSessionScope,
+        binding_id: str,
     ):
         """Consume backend events while preserving raw recorder granularity."""
         terminal = None
@@ -902,6 +824,7 @@ class AgentAppRunner:
             queue_manager=queue_manager,
         )
         text_delta_debouncer = _TextDeltaDebouncer(debounce_seconds=self._text_delta_debounce_seconds)
+        last_event_id: str | None = None
 
         def persist_answer_text(content_delta: str) -> None:
             try:
@@ -932,14 +855,28 @@ class AgentAppRunner:
                 should_stop=queue_manager.is_stopped,
             )
             for public_event in public_events:
+                if public_event.id is not None:
+                    last_event_id = public_event.id
                 if queue_manager.is_stopped():
                     flush_pending_agent_message_text()
-                    self._cancel_run(run_id)
+                    self._cancel_run(
+                        run_id,
+                        after=last_event_id,
+                        session_scope=session_scope,
+                        binding_id=binding_id,
+                        message_id=message_id,
+                    )
                     raise GenerateTaskStoppedError()
                 for internal_event in self._event_adapter.adapt(public_event):
                     if queue_manager.is_stopped():
                         flush_pending_agent_message_text()
-                        self._cancel_run(run_id)
+                        self._cancel_run(
+                            run_id,
+                            after=last_event_id,
+                            session_scope=session_scope,
+                            binding_id=binding_id,
+                            message_id=message_id,
+                        )
                         raise GenerateTaskStoppedError()
                     if internal_event.type in (
                         AgentBackendInternalEventType.RUN_STARTED,
@@ -976,28 +913,60 @@ class AgentAppRunner:
             raise
         except Exception as error:
             flush_pending_agent_message_text()
-            self._cancel_run(run_id)
+            self._cancel_run(
+                run_id,
+                after=last_event_id,
+                session_scope=session_scope,
+                binding_id=binding_id,
+                message_id=message_id,
+            )
             if queue_manager.is_stopped():
                 raise GenerateTaskStoppedError() from error
             raise
         flush_pending_agent_message_text()
         if queue_manager.is_stopped():
-            self._cancel_run(run_id)
+            self._cancel_run(
+                run_id,
+                after=last_event_id,
+                session_scope=session_scope,
+                binding_id=binding_id,
+                message_id=message_id,
+            )
             raise GenerateTaskStoppedError()
         return terminal, process_recorder
 
-    def _cancel_run(self, run_id: str) -> None:
-        try:
-            self._agent_backend_client.cancel_run(run_id)
-        except Exception:
-            logger.warning("Failed to cancel stopped Agent App backend run: run_id=%s", run_id, exc_info=True)
-
-    def _publish_answer(
-        self, *, queue_manager: AppQueueManager, model_name: str, answer: str, query: str | None
+    def _cancel_run(
+        self,
+        run_id: str,
+        *,
+        after: str | None,
+        session_scope: AgentAppSessionScope,
+        binding_id: str,
+        message_id: str,
     ) -> None:
-        # MVP: emit the full answer as a single chunk + message-end. The chat
-        # task pipeline streams the chunk over SSE and persists the message.
-        publish_text_answer(queue_manager=queue_manager, model_name=model_name, answer=answer, user_query=query)
+        try:
+            public_event = self._agent_backend_client.cancel_run_and_wait(run_id, after=after)
+            for internal_event in self._event_adapter.adapt(public_event):
+                if (
+                    isinstance(internal_event, AgentBackendRunCancelledInternalEvent)
+                    and internal_event.session_snapshot is not None
+                ):
+                    self._save_session(
+                        scope=session_scope,
+                        binding_id=binding_id,
+                        snapshot=internal_event.session_snapshot,
+                    )
+                if isinstance(internal_event, AgentBackendRunCancelledInternalEvent):
+                    self._persist_message_usage(
+                        message_id=message_id,
+                        usage=_llm_usage_from_agent_backend(internal_event.usage),
+                    )
+        except Exception:
+            logger.warning(
+                "Failed to finish cancelling stopped Agent App backend run: run_id=%s",
+                run_id,
+                exc_info=True,
+            )
 
     def _publish_terminal_answer(
         self,
@@ -1017,22 +986,52 @@ class AgentAppRunner:
             user_query=query,
         )
 
+    @staticmethod
+    def _persist_message_usage(*, message_id: str, usage: LLMUsage | None) -> None:
+        """Persist terminal usage independently of the client-facing stream lifecycle."""
+        if usage is None or (usage.total_tokens <= 0 and usage.total_price <= 0):
+            return
+        try:
+            message = db.session.get(Message, message_id)
+            if message is None:
+                logger.warning("Cannot persist Agent App usage: message not found: %s", message_id)
+                return
+            message.message_tokens = usage.prompt_tokens
+            message.message_unit_price = usage.prompt_unit_price
+            message.message_price_unit = usage.prompt_price_unit
+            message.answer_tokens = usage.completion_tokens
+            message.answer_unit_price = usage.completion_unit_price
+            message.answer_price_unit = usage.completion_price_unit
+            message.total_price = usage.total_price
+            message.currency = usage.currency
+            if usage.latency > 0:
+                message.provider_response_latency = usage.latency
+
+            try:
+                metadata = json.loads(message.message_metadata) if message.message_metadata else {}
+            except (json.JSONDecodeError, TypeError):
+                metadata = {}
+            if not isinstance(metadata, dict):
+                metadata = {}
+            metadata["usage"] = usage.model_dump(mode="json")
+            message.message_metadata = json.dumps(metadata, ensure_ascii=False)
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            logger.warning("Failed to persist partial Agent App usage: message_id=%s", message_id, exc_info=True)
+
     def _save_session(
         self,
         *,
         scope: AgentAppSessionScope,
         binding_id: str,
         snapshot: Any,
-        pending_form_id: str | None = None,
-        pending_tool_call_id: str | None = None,
     ) -> bool:
         try:
             self._session_store.save_active_snapshot(
                 scope=scope,
                 binding_id=binding_id,
                 snapshot=snapshot,
-                pending_form_id=pending_form_id,
-                pending_tool_call_id=pending_tool_call_id,
             )
             return True
         except Exception:

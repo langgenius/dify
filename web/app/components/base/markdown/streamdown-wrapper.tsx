@@ -1,6 +1,7 @@
 import type { ComponentType } from 'react'
 import type { Components, StreamdownProps } from 'streamdown'
 import { createMathPlugin } from '@streamdown/math'
+import dynamic from 'next/dynamic'
 import { memo, useMemo } from 'react'
 import RemarkBreaks from 'remark-breaks'
 import { defaultRehypePlugins, defaultRemarkPlugins, Streamdown } from 'streamdown'
@@ -9,7 +10,6 @@ import {
   Img,
   Link,
   MarkdownButton,
-  MarkdownForm,
   Paragraph,
   PluginImg,
   PluginParagraph,
@@ -17,7 +17,6 @@ import {
   VideoBlock,
 } from '@/app/components/base/markdown-blocks'
 import { ALLOW_INLINE_STYLES, ENABLE_SINGLE_DOLLAR_LATEX } from '@/config'
-import dynamic from '@/next/dynamic'
 import { customUrlTransform } from './markdown-utils'
 import 'katex/dist/katex.min.css'
 
@@ -35,9 +34,17 @@ type SanitizeSchema = {
   [key: string]: unknown
 }
 
-const CodeBlock = dynamic(() => import('@/app/components/base/markdown-blocks/code-block'), {
+const MARKDOWN_FORM_TAG_RE = /<form(?:\s|>)/i
+
+const MarkdownForm = dynamic(() => import('@/app/components/base/markdown-blocks/form'), {
   ssr: false,
 })
+
+const CodeBlock = dynamic(
+  () =>
+    import('@/app/components/base/markdown-blocks/code-block').then((module) => module.CodeBlock),
+  { ssr: false },
+)
 
 const mathPlugin = createMathPlugin({
   singleDollarTextMath: ENABLE_SINGLE_DOLLAR_LATEX,
@@ -167,6 +174,10 @@ const StreamdownWrapper = (props: StreamdownWrapperProps) => {
     className,
     mode = 'streaming',
   } = props
+  // Remend treats Markdown punctuation inside raw HTML attributes as incomplete syntax.
+  // Form markup must reach the HTML parser unchanged or a field name such as `field()!*&-`
+  // gains a synthetic trailing `*` after the closing form tag.
+  const shouldParseIncompleteMarkdown = !MARKDOWN_FORM_TAG_RE.test(latexContent)
 
   const remarkPlugins = useMemo(
     () => [
@@ -245,6 +256,7 @@ const StreamdownWrapper = (props: StreamdownWrapperProps) => {
       components={components}
       isAnimating={isAnimating}
       mode={mode}
+      parseIncompleteMarkdown={shouldParseIncompleteMarkdown}
     >
       {latexContent}
     </Streamdown>

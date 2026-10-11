@@ -1,17 +1,17 @@
 import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
 import type { UserProfileWithMeta } from './client'
 import { queryOptions } from '@tanstack/react-query'
+import { consoleQuery } from '@/service/console'
 import {
   getServerConsoleRequestHeaders,
   resolveServerConsoleApiUrl,
-  serverConsoleQuery,
-} from '@/service/server'
+} from '@/service/console/server'
 
 const ACCOUNT_PROFILE_PATH = '/account/profile'
 
 export const serverUserProfileQueryOptions = () =>
   queryOptions<UserProfileWithMeta>({
-    queryKey: serverConsoleQuery.account.profile.get.queryKey(),
+    queryKey: consoleQuery.account.profile.get.queryKey(),
     queryFn: async () => {
       const profileUrl = resolveServerConsoleApiUrl(ACCOUNT_PROFILE_PATH)
       if (!profileUrl) throw new Error('Server account profile URL is not configured')

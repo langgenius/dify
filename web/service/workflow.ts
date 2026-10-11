@@ -13,8 +13,8 @@ import type {
   NodesDefaultConfigsResponse,
   VarInInspect,
 } from '@/types/workflow'
+import { consoleClient } from '@/service/console'
 import { get, post } from './base'
-import { consoleClient } from './client'
 import { getFlowPrefix } from './utils'
 
 export type WorkflowDraftFeaturesPayload = WorkflowFeaturesConfigPayload
@@ -41,6 +41,7 @@ export const syncWorkflowDraft = ({
   params: Pick<FetchWorkflowDraftResponse, 'graph' | 'features' | 'conversation_variables'> &
     Partial<Pick<FetchWorkflowDraftResponse, 'environment_variables'>> & {
       environment_variable_patch?: EnvironmentVariablePatchPayload
+      force?: boolean
     }
 }) => {
   return post<CommonResponse & { updated_at: number; hash: string }>(
@@ -81,10 +82,6 @@ export const getLoopSingleNodeRunUrl = (
   nodeId: string,
 ) => {
   return `${getFlowPrefix(flowType)}/${flowId}/${isChatFlow ? 'advanced-chat/' : ''}workflows/draft/loop/nodes/${nodeId}/run`
-}
-
-export const fetchPublishedWorkflow = (url: string) => {
-  return get<FetchWorkflowDraftResponse | null>(url)
 }
 
 export const stopWorkflowRun = (url: string) => {

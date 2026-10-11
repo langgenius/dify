@@ -43,6 +43,15 @@ from core.mcp.types import (
     OAuthTokens,
     ProtectedResourceMetadata,
 )
+from tests.unit_tests.core.mcp.fixtures import make_provider
+
+
+@pytest.fixture
+def provider(monkeypatch: pytest.MonkeyPatch) -> MCPProviderEntity:
+    """Use real credential parsing with plaintext values at the decryption boundary."""
+    monkeypatch.setattr("core.entities.mcp_provider.encrypter.decrypt_token", lambda _tenant_id, token: token)
+    monkeypatch.setattr(MCPProviderEntity, "_decrypt_dict", lambda _self, data: data.copy())
+    return make_provider(credentials={})
 
 
 class TestPKCEGeneration:
@@ -500,6 +509,38 @@ class TestAuthorizationFlow:
             headers={"Content-Type": "application/json"},
         )
 
+    @patch("core.helper.ssrf_proxy.post")
+    def test_register_client_rejected_by_server(self, mock_post):
+        """A rejected dynamic registration must raise ValueError, not httpx.HTTPStatusError.
+
+        `auth()` lets anything that is not a RequestError propagate, and the
+        console MCP auth endpoint only turns MCPError/ValueError into a 4xx, so
+        a raw HTTPStatusError here surfaces as an opaque 500.
+        """
+        mock_response = Mock()
+        mock_response.is_success = False
+        mock_response.status_code = 400
+        mock_response.text = '{"error":"invalid_redirect_uri"}'
+        mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
+            "Bad Request", request=Mock(), response=mock_response
+        )
+        mock_post.return_value = mock_response
+
+        metadata = OAuthMetadata(
+            authorization_endpoint="https://auth.example.com/authorize",
+            token_endpoint="https://auth.example.com/token",
+            registration_endpoint="https://auth.example.com/register",
+            response_types_supported=["code"],
+        )
+        client_metadata = OAuthClientMetadata(client_name="Dify", redirect_uris=["https://redirect.example.com"])
+
+        with pytest.raises(ValueError) as exc_info:
+            register_client("https://api.example.com", metadata, client_metadata)
+
+        message = str(exc_info.value)
+        assert "400" in message
+        assert "invalid_redirect_uri" in message
+
     def test_register_client_no_endpoint(self):
         """Test client registration when no endpoint available."""
         metadata = OAuthMetadata(
@@ -569,22 +610,6 @@ class TestAuthOrchestration:
     """Test the main auth orchestration function."""
 
     @pytest.fixture
-    def mock_provider(self):
-        """Create a mock provider entity."""
-        provider = Mock(spec=MCPProviderEntity)
-        provider.id = "provider-id"
-        provider.tenant_id = "tenant-id"
-        provider.decrypt_server_url.return_value = "https://api.example.com"
-        provider.client_metadata = OAuthClientMetadata(
-            client_name="Dify",
-            redirect_uris=["https://redirect.example.com"],
-        )
-        provider.redirect_url = "https://redirect.example.com"
-        provider.retrieve_client_information.return_value = None
-        provider.retrieve_tokens.return_value = None
-        return provider
-
-    @pytest.fixture
     def mock_service(self):
         """Create a mock MCP service."""
         return Mock()
@@ -592,7 +617,7 @@ class TestAuthOrchestration:
     @patch("core.mcp.auth.auth_flow.discover_oauth_metadata")
     @patch("core.mcp.auth.auth_flow.register_client")
     @patch("core.mcp.auth.auth_flow.start_authorization")
-    def test_auth_new_registration(self, mock_start_auth, mock_register, mock_discover, mock_provider, mock_service):
+    def test_auth_new_registration(self, mock_start_auth, mock_register, mock_discover, provider, mock_service):
         """Test auth flow for new client registration."""
         # Setup
         mock_discover.return_value = (
@@ -612,7 +637,7 @@ class TestAuthOrchestration:
         )
         mock_start_auth.return_value = ("https://auth.example.com/authorize?...", "code-verifier")
 
-        result = auth(mock_provider)
+        result = auth(provider)
 
         # auth() now returns AuthResult
         assert isinstance(result, AuthResult)
@@ -638,7 +663,7 @@ class TestAuthOrchestration:
     @patch("core.mcp.auth.auth_flow.discover_oauth_metadata")
     @patch("core.mcp.auth.auth_flow._retrieve_redis_state")
     @patch("core.mcp.auth.auth_flow.exchange_authorization")
-    def test_auth_exchange_code(self, mock_exchange, mock_retrieve_state, mock_discover, mock_provider, mock_service):
+    def test_auth_exchange_code(self, mock_exchange, mock_retrieve_state, mock_discover, provider, mock_service):
         """Test auth flow for exchanging authorization code."""
         # Setup metadata discovery
         mock_discover.return_value = (
@@ -653,7 +678,7 @@ class TestAuthOrchestration:
         )
 
         # Setup existing client
-        mock_provider.retrieve_client_information.return_value = OAuthClientInformation(client_id="existing-client")
+        provider.credentials["client_information"] = {"client_id": "existing-client"}
 
         # Setup state retrieval
         state_data = OAuthCallbackState(
@@ -671,7 +696,7 @@ class TestAuthOrchestration:
         tokens = OAuthTokens(access_token="new-token", token_type="Bearer", expires_in=3600)
         mock_exchange.return_value = tokens
 
-        result = auth(mock_provider, authorization_code="auth-code", state_param="state-key")
+        result = auth(provider, authorization_code="auth-code", state_param="state-key")
 
         # auth() now returns AuthResult, not a dict
         assert isinstance(result, AuthResult)
@@ -685,7 +710,7 @@ class TestAuthOrchestration:
         assert result.actions[0].tenant_id == "tenant-id"
 
     @patch("core.mcp.auth.auth_flow.discover_oauth_metadata")
-    def test_auth_exchange_code_without_state(self, mock_discover, mock_provider, mock_service):
+    def test_auth_exchange_code_without_state(self, mock_discover, provider, mock_service):
         """Test auth flow fails when exchanging code without state."""
         # Setup metadata discovery
         mock_discover.return_value = (
@@ -699,19 +724,19 @@ class TestAuthOrchestration:
             None,
         )
 
-        mock_provider.retrieve_client_information.return_value = OAuthClientInformation(client_id="existing-client")
+        provider.credentials["client_information"] = {"client_id": "existing-client"}
 
         with pytest.raises(ValueError) as exc_info:
-            auth(mock_provider, authorization_code="auth-code")
+            auth(provider, authorization_code="auth-code")
 
         assert "State parameter is required" in str(exc_info.value)
 
     @patch("core.mcp.auth.auth_flow.refresh_authorization")
-    def test_auth_refresh_token(self, mock_refresh, mock_provider, mock_service):
+    def test_auth_refresh_token(self, mock_refresh, provider, mock_service):
         """Test auth flow for refreshing tokens."""
         # Setup existing client and tokens
-        mock_provider.retrieve_client_information.return_value = OAuthClientInformation(client_id="existing-client")
-        mock_provider.retrieve_tokens.return_value = OAuthTokens(
+        provider.credentials["client_information"] = {"client_id": "existing-client"}
+        provider.credentials.update(
             access_token="old-token",
             token_type="Bearer",
             expires_in=0,
@@ -739,7 +764,7 @@ class TestAuthOrchestration:
                 None,
             )
 
-            result = auth(mock_provider)
+            result = auth(provider)
 
             # auth() now returns AuthResult
             assert isinstance(result, AuthResult)
@@ -756,7 +781,7 @@ class TestAuthOrchestration:
             mock_refresh.assert_called_once()
 
     @patch("core.mcp.auth.auth_flow.discover_oauth_metadata")
-    def test_auth_registration_fails_with_code(self, mock_discover, mock_provider, mock_service):
+    def test_auth_registration_fails_with_code(self, mock_discover, provider, mock_service):
         """Test auth fails when no client info exists but code is provided."""
         # Setup metadata discovery
         mock_discover.return_value = (
@@ -770,10 +795,10 @@ class TestAuthOrchestration:
             None,
         )
 
-        mock_provider.retrieve_client_information.return_value = None
+        provider.credentials.pop("client_information", None)
 
         with pytest.raises(ValueError) as exc_info:
-            auth(mock_provider, authorization_code="auth-code")
+            auth(provider, authorization_code="auth-code")
 
         assert "Existing OAuth client information is required" in str(exc_info.value)
 
@@ -967,15 +992,17 @@ class TestAuthOrchestration:
     @patch("core.mcp.auth.auth_flow._retrieve_redis_state")
     @patch("core.mcp.auth.auth_flow.exchange_authorization")
     def test_handle_callback(self, mock_exchange, mock_retrieve):
-        state = Mock(spec=OAuthCallbackState)
-        state.server_url = "https://api"
-        state.metadata = None
-        state.client_information = Mock()
-        state.code_verifier = "cv"
-        state.redirect_uri = "https://re"
+        state = OAuthCallbackState(
+            provider_id="provider-id",
+            tenant_id="tenant-id",
+            server_url="https://api",
+            client_information=OAuthClientInformation(client_id="c1"),
+            code_verifier="cv",
+            redirect_uri="https://re",
+        )
         mock_retrieve.return_value = state
 
-        tokens = Mock(spec=OAuthTokens)
+        tokens = OAuthTokens(access_token="at", token_type="Bearer")
         mock_exchange.return_value = tokens
 
         s, t = handle_callback("key", "code")
@@ -1038,7 +1065,11 @@ class TestAuthOrchestration:
                 mock_prm.return_value = ProtectedResourceMetadata(
                     resource="https://api", authorization_servers=["https://auth"]
                 )
-                mock_asm.return_value = Mock(spec=OAuthMetadata)
+                mock_asm.return_value = OAuthMetadata(
+                    authorization_endpoint="https://auth/authorize",
+                    token_endpoint="https://auth/token",
+                    response_types_supported=["code"],
+                )
 
                 asm, prm, hint = discover_oauth_metadata("https://api")
                 assert asm == mock_asm.return_value
@@ -1244,20 +1275,17 @@ class TestAuthOrchestration:
         with pytest.raises(ValueError, match="does not support dynamic client registration"):
             register_client("https://api", metadata, client_metadata)
 
-        # Failure: HTTP
+        # Failure: HTTP. A rejected registration must be reported as a ValueError so
+        # callers can turn it into a user-facing error instead of a bare 500.
         res.is_success = False
-        res.raise_for_status = Mock()
         res.status_code = 400
-        # If is_success is false, it should call raise_for_status
-        register_client("https://api", None, client_metadata)
-        res.raise_for_status.assert_called_once()
+        res.text = '{"error":"invalid_redirect_uri"}'
+        with pytest.raises(ValueError, match="Client registration failed: HTTP 400"):
+            register_client("https://api", None, client_metadata)
 
     @patch("core.mcp.auth.auth_flow.discover_oauth_metadata")
-    def test_auth_orchestration_failures(self, mock_discover):
-        provider = Mock(spec=MCPProviderEntity)
-        provider.decrypt_server_url.return_value = "https://api"
-        provider.id = "p1"
-        provider.tenant_id = "t1"
+    def test_auth_orchestration_failures(self, mock_discover, provider):
+        provider.server_url = "https://api"
 
         # Case 1: No server metadata
         mock_discover.return_value = (None, None, None)
@@ -1271,7 +1299,7 @@ class TestAuthOrchestration:
             response_types_supported=["code"],
         )
         mock_discover.return_value = (asm, None, None)
-        provider.retrieve_client_information.return_value = None
+        provider.credentials.pop("client_information", None)
         with pytest.raises(ValueError, match="Existing OAuth client information is required"):
             auth(provider, authorization_code="code")
 
@@ -1288,13 +1316,9 @@ class TestAuthOrchestration:
                 auth(provider)
 
     @patch("core.mcp.auth.auth_flow.discover_oauth_metadata")
-    def test_auth_orchestration_client_credentials(self, mock_discover):
-        provider = Mock(spec=MCPProviderEntity)
-        provider.decrypt_server_url.return_value = "https://api"
-        provider.id = "p1"
-        provider.tenant_id = "t1"
-        provider.retrieve_client_information.return_value = OAuthClientInformation(client_id="c1", client_secret="s1")
-        provider.decrypt_credentials.return_value = {"scope": "read"}
+    def test_auth_orchestration_client_credentials(self, mock_discover, provider):
+        provider.server_url = "https://api"
+        provider.credentials = {"client_information": {"client_id": "c1", "client_secret": "s1"}, "scope": "read"}
 
         asm = OAuthMetadata(
             authorization_endpoint="https://auth/auth",
@@ -1318,13 +1342,9 @@ class TestAuthOrchestration:
                 auth(provider)
 
     @patch("core.mcp.auth.auth_flow.discover_oauth_metadata")
-    def test_auth_orchestration_authorization_code(self, mock_discover):
-        provider = Mock(spec=MCPProviderEntity)
-        provider.decrypt_server_url.return_value = "https://api"
-        provider.id = "p1"
-        provider.tenant_id = "t1"
-        provider.retrieve_client_information.return_value = OAuthClientInformation(client_id="c1")
-        provider.decrypt_credentials.return_value = {}
+    def test_auth_orchestration_authorization_code(self, mock_discover, provider):
+        provider.server_url = "https://api"
+        provider.credentials = {"client_information": {"client_id": "c1"}}
 
         asm = OAuthMetadata(
             authorization_endpoint="https://auth/auth",
@@ -1336,9 +1356,14 @@ class TestAuthOrchestration:
 
         # Case 1: Exchange code
         with patch("core.mcp.auth.auth_flow._retrieve_redis_state") as mock_retrieve:
-            state = Mock(spec=OAuthCallbackState)
-            state.code_verifier = "cv"
-            state.redirect_uri = "https://re"
+            state = OAuthCallbackState(
+                provider_id=provider.id,
+                tenant_id=provider.tenant_id,
+                server_url=provider.server_url,
+                client_information=OAuthClientInformation(client_id="c1"),
+                code_verifier="cv",
+                redirect_uri="https://re",
+            )
             mock_retrieve.return_value = state
 
             with patch("core.mcp.auth.auth_flow.exchange_authorization") as mock_exchange:
@@ -1353,7 +1378,7 @@ class TestAuthOrchestration:
                     auth(provider, authorization_code="code")
 
                 # Missing verifier in state
-                state.code_verifier = None
+                state.code_verifier = ""
                 with pytest.raises(ValueError, match="Missing code_verifier"):
                     auth(provider, authorization_code="code", state_param="sp")
 
@@ -1363,14 +1388,10 @@ class TestAuthOrchestration:
                     auth(provider, authorization_code="code", state_param="sp")
 
     @patch("core.mcp.auth.auth_flow.discover_oauth_metadata")
-    def test_auth_orchestration_refresh_failure(self, mock_discover):
-        provider = Mock(spec=MCPProviderEntity)
-        provider.decrypt_server_url.return_value = "https://api"
-        provider.id = "p1"
-        provider.tenant_id = "t1"
-        provider.retrieve_client_information.return_value = OAuthClientInformation(client_id="c1")
-        provider.decrypt_credentials.return_value = {}
-        provider.retrieve_tokens.return_value = OAuthTokens(access_token="at", token_type="Bearer", refresh_token="rt")
+    def test_auth_orchestration_refresh_failure(self, mock_discover, provider):
+        provider.server_url = "https://api"
+        provider.credentials = {"client_information": {"client_id": "c1"}}
+        provider.credentials.update(access_token="at", token_type="Bearer", refresh_token="rt")
 
         asm = OAuthMetadata(
             authorization_endpoint="https://auth/auth",

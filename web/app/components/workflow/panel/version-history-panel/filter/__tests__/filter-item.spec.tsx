@@ -7,7 +7,7 @@ describe('FilterItem', () => {
   it('renders the label, fires selection, and shows the check mark when selected', async () => {
     const user = userEvent.setup()
     const onClick = vi.fn()
-    const { container } = render(
+    render(
       <FilterItem
         item={{
           key: WorkflowVersionFilterOptions.onlyYours,
@@ -18,9 +18,12 @@ describe('FilterItem', () => {
       />,
     )
 
-    await user.click(screen.getByText('Only yours'))
+    const option = screen.getByRole('button', { name: 'Only yours' })
+    expect(option).toHaveAttribute('aria-pressed', 'true')
+
+    option.focus()
+    await user.keyboard(' ')
 
     expect(onClick).toHaveBeenCalledWith(WorkflowVersionFilterOptions.onlyYours)
-    expect(container.querySelector('svg')).not.toBeNull()
   })
 })

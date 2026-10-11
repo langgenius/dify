@@ -137,25 +137,21 @@ class TestTopic:
 
         mock_redis_client.publish.assert_called_once_with("test-topic", payload)
 
-    def test_publish_prefixes_regular_topic(self, mock_redis_client: MagicMock):
-        with patch("extensions.redis_names.dify_config") as mock_config:
-            mock_config.REDIS_KEY_PREFIX = "enterprise-a"
-            topic = Topic(mock_redis_client, "test-topic")
-
-            topic.publish(b"test message")
+    def test_publish_prefixes_regular_topic(self, mock_redis_client: MagicMock, config_overrides):
+        config_overrides(REDIS_KEY_PREFIX="enterprise-a")
+        topic = Topic(mock_redis_client, "test-topic")
+        topic.publish(b"test message")
 
         mock_redis_client.publish.assert_called_once_with("enterprise-a:test-topic", b"test message")
 
-    def test_subscribe_prefixes_regular_topic(self, mock_redis_client: MagicMock):
-        with patch("extensions.redis_names.dify_config") as mock_config:
-            mock_config.REDIS_KEY_PREFIX = "enterprise-a"
-            topic = Topic(mock_redis_client, "test-topic")
-
-            subscription = topic.subscribe()
-            try:
-                subscription._start_if_needed()
-            finally:
-                subscription.close()
+    def test_subscribe_prefixes_regular_topic(self, mock_redis_client: MagicMock, config_overrides):
+        config_overrides(REDIS_KEY_PREFIX="enterprise-a")
+        topic = Topic(mock_redis_client, "test-topic")
+        subscription = topic.subscribe()
+        try:
+            subscription._start_if_needed()
+        finally:
+            subscription.close()
 
         mock_redis_client.pubsub.return_value.subscribe.assert_called_once_with("enterprise-a:test-topic")
 
@@ -196,12 +192,10 @@ class TestShardedTopic:
 
         mock_redis_client.spublish.assert_called_once_with("test-sharded-topic", payload)
 
-    def test_publish_prefixes_sharded_topic(self, mock_redis_client: MagicMock):
-        with patch("extensions.redis_names.dify_config") as mock_config:
-            mock_config.REDIS_KEY_PREFIX = "enterprise-a"
-            sharded_topic = ShardedTopic(mock_redis_client, "test-sharded-topic")
-
-            sharded_topic.publish(b"test sharded message")
+    def test_publish_prefixes_sharded_topic(self, mock_redis_client: MagicMock, config_overrides):
+        config_overrides(REDIS_KEY_PREFIX="enterprise-a")
+        sharded_topic = ShardedTopic(mock_redis_client, "test-sharded-topic")
+        sharded_topic.publish(b"test sharded message")
 
         mock_redis_client.spublish.assert_called_once_with("enterprise-a:test-sharded-topic", b"test sharded message")
 
@@ -214,16 +208,14 @@ class TestShardedTopic:
         assert subscription._pubsub is mock_redis_client.pubsub.return_value
         assert subscription._topic == "test-sharded-topic"
 
-    def test_subscribe_prefixes_sharded_topic(self, mock_redis_client: MagicMock):
-        with patch("extensions.redis_names.dify_config") as mock_config:
-            mock_config.REDIS_KEY_PREFIX = "enterprise-a"
-            sharded_topic = ShardedTopic(mock_redis_client, "test-sharded-topic")
-
-            subscription = sharded_topic.subscribe()
-            try:
-                subscription._start_if_needed()
-            finally:
-                subscription.close()
+    def test_subscribe_prefixes_sharded_topic(self, mock_redis_client: MagicMock, config_overrides):
+        config_overrides(REDIS_KEY_PREFIX="enterprise-a")
+        sharded_topic = ShardedTopic(mock_redis_client, "test-sharded-topic")
+        subscription = sharded_topic.subscribe()
+        try:
+            subscription._start_if_needed()
+        finally:
+            subscription.close()
 
         mock_redis_client.pubsub.return_value.ssubscribe.assert_called_once_with("enterprise-a:test-sharded-topic")
 
@@ -268,9 +260,7 @@ class TestRedisSubscription:
         return pubsub
 
     @pytest.fixture
-    def subscription(
-        self, mock_pubsub: MagicMock, mock_redis_client: MagicMock
-    ) -> Generator[_RedisSubscription, None, None]:
+    def subscription(self, mock_pubsub: MagicMock, mock_redis_client: MagicMock) -> Generator[_RedisSubscription]:
         """Create a _RedisSubscription instance for testing."""
         subscription = _RedisSubscription(
             client=mock_redis_client,
@@ -697,7 +687,7 @@ class TestRedisShardedSubscription:
     @pytest.fixture
     def sharded_subscription(
         self, mock_pubsub: MagicMock, mock_redis_client: FakeRedisClient
-    ) -> Generator[_RedisShardedSubscription, None, None]:
+    ) -> Generator[_RedisShardedSubscription]:
         """Create a _RedisShardedSubscription instance for testing."""
         subscription = _RedisShardedSubscription(
             client=mock_redis_client,
@@ -1445,6 +1435,12 @@ class TestRedisSubscriptionCommon:
     def test_receive_on_closed_subscription(self, subscription, subscription_params):
         """Test receive method on closed subscription."""
         subscription.close()
+
+        with pytest.raises(SubscriptionClosedError):
+            subscription.receive()
+
+    def test_receive_does_not_leak_close_signal(self, subscription, subscription_params):
+        subscription._queue.put_nowait(SIG_CLOSE)
 
         with pytest.raises(SubscriptionClosedError):
             subscription.receive()

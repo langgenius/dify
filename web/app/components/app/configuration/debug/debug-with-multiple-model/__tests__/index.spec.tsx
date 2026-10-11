@@ -1,4 +1,3 @@
-/* oxlint-disable typescript/no-explicit-any */
 import type { CSSProperties } from 'react'
 import type { ModelAndParameter } from '../../types'
 import type { DebugWithMultipleModelContextType } from '../context'
@@ -8,7 +7,6 @@ import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { Inputs, ModelConfig } from '@/models/debug'
 import type { PromptVariable } from '@/types/app'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import {
   DEFAULT_AGENT_SETTING,
   DEFAULT_CHAT_PROMPT_CONFIG,
@@ -157,18 +155,12 @@ const createModelConfig = (promptVariables: PromptVariableWithMeta[] = []): Mode
   sensitive_word_avoidance: null,
   annotation_reply: null,
   external_data_tools: [],
-  system_parameters: {
-    audio_file_size_limit: 0,
-    file_size_limit: 0,
-    image_file_size_limit: 0,
-    video_file_size_limit: 0,
-    workflow_file_upload_limit: 0,
-  },
   dataSets: [],
   agentConfig: DEFAULT_AGENT_SETTING,
 })
 
 type DebugConfiguration = {
+  onOpenFeatures: () => void
   mode: AppModeEnum
   inputs: Inputs
   modelConfig: ModelConfig
@@ -179,6 +171,7 @@ type DebugConfiguration = {
 const createDebugConfiguration = (
   overrides: Partial<DebugConfiguration> = {},
 ): DebugConfiguration => ({
+  onOpenFeatures: vi.fn(),
   mode: AppModeEnum.CHAT,
   inputs: {},
   modelConfig: createModelConfig(),
@@ -201,6 +194,7 @@ const createProps = (
   overrides: Partial<DebugWithMultipleModelContextType> = {},
 ): DebugWithMultipleModelContextType => ({
   multipleModelConfigs: [createModelAndParameter()],
+  onOpenLog: vi.fn(),
   onMultipleModelConfigsChange: vi.fn(),
   onDebugWithMultipleModelChange: vi.fn(),
   ...overrides,
@@ -497,7 +491,7 @@ describe('DebugWithMultipleModel', () => {
       expect(capturedChatInputProps?.showFileUpload).toBe(false)
       expect(capturedChatInputProps?.speechToTextConfig).toEqual(featureState.features.speech2text)
       expect(capturedChatInputProps?.visionConfig).toEqual(featureState.features.file)
-      expect(useAppStore.getState().showAppConfigureFeaturesModal).toBe(true)
+      expect(debugConfiguration.onOpenFeatures).toHaveBeenCalledTimes(1)
     })
 
     it('should allow sending but disable feature configuration when configuration is readonly and test/run is allowed', () => {

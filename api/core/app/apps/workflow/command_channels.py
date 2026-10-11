@@ -4,6 +4,7 @@ import logging
 from collections.abc import Callable, Sequence
 from typing import final, override
 
+from core.app.apps.execution_coordinator import is_app_task_stop_flag_set
 from graphon.graph_engine.command_channels import CommandChannel
 from graphon.graph_engine.entities.commands import AbortCommand, GraphEngineCommand
 
@@ -57,6 +58,37 @@ class CelerySignalCommandChannel(CommandChannel):
     @override
     def fetch_commands(self) -> list[GraphEngineCommand]:
         if self._abort_emitted or not self._shutdown_state_getter():
+            return []
+
+        self._abort_emitted = True
+        return [AbortCommand(reason=self._abort_reason)]
+
+    @override
+    def send_command(self, command: GraphEngineCommand) -> None:
+        _ = command
+
+
+@final
+class StopFlagCommandChannel(CommandChannel):
+    """Translate the legacy Redis stop flag into one GraphEngine abort command."""
+
+    _task_id: str
+    _abort_reason: str
+    _abort_emitted: bool
+
+    def __init__(
+        self,
+        *,
+        task_id: str,
+        abort_reason: str = "User requested stop",
+    ) -> None:
+        self._task_id = task_id
+        self._abort_reason = abort_reason
+        self._abort_emitted = False
+
+    @override
+    def fetch_commands(self) -> list[GraphEngineCommand]:
+        if self._abort_emitted or not is_app_task_stop_flag_set(self._task_id):
             return []
 
         self._abort_emitted = True

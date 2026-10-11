@@ -8,7 +8,7 @@ pause, recover, retry, batch updates, and renaming.
 
 import datetime
 import json
-from unittest.mock import create_autospec, patch
+from unittest.mock import MagicMock, create_autospec, patch
 from uuid import uuid4
 
 import pytest
@@ -20,8 +20,8 @@ from models import Account
 from models.dataset import Dataset, Document
 from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, IndexingStatus
 from models.model import UploadFile
-from services.dataset_service import DocumentService
 from services.errors.document import DocumentIndexingError
+from services.knowledge.dataset_service import DocumentService
 
 FIXED_TIME = datetime.datetime(2023, 1, 1, 12, 0, 0)
 
@@ -256,10 +256,10 @@ class TestDocumentServicePauseDocument:
         """
         with (
             patch(
-                "services.dataset_service.current_user", create_autospec(Account, instance=True)
+                "services.knowledge.dataset_service.current_user", create_autospec(Account, instance=True)
             ) as mock_current_user,
-            patch("services.dataset_service.redis_client") as mock_redis,
-            patch("services.dataset_service.naive_utc_now") as mock_naive_utc_now,
+            patch("services.knowledge.dataset_service.redis_client") as mock_redis,
+            patch("services.knowledge.dataset_service.naive_utc_now") as mock_naive_utc_now,
         ):
             current_time = datetime.datetime(2023, 1, 1, 12, 0, 0)
             user_id = str(uuid4())
@@ -301,7 +301,9 @@ class TestDocumentServicePauseDocument:
         )
 
         # Act
-        DocumentService.pause_document(document, session=db_session_with_containers)
+        DocumentService.pause_document(
+            document, session=db_session_with_containers, actor_id=mock_document_service_dependencies["user_id"]
+        )
 
         # Assert
         db_session_with_containers.refresh(document)
@@ -336,7 +338,9 @@ class TestDocumentServicePauseDocument:
         )
 
         # Act
-        DocumentService.pause_document(document, session=db_session_with_containers)
+        DocumentService.pause_document(
+            document, session=db_session_with_containers, actor_id=mock_document_service_dependencies["user_id"]
+        )
 
         # Assert
         db_session_with_containers.refresh(document)
@@ -366,7 +370,9 @@ class TestDocumentServicePauseDocument:
         )
 
         # Act
-        DocumentService.pause_document(document, session=db_session_with_containers)
+        DocumentService.pause_document(
+            document, session=db_session_with_containers, actor_id=mock_document_service_dependencies["user_id"]
+        )
 
         # Assert
         db_session_with_containers.refresh(document)
@@ -398,7 +404,9 @@ class TestDocumentServicePauseDocument:
 
         # Act & Assert
         with pytest.raises(DocumentIndexingError):
-            DocumentService.pause_document(document, session=db_session_with_containers)
+            DocumentService.pause_document(
+                document, session=db_session_with_containers, actor_id=mock_document_service_dependencies["user_id"]
+            )
 
         db_session_with_containers.refresh(document)
         assert document.is_paused is False
@@ -429,7 +437,9 @@ class TestDocumentServicePauseDocument:
 
         # Act & Assert
         with pytest.raises(DocumentIndexingError):
-            DocumentService.pause_document(document, session=db_session_with_containers)
+            DocumentService.pause_document(
+                document, session=db_session_with_containers, actor_id=mock_document_service_dependencies["user_id"]
+            )
 
         db_session_with_containers.refresh(document)
         assert document.is_paused is False
@@ -468,8 +478,8 @@ class TestDocumentServiceRecoverDocument:
         - Recovery task
         """
         with (
-            patch("services.dataset_service.redis_client") as mock_redis,
-            patch("services.dataset_service.recover_document_indexing_task") as mock_task,
+            patch("services.knowledge.dataset_service.redis_client") as mock_redis,
+            patch("services.knowledge.dataset_service.recover_document_indexing_task") as mock_task,
         ):
             yield {
                 "redis_client": mock_redis,
@@ -562,9 +572,9 @@ class TestDocumentServiceRetryDocument:
 
     The retry_document method:
     1. Validates documents are not already being retried
-    2. Sets retry flag in Redis cache
-    3. Resets document indexing_status to waiting
-    4. Commits changes to database
+    2. Atomically reserves retry flags in Redis cache
+    3. Resets all document indexing statuses to waiting
+    4. Commits all changes together
     5. Triggers retry task
 
     Test scenarios include:
@@ -588,19 +598,29 @@ class TestDocumentServiceRetryDocument:
         """
         with (
             patch(
-                "services.dataset_service.current_user", create_autospec(Account, instance=True)
+                "services.knowledge.dataset_service.current_user", create_autospec(Account, instance=True)
             ) as mock_current_user,
-            patch("services.dataset_service.redis_client") as mock_redis,
-            patch("services.dataset_service.retry_document_indexing_task") as mock_task,
+            patch("services.knowledge.dataset_service.redis_client") as mock_redis,
+            patch("services.knowledge.dataset_service.retry_document_indexing_task") as mock_task,
         ):
             user_id = str(uuid4())
             mock_current_user.id = user_id
+            retry_locks = []
+
+            def create_retry_lock(*_args, **_kwargs):
+                retry_lock = MagicMock()
+                retry_lock.acquire.return_value = True
+                retry_locks.append(retry_lock)
+                return retry_lock
+
+            mock_redis.lock.side_effect = create_retry_lock
 
             yield {
                 "current_user": mock_current_user,
                 "redis_client": mock_redis,
                 "retry_task": mock_task,
                 "user_id": user_id,
+                "retry_locks": retry_locks,
             }
 
     def test_retry_document_single_success(
@@ -629,17 +649,24 @@ class TestDocumentServiceRetryDocument:
             indexing_status=IndexingStatus.ERROR,
         )
 
-        mock_document_service_dependencies["redis_client"].get.return_value = None
-
         # Act
-        DocumentService.retry_document(dataset.id, [document], session=db_session_with_containers)
+        DocumentService.retry_document(
+            dataset.id,
+            [document],
+            session=db_session_with_containers,
+            actor_id=mock_document_service_dependencies["user_id"],
+        )
 
         # Assert
         db_session_with_containers.refresh(document)
         assert document.indexing_status == IndexingStatus.WAITING
 
         expected_cache_key = f"document_{document.id}_is_retried"
-        mock_document_service_dependencies["redis_client"].setex.assert_called_once_with(expected_cache_key, 600, 1)
+        mock_document_service_dependencies["redis_client"].lock.assert_called_once_with(
+            expected_cache_key, timeout=600, thread_local=False
+        )
+        retry_lock = mock_document_service_dependencies["retry_locks"][0]
+        retry_lock.acquire.assert_called_once_with(blocking=False)
         mock_document_service_dependencies["retry_task"].delay.assert_called_once_with(
             dataset.id, [document.id], mock_document_service_dependencies["user_id"]
         )
@@ -676,10 +703,13 @@ class TestDocumentServiceRetryDocument:
             position=2,
         )
 
-        mock_document_service_dependencies["redis_client"].get.return_value = None
-
         # Act
-        DocumentService.retry_document(dataset.id, [document1, document2], session=db_session_with_containers)
+        DocumentService.retry_document(
+            dataset.id,
+            [document1, document2],
+            session=db_session_with_containers,
+            actor_id=mock_document_service_dependencies["user_id"],
+        )
 
         # Assert
         db_session_with_containers.refresh(document1)
@@ -715,22 +745,71 @@ class TestDocumentServiceRetryDocument:
             indexing_status=IndexingStatus.ERROR,
         )
 
-        mock_document_service_dependencies["redis_client"].get.return_value = "1"
+        retry_lock = MagicMock()
+        retry_lock.acquire.return_value = False
+        mock_document_service_dependencies["redis_client"].lock.side_effect = None
+        mock_document_service_dependencies["redis_client"].lock.return_value = retry_lock
 
         # Act & Assert
         with pytest.raises(ValueError, match="Document is being retried, please try again later"):
-            DocumentService.retry_document(dataset.id, [document], session=db_session_with_containers)
+            DocumentService.retry_document(
+                dataset.id,
+                [document],
+                session=db_session_with_containers,
+                actor_id=mock_document_service_dependencies["user_id"],
+            )
 
         db_session_with_containers.refresh(document)
         assert document.indexing_status == IndexingStatus.ERROR
 
-    def test_retry_document_missing_current_user_error(
+    def test_retry_document_later_conflict_leaves_batch_unchanged(
+        self, db_session_with_containers: Session, mock_document_service_dependencies
+    ):
+        dataset = DocumentStatusTestDataFactory.create_dataset(db_session_with_containers)
+        document1 = DocumentStatusTestDataFactory.create_document(
+            db_session_with_containers,
+            dataset_id=dataset.id,
+            tenant_id=dataset.tenant_id,
+            document_id=str(uuid4()),
+            indexing_status=IndexingStatus.ERROR,
+        )
+        document2 = DocumentStatusTestDataFactory.create_document(
+            db_session_with_containers,
+            dataset_id=dataset.id,
+            tenant_id=dataset.tenant_id,
+            document_id=str(uuid4()),
+            indexing_status=IndexingStatus.ERROR,
+            position=2,
+        )
+        first_retry_lock = MagicMock()
+        first_retry_lock.acquire.return_value = True
+        second_retry_lock = MagicMock()
+        second_retry_lock.acquire.return_value = False
+        mock_document_service_dependencies["redis_client"].lock.side_effect = [first_retry_lock, second_retry_lock]
+
+        with pytest.raises(ValueError, match="Document is being retried, please try again later"):
+            DocumentService.retry_document(
+                dataset.id,
+                [document1, document2],
+                session=db_session_with_containers,
+                actor_id=mock_document_service_dependencies["user_id"],
+            )
+
+        db_session_with_containers.refresh(document1)
+        db_session_with_containers.refresh(document2)
+        assert document1.indexing_status == IndexingStatus.ERROR
+        assert document2.indexing_status == IndexingStatus.ERROR
+        first_retry_lock.release.assert_called_once_with()
+        second_retry_lock.release.assert_not_called()
+        mock_document_service_dependencies["retry_task"].delay.assert_not_called()
+
+    def test_retry_document_missing_actor_id_error(
         self, db_session_with_containers: Session, mock_document_service_dependencies
     ):
         """
-        Test error when current_user is missing.
+        Test error when the explicit actor ID is missing.
 
-        Verifies that when current_user is None or has no ID, a ValueError
+        Verifies that when the actor ID is empty, a ValueError
         is raised.
 
         This test ensures:
@@ -748,12 +827,13 @@ class TestDocumentServiceRetryDocument:
             indexing_status=IndexingStatus.ERROR,
         )
 
-        mock_document_service_dependencies["redis_client"].get.return_value = None
-        mock_document_service_dependencies["current_user"].id = None
-
         # Act & Assert
         with pytest.raises(ValueError, match="Current user or current user id not found"):
-            DocumentService.retry_document(dataset.id, [document], session=db_session_with_containers)
+            DocumentService.retry_document(dataset.id, [document], session=db_session_with_containers, actor_id="")
+
+        db_session_with_containers.refresh(document)
+        assert document.indexing_status == IndexingStatus.ERROR
+        mock_document_service_dependencies["redis_client"].lock.assert_not_called()
 
 
 class TestDocumentServiceBatchUpdateDocumentStatus:
@@ -794,10 +874,10 @@ class TestDocumentServiceBatchUpdateDocumentStatus:
         - Async tasks
         """
         with (
-            patch("services.dataset_service.redis_client") as mock_redis,
-            patch("services.dataset_service.add_document_to_index_task") as mock_add_task,
-            patch("services.dataset_service.remove_document_from_index_task") as mock_remove_task,
-            patch("services.dataset_service.naive_utc_now") as mock_naive_utc_now,
+            patch("services.knowledge.dataset_service.redis_client") as mock_redis,
+            patch("services.knowledge.dataset_service.add_document_to_index_task") as mock_add_task,
+            patch("services.knowledge.dataset_service.remove_document_from_index_task") as mock_remove_task,
+            patch("services.knowledge.dataset_service.naive_utc_now") as mock_naive_utc_now,
         ):
             current_time = datetime.datetime(2023, 1, 1, 12, 0, 0)
             mock_naive_utc_now.return_value = current_time
@@ -1094,7 +1174,7 @@ class TestDocumentServiceRenameDocument:
         - Database session
         """
         with patch(
-            "services.dataset_service.current_user", create_autospec(Account, instance=True)
+            "services.knowledge.dataset_service.current_user", create_autospec(Account, instance=True)
         ) as mock_current_user:
             mock_current_user.current_tenant_id = str(uuid4())
 

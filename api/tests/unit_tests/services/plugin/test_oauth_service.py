@@ -7,6 +7,7 @@ with one-time use semantics, and validation error paths.
 from __future__ import annotations
 
 import json
+from unittest.mock import patch
 
 import pytest
 
@@ -88,11 +89,12 @@ class TestUseProxyContext:
         stored = {"user_id": "u1", "tenant_id": "t1", "plugin_id": "p1", "provider": "github"}
         redis_client.get.return_value = json.dumps(stored).encode()
 
-        result = OAuthProxyService.use_proxy_context("valid-id")
+        with patch("services.plugin.oauth_service.redis_client.delete") as delete:
+            result = OAuthProxyService.use_proxy_context("valid-id")
 
         assert result == stored
         expected_key = "oauth_proxy_context:valid-id"
-        redis_client.delete.assert_called_once_with(expected_key)
+        delete.assert_called_once_with(expected_key)
 
     def test_returns_context_with_credential_id(self):
         from extensions.ext_redis import redis_client

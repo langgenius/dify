@@ -8,7 +8,7 @@ import type { RerankingModelSelectorProps } from './reranking-model-selector'
 import type { TopKFieldProps, VisibleScoreThresholdFieldProps } from './top-k-and-score-threshold'
 import { Field } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
-import { RadioGroup } from '@langgenius/dify-ui/radio'
+import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Field as WorkflowField } from '@/app/components/workflow/nodes/_base/components/layout'
@@ -58,7 +58,7 @@ const RetrievalSetting = ({
   onScoreThresholdEnabledChange,
   showMultiModalTip,
 }: RetrievalSettingProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetSettings', 'workflow'])
   const docLink = useDocLink()
   const { options, hybridSearchModeOptions } = useRetrievalSetting(indexMethod)
 

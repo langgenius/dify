@@ -13,8 +13,8 @@ import { useEmbeddedChatbotContext } from '../context'
 
 const mockTrackEvent = vi.hoisted(() => vi.fn())
 
-vi.mock('@/app/components/base/amplitude', () => ({
-  trackEvent: mockTrackEvent,
+vi.mock('@/app/components/base/amplitude/web-app-event', () => ({
+  trackWebAppEvent: mockTrackEvent,
 }))
 
 vi.mock('../context', () => ({

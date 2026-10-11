@@ -9,7 +9,7 @@ import { isClient } from '@/utils/client'
 import { systemFeaturesQueryOptions } from './client'
 
 export function SystemFeaturesBootstrapBoundary({ children }: { children: ReactNode }) {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation(['common'])
   const { data, error, isFetching, refetch } = useQuery({
     ...systemFeaturesQueryOptions(),
     enabled: isClient,

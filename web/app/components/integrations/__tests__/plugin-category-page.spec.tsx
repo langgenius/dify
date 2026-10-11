@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import PluginCategoryPage from '../plugin-category-page'
 
@@ -126,9 +126,9 @@ describe('PluginCategoryPage', () => {
 
   it.each([
     [PluginCategoryEnum.tool, true],
-    [PluginCategoryEnum.trigger, true],
-    [PluginCategoryEnum.agent, true],
-    [PluginCategoryEnum.extension, true],
+    [PluginCategoryEnum.trigger, false],
+    [PluginCategoryEnum.agent, false],
+    [PluginCategoryEnum.extension, false],
   ])('sets drop install availability for %s', (category, enabled) => {
     render(<PluginCategoryPage category={category} />)
 

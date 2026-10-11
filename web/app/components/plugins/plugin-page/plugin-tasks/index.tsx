@@ -1,10 +1,12 @@
-import type { Placement } from '@langgenius/dify-ui/dropdown-menu'
+import type { PopoverPositionerProps } from '@langgenius/dify-ui/popover'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from '@langgenius/dify-ui/dropdown-menu'
+  Popover,
+  PopoverPopup,
+  PopoverPortal,
+  PopoverPositioner,
+  PopoverTrigger,
+} from '@langgenius/dify-ui/popover'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
@@ -14,16 +16,12 @@ import { usePluginTaskStatus } from './hooks'
 
 type PluginTasksProps = {
   animatedSlot?: boolean
-  dropdownAnchor?: () => Element | null
-  dropdownPlacement?: Placement
+  anchor?: () => Element | null
+  placement?: PopoverPositionerProps['placement']
 }
 
-const PluginTasks = ({
-  animatedSlot = false,
-  dropdownAnchor,
-  dropdownPlacement = 'bottom',
-}: PluginTasksProps) => {
-  const { t } = useTranslation()
+const PluginTasks = ({ animatedSlot = false, anchor, placement = 'bottom' }: PluginTasksProps) => {
+  const { t } = useTranslation(['plugin'])
   const [open, setOpen] = useState(false)
   const {
     errorPlugins,
@@ -42,7 +40,7 @@ const PluginTasks = ({
   } = usePluginTaskStatus()
   const { getIconUrl } = useGetIcon()
   const hasPluginTasks = totalPluginsLength > 0
-  const canOpenMenu =
+  const canOpenPopover =
     isFailed || isInstalling || isInstallingWithSuccess || isInstallingWithError || isSuccess
 
   // Generate tooltip text based on status
@@ -122,48 +120,39 @@ const PluginTasks = ({
 
   return (
     <div className={rootClassName}>
-      <DropdownMenu open={open} onOpenChange={setOpen}>
-        <DropdownMenuTrigger
-          nativeButton={false}
-          render={(props, state) => (
-            <div
-              {...props}
-              className={cn('cursor-pointer data-disabled:cursor-default', props.className)}
-            >
-              <TaskStatusIndicator
-                tip={tip}
-                isInstalling={isInstalling}
-                isInstallingWithSuccess={isInstallingWithSuccess}
-                isInstallingWithError={isInstallingWithError}
-                isSuccess={isSuccess}
-                isFailed={isFailed}
-                isOpen={state.open}
-                successPluginsLength={successPluginsLength}
-                runningPluginsLength={runningPluginsLength}
-                totalPluginsLength={totalPluginsLength}
-                onClick={() => {}}
-              />
-            </div>
-          )}
-          disabled={!canOpenMenu}
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger
+          render={
+            <TaskStatusIndicator
+              id="plugin-task-trigger"
+              tip={tip}
+              isInstalling={isInstalling}
+              isInstallingWithSuccess={isInstallingWithSuccess}
+              isInstallingWithError={isInstallingWithError}
+              isSuccess={isSuccess}
+              isFailed={isFailed}
+              successPluginsLength={successPluginsLength}
+              runningPluginsLength={runningPluginsLength}
+            />
+          }
+          disabled={!canOpenPopover}
         />
-        <DropdownMenuContent
-          placement={dropdownPlacement}
-          sideOffset={4}
-          positionerProps={dropdownAnchor ? { anchor: dropdownAnchor } : undefined}
-          popupClassName="overflow-visible border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
-        >
-          <PluginTaskList
-            runningPlugins={runningPlugins}
-            successPlugins={successPlugins}
-            errorPlugins={errorPlugins}
-            getIconUrl={getIconUrl}
-            onClearAll={handleClearAll}
-            onClearErrors={handleClearErrors}
-            onClearSingle={handleClearSingle}
-          />
-        </DropdownMenuContent>
-      </DropdownMenu>
+        <PopoverPortal>
+          <PopoverPositioner placement={placement} sideOffset={4} anchor={anchor}>
+            <PopoverPopup aria-label={tip}>
+              <PluginTaskList
+                runningPlugins={runningPlugins}
+                successPlugins={successPlugins}
+                errorPlugins={errorPlugins}
+                getIconUrl={getIconUrl}
+                onClearAll={handleClearAll}
+                onClearErrors={handleClearErrors}
+                onClearSingle={handleClearSingle}
+              />
+            </PopoverPopup>
+          </PopoverPositioner>
+        </PopoverPortal>
+      </Popover>
     </div>
   )
 }

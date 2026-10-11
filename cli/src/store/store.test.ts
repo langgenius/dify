@@ -2,7 +2,7 @@ import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test'
 import { BadYamlFormatError, ConcurrentAccessError } from './errors'
 import { YamlStore } from './store'
 
@@ -252,6 +252,17 @@ describe('YamlStore persistence', () => {
     s3.setRawContent(readFileSync(path, 'utf8'))
     expect(s3.doGet({ key: 'x', default: '' })).toBe('first')
     expect(s3.doGet({ key: 'y', default: '' })).toBe('second')
+  })
+
+  it('forgets its cached content once the file is deleted and reloaded', async () => {
+    const path = join(dir, 'config.yml')
+    await writeFile(path, 'key: value\n')
+
+    const store = new YamlStore(path)
+    expect(await store.getTyped<{ key: string }>()).toEqual({ key: 'value' })
+
+    await rm(path)
+    expect(await store.getTyped<{ key: string }>()).toBeNull()
   })
 
   it('load → doSet → flush writes the value to disk', async () => {

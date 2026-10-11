@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import ModelParameterModal from '../index'
 
 let parameterRules: Array<Record<string, unknown>> | undefined = [
@@ -40,12 +41,6 @@ let activeTextGenerationModelList: Array<Record<string, unknown>> = [
     ],
   },
 ]
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => ({
-    isAPIKeySet: true,
-  }),
-}))
 
 vi.mock('@/service/use-common', () => ({
   useModelParameterRules: () => ({
@@ -92,22 +87,35 @@ vi.mock('../parameter-item', () => ({
   ),
 }))
 
-vi.mock('../../model-selector', () => ({
-  default: ({
+vi.mock('../../model-selector', () => {
+  const ModelSelector = ({
     onHide,
-    onSelect,
+    onValueChange,
   }: {
-    onHide: () => void
-    onSelect: (value: { provider: string; model: string }) => void
+    onHide?: () => void
+    onValueChange: (value: { provider: string; model: string; plugin_id?: string }) => void
   }) => (
     <div data-testid="model-selector">
-      <button onClick={() => onSelect({ provider: 'openai', model: 'gpt-4.1' })}>
+      <button
+        onClick={() =>
+          onValueChange({
+            provider: 'openai',
+            model: 'gpt-4.1',
+            plugin_id: 'langgenius/openai',
+          })
+        }
+      >
         Select GPT-4.1
       </button>
-      <button onClick={onHide}>hide</button>
+      {onHide && <button onClick={onHide}>hide</button>}
     </div>
-  ),
-}))
+  )
+
+  return {
+    ModelSelector,
+    SplitModelSelector: ModelSelector,
+  }
+})
 
 vi.mock('../presets-parameter', () => ({
   default: ({
@@ -199,10 +207,16 @@ describe('ModelParameterModal', () => {
     ]
   })
 
-  it('should render trigger and open modal content when trigger is clicked', () => {
+  it('should open settings with the visible title as its accessible name', async () => {
+    const user = userEvent.setup()
     render(<ModelParameterModal {...defaultProps} />)
 
-    openSettings()
+    await user.click(
+      screen.getByRole('button', { name: 'modelProvider.modelProvider.modelSettings' }),
+    )
+    expect(
+      screen.getByRole('dialog', { name: 'modelProvider.modelProvider.modelSettings' }),
+    ).toBeInTheDocument()
     expect(screen.getByTestId('model-selector')).toBeInTheDocument()
     expect(screen.getByTestId('param-temperature')).toBeInTheDocument()
   })
@@ -218,6 +232,7 @@ describe('ModelParameterModal', () => {
     expect(defaultProps.setModel).toHaveBeenCalledWith({
       modelId: 'gpt-4.1',
       provider: 'openai',
+      plugin_id: 'langgenius/openai',
       mode: 'chat',
       features: ['vision', 'tool-call'],
     })
@@ -230,6 +245,21 @@ describe('ModelParameterModal', () => {
 
   it('should disable model settings when no model is selected', () => {
     render(<ModelParameterModal {...defaultProps} provider="" modelId="" />)
+
+    expect(screen.getByTestId('model-selector')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /modelProvider\.modelSettings/i })).toBeDisabled()
+  })
+
+  it('should disable model settings for an incompatible model without disabling selection', () => {
+    render(<ModelParameterModal {...defaultProps} modelPredicate={() => false} />)
+
+    expect(screen.getByTestId('model-selector')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /modelProvider\.modelSettings/i })).toBeDisabled()
+  })
+
+  it('should disable model settings when the selected model is inactive', () => {
+    currentModel = { ...currentModel!, status: 'disabled' }
+    render(<ModelParameterModal {...defaultProps} />)
 
     expect(screen.getByTestId('model-selector')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /modelProvider\.modelSettings/i })).toBeDisabled()
@@ -291,6 +321,7 @@ describe('ModelParameterModal', () => {
     expect(defaultProps.setModel).toHaveBeenCalledWith({
       modelId: 'gpt-4.1',
       provider: 'openai',
+      plugin_id: 'langgenius/openai',
       mode: 'chat',
       features: ['vision', 'tool-call'],
     })
@@ -308,7 +339,7 @@ describe('ModelParameterModal', () => {
     isRulesPending = true
     render(<ModelParameterModal {...defaultProps} />)
     openSettings()
-    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(screen.getByRole('progressbar')).toBeInTheDocument()
   })
 
   it('should not render parameter loading when model is not configured and parameter rules query is pending but disabled', () => {
@@ -318,8 +349,22 @@ describe('ModelParameterModal', () => {
     render(<ModelParameterModal {...defaultProps} provider="" modelId="" />)
     openSettings()
 
-    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
     expect(screen.getByTestId('model-selector')).toBeInTheDocument()
+  })
+
+  it('exposes popup state on the settings button and restores focus after Escape', async () => {
+    const user = userEvent.setup()
+    render(<ModelParameterModal {...defaultProps} />)
+    const trigger = screen.getByRole('button', { name: /modelProvider\.modelSettings/i })
+    expect(trigger).not.toHaveAttribute('data-popup-open')
+    await user.click(trigger)
+    expect(trigger).toHaveAttribute('data-popup-open', '')
+    await user.keyboard('{Escape}')
+    await waitFor(() => {
+      expect(trigger).toHaveAttribute('aria-expanded', 'false')
+    })
+    expect(trigger).toHaveFocus()
   })
 
   it('should not open content when readonly is true', () => {
@@ -356,23 +401,22 @@ describe('ModelParameterModal', () => {
     expect(paramEl).toHaveAttribute('data-has-available-nodes', 'true')
   })
 
-  it('should support custom triggers, workflow mode, and missing default model values', async () => {
+  it('should support a custom trigger element and missing default model values', async () => {
     render(
       <ModelParameterModal
         {...defaultProps}
         provider=""
         modelId=""
         isInWorkflow
-        renderTrigger={({ open }) => <span>{open ? 'Custom Open' : 'Custom Closed'}</span>}
+        trigger={<button type="button">Custom Trigger</button>}
       />,
     )
 
-    const trigger = screen.getByText('Custom Closed').closest('button')
+    const trigger = screen.getByText('Custom Trigger').closest('button')
     expect(trigger).not.toHaveAttribute('data-popup-open')
 
-    fireEvent.click(screen.getByText('Custom Closed'))
+    fireEvent.click(screen.getByText('Custom Trigger'))
 
-    expect(screen.getByText('Custom Open')).toBeInTheDocument()
     expect(trigger).toHaveAttribute('data-popup-open', '')
     expect(screen.getByTestId('model-selector')).toBeInTheDocument()
 
@@ -400,7 +444,7 @@ describe('ModelParameterModal', () => {
     render(<ModelParameterModal {...defaultProps} />)
     openSettings()
 
-    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(screen.getByRole('progressbar')).toBeInTheDocument()
     expect(screen.queryByTestId('param-temperature')).not.toBeInTheDocument()
   })
 
@@ -408,13 +452,12 @@ describe('ModelParameterModal', () => {
     render(
       <ModelParameterModal
         {...defaultProps}
-        renderTrigger={({ open }) => <span>{open ? 'Popup Open' : 'Popup Closed'}</span>}
+        trigger={<button type="button">Custom Trigger</button>}
       />,
     )
 
-    fireEvent.click(screen.getByText('Popup Closed'))
+    fireEvent.click(screen.getByText('Custom Trigger'))
 
-    expect(screen.getByText('Popup Open')).toBeInTheDocument()
     expect(screen.getByTestId('model-selector')).toBeInTheDocument()
   })
 })

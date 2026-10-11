@@ -9,9 +9,9 @@ from core.plugin.impl.exc import PluginDaemonClientSideError
 from models import Account, AppMode, CreatorUserRole
 from models.enums import ConversationFromSource, EndUserType, MessageFileBelongsTo
 from models.model import AppModelConfig, Conversation, EndUser, Message, MessageAgentThought
-from services.account_service import AccountService, TenantService
 from services.agent_service import AgentService
 from services.app_service import AppService, CreateAppParams
+from tests.test_containers_integration_tests.helpers import accounts as account_fixtures
 from tests.test_containers_integration_tests.helpers import generate_valid_password
 
 
@@ -26,10 +26,12 @@ class TestAgentService:
             patch("services.agent_service.ToolManager", autospec=True) as mock_tool_manager,
             patch("services.agent_service.AgentConfigManager", autospec=True) as mock_agent_config_manager,
             patch("services.agent_service.current_user", create_autospec(Account, instance=True)) as mock_current_user,
-            patch("services.app_service.FeatureService", autospec=True) as mock_feature_service,
+            patch("services.app_service.SystemFeatureService", autospec=True) as mock_feature_service,
             patch("services.app_service.EnterpriseService", autospec=True) as mock_enterprise_service,
             patch("services.app_service.ModelManager.for_tenant", autospec=True) as mock_model_manager,
-            patch("services.account_service.FeatureService", autospec=True) as mock_account_feature_service,
+            patch(
+                "services.account.login_adapters.SystemFeatureService", autospec=True
+            ) as mock_account_feature_service,
         ):
             # Setup default mock returns for agent service
             mock_plugin_agent_client_instance = mock_plugin_agent_client.return_value
@@ -67,12 +69,12 @@ class TestAgentService:
             mock_current_user.timezone = "UTC"
 
             # Setup default mock returns for app service
-            mock_feature_service.get_system_features.return_value.webapp_auth.enabled = False
+            mock_feature_service.is_webapp_auth_enabled.return_value = False
             mock_enterprise_service.WebAppAuth.update_app_access_mode.return_value = None
             mock_enterprise_service.WebAppAuth.cleanup_webapp.return_value = None
 
             # Setup default mock returns for account service
-            mock_account_feature_service.get_system_features.return_value.is_allow_register = True
+            mock_account_feature_service.is_registration_allowed.return_value = True
 
             # Mock ModelManager for model configuration
             mock_model_instance = mock_model_manager.return_value
@@ -104,19 +106,17 @@ class TestAgentService:
         fake = Faker()
 
         # Setup mocks for account creation
-        mock_external_service_dependencies[
-            "account_feature_service"
-        ].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["account_feature_service"].is_registration_allowed.return_value = True
 
         # Create account and tenant
-        account = AccountService.create_account(
+        account = account_fixtures.create_account(
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
             session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
+        account_fixtures.create_owner_workspace(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         # Create app with realistic data
@@ -135,8 +135,9 @@ class TestAgentService:
         app = app_service.create_app(tenant.id, app_args, account, session=db_session_with_containers)
 
         # Update the app model config to set agent_mode for agent-chat mode
-        if app.mode == AppMode.AGENT_CHAT and app.app_model_config:
-            app.app_model_config.agent_mode = json.dumps({"enabled": True, "strategy": "react", "tools": []})
+        app_model_config = app.app_model_config_with_session(session=db_session_with_containers)
+        if app.mode == AppMode.AGENT_CHAT and app_model_config:
+            app_model_config.agent_mode = json.dumps({"enabled": True, "strategy": "react", "tools": []})
 
             db_session_with_containers.commit()
 
@@ -843,7 +844,6 @@ class TestAgentService:
         conversation, message = self._create_test_conversation_and_message(db_session_with_containers, app, account)
 
         from graphon.file import FileTransferMethod, FileType
-        from models.enums import CreatorUserRole
 
         # Add files to message
         from models.model import MessageFile

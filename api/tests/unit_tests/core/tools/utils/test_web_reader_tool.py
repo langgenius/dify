@@ -286,9 +286,31 @@ def test_extract_using_readabilipy_field_mapping_and_defaults(monkeypatch: pytes
     article = extract_using_readabilipy("<html>...</html>")
     assert article.title == "Hello"
     assert article.author == "Alice"
-    assert isinstance(article.text, list)
-    assert article.text
-    assert article.text[0]["text"] == "world"
+    assert article.text == "world"
+
+
+def test_extract_using_readabilipy_flattens_plain_text_items(monkeypatch: pytest.MonkeyPatch):
+    """readabilipy returns plain_text as a list of dicts; the article text must be clean joined text,
+    not the Python repr of that list, and HTML tags inside items must be stripped."""
+
+    def fake_simple_json_from_html_string(html, use_readability=True):
+        return {
+            "title": "T",
+            "byline": "A",
+            "plain_text": [
+                {"type": "text", "text": "<p>First paragraph.</p>"},
+                {"type": "text", "text": "Second paragraph."},
+                {"type": "text", "text": ""},
+                "not-a-dict",
+            ],
+        }
+
+    import core.tools.utils.web_reader_tool as mod
+
+    monkeypatch.setattr(mod, "simple_json_from_html_string", fake_simple_json_from_html_string)
+
+    article = extract_using_readabilipy("<html>...</html>")
+    assert article.text == "First paragraph.\nSecond paragraph."
 
 
 def test_extract_using_readabilipy_defaults_when_missing(monkeypatch: pytest.MonkeyPatch):
@@ -302,7 +324,7 @@ def test_extract_using_readabilipy_defaults_when_missing(monkeypatch: pytest.Mon
     article = extract_using_readabilipy("<html>...</html>")
     assert article.title == ""
     assert article.author == ""
-    assert article.text == []
+    assert article.text == ""
 
 
 # ---------------------------

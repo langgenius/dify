@@ -3,7 +3,8 @@ import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Field, FieldItem, FieldLabel } from '@langgenius/dify-ui/field'
 import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
-import { Radio, RadioGroup } from '@langgenius/dify-ui/radio'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import { Radio, RadioGroup } from '@langgenius/dify-ui/radio-group'
 import {
   Select,
   SelectContent,
@@ -14,11 +15,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@langgenius/dify-ui/select'
-import { Slider } from '@langgenius/dify-ui/slider'
+import {
+  Slider,
+  SliderControl,
+  SliderIndicator,
+  SliderLabel,
+  SliderThumb,
+  SliderTrack,
+} from '@langgenius/dify-ui/slider'
 import { Switch } from '@langgenius/dify-ui/switch'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Infotip } from '@/app/components/base/infotip'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import TagInput from '@/app/components/base/tag-input'
 import { BlockEnum } from '@/app/components/workflow/types'
@@ -46,8 +53,9 @@ function ParameterItem({
   nodesOutputVars,
   availableNodes = [],
 }: ParameterItemProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflow'])
   const language = useLanguage()
+  const labelId = useId()
   const [localValue, setLocalValue] = useState(value)
   const numberInputRef = useRef<HTMLInputElement>(null)
 
@@ -203,8 +211,15 @@ function ParameterItem({
             max={parameterRule.max}
             step={step}
             onValueChange={handleSlideChange}
-            aria-label={sliderLabel}
-          />
+          >
+            <SliderLabel className="sr-only">{sliderLabel}</SliderLabel>
+            <SliderControl>
+              <SliderTrack>
+                <SliderIndicator />
+                <SliderThumb />
+              </SliderTrack>
+            </SliderControl>
+          </Slider>
           <input
             aria-label={sliderLabel}
             ref={numberInputRef}
@@ -247,8 +262,15 @@ function ParameterItem({
             max={parameterRule.max}
             step={0.1}
             onValueChange={handleSlideChange}
-            aria-label={sliderLabel}
-          />
+          >
+            <SliderLabel className="sr-only">{sliderLabel}</SliderLabel>
+            <SliderControl>
+              <SliderTrack>
+                <SliderIndicator />
+                <SliderThumb />
+              </SliderTrack>
+            </SliderControl>
+          </Slider>
           <input
             aria-label={sliderLabel}
             ref={numberInputRef}
@@ -321,6 +343,7 @@ function ParameterItem({
 
       return (
         <input
+          aria-labelledby={labelId}
           className={cn(
             isInWorkflow ? 'w-37.5' : 'w-full',
             'ml-4 flex h-8 appearance-none items-center rounded-lg bg-components-input-bg-normal px-3 system-sm-regular text-components-input-text-filled outline-hidden',
@@ -355,6 +378,7 @@ function ParameterItem({
 
       return (
         <textarea
+          aria-labelledby={labelId}
           className="ml-4 h-20 w-full rounded-lg bg-components-input-bg-normal px-1 system-sm-regular text-components-input-text-filled"
           value={renderValue as string}
           onChange={handleStringInputChange}
@@ -408,6 +432,7 @@ function ParameterItem({
           {!parameterRule.required && parameterRule.name !== 'stop' && (
             <div className="mr-2 w-7">
               <Switch
+                aria-labelledby={labelId}
                 checked={!isNullOrUndefined(value)}
                 onCheckedChange={handleSwitch}
                 size="md"
@@ -415,18 +440,18 @@ function ParameterItem({
             </div>
           )}
           <div
+            id={labelId}
             className="mr-0.5 truncate system-xs-regular text-text-secondary"
             title={sliderLabel}
           >
             {sliderLabel}
           </div>
           {parameterRule.help && (
-            <Infotip
-              aria-label={parameterRule.help[language] || parameterRule.help.en_US}
-              className="mr-1"
-              popupClassName="w-[150px] whitespace-pre-wrap"
-            >
-              {parameterRule.help[language] || parameterRule.help.en_US}
+            <Infotip>
+              <InfotipTrigger aria-labelledby={labelId} className="mr-1" />
+              <InfotipContent aria-labelledby={labelId} className="w-37.5 whitespace-pre-wrap">
+                {parameterRule.help[language] || parameterRule.help.en_US}
+              </InfotipContent>
             </Infotip>
           )}
         </div>

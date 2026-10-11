@@ -1,5 +1,7 @@
 import { ContextMenu } from '@langgenius/dify-ui/context-menu'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { detectPlatform } from '@tanstack/react-hotkeys'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { withSelectorKey } from '@/test/i18n-mock'
 import { FlowType } from '@/types/common'
 import { fullWorkflowAccessControl } from '../hooks-store'
@@ -182,6 +184,26 @@ describe('PanelContextmenu', () => {
     expect(mockClose).not.toHaveBeenCalled()
   })
 
+  it.each([false, true])(
+    'handles menu paste only when clipboard is available: %s',
+    async (hasClipboard) => {
+      const user = userEvent.setup()
+      renderPanelContextmenu({
+        initialStoreState: {
+          contextMenuTarget: { type: 'panel' },
+          clipboardElements: hasClipboard ? [createNode({ id: 'copied-node' })] : [],
+        },
+        hooksStoreProps: {},
+      })
+      const item = await screen.findByRole('menuitem', { name: /common.run/ })
+      act(() => item.focus())
+      const mod = detectPlatform() === 'mac' ? 'Meta' : 'Control'
+      await user.keyboard(`{${mod}>}v{/${mod}}`)
+      expect(mockHandleNodesPaste).toHaveBeenCalledTimes(hasClipboard ? 1 : 0)
+      expect(mockClose).toHaveBeenCalledTimes(hasClipboard ? 1 : 0)
+    },
+  )
+
   it('should render actions and execute enabled actions', async () => {
     const { store } = renderPanelContextmenu({
       initialStoreState: {
@@ -198,7 +220,7 @@ describe('PanelContextmenu', () => {
     fireEvent.click(screen.getByText('nodes.note.addNote'))
     fireEvent.click(screen.getByText('common.run'))
     fireEvent.click(screen.getByText('common.pasteHere'))
-    fireEvent.click(screen.getByText('export'))
+    fireEvent.click(screen.getByText('exportApp'))
     fireEvent.click(screen.getByText('importApp'))
 
     await waitFor(() => {
@@ -224,7 +246,7 @@ describe('PanelContextmenu', () => {
       },
     })
 
-    expect(await screen.findByText('export')).toBeInTheDocument()
+    expect(await screen.findByText('exportApp')).toBeInTheDocument()
     expect(screen.queryByText('importApp')).not.toBeInTheDocument()
   })
 

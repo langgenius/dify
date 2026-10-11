@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Iterable
 
-from sqlalchemy import or_, select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from core.db.session_factory import session_factory
@@ -15,20 +15,22 @@ from models.agent import (
     AgentScope,
     AgentStatus,
     AgentWorkingResourceStatus,
+    AgentWorkspace,
     AgentWorkspaceBinding,
     WorkflowAgentNodeBinding,
 )
-from models.enums import AppStatus
-from models.model import App
+from models.model import App, AppMode
 from models.workflow import Workflow
 from services.agent.home_snapshot_service import AgentHomeSnapshotService
 from services.agent.workspace_service import AgentWorkspaceService
+from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
+from tasks.remove_app_and_related_data_task import remove_app_and_related_data_task
 
 logger = logging.getLogger(__name__)
 
 
 class WorkflowAgentRetirementService:
-    """Archive workflow-only Agents once no effective binding owns them."""
+    """Delete workflow-only Agent aggregates after their last Workflow owner is gone."""
 
     @classmethod
     def retire_unowned(
@@ -37,13 +39,25 @@ class WorkflowAgentRetirementService:
         tenant_id: str,
         agent_ids: Iterable[str],
         account_id: str | None,
-    ) -> tuple[list[str], list[str]]:
-        """Re-check ownership, archive orphans, and commit their resource retirement."""
+    ) -> None:
+        """Retire unowned workflow-only Agents in an independent transaction.
+
+        This method returns ``None``. It archives orphan Agents, retires their
+        working resources, and deletes their hidden Apps before committing. It
+        then publishes every hidden-App cleanup before publishing the Agent
+        resource collector; database and task-publication errors propagate.
+
+        Archived Agents, missing hidden App rows, and already-retired resources
+        remain cleanup candidates. A retry can therefore publish duplicate
+        cleanup tasks, which are expected to be idempotent.
+        """
 
         candidates = tuple(sorted({agent_id for agent_id in agent_ids if agent_id}))
         if not candidates:
-            return [], []
+            return
+        backing_app_ids: list[str] = []
         retired_bindings: list[str] = []
+        retired_workspaces: list[str] = []
         retired_snapshots: list[str] = []
         try:
             with session_factory.create_session() as session:
@@ -53,27 +67,56 @@ class WorkflowAgentRetirementService:
                     agent_ids=candidates,
                     account_id=account_id,
                 )
+                retired_agents = session.scalars(
+                    select(Agent).where(
+                        Agent.tenant_id == tenant_id,
+                        Agent.id.in_(retired_agent_ids),
+                    )
+                ).all()
+                backing_app_ids = sorted({agent.backing_app_id for agent in retired_agents if agent.backing_app_id})
+                for app_id in backing_app_ids:
+                    AgentWorkspaceService.retire_all_for_app(
+                        session=session,
+                        tenant_id=tenant_id,
+                        app_id=app_id,
+                    )
+                    retired_workspaces.extend(
+                        session.scalars(
+                            select(AgentWorkspace.id).where(
+                                AgentWorkspace.tenant_id == tenant_id,
+                                AgentWorkspace.app_id == app_id,
+                                AgentWorkspace.status == AgentWorkingResourceStatus.RETIRED,
+                            )
+                        ).all()
+                    )
                 for agent_id in retired_agent_ids:
                     bindings = session.scalars(
                         select(AgentWorkspaceBinding).where(
                             AgentWorkspaceBinding.tenant_id == tenant_id,
                             AgentWorkspaceBinding.agent_id == agent_id,
-                            AgentWorkspaceBinding.status == AgentWorkingResourceStatus.ACTIVE,
                         )
                     ).all()
                     for binding in bindings:
-                        binding_id = AgentWorkspaceService.retire_binding(
-                            session=session,
-                            tenant_id=tenant_id,
-                            binding_id=binding.id,
-                        )
-                        if binding_id is not None:
-                            retired_bindings.append(binding_id)
+                        if binding.status == AgentWorkingResourceStatus.ACTIVE:
+                            AgentWorkspaceService.retire_binding(
+                                session=session,
+                                tenant_id=tenant_id,
+                                binding_id=binding.id,
+                            )
+                        retired_bindings.append(binding.id)
                     retired_snapshots.extend(
                         AgentHomeSnapshotService.retire_all_for_agent(
                             session=session,
                             tenant_id=tenant_id,
                             agent_id=agent_id,
+                        )
+                    )
+                if backing_app_ids:
+                    session.execute(
+                        delete(App).where(
+                            App.tenant_id == tenant_id,
+                            App.id.in_(backing_app_ids),
+                            App.mode == AppMode.AGENT,
                         )
                     )
                 session.commit()
@@ -85,8 +128,24 @@ class WorkflowAgentRetirementService:
                     "agent_ids": candidates,
                 },
             )
-            return [], []
-        return retired_bindings, retired_snapshots
+            raise
+
+        for app_id in backing_app_ids:
+            try:
+                remove_app_and_related_data_task.delay(tenant_id=tenant_id, app_id=app_id)
+            except Exception:
+                logger.exception(
+                    "Failed to enqueue hidden Agent App cleanup",
+                    extra={"tenant_id": tenant_id, "app_id": app_id},
+                )
+                raise
+        enqueue_agent_resource_collection(
+            tenant_id=tenant_id,
+            workspace_ids=retired_workspaces,
+            binding_ids=retired_bindings,
+            home_snapshot_ids=retired_snapshots,
+            purge_agent_ids=retired_agent_ids,
+        )
 
     @classmethod
     def archive_unowned(
@@ -97,7 +156,7 @@ class WorkflowAgentRetirementService:
         agent_ids: Iterable[str],
         account_id: str | None,
     ) -> list[str]:
-        """Archive active orphans and return every orphan eligible for Home cleanup."""
+        """Archive active orphans and return complete aggregate purge candidates."""
         candidates = tuple(sorted({agent_id for agent_id in agent_ids if agent_id}))
         if not candidates:
             return []
@@ -109,7 +168,7 @@ class WorkflowAgentRetirementService:
                 Agent.status.in_((AgentStatus.ACTIVE, AgentStatus.ARCHIVED)),
             )
         ).all()
-        effective_agent_ids = cls._effective_agent_ids(
+        retained_agent_ids = cls.retained_agent_ids(
             session=session,
             tenant_id=tenant_id,
             agent_ids=[agent.id for agent in agents],
@@ -117,7 +176,7 @@ class WorkflowAgentRetirementService:
         now = naive_utc_now()
         cleanup_candidates: list[str] = []
         for agent in agents:
-            if agent.id in effective_agent_ids:
+            if agent.id in retained_agent_ids:
                 continue
             if agent.status == AgentStatus.ACTIVE:
                 agent.status = AgentStatus.ARCHIVED
@@ -130,33 +189,32 @@ class WorkflowAgentRetirementService:
         return cleanup_candidates
 
     @staticmethod
-    def _effective_agent_ids(
+    def retained_agent_ids(
         *,
         session: Session,
         tenant_id: str,
         agent_ids: list[str],
     ) -> set[str]:
+        """Return Agents that still have an exact persisted Workflow owner.
+
+        The owner key is tenant, App, Workflow, and Workflow version. Draft and
+        every published version, whether current or historical, count equally;
+        the App's current-Workflow pointer is not part of ownership.
+        """
         if not agent_ids:
             return set()
         values = session.scalars(
             select(WorkflowAgentNodeBinding.agent_id)
             .join(
                 Workflow,
-                Workflow.id == WorkflowAgentNodeBinding.workflow_id,
+                (Workflow.tenant_id == WorkflowAgentNodeBinding.tenant_id)
+                & (Workflow.app_id == WorkflowAgentNodeBinding.app_id)
+                & (Workflow.id == WorkflowAgentNodeBinding.workflow_id)
+                & (Workflow.version == WorkflowAgentNodeBinding.workflow_version),
             )
-            .join(App, App.id == WorkflowAgentNodeBinding.app_id)
             .where(
                 WorkflowAgentNodeBinding.tenant_id == tenant_id,
                 WorkflowAgentNodeBinding.agent_id.in_(agent_ids),
-                Workflow.tenant_id == tenant_id,
-                Workflow.app_id == WorkflowAgentNodeBinding.app_id,
-                Workflow.version == WorkflowAgentNodeBinding.workflow_version,
-                App.tenant_id == tenant_id,
-                App.status == AppStatus.NORMAL,
-                or_(
-                    Workflow.version == Workflow.VERSION_DRAFT,
-                    App.workflow_id == Workflow.id,
-                ),
             )
             .distinct()
         ).all()

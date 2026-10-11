@@ -1,11 +1,8 @@
 from types import SimpleNamespace
-
 import pytest
 from pydantic import ValidationError
-
 import dify_agent.layers.dify_plugin as dify_plugin_exports
 from dify_agent.layers.dify_plugin import (
-    DifyPluginCredentialValue,
     DifyPluginLLMLayerConfig,
     DifyPluginToolCredentialType,
     DifyPluginToolConfig,
@@ -19,8 +16,6 @@ from dify_agent.layers.dify_plugin import (
 
 def test_dify_plugin_package_exports_client_safe_config_symbols_only() -> None:
     assert dify_plugin_exports.__all__ == [
-        "DIFY_PLUGIN_LLM_LAYER_TYPE_ID",
-        "DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID",
         "DifyPluginCredentialValue",
         "DifyPluginLLMLayerConfig",
         "DifyPluginToolCredentialType",
@@ -32,44 +27,39 @@ def test_dify_plugin_package_exports_client_safe_config_symbols_only() -> None:
         "DifyPluginToolsLayerConfig",
         "DifyPluginToolValue",
     ]
-    assert dify_plugin_exports.DIFY_PLUGIN_LLM_LAYER_TYPE_ID == "dify.plugin.llm"
-    assert dify_plugin_exports.DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID == "dify.plugin.tools"
     assert not hasattr(dify_plugin_exports, "DifyPluginLLMLayer")
 
 
-def test_dify_plugin_llm_config_accepts_scalar_credentials_and_model_settings() -> None:
-    credential: DifyPluginCredentialValue = "secret"
-    config = DifyPluginLLMLayerConfig(
-        plugin_id="langgenius/openai",
-        model_provider="openai",
-        model="gpt-4o-mini",
-        credentials={"api_key": credential, "enabled": True, "retries": 2, "ratio": 0.5, "empty": None},
-        model_settings={"temperature": 0.2, "max_tokens": 64},
+def test_dify_plugin_llm_config_discards_legacy_credentials() -> None:
+    config = DifyPluginLLMLayerConfig.model_validate(
+        {
+            "plugin_id": "langgenius/openai",
+            "model_provider": "openai",
+            "model": "gpt-4o-mini",
+            "credentials": {"api_key": "secret", "nested": {"legacy": True}},
+            "model_settings": {"temperature": 0.2, "max_tokens": 64},
+            "context_window_tokens": 128000,
+        }
     )
-
     assert config.plugin_id == "langgenius/openai"
     assert config.model_provider == "openai"
-    assert config.credentials == {"api_key": "secret", "enabled": True, "retries": 2, "ratio": 0.5, "empty": None}
+    assert not hasattr(config, "credentials")
+    assert "credentials" not in config.model_dump(mode="json")
     assert config.model_settings == {"temperature": 0.2, "max_tokens": 64}
-    with pytest.raises(ValidationError):
-        _ = DifyPluginLLMLayerConfig.model_validate(
-            {
-                "plugin_id": "langgenius/openai",
-                "model_provider": "openai",
-                "model": "gpt-4o-mini",
-                "credentials": {"nested": {"not": "allowed"}},
-            }
-        )
+    assert config.context_window_tokens == 128000
 
 
 def test_dify_plugin_llm_config_rejects_old_provider_field() -> None:
     with pytest.raises(ValidationError):
         _ = DifyPluginLLMLayerConfig.model_validate(
-            {
-                "provider": "openai",
-                "plugin_id": "langgenius/openai",
-                "model": "gpt-4o-mini",
-            }
+            {"provider": "openai", "plugin_id": "langgenius/openai", "model": "gpt-4o-mini"}
+        )
+
+
+def test_dify_plugin_llm_config_rejects_non_positive_context_window() -> None:
+    with pytest.raises(ValidationError):
+        _ = DifyPluginLLMLayerConfig(
+            plugin_id="langgenius/openai", model_provider="openai", model="gpt-4o-mini", context_window_tokens=0
         )
 
 
@@ -98,15 +88,12 @@ def test_dify_plugin_tools_layer_config_accepts_prepared_parameters_and_schema()
                 ],
                 parameters_json_schema={
                     "type": "object",
-                    "properties": {
-                        "query": {"type": "string", "description": "Search query"},
-                    },
+                    "properties": {"query": {"type": "string", "description": "Search query"}},
                     "required": ["query"],
                 },
             )
         ]
     )
-
     assert config.tools[0].plugin_id == "langgenius/tools"
     assert config.tools[0].provider == "search"
     assert config.tools[0].tool_name == "web_search"
@@ -130,15 +117,9 @@ def test_dify_plugin_tool_parameter_accepts_api_tool_parameter_dump_shape() -> N
             "default": "dify",
             "llm_description": "Search query",
             "input_schema": {"type": "string"},
-            "options": [
-                {
-                    "value": "dify",
-                    "label": {"en_US": "Dify"},
-                }
-            ],
+            "options": [{"value": "dify", "label": {"en_US": "Dify"}}],
         }
     )
-
     assert parameter.name == "query"
     assert parameter.type is DifyPluginToolParameterType.SELECT
     assert parameter.form is DifyPluginToolParameterForm.LLM
@@ -162,7 +143,6 @@ def test_dify_plugin_tool_parameter_accepts_api_tool_parameter_attributes() -> N
             options=[SimpleNamespace(value="en", label=SimpleNamespace(en_US="English"))],
         )
     )
-
     assert parameter.name == "language"
     assert parameter.type is DifyPluginToolParameterType.STRING
     assert parameter.form is DifyPluginToolParameterForm.FORM
@@ -212,9 +192,5 @@ def test_dify_plugin_tool_config_rejects_strict_flag() -> None:
 def test_dify_plugin_tool_config_requires_explicit_credential_type() -> None:
     with pytest.raises(ValidationError):
         _ = DifyPluginToolConfig.model_validate(
-            {
-                "plugin_id": "langgenius/tools",
-                "provider": "search",
-                "tool_name": "web_search",
-            }
+            {"plugin_id": "langgenius/tools", "provider": "search", "tool_name": "web_search"}
         )

@@ -6,7 +6,6 @@ import {
   Autocomplete,
   AutocompleteClear,
   AutocompleteCollection,
-  AutocompleteContent,
   AutocompleteEmpty,
   AutocompleteGroup,
   AutocompleteGroupLabel,
@@ -15,6 +14,9 @@ import {
   AutocompleteItem,
   AutocompleteItemText,
   AutocompleteList,
+  AutocompletePopup,
+  AutocompletePortal,
+  AutocompletePositioner,
   AutocompleteSeparator,
   AutocompleteStatus,
   AutocompleteTrigger,
@@ -291,27 +293,29 @@ async function searchSuggestions(
   }
 }
 
-const SuggestionItem = ({ item, dense }: { item: Suggestion; dense?: boolean }) => (
-  <AutocompleteItem value={item}>
-    {item.icon && (
-      <span className={cn(item.icon, 'size-4 shrink-0 text-text-tertiary')} aria-hidden="true" />
-    )}
-    <div className="flex min-w-0 grow flex-col">
-      <AutocompleteItemText className="px-0">{item.label}</AutocompleteItemText>
-      {!dense && item.description && (
-        <span className="truncate system-xs-regular text-text-tertiary">{item.description}</span>
+function SuggestionItem({ item, dense }: { item: Suggestion; dense?: boolean }) {
+  return (
+    <AutocompleteItem value={item}>
+      {item.icon && (
+        <span className={cn(item.icon, 'size-4 shrink-0 text-text-tertiary')} aria-hidden="true" />
       )}
-    </div>
-    {item.meta && (
-      <span className="shrink-0 rounded-md bg-components-badge-bg-dimm px-1.5 py-0.5 system-2xs-medium text-text-tertiary">
-        {item.meta}
-      </span>
-    )}
-  </AutocompleteItem>
-)
+      <div className="flex min-w-0 grow flex-col">
+        <AutocompleteItemText>{item.label}</AutocompleteItemText>
+        {!dense && item.description && (
+          <span className="truncate system-xs-regular text-text-tertiary">{item.description}</span>
+        )}
+      </div>
+      {item.meta && (
+        <span className="shrink-0 rounded-md bg-components-badge-bg-dimm px-1.5 py-0.5 system-2xs-medium text-text-tertiary">
+          {item.meta}
+        </span>
+      )}
+    </AutocompleteItem>
+  )
+}
 
 // Only virtualized items receive an explicit index; ordinary lists must let Base UI register items by DOM order for keyboard navigation.
-const VirtualizedSuggestionItem = ({
+function VirtualizedSuggestionItem({
   item,
   index,
   dense,
@@ -319,66 +323,76 @@ const VirtualizedSuggestionItem = ({
   item: Suggestion
   index: number
   dense?: boolean
-}) => (
-  <AutocompleteItem value={item} index={index}>
-    {item.icon && (
-      <span className={cn(item.icon, 'size-4 shrink-0 text-text-tertiary')} aria-hidden="true" />
-    )}
-    <div className="flex min-w-0 grow flex-col">
-      <AutocompleteItemText className="px-0">{item.label}</AutocompleteItemText>
-      {!dense && item.description && (
-        <span className="truncate system-xs-regular text-text-tertiary">{item.description}</span>
+}) {
+  return (
+    <AutocompleteItem value={item} index={index}>
+      {item.icon && (
+        <span className={cn(item.icon, 'size-4 shrink-0 text-text-tertiary')} aria-hidden="true" />
       )}
-    </div>
-    {item.meta && (
-      <span className="shrink-0 rounded-md bg-components-badge-bg-dimm px-1.5 py-0.5 system-2xs-medium text-text-tertiary">
-        {item.meta}
-      </span>
-    )}
-  </AutocompleteItem>
-)
+      <div className="flex min-w-0 grow flex-col">
+        <AutocompleteItemText>{item.label}</AutocompleteItemText>
+        {!dense && item.description && (
+          <span className="truncate system-xs-regular text-text-tertiary">{item.description}</span>
+        )}
+      </div>
+      {item.meta && (
+        <span className="shrink-0 rounded-md bg-components-badge-bg-dimm px-1.5 py-0.5 system-2xs-medium text-text-tertiary">
+          {item.meta}
+        </span>
+      )}
+    </AutocompleteItem>
+  )
+}
 
-const TagSuggestionItem = ({ item }: { item: Suggestion }) => (
-  <AutocompleteItem value={item}>
-    <AutocompleteItemText className="px-0">{item.label}</AutocompleteItemText>
-    {item.description && (
-      <span className="ml-auto max-w-36 truncate system-xs-regular text-text-tertiary">
-        {item.description}
-      </span>
-    )}
-  </AutocompleteItem>
-)
+function TagSuggestionItem({ item }: { item: Suggestion }) {
+  return (
+    <AutocompleteItem value={item}>
+      <AutocompleteItemText>{item.label}</AutocompleteItemText>
+      {item.description && (
+        <span className="ml-auto max-w-36 truncate system-xs-regular text-text-tertiary">
+          {item.description}
+        </span>
+      )}
+    </AutocompleteItem>
+  )
+}
 
-const BasicTagAutocomplete = ({ size = 'medium' }: { size?: 'small' | 'medium' | 'large' }) => (
-  <Autocomplete
-    items={tagSuggestions}
-    itemToStringValue={getSuggestionLabel}
-    mode="list"
-    openOnInputClick
-  >
-    <AutocompleteInputGroup size={size}>
-      <span
-        className="ml-2 i-ri-search-line size-4 shrink-0 text-text-tertiary"
-        aria-hidden="true"
-      />
-      <AutocompleteInput
-        size={size}
-        placeholder="Search tags or type a new one…"
-        aria-label="Search tags or type a new one"
-      />
-      <AutocompleteClear size={size} />
-      <AutocompleteTrigger size={size} />
-    </AutocompleteInputGroup>
-    <AutocompleteContent>
-      <AutocompleteList<Suggestion>>
-        {(item) => <TagSuggestionItem key={item.value} item={item} />}
-      </AutocompleteList>
-      <AutocompleteEmpty>No tag suggestion. Keep the typed value.</AutocompleteEmpty>
-    </AutocompleteContent>
-  </Autocomplete>
-)
+function BasicTagAutocomplete({ size = 'medium' }: { size?: 'small' | 'medium' | 'large' }) {
+  return (
+    <Autocomplete
+      items={tagSuggestions}
+      itemToStringValue={getSuggestionLabel}
+      mode="list"
+      openOnInputClick
+    >
+      <AutocompleteInputGroup size={size}>
+        <span
+          className="i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder"
+          aria-hidden="true"
+        />
+        <AutocompleteInput
+          size={size}
+          placeholder="Search tags or type a new one…"
+          aria-label="Search tags or type a new one"
+        />
+        <AutocompleteClear size={size} />
+        <AutocompleteTrigger size={size} />
+      </AutocompleteInputGroup>
+      <AutocompletePortal>
+        <AutocompletePositioner>
+          <AutocompletePopup>
+            <AutocompleteList<Suggestion>>
+              {(item) => <TagSuggestionItem key={item.value} item={item} />}
+            </AutocompleteList>
+            <AutocompleteEmpty>No tag suggestion. Keep the typed value.</AutocompleteEmpty>
+          </AutocompletePopup>
+        </AutocompletePositioner>
+      </AutocompletePortal>
+    </Autocomplete>
+  )
+}
 
-const GroupedSuggestionList = () => {
+function GroupedSuggestionList() {
   const groups = useAutocompleteFilteredItems<SuggestionGroup>()
 
   return (
@@ -396,18 +410,15 @@ const GroupedSuggestionList = () => {
   )
 }
 
-const CommandPaletteList = () => {
+function CommandPaletteList() {
   const groups = useAutocompleteFilteredItems<SuggestionGroup>()
 
   return (
     <AutocompleteList className="max-h-72 rounded-lg border border-divider-subtle bg-components-panel-bg p-1 shadow-xs">
       {groups.map((group, groupIndex) => (
         <AutocompleteGroup key={group.label} items={group.items}>
-          <AutocompleteGroupLabel
-            className={groupIndex > 0 ? 'mt-1 border-t border-divider-subtle pt-2' : undefined}
-          >
-            {group.label}
-          </AutocompleteGroupLabel>
+          {groupIndex > 0 && <AutocompleteSeparator />}
+          <AutocompleteGroupLabel>{group.label}</AutocompleteGroupLabel>
           <AutocompleteCollection<Suggestion>>
             {(item) => (
               <AutocompleteItem key={item.value} value={item} className="grid grid-cols-[1fr_auto]">
@@ -419,7 +430,7 @@ const CommandPaletteList = () => {
                     />
                   )}
                   <span className="min-w-0">
-                    <AutocompleteItemText className="block px-0">{item.label}</AutocompleteItemText>
+                    <AutocompleteItemText className="block">{item.label}</AutocompleteItemText>
                     <span className="block truncate system-xs-regular text-text-tertiary">
                       {item.description}
                     </span>
@@ -444,7 +455,7 @@ const LimitedStatus = ({ total }: { total: number }) => {
     : `${items.length} suggestions available.`
 }
 
-const AsyncSearchDemo = () => {
+function AsyncSearchDemo() {
   const [searchValue, setSearchValue] = React.useState('')
   const [searchResults, setSearchResults] = React.useState<Suggestion[]>([])
   const [error, setError] = React.useState<string | null>(null)
@@ -501,7 +512,7 @@ const AsyncSearchDemo = () => {
       >
         <AutocompleteInputGroup>
           <span
-            className="ml-2 i-ri-cloud-line size-4 shrink-0 text-text-tertiary"
+            className="i-ri-cloud-line size-4 shrink-0 text-components-input-text-placeholder"
             aria-hidden="true"
           />
           <AutocompleteInput
@@ -511,25 +522,26 @@ const AsyncSearchDemo = () => {
           <AutocompleteClear />
           <AutocompleteTrigger />
         </AutocompleteInputGroup>
-        <AutocompleteContent
-          portalProps={{ hidden: !status }}
-          popupProps={{ 'aria-busy': isPending || undefined }}
-        >
-          <AutocompleteStatus>{status}</AutocompleteStatus>
-          <AutocompleteList<Suggestion>>
-            {(item) => <SuggestionItem key={item.value} item={item} />}
-          </AutocompleteList>
-        </AutocompleteContent>
+        <AutocompletePortal hidden={!status}>
+          <AutocompletePositioner>
+            <AutocompletePopup aria-busy={isPending || undefined}>
+              <AutocompleteStatus>{status}</AutocompleteStatus>
+              <AutocompleteList<Suggestion>>
+                {(item) => <SuggestionItem key={item.value} item={item} />}
+              </AutocompleteList>
+            </AutocompletePopup>
+          </AutocompletePositioner>
+        </AutocompletePortal>
       </Autocomplete>
     </div>
   )
 }
 
-const VirtualizedSuggestionList = ({
+function VirtualizedSuggestionList({
   virtualizerRef,
 }: {
   virtualizerRef: React.RefObject<StoryVirtualizer | null>
-}) => {
+}) {
   const scrollRef = React.useRef<HTMLDivElement | null>(null)
   const filteredItems = useAutocompleteFilteredItems<Suggestion>()
   const virtualizer = useVirtualizer({
@@ -550,7 +562,7 @@ const VirtualizedSuggestionList = ({
   return (
     <div
       ref={scrollRef}
-      className="max-h-[min(22rem,var(--available-height))] overflow-x-hidden overflow-y-auto overscroll-contain outline-hidden"
+      className="max-h-[min(22rem,var(--available-height))] overflow-x-hidden overflow-y-auto overscroll-contain p-1 outline-hidden"
     >
       <AutocompleteList
         className="relative max-h-none overflow-visible p-0"
@@ -579,17 +591,17 @@ const VirtualizedSuggestionList = ({
   )
 }
 
-const VirtualizedStatus = () => {
+function VirtualizedStatus() {
   const filteredItems = useAutocompleteFilteredItems<Suggestion>()
 
   return (
-    <AutocompleteStatus className="border-b border-divider-subtle text-text-quaternary tabular-nums">
+    <AutocompleteStatus>
       {filteredItems.length} matching suggestions. Selecting one only replaces the input text.
     </AutocompleteStatus>
   )
 }
 
-const FuzzyHighlight = ({ text, query }: { text: string; query: string }) => {
+function FuzzyHighlight({ text, query }: { text: string; query: string }) {
   const parts = React.useMemo(() => {
     const trimmed = query.trim()
 
@@ -615,7 +627,7 @@ const FuzzyHighlight = ({ text, query }: { text: string; query: string }) => {
   )
 }
 
-const FuzzyMatchingDemo = () => {
+function FuzzyMatchingDemo() {
   const [value, setValue] = React.useState('retr')
   const { contains } = useAutocompleteFilter({ sensitivity: 'base' })
 
@@ -632,7 +644,7 @@ const FuzzyMatchingDemo = () => {
       >
         <AutocompleteInputGroup>
           <span
-            className="ml-2 i-ri-sparkling-2-line size-4 shrink-0 text-text-tertiary"
+            className="i-ri-sparkling-2-line size-4 shrink-0 text-components-input-text-placeholder"
             aria-hidden="true"
           />
           <AutocompleteInput
@@ -642,29 +654,33 @@ const FuzzyMatchingDemo = () => {
           <AutocompleteClear />
           <AutocompleteTrigger />
         </AutocompleteInputGroup>
-        <AutocompleteContent>
-          <AutocompleteList<Suggestion>>
-            {(item) => (
-              <AutocompleteItem key={item.value} value={item}>
-                {item.icon && (
-                  <span
-                    className={cn(item.icon, 'size-4 shrink-0 text-text-tertiary')}
-                    aria-hidden="true"
-                  />
+        <AutocompletePortal>
+          <AutocompletePositioner>
+            <AutocompletePopup>
+              <AutocompleteList<Suggestion>>
+                {(item) => (
+                  <AutocompleteItem key={item.value} value={item}>
+                    {item.icon && (
+                      <span
+                        className={cn(item.icon, 'size-4 shrink-0 text-text-tertiary')}
+                        aria-hidden="true"
+                      />
+                    )}
+                    <div className="min-w-0 grow">
+                      <AutocompleteItemText className="block">
+                        <FuzzyHighlight text={item.label} query={value} />
+                      </AutocompleteItemText>
+                      <span className="block truncate system-xs-regular text-text-tertiary">
+                        {item.description}
+                      </span>
+                    </div>
+                  </AutocompleteItem>
                 )}
-                <div className="min-w-0 grow">
-                  <AutocompleteItemText className="block px-0">
-                    <FuzzyHighlight text={item.label} query={value} />
-                  </AutocompleteItemText>
-                  <span className="block truncate system-xs-regular text-text-tertiary">
-                    {item.description}
-                  </span>
-                </div>
-              </AutocompleteItem>
-            )}
-          </AutocompleteList>
-          <AutocompleteEmpty>No workflow suggestion. Keep typing freely.</AutocompleteEmpty>
-        </AutocompleteContent>
+              </AutocompleteList>
+              <AutocompleteEmpty>No workflow suggestion. Keep typing freely.</AutocompleteEmpty>
+            </AutocompletePopup>
+          </AutocompletePositioner>
+        </AutocompletePortal>
       </Autocomplete>
     </div>
   )
@@ -719,7 +735,7 @@ export const InlineAutocomplete: Story = {
       >
         <AutocompleteInputGroup>
           <span
-            className="ml-2 i-ri-text-snippet size-4 shrink-0 text-text-tertiary"
+            className="i-ri-text-snippet size-4 shrink-0 text-components-input-text-placeholder"
             aria-hidden="true"
           />
           <AutocompleteInput
@@ -729,12 +745,16 @@ export const InlineAutocomplete: Story = {
           <AutocompleteClear />
           <AutocompleteTrigger />
         </AutocompleteInputGroup>
-        <AutocompleteContent>
-          <AutocompleteList<Suggestion>>
-            {(item) => <SuggestionItem key={item.value} item={item} dense />}
-          </AutocompleteList>
-          <AutocompleteEmpty>No inline completion. Continue typing freely.</AutocompleteEmpty>
-        </AutocompleteContent>
+        <AutocompletePortal>
+          <AutocompletePositioner>
+            <AutocompletePopup>
+              <AutocompleteList<Suggestion>>
+                {(item) => <SuggestionItem key={item.value} item={item} dense />}
+              </AutocompleteList>
+              <AutocompleteEmpty>No inline completion. Continue typing freely.</AutocompleteEmpty>
+            </AutocompletePopup>
+          </AutocompletePositioner>
+        </AutocompletePortal>
       </Autocomplete>
     </div>
   ),
@@ -751,7 +771,7 @@ export const GroupedSuggestions: Story = {
       >
         <AutocompleteInputGroup>
           <span
-            className="ml-2 i-ri-command-line size-4 shrink-0 text-text-tertiary"
+            className="i-ri-command-line size-4 shrink-0 text-components-input-text-placeholder"
             aria-hidden="true"
           />
           <AutocompleteInput
@@ -761,10 +781,14 @@ export const GroupedSuggestions: Story = {
           <AutocompleteClear />
           <AutocompleteTrigger />
         </AutocompleteInputGroup>
-        <AutocompleteContent popupClassName="w-[420px]">
-          <GroupedSuggestionList />
-          <AutocompleteEmpty>No suggestion. Use the text as entered.</AutocompleteEmpty>
-        </AutocompleteContent>
+        <AutocompletePortal>
+          <AutocompletePositioner>
+            <AutocompletePopup>
+              <GroupedSuggestionList />
+              <AutocompleteEmpty>No suggestion. Use the text as entered.</AutocompleteEmpty>
+            </AutocompletePopup>
+          </AutocompletePositioner>
+        </AutocompletePortal>
       </Autocomplete>
     </div>
   ),
@@ -786,7 +810,7 @@ export const LimitResults: Story = {
       >
         <AutocompleteInputGroup>
           <span
-            className="ml-2 i-ri-tools-line size-4 shrink-0 text-text-tertiary"
+            className="i-ri-tools-line size-4 shrink-0 text-components-input-text-placeholder"
             aria-hidden="true"
           />
           <AutocompleteInput
@@ -796,15 +820,19 @@ export const LimitResults: Story = {
           <AutocompleteClear />
           <AutocompleteTrigger />
         </AutocompleteInputGroup>
-        <AutocompleteContent popupClassName="w-[420px]">
-          <AutocompleteStatus className="border-b border-divider-subtle">
-            <LimitedStatus total={workflowSuggestions.length} />
-          </AutocompleteStatus>
-          <AutocompleteList<Suggestion>>
-            {(item) => <SuggestionItem key={item.value} item={item} />}
-          </AutocompleteList>
-          <AutocompleteEmpty>No suggestion. Submit the typed text instead.</AutocompleteEmpty>
-        </AutocompleteContent>
+        <AutocompletePortal>
+          <AutocompletePositioner>
+            <AutocompletePopup>
+              <AutocompleteStatus>
+                <LimitedStatus total={workflowSuggestions.length} />
+              </AutocompleteStatus>
+              <AutocompleteList<Suggestion>>
+                {(item) => <SuggestionItem key={item.value} item={item} />}
+              </AutocompleteList>
+              <AutocompleteEmpty>No suggestion. Submit the typed text instead.</AutocompleteEmpty>
+            </AutocompletePopup>
+          </AutocompletePositioner>
+        </AutocompletePortal>
       </Autocomplete>
     </div>
   ),
@@ -824,7 +852,7 @@ export const CommandPalette: Story = {
       >
         <AutocompleteInputGroup className="mb-2">
           <span
-            className="ml-2 i-ri-search-line size-4 shrink-0 text-text-tertiary"
+            className="i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder"
             aria-hidden="true"
           />
           <AutocompleteInput
@@ -840,7 +868,7 @@ export const CommandPalette: Story = {
   ),
 }
 
-const VirtualizedLongSuggestionsDemo = () => {
+function VirtualizedLongSuggestionsDemo() {
   const virtualizerRef = React.useRef<StoryVirtualizer | null>(null)
 
   return (
@@ -857,7 +885,7 @@ const VirtualizedLongSuggestionsDemo = () => {
       >
         <AutocompleteInputGroup>
           <span
-            className="ml-2 i-ri-search-line size-4 shrink-0 text-text-tertiary"
+            className="i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder"
             aria-hidden="true"
           />
           <AutocompleteInput
@@ -867,11 +895,15 @@ const VirtualizedLongSuggestionsDemo = () => {
           <AutocompleteClear />
           <AutocompleteTrigger />
         </AutocompleteInputGroup>
-        <AutocompleteContent popupClassName="w-[440px] p-1">
-          <VirtualizedStatus />
-          <VirtualizedSuggestionList virtualizerRef={virtualizerRef} />
-          <AutocompleteEmpty>No suggestion. Free-form text is still valid.</AutocompleteEmpty>
-        </AutocompleteContent>
+        <AutocompletePortal>
+          <AutocompletePositioner>
+            <AutocompletePopup>
+              <VirtualizedStatus />
+              <VirtualizedSuggestionList virtualizerRef={virtualizerRef} />
+              <AutocompleteEmpty>No suggestion. Free-form text is still valid.</AutocompleteEmpty>
+            </AutocompletePopup>
+          </AutocompletePositioner>
+        </AutocompletePortal>
       </Autocomplete>
     </div>
   )
@@ -897,7 +929,7 @@ export const Empty: Story = {
       >
         <AutocompleteInputGroup>
           <span
-            className="ml-2 i-ri-search-line size-4 shrink-0 text-text-tertiary"
+            className="i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder"
             aria-hidden="true"
           />
           <AutocompleteInput
@@ -907,12 +939,18 @@ export const Empty: Story = {
           <AutocompleteClear />
           <AutocompleteTrigger />
         </AutocompleteInputGroup>
-        <AutocompleteContent>
-          <AutocompleteList<Suggestion>>
-            {(item) => <TagSuggestionItem key={item.value} item={item} />}
-          </AutocompleteList>
-          <AutocompleteEmpty>No tag suggestion. The custom text remains valid.</AutocompleteEmpty>
-        </AutocompleteContent>
+        <AutocompletePortal>
+          <AutocompletePositioner>
+            <AutocompletePopup>
+              <AutocompleteList<Suggestion>>
+                {(item) => <TagSuggestionItem key={item.value} item={item} />}
+              </AutocompleteList>
+              <AutocompleteEmpty>
+                No tag suggestion. The custom text remains valid.
+              </AutocompleteEmpty>
+            </AutocompletePopup>
+          </AutocompletePositioner>
+        </AutocompletePortal>
       </Autocomplete>
     </div>
   ),
@@ -933,11 +971,15 @@ export const DisabledAndReadOnly: Story = {
           <AutocompleteClear />
           <AutocompleteTrigger />
         </AutocompleteInputGroup>
-        <AutocompleteContent>
-          <AutocompleteList<Suggestion>>
-            {(item) => <TagSuggestionItem key={item.value} item={item} />}
-          </AutocompleteList>
-        </AutocompleteContent>
+        <AutocompletePortal>
+          <AutocompletePositioner>
+            <AutocompletePopup>
+              <AutocompleteList<Suggestion>>
+                {(item) => <TagSuggestionItem key={item.value} item={item} />}
+              </AutocompleteList>
+            </AutocompletePopup>
+          </AutocompletePositioner>
+        </AutocompletePortal>
       </Autocomplete>
       <Autocomplete
         items={promptCompletions}
@@ -951,11 +993,15 @@ export const DisabledAndReadOnly: Story = {
           <AutocompleteClear />
           <AutocompleteTrigger />
         </AutocompleteInputGroup>
-        <AutocompleteContent>
-          <AutocompleteList<Suggestion>>
-            {(item) => <SuggestionItem key={item.value} item={item} />}
-          </AutocompleteList>
-        </AutocompleteContent>
+        <AutocompletePortal>
+          <AutocompletePositioner>
+            <AutocompletePopup>
+              <AutocompleteList<Suggestion>>
+                {(item) => <SuggestionItem key={item.value} item={item} />}
+              </AutocompleteList>
+            </AutocompletePopup>
+          </AutocompletePositioner>
+        </AutocompletePortal>
       </Autocomplete>
     </div>
   ),

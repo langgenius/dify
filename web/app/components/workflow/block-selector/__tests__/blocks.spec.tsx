@@ -44,16 +44,10 @@ vi.mock('@/service/base', () => ({
   request: (...args: unknown[]) => queryMocks.request(...args),
 }))
 
-vi.mock('@langgenius/dify-ui/toast', () => ({
+vi.mock('@/app/notifications', () => ({
   toast: {
     error: (message: string) => queryMocks.toastError(message),
   },
-}))
-
-// Permission-dependent selector actions are covered by agent-selector.spec.tsx;
-// this suite is about block insertion.
-vi.mock('@/features/agent-v2/permissions', () => ({
-  useCanManageAgents: () => true,
 }))
 
 const createBlock = (
@@ -158,7 +152,7 @@ describe('Blocks', () => {
     expect(llmButton).toBeInTheDocument()
     expect(llmButton).toHaveAccessibleDescription('LLM description')
     expect(screen.getByText('Exit Loop')).toBeInTheDocument()
-    expect(screen.getByText('workflow.nodes.loop.loopNode')).toBeInTheDocument()
+    expect(screen.getByText('workflowLogic.nodes.loop.loopNode')).toBeInTheDocument()
     expect(screen.queryByText('Knowledge Retrieval')).not.toBeInTheDocument()
 
     await user.click(llmButton)
@@ -211,12 +205,12 @@ describe('Blocks', () => {
     )
 
     const agentBlock = screen.getByRole('button', { name: /Agent/ })
-    expect(agentBlock).toHaveTextContent('common.menus.status')
+    expect(agentBlock).toHaveTextContent('navigation.menus.status')
 
     await user.hover(agentBlock)
 
     expect(
-      await screen.findByRole('dialog', { name: 'agentV2.roster.nodeSelector.dialogLabel' }),
+      await screen.findByRole('dialog', { name: 'agentRoster.roster.nodeSelector.dialogLabel' }),
     ).toBeInTheDocument()
   })
 
@@ -269,13 +263,15 @@ describe('Blocks', () => {
     await user.click(screen.getByRole('button', { name: /Agent/ }))
 
     expect(
-      await screen.findByRole('dialog', { name: 'agentV2.roster.nodeSelector.dialogLabel' }),
+      await screen.findByRole('dialog', { name: 'agentRoster.roster.nodeSelector.dialogLabel' }),
     ).toBeInTheDocument()
-    expect(screen.getByRole('combobox', { name: 'agentV2.roster.searchLabel' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('searchbox', { name: 'agentRoster.roster.searchLabel' }),
+    ).toBeInTheDocument()
     expect(await screen.findByText('Nadia')).toBeInTheDocument()
     expect(screen.getByText('Researcher')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('option', { name: 'Nadia Researcher' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Nadia Researcher' }))
 
     expect(onSelect).toHaveBeenCalledWith(BlockEnum.AgentV2, {
       agent_binding: {
@@ -351,11 +347,11 @@ describe('Blocks', () => {
     await user.click(screen.getByRole('button', { name: /Agent/ }))
     expect(await screen.findByText('Nadia')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('combobox', { name: 'agentV2.roster.searchLabel' }))
+    await user.click(screen.getByRole('searchbox', { name: 'agentRoster.roster.searchLabel' }))
     await user.keyboard('{Escape}')
     await waitFor(() => {
       expect(
-        screen.queryByRole('dialog', { name: 'agentV2.roster.nodeSelector.dialogLabel' }),
+        screen.queryByRole('dialog', { name: 'agentRoster.roster.nodeSelector.dialogLabel' }),
       ).not.toBeInTheDocument()
     })
 
@@ -409,7 +405,7 @@ describe('Blocks', () => {
     await user.click(screen.getByRole('button', { name: /Agent/ }))
     expect(await screen.findByText('Nadia')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('option', { name: 'Nadia Researcher' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Nadia Researcher' }))
 
     await waitFor(() =>
       expect(queryMocks.toastError).toHaveBeenCalledWith('workflow.nodes.agent.modelNotSelected'),
@@ -450,14 +446,16 @@ describe('Blocks', () => {
     )
 
     await user.click(screen.getByRole('button', { name: /Agent/ }))
-    const consoleLink = await screen.findByRole('option', {
-      name: 'agentV2.roster.nodeSelector.manageInAgentConsole',
+    const consoleLink = await screen.findByRole('menuitem', {
+      name: 'agentRoster.roster.nodeSelector.manageInAgentConsole',
     })
     expect(consoleLink).toHaveAttribute('href', '/agents')
     expect(consoleLink).toHaveAttribute('target', '_blank')
     expect(consoleLink).toHaveAttribute('rel', 'noopener noreferrer')
     await user.click(
-      await screen.findByRole('option', { name: 'agentV2.roster.nodeSelector.startFromScratch' }),
+      await screen.findByRole('menuitem', {
+        name: 'agentRoster.roster.nodeSelector.startFromScratch',
+      }),
     )
 
     expect(onSelect).toHaveBeenCalledWith(BlockEnum.AgentV2, {
@@ -469,7 +467,7 @@ describe('Blocks', () => {
     })
   })
 
-  it('closes the agent selector when Escape closes the combobox', async () => {
+  it('closes the agent selector when Escape closes the menu', async () => {
     const user = userEvent.setup()
     mockInviteOptionsResponse([])
     const queryClient = new QueryClient({
@@ -503,15 +501,15 @@ describe('Blocks', () => {
     await user.click(screen.getByRole('button', { name: /Agent/ }))
 
     expect(
-      await screen.findByRole('dialog', { name: 'agentV2.roster.nodeSelector.dialogLabel' }),
+      await screen.findByRole('dialog', { name: 'agentRoster.roster.nodeSelector.dialogLabel' }),
     ).toBeInTheDocument()
 
-    await user.click(screen.getByRole('combobox', { name: 'agentV2.roster.searchLabel' }))
+    await user.click(screen.getByRole('searchbox', { name: 'agentRoster.roster.searchLabel' }))
     await user.keyboard('{Escape}')
 
     await waitFor(() => {
       expect(
-        screen.queryByRole('dialog', { name: 'agentV2.roster.nodeSelector.dialogLabel' }),
+        screen.queryByRole('dialog', { name: 'agentRoster.roster.nodeSelector.dialogLabel' }),
       ).not.toBeInTheDocument()
     })
   })

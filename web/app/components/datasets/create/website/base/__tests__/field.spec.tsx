@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import Field from '../field'
 
 describe('WebsiteField', () => {
@@ -26,7 +26,7 @@ describe('WebsiteField', () => {
 
   it('should render tooltip when provided', () => {
     render(<Field label="URL" value="" onChange={onChange} tooltip="Enter full URL" />)
-    expect(screen.getByLabelText('Enter full URL')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'URL' })).toBeInTheDocument()
   })
 
   it('should pass value and onChange to Input', () => {

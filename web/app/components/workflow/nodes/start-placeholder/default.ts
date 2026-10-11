@@ -19,7 +19,7 @@ const nodeDefault: NodeDefault<StartPlaceholderNodeType> = {
     title: 'Workflow start',
     desc: '',
   },
-  checkValid(_payload, t: TFunction<'workflow'>) {
+  checkValid(_payload, t: TFunction<['workflow']>) {
     return {
       isValid: false,
       errorMessage: t(($) => $['nodes.startPlaceholder.validationRequired'], { ns: 'workflow' }),

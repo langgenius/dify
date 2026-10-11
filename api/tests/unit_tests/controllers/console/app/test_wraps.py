@@ -1,22 +1,18 @@
 from __future__ import annotations
 
-from contextlib import nullcontext
 from inspect import getsource
-from types import SimpleNamespace
-from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import Select
 from sqlalchemy.orm import Session
 
-from controllers.common import session as session_module
 from controllers.common.session import with_session
 from controllers.console.app import completion as completion_module
 from controllers.console.app import workflow as workflow_module
 from controllers.console.app import wraps as wraps_module
 from controllers.console.app.error import AppNotFoundError
-from models.model import App, AppMode, TrialApp
+from models.agent import Agent, AgentScope, AgentSource, AgentStatus
+from models.model import App, AppMode
 
 
 def _persist_app(sqlite_session: Session, *, mode: AppMode = AppMode.CHAT) -> App:
@@ -33,7 +29,6 @@ def _persist_app(sqlite_session: Session, *, mode: AppMode = AppMode.CHAT) -> Ap
     return app_model
 
 
-@pytest.mark.parametrize("sqlite_session", [(App,)], indirect=True)
 def test_get_app_model_injects_model(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
     app_model = _persist_app(sqlite_session)
     monkeypatch.setattr(wraps_module, "current_account_with_tenant", lambda: (None, app_model.tenant_id))
@@ -46,7 +41,6 @@ def test_get_app_model_injects_model(monkeypatch: pytest.MonkeyPatch, sqlite_ses
     assert handler(app_id=app_model.id) == app_model.id
 
 
-@pytest.mark.parametrize("sqlite_session", [(App,)], indirect=True)
 def test_get_app_model_rejects_wrong_mode(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
     app_model = _persist_app(sqlite_session)
     monkeypatch.setattr(wraps_module, "current_account_with_tenant", lambda: (None, app_model.tenant_id))
@@ -58,67 +52,6 @@ def test_get_app_model_rejects_wrong_mode(monkeypatch: pytest.MonkeyPatch, sqlit
 
     with pytest.raises(AppNotFoundError):
         handler(app_id=app_model.id)
-
-
-def test_get_app_model_with_trial_requires_trial_app_registration(monkeypatch: pytest.MonkeyPatch) -> None:
-    app_model = SimpleNamespace(id="app-1", mode=AppMode.CHAT.value, status="normal", tenant_id="t1")
-    session = MagicMock(spec=Session)
-
-    def scalar(statement: Select[tuple[App]]) -> object | None:
-        has_trial_app_join = any(
-            from_clause.is_derived_from(TrialApp.__table__) for from_clause in statement.get_final_froms()
-        )
-        return None if has_trial_app_join else app_model
-
-    monkeypatch.setattr(session, "scalar", scalar)
-    recommended_get_app = MagicMock(return_value=None)
-    monkeypatch.setattr(wraps_module.RecommendedAppService, "get_app", recommended_get_app)
-
-    class Handler:
-        @wraps_module.get_app_model_with_trial
-        def get(self, _injected_session, app_model):
-            return app_model.id
-
-    with pytest.raises(AppNotFoundError):
-        Handler().get(session, app_id="app-1")
-
-    recommended_get_app.assert_called_once_with("app-1", session=session)
-
-
-def test_get_app_model_with_trial_falls_back_to_recommended_app(monkeypatch: pytest.MonkeyPatch) -> None:
-    app_model = SimpleNamespace(id="app-1", mode=AppMode.CHAT.value, status="normal", tenant_id="t1")
-    session = MagicMock(spec=Session)
-    trial_app_loader = MagicMock(return_value=None)
-    recommended_get_app = MagicMock(return_value=app_model)
-    monkeypatch.setattr(wraps_module, "_load_app_model_with_trial", trial_app_loader)
-    monkeypatch.setattr(wraps_module.RecommendedAppService, "get_app", recommended_get_app)
-
-    class Handler:
-        @wraps_module.get_app_model_with_trial
-        def get(self, _injected_session, app_model):
-            return app_model.id
-
-    assert Handler().get(session, app_id="app-1") == "app-1"
-    trial_app_loader.assert_called_once_with(session, "app-1")
-    recommended_get_app.assert_called_once_with("app-1", session=session)
-
-
-def test_get_app_model_with_trial_prefers_trial_registration(monkeypatch: pytest.MonkeyPatch) -> None:
-    app_model = SimpleNamespace(id="app-1", mode=AppMode.CHAT.value, status="normal", tenant_id="t1")
-    session = MagicMock(spec=Session)
-    trial_app_loader = MagicMock(return_value=app_model)
-    recommended_get_app = MagicMock()
-    monkeypatch.setattr(wraps_module, "_load_app_model_with_trial", trial_app_loader)
-    monkeypatch.setattr(wraps_module.RecommendedAppService, "get_app", recommended_get_app)
-
-    class Handler:
-        @wraps_module.get_app_model_with_trial
-        def get(self, _injected_session, app_model):
-            return app_model.id
-
-    assert Handler().get(session, app_id="app-1") == "app-1"
-    trial_app_loader.assert_called_once_with(session, "app-1")
-    recommended_get_app.assert_not_called()
 
 
 def test_get_app_model_requires_app_id() -> None:
@@ -134,7 +67,6 @@ def test_wraps_with_session_reexports_common_session_decorator() -> None:
     assert wraps_module.with_session is with_session
 
 
-@pytest.mark.parametrize("sqlite_session", [(App,)], indirect=True)
 def test_get_app_model_prefers_injected_session(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
@@ -154,35 +86,44 @@ def test_get_app_model_prefers_injected_session(
         assert Handler().get(sqlite_session, app_id=app_model.id) == app_model.id
 
 
-def test_get_app_model_with_trial_prefers_injected_session(monkeypatch: pytest.MonkeyPatch) -> None:
-    app_model = SimpleNamespace(id="app-1", mode=AppMode.CHAT.value, status="normal")
-    session = MagicMock(spec=Session)
-    session.scalar.return_value = app_model
-    monkeypatch.setattr(
-        wraps_module.db,
-        "session",
-        SimpleNamespace(scalar=lambda *_args, **_kwargs: pytest.fail("db.session should not be used")),
+@pytest.mark.parametrize("scope", [AgentScope.ROSTER, AgentScope.WORKFLOW_ONLY])
+@pytest.mark.parametrize("status", [AgentStatus.ACTIVE, AgentStatus.ARCHIVED])
+@pytest.mark.parametrize("inject_session", [False, True])
+def test_get_app_model_hides_only_workflow_backing_apps(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    scope: AgentScope,
+    status: AgentStatus,
+    inject_session: bool,
+) -> None:
+    app_model = _persist_app(sqlite_session, mode=AppMode.AGENT)
+    workflow_only = scope == AgentScope.WORKFLOW_ONLY
+    sqlite_session.add(
+        Agent(
+            tenant_id=app_model.tenant_id,
+            name="Bound agent",
+            scope=scope,
+            source=AgentSource.WORKFLOW if workflow_only else AgentSource.AGENT_APP,
+            status=status,
+            app_id=None if workflow_only else app_model.id,
+            backing_app_id=app_model.id if workflow_only else None,
+        )
     )
-    monkeypatch.setattr(session_module.session_factory, "create_session", lambda: nullcontext(session))
+    sqlite_session.commit()
+    monkeypatch.setattr(wraps_module, "current_account_with_tenant", lambda: (None, app_model.tenant_id))
+    monkeypatch.setattr(wraps_module.db, "session", sqlite_session)
 
     class Handler:
-        @with_session(write=False)
-        @wraps_module.get_app_model_with_trial(None)
-        def get(self, injected_session, app_model):
-            assert injected_session is session
+        @wraps_module.get_app_model
+        def get(self, *_args: object, app_model: App) -> str:
             return app_model.id
 
-    assert Handler().get(app_id="app-1") == "app-1"
-    session.scalar.assert_called_once()
-
-
-def test_get_app_model_with_trial_requires_injected_session() -> None:
-    @wraps_module.get_app_model_with_trial(None)
-    def handler(app_model):
-        return app_model.id
-
-    with pytest.raises(RuntimeError, match="requires @with_session"):
-        handler(app_id="app-1")
+    args = (sqlite_session,) if inject_session else ()
+    if workflow_only:
+        with pytest.raises(AppNotFoundError):
+            Handler().get(*args, app_id=app_model.id)
+    else:
+        assert Handler().get(*args, app_id=app_model.id) == app_model.id
 
 
 @pytest.mark.parametrize(
