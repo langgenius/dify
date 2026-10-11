@@ -1,7 +1,5 @@
 'use client'
 
-import type { Radio as BaseRadioNS } from '@base-ui/react/radio'
-import type { RadioGroup as BaseRadioGroupNS } from '@base-ui/react/radio-group'
 import type * as React from 'react'
 import { Radio as BaseRadio } from '@base-ui/react/radio'
 import { RadioGroup as BaseRadioGroup } from '@base-ui/react/radio-group'
@@ -9,7 +7,9 @@ import { cn } from '../cn'
 import { checkedControlFocusClassName } from '../form-control-shared'
 import { resolveClassName } from '../internals/resolve-class-name'
 
-type RadioGroupProps<Value = string> = BaseRadioGroupNS.Props<Value>
+type RadioGroupProps<Value = string> = BaseRadioGroup.Props<Value>
+type RadioGroupChangeEventReason = BaseRadioGroup.ChangeEventReason
+type RadioGroupChangeEventDetails = BaseRadioGroup.ChangeEventDetails
 
 function RadioGroup<Value = string>({ className, ...props }: RadioGroupProps<Value>) {
   return (
@@ -20,13 +20,13 @@ function RadioGroup<Value = string>({ className, ...props }: RadioGroupProps<Val
   )
 }
 
-type RadioItemProps<Value = string> = BaseRadioNS.Root.Props<Value>
+type RadioItemProps<Value = string> = BaseRadio.Root.Props<Value>
 
 function RadioItem<Value = string>({ className, ...props }: RadioItemProps<Value>) {
   return <BaseRadio.Root<Value> className={className} {...props} />
 }
 
-type RadioControlProps = Omit<BaseRadioNS.Indicator.Props, 'children' | 'keepMounted'>
+type RadioControlProps = Omit<BaseRadio.Indicator.Props, 'children' | 'keepMounted'>
 
 function RadioControl({ className, ...props }: RadioControlProps) {
   return (
@@ -87,4 +87,12 @@ function RadioSkeleton({ className, ...props }: RadioSkeletonProps) {
 
 export { Radio, RadioControl, RadioGroup, RadioItem, RadioSkeleton }
 
-export type { RadioControlProps, RadioGroupProps, RadioItemProps, RadioProps, RadioSkeletonProps }
+export type {
+  RadioControlProps,
+  RadioGroupChangeEventDetails,
+  RadioGroupChangeEventReason,
+  RadioGroupProps,
+  RadioItemProps,
+  RadioProps,
+  RadioSkeletonProps,
+}

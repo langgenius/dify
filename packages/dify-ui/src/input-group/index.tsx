@@ -1,6 +1,5 @@
 'use client'
 
-import type { Input as BaseInputNS } from '@base-ui/react/input'
 import type { VariantProps } from 'class-variance-authority'
 import type * as React from 'react'
 import { Input as BaseInput } from '@base-ui/react/input'
@@ -56,7 +55,7 @@ function InputGroup({ className, onMouseDown, ...props }: InputGroupProps) {
   )
 }
 
-type InputGroupInputProps = Omit<BaseInputNS.Props, 'render' | 'size'>
+type InputGroupInputProps = Omit<BaseInput.Props, 'render' | 'size'>
 
 function InputGroupInput({ className, ...props }: InputGroupInputProps) {
   return (

@@ -36,6 +36,10 @@ const useDropdownMenuFilter = Menu.useFilter
 type DropdownMenuHandle<Payload = unknown> = Menu.Handle<Payload>
 
 type DropdownMenuActions = Menu.Root.Actions
+type DropdownMenuChangeEventReason = Menu.Root.ChangeEventReason
+type DropdownMenuChangeEventDetails = Menu.Root.ChangeEventDetails
+type DropdownMenuHighlightEventReason = Menu.Root.HighlightEventReason
+type DropdownMenuHighlightEventDetails = Menu.Root.HighlightEventDetails
 
 type DropdownMenuProps<Payload = unknown> = Menu.Root.Props<Payload>
 type DropdownMenuTriggerProps<Payload = unknown> = Menu.Trigger.Props<Payload>
@@ -53,8 +57,12 @@ function DropdownMenuTrigger<Payload = unknown>({
 }
 type DropdownMenuPortalProps = Menu.Portal.Props
 type DropdownMenuSubProps = Menu.SubmenuRoot.Props
+type DropdownMenuSubChangeEventReason = Menu.SubmenuRoot.ChangeEventReason
+type DropdownMenuSubChangeEventDetails = Menu.SubmenuRoot.ChangeEventDetails
 type DropdownMenuGroupProps = Menu.Group.Props
 type DropdownMenuFilterProviderProps = Menu.FilterProvider.Props
+type DropdownMenuFilterProviderChangeEventReason = Menu.FilterProvider.ChangeEventReason
+type DropdownMenuFilterProviderChangeEventDetails = Menu.FilterProvider.ChangeEventDetails
 
 type DropdownMenuInputGroupProps = InputGroupProps
 
@@ -145,12 +153,14 @@ function DropdownMenuList({ className, ...props }: DropdownMenuListProps) {
     />
   )
 }
+type DropdownMenuRadioGroupChangeEventReason = Menu.RadioGroup.ChangeEventReason
+type DropdownMenuRadioGroupChangeEventDetails = Menu.RadioGroup.ChangeEventDetails
 type DropdownMenuRadioGroupProps<Value = unknown> = Omit<
   Menu.RadioGroup.Props,
   'defaultValue' | 'onValueChange' | 'value'
 > & {
   defaultValue?: Value
-  onValueChange?: (value: Value, eventDetails: Menu.RadioGroup.ChangeEventDetails) => void
+  onValueChange?: (value: Value, eventDetails: DropdownMenuRadioGroupChangeEventDetails) => void
   value?: Value
 }
 type DropdownMenuItemVariant = MenuItemVariant
@@ -194,6 +204,8 @@ function DropdownMenuRadioItemIndicator({
 type DropdownMenuRadioItemIndicatorProps = Omit<Menu.RadioItemIndicator.Props, 'children'>
 
 type DropdownMenuCheckboxItemProps = Menu.CheckboxItem.Props
+type DropdownMenuCheckboxItemChangeEventReason = Menu.CheckboxItem.ChangeEventReason
+type DropdownMenuCheckboxItemChangeEventDetails = Menu.CheckboxItem.ChangeEventDetails
 
 function DropdownMenuCheckboxItem({ className, ...props }: DropdownMenuCheckboxItemProps) {
   return (
@@ -447,15 +459,23 @@ export {
 
 export type {
   DropdownMenuActions,
+  DropdownMenuChangeEventDetails,
+  DropdownMenuChangeEventReason,
+  DropdownMenuCheckboxItemChangeEventDetails,
+  DropdownMenuCheckboxItemChangeEventReason,
   DropdownMenuCheckboxItemIndicatorProps,
   DropdownMenuCheckboxItemProps,
   DropdownMenuClearProps,
   DropdownMenuContentProps,
   DropdownMenuEmptyProps,
+  DropdownMenuFilterProviderChangeEventDetails,
+  DropdownMenuFilterProviderChangeEventReason,
   DropdownMenuFilterProviderProps,
   DropdownMenuGroupLabelProps,
   DropdownMenuGroupProps,
   DropdownMenuHandle,
+  DropdownMenuHighlightEventDetails,
+  DropdownMenuHighlightEventReason,
   DropdownMenuInputGroupProps,
   DropdownMenuInputProps,
   DropdownMenuItemProps,
@@ -465,10 +485,14 @@ export type {
   DropdownMenuPortalProps,
   DropdownMenuPositionerProps,
   DropdownMenuProps,
+  DropdownMenuRadioGroupChangeEventDetails,
+  DropdownMenuRadioGroupChangeEventReason,
   DropdownMenuRadioGroupProps,
   DropdownMenuRadioItemIndicatorProps,
   DropdownMenuRadioItemProps,
   DropdownMenuSeparatorProps,
+  DropdownMenuSubChangeEventDetails,
+  DropdownMenuSubChangeEventReason,
   DropdownMenuSubContentProps,
   DropdownMenuSubProps,
   DropdownMenuSubTriggerProps,

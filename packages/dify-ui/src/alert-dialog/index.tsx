@@ -17,6 +17,8 @@ const AlertDialogTitle = BaseAlertDialog.Title
 const AlertDialogDescription = BaseAlertDialog.Description
 
 type AlertDialogActions = BaseAlertDialog.Root.Actions
+type AlertDialogChangeEventReason = BaseAlertDialog.Root.ChangeEventReason
+type AlertDialogChangeEventDetails = BaseAlertDialog.Root.ChangeEventDetails
 
 type AlertDialogProps<Payload = unknown> = BaseAlertDialog.Root.Props<Payload>
 type AlertDialogTriggerProps<Payload = unknown> = BaseAlertDialog.Trigger.Props<Payload>
@@ -119,6 +121,8 @@ export {
 export type {
   AlertDialogActions,
   AlertDialogCancelButtonProps,
+  AlertDialogChangeEventDetails,
+  AlertDialogChangeEventReason,
   AlertDialogConfirmButtonProps,
   AlertDialogContentProps,
   AlertDialogDescriptionProps,

@@ -10,6 +10,10 @@ import { resolveClassName } from '../internals/resolve-class-name'
 
 const NumberField = BaseNumberField.Root
 type NumberFieldProps = BaseNumberField.Root.Props
+type NumberFieldChangeEventReason = BaseNumberField.Root.ChangeEventReason
+type NumberFieldChangeEventDetails = BaseNumberField.Root.ChangeEventDetails
+type NumberFieldCommitEventReason = BaseNumberField.Root.CommitEventReason
+type NumberFieldCommitEventDetails = BaseNumberField.Root.CommitEventDetails
 
 const numberFieldGroupVariants = cva(
   [textControlGroupClassName, 'group/number-field items-stretch overflow-hidden'],
@@ -226,6 +230,10 @@ export {
   NumberFieldUnit,
 }
 export type {
+  NumberFieldChangeEventDetails,
+  NumberFieldChangeEventReason,
+  NumberFieldCommitEventDetails,
+  NumberFieldCommitEventReason,
   NumberFieldControlsProps,
   NumberFieldDecrementProps,
   NumberFieldGroupProps,

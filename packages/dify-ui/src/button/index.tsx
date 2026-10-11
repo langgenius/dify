@@ -1,6 +1,5 @@
 'use client'
 
-import type { Button as BaseButtonNS } from '@base-ui/react/button'
 import type { VariantProps } from 'class-variance-authority'
 import { Button as BaseButton } from '@base-ui/react/button'
 import { cva } from 'class-variance-authority'
@@ -104,7 +103,7 @@ const buttonVariants = cva(
   },
 )
 
-type ButtonProps = BaseButtonNS.Props &
+type ButtonProps = BaseButton.Props &
   VariantProps<typeof buttonVariants> & {
     /**
      * Marks an action as pending, blocks activation, and keeps the button focusable by default.

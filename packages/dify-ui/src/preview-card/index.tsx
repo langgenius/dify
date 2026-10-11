@@ -27,6 +27,8 @@ const PreviewCardViewport = BasePreviewCard.Viewport
 const createPreviewCardHandle = BasePreviewCard.createHandle
 
 type PreviewCardActions = BasePreviewCard.Root.Actions
+type PreviewCardChangeEventReason = BasePreviewCard.Root.ChangeEventReason
+type PreviewCardChangeEventDetails = BasePreviewCard.Root.ChangeEventDetails
 
 type PreviewCardProps<Payload = unknown> = BasePreviewCard.Root.Props<Payload>
 type PreviewCardHandle<Payload = unknown> = BasePreviewCard.Handle<Payload>
@@ -118,6 +120,8 @@ export {
 }
 export type {
   PreviewCardActions,
+  PreviewCardChangeEventDetails,
+  PreviewCardChangeEventReason,
   PreviewCardContentProps,
   PreviewCardHandle,
   PreviewCardPopupProps,
