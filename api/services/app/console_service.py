@@ -296,16 +296,15 @@ class ConsoleAppService:
         return self._transfers.check_dependencies(context, app_id)
 
     def list_apps(self, context: RequestContext, params: AppListParams | StarredAppListParams) -> AppPage:
-        permissions = None
+        permissions = self._access.permissions(context)
         if isinstance(params, AppListParams):
-            permissions = self._access.permissions(context)
             params = permissions.filter_list(params)
         page = self._apps.list_apps(context, params)
         if not page.data:
             return page
         app_ids = [app.id for app in page.data]
         modes = self._access.access_modes(app_ids)
-        keys = permissions.keys_for(app_ids) if permissions is not None else {}
+        keys = permissions.keys_for(app_ids)
         return replace(
             page,
             data=[
