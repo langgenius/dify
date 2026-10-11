@@ -298,10 +298,10 @@ def test_workflow_metadata_filter_rejects_missing_variable_before_starting_agent
         WorkflowAgentRuntimeRequestBuilder().build(replace(context, variable_pool=VariablePool()))
 
 
-def test_single_step_loads_variables_referenced_only_by_knowledge_filters(sqlite_session: Session, monkeypatch):
-    from configs import dify_config
-
-    monkeypatch.setattr(dify_config, "AGENT_BACKEND_BASE_URL", "http://agent-backend.invalid")
+def test_single_step_loads_variables_referenced_only_by_knowledge_filters(
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+):
+    apply_config_overrides(monkeypatch, AGENT_BACKEND_BASE_URL="http://agent-backend.invalid")
     context = _metadata_filter_context()
     context.binding.workflow_version = "draft"
     context.binding.binding_type = WorkflowAgentBindingType.INLINE_AGENT
