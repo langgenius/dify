@@ -306,6 +306,59 @@ def test_unexpected_output_is_refused_before_it_reaches_file_transformation(unex
     guard.finish_stream.assert_called_once_with(complete=False, declared_failure=False)
 
 
+def _variable(name: str, value: object, *, stream: bool = False) -> ToolInvokeMessage:
+    return ToolInvokeMessage(
+        type=ToolInvokeMessage.MessageType.VARIABLE,
+        message=ToolInvokeMessage.VariableMessage(variable_name=name, variable_value=value, stream=stream),
+    )
+
+
+def test_audited_message_id_variable_is_forwarded_once_without_observation() -> None:
+    guard = _exact_guard()
+    transport = Transport([_variable("message_id", "18cab_1"), _success_messages()[2]])
+    messages = _invoke(_tool(guard), transport)
+    assert [m.type for m in messages] == [ToolInvokeMessage.MessageType.VARIABLE, ToolInvokeMessage.MessageType.JSON]
+    # The variable is optional data, never a classification input.
+    guard.observe_json.assert_called_once_with({"message": {"id": "18cab_1"}, "message_id": "18cab_1"})
+    guard.finish_stream.assert_called_once_with(complete=True, declared_failure=False)
+
+
+@pytest.mark.parametrize(
+    "variables",
+    [
+        [_variable("other", "18cab_1")],
+        [_variable("message_id", "18cab_2")],
+        [_variable("message_id", 18)],
+        [_variable("message_id", ["18cab_1"])],
+        [_variable("message_id", "18cab_1", stream=True)],
+        [_variable("message_id", "18cab_1"), _variable("message_id", "18cab_1")],
+    ],
+    ids=["other-name", "mismatched-id", "non-string", "list-value", "streamed", "duplicate"],
+)
+def test_unaudited_variable_is_refused_before_it_is_yielded(variables: list[ToolInvokeMessage]) -> None:
+    guard = _exact_guard()
+    transport = Transport([_success_messages()[0], *variables, _success_messages()[2]])
+    seen: list[ToolInvokeMessage] = []
+
+    def consume(stream: Iterator[ToolInvokeMessage]) -> None:
+        for message in stream:
+            seen.append(message)
+
+    with (
+        Session() as session,
+        patch.object(PluginToolManager, "_request_with_plugin_daemon_response_stream", side_effect=transport),
+    ):
+        stream = _tool(guard).invoke(session=session, user_id="owner", tool_parameters=dict(APPROVED))
+        with pytest.raises(BuilderExecutionPolicyError, match="unsupported_tool_output"):
+            consume(stream)
+    # Only the leading TEXT and (for the duplicate case) the first audited variable were forwarded.
+    assert all(m.type != ToolInvokeMessage.MessageType.JSON for m in seen)
+    assert len([m for m in seen if m.type == ToolInvokeMessage.MessageType.VARIABLE]) <= 1
+    assert transport.closed is True
+    guard.observe_json.assert_not_called()
+    guard.finish_stream.assert_called_once_with(complete=False, declared_failure=False)
+
+
 def test_consumer_cancellation_finishes_unknown_once_without_reconstruction() -> None:
     guard = _exact_guard()
     transport = Transport(_success_messages())

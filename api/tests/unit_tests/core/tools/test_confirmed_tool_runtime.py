@@ -191,6 +191,8 @@ class World:
     on_refresh: Callable[[], None] | None = None
     on_cache_delete: Callable[[], None] | None = None
     refresh_error: Exception | None = None
+    cache_error: Exception | None = None
+    invoke_messages: list[ToolInvokeMessage] | None = None
     invoke_fail_after: int | None = None
     compliance_error: Exception | None = None
 
@@ -285,6 +287,8 @@ def world(consent_owner: Owner, monkeypatch: pytest.MonkeyPatch) -> Iterator[Wor
                     ),
                 ),
             ]
+            if state.invoke_messages is not None:
+                messages = state.invoke_messages
             for index, message in enumerate(messages):
                 state.mark("invoke_message")
                 if state.invoke_fail_after == index:
@@ -301,6 +305,8 @@ def world(consent_owner: Owner, monkeypatch: pytest.MonkeyPatch) -> Iterator[Wor
         )
         if state.on_cache_delete is not None:
             state.on_cache_delete()
+        if state.cache_error is not None:
+            raise state.cache_error
 
     monkeypatch.setattr(PluginToolManager, "fetch_tool_provider", fetch_tool_provider)
     monkeypatch.setattr(credential_utils, "runtime_check_credential_policy_compliance", compliance)
@@ -536,6 +542,87 @@ def test_refresh_transport_error_is_sanitized_unknown_and_blocks_business(
     assert consent.reason_code == "refresh_uncertain"
     assert_no_secret_text(caplog.text)
     assert_no_secret_text(json.dumps(get(world.owner, reserved.consent_id).model_dump(mode="json")))
+
+
+CACHE_SECRET = "cache-error-secret-sentinel-3b8"
+
+
+def test_post_cas_cache_invalidation_failure_is_sanitized_durable_unknown(
+    world: World, caplog: pytest.LogCaptureFixture
+) -> None:
+    make_refresh_due(world)
+    reserved, binding = claimed(world.owner)
+    world.cache_error = RuntimeError(f"redis said {CACHE_SECRET}")
+
+    with pytest.raises(BuilderExecutionPolicyError, match="credential_cache_unavailable") as raised:
+        build(world, guard_for(world.owner, binding))
+
+    assert raised.value.__cause__ is None
+    assert raised.value.__suppress_context__ is True
+    assert CACHE_SECRET not in str(raised.value)
+    assert CACHE_SECRET not in caplog.text
+    # The invalidation ran once, outside SQL, after the CAS committed the refreshed row.
+    assert_outside_sql(world, "refresh_transport", "cache_delete")
+    assert len(world.refresh_calls) == 1
+    assert len(world.cache_deletes) == 1
+    refreshed = world.row()
+    assert json.loads(refreshed.encrypted_credentials or "") == {
+        "access_token": "cipher(refreshed-access-sentinel)",
+        "refresh_token": "cipher(refreshed-refresh-sentinel)",
+    }
+    assert world.invoke_calls == []
+    consent = world.consent(reserved.consent_id)
+    assert (consent.refresh_count, consent.business_count) == (1, 0)
+    assert consent.derived_credential_revision == world.owner.full_reference_revision()
+    assert (consent.state, consent.outcome_state, consent.reason_code) == (
+        "unknown",
+        "unknown",
+        "business_not_dispatched",
+    )
+    assert_no_secret_text(json.dumps(get(world.owner, reserved.consent_id).model_dump(mode="json")))
+
+    # A fresh guard for the same claimed node cannot continue the closed grant.
+    world.cache_error = None
+    tool = build(world, guard_for(world.owner, binding))
+    with pytest.raises(BuilderExecutionPolicyError, match="consent_not_claimed"):
+        run(tool)
+    assert world.invoke_calls == []
+    assert len(world.refresh_calls) == 1
+    after = world.consent(reserved.consent_id)
+    assert (after.refresh_count, after.business_count, after.state, after.reason_code) == (
+        1,
+        0,
+        "unknown",
+        "business_not_dispatched",
+    )
+
+
+@pytest.mark.parametrize(
+    "messages",
+    [
+        [ToolInvokeMessage(type=ToolInvokeMessage.MessageType.TEXT, message=ToolInvokeMessage.TextMessage(text="ok"))],
+        [
+            ToolInvokeMessage(
+                type=ToolInvokeMessage.MessageType.VARIABLE,
+                message=ToolInvokeMessage.VariableMessage(
+                    variable_name="message_id", variable_value=APPROVED.message_id
+                ),
+            )
+        ],
+    ],
+    ids=["text-only", "variable-only"],
+)
+def test_text_or_variable_alone_never_classifies_success(world: World, messages: list[ToolInvokeMessage]) -> None:
+    reserved, binding = claimed(world.owner)
+    world.invoke_messages = messages
+    run(build(world, guard_for(world.owner, binding)))
+    consent = world.consent(reserved.consent_id)
+    assert (consent.business_count, consent.state, consent.outcome_state, consent.reason_code) == (
+        1,
+        "unknown",
+        "unknown",
+        "result_missing",
+    )
 
 
 def test_expired_between_refresh_and_business_denies_business(world: World) -> None:

@@ -532,17 +532,32 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
         session_maker: sessionmaker[Session] | None = None,
         *,
         confirmed_guard: ConfirmedToolGuard | None = None,
+        confirmed_guard_factory: Callable[[str, str], ConfirmedToolGuard] | None = None,
     ) -> None:
-        """``confirmed_guard`` is ``None`` for every ordinary run.
+        """Both confirmed arguments are ``None`` for every ordinary run; at most one may be set.
 
-        A consented Builder run supplies the consent service's in-process guard
-        for its one claimed Tool node; only that exact node resolves, and it is
-        consumed with a session that never holds a transaction (see ``invoke``).
+        A consented Builder run supplies either a ready, already claimed guard
+        (internal/preclaimed use) or a server-owned ``confirmed_guard_factory``.
+        Graphon only knows the native node execution ID when it calls
+        ``get_runtime``, so the factory is called there, once, with the node ID
+        and that actual ID to claim the grant and build the guard. A configured
+        factory means confirmed mode even before it is called: nothing falls
+        through to ordinary resolution or invocation. Only the guard's exact node
+        resolves, and it is consumed with a session that never holds a
+        transaction (see ``invoke``).
         """
+        if confirmed_guard is not None and confirmed_guard_factory is not None:
+            raise BuilderExecutionPolicyError("invalid_confirmed_configuration")
         self._run_context = resolve_dify_run_context(run_context)
         self._file_reference_factory = DifyFileReferenceFactory(self._run_context)
         self._session_maker = session_maker
         self._confirmed_guard = confirmed_guard
+        self._confirmed_guard_factory = confirmed_guard_factory
+        self._confirmed_guard_factory_called = False
+
+    @property
+    def _confirmed(self) -> bool:
+        return self._confirmed_guard is not None or self._confirmed_guard_factory is not None
 
     @property
     def file_reference_factory(self) -> FileReferenceFactoryProtocol:
@@ -561,8 +576,10 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
         variable_pool,
         node_execution_id: str | None = None,
     ) -> ToolRuntimeHandle:
-        guard = self._confirmed_guard
         try:
+            guard = self._bind_confirmed_guard(
+                node_id=node_id, node_execution_id=node_execution_id, node_data=node_data
+            )
             if guard is None:
                 tool_runtime = ToolManager.get_workflow_tool_runtime(
                     self._run_context.tenant_id,
@@ -642,6 +659,18 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
     ) -> Generator[ToolRuntimeMessage, None, None]:
         runtime_binding = self._binding_from_handle(tool_runtime)
         tool = runtime_binding.tool
+        if self._confirmed:
+            # Before any callback or transport: a configured factory that never bound a
+            # guard, or a handle for another tool, is refused rather than run ordinarily.
+            guard = self._confirmed_guard
+            if guard is None:
+                raise self._map_invocation_exception(
+                    BuilderExecutionPolicyError("confirmed_guard_unavailable"), provider_name=provider_name
+                )
+            if getattr(tool, "confirmed_guard", None) is not guard:
+                raise self._map_invocation_exception(
+                    BuilderExecutionPolicyError("execution_launch_mismatch"), provider_name=provider_name
+                )
         callback = DifyWorkflowCallbackHandler()
         if runtime_binding.parent_trace_context and hasattr(tool, "set_parent_trace_context"):
             tool.set_parent_trace_context(
@@ -661,7 +690,7 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
             )
             with use_credit_usage_metadata(request_metadata):
                 session_maker = self._session_maker or session_factory.get_session_maker()
-                if self._confirmed_guard is not None:
+                if self._confirmed:
                     yield from self._invoke_confirmed(
                         session_maker,
                         tool=tool,
@@ -740,6 +769,48 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
                 # plugin adapter's single outcome callback now; it is never rebuilt.
                 transformed_messages.close()
                 messages.close()
+
+    def _bind_confirmed_guard(
+        self, *, node_id: str, node_execution_id: str | None, node_data: ToolNodeData
+    ) -> ConfirmedToolGuard | None:
+        """The confirmed guard for this resolution, claimed lazily through the factory at most once.
+
+        Returns ``None`` only for an ordinary runtime. The factory is called with
+        Graphon's actual execution ID, its guard is validated and retained before
+        any ToolManager resolution, and it is never rebuilt: any later
+        resolution through the factory path refuses.
+        """
+        factory = self._confirmed_guard_factory
+        if factory is None:
+            return self._confirmed_guard
+        if self._confirmed_guard_factory_called:
+            raise BuilderExecutionPolicyError("confirmed_runtime_replayed")
+        if type(node_execution_id) is not str or not node_execution_id:
+            raise BuilderExecutionPolicyError("execution_launch_mismatch")
+        if node_data.tool_configurations:
+            # Refused before claiming, so a misconfigured node never spends the grant.
+            raise BuilderExecutionPolicyError("unsupported_tool_configuration")
+        # Spent before the call: a failing, mismatched or replayed claim is never attempted again.
+        self._confirmed_guard_factory_called = True
+        try:
+            guard = factory(node_id, node_execution_id)
+        except BuilderExecutionPolicyError:
+            raise
+        except Exception:
+            # Claim/service text may echo stored data.
+            raise BuilderExecutionPolicyError("confirmed_guard_unavailable") from None
+        if guard is None:
+            raise BuilderExecutionPolicyError("confirmed_guard_unavailable")
+        binding = guard.binding
+        if (
+            binding.node_id != node_id
+            or binding.native_node_execution_id != node_execution_id
+            or binding.context.tenant_id != self._run_context.tenant_id
+            or binding.context.app_id != self._run_context.app_id
+        ):
+            raise BuilderExecutionPolicyError("execution_launch_mismatch")
+        self._confirmed_guard = guard
+        return guard
 
     @staticmethod
     def _require_no_transaction(session: Session) -> None:

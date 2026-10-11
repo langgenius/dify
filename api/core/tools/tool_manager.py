@@ -561,11 +561,17 @@ class ToolManager:
                 raise BuilderExecutionPolicyError(reason) from None
             finally:
                 if not recorded:
-                    cls._finish_unrecorded_refresh(guard)
+                    cls._finish_without_business(guard)
             # The CAS committed; invalidate the ordinary cache outside SQL exactly as native refresh does.
-            ToolProviderCredentialsCache(
-                tenant_id=tenant_id, provider=provider_id, credential_id=credential_id
-            ).delete()
+            try:
+                ToolProviderCredentialsCache(
+                    tenant_id=tenant_id, provider=provider_id, credential_id=credential_id
+                ).delete()
+            except Exception:
+                # The refreshed row stays committed; the grant closes as unknown before any
+                # business dispatch, without retrying, echoing or logging the cache error.
+                cls._finish_without_business(guard)
+                raise BuilderExecutionPolicyError("credential_cache_unavailable") from None
             credentials = refreshed.credentials
 
         return PluginTool(
@@ -586,13 +592,14 @@ class ToolManager:
         )
 
     @staticmethod
-    def _finish_unrecorded_refresh(guard: ConfirmedToolGuard) -> None:
+    def _finish_without_business(guard: ConfirmedToolGuard) -> None:
+        """Close a grant whose refresh phase ended without any business dispatch as unknown."""
         try:
             guard.finish_stream(complete=False, declared_failure=False)
         except Exception as error:
-            # The spent refresh stays unresolved for the Run owner; never echo native text.
+            # The grant stays unresolved for the Run owner; never echo native text.
             reason = error.reason_code if isinstance(error, BuilderExecutionPolicyError) else type(error).__name__
-            logger.warning("Unrecorded confirmed refresh outcome was not saved: %s", reason)
+            logger.warning("Confirmed refresh outcome was not saved: %s", reason)
 
     @classmethod
     def get_agent_tool_runtime(
