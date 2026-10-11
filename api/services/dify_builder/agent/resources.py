@@ -2,11 +2,16 @@
 
 One entry point -- list_tenant_resources -- returns the tenant's configured
 models and datasets and every INSTALLED tool, normalized to id+label. A tool
-is listed whether or not it is authorized; its ``readiness`` says whether the
-acting member can run it. Readiness is computed from credential-row metadata
-only (provider id, owner, visibility) -- never credential values, decryption,
-OAuth refresh, validation or invocation. Each source degrades to an empty
-list on failure so a missing provider never breaks the advance.
+is listed whether or not it is authorized; its ``readiness`` is metadata
+readiness: whether a credential row visible to the acting member exists (or
+none is needed), which makes the tool eligible for Builder planning, binding
+and generation. Readiness is computed from credential-row metadata only
+(provider id, owner, visibility) -- never credential values, decryption,
+OAuth refresh, validation or invocation. It is not live credential
+validation, does not pin a ``credential_id``, and grants no runtime
+authorization: native runtime credential selection and authorization still
+decide whether the tool actually runs. Each source degrades to an empty list
+on failure so a missing provider never breaks the advance.
 """
 
 import logging
