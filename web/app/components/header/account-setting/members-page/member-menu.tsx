@@ -3,11 +3,11 @@ import type { Role } from '@/models/access-control'
 import type { Member } from '@/models/common'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import {
@@ -98,13 +98,12 @@ const MemberMenu = ({
     try {
       await deleteMemberOrCancelInvitation({ url: `/workspaces/current/members/${member.id}` })
       void queryClient.invalidateQueries({ queryKey: commonQueryKeys.members })
-      toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
       setRemoveConfirmOpen(false)
     } catch {
     } finally {
       setRemoving(false)
     }
-  }, [member.id, queryClient, t])
+  }, [member.id, queryClient])
 
   const handleTransferOwnership = useCallback(() => {
     setOpen(false)
@@ -175,14 +174,14 @@ const MemberMenu = ({
               {t(($) => $['members.removeFromTeamConfirmDescription'], { ns: 'workspaceMembers' })}
             </AlertDialogDescription>
           </div>
-          <AlertDialogActions>
+          <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton disabled={removing} onClick={handleRemove}>
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
       {assignModalOpen && (

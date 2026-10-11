@@ -6,15 +6,32 @@ import { AlertDialog as BaseAlertDialog } from '@base-ui/react/alert-dialog'
 import { Button } from '../button'
 import { cn } from '../cn'
 import { resolveClassName } from '../internals/resolve-class-name'
-import { modalBackdropClassName, modalPopupAnimationClassName } from '../overlay-shared'
+import {
+  modalBackdropClassName,
+  modalPopupAnimationClassName,
+  triggerFocusClassName,
+} from '../overlay-shared'
 
 const AlertDialog = BaseAlertDialog.Root
-const AlertDialogTrigger = BaseAlertDialog.Trigger
 const AlertDialogTitle = BaseAlertDialog.Title
 const AlertDialogDescription = BaseAlertDialog.Description
 
+type AlertDialogActions = BaseAlertDialog.Root.Actions
+
 type AlertDialogProps<Payload = unknown> = BaseAlertDialog.Root.Props<Payload>
 type AlertDialogTriggerProps<Payload = unknown> = BaseAlertDialog.Trigger.Props<Payload>
+
+function AlertDialogTrigger<Payload = unknown>({
+  className,
+  ...props
+}: AlertDialogTriggerProps<Payload>) {
+  return (
+    <BaseAlertDialog.Trigger
+      className={(state) => cn(triggerFocusClassName, resolveClassName(className, state))}
+      {...props}
+    />
+  )
+}
 type AlertDialogTitleProps = BaseAlertDialog.Title.Props
 type AlertDialogDescriptionProps = BaseAlertDialog.Description.Props
 
@@ -59,9 +76,9 @@ function AlertDialogContent({
   )
 }
 
-type AlertDialogActionsProps = React.ComponentProps<'div'>
+type AlertDialogFooterProps = React.ComponentProps<'div'>
 
-function AlertDialogActions({ className, ...props }: AlertDialogActionsProps) {
+function AlertDialogFooter({ className, ...props }: AlertDialogFooterProps) {
   return (
     <div
       className={cn('flex items-start justify-end gap-2 self-stretch p-6', className)}
@@ -90,21 +107,22 @@ function AlertDialogConfirmButton({
 
 export {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
   AlertDialogTrigger,
 }
 
 export type {
-  AlertDialogActionsProps,
+  AlertDialogActions,
   AlertDialogCancelButtonProps,
   AlertDialogConfirmButtonProps,
   AlertDialogContentProps,
   AlertDialogDescriptionProps,
+  AlertDialogFooterProps,
   AlertDialogProps,
   AlertDialogTitleProps,
   AlertDialogTriggerProps,

@@ -6,15 +6,18 @@ import type { Placement } from '../placement'
 import { Combobox as BaseCombobox } from '@base-ui/react/combobox'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
-import { formLabelClassName, textControlCompoundInputFocusClassName } from '../form-control-shared'
+import { formLabelClassName, textControlGroupClassName } from '../form-control-shared'
 import { resolveClassName } from '../internals/resolve-class-name'
 import {
   floatingGroupLabelClassName,
   floatingItemIndicatorClassName,
   floatingPopupAnimationClassName,
   floatingSeparatorClassName,
+  triggerFocusClassName,
 } from '../overlay-shared'
 import { parsePlacement } from '../placement'
+
+type ComboboxActions = BaseCombobox.Root.Actions
 
 type ComboboxProps<
   Value,
@@ -23,6 +26,7 @@ type ComboboxProps<
 > = BaseCombobox.Root.Props<Value, Multiple, Item> &
   ([Multiple] extends [true] ? { multiple: true } : unknown)
 type ComboboxChangeEventDetails = BaseCombobox.Root.ChangeEventDetails
+type ComboboxOpenChangeEventDetails = BaseCombobox.Root.OpenChangeEventDetails
 
 function Combobox<Value, Multiple extends boolean | undefined = false, Item = Value>(
   props: ComboboxProps<Value, Multiple, Item>,
@@ -36,7 +40,7 @@ const useComboboxFilter = BaseCombobox.useFilter
 const useComboboxFilteredItems = BaseCombobox.useFilteredItems
 
 type ComboboxSelectedValue<Value, Multiple extends boolean | undefined = false> =
-  | (Multiple extends true ? Value[] : Value)
+  | (Multiple extends true ? readonly Value[] : Value)
   | null
 
 type ComboboxValueProps<Value = unknown, Multiple extends boolean | undefined = false> = Omit<
@@ -72,8 +76,10 @@ function ComboboxCollection<Item = unknown>(props: ComboboxCollectionProps<Item>
 
 type ComboboxRowProps = BaseCombobox.Row.Props
 
+// The popup is limited to the available height and lays its parts out in a column, so an input or status
+// sharing it with the list leaves the list to shrink. The popup scrolls only when nothing can.
 const comboboxPopupClassName = [
-  'w-(--anchor-width) max-w-[min(28rem,var(--available-width))] overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg outline-hidden',
+  'flex max-h-(--available-height) w-(--anchor-width) max-w-[min(28rem,var(--available-width))] flex-col overflow-x-hidden overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg outline-hidden',
 ]
 
 const comboboxListClassName = [
@@ -89,73 +95,30 @@ const comboboxItemClassName = [
   'data-disabled:cursor-not-allowed data-disabled:opacity-30 data-disabled:hover:bg-transparent data-disabled:hover:text-text-secondary',
 ]
 
-const comboboxTriggerVariants = cva(
-  [
-    'group/combobox-trigger flex w-full min-w-0 items-center border-0 bg-components-input-bg-normal text-start text-components-input-text-filled outline-hidden transition-colors',
-    'hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt',
-    'focus-visible:ring-2 focus-visible:ring-state-accent-solid',
-    'data-placeholder:text-components-input-text-placeholder',
-    'data-readonly:cursor-default data-readonly:bg-transparent data-readonly:hover:bg-transparent',
-    'data-disabled:cursor-not-allowed data-disabled:bg-components-input-bg-disabled data-disabled:text-components-input-text-filled-disabled data-disabled:hover:bg-components-input-bg-disabled',
-    'data-disabled:data-placeholder:text-components-input-text-disabled',
-    'motion-reduce:transition-none',
-  ],
-  {
-    variants: {
-      size: {
-        small: 'h-6 gap-px rounded-md px-2 py-1 system-xs-regular',
-        medium: 'h-8 gap-0.5 rounded-lg px-3 py-2 system-sm-regular',
-        large: 'h-9 gap-0.5 rounded-[10px] px-4 py-2 system-md-regular',
-      },
-    },
-    defaultVariants: {
-      size: 'medium',
-    },
-  },
-)
+type ComboboxTriggerProps = BaseCombobox.Trigger.Props
 
-type ComboboxTriggerProps = BaseCombobox.Trigger.Props &
-  VariantProps<typeof comboboxTriggerVariants> & {
-    icon?: React.ReactNode | false
-  }
-
-function ComboboxTrigger({
-  className,
-  children,
-  icon,
-  size,
-  type = 'button',
-  ...props
-}: ComboboxTriggerProps) {
+// Owns the focus indicator only. The caller owns the appearance, directly or through `render`.
+function ComboboxTrigger({ className, type = 'button', ...props }: ComboboxTriggerProps) {
   return (
     <BaseCombobox.Trigger
       type={type}
-      className={(state) =>
-        cn(comboboxTriggerVariants({ size, className: resolveClassName(className, state) }))
-      }
+      className={(state) => cn(triggerFocusClassName, resolveClassName(className, state))}
       {...props}
-    >
-      <span className="min-w-0 grow truncate">{children}</span>
-      {icon !== false && (
-        <BaseCombobox.Icon className="shrink-0 text-text-quaternary transition-colors group-hover/combobox-trigger:text-text-secondary group-data-popup-open/combobox-trigger:text-text-secondary group-data-readonly/combobox-trigger:hidden">
-          {icon ?? <span className="i-ri-arrow-down-s-line h-4 w-4" aria-hidden="true" />}
-        </BaseCombobox.Icon>
-      )}
-    </BaseCombobox.Trigger>
+    />
   )
 }
 
 const comboboxInputGroupVariants = cva(
   [
-    'group/combobox flex w-full min-w-0 items-center border border-transparent bg-components-input-bg-normal text-components-input-text-filled shadow-none outline-hidden transition-[background-color,border-color]',
-    'hover:border-components-input-border-hover hover:bg-components-input-bg-hover',
-    textControlCompoundInputFocusClassName,
-    'data-focused:border-components-input-border-active data-focused:bg-components-input-bg-active data-focused:shadow-xs',
-    'data-popup-open:border-components-input-border-active data-popup-open:bg-components-input-bg-active',
-    'data-disabled:cursor-not-allowed data-disabled:border-transparent data-disabled:bg-components-input-bg-disabled data-disabled:text-components-input-text-filled-disabled',
-    'data-disabled:hover:border-transparent data-disabled:hover:bg-components-input-bg-disabled',
-    'data-readonly:shadow-none data-readonly:hover:border-transparent data-readonly:hover:bg-components-input-bg-normal',
-    'motion-reduce:transition-none',
+    textControlGroupClassName,
+    'group/combobox items-center',
+    // Inside the popup the group is the search box, laid out like `DropdownMenuInputGroup`: it
+    // lines up with the options on 4px gutters,
+    // hosts an inline icon, and takes over the horizontal padding from its input and controls.
+    // The popup marks itself with a data attribute because a `role="dialog"` ancestor could also be
+    // a Dialog hosting a field anchor.
+    'in-data-dify-combobox-popup:mx-1 in-data-dify-combobox-popup:mt-1 in-data-dify-combobox-popup:w-auto in-data-dify-combobox-popup:gap-0.5 in-data-dify-combobox-popup:px-2',
+    'in-data-dify-combobox-popup:[&>button]:me-0 in-data-dify-combobox-popup:[&>input]:px-1',
   ],
   {
     variants: {
@@ -190,7 +153,7 @@ const comboboxInputVariants = cva(
     'w-0 min-w-0 flex-1 appearance-none border-0 bg-transparent text-components-input-text-filled caret-primary-600 outline-hidden',
     'placeholder:text-components-input-text-placeholder',
     'disabled:cursor-not-allowed disabled:text-components-input-text-filled-disabled disabled:placeholder:text-components-input-text-disabled',
-    'data-readonly:cursor-default',
+    'enabled:data-readonly:cursor-default',
   ],
   {
     variants: {
@@ -250,6 +213,7 @@ const comboboxControlVariants = cva(
 
 type ComboboxClearProps = BaseCombobox.Clear.Props & VariantProps<typeof comboboxControlVariants>
 
+// Same look as `DropdownMenuClear`; change both together.
 function ComboboxClear({
   className,
   children,
@@ -347,6 +311,7 @@ type ComboboxPopupProps = BaseCombobox.Popup.Props
 function ComboboxPopup({ className, ...props }: ComboboxPopupProps) {
   return (
     <BaseCombobox.Popup
+      data-dify-combobox-popup=""
       className={(state) =>
         cn(
           comboboxPopupClassName,
@@ -443,6 +408,7 @@ function ComboboxSeparator({ className, ...props }: ComboboxSeparatorProps) {
 
 type ComboboxEmptyProps = BaseCombobox.Empty.Props
 
+// Same look as `DropdownMenuEmpty`; change both together.
 function ComboboxEmpty({ className, ...props }: ComboboxEmptyProps) {
   return (
     <BaseCombobox.Empty
@@ -565,6 +531,7 @@ export {
 }
 
 export type {
+  ComboboxActions,
   ComboboxChangeEventDetails,
   ComboboxChipProps,
   ComboboxChipRemoveProps,
@@ -583,6 +550,7 @@ export type {
   ComboboxItemTextProps,
   ComboboxLabelProps,
   ComboboxListProps,
+  ComboboxOpenChangeEventDetails,
   ComboboxPopupProps,
   ComboboxPortalProps,
   ComboboxPositionerProps,

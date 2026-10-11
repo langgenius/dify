@@ -174,7 +174,6 @@ export const useChildSegmentData = (
         { datasetId, documentId, segmentId: segmentIdParam, childChunkId, body: params },
         {
           onSuccess: (res) => {
-            toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
             onCloseChildSegmentDetail()
             if (parentMode === 'paragraph') {
               // Update parent segment's child_chunks in cache

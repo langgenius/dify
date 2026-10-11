@@ -71,20 +71,6 @@ def test_fake_client_cancel_run_returns_cancelled_status():
     assert cancelled.status == "cancelled"
 
 
-def test_fake_client_paused_scenario_returns_deferred_tool_call_success_event():
-    """The API pause scenario follows the Dify Agent deferred-tool wire shape."""
-    client = FakeAgentBackendRunClient(scenario=FakeAgentBackendScenario.PAUSED)
-
-    status = client.wait_run("fake-run-1")
-    events = list(client.stream_events("fake-run-1"))
-
-    assert status.status == "succeeded"
-    assert status.error is None
-    assert events[-1].type == "run_succeeded"
-    assert events[-1].data.deferred_tool_call is not None
-    assert events[-1].data.deferred_tool_call.tool_name == "ask_human"
-
-
 def test_fake_client_success_wait_run_returns_succeeded_status():
     """Covers the default SUCCESS branch of ``wait_run`` directly."""
     status = FakeAgentBackendRunClient().wait_run("fake-run-1")

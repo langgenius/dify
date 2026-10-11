@@ -1,10 +1,12 @@
+import type { AgentInviteOptionsResponse } from '@dify/contracts/api/console/agent/types.gen'
 import type { ReactNode } from 'react'
 import type { AgentV2NodeType } from '../types'
 import type { PromptEditorProps } from '@/app/components/base/prompt-editor'
 import type { NodePanelProps } from '@/app/components/workflow/types'
-import { act, fireEvent, render, screen, within } from '@testing-library/react'
+import { act, fireEvent, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { FlowType } from '@/types/common'
 import { AgentV2Panel } from '../panel'
 
@@ -159,48 +161,6 @@ vi.mock('@/features/agent-v2/permissions', () => ({
   useCanCreateAgents: () => true,
 }))
 
-vi.mock('@/app/components/workflow/block-selector/agent-selector', () => ({
-  AgentSelectorContent: ({
-    onSelect,
-    onStartFromScratch,
-  }: {
-    onSelect: (agent: {
-      description: string
-      icon: string
-      icon_background: string
-      icon_type: 'emoji'
-      id: string
-      name: string
-      role: string
-    }) => void
-    onStartFromScratch?: () => void
-  }) => (
-    <>
-      <button
-        type="button"
-        onClick={() =>
-          onSelect({
-            id: 'agent-2',
-            name: 'Mara',
-            description: 'Tender Analyst',
-            icon: 'M',
-            icon_background: '#D1E9FF',
-            icon_type: 'emoji',
-            role: 'Analyst',
-          })
-        }
-      >
-        Select Mara
-      </button>
-      {onStartFromScratch && (
-        <button type="button" onClick={onStartFromScratch}>
-          Start from Scratch
-        </button>
-      )}
-    </>
-  ),
-}))
-
 vi.mock('../hooks', () => ({
   useAgentRosterDetail: (agentId?: string) => mockUseAgentRosterDetail(agentId),
   useCreateInlineAgentBinding: () => ({
@@ -346,6 +306,34 @@ const panelProps = {} as NodePanelProps<AgentV2NodeType>['panelProps']
 describe('agent/panel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = input instanceof Request ? input.url : String(input)
+      if (new URL(url).pathname !== '/console/api/agent/invite-options')
+        throw new Error(`Unexpected request: ${url}`)
+
+      return Response.json({
+        data: [
+          {
+            id: 'agent-2',
+            name: 'Mara',
+            description: 'Tender Analyst',
+            icon: 'M',
+            icon_background: '#D1E9FF',
+            icon_type: 'emoji',
+            role: 'Analyst',
+            agent_kind: 'dify_agent',
+            scope: 'roster',
+            source: 'roster',
+            status: 'active',
+            active_config_snapshot_id: 'snapshot-2',
+          },
+        ],
+        has_more: false,
+        limit: 8,
+        page: 1,
+        total: 1,
+      } satisfies AgentInviteOptionsResponse)
+    })
     mockPromptEditorProps.length = 0
     mockOrchestratePanelContentProps.length = 0
     mockOutputVarsProps.length = 0
@@ -598,7 +586,7 @@ describe('agent/panel', () => {
     expect(container.querySelector('[aria-busy="true"]')).toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: 'workflowAgent.nodes.agent.roster.change', hidden: true }),
-    ).toBeDisabled()
+    ).toHaveAttribute('aria-disabled', 'true')
     expect(
       screen.getByRole('dialog', { name: 'workflowAgent.nodes.agent.roster.inlineSetup.name' }),
     ).toBeInTheDocument()
@@ -993,7 +981,8 @@ describe('agent/panel', () => {
     expect(mockStoreState.setOpenInlineAgentPanelNodeId).not.toHaveBeenCalledWith(undefined)
   })
 
-  it('does not show start from scratch for an existing inline agent binding', () => {
+  it('does not show start from scratch for an existing inline agent binding', async () => {
+    const user = userEvent.setup()
     render(
       <AgentV2Panel
         id="agent-node"
@@ -1008,9 +997,14 @@ describe('agent/panel', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'workflowAgent.nodes.agent.roster.change' }))
+    await user.click(
+      screen.getByRole('button', { name: 'workflowAgent.nodes.agent.roster.change' }),
+    )
 
-    expect(screen.queryByRole('button', { name: 'Start from Scratch' })).not.toBeInTheDocument()
+    const menu = await screen.findByRole('menu')
+    expect(
+      within(menu).queryByRole('menuitem', { name: /startFromScratch/ }),
+    ).not.toBeInTheDocument()
   })
 
   it('keeps the inline panel closed while workflow composer state is still loading', () => {
@@ -1106,11 +1100,14 @@ describe('agent/panel', () => {
     })
   })
 
-  it('updates roster agent binding from the selector', () => {
+  it('updates roster agent binding from the selector', async () => {
+    const user = userEvent.setup()
     render(<AgentV2Panel id="agent-node" data={createData()} panelProps={panelProps} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'workflowAgent.nodes.agent.roster.change' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Select Mara' }))
+    await user.click(
+      screen.getByRole('button', { name: 'workflowAgent.nodes.agent.roster.change' }),
+    )
+    await user.click(await screen.findByRole('menuitem', { name: /Mara/ }))
 
     expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenCalledWith(
       {
@@ -1129,7 +1126,8 @@ describe('agent/panel', () => {
     )
   })
 
-  it('switches a roster agent to a workflow-only inline agent from the selector', () => {
+  it('switches a roster agent to a workflow-only inline agent from the selector', async () => {
+    const user = userEvent.setup()
     mockCreateInlineAgentBinding.mockImplementation(
       (
         _nodeId: string,
@@ -1165,8 +1163,10 @@ describe('agent/panel', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'workflowAgent.nodes.agent.roster.change' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Start from Scratch' }))
+    await user.click(
+      screen.getByRole('button', { name: 'workflowAgent.nodes.agent.roster.change' }),
+    )
+    await user.click(await screen.findByRole('menuitem', { name: /startFromScratch/ }))
 
     expect(mockStoreState.setOpenInlineAgentPanelNodeId).toHaveBeenCalledWith('agent-node')
     expect(mockCreateInlineAgentBinding).toHaveBeenCalledWith(

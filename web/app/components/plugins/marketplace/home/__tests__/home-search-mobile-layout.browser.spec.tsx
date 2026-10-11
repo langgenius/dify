@@ -86,25 +86,6 @@ describe('Marketplace mobile search layout', () => {
     expect(isCenterClickable(searchInput)).toBe(true)
   })
 
-  it('keeps the desktop search in the header gap while scrolling', async () => {
-    await page.viewport(1280, 900)
-    const screen = await renderMarketplaceHome()
-
-    const scrollContainer = document.getElementById(MARKETPLACE_CONTAINER_ID)!
-    const header = screen.getByRole('banner').element()
-    const searchInput = screen
-      .getByRole('textbox', { name: 'Search plugins or templates' })
-      .element()
-
-    scrollContainer.scrollTop = 400
-    scrollContainer.dispatchEvent(new Event('scroll'))
-    await nextFrame()
-
-    expect(
-      searchInput.getBoundingClientRect().top - header.getBoundingClientRect().top,
-    ).toBeCloseTo(6, 0)
-  })
-
   it('keeps a search-results search below the header when there is no hero to overlap', async () => {
     await page.viewport(1280, 900)
     const screen = await render(

@@ -214,7 +214,6 @@ describe('useAppInfoActions', () => {
       expect(queryClient.getQueryData(appDetailQueryKey)).toEqual(updatedApp)
       for (const queryKey of appListQueryKeys)
         expect(queryClient.getQueryState(queryKey)?.isInvalidated).toBe(true)
-      expect(toastMocks.call).toHaveBeenCalledWith({ type: 'success', message: 'app.editDone' })
     })
 
     it('should emit app_meta_update after successful edit when collaboration socket exists', async () => {

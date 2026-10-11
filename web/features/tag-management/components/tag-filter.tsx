@@ -102,11 +102,10 @@ export const TagFilter = ({
       <div className="relative">
         <ComboboxTrigger
           aria-label={triggerLabel}
-          icon={false}
           className={cn(
-            'flex h-8 cursor-pointer items-center gap-1 rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal py-0 text-left whitespace-nowrap select-none hover:bg-components-input-bg-normal focus-visible:bg-components-input-bg-normal data-popup-open:bg-components-input-bg-normal',
+            'flex h-8 w-full min-w-0 cursor-pointer items-center gap-1 rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal py-0 text-left system-sm-regular whitespace-nowrap select-none',
             iconOnly
-              ? 'h-6! w-6! max-w-6! min-w-6! shrink-0 justify-center px-0! py-0! [&>span:first-child]:flex [&>span:first-child]:grow-0'
+              ? 'h-6! w-6! max-w-6! min-w-6! shrink-0 justify-center px-0! py-0!'
               : 'max-w-60 min-w-28 px-2',
             !!value.length && !iconOnly && 'pr-6 shadow-xs',
             triggerClassName,

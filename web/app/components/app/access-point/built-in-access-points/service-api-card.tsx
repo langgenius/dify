@@ -4,7 +4,6 @@ import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.g
 import type { AccessPointAvailability } from '@/app/components/base/access-point/status'
 import { useMutation } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { getAccessPointStatus } from '@/app/components/base/access-point/status'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
@@ -25,21 +24,10 @@ export function ServiceApiAccessPointCard({
   highlighted,
 }: ServiceApiAccessPointCardProps) {
   const { t } = useTranslation(['common'])
-  const setAppDetail = useAppStore((state) => state.setAppDetail)
   const toggleApiMutation = useMutation(
     consoleQuery.apps.byAppId.apiEnable.post.mutationOptions({
       scope: {
         id: `app-service-api-toggle:${appInfo.id}`,
-      },
-      onSuccess: (updatedApp) => {
-        const currentAppDetail = useAppStore.getState().appDetail
-        if (!currentAppDetail || currentAppDetail.id !== appInfo.id) return
-
-        setAppDetail({
-          ...currentAppDetail,
-          enable_api: updatedApp.enable_api,
-          updated_at: updatedApp.updated_at ?? currentAppDetail.updated_at,
-        })
       },
       onError: () => {
         toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))

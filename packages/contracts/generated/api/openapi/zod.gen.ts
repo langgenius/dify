@@ -664,7 +664,7 @@ export const zSimpleResultResponse = z.object({
 /**
  * SubjectType
  */
-export const zSubjectType = z.enum(['account', 'external_sso'])
+export const zSubjectType = z.enum(['account', 'external_sso', 'resource_access'])
 
 /**
  * SupportedAppType
