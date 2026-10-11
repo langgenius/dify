@@ -231,6 +231,27 @@ describe('ApiKeyModal', () => {
     })
   })
 
+  it('does not offer a copy action for existing keys, whose tokens are masked', async () => {
+    apiMocks.appKeys = [
+      {
+        id: 'app-key-1',
+        token: 'app-secret-token-123456789',
+        type: 'app',
+        created_at: 1,
+      },
+    ]
+
+    await renderModal(appScope)
+
+    expect(await screen.findByText('app...cret-token-123456789')).toBeInTheDocument()
+    // List responses only carry a masked token, so copying from a row would
+    // put an unusable value on the clipboard. The full secret is offered
+    // only by the create-key result dialog.
+    expect(
+      screen.queryByRole('button', { name: 'common.operation.copy' }),
+    ).not.toBeInTheDocument()
+  })
+
   it('loads and renders workspace dataset API keys', async () => {
     apiMocks.datasetKeys = [
       {
