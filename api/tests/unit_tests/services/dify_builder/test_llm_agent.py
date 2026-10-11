@@ -60,7 +60,16 @@ def test_remaining_build_methods_thread_model_and_tenant_args(monkeypatch):
         seen["propose_plan_v1"] = (model, requirements, list(tools), goal_text)
         return []
 
-    def mock_discover_resources(model, tenant_id, plan_items, _reasoning=None, *, goal_text, requirements):
+    def mock_discover_resources(
+        model,
+        tenant_id,
+        plan_items,
+        _reasoning=None,
+        *,
+        goal_text,
+        requirements,
+        account_id=None,  # noqa: ARG001
+    ):
         seen["discover_resources"] = (model, tenant_id, plan_items, goal_text, requirements)
         return []
 
@@ -68,11 +77,19 @@ def test_remaining_build_methods_thread_model_and_tenant_args(monkeypatch):
         seen["assess_capability_gap"] = (model, plan_items, options, goal_text, requirements)
         return ""
 
-    def mock_bind_resources(model, tenant_id, plan_items, resource_ids):
+    def mock_bind_resources(model, tenant_id, plan_items, resource_ids, *, account_id=None):  # noqa: ARG001
         seen["bind_resources"] = (model, tenant_id, plan_items, resource_ids)
         return []
 
-    def mock_build_nodes(tenant_id, model_config, plan_items, resource_ids=(), *, trusted_text=""):
+    def mock_build_nodes(
+        tenant_id,
+        model_config,
+        plan_items,
+        resource_ids=(),
+        *,
+        trusted_text="",
+        account_id=None,  # noqa: ARG001
+    ):
         seen["build_nodes"] = (tenant_id, model_config, plan_items, resource_ids, trusted_text)
         return []
 
@@ -83,7 +100,7 @@ def test_remaining_build_methods_thread_model_and_tenant_args(monkeypatch):
     monkeypatch.setattr(build_mod, "propose_plan_v1", mock_propose_plan_v1)
     # The wrapper now hands the planner the tenant's READY tools (Plan 3 Task 2);
     # stub the listing so this test never reaches the plugin daemon.
-    monkeypatch.setattr(build_mod, "ready_tool_catalogue", lambda _tenant_id: ["catalogue-stub"])
+    monkeypatch.setattr(build_mod, "ready_tool_catalogue", lambda _tenant_id, **_kwargs: ["catalogue-stub"])
     monkeypatch.setattr(build_mod, "discover_resources", mock_discover_resources)
     monkeypatch.setattr(build_mod, "assess_capability_gap", mock_assess_capability_gap)
     monkeypatch.setattr(build_mod, "bind_resources", mock_bind_resources)
@@ -300,3 +317,72 @@ def test_message_reply_delegates_stream_callback(monkeypatch):
         {"nodes": [], "edges": []},
         "question",
     )
+
+
+# ---- ENG-1191: the acting account and the request reach tool readiness -------
+
+
+def _capture_tool_owners(monkeypatch) -> dict:
+    seen: dict = {}
+
+    def ready_tool_catalogue(tenant_id, **kwargs):
+        seen["ready_tool_catalogue"] = (tenant_id, kwargs)
+        return []
+
+    def discover_resources(model, tenant_id, plan_items, _reasoning=None, **kwargs):  # noqa: ARG001
+        seen["discover_resources"] = (tenant_id, kwargs)
+        return []
+
+    def bind_resources(model, tenant_id, plan_items, resource_ids, **kwargs):  # noqa: ARG001
+        seen["bind_resources"] = (tenant_id, kwargs)
+        return []
+
+    def build_nodes(tenant_id, model_config, plan_items, resource_ids=(), **kwargs):  # noqa: ARG001
+        seen["build_nodes"] = (tenant_id, kwargs)
+        return []
+
+    monkeypatch.setattr(build_mod, "propose_plan_v1", lambda *_a, **_k: [])
+    monkeypatch.setattr(build_mod, "ready_tool_catalogue", ready_tool_catalogue)
+    monkeypatch.setattr(build_mod, "discover_resources", discover_resources)
+    monkeypatch.setattr(build_mod, "bind_resources", bind_resources)
+    monkeypatch.setattr(build_mod, "build_nodes", build_nodes)
+    return seen
+
+
+def test_planner_tool_catalogue_is_ranked_against_the_goal_and_requirements(monkeypatch):
+    seen = _capture_tool_owners(monkeypatch)
+    agent = LlmBuilderAgent("t1", {})
+    monkeypatch.setattr(agent, "_model", lambda: "MODEL")
+
+    agent.propose_plan_v1({"channel": "#oncall"}, goal_text="Page the on-call responders")
+
+    tenant_id, kwargs = seen["ready_tool_catalogue"]
+    assert tenant_id == "t1"
+    query = " ".join(str(value) for value in kwargs.values())
+    assert "Page the on-call responders" in query
+    assert "#oncall" in query
+
+
+def test_every_tool_owner_receives_the_acting_account(monkeypatch):
+    seen = _capture_tool_owners(monkeypatch)
+    agent = LlmBuilderAgent("t1", {}, account_id="acct-a")
+    monkeypatch.setattr(agent, "_model", lambda: "MODEL")
+
+    agent.propose_plan_v1({}, goal_text="goal")
+    agent.discover_resources(["step"], goal_text="goal", requirements={})
+    agent.bind_resources(["step"], ["rid"])
+    agent.build_nodes(["step"])
+
+    for owner in ("ready_tool_catalogue", "discover_resources", "bind_resources", "build_nodes"):
+        assert seen[owner][0] == "t1"
+        assert seen[owner][1].get("account_id") == "acct-a", owner
+
+
+def test_an_agent_without_an_actor_passes_none_rather_than_inventing_one(monkeypatch):
+    seen = _capture_tool_owners(monkeypatch)
+    agent = LlmBuilderAgent("t1", {})
+    monkeypatch.setattr(agent, "_model", lambda: "MODEL")
+
+    agent.bind_resources(["step"], ["rid"])
+
+    assert seen["bind_resources"][1].get("account_id") is None
