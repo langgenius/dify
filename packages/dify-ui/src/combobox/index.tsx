@@ -108,24 +108,24 @@ function ComboboxTrigger({ className, type = 'button', ...props }: ComboboxTrigg
   )
 }
 
+// The group owns the horizontal padding and the gap, so an icon, the input, and the controls sit in
+// it without margins of their own, like `DropdownMenuInputGroup`. The input keeps a narrow inset so
+// its text lands where a standalone `Input` of the same size puts it.
 const comboboxInputGroupVariants = cva(
   [
     textControlGroupClassName,
-    'group/combobox items-center',
-    // Inside the popup the group is the search box, laid out like `DropdownMenuInputGroup`: it
-    // lines up with the options on 4px gutters,
-    // hosts an inline icon, and takes over the horizontal padding from its input and controls.
+    'group/combobox items-center gap-0.5',
+    // Inside the popup the group is the search box and lines up with the options on 4px gutters.
     // The popup marks itself with a data attribute because a `role="dialog"` ancestor could also be
     // a Dialog hosting a field anchor.
-    'in-data-dify-combobox-popup:mx-1 in-data-dify-combobox-popup:mt-1 in-data-dify-combobox-popup:w-auto in-data-dify-combobox-popup:gap-0.5 in-data-dify-combobox-popup:px-2',
-    'in-data-dify-combobox-popup:[&>button]:me-0 in-data-dify-combobox-popup:[&>input]:px-1',
+    'in-data-dify-combobox-popup:mx-1 in-data-dify-combobox-popup:mt-1 in-data-dify-combobox-popup:w-auto',
   ],
   {
     variants: {
       size: {
-        small: 'min-h-6 rounded-md',
-        medium: 'min-h-8 rounded-lg',
-        large: 'min-h-9 rounded-[10px]',
+        small: 'min-h-6 rounded-md px-1',
+        medium: 'min-h-8 rounded-lg px-2',
+        large: 'min-h-9 rounded-[10px] px-3',
       },
     },
     defaultVariants: {
@@ -150,17 +150,18 @@ function ComboboxInputGroup({ className, size = 'medium', ...props }: ComboboxIn
 
 const comboboxInputVariants = cva(
   [
-    'w-0 min-w-0 flex-1 appearance-none border-0 bg-transparent text-components-input-text-filled caret-primary-600 outline-hidden',
+    'w-0 min-w-0 flex-1 appearance-none border-0 bg-transparent px-1 text-components-input-text-filled caret-primary-600 outline-hidden',
     'placeholder:text-components-input-text-placeholder',
     'disabled:cursor-not-allowed disabled:text-components-input-text-filled-disabled disabled:placeholder:text-components-input-text-disabled',
     'enabled:data-readonly:cursor-default',
   ],
   {
     variants: {
+      // Vertical padding fills the group's min height exactly, so the group never grows past it.
       size: {
-        small: 'px-2 py-1 system-xs-regular',
-        medium: 'px-3 py-1.75 system-sm-regular',
-        large: 'px-4 py-2 system-md-regular',
+        small: 'py-0.75 system-xs-regular',
+        medium: 'py-1.75 system-sm-regular',
+        large: 'py-1.75 system-md-regular',
       },
     },
     defaultVariants: {
@@ -200,9 +201,9 @@ const comboboxControlVariants = cva(
   {
     variants: {
       size: {
-        small: 'me-1 size-4',
-        medium: 'me-1.5 size-5',
-        large: 'me-2 size-5',
+        small: 'size-4',
+        medium: 'size-5',
+        large: 'size-5',
       },
     },
     defaultVariants: {
@@ -353,9 +354,7 @@ function ComboboxItem<Value = unknown>({ className, ...props }: ComboboxItemProp
 type ComboboxItemTextProps = React.ComponentProps<'span'>
 
 function ComboboxItemText({ className, ...props }: ComboboxItemTextProps) {
-  return (
-    <span className={cn('min-w-0 grow truncate px-1 system-sm-medium', className)} {...props} />
-  )
+  return <span className={cn('min-w-0 grow truncate system-sm-medium', className)} {...props} />
 }
 
 function ComboboxItemIndicator({ className, children, ...props }: ComboboxItemIndicatorProps) {
@@ -386,10 +385,14 @@ function ComboboxLabel({ className, ...props }: ComboboxLabelProps) {
 
 type ComboboxGroupLabelProps = BaseCombobox.GroupLabel.Props
 
+// The list's own padding supplies the rest of the inset, so the label text lines up with the
+// item text.
 function ComboboxGroupLabel({ className, ...props }: ComboboxGroupLabelProps) {
   return (
     <BaseCombobox.GroupLabel
-      className={(state) => cn(floatingGroupLabelClassName, resolveClassName(className, state))}
+      className={(state) =>
+        cn(floatingGroupLabelClassName, 'px-2', resolveClassName(className, state))
+      }
       {...props}
     />
   )
@@ -445,10 +448,7 @@ function ComboboxChips({ className, ...props }: ComboboxChipsProps) {
   return (
     <BaseCombobox.Chips
       className={(state) =>
-        cn(
-          'flex w-full min-w-0 flex-wrap items-center gap-1 px-1',
-          resolveClassName(className, state),
-        )
+        cn('flex w-full min-w-0 flex-wrap items-center gap-1', resolveClassName(className, state))
       }
       {...props}
     />

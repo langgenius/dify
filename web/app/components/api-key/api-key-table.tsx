@@ -2,7 +2,6 @@ import type { ApiKeyItem } from '@dify/contracts/api/console/apps/types.gen'
 import type { EnvironmentApiKey } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useTranslation } from 'react-i18next'
-import { CopyFeedback } from '@/app/components/base/copy-feedback'
 import useTimestamp from '@/hooks/use-timestamp'
 
 type ApiKeyTableProps = {
@@ -76,7 +75,6 @@ export function ApiKeyTable({
               </td>
               <td className="px-6 py-1">
                 <div className="flex justify-end gap-1">
-                  <CopyFeedback content={apiKey.token} />
                   {canManage && (
                     <IconButton
                       aria-label={`${t(($) => $['operation.delete'], { ns: 'common' })} ${maskToken(apiKey.token)}`}

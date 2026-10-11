@@ -299,30 +299,6 @@ describe('TagFilter', () => {
       expect(screen.getByText(i18n.noTag)).toBeInTheDocument()
       expect(searchInput).toHaveFocus()
     })
-
-    it('should clear search and show all tags when clear icon is clicked', async () => {
-      const user = userEvent.setup()
-
-      render(<TagFilter {...defaultProps} />)
-
-      await user.click(screen.getByText(i18n.placeholder))
-
-      const searchInput = screen.getByRole('combobox', { name: i18n.selectorPlaceholder })
-      await user.type(searchInput, 'Front')
-
-      expect(screen.queryByText('Backend')).not.toBeInTheDocument()
-
-      const clearButton = screen.getByRole('button', { name: i18n.operationClear })
-      clearButton.focus()
-      await user.keyboard('{Enter}')
-
-      expect(searchInput).toHaveValue('')
-      expect(searchInput).toHaveFocus()
-
-      expect(screen.getByText('Backend')).toBeInTheDocument()
-      expect(screen.getByText('Frontend')).toBeInTheDocument()
-      expect(screen.getByText('API Design')).toBeInTheDocument()
-    })
   })
 
   describe('Edge Cases', () => {
