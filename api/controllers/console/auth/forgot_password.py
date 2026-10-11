@@ -1,6 +1,6 @@
 from flask import request
-from flask_restx import Resource
 from pydantic import BaseModel, Field
+from flask_restx import Resource
 
 from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
@@ -54,11 +54,11 @@ register_schema_models(
 class ForgotPasswordSendEmailApi(Resource):
     @console_ns.doc("send_forgot_password_email")
     @console_ns.doc(description="Send password reset email")
-    @console_ns.expect(console_ns.models[ForgotPasswordSendPayload.__name__])
+    @console_ns.expect(console_basemodel[ForgotPasswordSendPayload.__name__])
     @console_ns.response(
         200,
         "Email sent successfully",
-        console_ns.models[ForgotPasswordEmailResponse.__name__],
+        console_basemodel[ForgotPasswordEmailResponse.__name__],
     )
     @console_ns.response(400, "Invalid email or rate limit exceeded")
     @setup_required
@@ -85,11 +85,11 @@ class ForgotPasswordSendEmailApi(Resource):
 class ForgotPasswordCheckApi(Resource):
     @console_ns.doc("check_forgot_password_code")
     @console_ns.doc(description="Verify password reset code")
-    @console_ns.expect(console_ns.models[ForgotPasswordCheckPayload.__name__])
+    @console_ns.expect(console_basemodel[ForgotPasswordCheckPayload.__name__])
     @console_ns.response(
         200,
         "Code verified successfully",
-        console_ns.models[ForgotPasswordCheckResponse.__name__],
+        console_basemodel[ForgotPasswordCheckResponse.__name__],
     )
     @console_ns.response(400, "Invalid code or token")
     @setup_required
@@ -121,11 +121,11 @@ class ForgotPasswordCheckApi(Resource):
 class ForgotPasswordResetApi(Resource):
     @console_ns.doc("reset_password")
     @console_ns.doc(description="Reset password with verification token")
-    @console_ns.expect(console_ns.models[ForgotPasswordResetPayload.__name__])
+    @console_ns.expect(console_basemodel[ForgotPasswordResetPayload.__name__])
     @console_ns.response(
         200,
         "Password reset successfully",
-        console_ns.models[ForgotPasswordResetResponse.__name__],
+        console_basemodel[ForgotPasswordResetResponse.__name__],
     )
     @console_ns.response(400, "Invalid token or password mismatch")
     @setup_required

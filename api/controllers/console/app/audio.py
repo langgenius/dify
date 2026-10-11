@@ -193,7 +193,7 @@ class ChatMessageAudioApi(Resource):
     @console_ns.response(
         200,
         "Audio transcription successful",
-        console_ns.models[AudioTranscriptResponse.__name__],
+        console_basemodel[AudioTranscriptResponse.__name__],
     )
     @console_ns.response(400, "Bad request - No audio uploaded or unsupported type")
     @console_ns.response(413, "Audio file too large")
@@ -220,7 +220,7 @@ class AgentChatMessageAudioApi(Resource):
     @console_ns.response(
         200,
         "Audio transcription successful",
-        console_ns.models[AudioTranscriptResponse.__name__],
+        console_basemodel[AudioTranscriptResponse.__name__],
     )
     @console_ns.response(400, "Bad request - Speech to text disabled or unsupported audio")
     @console_ns.response(404, "Agent or build draft not found")
@@ -319,7 +319,7 @@ class ChatMessageTextApi(Resource):
     @console_ns.doc("chat_message_text_to_speech")
     @console_ns.doc(description="Convert text to speech for chat messages")
     @console_ns.doc(params={"app_id": "App ID"})
-    @console_ns.expect(console_ns.models[TextToSpeechPayload.__name__])
+    @console_ns.expect(console_basemodel[TextToSpeechPayload.__name__])
     # TTS returns provider audio bytes, so the success response is intentionally schema-less.
     @console_ns.response(200, "Text to speech conversion successful")
     @console_ns.response(400, "Bad request - Invalid parameters")
@@ -347,7 +347,7 @@ class AgentChatMessageTextApi(Resource):
         produces=list(SUPPORTED_TTS_AUDIO_MIME_TYPES),
         vendor={BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY: list(SUPPORTED_TTS_AUDIO_MIME_TYPES)},
     )
-    @console_ns.expect(console_ns.models[TextToSpeechPayload.__name__])
+    @console_ns.expect(console_basemodel[TextToSpeechPayload.__name__])
     @console_ns.response(200, "Generated audio bytes in the provider audio format")
     @console_ns.response(400, "Invalid text or voice")
     @console_ns.response(403, "Insufficient permissions")
@@ -424,7 +424,7 @@ class TextModesApi(Resource):
     @console_ns.response(
         200,
         "TTS voices retrieved successfully",
-        console_ns.models[TextToSpeechVoiceListResponse.__name__],
+        console_basemodel[TextToSpeechVoiceListResponse.__name__],
     )
     @console_ns.response(400, "Invalid language parameter")
     @setup_required
@@ -445,7 +445,7 @@ class AgentTextToSpeechVoicesApi(Resource):
     @console_ns.response(
         200,
         "TTS voices retrieved successfully",
-        console_ns.models[TextToSpeechVoiceListResponse.__name__],
+        console_basemodel[TextToSpeechVoiceListResponse.__name__],
     )
     @console_ns.response(400, "Invalid language parameter")
     @console_ns.response(404, "Agent not found")
