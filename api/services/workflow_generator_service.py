@@ -69,11 +69,16 @@ class WorkflowGeneratorService:
         envelope as ``/rule-generate``).
 
         ``ready_tool_keys`` restricts generation to the ``(provider_name,
-        tool_name)`` tools the caller may execute: both the routed catalogue
-        and the validator's installed-tool keys are filtered to it, so any
-        other tool node fails validation. ``None`` (cmd+k and every other
-        standalone caller) keeps the complete installed catalogue; an empty
-        set means no tool is executable and keeps validation on.
+        tool_name)`` tools the caller deems eligible for generation (the
+        Builder passes tools whose credential metadata is ready for the
+        acting member): both the routed catalogue and the validator's
+        installed-tool keys are filtered to it, so any other tool node fails
+        validation. The set is not live credential validation, pins no
+        ``credential_id`` and grants no runtime authorization; native runtime
+        credential selection and authorization are unchanged. ``None`` (cmd+k
+        and every other standalone caller) keeps the complete installed
+        catalogue; an empty set means no tool is eligible and keeps
+        validation on.
         """
         model_instance, model_parameters, tool_catalogue_entries, tool_catalogue_text, installed_tools = (
             cls._resolve_generation_context(tenant_id=tenant_id, mode=mode, model_config=model_config)
