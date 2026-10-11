@@ -9,6 +9,7 @@ from tests.unit_tests.services.dify_builder.installed_tool_inventory import (
     ACCOUNT_A,
     ACCOUNT_B,
     ACCOUNT_C,
+    METADATA_ROUTES,
     OTHER_TENANT_ID,
     SECRET_MARKER,
     TENANT_ID,
@@ -331,7 +332,8 @@ def test_installed_unauthenticated_tool_is_discoverable_as_missing_config(instal
     # statement that selects the encrypted credential column
     assert forbidden == []
     assert daemon.requests
-    assert all(r.method == "GET" and r.path.endswith("/management/tools") for r in daemon.requests)
+    # only public tool-metadata routes, for this tenant
+    assert all(r.route in METADATA_ROUTES and r.tenant_id == TENANT_ID for r in daemon.requests)
     assert not [s for s in statements if "encrypted_credentials" in s]
     assert not [s for s in statements if SECRET_MARKER in s]
 
