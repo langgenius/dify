@@ -45,4 +45,4 @@ jobs:
               sleep 10
             done
             $callback_deployed || { echo 'Expected API and worker revision was not deployed'; exit 1; }
-            docker compose exec -T api uv run --no-sync --project /app/api python /app/api/dev/verify_hitl_im_callback_e2e.py --tenant-id '${{ vars.HITL_IM_E2E_TENANT_ID }}'
+            docker compose exec -T --workdir /app/api api uv run --no-sync --project /app/api python -m dev.verify_hitl_im_callback_e2e --tenant-id '${{ vars.HITL_IM_E2E_TENANT_ID }}'
