@@ -158,6 +158,13 @@ class DatasetDetailResponse(ResponseModel):
     embedding_model: str | None
     embedding_model_provider: str | None
     embedding_available: bool | None = None
+    reranking_available: bool | None = Field(
+        default=None,
+        description=(
+            "Whether the configured reranking model is available. True when retrieval does not require a "
+            "reranking model; null when availability has not been evaluated."
+        ),
+    )
     retrieval_model_dict: DatasetRetrievalModelResponse = Field(
         description="Retrieval configuration for the knowledge base."
     )

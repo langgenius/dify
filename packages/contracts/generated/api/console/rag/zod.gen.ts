@@ -655,6 +655,7 @@ export const zDatasetDetailResponse = z.object({
   permission_keys: z.array(z.string()).optional(),
   pipeline_id: z.string().nullable(),
   provider: z.string(),
+  reranking_available: z.boolean().nullish(),
   retrieval_model_dict: zDatasetRetrievalModelResponse,
   runtime_mode: z.string().nullable(),
   summary_index_setting: zDatasetSummaryIndexSettingResponse.optional(),

@@ -587,6 +587,7 @@ export type DatasetDetailResponse = {
   permission: string
   pipeline_id: string | null
   provider: string
+  reranking_available?: boolean | null
   retrieval_model_dict: DatasetRetrievalModelResponse
   runtime_mode: string | null
   summary_index_setting?: DatasetSummaryIndexSettingResponse
@@ -627,6 +628,7 @@ export type DatasetDetailWithPartialMembersResponse = {
   permission: string
   pipeline_id: string | null
   provider: string
+  reranking_available?: boolean | null
   retrieval_model_dict: DatasetRetrievalModelResponse
   runtime_mode: string | null
   summary_index_setting?: DatasetSummaryIndexSettingResponse

@@ -59,6 +59,7 @@ export type DatasetDetailResponse = {
   permission_keys?: Array<string>
   pipeline_id: string | null
   provider: string
+  reranking_available?: boolean | null
   retrieval_model_dict: DatasetRetrievalModelResponse
   runtime_mode: string | null
   summary_index_setting?: DatasetSummaryIndexSettingResponse

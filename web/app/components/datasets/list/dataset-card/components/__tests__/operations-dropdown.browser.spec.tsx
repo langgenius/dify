@@ -28,7 +28,7 @@ vi.mock('@/features/system-features/client', () => ({
   }),
 }))
 
-it('keeps operations visible on keyboard focus without covering the unavailable label', async () => {
+it('keeps operations visible on keyboard focus without covering the reranking unavailable label', async () => {
   // Real CSS and native Tab navigation catch visibility-hidden triggers that happy-dom misses.
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false, staleTime: Infinity } },
@@ -53,7 +53,8 @@ it('keeps operations visible on keyboard focus without covering the unavailable 
     id: 'dataset-1',
     name: 'Test Dataset',
     runtime_mode: 'general',
-    embedding_available: false,
+    embedding_available: true,
+    reranking_available: false,
     permission_keys: [DatasetACLPermission.Edit],
   } as DataSet
   const screen = await render(

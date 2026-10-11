@@ -132,6 +132,7 @@ DATASET_DETAIL_KEYS = {
     "embedding_model",
     "embedding_model_provider",
     "embedding_available",
+    "reranking_available",
     "retrieval_model_dict",
     "summary_index_setting",
     "tags",

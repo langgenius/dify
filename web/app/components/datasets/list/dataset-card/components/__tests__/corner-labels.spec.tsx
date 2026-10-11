@@ -38,4 +38,15 @@ describe('CornerLabels', () => {
 
     expect(container).toBeEmptyDOMElement()
   })
+
+  it('labels an unavailable reranking dependency and clears the label when it recovers', () => {
+    const dataset = { ...createDataset(true), reranking_available: false }
+    const { rerender } = render(<CornerLabels dataset={dataset} />)
+
+    expect(screen.getByText('dataset.cornerLabel.unavailable')).toBeInTheDocument()
+
+    rerender(<CornerLabels dataset={{ ...dataset, reranking_available: true }} />)
+
+    expect(screen.queryByText('dataset.cornerLabel.unavailable')).not.toBeInTheDocument()
+  })
 })
