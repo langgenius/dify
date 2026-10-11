@@ -4,7 +4,8 @@ import { lintConfig } from './lint.config'
 const lintFiles = '*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}'
 const eslintFiles = '*.{json,jsonc,json5,md,yml,yaml}'
 const formatOnlyFiles = '*.{mdx,css,scss,less,html,vue,svelte,gql,graphql,hbs,handlebars}'
-const checkFix = 'vp check --fix --no-error-on-unmatched-pattern'
+// lint-staged spawns without a shell, so the script sets TAILWIND_LOGICAL_PROPERTIES=false.
+const checkFix = 'vp run check:staged'
 const formatFix = 'vp fmt --no-error-on-unmatched-pattern'
 const eslintFix =
   'eslint --fix --pass-on-unpruned-suppressions --no-error-on-unmatched-pattern --no-warn-ignored'
@@ -53,7 +54,7 @@ export default defineConfig({
       'check:cached': {
         command: ['vp check', 'eslint --concurrency=auto'],
         cache: {
-          env: ['CI', 'NODE_ENV', 'TAILWIND_CANONICAL_CLASSES'],
+          env: ['CI', 'NODE_ENV', 'TAILWIND_CANONICAL_CLASSES', 'TAILWIND_LOGICAL_PROPERTIES'],
           // Static checks have no artifacts to restore into the working tree.
           output: [],
         },

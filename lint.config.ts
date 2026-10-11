@@ -6,6 +6,10 @@ import path from 'node:path'
 const rootDir = import.meta.dirname
 const difyUiPackageJson = path.resolve(rootDir, 'packages/dify-ui/package.json')
 const enableTailwindCanonicalClasses = process.env.TAILWIND_CANONICAL_CLASSES === 'true'
+// Fix commands turn the Tailwind plugin off: the `enforce-logical-properties` autofix also
+// rewrites violations recorded in the suppression baseline, and migration happens per directory.
+const enableTailwindLogicalProperties = process.env.TAILWIND_LOGICAL_PROPERTIES !== 'false'
+const enableTailwindPlugin = enableTailwindCanonicalClasses || enableTailwindLogicalProperties
 
 export const hintContentRules = {
   'shadcn/no-restyle': [
@@ -33,19 +37,43 @@ export const hintContentRules = {
   ],
 } satisfies NonNullable<OxlintConfig['rules']>
 
-const tailwindCanonicalClassesOverride = {
+const tailwindClassRulesOverride = {
   files: [
     'web/**/*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}',
     'packages/dify-ui/**/*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}',
   ],
   rules: {
-    'better-tailwindcss/enforce-canonical-classes': [
-      'warn',
-      {
-        collapse: false,
-        logical: false,
-      },
-    ],
+    ...(enableTailwindCanonicalClasses
+      ? {
+          'better-tailwindcss/enforce-canonical-classes': [
+            'warn',
+            {
+              collapse: false,
+              logical: false,
+            },
+          ],
+        }
+      : {}),
+    ...(enableTailwindLogicalProperties
+      ? {
+          'better-tailwindcss/enforce-logical-properties': [
+            'error',
+            {
+              ignore: [
+                // Block-axis and sizing classes do not depend on writing direction;
+                // keep their physical names (`pt`, `h-4`) instead of `pbs`, `block-4`.
+                '(?:^|[:!])-?(?:pt|pb|mt|mb|scroll-pt|scroll-pb|scroll-mt|scroll-mb|top|bottom|border-t|border-b|w|h|size|min-w|min-h|max-w|max-h)(?:-|$)',
+                // Direction variants and Base UI swipe directions name the physical side on purpose.
+                '(?:^|:)(?:rtl|ltr):',
+                'swipe-direction=(?:left|right)\\]:',
+                // `left-1/2` and `right-1/2` pair with the physical `-translate-x-1/2` centering
+                // idiom; `inset-s-1/2` would move the element off-center under `dir="rtl"`.
+                '(?:^|[:!])-?(?:left|right)-1/2$',
+              ],
+            },
+          ],
+        }
+      : {}),
   },
 } satisfies NonNullable<OxlintConfig['overrides']>[number]
 
@@ -204,7 +232,7 @@ export const lintConfig = {
     '@shadcn/lint',
     '@tanstack/eslint-plugin-query',
     'eslint-plugin-antfu',
-    ...(enableTailwindCanonicalClasses ? ['eslint-plugin-better-tailwindcss'] : []),
+    ...(enableTailwindPlugin ? ['eslint-plugin-better-tailwindcss'] : []),
     {
       name: 'dify',
       specifier: './web/plugins/eslint/index.js',
@@ -233,7 +261,7 @@ export const lintConfig = {
     typeCheck: true,
   },
   settings: {
-    ...(enableTailwindCanonicalClasses
+    ...(enableTailwindPlugin
       ? {
           'better-tailwindcss': {
             cwd: path.resolve(rootDir, 'web'),
@@ -578,7 +606,7 @@ export const lintConfig = {
     'no-undef': 'error',
   },
   overrides: [
-    ...(enableTailwindCanonicalClasses ? [tailwindCanonicalClassesOverride] : []),
+    ...(enableTailwindPlugin ? [tailwindClassRulesOverride] : []),
     {
       files: ['**/*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}'],
       rules: {

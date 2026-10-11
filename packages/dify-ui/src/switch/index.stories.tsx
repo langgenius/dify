@@ -121,7 +121,7 @@ function AllStatesDemo() {
     <div style={{ width: '600px' }} className="space-y-6">
       <table className="w-full text-sm">
         <thead>
-          <tr className="text-left text-gray-500">
+          <tr className="text-start text-gray-500">
             <th className="pb-3 font-medium">Size</th>
             <th className="pb-3 font-medium">Default</th>
             <th className="pb-3 font-medium">Disabled</th>

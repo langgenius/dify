@@ -197,7 +197,7 @@ function CharacterCounterDemo() {
           rows={4}
           className="resize-y pb-8"
         />
-        <div className="pointer-events-none absolute right-2 bottom-2 flex h-5 items-center rounded-md bg-background-section px-1 system-xs-medium text-text-quaternary">
+        <div className="pointer-events-none absolute inset-e-2 bottom-2 flex h-5 items-center rounded-md bg-background-section px-1 system-xs-medium text-text-quaternary">
           <span>{value.length}</span>/<span className="text-text-tertiary">{maxLength}</span>
         </div>
       </div>
