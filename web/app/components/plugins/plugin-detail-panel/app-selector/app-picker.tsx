@@ -75,9 +75,9 @@ function AppPickerOption({ app }: { app: AppPartial }) {
     <ComboboxItem
       key={app.id}
       value={app}
-      className="mx-0 grid-cols-[minmax(0,1fr)_auto] gap-3 py-1 pr-3 pl-2"
+      className="grid-cols-[minmax(0,1fr)_auto] gap-3 py-1 pr-3 pl-2"
     >
-      <ComboboxItemText className="flex min-w-0 items-center gap-3 px-0">
+      <ComboboxItemText className="flex items-center gap-3">
         <AppIcon
           className="shrink-0"
           size="xs"

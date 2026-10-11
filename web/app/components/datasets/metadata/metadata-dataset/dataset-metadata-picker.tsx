@@ -186,14 +186,13 @@ function MetadataPickerSelectPanel({
       <div className="p-2 pb-1">
         <ComboboxInputGroup>
           <span
-            className="ml-2 i-ri-search-line size-4 shrink-0 text-text-tertiary"
+            className="i-ri-search-line size-4 shrink-0 text-text-tertiary"
             aria-hidden="true"
           />
           <ComboboxInput
             ref={inputRef}
             aria-label={t(($) => $[`${i18nPrefix}.search`], { ns: 'dataset' })}
             placeholder={t(($) => $[`${i18nPrefix}.search`], { ns: 'dataset' })}
-            className="pl-2"
           />
           {query && (
             <IconButton
@@ -226,7 +225,7 @@ function MetadataOption({ metadata }: { metadata: MetadataItem }) {
 
   return (
     <ComboboxItem value={metadata}>
-      <ComboboxItemText className="flex items-center gap-1.5 px-0">
+      <ComboboxItemText className="flex items-center gap-1.5">
         <span className={cn(iconClassName, 'size-3.5 shrink-0')} aria-hidden="true" />
         <span className="min-w-0 grow truncate">{metadata.name}</span>
       </ComboboxItemText>

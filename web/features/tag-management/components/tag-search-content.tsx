@@ -80,7 +80,7 @@ export const TagSearchContentView = ({
           if (isCreateTagOption(tag) && canManageTags) {
             return (
               <ComboboxItem<string> key={tag.id} value={tag.id}>
-                <ComboboxItemText className="flex items-center gap-x-1 px-0">
+                <ComboboxItemText className="flex items-center gap-x-1">
                   <span
                     aria-hidden="true"
                     className="i-ri-add-line size-4 shrink-0 text-text-tertiary"
