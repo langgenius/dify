@@ -387,6 +387,13 @@ class DifyBuilderContext:
     # command_finished without replaying conversation rows over SSE.
     last_command_id: str = ""
 
+    # -- Confirmed real-call reservation (additive) --
+    # Set only by the consent service's atomic launch reservation, in the same
+    # commit as ``last_command_id``; public payloads never set them. Empty means
+    # no reserved confirmed command (all older rows).
+    confirmed_consent_id: str = ""
+    confirmed_command_id: str = ""
+
     # -- Governance fields (C-2, additive) --
     skill_learning_policy: str = "ask"
 

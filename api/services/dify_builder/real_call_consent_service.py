@@ -641,7 +641,13 @@ def _require_command_lineage(db: Session, row: DifyBuilderRealCallConsent, sessi
     )
     if reserved is None or reserved != row.reserved_commit_id:
         raise _refuse("command_lineage_changed")
-    if _context_of(_latest_commit(db, session_row)).last_command_id != row.command_id:
+    latest = _context_of(_latest_commit(db, session_row))
+    # The latest commit must still belong to this command and carry its exact consent reference.
+    if (latest.last_command_id, latest.confirmed_command_id, latest.confirmed_consent_id) != (
+        row.command_id,
+        row.command_id,
+        row.id,
+    ):
         raise _refuse("command_lineage_changed")
 
 
@@ -892,9 +898,18 @@ class BuilderRealCallConsentService:
         """Commit the only launch reservation atomically; ``True`` only for the committing caller.
 
         The caller holds the session's advance lock and enqueues the returned
-        command exactly once when the flag is ``True``. A replay, including
-        after a lost enqueue acknowledgement, returns the saved receipt and
-        ``False``; nothing here ever allocates a second command or request.
+        command exactly once when the flag is ``True``. An identical replay,
+        including after a lost enqueue acknowledgement, returns ``False`` with
+        the CURRENT receipt of that same command/request (claimed, unknown, ...),
+        not the stale reservation receipt; nothing here ever allocates a second
+        command or request.
+
+        The caller's bracket is the existing dispatch owner's duty, not this
+        method's: acquire the session's Redis advance lock before calling,
+        release it on refusal or ``False``, and enqueue exactly once only on
+        ``True`` without re-acquiring the lock or re-running action preparation.
+        A same-body replay arriving while the original lease is still held must
+        be answered from this method's replay (no lock, reservation or enqueue).
         """
         _require_enabled()
         key = _secret_key()
@@ -915,7 +930,7 @@ class BuilderRealCallConsentService:
         owned = self._owned_consent(actor, session_id, consent_id)
         check_execution_permission(actor, owned.app_id, self._session_factory)
         if owned.execute_key is not None:
-            return self._execute_replay(owned.consent_id, idempotency_key, body_digest), False
+            return self._execute_replay(owned.consent_id, idempotency_key, body_digest, _utcnow()), False
         external = _read_external(actor.tenant_id)
         now = _utcnow()
         pending: BuilderExecutionPolicyError | None = None
@@ -933,15 +948,7 @@ class BuilderRealCallConsentService:
             )
             row = _lock_consent(db, owned.consent_id)
             if row.execute_key is not None:
-                replay = self._replay_from(
-                    row.execute_key,
-                    row.execute_body_digest,
-                    row.execute_receipt,
-                    idempotency_key,
-                    body_digest,
-                    other_key="idempotency_conflict",
-                )
-                return replay, False
+                return self._current_execute(row, idempotency_key, body_digest, now), False
             if not _same(supplied_scope, row.scope_digest):
                 raise _refuse("consent_scope_mismatch")
             if at_version != row.prepared_version:
@@ -1203,6 +1210,10 @@ class BuilderRealCallConsentService:
         credential row and never returned, logged or stored here. Any conflict
         (rotation, access or client change, even at the same timestamp) leaves
         the newer row untouched and makes the auth effect unknown.
+
+        After this commits successfully, the calling native refresh owner must
+        invalidate the ordinary ``ToolProviderCredentialsCache`` outside SQL,
+        exactly as native refresh does; no cache or network I/O happens here.
         """
         binding = _verify_binding(binding)
         context = binding.context
@@ -1396,19 +1407,25 @@ class BuilderRealCallConsentService:
                 other_key="consent_decision_conflict",
             )
 
-    def _execute_replay(self, consent_id: str, key: str, body_digest: str) -> ConsentReceipt:
+    def _execute_replay(self, consent_id: str, key: str, body_digest: str, now: datetime) -> ConsentReceipt:
         with self._session_factory() as db:
             row = db.get(DifyBuilderRealCallConsent, consent_id)
             if row is None:
                 raise _refuse("consent_not_found")
-            return self._replay_from(
-                row.execute_key,
-                row.execute_body_digest,
-                row.execute_receipt,
-                key,
-                body_digest,
-                other_key="idempotency_conflict",
-            )
+            return self._current_execute(row, key, body_digest, now)
+
+    @staticmethod
+    def _current_execute(row: DifyBuilderRealCallConsent, key: str, body_digest: str, now: datetime) -> ConsentReceipt:
+        """An identical execute replay reports the reserved command's current state.
+
+        Key/body idempotency is checked against the saved execute metadata,
+        which (with the original reservation receipt) is kept for audit.
+        """
+        if row.execute_key is None or row.command_id is None or row.execution_request_id is None:
+            raise _refuse("consent_record_invalid")
+        if row.execute_key != key or not _same(row.execute_body_digest, body_digest):
+            raise _refuse("idempotency_conflict")
+        return _receipt(row, now)
 
     @staticmethod
     def _replay_from(
@@ -1503,6 +1520,7 @@ class BuilderRealCallConsentService:
         )
         fc.last_command_id = command_id
         fc.test_input_ref = stored.test_input_id
+        fc.confirmed_consent_id, fc.confirmed_command_id = row.id, command_id
         try:
             version = SqlDifyBuilderRepository(self._session_factory)._compare_and_advance_in_session(
                 db, stored.session_id, row.prepared_version, working, fc, []
