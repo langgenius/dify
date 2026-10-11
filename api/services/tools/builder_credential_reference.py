@@ -8,6 +8,16 @@ ciphertext, so a same-timestamp rotation still changes them; the HMAC reveals
 nothing about its inputs. ``is_default`` is deliberately excluded: changing the
 workspace default never switches an explicitly pinned credential.
 
+Access reuses the native account visibility filter, then re-establishes the
+documented per-credential semantics exactly, because that generic predicate
+admits any grant row regardless of visibility, tenant or ``has_permission``:
+the owner, legacy NULL-owner and all-team rows are eligible; another member's
+``only_me`` row never is; ``partial_members`` needs the acting member's active
+builtin-tool grant in this tenant. That effective access is bound into the
+opaque ``CredentialReference.revision`` together with the row primitive, so a
+revoke-then-regrant changes it while other members' grants do not. Later phase
+validation compares that full reference revision, never the row primitive.
+
 OAuth client precedence mirrors ``BuiltinToolManageService.get_oauth_client``:
 an enabled tenant client first, otherwise the system client only for a plugin
 with positive server-resolved verification. Anything else needs setup.
@@ -27,14 +37,18 @@ from core.dify_builder.execution_policy import BuilderExecutionPolicyError, cano
 from core.dify_builder.models import Actor
 from core.dify_builder.real_call_consent import CredentialReference
 from core.plugin.entities.plugin_daemon import CredentialType
+from models.credential_permission import CredentialPermission
 from models.credential_permission import CredentialType as CredentialPermissionType
+from models.enums import PermissionEnum
 from models.provider_ids import ToolProviderID
 from models.tools import BuiltinToolProvider, ToolOAuthSystemClient, ToolOAuthTenantClient
 from services.credential_permission_service import CredentialPermissionService
 
 OAuthClientSource = Literal["tenant", "system", "missing"]
+AccessBasis = Literal["owner", "legacy_shared", "all_team", "partial_grant"]
 
 _CREDENTIAL_DOMAIN = b"dify-builder/credential-reference/credential/v1\x00"
+_REFERENCE_DOMAIN = b"dify-builder/credential-reference/reference/v1\x00"
 _CLIENT_DOMAIN = b"dify-builder/credential-reference/oauth-client/v1\x00"
 _CLIENT_SOURCES = frozenset({"tenant", "system", "missing"})
 
@@ -95,6 +109,103 @@ def oauth_client_revision(
 
 
 @dataclass(frozen=True, slots=True)
+class GrantSnapshot:
+    """Current metadata of one applicable partial-member grant row."""
+
+    id: str
+    credential_id: str
+    credential_type: str
+    account_id: str
+    tenant_id: str
+    has_permission: bool
+    created_at: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class CredentialAccessSnapshot:
+    """Why the acting member may use the row now; private, bound into the reference revision."""
+
+    basis: AccessBasis
+    account_id: str
+    tenant_id: str
+    grants: tuple[GrantSnapshot, ...]
+
+    @property
+    def grant_ids(self) -> tuple[str, ...]:
+        return tuple(grant.id for grant in self.grants)
+
+
+def _effective_access(db: Session, row: BuiltinToolProvider, actor: Actor) -> CredentialAccessSnapshot:
+    """Native documented access for the acting member, read in the caller's session."""
+    grants: tuple[GrantSnapshot, ...] = ()
+    if row.user_id == actor.account_id:
+        basis: AccessBasis = "owner"
+    elif row.user_id is None:
+        basis = "legacy_shared"
+    elif str(row.visibility) == PermissionEnum.ALL_TEAM:
+        basis = "all_team"
+    elif str(row.visibility) == PermissionEnum.PARTIAL_TEAM:
+        rows = db.scalars(
+            select(CredentialPermission)
+            .where(
+                CredentialPermission.credential_id == row.id,
+                CredentialPermission.credential_type == CredentialPermissionType.BUILTIN_TOOL_PROVIDER,
+                CredentialPermission.account_id == actor.account_id,
+                CredentialPermission.tenant_id == actor.tenant_id,
+                CredentialPermission.has_permission.is_(True),
+            )
+            .order_by(CredentialPermission.id)
+        ).all()
+        if not rows:
+            raise BuilderExecutionPolicyError("credential_reference_unavailable")
+        basis = "partial_grant"
+        grants = tuple(
+            GrantSnapshot(
+                id=grant.id,
+                credential_id=grant.credential_id,
+                credential_type=grant.credential_type,
+                account_id=grant.account_id,
+                tenant_id=grant.tenant_id,
+                has_permission=grant.has_permission,
+                created_at=grant.created_at.isoformat() if grant.created_at is not None else None,
+            )
+            for grant in rows
+        )
+    else:
+        # Another member's only_me (even with a stale grant) or an unknown visibility.
+        raise BuilderExecutionPolicyError("credential_reference_unavailable")
+    return CredentialAccessSnapshot(basis=basis, account_id=actor.account_id, tenant_id=actor.tenant_id, grants=grants)
+
+
+def _reference_revision(row: BuiltinToolProvider, access: CredentialAccessSnapshot, *, key: bytes) -> str:
+    """Opaque revision of the row primitive and the actor's effective access to it."""
+    return _keyed(
+        _REFERENCE_DOMAIN,
+        {
+            "credential": credential_revision(row, key=key),
+            "access": {
+                "basis": access.basis,
+                "account_id": access.account_id,
+                "tenant_id": access.tenant_id,
+                "grants": [
+                    {
+                        "id": grant.id,
+                        "credential_id": grant.credential_id,
+                        "credential_type": grant.credential_type,
+                        "account_id": grant.account_id,
+                        "tenant_id": grant.tenant_id,
+                        "has_permission": grant.has_permission,
+                        "created_at": grant.created_at,
+                    }
+                    for grant in access.grants
+                ],
+            },
+        },
+        key,
+    )
+
+
+@dataclass(frozen=True, slots=True)
 class OAuthClientSnapshot:
     """Exact selected client row for later exact resolution; ciphertext never renders."""
 
@@ -111,6 +222,7 @@ class BuilderCredentialSnapshot:
     reference: CredentialReference
     encrypted_credentials: str | None = field(repr=False)
     client: OAuthClientSnapshot
+    access: CredentialAccessSnapshot
 
 
 def _select_client(
@@ -171,6 +283,7 @@ def select_builder_credential(
     row = db.scalar(query)
     if row is None:
         raise BuilderExecutionPolicyError("credential_reference_unavailable")
+    access = _effective_access(db, row, actor)
     try:
         provider = ToolProviderID(row.provider)
     except (ValueError, NotFound):
@@ -190,7 +303,7 @@ def select_builder_credential(
             alias=row.name,
             credential_type=str(row.credential_type),
             visibility=str(row.visibility),
-            revision=credential_revision(row, key=revision_key),
+            revision=_reference_revision(row, access, key=revision_key),
             oauth_client_revision=oauth_client_revision(
                 source=client.source,
                 row_id=client.row_id,
@@ -206,5 +319,5 @@ def select_builder_credential(
     except ValidationError:
         raise BuilderExecutionPolicyError("credential_reference_unavailable") from None
     return BuilderCredentialSnapshot(
-        reference=reference, encrypted_credentials=row.encrypted_credentials, client=client
+        reference=reference, encrypted_credentials=row.encrypted_credentials, client=client, access=access
     )
