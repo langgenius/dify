@@ -1,8 +1,8 @@
 import * as React from 'react'
-import { OptionColumn } from '../internal/option-column'
-import { PickerColumns } from '../internal/picker-panel'
-import { usePickerNumbers } from '../internal/use-picker-numbers'
+import { OptionColumn } from './option-column'
+import { PickerColumns } from './picker-panel'
 import { formatTimeValue, parseTimeValue } from './time-value'
+import { usePickerNumbers } from './use-picker-numbers'
 
 type TimePanelLabels = { hour: string; minute: string; period: string; am: string; pm: string }
 type TimePanelProps = {
