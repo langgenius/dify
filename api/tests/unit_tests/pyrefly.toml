@@ -204,8 +204,6 @@ project-excludes = [
   "controllers/web/test_wraps.py",
   "core/agent/conftest.py",
   "core/agent/output_parser/test_cot_output_parser.py",
-  "core/agent/strategy/test_base.py",
-  "core/agent/strategy/test_plugin.py",
   "core/agent/test_base_agent_runner.py",
   "core/agent/test_cot_agent_runner.py",
   "core/agent/test_cot_chat_agent_runner.py",
