@@ -1347,9 +1347,15 @@ def paused_native_draft(native_draft, sqlite_session, monkeypatch):
             )
         assert native_draft.tools.forbidden == []
 
+    def resume():
+        # Tests deliberately commit saved-run edits before resuming. Measure
+        # only the actual resume attempt, retaining every SQL write it makes.
+        state.pause_writes.clear()
+        return worker._resume_app_execution({"workflow_run_id": run_id})
+
     state.store = store
     state.save_context = save_context
-    state.resume = lambda: worker._resume_app_execution({"workflow_run_id": run_id})
+    state.resume = resume
     state.assert_not_resumed = assert_not_resumed
     state.redis = redis
     event.listen(native_draft.tools.engine, "before_cursor_execute", observe_pause_write)
