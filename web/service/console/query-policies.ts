@@ -135,6 +135,39 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           },
           skills: {
             bySkillId: {
+              restore: {
+                post: {
+                  mutationOptions: {
+                    onSettled: (_data, error, variables, _result, context) => {
+                      if (error) return
+                      void invalidateSkillVersionQueries(
+                        consoleQuery,
+                        context.client,
+                        variables.params.skill_id,
+                      )
+                      void context.client.invalidateQueries({
+                        queryKey: consoleQuery.workspaces.current.skills.get.key(),
+                      })
+                    },
+                  },
+                },
+              },
+              versions: {
+                byVersionId: {
+                  delete: {
+                    mutationOptions: {
+                      onSettled: (_data, error, variables, _result, context) => {
+                        if (error) return
+                        void invalidateSkillVersionQueries(
+                          consoleQuery,
+                          context.client,
+                          variables.params.skill_id,
+                        )
+                      },
+                    },
+                  },
+                },
+              },
               delete: {
                 mutationOptions: {
                   onSettled: (_data, error, _variables, _result, context) => {
@@ -1067,6 +1100,44 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           },
         },
       },
+      resourceAccessTokens: {
+        post: {
+          mutationOptions: {
+            onSettled: (_data, error, _variables, _result, context) => {
+              if (error) return
+              void context.client.invalidateQueries({
+                queryKey: consoleQuery.resourceAccessTokens.get.key(),
+              })
+            },
+          },
+        },
+        byTokenId: {
+          patch: {
+            mutationOptions: {
+              onSettled: (_data, error, _variables, _result, context) => {
+                if (error) return
+                void context.client.invalidateQueries({
+                  queryKey: consoleQuery.resourceAccessTokens.get.key(),
+                })
+              },
+            },
+          },
+          relations: {
+            byRelationId: {
+              delete: {
+                mutationOptions: {
+                  onSettled: (_data, error, _variables, _result, context) => {
+                    if (error) return
+                    void context.client.invalidateQueries({
+                      queryKey: consoleQuery.resourceAccessTokens.get.key(),
+                    })
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
       tags: {
         post: {
           mutationOptions: {
@@ -1432,5 +1503,18 @@ function invalidateAgentAccessQueries(
     query.agent.get.key(),
     query.agent.inviteOptions.get.key(),
     query.agent.byAgentId.get.queryKey({ input: { params: { agent_id: agentId } } }),
+  ])
+}
+
+function invalidateSkillVersionQueries(
+  query: RouterUtils<ConsoleClient>,
+  client: QueryClient,
+  skillId: string,
+) {
+  const input = { params: { skill_id: skillId } }
+  return invalidateQueryKeys(client, [
+    query.workspaces.current.skills.bySkillId.get.key({ input }),
+    query.workspaces.current.skills.bySkillId.versions.get.key({ input }),
+    query.workspaces.current.agents.byAgentId.skills.get.key(),
   ])
 }

@@ -87,6 +87,12 @@ class NoFileUploadedError(BaseHTTPException):
     code = 400
 
 
+class ForbiddenError(BaseHTTPException):
+    error_code = "forbidden"
+    code = 403
+    description = "Forbidden"
+
+
 class NotFoundError(BaseHTTPException):
     error_code = "not_found"
     code = 404
@@ -96,6 +102,12 @@ class UnauthorizedError(BaseHTTPException):
     error_code = "unauthorized"
     code = HTTPStatus.UNAUTHORIZED
     description = "Authentication is required."
+
+
+class ForbiddenError(BaseHTTPException):
+    error_code = "forbidden"
+    code = HTTPStatus.FORBIDDEN
+    description = "You don't have the permission to access the requested resource."
 
 
 class InternalServerError(BaseHTTPException):

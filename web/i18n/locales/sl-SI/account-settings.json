@@ -74,7 +74,6 @@
   "resourceAccessToken.createdTokenDescription": "Ta žeton za dostop shrani na varno mesto, saj ga pozneje ne boš mogel znova videti. Vsakdo, ki ima žeton, lahko z orodjem Difyctl poišče dovoljene vire in dostopa do njih. Če ga izgubiš, ustvari novega in prekliči starega.",
   "resourceAccessToken.deleteDescription": "Žeton za dostop bo takoj onemogočen. Zahteve, ki ga uporabljajo, bodo zavrnjene, kar lahko prekine tekoča opravila ali povzroči njihovo napako. Po izbrisu si ga ne boš mogel več ogledati ali ga spremeniti.",
   "resourceAccessToken.deleteTitle": "Izbrišem žeton za dostop?",
-  "resourceAccessToken.deleted": "Žeton za dostop je izbrisan",
   "resourceAccessToken.done": "Končano",
   "resourceAccessToken.editTitle": "Uredi žeton za dostop",
   "resourceAccessToken.empty": "Žetonov za dostop še ni",

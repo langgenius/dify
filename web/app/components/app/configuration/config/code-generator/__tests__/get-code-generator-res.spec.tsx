@@ -87,20 +87,12 @@ vi.mock('../../automatic/res-placeholder', () => ({
   default: () => <div>code-result-placeholder</div>,
 }))
 
-vi.mock('../../automatic/result', () => ({
-  default: ({
-    current,
-    onApply,
-  }: {
-    current: { modified?: string; code?: string }
-    onApply: () => void
-  }) => (
-    <div data-testid="code-result-panel">
-      <div>{current.modified || current.code}</div>
-      <button onClick={onApply}>apply-code-result</button>
-    </div>
-  ),
-}))
+vi.mock(
+  '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/code-editor',
+  () => ({
+    default: ({ value }: { value: string }) => <div data-testid="code-result-panel">{value}</div>,
+  }),
+)
 
 describe('GetCodeGeneratorResModal', () => {
   const mockOnClose = vi.fn()
@@ -237,7 +229,7 @@ describe('GetCodeGeneratorResModal', () => {
       expect(screen.getByTestId('code-result-panel')).toHaveTextContent('print("hello")')
     })
 
-    fireEvent.click(screen.getByText('apply-code-result'))
+    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)generate\.apply(?=$|:)/ }))
 
     await waitFor(() => {
       expect(screen.getByText(/(?:^|\.)codegen\.overwriteConfirmTitle(?=$|:)/)).toBeInTheDocument()
@@ -279,7 +271,7 @@ describe('GetCodeGeneratorResModal', () => {
       expect(screen.getByTestId('code-result-panel')).toHaveTextContent('print("hello")')
     })
 
-    fireEvent.click(screen.getByText('apply-code-result'))
+    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)generate\.apply(?=$|:)/ }))
     const dialog = await screen.findByRole('alertdialog')
 
     fireEvent.click(

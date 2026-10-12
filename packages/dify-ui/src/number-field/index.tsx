@@ -5,11 +5,16 @@ import type * as React from 'react'
 import { NumberField as BaseNumberField } from '@base-ui/react/number-field'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
-import { textControlGroupClassName } from '../form-control-shared'
-import { resolveClassName } from '../internals/resolve-class-name'
+import { insetFocusRingClassName } from '../internal/focus'
+import { textControlGroupClassName } from '../internal/form-control'
+import { resolveClassName } from '../internal/resolve-class-name'
 
 const NumberField = BaseNumberField.Root
 type NumberFieldProps = BaseNumberField.Root.Props
+type NumberFieldChangeEventReason = BaseNumberField.Root.ChangeEventReason
+type NumberFieldChangeEventDetails = BaseNumberField.Root.ChangeEventDetails
+type NumberFieldCommitEventReason = BaseNumberField.Root.CommitEventReason
+type NumberFieldCommitEventDetails = BaseNumberField.Root.CommitEventDetails
 
 const numberFieldGroupVariants = cva(
   [textControlGroupClassName, 'group/number-field items-stretch overflow-hidden'],
@@ -46,7 +51,7 @@ const numberFieldInputVariants = cva(
     'w-0 min-w-0 flex-1 appearance-none border-0 bg-transparent text-components-input-text-filled caret-primary-600 outline-hidden',
     'placeholder:text-components-input-text-placeholder',
     'disabled:cursor-not-allowed disabled:text-components-input-text-filled-disabled disabled:placeholder:text-components-input-text-disabled',
-    'data-readonly:cursor-default',
+    'enabled:data-readonly:cursor-default',
   ],
   {
     variants: {
@@ -98,7 +103,7 @@ function NumberFieldUnit({ className, size = 'medium', ...props }: NumberFieldUn
 }
 
 const numberFieldControlsVariants = cva(
-  'flex w-6 shrink-0 flex-col items-stretch border-l border-divider-subtle bg-transparent text-text-tertiary',
+  'flex w-6 shrink-0 flex-col items-stretch border-s border-divider-subtle bg-transparent text-text-tertiary',
 )
 
 type NumberFieldControlsProps = React.ComponentProps<'div'>
@@ -109,12 +114,12 @@ function NumberFieldControls({ className, ...props }: NumberFieldControlsProps) 
 
 const numberFieldControlButtonVariants = cva(
   [
-    'flex touch-manipulation items-center justify-center text-text-tertiary outline-hidden transition-colors select-none',
+    'flex touch-manipulation items-center justify-center text-text-tertiary transition-colors select-none',
     'hover:bg-components-input-bg-hover focus-visible:bg-components-input-bg-hover',
-    'focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid',
-    'disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:focus-visible:bg-transparent disabled:focus-visible:ring-0',
-    'group-data-disabled/number-field:cursor-not-allowed hover:group-data-disabled/number-field:bg-transparent focus-visible:group-data-disabled/number-field:bg-transparent focus-visible:group-data-disabled/number-field:ring-0',
-    'group-data-readonly/number-field:cursor-default hover:group-data-readonly/number-field:bg-transparent focus-visible:group-data-readonly/number-field:bg-transparent focus-visible:group-data-readonly/number-field:ring-0',
+    insetFocusRingClassName,
+    'disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:focus-visible:bg-transparent',
+    'group-data-disabled/number-field:cursor-not-allowed hover:group-data-disabled/number-field:bg-transparent focus-visible:group-data-disabled/number-field:bg-transparent',
+    'group-data-readonly/number-field:cursor-default hover:group-data-readonly/number-field:bg-transparent focus-visible:group-data-readonly/number-field:bg-transparent',
     'motion-reduce:transition-none',
   ],
   {
@@ -226,6 +231,10 @@ export {
   NumberFieldUnit,
 }
 export type {
+  NumberFieldChangeEventDetails,
+  NumberFieldChangeEventReason,
+  NumberFieldCommitEventDetails,
+  NumberFieldCommitEventReason,
   NumberFieldControlsProps,
   NumberFieldDecrementProps,
   NumberFieldGroupProps,

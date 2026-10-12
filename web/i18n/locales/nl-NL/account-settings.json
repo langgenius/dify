@@ -74,7 +74,6 @@
   "resourceAccessToken.createdTokenDescription": "Bewaar dit toegangstoken op een veilige plek: je kunt het later niet opnieuw bekijken. Iedereen die het token heeft, kan met Difyctl de toegestane bronnen vinden en openen. Ben je het kwijt, maak dan een nieuw token en trek het oude in.",
   "resourceAccessToken.deleteDescription": "Het toegangstoken wordt onmiddellijk uitgeschakeld. Aanroepen met dit token worden geweigerd, waardoor lopende taken kunnen worden onderbroken of mislukken. Na verwijdering kun je het token niet meer bekijken of wijzigen.",
   "resourceAccessToken.deleteTitle": "Toegangstoken verwijderen?",
-  "resourceAccessToken.deleted": "Toegangstoken verwijderd",
   "resourceAccessToken.done": "Gereed",
   "resourceAccessToken.editTitle": "Toegangstoken bewerken",
   "resourceAccessToken.empty": "Nog geen toegangstokens",

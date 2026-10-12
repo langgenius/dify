@@ -19,7 +19,6 @@ import {
   ComboboxStatus,
   ComboboxTrigger,
 } from '@langgenius/dify-ui/combobox'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
 import {
   ScrollArea,
   ScrollAreaContent,
@@ -27,7 +26,7 @@ import {
   ScrollAreaThumb,
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
-import { useCallback, useRef } from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { AppModeEnum } from '@/types/app'
@@ -75,9 +74,9 @@ function AppPickerOption({ app }: { app: AppPartial }) {
     <ComboboxItem
       key={app.id}
       value={app}
-      className="mx-0 grid-cols-[minmax(0,1fr)_auto] gap-3 py-1 pr-3 pl-2"
+      className="grid-cols-[minmax(0,1fr)_auto] gap-3 py-1 pr-3 pl-2"
     >
-      <ComboboxItemText className="flex min-w-0 items-center gap-3 px-0">
+      <ComboboxItemText className="flex items-center gap-3">
         <AppIcon
           className="shrink-0"
           size="xs"
@@ -114,8 +113,6 @@ export function AppPicker({
   onSearchChange,
 }: AppPickerProps) {
   const { t } = useTranslation(['app', 'common', 'workflow'])
-  const inputRef = useRef<HTMLInputElement>(null)
-
   const handleValueChange = useCallback(
     (app: AppPartial | null) => {
       if (!app) return
@@ -125,11 +122,6 @@ export function AppPicker({
     },
     [onSelect, onShowChange],
   )
-
-  const handleClearSearch = () => {
-    onSearchChange('')
-    inputRef.current?.focus()
-  }
 
   return (
     <Combobox<AppPartial>
@@ -157,34 +149,16 @@ export function AppPicker({
             className="border-0 bg-transparent p-0 shadow-none backdrop-blur-none"
           >
             <div className="relative flex max-h-100 min-h-20 w-89 flex-col rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
-              <div className="p-2 pb-1">
-                <ComboboxInputGroup className="h-8 min-h-8 px-2">
-                  <span
-                    className="mr-0.5 i-ri-search-line size-4 shrink-0 text-text-tertiary"
-                    aria-hidden="true"
-                  />
-                  <ComboboxInput
-                    ref={inputRef}
-                    aria-label={t(($) => $['appSelector.placeholder'], { ns: 'app' })}
-                    placeholder={t(($) => $['appSelector.placeholder'], { ns: 'app' })}
-                    className="block h-4.5 grow px-1 py-0 text-[13px] text-text-primary"
-                  />
-                  {searchText && (
-                    <IconButton
-                      size="xs"
-                      aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
-                      className="ml-1.5 size-3.5 shrink-0 rounded-none text-text-quaternary hover:bg-transparent hover:text-text-quaternary focus-visible:ring-1 focus-visible:ring-components-input-border-active"
-                      onClick={handleClearSearch}
-                      onMouseDown={(event) => event.preventDefault()}
-                    >
-                      <span
-                        className="i-custom-vender-solid-general-x-circle size-3.5"
-                        aria-hidden="true"
-                      />
-                    </IconButton>
-                  )}
-                </ComboboxInputGroup>
-              </div>
+              <ComboboxInputGroup>
+                <span
+                  className="i-ri-search-line size-4 shrink-0 text-text-tertiary"
+                  aria-hidden="true"
+                />
+                <ComboboxInput
+                  aria-label={t(($) => $['appSelector.placeholder'], { ns: 'app' })}
+                  placeholder={t(($) => $['appSelector.placeholder'], { ns: 'app' })}
+                />
+              </ComboboxInputGroup>
               <ScrollArea className="min-h-0 flex-1 overflow-hidden">
                 <ScrollAreaViewport
                   role="region"

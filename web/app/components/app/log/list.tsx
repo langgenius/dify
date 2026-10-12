@@ -642,7 +642,6 @@ const CompletionConversationDetailComp: FC<ConversationDetailProps> = ({
       body: { message_id: mid, rating, content: content ?? undefined },
     })
     conversationDetailMutate()
-    toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
   }
 
   const handleAnnotation = async (mid: string, value: string): Promise<boolean> => {
@@ -696,7 +695,6 @@ const ChatConversationDetailComp: FC<ConversationDetailProps> = ({
       url: `/apps/${appDetail.id}/feedbacks`,
       body: { message_id: mid, rating, content: content ?? undefined },
     })
-    toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
   }
 
   const handleAnnotation = async (mid: string, value: string): Promise<boolean> => {

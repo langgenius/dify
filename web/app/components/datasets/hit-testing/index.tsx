@@ -44,8 +44,8 @@ import { CardSkelton } from '../documents/detail/completed/skeleton/general-list
 import EmptyRecords from './components/empty-records'
 import QueryInput from './components/query-input'
 import Records from './components/records'
-import ResultItem from './components/result-item'
-import ResultItemExternal from './components/result-item-external'
+import { ResultItem } from './components/result-item'
+import { ResultItemExternal } from './components/result-item-external'
 import ModifyRetrievalModal from './modify-retrieval-modal'
 
 const limit = 10

@@ -1,9 +1,5 @@
 from http import HTTPStatus
 
-from core.app.apps.agent_app.errors import (
-    AGENT_SESSION_CONFIGURATION_CHANGED_ERROR_CODE,
-    AGENT_SESSION_CONFIGURATION_CHANGED_MESSAGE,
-)
 from libs.exception import BaseHTTPException
 
 
@@ -58,12 +54,6 @@ class CompletionRequestError(BaseHTTPException):
     error_code = "completion_request_error"
     description = "Completion request failed."
     code = 400
-
-
-class AgentSessionConfigurationChangedError(BaseHTTPException):
-    error_code = AGENT_SESSION_CONFIGURATION_CHANGED_ERROR_CODE
-    description = AGENT_SESSION_CONFIGURATION_CHANGED_MESSAGE
-    code = 409
 
 
 class AppMoreLikeThisDisabledError(BaseHTTPException):

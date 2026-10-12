@@ -1,31 +1,7 @@
 import type { ExternalKnowledgeBaseHitTesting } from '@/models/datasets'
-import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import ResultItemExternal from '../result-item-external'
-
-let mockIsShowDetailModal = false
-const mockShowDetailModal = vi.fn(() => {
-  mockIsShowDetailModal = true
-})
-const mockHideDetailModal = vi.fn(() => {
-  mockIsShowDetailModal = false
-})
-
-// Mock useBoolean: required because tests control modal state externally
-// (setting mockIsShowDetailModal before render) and verify mock fn calls.
-vi.mock('ahooks', () => ({
-  useBoolean: (_initial: boolean) => {
-    return [
-      mockIsShowDetailModal,
-      {
-        setTrue: mockShowDetailModal,
-        setFalse: mockHideDetailModal,
-        toggle: vi.fn(),
-        set: vi.fn(),
-      },
-    ]
-  },
-}))
+import { render, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { ResultItemExternal } from '../result-item-external'
 
 const createExternalPayload = (
   overrides: Partial<ExternalKnowledgeBaseHitTesting> = {},
@@ -40,134 +16,65 @@ const createExternalPayload = (
   ...overrides,
 })
 
+const triggerName = 'datasetHitTesting.open Test Document Title'
+const dialogName = 'datasetHitTesting.chunkDetail'
+
 describe('ResultItemExternal', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockIsShowDetailModal = false
+  it('opens the full result from the single named card button and closes back to it', async () => {
+    const user = userEvent.setup()
+    const payload = createExternalPayload()
+    render(<ResultItemExternal payload={payload} positionId={3} />)
+
+    const trigger = screen.getByRole('button', { name: triggerName })
+    expect(trigger).toHaveAccessibleDescription(/Chunk-03.*0\.85/)
+    expect(trigger).not.toHaveAccessibleDescription(/This is the chunk content/)
+    expect(trigger.tagName).toBe('BUTTON')
+    expect(screen.getAllByRole('button')).toHaveLength(1)
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(within(trigger).getByText('Chunk-03')).toBeInTheDocument()
+    expect(within(trigger).getByText('0.85')).toBeInTheDocument()
+    expect(within(trigger).getByText('Test Document Title')).toBeInTheDocument()
+
+    await user.click(within(trigger).getByText(payload.content))
+    const dialog = await screen.findByRole('dialog', { name: dialogName })
+    expect(within(dialog).getByText(payload.content)).toBeInTheDocument()
+    expect(within(dialog).getByText('Chunk-03')).toBeInTheDocument()
+    expect(within(dialog).getByText('0.85')).toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.close' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await waitFor(() => expect(trigger).toHaveFocus())
   })
 
-  // Rendering tests for the external result item card
-  describe('Rendering', () => {
-    it('should render the content text', () => {
-      const payload = createExternalPayload({ content: 'External result content' })
+  it.each(['{Enter}', ' '])(
+    'opens from %s and restores its trigger after Escape before reopening',
+    async (key) => {
+      const user = userEvent.setup()
+      render(<ResultItemExternal payload={createExternalPayload()} positionId={1} />)
+      const trigger = screen.getByRole('button', { name: triggerName })
 
-      render(<ResultItemExternal payload={payload} positionId={1} />)
+      await user.tab()
+      expect(trigger).toHaveFocus()
+      await user.keyboard(key)
+      await screen.findByRole('dialog', { name: dialogName })
+      await user.keyboard('{Escape}')
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      await waitFor(() => expect(trigger).toHaveFocus())
+      await user.keyboard(key)
+      expect(await screen.findByRole('dialog', { name: dialogName })).toBeInTheDocument()
+    },
+  )
 
-      expect(screen.getByText('External result content')).toBeInTheDocument()
-    })
-
-    it('should render the meta info with position and score', () => {
-      const payload = createExternalPayload({ score: 0.92 })
-
-      render(<ResultItemExternal payload={payload} positionId={5} />)
-
-      expect(screen.getByText('Chunk-05')).toBeInTheDocument()
-      expect(screen.getByText('0.92')).toBeInTheDocument()
-    })
-
-    it('should render the footer with document title', () => {
-      const payload = createExternalPayload({ title: 'Knowledge Base Doc' })
-
-      render(<ResultItemExternal payload={payload} positionId={1} />)
-
-      expect(screen.getByText('Knowledge Base Doc')).toBeInTheDocument()
-    })
-
-    it('should render the word count from content length', () => {
-      const content = 'Hello World' // 11 chars
-      const payload = createExternalPayload({ content })
-
-      render(<ResultItemExternal payload={payload} positionId={1} />)
-
-      expect(screen.getByText(/11/)).toBeInTheDocument()
-    })
-  })
-
-  // Detail modal tests
-  describe('Detail Modal', () => {
-    it('should not render modal by default', () => {
-      const payload = createExternalPayload()
-
-      render(<ResultItemExternal payload={payload} positionId={1} />)
-
-      expect(screen.queryByText(/chunkDetail/i)).not.toBeInTheDocument()
-    })
-
-    it('should call showDetailModal when card is clicked', () => {
-      const payload = createExternalPayload()
-      mockIsShowDetailModal = false
-
-      render(<ResultItemExternal payload={payload} positionId={1} />)
-
-      // Act - click the card to open modal
-      const card = screen.getByText(payload.content).closest('.cursor-pointer') as HTMLElement
-      fireEvent.click(card)
-
-      // Assert - showDetailModal (setTrue) was invoked
-      expect(mockShowDetailModal).toHaveBeenCalled()
-    })
-
-    it('should render modal content when isShowDetailModal is true', () => {
-      // Arrange - modal is already open
-      const payload = createExternalPayload()
-      mockIsShowDetailModal = true
-
-      render(<ResultItemExternal payload={payload} positionId={1} />)
-
-      // Assert - modal title should appear
-      expect(screen.getByText(/chunkDetail/i)).toBeInTheDocument()
-    })
-
-    it('should render full content in the modal', () => {
-      const payload = createExternalPayload({ content: 'Full modal content text' })
-      mockIsShowDetailModal = true
-
-      render(<ResultItemExternal payload={payload} positionId={1} />)
-
-      // Assert - content appears both in card and modal
-      const contentElements = screen.getAllByText('Full modal content text')
-      expect(contentElements.length).toBeGreaterThanOrEqual(2)
-    })
-
-    it('should render meta info in the modal', () => {
-      const payload = createExternalPayload({ score: 0.77 })
-      mockIsShowDetailModal = true
-
-      render(<ResultItemExternal payload={payload} positionId={3} />)
-
-      // Assert - meta appears in both card and modal
-      const chunkTags = screen.getAllByText('Chunk-03')
-      expect(chunkTags.length).toBe(2)
-      const scores = screen.getAllByText('0.77')
-      expect(scores.length).toBe(2)
-    })
-  })
-
-  describe('Edge Cases', () => {
-    it('should render with empty content', () => {
-      const payload = createExternalPayload({ content: '' })
-
-      render(<ResultItemExternal payload={payload} positionId={1} />)
-
-      // Assert - component still renders
-      expect(screen.getByText('Test Document Title')).toBeInTheDocument()
-    })
-
-    it('should render with score of 0 (Score returns null)', () => {
-      const payload = createExternalPayload({ score: 0 })
-
-      render(<ResultItemExternal payload={payload} positionId={1} />)
-
-      // Assert - no score displayed
-      expect(screen.queryByText('score')).not.toBeInTheDocument()
-    })
-
-    it('should handle large positionId values', () => {
-      const payload = createExternalPayload()
-
-      render(<ResultItemExternal payload={payload} positionId={999} />)
-
-      expect(screen.getByText('Chunk-999')).toBeInTheDocument()
-    })
+  it('keeps empty results accessible by their document title without an absent score', async () => {
+    const user = userEvent.setup()
+    render(
+      <ResultItemExternal
+        payload={createExternalPayload({ content: '', score: 0 })}
+        positionId={1}
+      />,
+    )
+    const trigger = screen.getByRole('button', { name: triggerName })
+    expect(within(trigger).queryByText('score')).not.toBeInTheDocument()
+    await user.click(trigger)
+    expect(await screen.findByRole('dialog', { name: dialogName })).toBeInTheDocument()
   })
 })

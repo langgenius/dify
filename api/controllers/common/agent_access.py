@@ -2,17 +2,13 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
 
 from sqlalchemy.orm import Session
 
 from services.agent.roster_service import AgentRosterService
 from services.enterprise import rbac_service as enterprise_rbac_service
-
-if TYPE_CHECKING:
-    from services.app_service import AppListBaseParams
-    from services.enterprise.rbac_service import MyPermissionsResponse
-
+from services.entities.app_entities import AppListBaseParams
+from services.rbac.contracts import MyPermissionsResponse
 
 AGENT_LIST_PERMISSION_KEYS: frozenset[str] = frozenset({"agent.acl.preview"})
 
@@ -54,7 +50,6 @@ def resolve_agent_access_filter(
     tenant_id: str,
     account_id: str,
     *,
-    session: Session,
     permissions: MyPermissionsResponse | None = None,
 ) -> AgentAccessFilter:
     """Compute Agent resources visible to an account in a workspace."""
@@ -62,7 +57,6 @@ def resolve_agent_access_filter(
         permissions = enterprise_rbac_service.RBACService.MyPermissions.get(
             tenant_id,
             account_id,
-            session=session,
         )
     whitelist_scope = enterprise_rbac_service.RBACService.AgentAccess.whitelist_resources(tenant_id, account_id)
     has_default_preview = has_agent_list_permission(

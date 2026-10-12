@@ -214,7 +214,7 @@ const WebAppsSectionContent = () => {
           }
         />
         <CollapsiblePanel className="col-span-2 row-start-2">
-          <div className="px-2 pb-2">
+          <div className="px-2 pt-0.5 pb-2">
             <SearchInput
               ref={focusSearchOnAttach}
               value={searchText}
