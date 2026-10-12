@@ -11,7 +11,9 @@ from core.evaluation.agent.agent_judge_evaluator import (
     ToolCallArgumentAssessment,
     ToolSelectionCriteria,
     ToolSelectionJudgeOutput,
+    TrajectoryQualityJudgeOutput,
     _sanitize_value,
+    _strict_judge_json_schema,
     _tool_selection_payload,
 )
 from core.evaluation.agent.judge_prompts import get_agent_judge_prompt
@@ -46,6 +48,34 @@ def _criterion(score: float | None, *, applicable: bool = True) -> CriterionAsse
         reason="Evidence-based reason.",
         evidence_step_ids=["final-output"],
     )
+
+
+@pytest.mark.parametrize(
+    "schema_model",
+    [
+        TaskCompletionJudgeOutput,
+        TrajectoryQualityJudgeOutput,
+        ToolSelectionJudgeOutput,
+        ToolArgumentJudgeOutput,
+    ],
+)
+def test_agent_judge_json_schema_is_strict_at_every_object_level(schema_model: type) -> None:
+    schema = _strict_judge_json_schema(schema_model)
+
+    def assert_strict(value: object) -> None:
+        if isinstance(value, dict):
+            if value.get("type") == "object":
+                assert value.get("additionalProperties") is False
+                properties = value.get("properties", {})
+                assert isinstance(properties, dict)
+                assert value.get("required") == list(properties)
+            for nested_value in value.values():
+                assert_strict(nested_value)
+        elif isinstance(value, list):
+            for nested_value in value:
+                assert_strict(nested_value)
+
+    assert_strict(schema)
 
 
 def test_task_completion_recomputes_weighted_score_and_uses_success_criteria(
