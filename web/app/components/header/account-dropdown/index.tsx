@@ -22,7 +22,7 @@ import {
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useTheme } from 'next-themes'
 import { useQueryState } from 'nuqs'
-import { useSyncExternalStore } from 'react'
+import { useRef, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 import PremiumBadge from '@/app/components/base/premium-badge'
 import {
@@ -214,6 +214,9 @@ function MainNavMenuContent({ onLogout }: MainNavMenuContentProps) {
 }
 
 export default function AccountDropdown({ trigger }: AccountDropdownProps) {
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const popupRef = useRef<HTMLDivElement>(null)
+  const keyboardNavigationRef = useRef(false)
   const isHydrating = useSyncExternalStore(
     subscribeHydrationState,
     getHydrationSnapshot,
@@ -225,14 +228,42 @@ export default function AccountDropdown({ trigger }: AccountDropdownProps) {
 
   return (
     <div>
-      <DropdownMenu>
+      <DropdownMenu
+        onOpenChange={(open, { event }) => {
+          if (open)
+            keyboardNavigationRef.current =
+              event.type.startsWith('key') ||
+              (event.type === 'click' && 'detail' in event && event.detail === 0)
+        }}
+      >
         <DropdownMenuTrigger
+          ref={triggerRef}
+          onKeyDownCapture={(event) => {
+            if (event.key !== 'Escape') keyboardNavigationRef.current = true
+          }}
           disabled={isHydrating}
           render={trigger({
             ariaLabel: t(($) => $['account.account'], { ns: 'accountSettings' }),
           })}
         />
         <DropdownMenuContent
+          ref={popupRef}
+          onKeyDownCapture={(event) => {
+            if (event.key !== 'Escape') keyboardNavigationRef.current = true
+          }}
+          finalFocus={(interactionType) => {
+            const activeElement = document.activeElement
+            if (
+              activeElement !== document.body &&
+              activeElement !== triggerRef.current &&
+              !popupRef.current?.contains(activeElement)
+            )
+              return false
+            if (keyboardNavigationRef.current || interactionType !== 'keyboard') return true
+            // Escape alone should not turn a pointer-opened menu into keyboard navigation.
+            triggerRef.current?.focus({ preventScroll: true, focusVisible: false })
+            return false
+          }}
           placement="top-start"
           sideOffset={6}
           alignOffset={4}

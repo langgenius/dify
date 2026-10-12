@@ -149,6 +149,7 @@ function AccessControlSession({
     consoleQuery.workspaces.current.networkAccessGroups.post.mutationOptions(),
   )
   const [open, setOpen] = useState(false)
+  const panelRef = useRef<HTMLDivElement>(null)
   const [view, setView] = useState<'config' | 'status'>('status')
   const [showBack, setShowBack] = useState(false)
   const [draft, setDraft] = useState<AccessControlDraft | null>(null)
@@ -532,6 +533,10 @@ function AccessControlSession({
             />
           </TooltipTrigger>
           <PopoverContent
+            ref={panelRef}
+            initialFocus={(interactionType) =>
+              interactionType === 'keyboard' || interactionType === '' ? true : panelRef.current
+            }
             placement="bottom-end"
             className="w-100 rounded-2xl border-divider-regular p-0 backdrop-blur-[5px] transition-none data-starting-style:scale-100 data-starting-style:opacity-100"
           >
