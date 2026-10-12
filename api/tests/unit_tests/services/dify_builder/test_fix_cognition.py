@@ -800,7 +800,7 @@ def test_propose_invalid_twice_surfaces_to_human():
     intents, risk = fix.propose_repair(_FakeInstance([bad, bad]), _DIAG, _RG)
     assert intents == []
     assert risk.level == "high"
-    assert "manual" in risk.reason.lower()
+    assert "try again or finish" in risk.reason.lower()
 
 
 def test_propose_none_model_surfaces_to_human():
@@ -1154,7 +1154,7 @@ def test_a_repair_the_engine_refuses_twice_surfaces_to_the_human():
     assert len(m.calls) == 2
     assert intents == []  # never handed to the gate as if it were a fix
     assert risk.level == "high"
-    assert "manual" in risk.reason.lower()
+    assert "try again or finish" in risk.reason.lower()
 
 
 def test_a_repair_the_engine_accepts_never_spends_the_reprompt():
@@ -1327,7 +1327,7 @@ def test_a_handle_less_branch_connect_twice_still_surfaces_to_the_human():
     assert len(m.calls) == 2
     assert intents == []
     assert risk.level == "high"
-    assert "manual" in risk.reason.lower()
+    assert "try again or finish" in risk.reason.lower()
 
 
 def test_the_repair_prompt_states_the_handle_rule_and_shows_the_handles():

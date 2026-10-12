@@ -109,24 +109,16 @@ def test_form_and_resource_gates_do_not_also_project_a_choice(state: PcState):
     assert _decision(state) is None
 
 
-def test_rejecting_a_repair_asks_for_a_reason():
-    decision = _decision(PcState.FIX_AWAIT_APPROVAL)
-
-    reject = next(o for o in decision.options if o.id == "reject_repair")
-    assert reject.input is not None
-    assert (reject.input.min_length, reject.input.max_length) == (10, 200)
-    assert reject.input.required is True
-
-
-def test_options_without_free_text_declare_none():
+@pytest.mark.parametrize("option_id", ["approve_plan", "reject_repair"])
+def test_repair_options_do_not_ask_for_free_text(option_id: str):
     state = PcState.FIX_AWAIT_APPROVAL
     context = DifyBuilderContext(
         staged_repair=[MutationIntent(op="set_node_config", args={"node_id": "llm", "path": "title", "value": "Fixed"})]
     )
     decision = _decision_for(state, _actions_for(state, context))
 
-    approve = next(o for o in decision.options if o.id == "approve_plan")
-    assert approve.input is None
+    option = next(o for o in decision.options if o.id == option_id)
+    assert option.input is None
 
 
 def test_an_automatic_action_is_never_offered_as_an_option():

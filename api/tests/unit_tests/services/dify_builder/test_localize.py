@@ -85,6 +85,44 @@ def test_localize_leaves_non_catalog_prose_untouched(monkeypatch):
     assert out[0].payload["reply_text"] == "这是我为你生成的计划"  # LLM prose, not in catalog
 
 
+def test_localize_no_repair_reply_and_choice_preserves_the_submitted_option(monkeypatch):
+    reply = "No automatic fix found — try again or finish this session."
+    translated_reply = "未找到自动修复方案，可以重新尝试或结束当前会话。"
+    loc, _ = _localizer(
+        monkeypatch,
+        table={
+            reply: translated_reply,
+            "No repair available": "暂无可用修复方案",
+            "Finish": "结束",
+        },
+    )
+    items = [
+        ConversationItem(
+            kind="assistant_turn",
+            payload={"reply_text": reply},
+        ),
+        ConversationItem(
+            kind="interaction_response",
+            payload={
+                "interaction_kind": "choice",
+                "question": "No repair available",
+                "answer": "Finish",
+                "submitted_data": {"option_id": "finish_repair"},
+            },
+        ),
+    ]
+
+    out = loc.localize_items(items, "zh-Hans")
+
+    assert out[0].payload["reply_text"] == translated_reply
+    assert out[1].payload == {
+        "interaction_kind": "choice",
+        "question": "暂无可用修复方案",
+        "answer": "结束",
+        "submitted_data": {"option_id": "finish_repair"},
+    }
+
+
 def test_localize_template_reinserts_dynamic_part(monkeypatch):
     loc, _ = _localizer(monkeypatch, table={"Workflow built ({count} nodes)": "已构建工作流（{count} 个节点）"})
     items = [ConversationItem(kind="summary", payload={"items": ["Workflow built (3 nodes)"]})]
