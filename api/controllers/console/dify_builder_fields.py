@@ -1,5 +1,6 @@
 """Pydantic request and response schemas for the Console Dify Builder API."""
 
+from datetime import datetime
 from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, RootModel, StrictInt, StringConstraints, model_validator
@@ -27,11 +28,17 @@ from core.dify_builder.contract import (
     TestResultCard,
     UserItem,
 )
+from core.dify_builder.real_call_consent import ConsentState
 from fields.base import ResponseModel
 from fields.workflow_stream_fields import WorkflowStreamPayload
 
 NonEmptyString = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 ClientTurnId = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=128)]
+# Real-call consent identifiers are bound byte-exactly by the consent owner: no trimming or coercion.
+RealCallId = Annotated[str, StringConstraints(min_length=1, max_length=128)]
+ScopeDigest = Annotated[str, StringConstraints(pattern=r"^[a-f0-9]{64}$")]
+IdempotencyKey = Annotated[str, StringConstraints(min_length=1, max_length=128)]
+ReasonCode = Annotated[str, StringConstraints(pattern=r"^[a-z][a-z0-9_]{0,127}$")]
 
 
 class DifyBuilderPayload(BaseModel):
@@ -114,6 +121,33 @@ class DifyBuilderConversationListQuery(DifyBuilderPayload):
         if self.before_seq is not None and self.after_seq is not None:
             raise ValueError("before_seq and after_seq are mutually exclusive")
         return self
+
+
+# Real-call consent requests name what a person reviews or approves. They never
+# carry Tool parameters, credentials, graph, execution context or guards: the
+# consent owner reconstructs all of those server-side from authoritative rows.
+
+
+class DifyBuilderPrepareRealCallPayload(DifyBuilderPayload):
+    node_id: RealCallId
+    test_input_id: RealCallId
+    credential_id: RealCallId
+    at_version: StrictInt = Field(ge=1)
+    base_app_revision: RealCallId
+    idempotency_key: IdempotencyKey
+
+
+class DifyBuilderConfirmRealCallPayload(DifyBuilderPayload):
+    decision: Literal["confirm", "decline"]
+    scope_digest: ScopeDigest
+    at_version: StrictInt = Field(ge=1)
+    idempotency_key: IdempotencyKey
+
+
+class DifyBuilderExecuteRealCallPayload(DifyBuilderPayload):
+    scope_digest: ScopeDigest
+    at_version: StrictInt = Field(ge=1)
+    idempotency_key: IdempotencyKey
 
 
 class DifyBuilderConversationItemBase(ResponseModel):
@@ -408,3 +442,177 @@ class DifyBuilderErrorResponse(ResponseModel):
     code: BuilderErrorCode
     message: str | None = None
     recoverable: bool | None = None
+
+
+class DifyBuilderRealCallDisclosureResponse(ResponseModel):
+    """The approved public disclosure of one real Tool call; no credential revision or secret."""
+
+    action: Literal["get_message"]
+    credential_id: str
+    credential_alias: str
+    credential_type: str
+    identity_basis: Literal["workspace_credential"] = Field(
+        description="The alias names a workspace credential, not a verified remote account identity"
+    )
+    remote_account_status: Literal["unknown"]
+    message_id: str
+    request_method: Literal["GET"]
+    request_url: str
+    response_format: Literal["full"]
+    include_body: bool
+    include_attachments: bool
+    oauth_refresh: Literal["if_needed"] = Field(
+        description=(
+            "One OAuth token refresh request is made only if the stored access token must be refreshed "
+            "before the call; otherwise no refresh request is sent"
+        )
+    )
+    oauth_refresh_method: Literal["POST"]
+    oauth_refresh_url: Literal["https://oauth2.googleapis.com/token"]
+    native_attempt_limit: Literal[1]
+    refresh_limit: Literal[1]
+    automatic_replay: Literal[False]
+    quota_usage: Literal["possible"]
+    monetary_estimate: Literal["unknown"]
+    output_retention: Literal["native_run_retention"]
+    data_description: Literal["gmail_message_headers_snippet_and_selected_body_or_attachment_metadata"]
+    expires_at: datetime
+    prior_uncertain_consent_id: str | None = None
+
+
+class DifyBuilderRealCallConsentResponse(ResponseModel):
+    """Current or saved receipt of one real-call consent."""
+
+    # The discriminator is always emitted, so document it as required.
+    model_config = ConfigDict(json_schema_serialization_defaults_required=True)
+
+    result: Literal["receipt"] = "receipt"
+    consent_id: str
+    scope_digest: str
+    state: ConsentState = Field(
+        description=(
+            "Consent lifecycle state. 'unknown' is final: a claimed call whose real effect could not be "
+            "confirmed. It is bounded by the disclosed limits of one native attempt and at most one token "
+            "refresh, is never replayed automatically, and any further real call needs a new human-approved "
+            "consent"
+        )
+    )
+    at_version: int
+    disclosure: DifyBuilderRealCallDisclosureResponse
+    command_id: str | None
+    execution_request_id: str | None
+    native_run_id: str | None
+    native_node_execution_id: str | None
+    reason_code: ReasonCode | None = Field(description="Fixed server reason code; never provider text")
+    refresh_claimed: bool
+    business_claimed: bool
+    can_retry: bool = Field(
+        description="Whether a new consent may be prepared; always false once a launch is reserved or claimed"
+    )
+
+
+DifyBuilderRealCallRefusalCode = Literal[
+    "needs_setup", "needs_permission", "unsupported_action", "unavailable_metadata", "conflict"
+]
+DifyBuilderRealCallRefusalReason = Literal[
+    # needs_setup
+    "needs_setup",
+    "credential_required",
+    "credential_binding_mismatch",
+    "credential_provider_mismatch",
+    "unsupported_test_input",
+    # needs_permission
+    "credential_reference_unavailable",
+    "credential_policy_refused",
+    # unsupported_action
+    "unsupported_action",
+    "unsupported_tool_node",
+    "unsupported_tool_parameters",
+    "unsupported_tool_configuration",
+    "unsafe_message_id",
+    "unsupported_session_state",
+    "unsupported_graph",
+    "unsupported_workflow",
+    "unsupported_node_retry",
+    "unsupported_default_output",
+    "unsupported_selector",
+    "unsupported_node_implementation",
+    "unsupported_node_configuration",
+    "invalid_node_configuration",
+    "unsupported_start_input",
+    "unsupported_input_value",
+    "unsupported_features",
+    "unsupported_variables",
+    "unsupported_external_tracing",
+    # unavailable_metadata
+    "installed_tool_unavailable",
+    "invalid_graph_metadata",
+    "session_state_unavailable",
+    "real_call_unavailable",
+    # conflict
+    "stale_session_version",
+    "stale_app_revision",
+    "stale_consent_version",
+    "stale_execution_revision",
+    "test_input_binding_mismatch",
+    "consent_scope_mismatch",
+    "consent_scope_changed",
+    "consent_invalidated",
+    "consent_expired",
+    "consent_not_prepared",
+    "consent_not_confirmed",
+    "consent_already_claimed",
+    "consent_decision_conflict",
+    "idempotency_conflict",
+    "execution_already_launched",
+    "command_lineage_changed",
+    "session_busy",
+    "session_conflict",
+]
+
+
+class DifyBuilderRealCallRefusalResponse(ResponseModel):
+    """Sanitized refusal of a real-call consent operation; carries fixed codes only."""
+
+    model_config = ConfigDict(json_schema_serialization_defaults_required=True)
+
+    result: Literal["refusal"] = "refusal"
+    code: DifyBuilderRealCallRefusalCode
+    reason_code: DifyBuilderRealCallRefusalReason
+
+
+class DifyBuilderRealCallPermissionRefusalResponse(ResponseModel):
+    """Execution permission refused after ownership was established; nothing foreign is disclosed."""
+
+    model_config = ConfigDict(json_schema_serialization_defaults_required=True)
+
+    result: Literal["refusal"] = "refusal"
+    code: Literal["needs_permission"]
+    reason_code: Literal["execution_permission_denied"]
+
+
+class DifyBuilderFeatureUnavailableResponse(ResponseModel):
+    """Builder is not enabled for the workspace (the shared ``dify_builder_required`` gate)."""
+
+    code: Literal["feature_unavailable"]
+
+
+class DifyBuilderConsoleForbiddenResponse(ResponseModel):
+    """Console permission-guard denial as serialized by the shared console HTTP error handler."""
+
+    code: Literal["forbidden"]
+    message: str
+    status: Literal[403]
+
+
+class DifyBuilderRealCallForbiddenResponse(
+    RootModel[
+        Annotated[
+            DifyBuilderRealCallPermissionRefusalResponse
+            | DifyBuilderFeatureUnavailableResponse
+            | DifyBuilderConsoleForbiddenResponse,
+            Field(discriminator="code"),
+        ]
+    ]
+):
+    """Every HTTP 403 body a real-call consent route can return."""

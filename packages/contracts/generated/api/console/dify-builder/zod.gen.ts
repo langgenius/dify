@@ -22,6 +22,103 @@ export const zDifyBuilderSubmitMessagePayload = z.object({
 })
 
 /**
+ * DifyBuilderPrepareRealCallPayload
+ */
+export const zDifyBuilderPrepareRealCallPayload = z.object({
+  at_version: z.int().gte(1),
+  base_app_revision: z.string().min(1).max(128),
+  credential_id: z.string().min(1).max(128),
+  idempotency_key: z.string().min(1).max(128),
+  node_id: z.string().min(1).max(128),
+  test_input_id: z.string().min(1).max(128),
+})
+
+/**
+ * DifyBuilderRealCallRefusalResponse
+ *
+ * Sanitized refusal of a real-call consent operation; carries fixed codes only.
+ */
+export const zDifyBuilderRealCallRefusalResponse = z.object({
+  code: z.enum([
+    'conflict',
+    'needs_permission',
+    'needs_setup',
+    'unavailable_metadata',
+    'unsupported_action',
+  ]),
+  reason_code: z.enum([
+    'command_lineage_changed',
+    'consent_already_claimed',
+    'consent_decision_conflict',
+    'consent_expired',
+    'consent_invalidated',
+    'consent_not_confirmed',
+    'consent_not_prepared',
+    'consent_scope_changed',
+    'consent_scope_mismatch',
+    'credential_binding_mismatch',
+    'credential_policy_refused',
+    'credential_provider_mismatch',
+    'credential_reference_unavailable',
+    'credential_required',
+    'execution_already_launched',
+    'idempotency_conflict',
+    'installed_tool_unavailable',
+    'invalid_graph_metadata',
+    'invalid_node_configuration',
+    'needs_setup',
+    'real_call_unavailable',
+    'session_busy',
+    'session_conflict',
+    'session_state_unavailable',
+    'stale_app_revision',
+    'stale_consent_version',
+    'stale_execution_revision',
+    'stale_session_version',
+    'test_input_binding_mismatch',
+    'unsafe_message_id',
+    'unsupported_action',
+    'unsupported_default_output',
+    'unsupported_external_tracing',
+    'unsupported_features',
+    'unsupported_graph',
+    'unsupported_input_value',
+    'unsupported_node_configuration',
+    'unsupported_node_implementation',
+    'unsupported_node_retry',
+    'unsupported_selector',
+    'unsupported_session_state',
+    'unsupported_start_input',
+    'unsupported_test_input',
+    'unsupported_tool_configuration',
+    'unsupported_tool_node',
+    'unsupported_tool_parameters',
+    'unsupported_variables',
+    'unsupported_workflow',
+  ]),
+  result: z.literal('refusal').default('refusal'),
+})
+
+/**
+ * DifyBuilderConfirmRealCallPayload
+ */
+export const zDifyBuilderConfirmRealCallPayload = z.object({
+  at_version: z.int().gte(1),
+  decision: z.enum(['confirm', 'decline']),
+  idempotency_key: z.string().min(1).max(128),
+  scope_digest: z.string().regex(/^[a-f0-9]{64}$/),
+})
+
+/**
+ * DifyBuilderExecuteRealCallPayload
+ */
+export const zDifyBuilderExecuteRealCallPayload = z.object({
+  at_version: z.int().gte(1),
+  idempotency_key: z.string().min(1).max(128),
+  scope_digest: z.string().regex(/^[a-f0-9]{64}$/),
+})
+
+/**
  * BuilderErrorCode
  *
  * Stable HTTP error codes returned by the Builder console routes.
@@ -145,6 +242,117 @@ export const zRunStatus = z.enum([
   'processing',
   'waiting_confirmation',
   'waiting_input',
+])
+
+/**
+ * DifyBuilderRealCallDisclosureResponse
+ *
+ * The approved public disclosure of one real Tool call; no credential revision or secret.
+ */
+export const zDifyBuilderRealCallDisclosureResponse = z.object({
+  action: z.literal('get_message'),
+  automatic_replay: z.literal(false),
+  credential_alias: z.string(),
+  credential_id: z.string(),
+  credential_type: z.string(),
+  data_description: z.literal(
+    'gmail_message_headers_snippet_and_selected_body_or_attachment_metadata',
+  ),
+  expires_at: z.iso.datetime(),
+  identity_basis: z.literal('workspace_credential'),
+  include_attachments: z.boolean(),
+  include_body: z.boolean(),
+  message_id: z.string(),
+  monetary_estimate: z.literal('unknown'),
+  native_attempt_limit: z.literal(1),
+  oauth_refresh: z.literal('if_needed'),
+  oauth_refresh_method: z.literal('POST'),
+  oauth_refresh_url: z.literal('https://oauth2.googleapis.com/token'),
+  output_retention: z.literal('native_run_retention'),
+  prior_uncertain_consent_id: z.string().nullish(),
+  quota_usage: z.literal('possible'),
+  refresh_limit: z.literal(1),
+  remote_account_status: z.literal('unknown'),
+  request_method: z.literal('GET'),
+  request_url: z.string(),
+  response_format: z.literal('full'),
+})
+
+/**
+ * DifyBuilderRealCallConsentResponse
+ *
+ * Current or saved receipt of one real-call consent.
+ */
+export const zDifyBuilderRealCallConsentResponse = z.object({
+  at_version: z.int(),
+  business_claimed: z.boolean(),
+  can_retry: z.boolean(),
+  command_id: z.string().nullable(),
+  consent_id: z.string(),
+  disclosure: zDifyBuilderRealCallDisclosureResponse,
+  execution_request_id: z.string().nullable(),
+  native_node_execution_id: z.string().nullable(),
+  native_run_id: z.string().nullable(),
+  reason_code: z
+    .string()
+    .regex(/^[a-z][a-z0-9_]{0,127}$/)
+    .nullable(),
+  refresh_claimed: z.boolean(),
+  result: z.literal('receipt').default('receipt'),
+  scope_digest: z.string(),
+  state: z.enum([
+    'claimed',
+    'completed',
+    'confirmed',
+    'declined',
+    'expired',
+    'failed',
+    'invalidated',
+    'prepared',
+    'unknown',
+  ]),
+})
+
+/**
+ * DifyBuilderRealCallPermissionRefusalResponse
+ *
+ * Execution permission refused after ownership was established; nothing foreign is disclosed.
+ */
+export const zDifyBuilderRealCallPermissionRefusalResponse = z.object({
+  code: z.literal('needs_permission'),
+  reason_code: z.literal('execution_permission_denied'),
+  result: z.literal('refusal').default('refusal'),
+})
+
+/**
+ * DifyBuilderFeatureUnavailableResponse
+ *
+ * Builder is not enabled for the workspace (the shared ``dify_builder_required`` gate).
+ */
+export const zDifyBuilderFeatureUnavailableResponse = z.object({
+  code: z.literal('feature_unavailable'),
+})
+
+/**
+ * DifyBuilderConsoleForbiddenResponse
+ *
+ * Console permission-guard denial as serialized by the shared console HTTP error handler.
+ */
+export const zDifyBuilderConsoleForbiddenResponse = z.object({
+  code: z.literal('forbidden'),
+  message: z.string(),
+  status: z.literal(403),
+})
+
+/**
+ * DifyBuilderRealCallForbiddenResponse
+ *
+ * Every HTTP 403 body a real-call consent route can return.
+ */
+export const zDifyBuilderRealCallForbiddenResponse = z.discriminatedUnion('code', [
+  zDifyBuilderRealCallPermissionRefusalResponse.extend({ code: z.literal('needs_permission') }),
+  zDifyBuilderFeatureUnavailableResponse.extend({ code: z.literal('feature_unavailable') }),
+  zDifyBuilderConsoleForbiddenResponse.extend({ code: z.literal('forbidden') }),
 ])
 
 /**
@@ -365,10 +573,13 @@ export const zDifyBuilderPlanConversationItemResponse = z.object({
  * TestResultCard
  */
 export const zTestResultCard = z.object({
+  action_reason_code: z.string().nullish(),
+  action_state: z.enum(['completed', 'failed', 'unknown']).nullish(),
   blocked_node_ids: z.array(z.string()).optional(),
+  consent_id: z.string().nullish(),
   dify_run_id: z.string().optional().default(''),
   executed_node_ids: z.array(z.string()).optional(),
-  execution_mode: z.enum(['mock', 'restricted']).nullish(),
+  execution_mode: z.enum(['confirmed_tool', 'mock', 'restricted']).nullish(),
   failure_reason: z.string().nullish(),
   outcome: z
     .enum([
@@ -378,9 +589,11 @@ export const zTestResultCard = z.object({
       'required_output_unresolved',
     ])
     .nullish(),
+  policy_version: z.enum(['builder-confirmed-gmail-read-v1', 'builder-restricted-v1']).nullish(),
   review_note: z.string().nullish(),
   safety_outcome: z
     .enum([
+      'confirmed_tool_completed',
       'execution_blocked',
       'execution_evidence_unknown',
       'native_failed',
@@ -1768,6 +1981,58 @@ export const zPostDifyBuilderSessionsBySessionIdMessagesPath = z.object({
  * Dify Builder event stream
  */
 export const zPostDifyBuilderSessionsBySessionIdMessagesResponse = zDifyBuilderStreamEventResponse
+
+export const zPostDifyBuilderSessionsBySessionIdRealCallConsentsBody =
+  zDifyBuilderPrepareRealCallPayload
+
+export const zPostDifyBuilderSessionsBySessionIdRealCallConsentsPath = z.object({
+  session_id: z.string(),
+})
+
+/**
+ * Real call consent prepared for review
+ */
+export const zPostDifyBuilderSessionsBySessionIdRealCallConsentsResponse =
+  zDifyBuilderRealCallConsentResponse
+
+export const zGetDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdPath = z.object({
+  consent_id: z.string(),
+  session_id: z.string(),
+})
+
+/**
+ * Current real call consent receipt
+ */
+export const zGetDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdResponse =
+  zDifyBuilderRealCallConsentResponse
+
+export const zPostDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdConfirmBody =
+  zDifyBuilderConfirmRealCallPayload
+
+export const zPostDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdConfirmPath = z.object({
+  consent_id: z.string(),
+  session_id: z.string(),
+})
+
+/**
+ * Saved decision receipt
+ */
+export const zPostDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdConfirmResponse =
+  zDifyBuilderRealCallConsentResponse
+
+export const zPostDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdExecuteBody =
+  zDifyBuilderExecuteRealCallPayload
+
+export const zPostDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdExecutePath = z.object({
+  consent_id: z.string(),
+  session_id: z.string(),
+})
+
+/**
+ * Current receipt of the reserved real call
+ */
+export const zPostDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdExecuteResponse =
+  zDifyBuilderRealCallConsentResponse
 
 export const zGetDifyBuilderSessionsBySessionIdStreamPath = z.object({
   session_id: z.string(),

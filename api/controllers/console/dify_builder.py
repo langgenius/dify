@@ -5,8 +5,10 @@ the console guard stack (CSRF is enforced inside login_required for every
 method); RBAC/authz is enforced here at the
 boundary — the Celery advance task trusts the Actor. The route LOGIC lives in
 undecorated module functions (_create/_get_session/_conversation/_stream/
-_action/_message) so they are unit testable without the Flask request stack;
-the Resource methods are thin auth-wrappers.
+_action/_message and the real-call consent _prepare_real_call/
+_confirm_real_call/_execute_real_call/_get_real_call) so they are unit
+testable without the Flask request stack; the Resource methods are thin
+auth-wrappers.
 
 Decorator injection contract (verified against controllers/console/wraps.py
 and the multi-decorator precedent in controllers/console/app/workflow_comment.py,
@@ -34,6 +36,7 @@ from collections.abc import Callable, Iterator
 from flask import Response, request
 from flask_restx import Resource
 from pydantic import ValidationError
+from werkzeug.exceptions import BadRequest
 
 from controllers.common.schema import (
     query_params_from_model,
@@ -49,13 +52,16 @@ from controllers.console.wraps import (
     with_current_user,
 )
 from core.dify_builder.models import Action, Actor
+from core.dify_builder.real_call_consent import ConsentReceipt
 from libs.helper import dump_response
 from libs.login import login_required
 from services.dify_builder import progress_bus
 from services.dify_builder.service import resolve_submitted_action
 from services.dify_builder.wiring import (
+    build_real_call_consent_service,
     build_service,
     dify_builder_error_response,
+    real_call_error_response,
     session_view_to_dict,
     stream_advance_frames,
 )
@@ -63,6 +69,7 @@ from services.feature_service import FeatureService
 
 from . import console_ns
 from .dify_builder_fields import (
+    DifyBuilderConfirmRealCallPayload,
     DifyBuilderConversationListQuery,
     DifyBuilderConversationPageResponse,
     DifyBuilderCreateBuildSessionPayload,
@@ -71,6 +78,11 @@ from .dify_builder_fields import (
     DifyBuilderCreateFixSessionPayload,
     DifyBuilderCreateSessionPayload,
     DifyBuilderErrorResponse,
+    DifyBuilderExecuteRealCallPayload,
+    DifyBuilderPrepareRealCallPayload,
+    DifyBuilderRealCallConsentResponse,
+    DifyBuilderRealCallForbiddenResponse,
+    DifyBuilderRealCallRefusalResponse,
     DifyBuilderSessionViewResponse,
     DifyBuilderStreamEventResponse,
     DifyBuilderSubmitActionPayload,
@@ -85,6 +97,9 @@ register_schema_models(
     DifyBuilderConversationListQuery,
     DifyBuilderSubmitActionPayload,
     DifyBuilderSubmitMessagePayload,
+    DifyBuilderPrepareRealCallPayload,
+    DifyBuilderConfirmRealCallPayload,
+    DifyBuilderExecuteRealCallPayload,
 )
 register_response_schema_models(
     console_ns,
@@ -92,6 +107,9 @@ register_response_schema_models(
     DifyBuilderSessionViewResponse,
     DifyBuilderStreamEventResponse,
     DifyBuilderErrorResponse,
+    DifyBuilderRealCallConsentResponse,
+    DifyBuilderRealCallRefusalResponse,
+    DifyBuilderRealCallForbiddenResponse,
 )
 
 
@@ -273,6 +291,105 @@ def _stream(session_id: str, actor: Actor) -> Response | tuple[dict, int]:
     )
 
 
+def _real_call_body() -> object:
+    """JSON body of a consent POST, or ``None`` for a non-JSON or malformed request.
+
+    ``None`` fails payload validation, so the route answers the fixed 400
+    before any consent or dispatch work instead of a framework 415/400 body.
+    """
+    if not request.is_json:
+        return None
+    try:
+        return console_ns.payload or {}
+    except BadRequest:  # malformed JSON; parser text is never echoed
+        return None
+
+
+def _real_call_response(read_receipt: Callable[[], ConsentReceipt], status: int) -> tuple[dict, int]:
+    """Serialize only the public receipt; map refusals to fixed codes, re-raise anything else."""
+    try:
+        receipt = read_receipt()
+    except Exception as exc:  # re-raised below if not a known consent/dispatch refusal
+        mapped = real_call_error_response(exc)
+        if mapped is None:
+            raise
+        return mapped
+    return dump_response(DifyBuilderRealCallConsentResponse, receipt), status
+
+
+def _prepare_real_call(session_id: str, body: object, actor: Actor) -> tuple[dict, int]:
+    """Freeze the binding and disclosure for review. Metadata only: nothing decrypts, refreshes or runs."""
+    try:
+        payload = DifyBuilderPrepareRealCallPayload.model_validate(body)
+    except ValidationError:
+        return {"code": "bad_request"}, 400
+    return _real_call_response(
+        lambda: build_real_call_consent_service().prepare(
+            actor=actor,
+            session_id=session_id,
+            node_id=payload.node_id,
+            test_input_id=payload.test_input_id,
+            credential_id=payload.credential_id,
+            at_version=payload.at_version,
+            base_app_revision=payload.base_app_revision,
+            idempotency_key=payload.idempotency_key,
+        ),
+        201,
+    )
+
+
+def _confirm_real_call(session_id: str, consent_id: str, body: object, actor: Actor) -> tuple[dict, int]:
+    """Record one human decision; an identical replay returns the saved decision receipt. Never dispatches."""
+    try:
+        payload = DifyBuilderConfirmRealCallPayload.model_validate(body)
+    except ValidationError:
+        return {"code": "bad_request"}, 400
+    return _real_call_response(
+        lambda: build_real_call_consent_service().confirm(
+            actor=actor,
+            session_id=session_id,
+            consent_id=consent_id,
+            decision=payload.decision,
+            scope_digest=payload.scope_digest,
+            at_version=payload.at_version,
+            idempotency_key=payload.idempotency_key,
+        ),
+        200,
+    )
+
+
+def _execute_real_call(session_id: str, consent_id: str, body: object, actor: Actor) -> tuple[dict, int]:
+    """Launch a confirmed call through the existing confirmed dispatch coordinator.
+
+    The coordinator holds the session's advance lease before the atomic
+    reservation, enqueues the reserved command at most once and answers a
+    matching duplicate with the current receipt.
+    """
+    try:
+        payload = DifyBuilderExecuteRealCallPayload.model_validate(body)
+    except ValidationError:
+        return {"code": "bad_request"}, 400
+    return _real_call_response(
+        lambda: build_service().execute_confirmed_tool(
+            session_id,
+            actor,
+            consent_id=consent_id,
+            scope_digest=payload.scope_digest,
+            at_version=payload.at_version,
+            idempotency_key=payload.idempotency_key,
+        ),
+        202,
+    )
+
+
+def _get_real_call(session_id: str, consent_id: str, actor: Actor) -> tuple[dict, int]:
+    """Current authorized receipt. Read only: never executes."""
+    return _real_call_response(
+        lambda: build_real_call_consent_service().get(actor=actor, session_id=session_id, consent_id=consent_id),
+        200,
+    )
+
+
 def _ping(body, actor: Actor) -> tuple[dict, int]:
     model_config = body.get("model_config") if isinstance(body, dict) else None
     try:
@@ -413,6 +530,96 @@ class DifyBuilderMessagesApi(Resource):
     @dify_builder_required
     def post(self, current_tenant_id, current_user, session_id):
         return _message(session_id, request.get_json(silent=True), _actor(current_user, current_tenant_id))
+
+
+@console_ns.route("/dify-builder/sessions/<string:session_id>/real-call-consents")
+class DifyBuilderRealCallConsentsApi(Resource):
+    @console_ns.expect(console_ns.models[DifyBuilderPrepareRealCallPayload.__name__])
+    @console_ns.response(
+        201,
+        "Real call consent prepared for review",
+        console_ns.models[DifyBuilderRealCallConsentResponse.__name__],
+    )
+    @console_ns.response(400, "Invalid request", console_ns.models[DifyBuilderErrorResponse.__name__])
+    @console_ns.response(403, "Access refused", console_ns.models[DifyBuilderRealCallForbiddenResponse.__name__])
+    @console_ns.response(404, "Session not found", console_ns.models[DifyBuilderErrorResponse.__name__])
+    @console_ns.response(409, "Real call refused", console_ns.models[DifyBuilderRealCallRefusalResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @with_current_user
+    @with_current_tenant_id
+    @dify_builder_required
+    def post(self, current_tenant_id, current_user, session_id):
+        return _prepare_real_call(session_id, _real_call_body(), _actor(current_user, current_tenant_id))
+
+
+@console_ns.route("/dify-builder/sessions/<string:session_id>/real-call-consents/<string:consent_id>")
+class DifyBuilderRealCallConsentApi(Resource):
+    @console_ns.response(
+        200,
+        "Current real call consent receipt",
+        console_ns.models[DifyBuilderRealCallConsentResponse.__name__],
+    )
+    @console_ns.response(403, "Access refused", console_ns.models[DifyBuilderRealCallForbiddenResponse.__name__])
+    @console_ns.response(404, "Consent not found", console_ns.models[DifyBuilderErrorResponse.__name__])
+    @console_ns.response(409, "Real call refused", console_ns.models[DifyBuilderRealCallRefusalResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @with_current_user
+    @with_current_tenant_id
+    @dify_builder_required
+    def get(self, current_tenant_id, current_user, session_id, consent_id):
+        return _get_real_call(session_id, consent_id, _actor(current_user, current_tenant_id))
+
+
+@console_ns.route("/dify-builder/sessions/<string:session_id>/real-call-consents/<string:consent_id>/confirm")
+class DifyBuilderRealCallConsentConfirmApi(Resource):
+    @console_ns.expect(console_ns.models[DifyBuilderConfirmRealCallPayload.__name__])
+    @console_ns.response(
+        200,
+        "Saved decision receipt",
+        console_ns.models[DifyBuilderRealCallConsentResponse.__name__],
+    )
+    @console_ns.response(400, "Invalid request", console_ns.models[DifyBuilderErrorResponse.__name__])
+    @console_ns.response(403, "Access refused", console_ns.models[DifyBuilderRealCallForbiddenResponse.__name__])
+    @console_ns.response(404, "Consent not found", console_ns.models[DifyBuilderErrorResponse.__name__])
+    @console_ns.response(409, "Real call refused", console_ns.models[DifyBuilderRealCallRefusalResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @with_current_user
+    @with_current_tenant_id
+    @dify_builder_required
+    def post(self, current_tenant_id, current_user, session_id, consent_id):
+        return _confirm_real_call(session_id, consent_id, _real_call_body(), _actor(current_user, current_tenant_id))
+
+
+@console_ns.route("/dify-builder/sessions/<string:session_id>/real-call-consents/<string:consent_id>/execute")
+class DifyBuilderRealCallConsentExecuteApi(Resource):
+    @console_ns.expect(console_ns.models[DifyBuilderExecuteRealCallPayload.__name__])
+    @console_ns.response(
+        202,
+        "Current receipt of the reserved real call",
+        console_ns.models[DifyBuilderRealCallConsentResponse.__name__],
+    )
+    @console_ns.response(400, "Invalid request", console_ns.models[DifyBuilderErrorResponse.__name__])
+    @console_ns.response(403, "Access refused", console_ns.models[DifyBuilderRealCallForbiddenResponse.__name__])
+    @console_ns.response(404, "Consent not found", console_ns.models[DifyBuilderErrorResponse.__name__])
+    @console_ns.response(409, "Real call refused", console_ns.models[DifyBuilderRealCallRefusalResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @with_current_user
+    @with_current_tenant_id
+    @dify_builder_required
+    def post(self, current_tenant_id, current_user, session_id, consent_id):
+        return _execute_real_call(session_id, consent_id, _real_call_body(), _actor(current_user, current_tenant_id))
 
 
 @console_ns.route("/dify-builder/agent/ping")

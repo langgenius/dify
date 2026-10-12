@@ -118,6 +118,124 @@ export type DifyBuilderSubmitMessagePayload = {
   text: string
 }
 
+export type DifyBuilderPrepareRealCallPayload = {
+  at_version: number
+  base_app_revision: string
+  credential_id: string
+  idempotency_key: string
+  node_id: string
+  test_input_id: string
+}
+
+export type DifyBuilderRealCallConsentResponse = {
+  at_version: number
+  business_claimed: boolean
+  can_retry: boolean
+  command_id: string | null
+  consent_id: string
+  disclosure: DifyBuilderRealCallDisclosureResponse
+  execution_request_id: string | null
+  native_node_execution_id: string | null
+  native_run_id: string | null
+  reason_code: string | null
+  refresh_claimed: boolean
+  result: 'receipt'
+  scope_digest: string
+  state:
+    | 'claimed'
+    | 'completed'
+    | 'confirmed'
+    | 'declined'
+    | 'expired'
+    | 'failed'
+    | 'invalidated'
+    | 'prepared'
+    | 'unknown'
+}
+
+export type DifyBuilderRealCallForbiddenResponse =
+  | ({
+      code: 'needs_permission'
+    } & DifyBuilderRealCallPermissionRefusalResponse)
+  | ({
+      code: 'feature_unavailable'
+    } & DifyBuilderFeatureUnavailableResponse)
+  | ({
+      code: 'forbidden'
+    } & DifyBuilderConsoleForbiddenResponse)
+
+export type DifyBuilderRealCallRefusalResponse = {
+  code:
+    | 'conflict'
+    | 'needs_permission'
+    | 'needs_setup'
+    | 'unavailable_metadata'
+    | 'unsupported_action'
+  reason_code:
+    | 'command_lineage_changed'
+    | 'consent_already_claimed'
+    | 'consent_decision_conflict'
+    | 'consent_expired'
+    | 'consent_invalidated'
+    | 'consent_not_confirmed'
+    | 'consent_not_prepared'
+    | 'consent_scope_changed'
+    | 'consent_scope_mismatch'
+    | 'credential_binding_mismatch'
+    | 'credential_policy_refused'
+    | 'credential_provider_mismatch'
+    | 'credential_reference_unavailable'
+    | 'credential_required'
+    | 'execution_already_launched'
+    | 'idempotency_conflict'
+    | 'installed_tool_unavailable'
+    | 'invalid_graph_metadata'
+    | 'invalid_node_configuration'
+    | 'needs_setup'
+    | 'real_call_unavailable'
+    | 'session_busy'
+    | 'session_conflict'
+    | 'session_state_unavailable'
+    | 'stale_app_revision'
+    | 'stale_consent_version'
+    | 'stale_execution_revision'
+    | 'stale_session_version'
+    | 'test_input_binding_mismatch'
+    | 'unsafe_message_id'
+    | 'unsupported_action'
+    | 'unsupported_default_output'
+    | 'unsupported_external_tracing'
+    | 'unsupported_features'
+    | 'unsupported_graph'
+    | 'unsupported_input_value'
+    | 'unsupported_node_configuration'
+    | 'unsupported_node_implementation'
+    | 'unsupported_node_retry'
+    | 'unsupported_selector'
+    | 'unsupported_session_state'
+    | 'unsupported_start_input'
+    | 'unsupported_test_input'
+    | 'unsupported_tool_configuration'
+    | 'unsupported_tool_node'
+    | 'unsupported_tool_parameters'
+    | 'unsupported_variables'
+    | 'unsupported_workflow'
+  result: 'refusal'
+}
+
+export type DifyBuilderConfirmRealCallPayload = {
+  at_version: number
+  decision: 'confirm' | 'decline'
+  idempotency_key: string
+  scope_digest: string
+}
+
+export type DifyBuilderExecuteRealCallPayload = {
+  at_version: number
+  idempotency_key: string
+  scope_digest: string
+}
+
 export type DifyBuilderCreateBuildSessionPayload = {
   app_id: string
   derive_app_name?: boolean
@@ -336,6 +454,49 @@ export type DifyBuilderTestResultConversationItemResponse = {
   kind: 'test_result'
   payload: TestResultCard
   seq: number
+}
+
+export type DifyBuilderRealCallDisclosureResponse = {
+  action: 'get_message'
+  automatic_replay: false
+  credential_alias: string
+  credential_id: string
+  credential_type: string
+  data_description: 'gmail_message_headers_snippet_and_selected_body_or_attachment_metadata'
+  expires_at: string
+  identity_basis: 'workspace_credential'
+  include_attachments: boolean
+  include_body: boolean
+  message_id: string
+  monetary_estimate: 'unknown'
+  native_attempt_limit: 1
+  oauth_refresh: 'if_needed'
+  oauth_refresh_method: 'POST'
+  oauth_refresh_url: 'https://oauth2.googleapis.com/token'
+  output_retention: 'native_run_retention'
+  prior_uncertain_consent_id?: string | null
+  quota_usage: 'possible'
+  refresh_limit: 1
+  remote_account_status: 'unknown'
+  request_method: 'GET'
+  request_url: string
+  response_format: 'full'
+}
+
+export type DifyBuilderRealCallPermissionRefusalResponse = {
+  code: 'needs_permission'
+  reason_code: 'execution_permission_denied'
+  result: 'refusal'
+}
+
+export type DifyBuilderFeatureUnavailableResponse = {
+  code: 'feature_unavailable'
+}
+
+export type DifyBuilderConsoleForbiddenResponse = {
+  code: 'forbidden'
+  message: string
+  status: 403
 }
 
 export type DifyBuilderChecklistErrorPayload = {
@@ -623,10 +784,13 @@ export type ResourceSelectCard = {
 }
 
 export type TestResultCard = {
+  action_reason_code?: string | null
+  action_state?: 'completed' | 'failed' | 'unknown' | null
   blocked_node_ids?: Array<string>
+  consent_id?: string | null
   dify_run_id?: string
   executed_node_ids?: Array<string>
-  execution_mode?: 'mock' | 'restricted' | null
+  execution_mode?: 'confirmed_tool' | 'mock' | 'restricted' | null
   failure_reason?: string | null
   outcome?:
     | 'execution_failed'
@@ -634,8 +798,10 @@ export type TestResultCard = {
     | 'execution_unknown'
     | 'required_output_unresolved'
     | null
+  policy_version?: 'builder-confirmed-gmail-read-v1' | 'builder-restricted-v1' | null
   review_note?: string | null
   safety_outcome?:
+    | 'confirmed_tool_completed'
     | 'execution_blocked'
     | 'execution_evidence_unknown'
     | 'native_failed'
@@ -1489,6 +1655,112 @@ export type PostDifyBuilderSessionsBySessionIdMessagesResponses = {
 
 export type PostDifyBuilderSessionsBySessionIdMessagesResponse =
   PostDifyBuilderSessionsBySessionIdMessagesResponses[keyof PostDifyBuilderSessionsBySessionIdMessagesResponses]
+
+export type PostDifyBuilderSessionsBySessionIdRealCallConsentsData = {
+  body: DifyBuilderPrepareRealCallPayload
+  path: {
+    session_id: string
+  }
+  query?: never
+  url: '/dify-builder/sessions/{session_id}/real-call-consents'
+}
+
+export type PostDifyBuilderSessionsBySessionIdRealCallConsentsErrors = {
+  400: DifyBuilderErrorResponse
+  403: DifyBuilderRealCallForbiddenResponse
+  404: DifyBuilderErrorResponse
+  409: DifyBuilderRealCallRefusalResponse
+}
+
+export type PostDifyBuilderSessionsBySessionIdRealCallConsentsError =
+  PostDifyBuilderSessionsBySessionIdRealCallConsentsErrors[keyof PostDifyBuilderSessionsBySessionIdRealCallConsentsErrors]
+
+export type PostDifyBuilderSessionsBySessionIdRealCallConsentsResponses = {
+  201: DifyBuilderRealCallConsentResponse
+}
+
+export type PostDifyBuilderSessionsBySessionIdRealCallConsentsResponse =
+  PostDifyBuilderSessionsBySessionIdRealCallConsentsResponses[keyof PostDifyBuilderSessionsBySessionIdRealCallConsentsResponses]
+
+export type GetDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdData = {
+  body?: never
+  path: {
+    consent_id: string
+    session_id: string
+  }
+  query?: never
+  url: '/dify-builder/sessions/{session_id}/real-call-consents/{consent_id}'
+}
+
+export type GetDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdErrors = {
+  403: DifyBuilderRealCallForbiddenResponse
+  404: DifyBuilderErrorResponse
+  409: DifyBuilderRealCallRefusalResponse
+}
+
+export type GetDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdError =
+  GetDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdErrors[keyof GetDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdErrors]
+
+export type GetDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdResponses = {
+  200: DifyBuilderRealCallConsentResponse
+}
+
+export type GetDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdResponse =
+  GetDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdResponses[keyof GetDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdResponses]
+
+export type PostDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdConfirmData = {
+  body: DifyBuilderConfirmRealCallPayload
+  path: {
+    consent_id: string
+    session_id: string
+  }
+  query?: never
+  url: '/dify-builder/sessions/{session_id}/real-call-consents/{consent_id}/confirm'
+}
+
+export type PostDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdConfirmErrors = {
+  400: DifyBuilderErrorResponse
+  403: DifyBuilderRealCallForbiddenResponse
+  404: DifyBuilderErrorResponse
+  409: DifyBuilderRealCallRefusalResponse
+}
+
+export type PostDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdConfirmError =
+  PostDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdConfirmErrors[keyof PostDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdConfirmErrors]
+
+export type PostDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdConfirmResponses = {
+  200: DifyBuilderRealCallConsentResponse
+}
+
+export type PostDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdConfirmResponse =
+  PostDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdConfirmResponses[keyof PostDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdConfirmResponses]
+
+export type PostDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdExecuteData = {
+  body: DifyBuilderExecuteRealCallPayload
+  path: {
+    consent_id: string
+    session_id: string
+  }
+  query?: never
+  url: '/dify-builder/sessions/{session_id}/real-call-consents/{consent_id}/execute'
+}
+
+export type PostDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdExecuteErrors = {
+  400: DifyBuilderErrorResponse
+  403: DifyBuilderRealCallForbiddenResponse
+  404: DifyBuilderErrorResponse
+  409: DifyBuilderRealCallRefusalResponse
+}
+
+export type PostDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdExecuteError =
+  PostDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdExecuteErrors[keyof PostDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdExecuteErrors]
+
+export type PostDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdExecuteResponses = {
+  202: DifyBuilderRealCallConsentResponse
+}
+
+export type PostDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdExecuteResponse =
+  PostDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdExecuteResponses[keyof PostDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdExecuteResponses]
 
 export type GetDifyBuilderSessionsBySessionIdStreamData = {
   body?: never
