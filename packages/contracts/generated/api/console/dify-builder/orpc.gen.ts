@@ -7,6 +7,8 @@ import {
   zGetDifyBuilderSessionsBySessionIdConversationQuery,
   zGetDifyBuilderSessionsBySessionIdConversationResponse,
   zGetDifyBuilderSessionsBySessionIdPath,
+  zGetDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdPath,
+  zGetDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdResponse,
   zGetDifyBuilderSessionsBySessionIdResponse,
   zGetDifyBuilderSessionsBySessionIdStreamPath,
   zGetDifyBuilderSessionsBySessionIdStreamResponse,
@@ -18,6 +20,15 @@ import {
   zPostDifyBuilderSessionsBySessionIdMessagesBody,
   zPostDifyBuilderSessionsBySessionIdMessagesPath,
   zPostDifyBuilderSessionsBySessionIdMessagesResponse,
+  zPostDifyBuilderSessionsBySessionIdRealCallConsentsBody,
+  zPostDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdConfirmBody,
+  zPostDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdConfirmPath,
+  zPostDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdConfirmResponse,
+  zPostDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdExecuteBody,
+  zPostDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdExecutePath,
+  zPostDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdExecuteResponse,
+  zPostDifyBuilderSessionsBySessionIdRealCallConsentsPath,
+  zPostDifyBuilderSessionsBySessionIdRealCallConsentsResponse,
   zPostDifyBuilderSessionsResponse,
 } from './zod.gen.ts'
 
@@ -99,7 +110,87 @@ export const messages = {
   post: post3,
 }
 
+export const post4 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdConfirm',
+    path: '/dify-builder/sessions/{session_id}/real-call-consents/{consent_id}/confirm',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdConfirmBody,
+      params: zPostDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdConfirmPath,
+    }),
+  )
+  .output(zPostDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdConfirmResponse)
+
+export const confirm = {
+  post: post4,
+}
+
+export const post5 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdExecute',
+    path: '/dify-builder/sessions/{session_id}/real-call-consents/{consent_id}/execute',
+    successStatus: 202,
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdExecuteBody,
+      params: zPostDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdExecutePath,
+    }),
+  )
+  .output(zPostDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdExecuteResponse)
+
+export const execute = {
+  post: post5,
+}
+
 export const get2 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getDifyBuilderSessionsBySessionIdRealCallConsentsByConsentId',
+    path: '/dify-builder/sessions/{session_id}/real-call-consents/{consent_id}',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdPath }))
+  .output(zGetDifyBuilderSessionsBySessionIdRealCallConsentsByConsentIdResponse)
+
+export const byConsentId = {
+  get: get2,
+  confirm,
+  execute,
+}
+
+export const post6 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postDifyBuilderSessionsBySessionIdRealCallConsents',
+    path: '/dify-builder/sessions/{session_id}/real-call-consents',
+    successStatus: 201,
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostDifyBuilderSessionsBySessionIdRealCallConsentsBody,
+      params: zPostDifyBuilderSessionsBySessionIdRealCallConsentsPath,
+    }),
+  )
+  .output(zPostDifyBuilderSessionsBySessionIdRealCallConsentsResponse)
+
+export const realCallConsents = {
+  post: post6,
+  byConsentId,
+}
+
+export const get3 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -111,10 +202,10 @@ export const get2 = oc
   .output(eventIterator(zGetDifyBuilderSessionsBySessionIdStreamResponse))
 
 export const stream = {
-  get: get2,
+  get: get3,
 }
 
-export const get3 = oc
+export const get4 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -126,14 +217,15 @@ export const get3 = oc
   .output(zGetDifyBuilderSessionsBySessionIdResponse)
 
 export const bySessionId = {
-  get: get3,
+  get: get4,
   actions,
   conversation,
   messages,
+  realCallConsents,
   stream,
 }
 
-export const post4 = oc
+export const post7 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -145,7 +237,7 @@ export const post4 = oc
   .output(eventIterator(zPostDifyBuilderSessionsResponse))
 
 export const sessions = {
-  post: post4,
+  post: post7,
   bySessionId,
 }
 

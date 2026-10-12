@@ -6,6 +6,8 @@ controller module so it is unit-testable without the Flask request stack.
 
 import dataclasses
 import json
+import logging
+import re
 import time
 from collections.abc import Generator, Iterator, Sequence
 from typing import Any
@@ -18,6 +20,7 @@ from werkzeug.exceptions import Forbidden
 from configs import dify_config
 from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission, enforce_rbac_checks
 from core.dify_builder.errors import BadRequestError, BusyError, ConflictError, ModelUnavailableError, NotFoundError
+from core.dify_builder.execution_policy import BuilderExecutionPolicyError
 from core.dify_builder.models import Action, Actor, ConversationItem
 from extensions.ext_database import db
 from fields.workflow_stream_fields import WorkflowStreamPayload
@@ -25,17 +28,23 @@ from libs.broadcast_channel.exc import SubscriptionClosedError
 from models import App, TenantAccountJoin, TenantAccountRole
 from services.dify_builder import app_naming, progress_bus, session_lock
 from services.dify_builder.dify_port import WorkflowServiceDifyPort
+from services.dify_builder.real_call_consent_service import BuilderRealCallConsentService
 from services.dify_builder.repository import SqlDifyBuilderRepository
 from services.dify_builder.revision import executable_graph_revision
 from services.dify_builder.service import AppAccess, DifyBuilderService, SessionView
 from tasks.dify_builder_advance_task import advance_session
 
 __all__ = [
+    "REAL_CALL_REFUSAL_REASONS",
+    "build_real_call_consent_service",
     "build_service",
     "dify_builder_error_response",
+    "real_call_error_response",
     "session_view_to_dict",
     "stream_advance_frames",
 ]
+
+logger = logging.getLogger(__name__)
 
 _HEARTBEAT_SECONDS = 15
 _MAX_STREAM_SECONDS = dify_config.DIFY_BUILDER_MAX_ADVANCE_SECONDS + _HEARTBEAT_SECONDS
@@ -103,6 +112,11 @@ def _get_app_name(app_id: str, actor: Actor) -> str:
     return app_naming.current_app_name(app_id=app_id, tenant_id=actor.tenant_id)
 
 
+def build_real_call_consent_service() -> BuilderRealCallConsentService:
+    """The consent owner for prepare/confirm/status and the confirmed dispatch coordinator."""
+    return BuilderRealCallConsentService(sessionmaker(bind=db.engine, expire_on_commit=False))
+
+
 def build_service() -> DifyBuilderService:
     repo = SqlDifyBuilderRepository(sessionmaker(bind=db.engine, expire_on_commit=False))
     return DifyBuilderService(
@@ -115,6 +129,7 @@ def build_service() -> DifyBuilderService:
         stamp_http_fixtures_fn=WorkflowServiceDifyPort().stamp_http_fixtures,
         get_verification_identity_fn=_get_verification_identity,
         get_app_name_fn=_get_app_name,
+        real_call_consent=build_real_call_consent_service(),
     )
 
 
@@ -197,6 +212,121 @@ def dify_builder_error_response(exc: Exception) -> tuple[dict, int] | None:
     if isinstance(exc, BusyError):
         return {"code": "session_busy"}, 409
     return None
+
+
+# Public refusal category of each consent/dispatch reason code. Only these
+# fixed codes are disclosed; any other refusal collapses to one fixed answer.
+_REAL_CALL_REFUSAL_CODES: dict[str, str] = {
+    **dict.fromkeys(
+        (
+            "needs_setup",
+            "credential_required",
+            "credential_binding_mismatch",
+            "credential_provider_mismatch",
+            "unsupported_test_input",
+        ),
+        "needs_setup",
+    ),
+    # The same answer for a missing or invisible credential: nothing foreign is disclosed.
+    **dict.fromkeys(("credential_reference_unavailable", "credential_policy_refused"), "needs_permission"),
+    **dict.fromkeys(
+        (
+            "unsupported_action",
+            "unsupported_tool_node",
+            "unsupported_tool_parameters",
+            "unsupported_tool_configuration",
+            "unsafe_message_id",
+            "unsupported_session_state",
+            "unsupported_graph",
+            "unsupported_workflow",
+            "unsupported_node_retry",
+            "unsupported_default_output",
+            "unsupported_selector",
+            "unsupported_node_implementation",
+            "unsupported_node_configuration",
+            "invalid_node_configuration",
+            "unsupported_start_input",
+            "unsupported_input_value",
+            "unsupported_features",
+            "unsupported_variables",
+            "unsupported_external_tracing",
+        ),
+        "unsupported_action",
+    ),
+    **dict.fromkeys(
+        ("installed_tool_unavailable", "invalid_graph_metadata", "session_state_unavailable"),
+        "unavailable_metadata",
+    ),
+    **dict.fromkeys(
+        (
+            "stale_session_version",
+            "stale_app_revision",
+            "stale_consent_version",
+            "stale_execution_revision",
+            "test_input_binding_mismatch",
+            "consent_scope_mismatch",
+            "consent_scope_changed",
+            "consent_invalidated",
+            "consent_expired",
+            "consent_not_prepared",
+            "consent_not_confirmed",
+            "consent_already_claimed",
+            "consent_decision_conflict",
+            "idempotency_conflict",
+            "execution_already_launched",
+            "command_lineage_changed",
+        ),
+        "conflict",
+    ),
+}
+# Missing and cross-owner sessions/consents/inputs are indistinguishable.
+_REAL_CALL_NOT_FOUND = frozenset({"consent_not_found", "execution_owner_mismatch"})
+_REAL_CALL_BAD_REQUEST = frozenset(
+    {"invalid_version", "invalid_scope_digest", "invalid_idempotency_key", "invalid_decision"}
+)
+# Raised only after ownership is established, so a 403 reveals nothing foreign.
+_REAL_CALL_PERMISSION_DENIED = "execution_permission_denied"
+_REAL_CALL_UNAVAILABLE = "real_call_unavailable"
+_REASON_CODE = re.compile(r"[a-z][a-z0-9_]{0,127}\Z")
+# Every reason a 409 refusal can carry; the 403 permission refusal has its own fixed reason.
+REAL_CALL_REFUSAL_REASONS = frozenset(
+    {*_REAL_CALL_REFUSAL_CODES, _REAL_CALL_UNAVAILABLE, "session_busy", "session_conflict"}
+)
+
+
+def _real_call_refusal(code: str, reason_code: str) -> dict[str, str]:
+    return {"result": "refusal", "code": code, "reason_code": reason_code}
+
+
+def real_call_error_response(exc: Exception) -> tuple[dict, int] | None:
+    """Map a consent or confirmed-dispatch failure to a fixed public answer.
+
+    Never echoes exception text: only allowlisted reason codes are disclosed.
+    Returns ``None`` for unexpected failures, which the caller re-raises.
+    """
+    if isinstance(exc, BuilderExecutionPolicyError):
+        reason = exc.reason_code
+        if reason in _REAL_CALL_NOT_FOUND:
+            return {"code": "not_found"}, 404
+        if reason in _REAL_CALL_BAD_REQUEST:
+            return {"code": "bad_request"}, 400
+        if reason == _REAL_CALL_PERMISSION_DENIED:
+            return _real_call_refusal("needs_permission", reason), 403
+        code = _REAL_CALL_REFUSAL_CODES.get(reason)
+        if code is None:
+            logger.warning(
+                "dify_builder real call refusal without a public code (reason=%s)",
+                reason if _REASON_CODE.fullmatch(reason) else "invalid",
+            )
+            return _real_call_refusal("unavailable_metadata", _REAL_CALL_UNAVAILABLE), 409
+        return _real_call_refusal(code, reason), 409
+    if isinstance(exc, Forbidden):
+        return _real_call_refusal("needs_permission", _REAL_CALL_PERMISSION_DENIED), 403
+    if isinstance(exc, BusyError):
+        return _real_call_refusal("conflict", "session_busy"), 409
+    if isinstance(exc, ConflictError):
+        return _real_call_refusal("conflict", "session_conflict"), 409
+    return dify_builder_error_response(exc)
 
 
 def _event_frame(event: str, data: object) -> str:

@@ -36,6 +36,10 @@ def test_dify_builder_resource_classes_exist():
         "DifyBuilderSessionStreamApi",
         "DifyBuilderActionsApi",
         "DifyBuilderMessagesApi",
+        "DifyBuilderRealCallConsentsApi",
+        "DifyBuilderRealCallConsentApi",
+        "DifyBuilderRealCallConsentConfirmApi",
+        "DifyBuilderRealCallConsentExecuteApi",
     ):
         assert hasattr(mod, name), f"{name} missing from controllers.console.dify_builder"
 
@@ -45,9 +49,10 @@ def test_dify_builder_paths_registered_on_console_ns():
     # ResourceRoute(resource=<Resource class>, urls=(str, ...), route_doc={}, kwargs={}).
     # Verified by inspection: `console_ns.resources[0]` ->
     # ResourceRoute(resource=<class '...AppImportApi'>, urls=('/apps/imports',), ...).
-    # We flatten every route's `urls` tuple and check the six session paths
-    # are present as exact registered URLs (not a substring/joined-string
-    # check, which could false-positive on an unrelated route).
+    # We flatten every route's `urls` tuple and check the session and
+    # real-call consent paths are present as exact registered URLs (not a
+    # substring/joined-string check, which could false-positive on an
+    # unrelated route).
     registered_urls = {url for route in console_ns.resources for url in route.urls}
 
     expected = {
@@ -57,6 +62,10 @@ def test_dify_builder_paths_registered_on_console_ns():
         "/dify-builder/sessions/<string:session_id>/stream",
         "/dify-builder/sessions/<string:session_id>/actions",
         "/dify-builder/sessions/<string:session_id>/messages",
+        "/dify-builder/sessions/<string:session_id>/real-call-consents",
+        "/dify-builder/sessions/<string:session_id>/real-call-consents/<string:consent_id>",
+        "/dify-builder/sessions/<string:session_id>/real-call-consents/<string:consent_id>/confirm",
+        "/dify-builder/sessions/<string:session_id>/real-call-consents/<string:consent_id>/execute",
     }
     missing = expected - registered_urls
     assert not missing, f"dify_builder routes missing from console_ns.resources: {missing}"
