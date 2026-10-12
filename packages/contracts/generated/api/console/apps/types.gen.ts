@@ -2225,7 +2225,6 @@ export type SimpleEndUser = {
 }
 
 export type WorkflowToolNodeExecutionResponse = {
-  app_id: string
   created_at?: number | null
   created_by_account?: SimpleAccountResponse | null
   created_by_end_user?: SimpleEndUser | null
@@ -2250,7 +2249,6 @@ export type WorkflowToolNodeExecutionResponse = {
   retry_index?: number | null
   status?: string | null
   title?: string | null
-  workflow_id: string
 }
 
 export type SandboxFileEntryResponse = {

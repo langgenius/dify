@@ -173,6 +173,7 @@ def test_build_snapshot_events_applies_message_context() -> None:
         message_context=message_context,
         pause_entity=None,
         resumption_context=None,
+        node_executions={},
     )
 
     assert [event["event"] for event in events] == [
@@ -1158,6 +1159,7 @@ def test_build_snapshot_events_preserves_public_form_token(
         pause_entity=pause_entity,
         resumption_context=resumption_context,
         session_maker=sqlite_session_factory,
+        node_executions={},
     )
 
     assert events[-2]["event"] == StreamEvent.HUMAN_INPUT_REQUIRED
@@ -1204,6 +1206,7 @@ def _build_recipient_snapshot_events(
         resumption_context=resumption_context,
         session_maker=session_maker,
         human_input_surface=HumanInputSurface.OPENAPI,
+        node_executions={},
     )
 
 
@@ -1320,6 +1323,7 @@ def test_build_snapshot_events_resolves_pause_reason_select_options(
         pause_entity=pause_entity,
         resumption_context=resumption_context,
         session_maker=sqlite_session_factory,
+        node_executions={},
     )
 
     human_input_event = events[-2]

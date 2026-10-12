@@ -164,6 +164,7 @@ def test_build_snapshot_events_resolves_variable_select_options(db_session_with_
         pause_entity=pause_entity,
         resumption_context=_build_resumption_context(workflow_run_id),
         session_maker=session_maker,
+        node_executions={},
     )
 
     human_input_events = [event for event in events if event.get("event") == "human_input_required"]

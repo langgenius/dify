@@ -63,9 +63,8 @@ class TestWorkflowRunServiceQueries:
     def test_workflow_tool_details_require_the_root_app_run_and_hide_internal_correlation(
         self, service_dependencies: tuple[MagicMock, MagicMock], monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        node_executions, workflow_runs = service_dependencies
+        node_executions, _ = service_dependencies
         service = _service(service_dependencies)
-        workflow_runs.get_workflow_run_by_id.return_value = None
         admitted_run = MagicMock(return_value=None)
         monkeypatch.setattr(service, "get_workflow_run", admitted_run)
         context = _request_context()

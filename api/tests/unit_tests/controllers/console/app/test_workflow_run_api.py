@@ -432,8 +432,6 @@ def test_workflow_tool_children_preserve_source_identity(
         workflow_runs.get_workflow_tool_node_executions.return_value = None
         with pytest.raises(NotFoundError, match="Workflow run not found"):
             handler(api, context, app_model=_app(), run_id="run-1", node_execution_id="parent")
-    assert response["data"][0]["app_id"] == "source-app"
-    assert response["data"][0]["workflow_id"] == "source-workflow"
     assert response["data"][0]["node_execution_id"] == "source-execution"
     assert response["data"][0]["outputs"] == {"answer": "world"}
     if source_access == "granted":

@@ -341,7 +341,7 @@ def _build_snapshot_events(
     resumption_context: WorkflowResumptionContext | None,
     session_maker: sessionmaker[Session] | None = None,
     human_input_surface: HumanInputSurface | None = None,
-    node_executions: Mapping[str, WorkflowNodeExecutionModel] | None = None,
+    node_executions: Mapping[str, WorkflowNodeExecutionModel],
 ) -> list[Mapping[str, Any]]:
     events: list[Mapping[str, Any]] = []
     variable_pool = _load_variable_pool_from_resumption_context(resumption_context)
@@ -359,7 +359,7 @@ def _build_snapshot_events(
         events.append(message_replace)
 
     for snapshot in node_snapshots:
-        execution = node_executions.get(snapshot.execution_id) if node_executions else None
+        execution = node_executions.get(snapshot.execution_id)
         node_started = _build_node_started_event(
             workflow_run_id=workflow_run.id,
             task_id=task_id,
@@ -448,7 +448,7 @@ def _build_node_started_event(
     workflow_run_id: str,
     task_id: str,
     snapshot: WorkflowNodeExecutionSnapshot,
-    execution: WorkflowNodeExecutionModel | None = None,
+    execution: WorkflowNodeExecutionModel | None,
 ) -> dict[str, Any]:
     created_at = int(snapshot.created_at.timestamp()) if snapshot.created_at else 0
     response = NodeStartStreamResponse(
@@ -541,7 +541,10 @@ def _build_human_input_required_events(
         if expiration_time is None:
             continue
 
-        resolved_inputs = resolve_variable_select_input_options(reason.inputs, variable_pool=variable_pool)
+        resolved_inputs = resolve_variable_select_input_options(
+            reason.inputs,
+            variable_pool=variable_pool,
+        )
         disposition = dispositions_by_form_id.get(form_id)
 
         response = HumanInputRequiredResponse(
@@ -583,7 +586,7 @@ def _build_node_finished_event(
     workflow_run_id: str,
     task_id: str,
     snapshot: WorkflowNodeExecutionSnapshot,
-    execution: WorkflowNodeExecutionModel | None = None,
+    execution: WorkflowNodeExecutionModel | None,
 ) -> dict[str, Any]:
     created_at = int(snapshot.created_at.timestamp()) if snapshot.created_at else 0
     finished_at = int(snapshot.finished_at.timestamp()) if snapshot.finished_at else created_at

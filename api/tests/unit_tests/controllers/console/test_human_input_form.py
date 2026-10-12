@@ -409,7 +409,6 @@ def test_workflow_events_snapshot_can_continue_across_pauses(
     include_node_details: bool,
 ) -> None:
     workflow_run = _workflow_run()
-    workflow_run.triggered_from = WorkflowRunTriggeredFrom.APP_RUN
     app_model = _app()
     apply_config_overrides(monkeypatch, RBAC_ENABLED=rbac_enabled)
     check_access = Mock(return_value=has_permission)

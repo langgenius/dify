@@ -2148,7 +2148,6 @@ export const zWorkflowRunNodeExecutionListResponse = z.object({
  * WorkflowToolNodeExecutionResponse
  */
 export const zWorkflowToolNodeExecutionResponse = z.object({
-  app_id: z.string(),
   created_at: z.int().nullish(),
   created_by_account: zSimpleAccountResponse.nullish(),
   created_by_end_user: zSimpleEndUser.nullish(),
@@ -2173,7 +2172,6 @@ export const zWorkflowToolNodeExecutionResponse = z.object({
   retry_index: z.int().nullish(),
   status: z.string().nullish(),
   title: z.string().nullish(),
-  workflow_id: z.string(),
 })
 
 /**
