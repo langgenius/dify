@@ -508,15 +508,18 @@ def test_native_publish_owners_read_declarations_before_writes_or_draft_locks(
     owner,
 ):
     """A real locked/write publication cannot perform external schema I/O."""
+    from importlib import import_module
     from inspect import unwrap
 
     from sqlalchemy import event
 
-    import controllers.console.app.workflow as console_owner
-    import services.dify_builder.dify_port as builder_owner
     from core.dify_builder.models import Actor
     from services.dify_builder.revision import executable_graph_revision, execution_revision
 
+    # Console route registration binds its ``app`` attribute to app.app;
+    # resolve the exact leaf rather than following that package alias.
+    console_owner = import_module("controllers.console.app.workflow")
+    builder_owner = import_module("services.dify_builder.dify_port")
     add_credential(sqlite_session, tenant_id=TENANT_ID, provider=AUTH_PROVIDER, user_id=ACCOUNT_A)
     sqlite_session.add(native_draft.user)
     sqlite_session.commit()
@@ -821,6 +824,7 @@ def test_authorized_native_draft_oauth_refresh_persists_rotated_credentials_and_
     native_draft,
     sqlite_session,
     monkeypatch,
+    request,
 ):
     """Refresh success must survive a fresh SQL read, not just the returned runtime.
 
@@ -828,17 +832,26 @@ def test_authorized_native_draft_oauth_refresh_persists_rotated_credentials_and_
     native ToolManager/OAuth orchestration and ORM commit stay real. Synthetic
     crypto and daemon/Redis boundaries permit one authorized refresh only.
     """
+    from threading import Lock
+
+    import contexts
     import core.tools.tool_manager as runtime_module
     import services.tools.builtin_tools_manage_service as client_module
-    from contexts.wrapper import RecyclableContextVar
     from core.helper import provider_cache
     from core.plugin.entities.plugin_daemon import CredentialType as ToolCredentialType
     from core.plugin.entities.plugin_daemon import PluginOAuthCredentialsResponse
     from core.tools.entities.tool_entities import ToolInvokeFrom, ToolProviderType
     from models.tools import BuiltinToolProvider, ToolOAuthTenantClient
 
-    # A normal fresh native request must not reuse another test's provider schema.
-    RecyclableContextVar.increment_thread_recycles()
+    # Earlier direct native calls can populate the implicit counter-zero cache.
+    # The first recycle increment merely initializes zero; explicitly start a
+    # fresh native request cache, as the existing native fixtures do.
+    def reset_native_provider_cache():
+        contexts.plugin_tool_providers.set({})
+        contexts.plugin_tool_providers_lock.set(Lock())
+
+    reset_native_provider_cache()
+    request.addfinalizer(reset_native_provider_cache)
     declaration = native_draft.tools.daemon.providers_by_tenant[TENANT_ID][0]["declaration"]
     declaration["credentials_schema"] = []
     declaration["oauth_schema"] = {
@@ -851,6 +864,12 @@ def test_authorized_native_draft_oauth_refresh_persists_rotated_credentials_and_
             {"name": "refresh_token", "type": "secret-input"},
         ],
     }
+    controller = ToolManager.get_builtin_provider(AUTH_PROVIDER, TENANT_ID)
+    assert [schema.name for schema in controller.get_credentials_schema_by_type(ToolCredentialType.OAUTH2)] == [
+        "access_token",
+        "refresh_token",
+    ]
+    assert [schema.name for schema in controller.get_oauth_client_schema()] == ["client_id", "client_secret"]
     credential = add_credential(
         sqlite_session,
         tenant_id=TENANT_ID,
