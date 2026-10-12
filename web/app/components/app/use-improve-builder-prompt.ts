@@ -2,7 +2,6 @@ import type { WorkflowInstructionImprovePayload } from '@dify/contracts/api/cons
 import type { Dispatch, SetStateAction } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 
 export const useImproveBuilderPrompt = (
@@ -50,6 +49,14 @@ export const useImproveBuilderPrompt = (
 
   return {
     isPending: mutation.isPending,
+    error: mutation.isError ? t(($) => $['newApp.optimizeFailed'], { ns: 'app' }) : '',
+    notice:
+      mutation.isSuccess && !mutation.data.changed
+        ? t(($) => $['newApp.optimizeNoChange'], { ns: 'app' })
+        : '',
+    resetFeedback: () => {
+      if (!mutation.isPending) mutation.reset()
+    },
     modelStatus,
     isCheckingModel: defaultModelQuery.isFetching || modelsQuery.isFetching,
     retryModelCheck: () => {
@@ -72,11 +79,8 @@ export const useImproveBuilderPrompt = (
               onPromptChange((current) =>
                 current === body.instruction ? result.instruction : current,
               )
-            } else {
-              toast.info(t(($) => $['newApp.optimizeNoChange'], { ns: 'app' }))
             }
           },
-          onError: () => toast.error(t(($) => $['newApp.optimizeFailed'], { ns: 'app' })),
         },
       )
     },
