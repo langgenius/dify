@@ -9873,6 +9873,22 @@ Redirect to a prepared workflow-run archive ZIP file
 | 302 | Redirect to pre-signed archive storage URL | **application/json**: [RedirectResponse](#redirectresponse)<br> |
 | 409 | Download task is not ready |  |
 
+### [DELETE] /workflow-run-archives/{year}/{month}
+Permanently delete this workspace's monthly archive files and archive index
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| month | path |  | Yes | integer |
+| year | path |  | Yes | integer |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 202 | Archive deletion accepted | **application/json**: [WorkflowRunArchiveDeletionTaskResponse](#workflowrunarchivedeletiontaskresponse)<br> |
+
 ### [GET] /workflow/{workflow_run_id}/events
 **Get workflow execution events stream after resume**
 
@@ -26166,6 +26182,21 @@ Enabled routes require at least two exits; drafts may omit conditions.
 | result | string |  | Yes |
 | updated_at | integer |  | Yes |
 
+#### WorkflowRunArchiveDeletionStatus
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| WorkflowRunArchiveDeletionStatus | string |  |  |
+
+#### WorkflowRunArchiveDeletionTaskResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| error | string |  | No |
+| month | integer |  | Yes |
+| status | [WorkflowRunArchiveDeletionStatus](#workflowrunarchivedeletionstatus) |  | Yes |
+| year | integer |  | Yes |
+
 #### WorkflowRunArchiveDownloadPayload
 
 Request body for preparing one monthly workflow-run archive download.
@@ -26215,6 +26246,7 @@ Lifecycle state for an asynchronous archive download request.
 | ---- | ---- | ----------- | -------- |
 | archive_bytes | integer |  | Yes |
 | bundle_count | integer |  | Yes |
+| deletion_status | string, <br>**Available values:** "failed", "pending", "processing" |  | No |
 | download_task | [WorkflowRunArchiveDownloadTaskResponse](#workflowrunarchivedownloadtaskresponse) |  | No |
 | latest_archived_at | dateTime |  | Yes |
 | month | integer |  | Yes |

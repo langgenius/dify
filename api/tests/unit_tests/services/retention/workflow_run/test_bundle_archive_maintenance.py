@@ -381,6 +381,39 @@ def test_bundle_maintenance_locks_the_existing_catalog_row(sqlite_session: Sessi
     WorkflowRunBundleArchiveMaintenance._lock_catalog_entry(sqlite_session, entry)
 
 
+def test_bundle_maintenance_rejects_permanently_deleting_archive(sqlite_session: Session) -> None:
+    entry = _catalog_entry()
+    bundle = _bundle_model(entry)
+    bundle.deletion_status = "failed"
+    sqlite_session.add(bundle)
+    sqlite_session.flush()
+
+    with pytest.raises(ValueError, match="source rows cannot be deleted or restored"):
+        WorkflowRunBundleArchiveMaintenance._lock_catalog_entry(sqlite_session, entry)
+
+
+def test_source_maintenance_candidates_exclude_permanent_deletion_requests(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    entry = _catalog_entry()
+    bundle = _bundle_model(entry)
+    bundle.deletion_status = "pending"
+    with sqlite_session_factory.begin() as session:
+        session.add(bundle)
+    maintenance = WorkflowRunBundleArchiveMaintenance(storage=MagicMock(), session_factory=sqlite_session_factory)
+
+    assert (
+        maintenance._list_catalog_entries(
+            tenant_ids=[TENANT_ID],
+            target_year=2025,
+            target_month=3,
+            after_catalog_id=None,
+            limit=10,
+        )
+        == []
+    )
+
+
 def test_failure_and_dry_run_do_not_return_a_persistable_cursor(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
