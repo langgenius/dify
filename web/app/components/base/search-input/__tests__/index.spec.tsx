@@ -11,6 +11,7 @@ describe('SearchInput', () => {
       expect(input).toBeInTheDocument()
       expect(input).toHaveValue('')
       expect(input).toHaveAttribute('name', 'query')
+      expect(input).toHaveAttribute('type', 'text')
       expect(input).toHaveAttribute('autocomplete', 'off')
     })
 
@@ -58,7 +59,7 @@ describe('SearchInput', () => {
     })
 
     it('focuses the searchbox when autoFocus is enabled', () => {
-      // oxlint-disable-next-line jsx-a11y/no-autofocus
+      // oxlint-disable-next-line jsx-a11y/no-autofocus -- The case exercises the autoFocus prop itself.
       render(<SearchInput value="" onValueChange={() => {}} autoFocus />)
       expect(screen.getByRole('searchbox', { name: 'common.operation.search' })).toHaveFocus()
     })
@@ -69,6 +70,7 @@ describe('SearchInput', () => {
 
       const clearButton = screen.getByLabelText('common.operation.clear')
       expect(clearButton).toBeInTheDocument()
+      expect(clearButton).toHaveAttribute('tabindex', '-1')
     })
 
     it('keeps a disabled searchbox inert and exposes its description', () => {
@@ -198,6 +200,90 @@ describe('SearchInput', () => {
       const searchbox = screen.getByRole('searchbox', { name: 'common.operation.search' })
       expect(searchbox).toHaveValue('')
       expect(searchbox).toHaveFocus()
+    })
+
+    it('keeps focus in the searchbox while the clear button is pressed', async () => {
+      const user = userEvent.setup()
+
+      function ControlledSearchInput() {
+        const [value, setValue] = useState('has value')
+
+        return <SearchInput value={value} onValueChange={setValue} />
+      }
+
+      render(<ControlledSearchInput />)
+      const searchbox = screen.getByRole('searchbox', { name: 'common.operation.search' })
+      const onBlur = vi.fn()
+      searchbox.addEventListener('blur', onBlur)
+      searchbox.focus()
+
+      await user.pointer({
+        keys: '[MouseLeft>]',
+        target: screen.getByLabelText('common.operation.clear'),
+      })
+      expect(searchbox).toHaveFocus()
+
+      await user.pointer({ keys: '[/MouseLeft]' })
+      expect(searchbox).toHaveValue('')
+      expect(searchbox).toHaveFocus()
+      expect(onBlur).not.toHaveBeenCalled()
+    })
+
+    it('clears on Escape and keeps the key from the owning dialog while it has a value', async () => {
+      const user = userEvent.setup()
+      // Base UI dismissal listens for Escape on the document, so a swallowed key never reaches it.
+      const onDocumentKeyDown = vi.fn()
+      document.addEventListener('keydown', onDocumentKeyDown)
+
+      function ControlledSearchInput() {
+        const [value, setValue] = useState('has value')
+
+        return <SearchInput value={value} onValueChange={setValue} />
+      }
+
+      try {
+        render(<ControlledSearchInput />)
+        const searchbox = screen.getByRole('searchbox', { name: 'common.operation.search' })
+        searchbox.focus()
+
+        await user.keyboard('{Escape}')
+
+        expect(searchbox).toHaveValue('')
+        expect(searchbox).toHaveFocus()
+        expect(onDocumentKeyDown).not.toHaveBeenCalled()
+      } finally {
+        document.removeEventListener('keydown', onDocumentKeyDown)
+      }
+    })
+
+    it('lets Escape reach the owning dialog when the searchbox is empty', async () => {
+      const user = userEvent.setup()
+      const onDocumentKeyDown = vi.fn()
+      document.addEventListener('keydown', onDocumentKeyDown)
+
+      try {
+        render(<SearchInput value="" onValueChange={() => {}} />)
+        screen.getByRole('searchbox', { name: 'common.operation.search' }).focus()
+
+        await user.keyboard('{Escape}')
+
+        expect(onDocumentKeyDown).toHaveBeenCalledOnce()
+      } finally {
+        document.removeEventListener('keydown', onDocumentKeyDown)
+      }
+    })
+
+    it('leaves Escape to the IME during composition', () => {
+      const onValueChange = vi.fn()
+      render(<SearchInput value="initial" onValueChange={onValueChange} />)
+      const input = screen.getByRole('searchbox', { name: 'common.operation.search' })
+
+      fireEvent.compositionStart(input)
+      fireEvent.change(input, { target: { value: 'final' } })
+      fireEvent.keyDown(input, { key: 'Escape' })
+
+      expect(input).toHaveValue('final')
+      expect(onValueChange).not.toHaveBeenCalled()
     })
   })
 })

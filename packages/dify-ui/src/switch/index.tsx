@@ -1,13 +1,12 @@
 'use client'
 
-import type { Switch as BaseSwitchNS } from '@base-ui/react/switch'
 import type { VariantProps } from 'class-variance-authority'
 import type * as React from 'react'
 import { Switch as BaseSwitch } from '@base-ui/react/switch'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
-import { checkedControlFocusClassName } from '../form-control-shared'
-import { resolveClassName } from '../internals/resolve-class-name'
+import { checkedControlFocusClassName } from '../internal/focus'
+import { resolveClassName } from '../internal/resolve-class-name'
 
 const switchRootVariants = cva(
   [
@@ -72,10 +71,9 @@ type UncontrolledSwitchProps = {
 
 type SwitchControlProps = ControlledSwitchProps | UncontrolledSwitchProps
 
-type SwitchProps = Omit<
-  BaseSwitchNS.Root.Props,
-  'checked' | 'children' | 'defaultChecked' | 'size'
-> &
+type SwitchChangeEventReason = BaseSwitch.Root.ChangeEventReason
+type SwitchChangeEventDetails = BaseSwitch.Root.ChangeEventDetails
+type SwitchProps = Omit<BaseSwitch.Root.Props, 'checked' | 'children' | 'defaultChecked' | 'size'> &
   VariantProps<typeof switchRootVariants> &
   SwitchControlProps & {
     loading?: boolean
@@ -131,4 +129,4 @@ function SwitchSkeleton({ size = 'md', className, ...props }: SwitchSkeletonProp
 
 export { Switch, SwitchSkeleton }
 
-export type { SwitchProps, SwitchSkeletonProps }
+export type { SwitchChangeEventDetails, SwitchChangeEventReason, SwitchProps, SwitchSkeletonProps }

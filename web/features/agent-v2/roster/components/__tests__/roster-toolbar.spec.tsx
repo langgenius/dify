@@ -171,6 +171,17 @@ describe('RosterToolbar', () => {
     )
   })
 
+  it.each([
+    ['earliest_created', 'agentRoster.roster.sort.earliestCreated'],
+    ['invalid', 'agentRoster.roster.sort.lastModified'],
+  ])('resolves URL sort %s to its selected label', (sortBy, label) => {
+    renderToolbar({ searchParams: `?sort_by=${sortBy}` })
+
+    expect(
+      screen.getByRole('combobox', { name: 'agentRoster.roster.sort.label' }),
+    ).toHaveTextContent(label)
+  })
+
   it('renders sort options and emits the selected sort strategy', async () => {
     const user = userEvent.setup()
     const { onUrlUpdate } = renderToolbar()
@@ -189,5 +200,7 @@ describe('RosterToolbar', () => {
         queryString: '?sort_by=recently_created',
       }),
     )
+    expect(sortSelect).toHaveAccessibleName('agentRoster.roster.sort.label')
+    expect(sortSelect).toHaveTextContent('agentRoster.roster.sort.recentlyCreated')
   })
 })

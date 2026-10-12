@@ -1,10 +1,10 @@
 import type { DayPickerProps } from '@daypicker/react'
 import * as React from 'react'
 import { Button } from '../../button'
-import { OptionColumn } from '../internal/option-column'
-import { PickerColumns, PickerPanel, PickerPanelHeader } from '../internal/picker-panel'
-import { usePickerNumbers } from '../internal/use-picker-numbers'
 import { CalendarGrid, toCalendarDate } from './calendar-grid'
+import { OptionColumn } from './option-column'
+import { PickerColumns, PickerPanel, PickerPanelHeader } from './picker-panel'
+import { usePickerNumbers } from './use-picker-numbers'
 
 type CalendarPanelLabels = {
   previousMonth: string
