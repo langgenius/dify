@@ -136,23 +136,18 @@ class E2BSDKControlPlane:
         from e2b import AsyncSandbox, NotFoundException, RateLimitException, SandboxNotFoundException
 
         try:
-            return cast(
-                _E2BSandbox,
-                cast(
-                    object,
-                    await AsyncSandbox.create(
-                        template,
-                        timeout=timeout,
-                        metadata=metadata,
-                        network={"allow_public_traffic": False},
-                        lifecycle={
-                            "on_timeout": {"action": "pause", "mode": "full"} if on_timeout == "pause" else "kill",
-                            "auto_resume": False,
-                        },
-                        **self._options(),
-                    ),
-                ),
+            sandbox: object = await AsyncSandbox.create(
+                template,
+                timeout=timeout,
+                metadata=metadata,
+                network={"allow_public_traffic": False},
+                lifecycle={
+                    "on_timeout": {"action": "pause", "mode": "full"} if on_timeout == "pause" else "kill",
+                    "auto_resume": False,
+                },
+                **self._options(),
             )
+            return cast(_E2BSandbox, sandbox)
         except (SandboxNotFoundException, NotFoundException) as exc:
             raise _E2BControlPlaneNotFoundError(str(exc)) from exc
         except RateLimitException as exc:
@@ -162,13 +157,10 @@ class E2BSDKControlPlane:
         from e2b import AsyncSandbox, NotFoundException, SandboxNotFoundException
 
         try:
-            return cast(
-                _E2BSandbox,
-                cast(
-                    object,
-                    await AsyncSandbox.connect(handle, timeout=timeout, on_resume="restore", **self._options()),
-                ),
+            sandbox: object = await AsyncSandbox.connect(
+                handle, timeout=timeout, on_resume="restore", **self._options()
             )
+            return cast(_E2BSandbox, sandbox)
         except (SandboxNotFoundException, NotFoundException) as exc:
             raise _E2BControlPlaneNotFoundError(str(exc)) from exc
 
