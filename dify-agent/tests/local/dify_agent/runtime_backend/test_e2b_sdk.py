@@ -77,7 +77,7 @@ def api_transport(monkeypatch: pytest.MonkeyPatch) -> _ApiTransport:
 
     # Inject below the SDK's retry middleware, preserving get_api_client and
     # every public lifecycle method. Injectable clocks make its budget deterministic.
-    # Source: https://github.com/e2b-dev/E2B/blob/%40e2b/python-sdk%402.52.0/packages/python-sdk/e2b/api/client_async/__init__.py
+    # Source: https://github.com/e2b-dev/E2B/blob/%40e2b/python-sdk%402.55.1/packages/python-sdk/e2b/api/client_async/__init__.py
     monkeypatch.setattr(client_async, "get_transport", lambda *_args, **_kwargs: transport)
     monkeypatch.setattr(client_async, "AsyncRetryableTransport", retry_transport)
     monkeypatch.setenv("E2B_API_URL", "https://api.e2b.test")
@@ -172,6 +172,8 @@ async def test_sdk_lifecycle_preserves_private_traffic_and_memory_resume(api_tra
     # SDK "restore" leaves memory unset, preserving the connect API's memory-restore default.
     assert json.loads(api_transport.requests[1].content) == {"timeout": 120}
     assert json.loads(api_transport.requests[2].content) == {"memory": True}
+    # An omitted snapshot mode preserves the API's full-memory default.
+    assert json.loads(api_transport.requests[3].content) == {}
     assert all(request.headers["X-API-Key"] == _API_KEY for request in api_transport.requests)
     assert api_transport.retry_limits == [3] * 6
     assert api_transport.delays == []
@@ -195,7 +197,7 @@ async def test_sdk_preserves_already_paused_and_absent_resource_results(api_tran
 
 
 @pytest.mark.anyio
-@pytest.mark.parametrize(("status", "headers"), [(502, {}), (503, {}), (429, {"Retry-After": "2"})])
+@pytest.mark.parametrize(("status", "headers"), [(503, {}), (429, {"Retry-After": "2"})])
 async def test_sdk_recovers_transient_create_responses(
     api_transport: _ApiTransport, status: int, headers: dict[str, str]
 ) -> None:
@@ -207,6 +209,73 @@ async def test_sdk_recovers_transient_create_responses(
     assert len(api_transport.requests) == 2
     assert api_transport.requests[0].content == api_transport.requests[1].content
     assert api_transport.delays == ([2.0] if status == 429 else [0.05])
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("operation", ["create", "snapshot"])
+@pytest.mark.parametrize("retry_after", [None, "0", "2"])
+async def test_resource_creates_are_not_replayed_after_bad_gateway(
+    api_transport: _ApiTransport, operation: str, retry_after: str | None
+) -> None:
+    headers = {} if retry_after is None else {"Retry-After": retry_after}
+    error_response = httpx.Response(502, headers=headers, json={"code": 502, "message": "bad gateway"})
+    if operation == "create":
+        api_transport.responses = [error_response]
+        with pytest.raises(BindingCreateError, match="502") as raised:
+            await _binding_backend().create_binding(
+                ExecutionBindingCreateSpec(
+                    tenant_id="tenant-contract",
+                    agent_id="agent-contract",
+                    binding_id="binding-contract",
+                    workspace_id="workspace-contract",
+                    existing_workspace_ref=None,
+                )
+            )
+        expected_path = "/v2/sandboxes"
+    else:
+        api_transport.responses = [_sandbox_response()]
+        sandbox = await _create_sandbox()
+        api_transport.requests.clear()
+        api_transport.retry_limits.clear()
+        api_transport.responses = [error_response]
+        source = E2BRuntimeLease(sandbox=sandbox, data_plane=cast(ShellctlRuntimeLease, object()))
+        with pytest.raises(HomeSnapshotCreateError, match="502") as raised:
+            await E2BHomeSnapshotBackend(control_plane=_control_plane()).create_from_runtime(
+                spec=HomeSnapshotCreateSpec(
+                    tenant_id="tenant-contract", agent_id="agent-contract", home_snapshot_id="home-contract"
+                ),
+                source=source,
+            )
+        expected_path = f"/sandboxes/{_SANDBOX_ID}/snapshots"
+
+    assert isinstance(raised.value.__cause__, SandboxException)
+    assert raised.value.__cause__.status_code == 502
+    assert [(request.method, request.url.path) for request in api_transport.requests] == [("POST", expected_path)]
+    assert api_transport.retry_limits == [3]
+    assert api_transport.delays == []
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("operation", ["connect", "pause"])
+async def test_sdk_replays_idempotent_lifecycle_after_bad_gateway(api_transport: _ApiTransport, operation: str) -> None:
+    error_response = httpx.Response(502, json={"code": 502, "message": "bad gateway"})
+    if operation == "connect":
+        api_transport.responses = [error_response, _sandbox_response()]
+        assert (await _control_plane().connect(_SANDBOX_ID, timeout=120)).sandbox_id == _SANDBOX_ID
+        expected_path = f"/v2/sandboxes/{_SANDBOX_ID}/connect"
+    else:
+        api_transport.responses = [_sandbox_response()]
+        sandbox = await _create_sandbox()
+        api_transport.requests.clear()
+        api_transport.retry_limits.clear()
+        api_transport.responses = [error_response, httpx.Response(204)]
+        assert await sandbox.pause(keep_memory=True)
+        expected_path = f"/sandboxes/{_SANDBOX_ID}/pause"
+
+    assert [(request.method, request.url.path) for request in api_transport.requests] == [("POST", expected_path)] * 2
+    assert api_transport.requests[0].content == api_transport.requests[1].content
+    assert api_transport.retry_limits == [3]
+    assert api_transport.delays == [0.05]
 
 
 @pytest.mark.anyio

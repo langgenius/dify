@@ -116,7 +116,8 @@ class E2BSDKControlPlane:
 
     The SDK owns control-plane retries and replay safety. Backend adapters call
     each SDK operation once so an exhausted retry or timeout cannot start a new
-    request budget. See https://github.com/e2b-dev/E2B/pull/1888.
+    request budget. A 502 is replayed only for safe operations; Retry-After does
+    not override replay safety. See https://github.com/e2b-dev/E2B/pull/1924.
     """
 
     api_key: str
