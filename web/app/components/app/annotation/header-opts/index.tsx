@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { AnnotationItemBasic } from '../type'
+import { AlertDialog } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   DropdownMenu,
@@ -11,17 +12,19 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
+import { useMutation } from '@tanstack/react-query'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { jsonToCSV } from 'react-papaparse'
 import { useLocale } from '#i18n'
 import { LanguagesSupported } from '@/i18n/language'
-import { clearAllAnnotations, fetchExportAnnotationList } from '@/service/annotation'
+import { fetchExportAnnotationList } from '@/service/annotation'
+import { consoleQuery } from '@/service/console'
 import { downloadBlob } from '@/utils/download'
 import AddAnnotationModal from '../add-annotation-modal'
 import BatchAddModal from '../batch-add-annotation-modal'
-import ClearAllAnnotationsConfirmModal from '../clear-all-annotations-confirm-modal'
+import { ClearAllAnnotationsConfirmContent } from '../clear-all-annotations-confirm-modal'
 
 const CSV_HEADER_QA_EN = ['Question', 'Answer']
 const CSV_HEADER_QA_CN = ['问题', '答案']
@@ -150,6 +153,14 @@ const HeaderOptions: FC<Props> = ({ appId, onAdd, onAdded, controlUpdateList }) 
 
   const [showBulkImportModal, setShowBulkImportModal] = useState(false)
   const [showClearConfirm, setShowClearConfirm] = useState(false)
+  const clearAllMutation = useMutation(
+    consoleQuery.apps.byAppId.annotations.delete.mutationOptions({
+      onSuccess: () => {
+        onAdded()
+        setShowClearConfirm(false)
+      },
+    }),
+  )
   const [isOperationsMenuOpen, setIsOperationsMenuOpen] = useState(false)
   const handleShowBulkImportModal = React.useCallback(() => {
     setShowBulkImportModal(true)
@@ -160,17 +171,6 @@ const HeaderOptions: FC<Props> = ({ appId, onAdd, onAdded, controlUpdateList }) 
   const handleExportJsonl = React.useCallback(() => {
     downloadAnnotationJsonl(list, locale)
   }, [list, locale])
-  const handleConfirmed = async () => {
-    try {
-      await clearAllAnnotations(appId)
-      onAdded()
-    } catch (e) {
-      console.error(`failed to clear all annotations, ${e}`)
-    } finally {
-      setShowClearConfirm(false)
-    }
-  }
-
   const [showAddModal, setShowAddModal] = React.useState(false)
 
   return (
@@ -216,13 +216,21 @@ const HeaderOptions: FC<Props> = ({ appId, onAdd, onAdded, controlUpdateList }) 
           onAdded={onAdded}
         />
       )}
-      {showClearConfirm && (
-        <ClearAllAnnotationsConfirmModal
-          isShow={showClearConfirm}
-          onHide={() => setShowClearConfirm(false)}
-          onConfirm={handleConfirmed}
+      <AlertDialog
+        open={showClearConfirm}
+        onOpenChange={(open, details) => {
+          if (!open && clearAllMutation.isPending) {
+            details.cancel()
+            return
+          }
+          setShowClearConfirm(open)
+        }}
+      >
+        <ClearAllAnnotationsConfirmContent
+          isPending={clearAllMutation.isPending}
+          onConfirm={() => clearAllMutation.mutate({ params: { app_id: appId } })}
         />
-      )}
+      </AlertDialog>
     </div>
   )
 }
