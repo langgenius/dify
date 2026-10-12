@@ -39,10 +39,19 @@ function StarterContent({
 }: Omit<ChatInputStarterProps, 'show' | 'onClose' | 'onCreateTemplate'>) {
   const { t } = useTranslation(['app', 'workflow'])
   const [prompt, setPrompt] = useState('')
-  const { improve, isPending, ...modelState } = useImproveBuilderPrompt(mode, setPrompt)
+  const {
+    improve,
+    isPending,
+    error: optimizeError,
+    notice: optimizeNotice,
+    resetFeedback,
+    ...modelState
+  } = useImproveBuilderPrompt(mode, setPrompt)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const titleId = useId()
   const errorId = useId()
+  const errorMessage = error || optimizeError
+  const feedbackMessage = errorMessage || optimizeNotice
   const suggestions = [
     { label: t(($) => $['newApp.starter.invoices'], { ns: 'app' }), icon: 'i-ri-table-line' },
     { label: t(($) => $['newApp.starter.tickets'], { ns: 'app' }), icon: 'i-ri-file-list-2-line' },
@@ -56,7 +65,10 @@ function StarterContent({
           aria-labelledby={titleId}
           onSubmit={(event) => {
             event.preventDefault()
-            if (prompt.trim() && !disabled && !isCreating) onCreate(prompt.trim())
+            if (prompt.trim() && !disabled && !isCreating) {
+              resetFeedback()
+              onCreate(prompt.trim())
+            }
           }}
         >
           <div className="mb-6 flex items-center justify-center gap-2">
@@ -79,11 +91,14 @@ function StarterContent({
                 ref={inputRef}
                 name="prompt"
                 aria-labelledby={titleId}
-                aria-describedby={error ? errorId : undefined}
+                aria-describedby={feedbackMessage ? errorId : undefined}
                 aria-invalid={!!error}
                 placeholder={t(($) => $['newApp.starter.placeholder'], { ns: 'app' })}
                 value={prompt}
-                onChange={(event) => setPrompt(event.currentTarget.value)}
+                onChange={(event) => {
+                  resetFeedback()
+                  setPrompt(event.currentTarget.value)
+                }}
                 disabled={isCreating}
                 rows={2}
                 className="block max-h-60 min-h-15 w-full resize-none bg-transparent px-2 py-1 body-md-regular tracking-[-0.07px] text-text-primary outline-none placeholder:text-text-placeholder"
@@ -101,6 +116,7 @@ function StarterContent({
                     }
                     focusableWhenDisabled={modelState.modelStatus !== 'ready' || isPending}
                     loading={isPending}
+                    aria-describedby={optimizeError || optimizeNotice ? errorId : undefined}
                     onClick={() => improve(prompt)}
                   >
                     <span aria-hidden className="i-ri-sparkling-fill size-3.5" />
@@ -128,9 +144,16 @@ function StarterContent({
               </div>
             </div>
           </div>
-          {error && (
-            <p id={errorId} role="alert" className="mt-2 system-sm-regular text-text-destructive">
-              {error}
+          {feedbackMessage && (
+            <p
+              id={errorId}
+              role={errorMessage ? 'alert' : 'status'}
+              className={cn(
+                'mt-2 system-sm-regular',
+                errorMessage ? 'text-text-destructive' : 'text-text-tertiary',
+              )}
+            >
+              {feedbackMessage}
             </p>
           )}
           <div className="mt-4 flex flex-wrap justify-center gap-2">
@@ -141,6 +164,7 @@ function StarterContent({
                 disabled={isCreating}
                 className="rounded-full"
                 onClick={() => {
+                  resetFeedback()
                   setPrompt(label)
                   inputRef.current?.focus()
                 }}
@@ -155,7 +179,10 @@ function StarterContent({
             disabled={disabled}
             loading={isCreating}
             className="mx-auto mt-9 flex h-10 w-141.25 max-w-full border border-dashed border-components-panel-border-subtle text-text-tertiary"
-            onClick={() => onCreate()}
+            onClick={() => {
+              resetFeedback()
+              onCreate()
+            }}
           >
             <span aria-hidden className="i-ri-add-line size-4 text-text-quaternary" />
             {t(($) => $['newApp.starter.openBlank'], { ns: 'app' })}

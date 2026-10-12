@@ -992,65 +992,17 @@ def handle_diagnose(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) ->
 
 
 def handle_propose(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
-    """(working) Ask the agent for repair intents + risk, stage them, branch
-    on risk. Port of ``handlers_fix.go:97``. Also serves as
-    ``checklist.propose`` (Task 7 reuses this handler, as Go does)."""
-    progress = ProgressReporter.for_session(
-        emit=env.emit_progress,
-        operation_id=env.operation_id,
-        session=s,
-        stage_id=str(s.current_state),
-        steps=[
-            ("fix-prepare-context", "Prepare repair context"),
-            ("fix-propose-repair", "Propose a safe repair"),
-            ("fix-assess-risk", "Assess repair risk"),
-        ],
-    )
-    progress.activate("fix-prepare-context")
-    graph, _ = env.dify.read_graph(s.app_id, turn.actor)
-    progress.activate("fix-propose-repair")
-    intents, risk = env.agent.propose_repair(fc.diagnosis, graph)
-    fc.staged_repair = intents
-    fc.risk = risk
+    """Delegate Fix/checklist proposal staging to the service-layer owner."""
+    from services.dify_builder.repair_gate import handle_propose as propose
 
-    progress.activate("fix-assess-risk")
-    next_state = PcState.FIX_APPLY
-    if risk.level == "high" or risk.has_external_side_effect:
-        next_state = PcState.FIX_AWAIT_APPROVAL
-
-    if intents:
-        proposed_changes = "\n".join(f"- `{intent.op}`" for intent in intents)
-        reply_text = f"Proposed repair (risk: {risk.level}, {len(intents)} change(s)).\n{proposed_changes}" + (
-            f"\nRisk note: {risk.reason}" if risk.reason else ""
-        )
-    else:
-        reply_text = "No automatic fix found — review the diagnosis and edit the canvas manually, or reject."
-        if risk.reason:
-            reply_text += f"\nReason: {risk.reason}"
-    execution = progress.finish()
-    items = append_assistant(
-        env,
-        s,
-        fc,
-        reply_text,
-        execution=execution,
-        turn_id=progress.operation_id,
-    )
-    return StepResult(next=next_state, context=fc, items=items)
+    return propose(env, turn, s, fc)
 
 
 def handle_await_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
-    """(waiting) High-risk gate. Only an explicit ``approve_repair`` advances
-    to ``fix.apply``; any other/absent action kind is a no-op that stays at
-    the gate. Port of ``handlers_fix.go:123``."""
-    kind = action_kind(turn)
-    if kind == "approve_repair":
-        return StepResult(next=PcState.FIX_APPLY, context=fc)
-    if kind == "reject_repair":
-        items = append_card(fc, DecisionItem(text="Rejected the proposed repair"))
-        return StepResult(next=PcState.FIX_AWAIT_DECISION, context=fc, items=items)
-    # unknown / absent action: do not auto-apply a high-risk repair; stay at the gate.
-    return StepResult(next=PcState.FIX_AWAIT_APPROVAL, context=fc)
+    """Delegate repair approval and empty-proposal choices to their owner."""
+    from services.dify_builder.repair_gate import handle_await_approval as await_approval
+
+    return await_approval(env, turn, s, fc)
 
 
 def handle_apply(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:

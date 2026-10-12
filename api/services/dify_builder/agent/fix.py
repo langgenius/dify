@@ -22,6 +22,7 @@ from core.model_manager import ModelInstance
 from graphon.enums import BUILT_IN_NODE_TYPES, BuiltinNodeTypes
 from services.dify_builder import credentials, diagnostic_context, graph_ops, mutation_policy, preflight
 from services.dify_builder.agent import graph_prompt, llm
+from services.dify_builder.repair_gate import NO_REPAIR_REASON
 
 _SEVERITIES = {"low", "medium", "high"}
 
@@ -189,7 +190,7 @@ def diagnose_checklist(
 # What the gate says when Fix has nothing to stage and nothing specific to
 # blame. Every other dead end in this module -- no model, unparseable output, an
 # engine refusal the re-prompt could not answer -- ends here.
-_NO_FIX_REASON = "No safe automatic fix found — please review the diagnosis and edit the canvas manually, or reject."
+_NO_FIX_REASON = NO_REPAIR_REASON
 
 # ...and what it says when there IS something specific. A would-run-wrong
 # verdict is the only refusal that describes the batch STILL ON THE TABLE rather

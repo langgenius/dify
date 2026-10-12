@@ -65,7 +65,7 @@ function FirstEmptyState({
               </h2>
             </div>
             <CreateAppCreationFlow onCreateTemplate={onCreateTemplate}>
-              {({ onSelectType, disabled, loading }) => (
+              {({ onSelectType, disabled, loading, error }) => (
                 <div className="flex w-full flex-col gap-4 rounded-xl p-2">
                   <div className="flex flex-col gap-1">
                     <FirstEmptyActionCard
@@ -185,6 +185,11 @@ function FirstEmptyState({
                       </div>
                     </div>
                   </div>
+                  {error && (
+                    <p role="alert" className="system-sm-regular text-text-destructive">
+                      {error}
+                    </p>
+                  )}
                 </div>
               )}
             </CreateAppCreationFlow>
