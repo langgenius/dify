@@ -148,12 +148,13 @@ def no_live(monkeypatch):
 @pytest.fixture
 def no_jinja_compilation(monkeypatch):
     """Guard restricted Template execution without replacing Jinja lex/parse."""
-    from jinja2 import Environment, Template
+    from jinja2 import Environment, Template, debug
 
     spies = []
     for owner, names in (
         (Environment, ("from_string", "compile", "compile_expression", "compile_templates", "_generate", "_compile")),
         (Template, ("render", "generate", "render_async", "generate_async")),
+        (debug, ("rewrite_traceback_stack", "fake_traceback")),
     ):
         for name in names:
             spy = Mock(side_effect=AssertionError(f"Jinja compilation/rendering reached: {name}"))
