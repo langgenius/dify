@@ -44,12 +44,6 @@ def test_v1_and_v2_public_form_routes_are_distinct() -> None:
             "/api/form/human-input/token/upload-token",
             None,
         ),
-        (
-            "FormAccessRequestApi",
-            "post",
-            "/api/form/human-input/token/access-request",
-            None,
-        ),
     ],
 )
 def test_v2_public_form_routes_are_exposed_as_independent_stubs(

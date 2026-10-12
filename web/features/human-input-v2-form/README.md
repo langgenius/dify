@@ -26,7 +26,7 @@ Route-owned Email OTP session orchestration and generated API transport for the 
 
 ## Backend Dependencies
 
-- The public v2 controllers currently return HTTP 501. These responses show an unavailable state; requests never fall back to mock forms or legacy v1 APIs.
+- The public v2 form-definition, submission, and upload-token controllers still return HTTP 501. The access-request endpoint issues Email OTP challenges. Until form-definition and submission are implemented, the page shows an unavailable state; requests never fall back to mock forms or legacy v1 APIs.
 - Generated aggregate routing collides for `human-input` and `human_input`. The shared client selects the generated hyphenated v2 operations explicitly, and transport tests assert those request paths.
 - File transfer remains unavailable until the backend supports v2 upload authorization. The existing upload controller only resolves legacy forms; do not pass v2 tokens to it.
 - Ensure Human Input v2 mail messages link to `/form-v2/<form_token>`.

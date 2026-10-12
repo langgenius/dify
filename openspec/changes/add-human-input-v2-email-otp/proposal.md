@@ -25,5 +25,5 @@ Public Human Input V2 已定义 `access-request` 和随表单提交的 `otp_code
 ## Impact
 
 - Backend：`api/services/human_input_v2/`、`api/repositories/human_input_v2/`、现有 OTP 验证审计模型及 public access controller。
-- Infrastructure：现有共享 Redis 和部署级 `ext_mail.mail`；不新增 challenge SQL 表、migration、发送队列或预约状态机。
+- Infrastructure：现有共享 Redis 和部署级 `ext_mail.mail`；不新增 challenge SQL 表、challenge migration、发送队列或预约状态机。独立分支纳入已有 Delivery migration 依赖，并补齐现有审计模型对应的数据库表迁移。
 - 后续 Submission 编排负责当前授权检查、表单校验、原子提交、同事务成功审计和 workflow resume。本 change 不修改进行中的 Runtime、IM 卡片、Console／Service API 授权或文件上传。

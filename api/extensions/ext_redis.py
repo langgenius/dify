@@ -46,6 +46,17 @@ class _ScriptRegistrar(Protocol):
     def register_script(self, script: str) -> Callable[..., Any]: ...
 
 
+_INCR_IF_EXISTS_LUA = """
+-- Exactly 1 key and no arguments.
+-- KEYS[1]: Existing integer counter key, including the deployment prefix.
+-- Returns the incremented integer, or nil (Lua false) if the key is missing.
+-- INCR preserves TTL; checking existence atomically avoids recreating an
+-- expired/deleted counter without an expiry.
+if redis.call('EXISTS', KEYS[1]) == 0 then return false end
+return redis.call('INCR', KEYS[1])
+"""
+
+
 class RedisClientWrapper:
     """
     A wrapper class for the Redis client that addresses the issue where the global
@@ -173,6 +184,13 @@ class RedisClientWrapper:
     def hset(self, name: str | bytes, *args: Any, **kwargs: Any) -> Any:
         return self._require_client().hset(_serialize_redis_name_arg(name, self._get_prefix()), *args, **kwargs)
 
+    def incr_if_exists(self, name: str) -> int | None:
+        """Increment an existing integer counter, preserving TTL; return None if absent."""
+        count = self.eval(_INCR_IF_EXISTS_LUA, 1, _serialize_redis_name(name, self._get_prefix()))
+        if count is not None and not isinstance(count, int):
+            raise ValueError("Invalid Redis counter response")
+        return count
+
     def hgetall(self, name: str | bytes) -> Any:
         return self._require_client().hgetall(_serialize_redis_name_arg(name, self._get_prefix()))
 
@@ -218,6 +236,11 @@ class RedisClientWrapper:
 
     def pubsub(self) -> PubSub:
         return self._require_client().pubsub()
+
+    def eval(self, script: str, numkeys: int, *args: str | int) -> Any:
+        # Lua callers supply physical names, matching the historically delegated API.
+        # Redis script responses are dynamically shaped at this SDK boundary.
+        return self._require_client().execute_command("EVAL", script, numkeys, *args)
 
     def pipeline(self, transaction: bool = True, shard_hint: str | None = None) -> Any:
         return self._require_client().pipeline(transaction=transaction, shard_hint=shard_hint)

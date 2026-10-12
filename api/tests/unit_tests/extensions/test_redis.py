@@ -1,5 +1,6 @@
 from collections.abc import Mapping
 from dataclasses import dataclass, field
+from unittest.mock import MagicMock
 
 import pytest
 from redis import RedisError
@@ -279,3 +280,17 @@ class TestRedisClientWrapperKeyPrefix:
         wrapper.get("plain:key")
 
         assert client.calls == [("get", ("plain:key",), {})]
+
+
+@pytest.mark.parametrize(("response", "expected"), [(1, 1), (5, 5), (None, None)])
+def test_counter_helper_preserves_prefix_and_interprets_response(response: int | None, expected: int | None) -> None:
+    from unittest.mock import patch
+
+    client = MagicMock()
+    client.execute_command.return_value = response
+    wrapper = RedisClientWrapper()
+    wrapper.initialize(client)
+    with patch("extensions.ext_redis.dify_config.REDIS_KEY_PREFIX", "counter-tests"):
+        assert wrapper.incr_if_exists("challenge") == expected
+    # Keys passed to EVAL must be physical names.
+    assert client.execute_command.call_args.args[2:] == (1, "counter-tests:challenge")

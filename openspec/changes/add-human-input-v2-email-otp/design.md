@@ -14,6 +14,8 @@ Public API 已约定 `access-request` 返回 challenge token 和两个剩余时�
 
 **Non-Goals:**
 
+- 修改共享邮件组件或第三方 SDK 的日志与超时策略。
+
 - Runtime、IM consumer、卡片状态回写、通用表单校验、文件上传和 workflow resume。
 - 修改 Recipient 身份或 Delivery target，恢复旧 grant／actor 体系。
 - 独立验证 HTTP API、已验证浏览器 session、预约状态机、发送互斥、异步发码队列或通用 OTP 框架。
@@ -38,12 +40,16 @@ Contact 删除后同邮箱重建不恢复旧授权。邮箱变化后旧 Delivery
 
 ### 2. 共享 Redis 与有效期
 
-每条 challenge 使用 Redis Hash，key 为 `hitl:otp:challenge:<delivery_id>:<challenge_token>`，包含两个字段：
+`EmailOtpService` 直接负责授权、发码、challenge 生命周期、Python 验证和审计。RedisClientWrapper.incr_if_exists 只封装标量计数的原子更新，不包含 OTP、身份或次数上限规则。
 
-- `payload`：Pydantic 判别联合序列化的 JSON，Email Based 保存 `type=email`、`email`、`otp`；External Contact 保存 `type=external_contact`、`contact_id`、`email`、`otp`。
-- `failed_attempts`：初始为 0 的整数，仅在验证码错误时递增。
+每条 challenge 使用两个 Redis String key：
 
-Email Based 包含 onetime_email 和 dynamic_email 初始化时解析出的邮箱，验证不重新求值变量。External Contact 保存原身份和发码邮箱，验证仍检查当前 Contact 可用性及邮箱。Delivery ID 由 key 绑定，tenant／form／recipient 从 Delivery 获取，不重复保存。Hash 创建与十分钟 TTL 设置原子完成；有效期及剩余时长由 Redis TTL 管理，不保存独立到期时间。所有 API 节点使用同一 Redis，不使用进程内 challenge 缓存或粘性会话。
+- `hitl:otp:challenge:{<delivery_id>:<challenge_token>}` 保存 Pydantic 判别联合序列化的 JSON；Email Based 保存 `type=email`、`email`、`otp`，External Contact 额外保存 `contact_id`。
+- 在上述 key 后追加 `:failed_attempts` 保存初始为 0 的整数，仅在验证码错误时递增。
+
+大括号是 Redis Cluster hash tag，使这两个 key 位于同一 slot，支持事务创建和一起删除。
+
+Email Based 包含 onetime_email 和 dynamic_email 初始化时解析出的邮箱，验证不重新求值变量。External Contact 保存原身份和发码邮箱，验证仍检查当前 Contact 可用性及邮箱。Delivery ID 由 key 绑定，tenant／form／recipient 从 Delivery 获取，不重复保存。两个 String key 通过同一 Redis 事务执行 SET EX 600 创建；有效期及剩余时长由 Redis TTL 管理，不保存独立到期时间。所有 API 节点使用同一 Redis，不使用进程内 challenge 缓存或粘性会话。
 
 | 参数 | 规则 |
 | --- | --- |
@@ -58,7 +64,7 @@ OTP 到期时间不按 Form／workflow 截断；Submission 独立检查表单和
 
 OTP 以六位字符串明文保存在共享 Redis 的 challenge 记录中，随记录到期删除。Redis 作为可信的短期凭证存储，拥有读取权限即可读取有效期内的验证码。Delivery／邮箱绑定由存储记录及当前授权检查保证。
 
-Challenge token 可直接存 Redis，但 token、OTP 不进入日志、审计或异常诊断。API 边界通过 Pydantic 解析输入，OTP 不转换为整数。
+Challenge token 可直接存 Redis，但 OTP 服务自身不将 token、OTP 写入日志、审计或异常诊断。API 边界通过 Pydantic 解析输入，OTP 不转换为整数。
 
 Redis 不可用时发码和验证返回服务不可用，不降级到本地状态。记录丢失时用户重新发码。不存在独立的 OTP SQL 表或 SENDING／ACTIVE／SUPERSEDED／CONSUMED 状态机；失败次数和 TTL 足以判断 challenge 是否还能使用。
 
@@ -72,7 +78,7 @@ Redis 不可用时发码和验证返回服务不可用，不降级到本地状�
 2. 在 Redis 原子检查该 Delivery 的冷却和滚动发送次数；允许时立即计入一次发送请求。并发请求不能分别通过同一冷却窗口。被拒绝的请求不计数。
 3. 生成独立 token／OTP 并写入带十分钟 TTL 的 challenge；写入失败不发送邮件。
 4. 不持有数据库 Session／事务地调用 `ext_mail.mail`，使用固定验证模板；邮件只包含 OTP 和用途说明，不包含 form token 或 challenge token，不使用 workflow 通知模板或租户 Email Channel。
-5. 邮件调用成功且该 challenge 仍未到期时，返回 token 及当前剩余时长。邮件调用使用有限超时，本流程不自动重试。
+5. 邮件调用成功且该 challenge 仍未到期时，返回 token 及当前剩余时长。邮件调用沿用部署级邮件组件现有的超时策略，本流程不自动重试。
 
 后续 Redis 写入失败、邮件失败、超时或进程中断不退还已扣的发送次数和冷却。邮件调用明确失败或超时时，尽力删除本次 challenge；删除失败由 TTL 清理，错误响应不返回新 token。邮件服务接收不代表最终送达。
 
@@ -85,14 +91,14 @@ Redis 不可用时发码和验证返回服务不可用，不降级到本地状�
 提交编排按以下顺序处理：
 
 1. 完成基本请求解析，定位 Delivery，检查鉴权入口、明显终态和当前邮箱授权。
-2. 在共享 Redis 验证指定 challenge 的 Delivery、邮箱、有效期、失败次数和 OTP。验证及错误次数更新必须原子执行，避免并发猜码突破上限；不刷新 TTL。验证失败时持久化失败审计并拒绝提交。
+2. 读取 Redis challenge，在 Python 中用 Pydantic 解析 payload，检查身份绑定并比较 OTP。读取错误次数，counter 不存在或已达上限时拒绝验证。仅验证码错误时调用 RedisClientWrapper.incr_if_exists，原子递增错误次数；Python 在到限时删除 payload 和 counter，不刷新 TTL。验证失败时持久化失败审计并拒绝提交。
 3. 正确 OTP 返回本次调用内的具体验证结果，包含 Delivery 和邮箱，不含秘密；不删除 challenge，也不重置错误次数。不把该结果作为客户端可复用的凭证。
 4. 校验 inputs／action／文件，再在 Submission 拥有的数据库事务内检查当前授权及 Form／workflow 状态，调用现有原子提交能力，并在同一事务内写入 OTP 验证成功且表单提交成功的审计。当前授权必须仍对应本次验证的 Delivery 和邮箱。
 5. commit 后尽力删除本次使用的 challenge。清理失败不撤销成功提交，也不阻塞 workflow resume；其他 challenge 自然到期，不扫描并删除整个 Delivery 的记录。
 
 正确 OTP 在字段校验失败或数据库回滚后仍可重试，前提是其尚未过期或耗尽错误次数。验证时刻有效的结果可用于完成本次请求；每个新的提交请求重新验证。重发和另一个请求的清理不撤销已经完成的请求内验证，最终由 Form 原子提交决定唯一成功结果。
 
-错误 OTP 只原子增加该条记录的失败次数，与数据库事务无关；前四次可纠正，第五次在同一 Lua 脚本中删除该 challenge key 并返回 stale；后续请求按记录不存在返回 expired。不保存耗尽标记或独立错误次数 key。检查绑定、比较 OTP、递增次数及必要的删除必须在同一脚本中完成，不能仅依赖 HINCRBY 的原子性。错误 token、错误 Delivery 或缺少 proof 不增加其他 challenge 的计数。正确 OTP 不增加失败次数，也不使其他 challenge 失效。
+错误 OTP 只原子递增自己的 counter，与数据库事务无关。Lua 仅检查 counter 是否存在并执行 INCR，既不创建缺失的 key，也不重置已有 TTL。前四次错误可纠正；首次达到五次时 Python 删除这两个 key 并返回 stale。并发中读到已耗尽 counter、递增结果超过五次或遇到 key 消失的请求返回 expired。即使到限删除失败，耗尽的 counter 也会阻止后续正确验证码通过验证。正确 OTP 的有效性以读取到有效 payload 和未耗尽 counter 的时刻为准；并发删除不取消已经读取这些值的匹配请求。身份不匹配或缺少 proof 不递增计数；正确 OTP 不增加或重置计数。
 
 任何 challenge 都不能绕过已提交或过期的 Form。两个请求即使都通过 OTP 验证，最多一个成功提交。Redis 清理与数据库 commit 不组成分布式事务，OTP 不接管 workflow。
 
@@ -121,7 +127,7 @@ Redis 不可用时发码和验证返回服务不可用，不降级到本地状�
 | OTP 验证成功且表单提交成功 | 必须记录成功，与 FormSubmission 在同一数据库事务内提交 |
 | OTP 验证成功但表单提交失败 | 可选；若记录，必须区分验证码已匹配与表单未提交，不得记为 OTP 验证失败或提交成功 |
 
-审计保存当时的 Form、Recipient、验证邮箱、请求 IP 和结果，沿用现有事件字段，不新增独立 challenge 审计 ID，不持久化 form token、challenge token 或 OTP。审计读取不依赖 Redis 记录，challenge 到期或删除不影响已保存的审计。失败次数仍以 Redis 为准，审计写入失败不恢复猜码预算。日志和异常诊断不记录 provider 响应正文。
+审计保存当时的 Form、Recipient、验证邮箱、请求 IP 和结果，沿用现有事件字段，不新增独立 challenge 审计 ID，不持久化 form token、challenge token 或 OTP。审计读取不依赖 Redis 记录，challenge 到期或删除不影响已保存的审计。失败次数仍以 Redis 为准，审计写入失败不恢复猜码预算。OTP 服务自身的日志和异常诊断不记录 provider 响应正文。
 
 ## Risks / Trade-offs
 
@@ -134,3 +140,15 @@ Redis 不可用时发码和验证返回服务不可用，不降级到本地状�
 1. 增加 Redis OTP 存储、部署级邮件模板和 access-request 实现，不新增 challenge 数据库 migration。
 2. 接入 OTP 验证失败审计，提供成功提交事务使用的审计写入能力；后续 Submission change 接入验证、成功审计和提交后清理。本 change 不把尚未接通的 public submit 声称为可用。
 3. 停用入口即可回滚 OTP 功能，Redis 临时数据自然过期。
+
+## Submission 接入契约
+
+`build_email_otp_service()` 构造请求级服务。后续 Submission 在基本请求解析后调用 `verify(form_token, challenge_token=..., otp_code=..., ip_address=...)`，取得仅限本次请求的 `VerifiedEmail`，再校验表单数据。OTP 验证失败由服务单独持久化失败审计；正确验证码不立即消费，也不写成功审计。
+
+Submission 在自己的事务内重新检查当前收件人授权、Delivery 邮箱和 Form／workflow 状态，调用 `FormRepository.submit_form`。只有其返回已接受的 Form 后，才调用 `verified.add_submission_audit(session, ip_address=...)`，并将表单提交与成功审计一起 commit。不要将早先的 `VerifiedEmail` 当成免除事务内授权复核的依据。字段校验失败或事务回滚不调用清理。commit 成功后调用 `cleanup(verified.delivery.id, challenge_token)`；清理失败仅记录不含秘密的警告，保留已提交结果。
+
+邮件通过现有 `ext_mail.mail.send` 接口发送固定内容，沿用邮件组件的日志与超时策略。OTP 服务将 provider 异常转换为安全错误，并仅记录不含秘密的发送失败消息。
+
+验证记录：本地 140 项针对性测试通过。`api/tests/test_containers_integration_tests/human_input_v2/test_email_otp_redis.py` 中的 11 项真实 Redis／迁移后 PostgreSQL 集成测试已在 [CI](https://github.com/QuantumGhost/dify-private/actions/runs/35828213388) 通过，覆盖并发限流／猜码、重发乱序、响应丢失、窗口恢复、TTL，以及提交与成功审计的唯一性。CI 验证源码提交为 `589a0ccb15292594c24fef86a2b36917df440d4d`；本地未启动集成服务。
+
+部署依赖：独立分支纳入现有 Delivery migration（f3c5e7a9b1d2）作为前置提交，并补齐现有 HumanInputAuditEvent 模型的审计表 migration（a8d2f4b6c0e3）。OTP challenge 仍只存 Redis，不新增 challenge 数据库表。CI 的发码、审计和并发提交行为测试使用这些 migration 创建的 schema。
