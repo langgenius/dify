@@ -82,7 +82,8 @@ check_files() {
 # Create timestamped backup of .env file
 # Creates env-backup directory if needed and backs up current .env file
 create_backup() {
-    local timestamp=$(date +"%Y%m%d_%H%M%S")
+    local timestamp
+    timestamp=$(date +"%Y%m%d_%H%M%S")
     local backup_dir="env-backup"
 
     # Create backup directory if it doesn't exist
@@ -103,7 +104,8 @@ detect_differences() {
     log_info "Detecting differences between .env and .env.example..."
 
     # Create secure temporary directory
-    local temp_dir=$(mktemp -d)
+    local temp_dir
+    temp_dir=$(mktemp -d)
     local temp_diff="$temp_dir/env_diff"
 
     # Store diff file path as global variable
@@ -111,10 +113,11 @@ detect_differences() {
     declare -g TEMP_DIR="$temp_dir"
 
     # Initialize difference file
-    > "$temp_diff"
+    : > "$temp_diff"
 
     # Use awk for efficient comparison (much faster for large files)
-    local diff_count=$(awk -F= '
+    local diff_count
+    diff_count=$(awk -F= '
     BEGIN { OFS="\x01" }
     FNR==NR {
         if (!/^[[:space:]]*#/ && !/^[[:space:]]*$/ && /=/) {
@@ -423,8 +426,10 @@ detect_removed_variables() {
 show_statistics() {
     log_info "Synchronization statistics:"
 
-    local total_example=$(grep -c "^[^#]*=" .env.example 2>/dev/null || echo "0")
-    local total_env=$(grep -c "^[^#]*=" .env 2>/dev/null || echo "0")
+    local total_example
+    total_example=$(grep -c "^[^#]*=" .env.example 2>/dev/null || echo "0")
+    local total_env
+    total_env=$(grep -c "^[^#]*=" .env 2>/dev/null || echo "0")
 
     log_info "  .env.example environment variables: $total_example"
     log_info "  .env environment variables: $total_env"
