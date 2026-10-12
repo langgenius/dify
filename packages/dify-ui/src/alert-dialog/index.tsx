@@ -5,12 +5,9 @@ import type { ButtonProps } from '../button'
 import { AlertDialog as BaseAlertDialog } from '@base-ui/react/alert-dialog'
 import { Button } from '../button'
 import { cn } from '../cn'
-import { resolveClassName } from '../internals/resolve-class-name'
-import {
-  modalBackdropClassName,
-  modalPopupAnimationClassName,
-  triggerFocusClassName,
-} from '../overlay-shared'
+import { focusRingClassName } from '../internal/focus'
+import { modalBackdropClassName, modalPopupAnimationClassName } from '../internal/overlay'
+import { resolveClassName } from '../internal/resolve-class-name'
 
 const AlertDialog = BaseAlertDialog.Root
 const AlertDialogTitle = BaseAlertDialog.Title
@@ -31,7 +28,7 @@ function AlertDialogTrigger<Payload = unknown>({
 }: AlertDialogTriggerProps<Payload>) {
   return (
     <BaseAlertDialog.Trigger
-      className={(state) => cn(triggerFocusClassName, resolveClassName(className, state))}
+      className={(state) => cn(focusRingClassName, resolveClassName(className, state))}
       {...props}
     />
   )

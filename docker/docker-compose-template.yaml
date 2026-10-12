@@ -223,6 +223,8 @@ services:
     image: langgenius/dify-api:1.17.1
     environment:
       MODE: api
+      # The bundled Nginx supplies a verified client IP; keep direct API callers trusted.
+      RESPECT_XFORWARD_HEADERS_ENABLED: ${RESPECT_XFORWARD_HEADERS_ENABLED:-true}
       SENTRY_DSN: ${API_SENTRY_DSN:-}
       SENTRY_TRACES_SAMPLE_RATE: ${API_SENTRY_TRACES_SAMPLE_RATE:-1.0}
       SENTRY_PROFILES_SAMPLE_RATE: ${API_SENTRY_PROFILES_SAMPLE_RATE:-1.0}
@@ -273,6 +275,7 @@ services:
       - collaboration
     environment:
       MODE: api
+      RESPECT_XFORWARD_HEADERS_ENABLED: ${RESPECT_XFORWARD_HEADERS_ENABLED:-true}
       SERVER_WORKER_AMOUNT: ${API_WEBSOCKET_WORKER_AMOUNT:-1}
       SERVER_WORKER_CLASS: ${API_WEBSOCKET_WORKER_CLASS:-geventwebsocket.gunicorn.workers.GeventWebSocketWorker}
       SERVER_WORKER_CONNECTIONS: ${API_WEBSOCKET_WORKER_CONNECTIONS:-1000}
