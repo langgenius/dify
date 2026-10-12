@@ -387,12 +387,26 @@ class ToolManager:
                             f"OAuth credential for tool provider {provider_id} could not be refreshed. "
                             "Reauthorize or select another credential."
                         ) from exc
-                    # update the credentials
-                    builtin_provider.encrypted_credentials = json.dumps(
-                        encrypter.encrypt(refreshed_credentials.credentials)
-                    )
-                    builtin_provider.expires_at = refreshed_credentials.expires_at
-                    db.session.commit()
+                    # Encryption stays outside SQL. Draft selection was detached
+                    # by its short native read, so persist through a bounded owner
+                    # that rechecks access and refuses concurrent rotation.
+                    refreshed_encrypted = json.dumps(encrypter.encrypt(refreshed_credentials.credentials))
+                    if draft_selection is not None:
+                        from services.tools.draft_tool_refresh import persist_draft_tool_refresh
+
+                        persist_draft_tool_refresh(
+                            session_maker=sessionmaker(bind=db.engine),
+                            selection=draft_selection,
+                            original_encrypted_credentials=builtin_provider.encrypted_credentials,
+                            original_expires_at=builtin_provider.expires_at,
+                            original_user_id=builtin_provider.user_id,
+                            refreshed_encrypted_credentials=refreshed_encrypted,
+                            refreshed_expires_at=refreshed_credentials.expires_at,
+                        )
+                    else:
+                        builtin_provider.encrypted_credentials = refreshed_encrypted
+                        builtin_provider.expires_at = refreshed_credentials.expires_at
+                        db.session.commit()
                     decrypted_credentials = refreshed_credentials.credentials
                     cache.delete()
 

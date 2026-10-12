@@ -1,5 +1,6 @@
 import logging
 
+from core.helper.tool_parameter_cache import ToolParameterCache, ToolParameterCacheType
 from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.errors import ToolProviderNotFoundError
 from core.tools.tool_manager import ToolManager
@@ -14,6 +15,11 @@ logger = logging.getLogger(__name__)
 
 @app_draft_workflow_was_synced.connect
 def handle(sender, **kwargs):
+    """Invalidate built-in/plugin parameter keys without resolving executable Tools.
+
+    Draft save needs no credentials, schema, decrypt or OAuth merely to delete
+    these existing scoped keys. Other provider kinds retain their native owner.
+    """
     app = sender
     synced_draft_workflow = kwargs.get("synced_draft_workflow")
     if synced_draft_workflow is None:
@@ -24,6 +30,15 @@ def handle(sender, **kwargs):
                 adapted_node_data = adapt_node_config_for_graph(node_data)
                 tool_entity = ToolEntity.model_validate(adapted_node_data["data"])
                 provider_type = ToolProviderType(tool_entity.provider_type.value)
+                if provider_type in (ToolProviderType.BUILT_IN, ToolProviderType.PLUGIN):
+                    ToolParameterCache(
+                        tenant_id=app.tenant_id,
+                        provider=f"{provider_type.value}.{tool_entity.provider_name}",
+                        tool_name=tool_entity.tool_name,
+                        cache_type=ToolParameterCacheType.PARAMETER,
+                        identity_id=f"WORKFLOW.{app.id}.{node_data.get('id')}",
+                    ).delete()
+                    continue
                 tool_runtime = ToolManager.get_tool_runtime(
                     provider_type=provider_type,
                     provider_id=tool_entity.provider_id,
