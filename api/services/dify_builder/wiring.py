@@ -9,7 +9,7 @@ import json
 import logging
 import re
 import time
-from collections.abc import Generator, Iterator, Sequence
+from collections.abc import Generator, Iterator, Mapping, Sequence
 from typing import Any
 
 from pydantic import TypeAdapter, ValidationError
@@ -18,7 +18,14 @@ from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
-from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission, enforce_rbac_checks
+from controllers.common.rbac import (
+    PlainApp,
+    RBACCheck,
+    RBACPermission,
+    RBACResourceScope,
+    ResourceIdentity,
+    enforce_rbac_checks,
+)
 from core.dify_builder.errors import BadRequestError, BusyError, ConflictError, ModelUnavailableError, NotFoundError
 from core.dify_builder.execution_policy import BuilderExecutionPolicyError
 from core.dify_builder.models import Action, Actor, ConversationItem
@@ -32,6 +39,7 @@ from services.dify_builder.real_call_consent_service import BuilderRealCallConse
 from services.dify_builder.repository import SqlDifyBuilderRepository
 from services.dify_builder.revision import executable_graph_revision
 from services.dify_builder.service import AppAccess, DifyBuilderService, SessionView
+from services.rbac_resource_service import RBACResourceService
 from tasks.dify_builder_advance_task import advance_session
 
 __all__ = [
@@ -60,6 +68,33 @@ def _enqueue(session_id: str, action: Action, actor: Actor, token: str) -> None:
     advance_session.delay(session_id, dataclasses.asdict(action), dataclasses.asdict(actor), token)
 
 
+@dataclasses.dataclass(frozen=True)
+class _AppPermissionFacts:
+    """Detached PlainApp locator facts, resolved through the ordinary resource owner.
+
+    The shared evaluator calls ``locate``/``owner_id`` immediately before its
+    external access check. These methods must therefore do no SQL. Bound Agent
+    Apps (including archived bindings) remain ineligible for PlainApp checks,
+    and the evaluator retains its ordinary maintainer shortcut.
+    """
+
+    tenant_id: str
+    app_id: str
+    is_plain_app: bool
+    maintainer_id: str | None
+    scope = RBACResourceScope.APP
+
+    def locate(self, tenant_id: str, path_args: Mapping[str, object]) -> ResourceIdentity | None:
+        if self.is_plain_app and tenant_id == self.tenant_id and path_args.get("app_id") == self.app_id:
+            return ResourceIdentity(self.scope, self.app_id)
+        return None
+
+    def owner_id(self, tenant_id: str, identity: ResourceIdentity) -> str | None:
+        if tenant_id == self.tenant_id and identity == ResourceIdentity(self.scope, self.app_id):
+            return self.maintainer_id
+        return None
+
+
 def _authorize_app(actor: Actor, app_id: str, access: AppAccess) -> None:
     """Resolve a tenant-owned normal App, then enforce Builder permissions.
 
@@ -67,19 +102,42 @@ def _authorize_app(actor: Actor, app_id: str, access: AppAccess) -> None:
     ``edit_permission_required``. RBAC workspaces always require APP_EDIT;
     test/run and release operations additionally require their dedicated
     permission point, matching the existing workflow run/publish routes.
+
+    SQL lifetime: the App and membership facts are read and detached in this
+    authorizer's own short session, including the ordinary PlainApp binding
+    and maintainer facts. The session closes before the RBAC evaluator can
+    call the external permission service. The request-scoped session is never
+    read, committed or rolled back here.
     """
-    trusted_app_id = db.session.scalar(
-        select(App.id).where(App.id == app_id, App.tenant_id == actor.tenant_id, App.status == "normal")
-    )
+    locator: PlainApp | _AppPermissionFacts = PlainApp()
+    with sessionmaker(bind=db.engine, expire_on_commit=False)() as session:
+        trusted_app_id = session.scalar(
+            select(App.id).where(App.id == app_id, App.tenant_id == actor.tenant_id, App.status == "normal")
+        )
+        role = (
+            session.scalar(
+                select(TenantAccountJoin.role).where(
+                    TenantAccountJoin.tenant_id == actor.tenant_id,
+                    TenantAccountJoin.account_id == actor.account_id,
+                )
+            )
+            if trusted_app_id is not None
+            else None
+        )
+        if trusted_app_id is not None and role is not None and dify_config.RBAC_ENABLED:
+            is_plain_app = RBACResourceService.get_app_agent_binding(session, actor.tenant_id, trusted_app_id) is None
+            locator = _AppPermissionFacts(
+                tenant_id=actor.tenant_id,
+                app_id=trusted_app_id,
+                is_plain_app=is_plain_app,
+                maintainer_id=(
+                    RBACResourceService.get_app_maintainer(session, actor.tenant_id, trusted_app_id)
+                    if is_plain_app
+                    else None
+                ),
+            )
     if trusted_app_id is None:
         raise NotFoundError("app not found")
-
-    role = db.session.scalar(
-        select(TenantAccountJoin.role).where(
-            TenantAccountJoin.tenant_id == actor.tenant_id,
-            TenantAccountJoin.account_id == actor.account_id,
-        )
-    )
     if role is None or (not dify_config.RBAC_ENABLED and not TenantAccountRole.is_editing_role(role)):
         raise Forbidden()
 
@@ -92,7 +150,7 @@ def _authorize_app(actor: Actor, app_id: str, access: AppAccess) -> None:
         enforce_rbac_checks(
             tenant_id=actor.tenant_id,
             account_id=actor.account_id,
-            checks=[RBACCheck(scene, PlainApp())],
+            checks=[RBACCheck(scene, locator)],
             path_args={"app_id": str(trusted_app_id)},
         )
 

@@ -15,19 +15,26 @@ real qualification stays unavailable outside this module.
 
 Test-created concurrency never runs in the pytest process. Each concurrent scenario (the held claim
 race, duplicate launches, concurrent worker deliveries) and each crash runs in a forked, killable
-test host (``run_in_host`` / ``_crash_in_child``): the real port, task bodies, native pipeline,
-PostgreSQL and Redis run there on host-owned connections, every host ends with ``os._exit`` (which
-ends all of its threads), and the parent, holding no SQL, reads the host's one bounded report frame
-without blocking under an absolute deadline, then joins, terminates and kills, and asserts the host
-is dead before the test returns — that is, before
-any fixture restores its patches and before the shared database/Redis cleanup. Boundary
-observations of a host are the host's own records, reported over the pipe. Every case's
-connections also carry server-side SQL deadlines.
+process: the real port, task bodies, native pipeline, PostgreSQL and Redis run there on its own
+connections, and the parent, holding no SQL, joins, terminates and kills it (each bounded) and
+asserts it is dead before the test returns — that is, before any fixture restores its patches and
+before the shared database/Redis cleanup. The two helpers differ in their report transfer:
 
-``test_stale_recovery_sweep_never_settles_a_fresh_reservation`` is a regression for a known,
-root-owned defect in ``reconcile_stranded`` and is expected to fail until that owner is fixed.
+- ``run_in_host`` hosts end with ``os._exit`` (which ends all of their threads) after writing one
+  length-prefixed report frame; the parent reads it without any blocking read, bounded in size and
+  under one ABSOLUTE deadline for readiness, header and every payload byte (``_read_report_frame``).
+- ``_crash_in_child`` uses the same frame reader and process supervisor with its existing
+  ``_CHILD_RESULT_SECONDS`` deadline. Its child writes its phase facts and exits at the crash
+  boundary, without running native completion, seal or settlement callbacks.
+
+Before forking, the parent primes the tenant private-key cache (``_prime_tenant_key``): the key
+lives in OpenDAL storage, whose I/O runtime the parent started, and a forked process must not be
+the first to load it. Boundary observations of a host are the host's own records, reported over
+the pipe. Every case's connections also carry server-side SQL deadlines.
 """
 
+import faulthandler
+import hashlib
 import json
 import multiprocessing
 import os
@@ -37,7 +44,6 @@ import traceback
 from collections.abc import Callable, Iterator, Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
-from multiprocessing.connection import Connection
 from pathlib import Path
 from select import select as wait_readable
 from threading import Barrier, Event, Lock, Thread, get_ident
@@ -46,7 +52,8 @@ from typing import Literal
 from uuid import uuid4
 
 import pytest
-from flask import Flask
+from flask import Flask, has_app_context
+from flask.testing import FlaskClient
 from pydantic import TypeAdapter
 from sqlalchemy import Engine, event, func, select, text, update
 from sqlalchemy.engine.interfaces import DBAPIConnection
@@ -55,6 +62,8 @@ from sqlalchemy.pool import ConnectionPoolEntry, PoolProxiedConnection
 
 import contexts
 from configs import dify_config
+from constants import COOKIE_NAME_CSRF_TOKEN, HEADER_NAME_CSRF_TOKEN
+from controllers.console import wraps as console_wraps
 from core.dify_builder import gmail_read_policy
 from core.dify_builder.errors import BusyError, NotFoundError
 from core.dify_builder.execution_policy import (
@@ -63,18 +72,26 @@ from core.dify_builder.execution_policy import (
     ConfirmedToolExecutionContext,
 )
 from core.dify_builder.input_schema import schema_hash, start_schema
-from core.dify_builder.models import Actor, DifyBuilderContext, NodeEvent, Run
+from core.dify_builder.models import Action, Actor, DifyBuilderContext, NodeEvent, Run
 from core.dify_builder.ports import DifyBuilderAgent
-from core.dify_builder.real_call_consent import ConsentReceipt, InstalledToolBinding, confirmed_dispatch_headers
+from core.dify_builder.real_call_consent import (
+    ConsentReceipt,
+    CredentialReference,
+    GmailReadParameters,
+    InstalledToolBinding,
+    confirmed_dispatch_headers,
+)
 from core.dify_builder.state import PcState
+from core.entities import PluginCredentialType
 from core.entities.provider_entities import ProviderConfig, ProviderConfigType
-from core.helper import encrypter
+from core.helper import credential_utils, encrypter
 from core.helper.provider_cache import ToolProviderCredentialsCache
 from core.plugin.entities.oauth import OAuthSchema
 from core.plugin.entities.plugin_daemon import CredentialType, PluginOAuthCredentialsResponse, PluginToolProviderEntity
 from core.plugin.impl.oauth import OAuthHandler
 from core.plugin.impl.tool import PluginToolManager
 from core.plugin.plugin_service import PluginService
+from core.rbac import RBACPermission
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import (
     ToolEntity,
@@ -87,14 +104,20 @@ from core.tools.entities.tool_entities import (
 from core.workflow import node_factory
 from core.workflow.node_runtime import DifyToolNodeRuntime
 from core.workflow.system_variables import SystemVariableKey, get_system_text
+from enums import DeploymentEdition
 from extensions.ext_database import db
+from extensions.ext_key_provider import key_provider_manager
 from extensions.ext_redis import redis_client
 from graphon.nodes.tool.entities import ToolNodeData
 from graphon.nodes.tool_runtime_entities import ToolRuntimeHandle
 from graphon.runtime.variable_pool import VariablePool
 from libs.datetime_utils import naive_utc_now
 from libs.key_providers import generate_key_pair
+from libs.key_providers.rsa_key_provider import RSAKeyProvider
+from libs.passport import PassportService
+from libs.token import _real_cookie_name, generate_csrf_token
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from models.agent import Agent, AgentScope, AgentSource, AgentStatus
 from models.dify_builder import (
     DifyBuilderConversationItem,
     DifyBuilderExecutionRequest,
@@ -104,7 +127,7 @@ from models.dify_builder import (
     DifyBuilderTestInput,
 )
 from models.enums import PermissionEnum
-from models.model import App
+from models.model import App, AppMode, DifySetup
 from models.tools import BuiltinToolProvider, ToolOAuthTenantClient
 from models.workflow import Workflow, WorkflowDraftVariable, WorkflowNodeExecutionModel, WorkflowRun
 from schedule.dify_builder_reconcile_task import reconcile_interrupted_sessions
@@ -112,10 +135,15 @@ from services.dify_builder import real_call_consent_service, real_call_metadata,
 from services.dify_builder.agent.llm_agent import LlmBuilderAgent
 from services.dify_builder.agent_factory import set_dify_builder_agent_factory
 from services.dify_builder.dify_port import WorkflowServiceDifyPort
-from services.dify_builder.real_call_consent_service import BuilderRealCallConsentService
+from services.dify_builder.real_call_consent_service import BuilderRealCallConsentService, StrandedObservation
 from services.dify_builder.repository import SqlDifyBuilderRepository
 from services.dify_builder.revision import execution_revision
 from services.dify_builder.serde import context_to_dict
+from services.enterprise.rbac_service import RBACService
+from services.entities.feature_entities import FeatureModel
+from services.feature_service import FeatureService
+from services.tools.builder_credential_reference import select_builder_credential
+from services.tools.builtin_tools_manage_service import BuilderCredentialRuntime, BuiltinToolManageService
 from tasks import dify_builder_advance_task
 from tasks.dify_builder_advance_task import advance_session
 from tests.test_containers_integration_tests.core.workflow.test_builder_real_call_consent_persistence import (
@@ -155,7 +183,6 @@ _REAL_DECRYPT = encrypter.decrypt_token
 # Bounds: every wait is finite and every started thread/process is joined, also on failure.
 _HOLD_SECONDS = 60
 _CHILD_RESULT_SECONDS = 180
-_CHILD_JOIN_SECONDS = 10
 _CRASH_EXIT = 86
 # Server-side deadlines on every connection this module's cases check out (see ``SqlDeadlines``):
 # no SQL statement, lock wait or abandoned transaction can block a worker past them.
@@ -207,13 +234,16 @@ class TxWitness:
             event.remove(self._engine, name, listener)
 
     def _begin(self, connection: object) -> None:
-        # Product frames only (not this module, pytest or installed packages), innermost first.
+        # Product origins first; fixture origins remain visible when the begin came from setup.
         frames = [
             f
             for f in traceback.extract_stack()[:-2]
             if "/api/" in f.filename and "/tests/" not in f.filename and "-packages/" not in f.filename
         ]
+        if not frames:
+            frames = [f for f in traceback.extract_stack()[:-2] if "/api/tests/" in f.filename]
         origin = " < ".join(f"{Path(f.filename).name}:{f.lineno}:{f.name}" for f in reversed(frames[-6:]))
+        origin = origin or "SQL transaction began outside the recorded API stack"
         with self._lock:
             self._open[id(connection)] = (get_ident(), origin)
 
@@ -230,7 +260,11 @@ class TxWitness:
         """Origins of transactions the calling thread still holds open."""
         thread = get_ident()
         with self._lock:
-            return tuple(origin for owner, origin in self._open.values() if owner == thread)
+            origins = tuple(origin for owner, origin in self._open.values() if owner == thread)
+        # Also catch a scoped transaction opened before the engine listeners were installed.
+        if has_app_context() and db.session().in_transaction():
+            origins += ("Flask-scoped Session holds an open transaction",)
+        return origins
 
 
 @dataclass(frozen=True)
@@ -363,7 +397,7 @@ class Boundary:
     cache_error: Exception | None = None
     # Set only in a forked crash child: the process exits at that boundary.
     crash_at: Literal["refresh", "invoke"] | None = None
-    crash_channel: Connection | None = None
+    crash_fd: int | None = None
     lock: Lock = field(default_factory=Lock)
 
     def mark(self, name: str) -> None:
@@ -399,11 +433,16 @@ class Boundary:
         """Kill this forked child at ``phase`` without unwinding: no ``finally`` or outcome callback runs."""
         if self.crash_at != phase:
             return
-        if self.crash_channel is not None:
-            self.crash_channel.send(
-                {"crashed_at": phase, "refresh_calls": len(self.refresh_calls), "invoke_calls": len(self.invoke_calls)}
+        if self.crash_fd is not None:
+            _write_report_frame(
+                self.crash_fd,
+                {
+                    "crashed_at": phase,
+                    "refresh_calls": len(self.refresh_calls),
+                    "invoke_calls": len(self.invoke_calls),
+                    "sql": list(self.witness.open_here()),
+                },
             )
-            self.crash_channel.close()
         os._exit(_CRASH_EXIT)
 
 
@@ -704,12 +743,16 @@ def run_in_host(gmail: "Gmail", scenario: Callable[[], dict[str, object]], *, na
     database/Redis cleanup. Host exceptions come back as bounded text and fail the case here.
     """
     db.session.close()  # the parent holds no transaction or connection across the fork or supervision
+    _prime_tenant_key(gmail)
     point = gmail.boundary.checkpoint()
 
     def host_main(write_fd: int) -> None:
         report: dict[str, object] = {}
         try:
             with gmail.app.test_request_context():
+                # Retain child stacks if a native dependency stalls; the parent's stack alone
+                # cannot identify whether the host is waiting on SQL, storage or its producer.
+                faulthandler.dump_traceback_later(_WORK_SECONDS)
                 db.engine.dispose(close=False)
                 gmail.boundary.witness.forget_inherited()
                 reset_provider_cache()
@@ -718,6 +761,7 @@ def run_in_host(gmail: "Gmail", scenario: Callable[[], dict[str, object]], *, na
             report["host_error"] = f"{type(error).__name__}: {error}"[:_HOST_TEXT_LIMIT]
             report["host_traceback"] = traceback.format_exc()[-_HOST_TEXT_LIMIT:]
         finally:
+            faulthandler.cancel_dump_traceback_later()
             report["observed"] = gmail.boundary.facts_since(point)
             _write_report_frame(write_fd, report)
 
@@ -736,6 +780,23 @@ def run_in_host(gmail: "Gmail", scenario: Callable[[], dict[str, object]], *, na
     result = report["result"]
     assert isinstance(result, dict)
     return {**result, "observed": observed}
+
+
+def _prime_tenant_key(gmail: "Gmail") -> None:
+    """Load the real private key in the parent, before forking the initialized OpenDAL runtime.
+
+    The native RSA owner still reads this real key from its ordinary Redis cache and performs
+    every decrypt/encrypt itself. Keep this one test tenant's entry alive for the bounded host
+    lifetime: an inherited OpenDAL runtime cannot safely perform the first storage load in a
+    forked child. No provider, crypto implementation or credential ciphertext is replaced.
+    """
+    encrypter.get_decrypt_decoding(gmail.actor.tenant_id)
+    path = f"privkeys/{gmail.actor.tenant_id}/private.pem"
+    cache_key = f"tenant_privkey:{hashlib.sha3_256(path.encode()).hexdigest()}"
+    lifetime = _HOST_RESULT_SECONDS + 3 * _HOST_JOIN_SECONDS + 10
+    assert redis_client.expire(cache_key, lifetime), "real RSA private-key cache was not populated"
+    assert redis_client.ttl(cache_key) > _HOST_RESULT_SECONDS
+    assert gmail.boundary.witness.open_here() == (), "fixture key priming left SQL open before fork"
 
 
 def contained_race(*calls: Callable[[], object]) -> list[object]:
@@ -973,9 +1034,7 @@ class Gmail:
         return value.decode() if isinstance(value, bytes) else str(value)
 
     def encrypt(self, value: str) -> str:
-        token = encrypter.encrypt_token(self.actor.tenant_id, value)
-        db.session.commit()  # the key provider reads the tenant through the scoped session
-        return token
+        return encrypter.encrypt_token(self.actor.tenant_id, value)
 
     def rotated_ciphertext(self, access_token: str) -> str:
         """A different, natively encrypted credential value (encrypt in a Flask request thread)."""
@@ -1020,17 +1079,31 @@ class Gmail:
             assert row is not None
             return row
 
+    def credential_revision(self) -> str:
+        """The full real credential reference revision, including the acting member's visibility."""
+        with self.factory() as session:
+            snapshot = select_builder_credential(
+                session,
+                actor=self.actor,
+                provider_id=PROVIDER,
+                credential_id=self.credential_id,
+                verified_plugin=False,
+                revision_key=SECRET.encode(),
+            )
+            return snapshot.reference.revision
+
 
 def _now() -> datetime:
     return datetime.now(UTC)
 
 
 @pytest.fixture
-def deliveries(monkeypatch: pytest.MonkeyPatch) -> list[Delivery]:
+def deliveries(monkeypatch: pytest.MonkeyPatch, gmail: Gmail) -> list[Delivery]:
     """Hold the broker: the real coordinator enqueues through ``advance_session.delay``; tests deliver."""
     captured: list[Delivery] = []
 
     def delay(session_id: str, action: dict[str, object], actor: dict[str, object], token: str) -> None:
+        gmail.boundary.mark("enqueue")
         captured.append((session_id, action, actor, token))
 
     monkeypatch.setattr(dify_builder_advance_task.advance_session, "delay", delay)
@@ -1056,6 +1129,13 @@ def gmail(
     monkeypatch: pytest.MonkeyPatch,
 ) -> Iterator[Gmail]:
     factory, actor, app, workflow, session_id, test_input_id = native_owner
+    # native_owner commits with expire_on_commit=True. Materialize its original objects and
+    # detach them before subsequent setup commits or the production generator close() can
+    # expire/detach their IDs. Its strict teardown still reads the original published pointer.
+    app_id, workflow_id = app.id, workflow.id
+    db.session.expunge(app)
+    db.session.expunge(workflow)
+    db.session.close()  # only this fixture's committed setup reads; never product request writes
     # The deadlines bound exactly the engine every native owner and worker of this case uses.
     assert sql_deadlines.engine is factory.kw["bind"]
     with factory() as session:
@@ -1067,6 +1147,7 @@ def gmail(
     reset_provider_cache()
 
     # A real per-tenant key: credentials below are natively encrypted and natively decrypted.
+    assert isinstance(key_provider_manager.provider, RSAKeyProvider), "this fixture proves the actual RSA owner"
     tenant = db.session.get(Tenant, actor.tenant_id)
     assert tenant is not None
     tenant.encrypt_public_key = generate_key_pair(actor.tenant_id)
@@ -1077,8 +1158,8 @@ def gmail(
         app=flask_app_with_containers,
         factory=factory,
         actor=actor,
-        app_id=app.id,
-        workflow_id=workflow.id,
+        app_id=app_id,
+        workflow_id=workflow_id,
         session_id=session_id,
         test_input_id=test_input_id,
         credential_id="",
@@ -1108,7 +1189,7 @@ def gmail(
         client.enabled = True
         session.add_all([credential, client])
         session.flush()
-        draft = session.get(Workflow, workflow.id)
+        draft = session.get(Workflow, workflow_id)
         assert draft is not None
         graph = json.loads(draft.graph)
         tools = [node for node in graph["nodes"] if node["id"] == TOOL_NODE]
@@ -1199,6 +1280,14 @@ def gmail(
         return world.clock["now"] or _now()
 
     original_cache_delete = ToolProviderCredentialsCache.delete
+    original_compliance = credential_utils.runtime_check_credential_policy_compliance
+
+    def compliance(
+        credential_id: str, provider: str, credential_type: PluginCredentialType, check_existence: bool = True
+    ) -> None:
+        # Spy only: retain the ordinary compliance owner, including any external policy call.
+        boundary.mark("compliance")
+        original_compliance(credential_id, provider, credential_type, check_existence)
 
     def cache_delete(cache: ToolProviderCredentialsCache) -> None:
         # The ordinary credential-cache invalidation (a Redis delete): observed, or failed on demand.
@@ -1218,6 +1307,8 @@ def gmail(
     monkeypatch.setattr(LlmBuilderAgent, "_model", no_model)
     monkeypatch.setattr(real_call_consent_service, "_utcnow", utcnow)
     monkeypatch.setattr(ToolProviderCredentialsCache, "delete", cache_delete)
+    monkeypatch.setattr(credential_utils, "runtime_check_credential_policy_compliance", compliance)
+    assert boundary.witness.open_here() == (), "Gmail fixture left SQL open before yielding"
     try:
         yield world
         assert boundary.model_calls == []
@@ -1406,7 +1497,7 @@ def test_confirmed_native_run_reads_once_without_refresh(gmail: Gmail) -> None:
     assert gmail.boundary.count("decrypt") == 2
     assert gmail.consent(reserved.consent_id).refresh_count == 0
     # Metadata reads, native decryption and the dispatch all ran with no SQL transaction open.
-    assert_outside_sql(gmail.boundary, "metadata", "declaration", "decrypt", "invoke")
+    assert_outside_sql(gmail.boundary, "metadata", "declaration", "compliance", "decrypt", "invoke")
     order = gmail.boundary.order()
     assert order.index("decrypt") < order.index("invoke")
     # Confirmed content is retained in the native Run, never copied into mutable draft variables.
@@ -1418,6 +1509,7 @@ def test_confirmed_native_run_refreshes_once_then_reads(gmail: Gmail) -> None:
     gmail.make_refresh_due()
     reserved = gmail.reserved()
     before = gmail.credential().encrypted_credentials
+    initial_revision = gmail.credential_revision()
     # A real stale ordinary-cache entry the native refresh owner must remove after its CAS commits.
     cache = gmail.credential_cache()
     cache.set({"access_token": "ci-stale-cached-token"})
@@ -1449,7 +1541,7 @@ def test_confirmed_native_run_refreshes_once_then_reads(gmail: Gmail) -> None:
     _assert_confirmed_dispatch(gmail, gmail.boundary.invoke_calls[0], REFRESHED)
     order = gmail.boundary.order()
     assert order.index("refresh") < order.index("cache_delete") < order.index("invoke")
-    assert_outside_sql(gmail.boundary, "metadata", "decrypt", "refresh", "cache_delete", "invoke")
+    assert_outside_sql(gmail.boundary, "metadata", "compliance", "decrypt", "refresh", "cache_delete", "invoke")
     # The CAS persisted natively re-encrypted refreshed credentials, once.
     credential = gmail.credential()
     assert credential.encrypted_credentials != before
@@ -1457,7 +1549,8 @@ def test_confirmed_native_run_refreshes_once_then_reads(gmail: Gmail) -> None:
     assert {name: _REAL_DECRYPT(gmail.actor.tenant_id, value) for name, value in stored.items()} == REFRESHED
     consent = gmail.consent(reserved.consent_id)
     assert (consent.refresh_count, consent.business_count) == (1, 1)
-    assert consent.derived_credential_revision is not None
+    assert consent.initial_credential_revision == initial_revision
+    assert consent.derived_credential_revision == gmail.credential_revision() != initial_revision
 
 
 def test_cache_invalidation_failure_after_refresh_cas_stays_unknown_without_business(gmail: Gmail) -> None:
@@ -1471,6 +1564,7 @@ def test_cache_invalidation_failure_after_refresh_cas_stays_unknown_without_busi
     reserved = gmail.reserved()
     assert reserved.execution_request_id is not None
     before = gmail.credential().encrypted_credentials
+    initial_revision = gmail.credential_revision()
     cache = gmail.credential_cache()
     stale = {"access_token": "ci-stale-cached-token"}
     cache.set(stale)
@@ -1482,7 +1576,7 @@ def test_cache_invalidation_failure_after_refresh_cas_stays_unknown_without_busi
     assert gmail.boundary.count("cache_delete") == 1
     order = gmail.boundary.order()
     assert order.index("refresh") < order.index("cache_delete")
-    assert_outside_sql(gmail.boundary, "decrypt", "refresh", "cache_delete")
+    assert_outside_sql(gmail.boundary, "metadata", "compliance", "decrypt", "refresh", "cache_delete")
     # The real CAS committed the natively re-encrypted refresh before the cache fault; it stays durable.
     credential = gmail.credential()
     assert credential.encrypted_credentials != before
@@ -1490,7 +1584,8 @@ def test_cache_invalidation_failure_after_refresh_cas_stays_unknown_without_busi
     assert {name: _REAL_DECRYPT(gmail.actor.tenant_id, value) for name, value in stored.items()} == REFRESHED
     assert cache.get() == stale
     row = gmail.consent(reserved.consent_id)
-    assert row.derived_credential_revision is not None
+    assert row.initial_credential_revision == initial_revision
+    assert row.derived_credential_revision == gmail.credential_revision() != initial_revision
     assert row.business_claimed_at is None
     assert (row.state, row.outcome_state, row.reason_code, row.refresh_count, row.business_count) == (
         "unknown",
@@ -2064,60 +2159,38 @@ def _crash_in_child(gmail: Gmail, reserved: ConsentReceipt, phase: Literal["refr
     """Run the real port in a forked child that is killed (``os._exit``) at ``phase``; return its facts.
 
     Process death is the crash: no ``finally``, outcome callback, seal or settlement runs in the
-    child. The parent only supervises a plain pipe with a deadline, then joins, terminates and
-    finally kills the child, each bounded.
+    child. The parent reads one complete frame under the original absolute crash deadline,
+    then joins, terminates and finally kills the child, each bounded, before returning.
     """
     assert "fork" in multiprocessing.get_all_start_methods(), "crash containment needs fork (Linux CI)"
     db.session.close()  # the parent holds no transaction or connection across the fork or supervision
-    ctx = multiprocessing.get_context("fork")
-    receiver, sender = ctx.Pipe(duplex=False)
-    gmail.boundary.crash_at, gmail.boundary.crash_channel = phase, sender
+    _prime_tenant_key(gmail)
 
-    def child_main(channel: Connection) -> None:
+    def child_main(write_fd: int) -> None:
         facts: dict[str, object] = {}
         try:
             with gmail.app.test_request_context():
+                faulthandler.dump_traceback_later(_WORK_SECONDS)
                 # Drop the inherited pool without closing the parent's sockets.
                 db.engine.dispose(close=False)
+                gmail.boundary.witness.forget_inherited()
                 reset_provider_cache()
+                gmail.boundary.crash_at, gmail.boundary.crash_fd = phase, write_fd
                 facts["returned"] = gmail.run(reserved).status
         except BaseException as error:
             facts["child_error"] = type(error).__name__
-        channel.send(facts)
-        channel.close()
+        faulthandler.cancel_dump_traceback_later()
+        _write_report_frame(write_fd, facts)
 
-    child = ctx.Process(target=child_main, args=(sender,), name=f"crash-at-{phase}", daemon=True)
-    facts: dict[str, object] | None = None
-    child_alive = False
-    exitcode: int | None = None
-    try:
-        child.start()
-        sender.close()
-        if receiver.poll(_CHILD_RESULT_SECONDS):
-            try:
-                facts = receiver.recv()
-            except EOFError:
-                facts = None
-    finally:
-        gmail.boundary.crash_at, gmail.boundary.crash_channel = None, None
-        sender.close()
-        if child.pid is not None:
-            child.join(timeout=_CHILD_JOIN_SECONDS)
-            if child.is_alive():
-                child.terminate()
-                child.join(timeout=_CHILD_JOIN_SECONDS)
-            if child.is_alive():
-                child.kill()
-                child.join(timeout=_CHILD_JOIN_SECONDS)
-            child_alive = child.is_alive()
-            exitcode = child.exitcode
-            if not child_alive:
-                child.close()
-        receiver.close()
-    assert not child_alive, "crash child survived terminate() and kill()"
+    transfer = _supervise_host(child_main, name=f"crash-at-{phase}", seconds=_CHILD_RESULT_SECONDS)
+    assert transfer.status == "complete", (
+        f"crash child report {transfer.status} within {_CHILD_RESULT_SECONDS} s (exit {transfer.exitcode})"
+    )
+    facts = transfer.report
     assert facts is not None, "crash child reported nothing within its deadline"
     assert facts.get("crashed_at") == phase, facts
-    assert exitcode == _CRASH_EXIT, exitcode
+    assert facts["sql"] == [], facts
+    assert transfer.exitcode == _CRASH_EXIT, transfer.exitcode
     return facts
 
 
@@ -2638,11 +2711,11 @@ def test_dispatch_coordinator_metadata_read_runs_outside_sql(gmail: Gmail, deliv
 def test_stale_recovery_sweep_never_settles_a_fresh_reservation(
     gmail: Gmail, deliveries: list[Delivery], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """KNOWN ROOT-OWNED DEFECT REGRESSION — expected to fail until ``reconcile_stranded`` is fixed.
+    """Deterministic repository-CAS regression for a stale sweep and a fresh reservation.
 
-    The stale-working sweep observes no lease, then recovery and a fresh human reservation
-    commit (with a new live lease) before ``reconcile_stranded(session_id)`` selects every
-    currently reserved grant of the session. The fresh live grant must not be settled.
+    The sweep snapshots its old generation before observing the absent lease; a repository
+    recovery and fresh human reservation interleave before it settles that old observation.
+    The actual dispatched recovery path is covered separately below.
     """
     stranded = _stranded(gmail, deliveries)
     original = session_lock.exists
@@ -2665,3 +2738,547 @@ def test_stale_recovery_sweep_never_settles_a_fresh_reservation(
     assert gmail.lease() == deliveries[1][3]
     live = gmail.consent(fresh[0].consent_id)
     assert (live.state, live.command_id, live.reason_code) == ("confirmed", fresh[0].command_id, None)
+
+
+def _submit_and_deliver(gmail: Gmail, deliveries: list[Delivery], kind: str) -> None:
+    """Submit a real human action, then deliver its actual broker-captured advance command."""
+    before = len(deliveries)
+    with gmail.factory() as session:
+        workflow = session.get(Workflow, gmail.workflow_id)
+        assert workflow is not None
+        revision = execution_revision(workflow)
+    wiring.build_service().submit_action(
+        gmail.session_id,
+        gmail.actor,
+        Action(kind=kind, base_version=gmail.head()[1], base_app_revision=revision),
+    )
+    assert len(deliveries) == before + 1
+    assert deliveries[-1][1]["kind"] == kind
+    _deliver(gmail, deliveries[-1])()
+    assert gmail.lease() is None
+
+
+def test_dispatched_recovery_survives_a_paused_old_sweep(gmail: Gmail, deliveries: list[Delivery]) -> None:
+    """Real recovery/Runner gates can admit a fresh grant while an old observation is paused."""
+    stranded = _stranded(gmail, deliveries)
+    old_version = gmail.head()[1]
+
+    def recover_in_host() -> dict[str, object]:
+        original_exists = session_lock.exists
+        original_reconcile = BuilderRealCallConsentService.reconcile_stranded
+        started: list[str] = []
+        settlements: list[int] = []
+        fresh: list[ConsentReceipt] = []
+        gates: list[str] = []
+
+        def exists_then_recover(session_id: str) -> bool:
+            gmail.boundary.mark("recovery_lease")
+            held = original_exists(session_id)
+            if session_id == gmail.session_id and not started:
+                started.append(session_id)
+                assert held is False
+                _submit_and_deliver(gmail, deliveries, "recovery_continue")
+                state, _version, context = gmail.head()
+                gates.append(state)
+                assert (context.confirmed_consent_id, context.confirmed_command_id) == ("", "")
+                assert context.test_input_ref == gmail.test_input_id
+                assert context.staged_repair == []
+                _submit_and_deliver(gmail, deliveries, "keep_draft")
+                gates.append(gmail.head()[0])
+                fresh.append(gmail.execute(gmail.confirmed("fresh"), key="execute-fresh"))
+            return held
+
+        def reconcile(service: BuilderRealCallConsentService, *, observation: StrandedObservation) -> int:
+            assert observation.session_version == old_version
+            assert [grant.consent_id for grant in observation.grants] == [stranded.consent_id]
+            result = original_reconcile(service, observation=observation)
+            settlements.append(result)
+            return result
+
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setattr(session_lock, "exists", exists_then_recover)
+            patch.setattr(BuilderRealCallConsentService, "reconcile_stranded", reconcile)
+            assert reconcile_interrupted_sessions() == 1
+        assert len(fresh) == 1
+        fresh_receipt = fresh[0]
+        live = gmail.consent(fresh_receipt.consent_id)
+        old = gmail.consent(stranded.consent_id)
+        old_facts = [old.state, old.reason_code, old.claimed_at, old.refresh_count, old.business_count]
+        head_after = gmail.head()[:2]
+        fresh_context = gmail.head()[2]
+        assert (fresh_context.confirmed_consent_id, fresh_context.confirmed_command_id) == (
+            fresh_receipt.consent_id,
+            fresh_receipt.command_id,
+        )
+        lease = gmail.lease()
+        # Neither repeat scan nor delivery of the original expired command can touch the live grant.
+        _deliver(gmail, deliveries[0])()
+        gmail.make_stale()
+        assert reconcile_interrupted_sessions() == 0
+        assert gmail.service().reconcile_terminal_grants(limit=100, lease_held=original_exists) == 0
+        assert gmail.head()[:2] == head_after
+        assert gmail.lease() == lease == deliveries[-1][3]
+        old_again = gmail.consent(stranded.consent_id)
+        assert [
+            old_again.state,
+            old_again.reason_code,
+            old_again.claimed_at,
+            old_again.refresh_count,
+            old_again.business_count,
+        ] == old_facts
+        again = gmail.consent(fresh_receipt.consent_id)
+        assert (again.state, again.command_id, again.reason_code) == (live.state, live.command_id, live.reason_code)
+        assert (again.claimed_at, again.refresh_count, again.business_count) == (None, 0, 0)
+        assert gmail.request(fresh_receipt.execution_request_id or "").state == "prepared"
+        return {
+            "gates": gates,
+            "settlements": settlements,
+            "old": old_facts,
+            "fresh": [live.state, live.command_id == fresh_receipt.command_id, live.reason_code],
+            "deliveries": [delivery[1]["kind"] for delivery in deliveries],
+            "head_advanced": head_after[1] > old_version,
+        }
+
+    facts = run_in_host(gmail, recover_in_host, name="dispatched-recovery")
+    assert facts["gates"] == [str(PcState.BUILD_AWAIT_REPAIR), str(PcState.BUILD_REVIEW)]
+    assert facts["settlements"] == [1]
+    assert facts["old"] == ["failed", "launch_stranded", None, 0, 0]
+    assert facts["fresh"] == ["confirmed", True, None]
+    assert facts["deliveries"] == ["run_confirmed_tool", "recovery_continue", "keep_draft", "run_confirmed_tool"]
+    assert facts["head_advanced"] is True
+    observed = facts["observed"]
+    assert isinstance(observed, Observed)
+    assert [observed.count(name) for name in ("compliance", "decrypt", "refresh", "invoke")] == [0, 0, 0, 0]
+    assert_outside_sql(observed, "recovery_lease", "metadata", "verification", "enqueue")
+
+
+_NON_OAUTH_KINDS = (CredentialType.API_KEY, CredentialType.UNAUTHORIZED)
+
+
+def _make_non_oauth(gmail: Gmail, kind: CredentialType) -> None:
+    """A generic native non-OAuth credential, including its legitimate missing-client representation."""
+    with gmail.factory.begin() as session:
+        credential = session.get(BuiltinToolProvider, gmail.credential_id)
+        assert credential is not None
+        credential.credential_type, credential.expires_at = kind, -1
+        client = session.get(ToolOAuthTenantClient, gmail.client_id)
+        assert client is not None
+        session.delete(client)
+    with gmail.factory() as session:
+        snapshot = select_builder_credential(
+            session,
+            actor=gmail.actor,
+            provider_id=PROVIDER,
+            credential_id=gmail.credential_id,
+            verified_plugin=False,
+            revision_key=SECRET.encode(),
+        )
+        assert snapshot.reference.credential_type == str(kind)
+        assert (
+            snapshot.client.source,
+            snapshot.client.row_id,
+            snapshot.client.encrypted_params,
+            snapshot.client.enabled,
+        ) == ("missing", None, None, False)
+
+
+@pytest.mark.parametrize("kind", _NON_OAUTH_KINDS)
+def test_non_oauth_prepare_has_no_grant_or_sensitive_effect(gmail: Gmail, kind: CredentialType) -> None:
+    _make_non_oauth(gmail, kind)
+    with pytest.raises(BuilderExecutionPolicyError, match="credential_required"):
+        gmail.prepare()
+    assert gmail.count(DifyBuilderRealCallConsent) == 0
+    assert gmail.count(DifyBuilderExecutionRequest) == 0
+    assert gmail.native_runs() == []
+    assert gmail.lease() is None
+    assert [gmail.boundary.count(name) for name in ("compliance", "decrypt", "refresh", "invoke")] == [0, 0, 0, 0]
+    assert_outside_sql(gmail.boundary, "metadata", "verification")
+
+
+@pytest.mark.parametrize("kind", _NON_OAUTH_KINDS)
+def test_non_oauth_change_after_reservation_is_refused_before_claim(gmail: Gmail, kind: CredentialType) -> None:
+    """Current admission revalidation refuses a changed credential before the native Tool claim."""
+    reserved = gmail.reserved()
+    _make_non_oauth(gmail, kind)
+    result = gmail.run(reserved)
+    row = gmail.consent(reserved.consent_id)
+    assert (row.claimed_at, row.refresh_count, row.business_count) == (None, 0, 0)
+    assert row.refresh_claimed_at is None
+    assert row.business_claimed_at is None
+    assert gmail.count(DifyBuilderRealCallConsent) == 1
+    assert gmail.count(DifyBuilderExecutionRequest) == 1
+    assert [gmail.boundary.count(name) for name in ("compliance", "decrypt", "refresh", "invoke")] == [0, 0, 0, 0]
+    assert_no_secret(repr(result), gmail.builder_state_text())
+
+
+@pytest.mark.parametrize("kind", _NON_OAUTH_KINDS)
+def test_legacy_non_oauth_native_selection_refuses_before_sensitive_effects(gmail: Gmail, kind: CredentialType) -> None:
+    """A real pre-I4 binding cannot spend a phase through the actual native selected-snapshot defense.
+
+    Only the admission policy is temporarily given its historical OAuth-type omission, to seed
+    the binding and reach the native claim as a pre-I4 launch did. Restore the real policy at
+    native selection, before the unchanged runtime snapshot guard/compliance/decryption. All
+    claims, IDs, selection, pipeline and SQL/Redis owners are real; no grant or phase is forged.
+    """
+    _make_non_oauth(gmail, kind)
+    original_envelope = gmail_read_policy.get_message_envelope
+    original_selection = BuiltinToolManageService.load_builder_credential
+    selected: list[str] = []
+
+    def pre_i4_admission(
+        *, installed: InstalledToolBinding, credential: CredentialReference, parameters: GmailReadParameters
+    ) -> gmail_read_policy.GmailGetMessageEnvelope:
+        return original_envelope(
+            installed=installed,
+            credential=credential.model_copy(update={"credential_type": "oauth2"}),
+            parameters=parameters,
+        )
+
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(gmail_read_policy, "get_message_envelope", pre_i4_admission)
+        reserved = gmail.reserved()
+        stored = gmail.consent(reserved.consent_id)
+        assert stored.binding["credential"]["credential_type"] == str(kind)
+
+        def select_then_restore(
+            *, actor: Actor, provider_id: str, credential_id: str, verified_plugin: bool
+        ) -> BuilderCredentialRuntime:
+            selection = original_selection(
+                actor=actor,
+                provider_id=provider_id,
+                credential_id=credential_id,
+                verified_plugin=verified_plugin,
+            )
+            gmail.boundary.mark("native_selection")
+            selected.append(selection.snapshot.reference.credential_type)
+            assert selection.snapshot.client.source == "missing"
+            patch.setattr(gmail_read_policy, "get_message_envelope", original_envelope)
+            return selection
+
+        patch.setattr(BuiltinToolManageService, "load_builder_credential", staticmethod(select_then_restore))
+        result = gmail.run(reserved)
+    assert selected == [str(kind)], "the actual native credential selection was not reached"
+    row = gmail.consent(reserved.consent_id)
+    assert (row.state, row.reason_code, row.refresh_count, row.business_count) == (
+        "failed",
+        "credential_required",
+        0,
+        0,
+    )
+    assert row.claimed_at is not None  # the real, irreversible legacy Tool claim; no phase was spent
+    assert row.refresh_claimed_at is None
+    assert row.business_claimed_at is None
+    assert row.derived_credential_revision is None
+    runs = gmail.native_runs()
+    assert len(runs) == 1
+    tool_rows = [node for node in gmail.native_nodes(runs[0].id) if node.node_id == TOOL_NODE]
+    assert len(tool_rows) == 1
+    assert (row.native_run_id, row.native_node_execution_id) == (runs[0].id, tool_rows[0].node_execution_id)
+    assert tool_rows[0].status == "failed"
+    assert [gmail.boundary.count(name) for name in ("compliance", "decrypt", "refresh", "invoke")] == [0, 0, 0, 0]
+    assert_outside_sql(gmail.boundary, "metadata", "verification", "declaration", "native_selection")
+    assert_no_secret(repr(result), gmail.builder_state_text())
+    replay = gmail.run(reserved)
+    assert replay.execution_refusal is not None
+    assert replay.execution_refusal.reason_code == "execution_already_launched"
+    assert len(gmail.native_runs()) == 1
+    assert_no_secret(repr(replay), gmail.builder_state_text())
+
+
+@dataclass
+class ConsoleHarness:
+    """Actual console routes, signed login/CSRF tokens and a fresh request-local identity each time."""
+
+    gmail: Gmail
+    client: FlaskClient
+    headers: dict[str, str]
+    checks: list[str] = field(default_factory=list)
+    denied: set[str] = field(default_factory=set)
+
+    @property
+    def path(self) -> str:
+        return f"/console/api/dify-builder/sessions/{self.gmail.session_id}/real-call-consents"
+
+    def request(
+        self, method: str, path: str, body: dict[str, object] | None = None, *, auth: bool = True, csrf: bool = True
+    ) -> tuple[int, dict[str, object]]:
+        headers = dict(self.headers)
+        if not auth:
+            headers.pop("Authorization")
+        if not csrf:
+            headers.pop(HEADER_NAME_CSRF_TOKEN)
+        # An outer fixture app context must not make g._login_user leak between HTTP requests.
+        with self.gmail.app.app_context():
+            reset_provider_cache()
+            response = self.client.open(path, method=method, json=body, headers=headers)
+        payload = response.get_json()
+        assert isinstance(payload, dict), (response.status_code, response.get_data(as_text=True))
+        assert_no_secret(json.dumps(payload))
+        return response.status_code, payload
+
+    def prepare_body(self) -> dict[str, object]:
+        with self.gmail.factory() as session:
+            workflow = session.get(Workflow, self.gmail.workflow_id)
+            assert workflow is not None
+            revision = execution_revision(workflow)
+        return {
+            "node_id": TOOL_NODE,
+            "test_input_id": self.gmail.test_input_id,
+            "credential_id": self.gmail.credential_id,
+            "at_version": self.gmail.head()[1],
+            "base_app_revision": revision,
+            "idempotency_key": "http-prepare",
+        }
+
+
+@pytest.fixture
+def console(gmail: Gmail, monkeypatch: pytest.MonkeyPatch) -> Iterator[ConsoleHarness]:
+    """No wrapper, login loader, Passport verification, setup predicate or authorizer replacement."""
+    monkeypatch.setattr(dify_config, "LOGIN_DISABLED", False)
+    monkeypatch.setattr(dify_config, "DIFY_BUILDER_ENABLED", True)
+    monkeypatch.setattr(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
+    with gmail.factory.begin() as session:
+        if session.scalar(select(DifySetup.version).limit(1)) is None:
+            session.add(DifySetup(version="ci-authenticated-native"))
+    console_wraps._is_setup_completed.reset_success()
+    client = gmail.app.test_client()
+    access = PassportService().issue({"user_id": gmail.actor.account_id, "exp": int(time()) + 600})
+    csrf = generate_csrf_token(gmail.actor.account_id)
+    client.set_cookie(_real_cookie_name(COOKIE_NAME_CSRF_TOKEN), csrf)
+    harness = ConsoleHarness(
+        gmail,
+        client,
+        {"Authorization": f"Bearer {access}", HEADER_NAME_CSRF_TOKEN: csrf},
+    )
+    original_features = FeatureService.get_features
+
+    def features(tenant_id: str, exclude_vector_space: bool = False) -> FeatureModel:
+        gmail.boundary.mark("feature")
+        return original_features(tenant_id, exclude_vector_space)
+
+    def check(
+        tenant_id: str,
+        account_id: str | None,
+        *,
+        scene: str,
+        resource_type: str | None = None,
+        resource_id: str | None = None,
+    ) -> bool:
+        # The actual unchanged evaluator reaches only this external enterprise RPC boundary.
+        gmail.boundary.mark("rbac")
+        assert (tenant_id, account_id, resource_type, resource_id) == (
+            gmail.actor.tenant_id,
+            gmail.actor.account_id,
+            "app",
+            gmail.app_id,
+        )
+        harness.checks.append(scene)
+        return scene not in harness.denied
+
+    original_acquire, original_exists = session_lock.acquire, session_lock.exists
+    original_release = session_lock.release
+
+    def acquire(session_id: str) -> str | None:
+        gmail.boundary.mark("lease_acquire")
+        return original_acquire(session_id)
+
+    def exists(session_id: str) -> bool:
+        gmail.boundary.mark("lease_exists")
+        return original_exists(session_id)
+
+    def release(session_id: str, token: str) -> None:
+        gmail.boundary.mark("lease_release")
+        original_release(session_id, token)
+
+    monkeypatch.setattr(FeatureService, "get_features", features)
+    monkeypatch.setattr(RBACService.CheckAccess, "check", check)
+    monkeypatch.setattr(session_lock, "acquire", acquire)
+    monkeypatch.setattr(session_lock, "exists", exists)
+    monkeypatch.setattr(session_lock, "release", release)
+    try:
+        yield harness
+    finally:
+        console_wraps._is_setup_completed.reset_success()
+
+
+def _http_receipt(result: tuple[int, dict[str, object]], status: int) -> ConsentReceipt:
+    code, payload = result
+    assert code == status, payload
+    assert payload.get("result") == "receipt", payload
+    return ConsentReceipt.model_validate_json(
+        json.dumps({key: value for key, value in payload.items() if key != "result"})
+    )
+
+
+@pytest.mark.parametrize("rbac", [False, True])
+def test_authenticated_request_wrappers_reserve_replay_and_refuse_outside_sql(
+    gmail: Gmail, console: ConsoleHarness, deliveries: list[Delivery], monkeypatch: pytest.MonkeyPatch, rbac: bool
+) -> None:
+    """First uncached setup/login request and all four protected endpoints retain bounded SQL."""
+    monkeypatch.setattr(dify_config, "RBAC_ENABLED", rbac)
+    prepared = _http_receipt(console.request("POST", console.path, console.prepare_body()), 201)
+    path = f"{console.path}/{prepared.consent_id}"
+    confirm_body: dict[str, object] = {
+        "decision": "confirm",
+        "scope_digest": prepared.scope_digest,
+        "at_version": prepared.at_version,
+        "idempotency_key": "http-confirm",
+    }
+    decided = _http_receipt(console.request("POST", f"{path}/confirm", confirm_body), 200)
+    execute_body: dict[str, object] = {
+        "scope_digest": decided.scope_digest,
+        "at_version": decided.at_version,
+        "idempotency_key": "http-execute",
+    }
+    reserved = _http_receipt(console.request("POST", f"{path}/execute", execute_body), 202)
+    assert len(deliveries) == 1
+    lease, head = gmail.lease(), gmail.head()[:2]
+    assert lease == deliveries[0][3]
+    assert _http_receipt(console.request("POST", f"{path}/execute", execute_body), 202) == reserved
+    assert _http_receipt(console.request("GET", path), 200) == reserved
+    refused, payload = console.request("POST", f"{path}/execute", {**execute_body, "scope_digest": "0" * 64})
+    assert refused == 409, payload
+    assert payload["reason_code"] == "idempotency_conflict"
+    assert (gmail.lease(), gmail.head()[:2]) == (lease, head)
+    assert len(deliveries) == 1
+    assert gmail.count(DifyBuilderExecutionRequest) == 1
+    assert gmail.count(DifyBuilderRealCallConsent) == 1
+    assert gmail.native_runs() == []
+    assert [gmail.boundary.count(name) for name in ("compliance", "decrypt", "refresh", "invoke")] == [0, 0, 0, 0]
+    assert_outside_sql(gmail.boundary, "feature", "lease_acquire", "metadata", "verification", "enqueue")
+    if rbac:
+        assert console.checks == [
+            str(scene) for _ in range(9) for scene in (RBACPermission.APP_EDIT, RBACPermission.APP_TEST_AND_RUN)
+        ]
+        assert_outside_sql(gmail.boundary, "rbac")
+    else:
+        assert console.checks == []
+
+
+@pytest.mark.parametrize("scene", [RBACPermission.APP_EDIT, RBACPermission.APP_TEST_AND_RUN])
+def test_authenticated_enabled_rbac_denial_has_no_reservation(
+    gmail: Gmail,
+    console: ConsoleHarness,
+    deliveries: list[Delivery],
+    monkeypatch: pytest.MonkeyPatch,
+    scene: RBACPermission,
+) -> None:
+    monkeypatch.setattr(dify_config, "RBAC_ENABLED", True)
+    decided = gmail.confirmed()
+    console.checks.clear()  # the denial below is the actual full request, after setup's authorized consent reads
+    point = gmail.boundary.checkpoint()
+    console.denied.add(str(scene))
+    code, payload = console.request(
+        "POST",
+        f"{console.path}/{decided.consent_id}/execute",
+        {"scope_digest": decided.scope_digest, "at_version": decided.at_version, "idempotency_key": "http-denied"},
+    )
+    assert code == 403, payload
+    expected = [str(RBACPermission.APP_EDIT)]
+    if scene == RBACPermission.APP_TEST_AND_RUN:
+        expected.append(str(RBACPermission.APP_TEST_AND_RUN))
+    assert console.checks == expected
+    observed = Observed(gmail.boundary.facts_since(point))
+    assert_outside_sql(observed, "feature", "rbac")
+    assert [observed.count(name) for name in ("lease_acquire", "metadata", "enqueue", "decrypt", "invoke")] == [
+        0,
+        0,
+        0,
+        0,
+        0,
+    ]
+    assert deliveries == []
+    assert gmail.lease() is None
+    assert gmail.count(DifyBuilderExecutionRequest) == 0
+    row = gmail.consent(decided.consent_id)
+    assert (row.state, row.command_id, row.claimed_at, row.refresh_count, row.business_count) == (
+        "confirmed",
+        None,
+        None,
+        0,
+        0,
+    )
+
+
+@pytest.mark.parametrize("invalid", ["login", "csrf"])
+def test_actual_authentication_refusal_precedes_real_call_work(
+    gmail: Gmail, console: ConsoleHarness, deliveries: list[Delivery], invalid: str
+) -> None:
+    code, _payload = console.request(
+        "POST", console.path, console.prepare_body(), auth=invalid != "login", csrf=invalid != "csrf"
+    )
+    assert code == 401
+    assert gmail.count(DifyBuilderRealCallConsent) == 0
+    assert gmail.count(DifyBuilderExecutionRequest) == 0
+    assert deliveries == []
+    assert gmail.boundary.events == []
+
+
+def test_authenticated_enabled_rbac_maintainer_bypass_keeps_bounded_sql(
+    gmail: Gmail, console: ConsoleHarness, deliveries: list[Delivery], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(dify_config, "RBAC_ENABLED", True)
+    with gmail.factory.begin() as session:
+        session.execute(update(App).where(App.id == gmail.app_id).values(maintainer=gmail.actor.account_id))
+    decided = gmail.confirmed()
+    console.checks.clear()
+    console.denied.update(str(scene) for scene in (RBACPermission.APP_EDIT, RBACPermission.APP_TEST_AND_RUN))
+    reserved = _http_receipt(
+        console.request(
+            "POST",
+            f"{console.path}/{decided.consent_id}/execute",
+            {"scope_digest": decided.scope_digest, "at_version": decided.at_version, "idempotency_key": "maintainer"},
+        ),
+        202,
+    )
+    assert console.checks == []
+    assert reserved.command_id is not None
+    assert len(deliveries) == 1
+    assert gmail.lease() == deliveries[0][3]
+    assert_outside_sql(gmail.boundary, "feature", "lease_acquire", "metadata", "verification", "enqueue")
+
+
+@pytest.mark.parametrize("scope", [AgentScope.ROSTER, AgentScope.WORKFLOW_ONLY])
+def test_authenticated_enabled_rbac_bound_agent_app_is_not_plain_app(
+    gmail: Gmail,
+    console: ConsoleHarness,
+    deliveries: list[Delivery],
+    monkeypatch: pytest.MonkeyPatch,
+    scope: AgentScope,
+) -> None:
+    """An archived real Agent binding stays ineligible even when this actor maintains its App."""
+    monkeypatch.setattr(dify_config, "RBAC_ENABLED", True)
+    decided = gmail.confirmed()
+    console.checks.clear()
+    with gmail.factory.begin() as session:
+        session.execute(
+            update(App).where(App.id == gmail.app_id).values(mode=AppMode.AGENT, maintainer=gmail.actor.account_id)
+        )
+        session.add(
+            Agent(
+                tenant_id=gmail.actor.tenant_id,
+                name="CI archived binding",
+                scope=scope,
+                source=AgentSource.AGENT_APP if scope == AgentScope.ROSTER else AgentSource.WORKFLOW,
+                app_id=gmail.app_id if scope == AgentScope.ROSTER else None,
+                backing_app_id=gmail.app_id if scope == AgentScope.WORKFLOW_ONLY else None,
+                status=AgentStatus.ARCHIVED,
+            )
+        )
+    point = gmail.boundary.checkpoint()
+    code, payload = console.request(
+        "POST",
+        f"{console.path}/{decided.consent_id}/execute",
+        {"scope_digest": decided.scope_digest, "at_version": decided.at_version, "idempotency_key": "bound-agent"},
+    )
+    assert code == 404, payload
+    assert console.checks == []
+    observed = Observed(gmail.boundary.facts_since(point))
+    assert_outside_sql(observed, "feature")
+    assert [observed.count(name) for name in ("rbac", "lease_acquire", "metadata", "enqueue", "decrypt", "invoke")] == [
+        0
+    ] * 6
+    assert deliveries == []
+    assert gmail.lease() is None
+    assert gmail.count(DifyBuilderExecutionRequest) == 0
+    assert gmail.consent(decided.consent_id).command_id is None

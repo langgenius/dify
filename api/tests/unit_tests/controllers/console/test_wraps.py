@@ -8,8 +8,8 @@ from flask import Flask
 from flask_login import LoginManager, UserMixin
 from flask_restx import Api, Resource
 from pydantic import BaseModel
-from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy import Engine, event, insert, select
+from sqlalchemy.orm import Session, scoped_session, sessionmaker
 from werkzeug.exceptions import HTTPException
 
 from controllers.common.rbac import DatasetId, PlainApp, RBACCheck, Workspace
@@ -1184,6 +1184,77 @@ class TestSystemSetup:
         with patch("controllers.console.wraps.db.session", sqlite_session):
             with pytest.raises(NotSetupError):
                 admin_view()
+
+    @staticmethod
+    def _request_session(
+        sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
+    ) -> scoped_session[Session]:
+        """The request-scoped ``db.session`` the wrapped view and later wrappers share."""
+        registry = scoped_session(sqlite_session_factory)
+        monkeypatch.setattr(wraps_module, "db", SimpleNamespace(session=registry))
+        return registry
+
+    @pytest.mark.parametrize("complete", [True, False], ids=["complete", "missing"])
+    def test_uncached_setup_read_leaves_no_request_transaction(
+        self,
+        sqlite_session_factory: sessionmaker[Session],
+        sqlite_engine: Engine,
+        monkeypatch: pytest.MonkeyPatch,
+        complete: bool,
+    ) -> None:
+        """The setup read ends before the wrapped view and the later wrappers' external checks."""
+        if complete:
+            with sqlite_session_factory.begin() as session:
+                session.add(DifySetup(version="1.0"))
+        registry = self._request_session(sqlite_session_factory, monkeypatch)
+        opened: list[int] = []
+        event.listen(sqlite_engine, "begin", lambda _conn: opened.append(1))
+        event.listen(sqlite_engine, "commit", lambda _conn: opened.append(-1))
+        event.listen(sqlite_engine, "rollback", lambda _conn: opened.append(-1))
+        observed: list[tuple[bool, int]] = []
+
+        @setup_required
+        def admin_view() -> str:
+            observed.append((registry().in_transaction(), max(0, sum(opened))))
+            return "admin_success"
+
+        if complete:
+            assert admin_view() == "admin_success"
+            assert observed == [(False, 0)]
+        else:
+            with pytest.raises(NotSetupError):
+                admin_view()
+        assert not registry().in_transaction()
+        assert max(0, sum(opened)) == 0
+        registry.remove()
+
+    @pytest.mark.parametrize("write", ["orm_flushed", "core_dml"])
+    def test_setup_read_never_touches_a_callers_request_transaction(
+        self, sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch, write: str
+    ) -> None:
+        """A request transaction already holding another owner's write is left exactly as it was."""
+        with sqlite_session_factory.begin() as session:
+            session.add(DifySetup(version="1.0"))
+        registry = self._request_session(sqlite_session_factory, monkeypatch)
+        scoped = registry()
+        if write == "orm_flushed":
+            scoped.add(DifySetup(version="caller-write"))
+            scoped.flush()
+        else:
+            scoped.execute(insert(DifySetup).values(version="caller-write"))
+
+        @setup_required
+        def admin_view() -> str:
+            return "admin_success"
+
+        assert admin_view() == "admin_success"
+        staged = select(DifySetup.version).where(DifySetup.version == "caller-write")
+        assert scoped.in_transaction()
+        assert scoped.scalar(staged) == "caller-write"
+        with sqlite_session_factory() as other:
+            assert other.scalar(staged) is None
+        scoped.rollback()
+        registry.remove()
 
 
 class TestEnterpriseLicense:

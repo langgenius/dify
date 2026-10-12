@@ -333,6 +333,32 @@ def test_envelope_refuses_credential_for_other_provider() -> None:
     assert raised.value.reason_code == "credential_provider_mismatch"
 
 
+@pytest.mark.usefixtures("hypothetical_qualified")
+@pytest.mark.parametrize("credential_type", ["api-key", "unauthorized", "OAuth2", "oauth2 ", "oauth"])
+def test_envelope_admits_only_the_canonical_oauth_credential_type(credential_type: str) -> None:
+    # The approved slice binds an explicit existing OAuth credential: an API-key or unauthorized
+    # row of the same provider (its client is "missing", which the generic reference binds) is
+    # refused, as is any non-canonical spelling.
+    other = credential().model_copy(update={"credential_type": credential_type})
+    with pytest.raises(BuilderExecutionPolicyError) as raised:
+        get_message_envelope(
+            installed=installed(), credential=other, parameters=GmailReadParameters.model_validate(params())
+        )
+    assert raised.value.reason_code == "credential_required"
+
+
+@pytest.mark.usefixtures("hypothetical_qualified")
+def test_envelope_keeps_the_bound_oauth_client_snapshot_semantics() -> None:
+    # An OAuth credential is admitted whatever client snapshot the reference bound (including the
+    # opaque revision of a "missing" client); the client contract is owned by the reference.
+    for client_revision in ("e" * 64, "0" * 64):
+        selected = credential().model_copy(update={"oauth_client_revision": client_revision})
+        envelope = get_message_envelope(
+            installed=installed(), credential=selected, parameters=GmailReadParameters.model_validate(params())
+        )
+        assert envelope.credential.credential_type == "oauth2"
+
+
 def test_false_flags_still_disclose_full_format_fetch() -> None:
     disclosure = get_message_disclosure(
         credential=credential(),

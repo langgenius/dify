@@ -15,6 +15,7 @@ from controllers.common.rbac import RBACPermission, RBACResourceScope
 from controllers.common.wraps import rbac_permission_required
 from controllers.console.auth.error import AuthenticationFailedError, EmailCodeError
 from controllers.console.workspace.error import AccountNotInitializedError
+from core.db.session_factory import session_factory
 from enums import CloudPlan, DeploymentEdition
 from extensions.ext_application_services import application_services
 from extensions.ext_database import db
@@ -96,8 +97,12 @@ def _is_setup_completed() -> bool:
     """Check whether setup exists, caching only successful observations.
 
     Use `once_true` instead of `@cache` because a pre-setup False result must not be memoized.
+    The read uses its own short session, closed before returning, so this check
+    never leaves a request-scoped transaction open for the wrappers and view
+    that follow (nor touches one the request already holds).
     """
-    return db.session.scalar(select(DifySetup).limit(1)) is not None
+    with session_factory.create_session() as session:
+        return session.scalar(select(DifySetup).limit(1)) is not None
 
 
 @overload
