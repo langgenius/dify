@@ -7,9 +7,9 @@ from flask import Request as FlaskRequest
 from core.db.session_factory import session_factory
 from extensions.ext_application_services import application_services
 from extensions.ext_socketio import sio
-from libs.passport import PassportService
 from libs.token import extract_access_token
 from repositories.workflow_collaboration_repository import WorkflowCollaborationRepository
+from services.account.console_tokens import verify_console_access_token
 from services.workflow_collaboration_service import WorkflowCollaborationService
 
 repository = WorkflowCollaborationRepository()
@@ -37,11 +37,7 @@ def socket_connect(sid, environ, auth):
         return False
 
     try:
-        decoded = PassportService().verify(token)
-        user_id = decoded.get("user_id")
-        if not user_id:
-            logging.warning("Socket connect rejected: missing user_id (sid=%s)", sid)
-            return False
+        user_id = verify_console_access_token(token)
 
         with sio.app.app_context():
             user = application_services().accounts.identity.load_user(user_id)

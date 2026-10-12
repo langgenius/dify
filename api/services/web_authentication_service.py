@@ -4,7 +4,7 @@ from typing import Never, Protocol
 
 from enums import WebAppAccessMode
 from machinery.context import RequestContext
-from services.account_ports import AccountPasswordHasher
+from services.account_ports import AccountPasswordHasher, AccountSessionRevoker
 from services.entities.account_entities import AccountAuthenticationSnapshot, AccountPasswordDigest, AccountSnapshot
 from services.entities.auth_audit_entities import LoginFailureReason
 from services.entities.authentication_entities import (
@@ -132,6 +132,7 @@ class WebAuthenticationService:
         *,
         accounts: WebAuthenticationAccountRepository,
         passwords: AccountPasswordHasher,
+        account_sessions: AccountSessionRevoker,
         tokens: WebAuthenticationTokenGateway,
         security: WebAuthenticationSecurityGateway,
         app_access: WebAppAccessGateway,
@@ -141,6 +142,7 @@ class WebAuthenticationService:
     ) -> None:
         self._accounts = accounts
         self._passwords = passwords
+        self._account_sessions = account_sessions
         self._tokens = tokens
         self._security = security
         self._app_access = app_access
@@ -267,8 +269,11 @@ class WebAuthenticationService:
         if account is None:
             raise WebAuthenticationFailedError
         password = self._passwords.hash(new_password)
+        # Revoke before persistence for outages and afterward for sessions issued during the write.
+        self._account_sessions.revoke_all(account.id)
         if self._accounts.update_password(account.id, password) is None:
             raise WebAuthenticationFailedError
+        self._account_sessions.revoke_all(account.id)
 
     def _ensure_active_account(
         self,

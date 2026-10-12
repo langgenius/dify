@@ -8,9 +8,13 @@ from dataclasses import dataclass, field
 from types import SimpleNamespace
 from typing import Never
 
+import jwt
 import pytest
-from flask import Flask
+from flask import Flask, Response, request
+from flask_cors import CORS
+from werkzeug.exceptions import BadRequest, Forbidden, Unauthorized
 
+import libs.login as login_helpers
 from controllers.console import wraps
 from controllers.console.auth import login
 from controllers.console.auth.error import (
@@ -38,6 +42,9 @@ from controllers.console.error import (
     WorkspacesLimitExceeded,
 )
 from enums import DeploymentEdition
+from extensions.ext_blueprints import AUTHENTICATED_HEADERS
+from extensions.ext_login import DifyLoginManager
+from libs.token import generate_csrf_token
 from services import account_errors
 from services.entities.account_entities import AccountSessionTokens
 from services.entities.account_login_entities import (
@@ -46,6 +53,7 @@ from services.entities.account_login_entities import (
     PasswordLoginCommand,
     PasswordLoginResult,
 )
+from tests.unit_tests.model_factories import make_account
 
 TEST_TOKEN = "00000000-0000-4000-8000-000000000001"
 TOKENS = AccountSessionTokens(access_token="access-token", refresh_token="refresh-token", csrf_token="csrf-token")
@@ -58,8 +66,10 @@ class FakeAuthenticationService:
     email_code_send_commands: list[EmailCodeSendCommand] = field(default_factory=list)
     email_code_login_commands: list[EmailCodeLoginCommand] = field(default_factory=list)
     reset_arguments: list[tuple[str, str | None, str]] = field(default_factory=list)
+    logout_tokens: list[str | None] = field(default_factory=list)
     logout_account_ids: list[str] = field(default_factory=list)
     refresh_tokens: list[str] = field(default_factory=list)
+    refresh_request_ids: list[str | None] = field(default_factory=list)
     workspace_found: bool = True
 
     def _raise_if_needed(self) -> None:
@@ -74,7 +84,10 @@ class FakeAuthenticationService:
             workspace_found=self.workspace_found,
         )
 
-    def logout(self, account_id: str) -> None:
+    def logout(self, refresh_token: str | None) -> None:
+        self.logout_tokens.append(refresh_token)
+
+    def logout_all(self, account_id: str) -> None:
         self.logout_account_ids.append(account_id)
 
     def send_reset_password_email(self, *, email: str, language: str | None, ip_address: str) -> str:
@@ -92,8 +105,9 @@ class FakeAuthenticationService:
         self._raise_if_needed()
         return TOKENS
 
-    def refresh(self, refresh_token: str) -> AccountSessionTokens:
+    def refresh(self, refresh_token: str, *, request_id: str | None = None) -> AccountSessionTokens:
         self.refresh_tokens.append(refresh_token)
+        self.refresh_request_ids.append(request_id)
         self._raise_if_needed()
         return TOKENS
 
@@ -264,46 +278,277 @@ def test_email_code_login_decodes_code_and_serializes_tokens(
     ]
 
 
-def test_logout_uses_optional_current_account(
+@pytest.mark.parametrize("refresh_token", ["client-session", None])
+def test_logout_revokes_cookie_without_loading_expired_access(
     app: Flask,
     service: FakeAuthenticationService,
     monkeypatch: pytest.MonkeyPatch,
+    refresh_token: str | None,
 ) -> None:
-    logout_calls: list[bool] = []
-    monkeypatch.setattr(login.flask_login, "logout_user", lambda: logout_calls.append(True))
+    monkeypatch.setattr(login, "extract_refresh_token", lambda _request: refresh_token)
     monkeypatch.setattr(
         login,
         "current_account_with_tenant_optional",
-        lambda: (SimpleNamespace(id="account-1"), "workspace-1"),
+        lambda: pytest.fail("Logout must not require a valid access token"),
     )
-
-    with app.test_request_context("/logout", method="POST"):
+    with app.test_request_context(
+        "/logout", method="POST", headers={"Origin": "http://localhost", "Cookie": "access_token=expired"}
+    ):
         response = login.LogoutApi().post()
 
     assert response.json == {"result": "success"}
-    assert service.logout_account_ids == ["account-1"]
-    assert logout_calls == [True]
+    assert service.logout_tokens == [refresh_token]
+    assert service.logout_account_ids == []
+    cookies = response.headers.getlist("Set-Cookie")
+    for name in ("access_token", "refresh_token", "csrf_token"):
+        assert any(f"{name}=;" in cookie and "Expires=Thu, 01 Jan 1970" in cookie for cookie in cookies)
 
 
-def test_logout_clears_cookies_without_current_account(
+def test_logout_all_requires_authentication_and_csrf(
     app: Flask,
     service: FakeAuthenticationService,
     monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
 ) -> None:
-    logout_calls: list[bool] = []
-    monkeypatch.setattr(login.flask_login, "logout_user", lambda: logout_calls.append(True))
-    monkeypatch.setattr(login, "current_account_with_tenant_optional", lambda: (None, None))
+    config_overrides(LOGIN_DISABLED=False)
+    monkeypatch.setattr(login_helpers, "_resolve_current_user", lambda: None)
+    manager = DifyLoginManager()
+    manager.unauthorized_handler(lambda: Response(status=401))
+    monkeypatch.setattr(login_helpers, "_get_login_manager", lambda: manager)
+    with app.test_request_context("/logout-all", method="POST", headers={"Origin": "http://localhost"}):
+        assert login.LogoutAllApi().post().status_code == 401
 
-    with app.test_request_context("/logout", method="POST"):
-        response = login.LogoutApi().post()
+    account = make_account()
+    monkeypatch.setattr(login_helpers, "_resolve_current_user", lambda: account)
+    with app.test_request_context("/logout-all", method="POST", headers={"Origin": "http://localhost"}):
+        with pytest.raises(Unauthorized, match="CSRF"):
+            login.LogoutAllApi().post()
+    assert service.logout_account_ids == []
+
+
+def test_logout_all_revokes_authenticated_account_and_clears_cookies(
+    app: Flask,
+    service: FakeAuthenticationService,
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+) -> None:
+    config_overrides(
+        LOGIN_DISABLED=False,
+        SECRET_KEY="logout-all-test-secret-key-at-least-32-bytes",
+        CONSOLE_WEB_URL="",
+        CONSOLE_API_URL="",
+    )
+    account = make_account()
+    monkeypatch.setattr(login_helpers, "_resolve_current_user", lambda: account)
+    csrf_token = generate_csrf_token(account.id)
+    with app.test_request_context(
+        "/logout-all",
+        method="POST",
+        headers={"Origin": "http://localhost", "X-CSRF-Token": csrf_token, "Cookie": f"csrf_token={csrf_token}"},
+    ):
+        response = login.LogoutAllApi().post()
 
     assert response.json == {"result": "success"}
-    assert service.logout_account_ids == []
-    assert logout_calls == []
-    cookies = response.headers.getlist("Set-Cookie")
-    assert any("access_token=" in cookie for cookie in cookies)
-    assert any("refresh_token=" in cookie for cookie in cookies)
-    assert any("csrf_token=" in cookie for cookie in cookies)
+    assert service.logout_account_ids == [account.id]
+    assert service.logout_tokens == []
+    assert len(response.headers.getlist("Set-Cookie")) == 3
+
+
+@pytest.mark.parametrize("endpoint", [login.LogoutApi, login.RefreshTokenApi])
+@pytest.mark.parametrize(
+    "origin",
+    [
+        None,
+        "null",
+        "https://attacker.example",
+        "http://localhost.attacker.example",
+        "http://localhost:0",
+        "http://localhost/path",
+        "http://localhost?query",
+        "http://user@localhost",
+        "http://localhost:bad",
+    ],
+)
+def test_cookie_session_mutations_reject_untrusted_origin(
+    app: Flask,
+    service: FakeAuthenticationService,
+    config_overrides: Callable[..., None],
+    endpoint: type[login.LogoutApi] | type[login.RefreshTokenApi],
+    origin: str | None,
+) -> None:
+    config_overrides(SECRET_KEY="proxy-csrf-test-secret-at-least-32-bytes", CONSOLE_WEB_URL="", CONSOLE_API_URL="")
+    csrf = generate_csrf_token(TEST_TOKEN)
+    refresh = f"v2.{TEST_TOKEN}.{'a' * 32}.{'b' * 64}"
+    headers = {"X-CSRF-Token": csrf, "Cookie": f"csrf_token={csrf}; refresh_token={refresh}"}
+    if origin is not None:
+        headers["Origin"] = origin
+    with app.test_request_context("/", method="POST", headers=headers):
+        with pytest.raises(Forbidden, match="Origin"):
+            endpoint().post()
+
+    assert service.logout_tokens == []
+    assert service.refresh_tokens == []
+
+
+@pytest.mark.parametrize("endpoint", [login.LogoutApi, login.RefreshTokenApi])
+@pytest.mark.parametrize("origin", ["https://localhost", "http://localhost:8080"])
+def test_same_host_proxy_origin_accepts_expired_signed_csrf_proof(
+    app: Flask,
+    service: FakeAuthenticationService,
+    config_overrides: Callable[..., None],
+    endpoint: type[login.LogoutApi] | type[login.RefreshTokenApi],
+    origin: str,
+) -> None:
+    secret = "proxy-csrf-test-secret-at-least-32-bytes"
+    config_overrides(SECRET_KEY=secret, CONSOLE_WEB_URL="", CONSOLE_API_URL="", COOKIE_DOMAIN="")
+    csrf = jwt.encode({"sub": TEST_TOKEN, "exp": 1, "jti": "c" * 32}, secret, algorithm="HS256")
+    refresh = f"v2.{TEST_TOKEN}.{'a' * 32}.{'b' * 64}"
+    with app.test_request_context(
+        "/",
+        method="POST",
+        headers={
+            "Origin": origin,
+            "X-CSRF-Token": csrf,
+            "Cookie": f"access_token=expired; csrf_token={csrf}; refresh_token={refresh}",
+        },
+    ):
+        assert endpoint().post().json == {"result": "success"}
+        with pytest.raises(Unauthorized, match="CSRF"):
+            login_helpers.check_csrf_token(request, TEST_TOKEN)
+
+    assert service.logout_tokens + service.refresh_tokens == [refresh]
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        "missing-header",
+        "missing-cookie",
+        "mismatched-cookie",
+        "bad-signature",
+        "wrong-account",
+        "malformed-refresh",
+        "bad-exp",
+        "bad-jti",
+        "bad-sub",
+        "missing-exp",
+        "token-type",
+        "token-source",
+        "audience",
+    ],
+)
+def test_same_host_proxy_origin_rejects_invalid_csrf_proof(
+    app: Flask,
+    service: FakeAuthenticationService,
+    config_overrides: Callable[..., None],
+    case: str,
+) -> None:
+    secret = "proxy-csrf-test-secret-at-least-32-bytes"
+    config_overrides(SECRET_KEY=secret, CONSOLE_WEB_URL="", CONSOLE_API_URL="", COOKIE_DOMAIN="")
+    claims: dict[str, str | int] = {"sub": TEST_TOKEN, "exp": 1, "jti": "c" * 32}
+    refresh = f"v2.{TEST_TOKEN}.{'a' * 32}.{'b' * 64}"
+    if case == "wrong-account":
+        claims["sub"] = "11111111-1111-4111-8111-111111111111"
+    elif case == "malformed-refresh":
+        refresh = f"v2.{TEST_TOKEN}.bad.secret"
+    elif case == "bad-exp":
+        claims["exp"] = "never"
+    elif case == "bad-jti":
+        claims["jti"] = 123
+    elif case == "bad-sub":
+        claims["sub"] = 123
+    elif case == "missing-exp":
+        del claims["exp"]
+    elif case == "token-type":
+        claims["token_type"] = "console_access"
+    elif case == "token-source":
+        claims["token_source"] = "webapp"
+    elif case == "audience":
+        claims["aud"] = "dify-console"
+    csrf = jwt.encode(
+        claims, "wrong-key-at-least-32-bytes-for-csrf" if case == "bad-signature" else secret, algorithm="HS256"
+    )
+    cookie = "different-cookie" if case == "mismatched-cookie" else csrf
+    headers = {"Origin": "https://localhost", "Cookie": f"refresh_token={refresh}"}
+    if case != "missing-header":
+        headers["X-CSRF-Token"] = csrf
+    if case != "missing-cookie":
+        headers["Cookie"] += f"; csrf_token={cookie}"
+    with app.test_request_context("/refresh-token", method="POST", headers=headers):
+        with pytest.raises(Forbidden, match="Origin"):
+            login.RefreshTokenApi().post()
+    assert service.refresh_tokens == []
+
+
+def test_same_host_proxy_origin_with_csrf_and_missing_refresh_can_log_out(
+    app: Flask, service: FakeAuthenticationService, config_overrides: Callable[..., None]
+) -> None:
+    config_overrides(SECRET_KEY="proxy-csrf-test-secret-at-least-32-bytes", CONSOLE_WEB_URL="", CONSOLE_API_URL="")
+    csrf = generate_csrf_token(TEST_TOKEN)
+    with app.test_request_context(
+        "/",
+        method="POST",
+        headers={"Origin": "https://localhost", "X-CSRF-Token": csrf, "Cookie": f"csrf_token={csrf}"},
+    ):
+        _, status = login.RefreshTokenApi().post()
+        assert status == 401
+        assert login.LogoutApi().post().json == {"result": "success"}
+    assert service.logout_tokens == [None]
+    assert service.refresh_tokens == []
+
+
+@pytest.mark.parametrize("origin", ["http://localhost:80", "https://CONSOLE.example:443"])
+def test_refresh_accepts_normalized_api_or_configured_console_origin(
+    app: Flask,
+    service: FakeAuthenticationService,
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+    origin: str,
+) -> None:
+    config_overrides(CONSOLE_WEB_URL="https://console.example/console")
+    monkeypatch.setattr(login, "extract_refresh_token", lambda _request: "old-refresh")
+    with app.test_request_context("/refresh-token", method="POST", headers={"Origin": origin}):
+        assert login.RefreshTokenApi().post().json == {"result": "success"}
+    assert service.refresh_tokens == ["old-refresh"]
+
+
+@pytest.mark.parametrize("request_id", ["", "not-a-uuid", "x" * 1000])
+def test_refresh_rejects_invalid_request_id(app: Flask, service: FakeAuthenticationService, request_id: str) -> None:
+    with app.test_request_context(
+        "/refresh-token", method="POST", headers={"Origin": "http://localhost", "X-Refresh-Request-ID": request_id}
+    ):
+        with pytest.raises(BadRequest, match="UUID"):
+            login.RefreshTokenApi().post()
+    assert service.refresh_tokens == []
+
+
+def test_refresh_forwards_normalized_retry_id(
+    app: Flask, service: FakeAuthenticationService, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(login, "extract_refresh_token", lambda _request: "old-refresh")
+    with app.test_request_context(
+        "/refresh-token", method="POST", headers={"Origin": "http://localhost", "X-Refresh-Request-ID": TEST_TOKEN}
+    ):
+        response = login.RefreshTokenApi().post()
+    assert response.json == {"result": "success"}
+    assert service.refresh_request_ids == [TEST_TOKEN]
+
+
+def test_console_cors_allows_refresh_retry_id_and_csrf_headers() -> None:
+    app = Flask("refresh-cors")
+    CORS(app, origins=["https://console.example"], supports_credentials=True, allow_headers=list(AUTHENTICATED_HEADERS))
+    app.add_url_rule("/refresh-token", view_func=lambda: "", methods=["POST"])
+    response = app.test_client().options(
+        "/refresh-token",
+        headers={
+            "Origin": "https://console.example",
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "X-Refresh-Request-ID,X-CSRF-Token",
+        },
+    )
+    allowed = response.headers["Access-Control-Allow-Headers"].lower()
+    assert "x-refresh-request-id" in allowed
+    assert "x-csrf-token" in allowed
 
 
 def test_refresh_maps_invalid_session_to_unauthorized(
@@ -314,7 +559,7 @@ def test_refresh_maps_invalid_session_to_unauthorized(
     service.error = account_errors.InvalidRefreshTokenError("Invalid refresh token")
     monkeypatch.setattr(login, "extract_refresh_token", lambda _request: "bad-token")
 
-    with app.test_request_context("/refresh-token", method="POST"):
+    with app.test_request_context("/refresh-token", method="POST", headers={"Origin": "http://localhost"}):
         response, status = login.RefreshTokenApi().post()
 
     assert status == 401
@@ -328,7 +573,7 @@ def test_refresh_rejects_missing_cookie(
 ) -> None:
     monkeypatch.setattr(login, "extract_refresh_token", lambda _request: None)
 
-    with app.test_request_context("/refresh-token", method="POST"):
+    with app.test_request_context("/refresh-token", method="POST", headers={"Origin": "http://localhost"}):
         response, status = login.RefreshTokenApi().post()
 
     assert status == 401
@@ -346,7 +591,7 @@ def test_refresh_does_not_require_completed_setup(
     monkeypatch.setattr(wraps, "_is_setup_completed", lambda: False)
     monkeypatch.setattr(login, "extract_refresh_token", lambda _request: "old-refresh")
 
-    with app.test_request_context("/refresh-token", method="POST"):
+    with app.test_request_context("/refresh-token", method="POST", headers={"Origin": "http://localhost"}):
         response = login.RefreshTokenApi().post()
 
     assert response.json == {"result": "success"}

@@ -187,13 +187,14 @@ def build_account_services(
     invitation_tokens: RedisInvitationTokenStore,
     activation_accounts: SQLAlchemyAccountActivationRepository,
 ) -> AccountServices:
+    sessions = RedisAccountSessionGateway(redis=redis)
     lifecycle = AccountService(
         security=RedisConsoleAuthSecurityGateway(redis=redis),
         accounts=accounts,
         policies=DeploymentAccountLifecyclePolicy(),
         passwords=passwords,
         workspaces=workspace_provisioning,
-        sessions=RedisAccountSessionGateway(redis=redis),
+        sessions=sessions,
         now=naive_utc_now,
     )
     activation = AccountActivationService(
@@ -235,7 +236,7 @@ def build_account_services(
             security=RedisConsoleAuthSecurityGateway(redis=redis),
             passwords=passwords,
             human_verification=TurnstileHumanVerificationGateway(),
-            sessions=RedisAccountSessionGateway(redis=redis),
+            sessions=sessions,
             refresh_preparation=SQLAlchemyAccountRefreshPreparationGateway(accounts=accounts),
             account_provisioning=workspace_provisioning,
             workspace_provisioning=workspace_provisioning,
@@ -320,6 +321,7 @@ def build_account_services(
         ),
         forgot_password=AccountForgotPasswordService(
             accounts=accounts,
+            sessions=sessions,
             passwords=passwords,
             tokens=RedisForgotPasswordTokenGateway(
                 redis=redis,
@@ -354,6 +356,7 @@ def build_account_services(
         ),
         password=AccountPasswordService(
             accounts=accounts,
+            sessions=sessions,
             passwords=passwords,
         ),
         profile=AccountProfileService(accounts=accounts),

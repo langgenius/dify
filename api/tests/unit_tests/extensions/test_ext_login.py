@@ -4,14 +4,17 @@ from typing import cast
 from unittest import mock
 
 import pytest
-from flask import Flask, Response, request
+from flask import Blueprint, Flask, Response, request
 from sqlalchemy.orm import Session
 
 from constants import COOKIE_NAME_ACCESS_TOKEN
 from core.logging.context import clear_request_context, get_identity_context
 from extensions import ext_login
 from extensions.ext_login import unauthorized_handler
+from libs.passport import PassportService
+from libs.token import generate_csrf_token
 from models.account import TenantAccountRole
+from services.account.console_tokens import issue_console_access_token, verify_console_access_token
 
 
 @pytest.fixture(autouse=True)
@@ -126,3 +129,42 @@ def test_admin_api_key_header_takes_precedence_over_console_cookie(
 
     assert result is account
     assert account.current_tenant is tenant
+
+
+@pytest.mark.parametrize("blueprint_name", ["console", "inner_api", "openapi"])
+@pytest.mark.parametrize("token_kind", ["access", "csrf", "legacy"])
+def test_account_routes_require_console_access_tokens(
+    sqlite_session: Session, config_overrides: Callable[..., None], blueprint_name: str, token_kind: str
+) -> None:
+    config_overrides(
+        SECRET_KEY="console-request-test-signing-key-at-least-32-bytes",
+        ADMIN_API_KEY_ENABLE=False,
+        CONSOLE_WEB_URL="http://localhost",
+        CONSOLE_API_URL="http://localhost",
+        COOKIE_DOMAIN="",
+    )
+    account = ext_login.Account(name="Test Account", email="test@example.com")
+    account.id = "11111111-1111-4111-8111-111111111111"
+    app = Flask(__name__)
+    ext_login.bind_account_loader(app, lambda account_id: account if account_id == account.id else None)
+    ext_login.bind_console_token_verifier(app, verify_console_access_token)
+    blueprint = Blueprint(blueprint_name, __name__)
+
+    @blueprint.get("/auth-test")
+    def auth_test() -> tuple[str, int]:
+        loaded = ext_login._load_user_from_request(request, sqlite_session)
+        return (loaded.get_id(), 200) if loaded is not None else ("", 401)
+
+    app.register_blueprint(blueprint)
+    tokens = {
+        "access": issue_console_access_token(account.id, "a" * 32),
+        "csrf": generate_csrf_token(account.id),
+        "legacy": PassportService().issue({"user_id": account.id, "sub": "Console API Passport"}),
+    }
+    client = app.test_client()
+    client.set_cookie(COOKIE_NAME_ACCESS_TOKEN, tokens[token_kind])
+    response = client.get("/auth-test")
+
+    assert response.status_code == (200 if token_kind == "access" else 401)
+    if token_kind == "access":
+        assert response.get_data(as_text=True) == account.id

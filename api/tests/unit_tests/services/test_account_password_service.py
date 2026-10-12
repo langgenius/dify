@@ -10,6 +10,7 @@ from services.account_errors import AccountNotFoundError, CurrentAccountPassword
 from services.account_password_hasher import DefaultAccountPasswordHasher
 from services.account_password_service import AccountPasswordService
 from services.entities.account_entities import AccountPasswordDigest
+from tests.unit_tests.account_domain import FakeAccountSessionRevoker
 from tests.unit_tests.model_factories import make_account
 
 
@@ -41,10 +42,12 @@ def test_change_verifies_current_password_and_updates_digest(
     verify = mocker.spy(passwords, "verify")
     hash_password = mocker.spy(passwords, "hash")
     update = mocker.spy(accounts, "update_password")
-    service = AccountPasswordService(accounts=accounts, passwords=passwords)
+    sessions = FakeAccountSessionRevoker()
+    service = AccountPasswordService(accounts=accounts, passwords=passwords, sessions=sessions)
 
     result = service.change(_context(), current_password="old-password1", new_password="new-password1")
 
+    assert sessions.account_ids == ["account-1", "account-1"]
     assert result.id == "account-1"
     assert result.is_password_set
     verify.assert_called_once_with(
@@ -70,13 +73,15 @@ def test_change_rejects_incorrect_current_password_without_hashing_or_update(
     previous = accounts.get_credentials("account-1")
     hash_password = mocker.spy(passwords, "hash")
     update = mocker.spy(accounts, "update_password")
-    service = AccountPasswordService(accounts=accounts, passwords=passwords)
+    sessions = FakeAccountSessionRevoker()
+    service = AccountPasswordService(accounts=accounts, passwords=passwords, sessions=sessions)
 
     with pytest.raises(CurrentAccountPasswordIncorrectError):
         service.change(_context(), current_password="wrong", new_password="new-password1")
 
     hash_password.assert_not_called()
     update.assert_not_called()
+    assert sessions.account_ids == []
     assert accounts.get_credentials("account-1") == previous
 
 
@@ -87,12 +92,14 @@ def test_change_does_not_verify_current_password_when_account_has_no_password(
     passwords = DefaultAccountPasswordHasher()
     verify = mocker.spy(passwords, "verify")
     update = mocker.spy(accounts, "update_password")
-    service = AccountPasswordService(accounts=accounts, passwords=passwords)
+    sessions = FakeAccountSessionRevoker()
+    service = AccountPasswordService(accounts=accounts, passwords=passwords, sessions=sessions)
 
     service.change(_context(), current_password="", new_password="new-password1")
 
     verify.assert_not_called()
     update.assert_called_once()
+    assert sessions.account_ids == ["account-1", "account-1"]
     account = accounts.get("account-1")
     assert account is not None
     assert account.is_password_set
@@ -102,9 +109,28 @@ def test_change_reports_missing_account(sqlite_session_factory: sessionmaker[Ses
     accounts = SQLAlchemyAccountRepository(sqlite_session_factory)
     passwords = DefaultAccountPasswordHasher()
     hash_password = mocker.spy(passwords, "hash")
-    service = AccountPasswordService(accounts=accounts, passwords=passwords)
+    sessions = FakeAccountSessionRevoker()
+    service = AccountPasswordService(accounts=accounts, passwords=passwords, sessions=sessions)
 
     with pytest.raises(AccountNotFoundError):
         service.change(_context(), current_password="old", new_password="new-password1")
 
     hash_password.assert_not_called()
+    assert sessions.account_ids == []
+
+
+@pytest.mark.parametrize("fail_on_call", [1, 2])
+def test_change_rejects_session_store_failure_around_password_commit(
+    sqlite_session_factory: sessionmaker[Session], fail_on_call: int
+) -> None:
+    passwords = DefaultAccountPasswordHasher()
+    accounts = _accounts(sqlite_session_factory, passwords.hash("old-password1"))
+    previous = accounts.get_credentials("account-1")
+    sessions = FakeAccountSessionRevoker(fail_on_call=fail_on_call)
+    service = AccountPasswordService(accounts=accounts, passwords=passwords, sessions=sessions)
+
+    with pytest.raises(RuntimeError, match="Session storage unavailable"):
+        service.change(_context(), current_password="old-password1", new_password="new-password1")
+
+    assert sessions.account_ids == ["account-1"] * fail_on_call
+    assert (accounts.get_credentials("account-1") == previous) is (fail_on_call == 1)

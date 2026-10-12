@@ -3281,11 +3281,6 @@
       "count": 1
     }
   },
-  "web/service/refresh-token.ts": {
-    "no-restricted-properties": {
-      "count": 7
-    }
-  },
   "web/service/share.ts": {
     "no-restricted-imports": {
       "count": 2

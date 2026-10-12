@@ -88,13 +88,14 @@ from services.account.adapters import (
     InstallationTelemetryGateway,
     RedisInvitationTokenStore,
 )
+from services.account.console_tokens import verify_console_access_token
 from services.account.forgot_password_adapters import RedisForgotPasswordSecurityGateway
 from services.account.forgot_password_service import (
     FORGOT_PASSWORD_SEND_RATE_LIMIT_MAX_ATTEMPTS,
     FORGOT_PASSWORD_SEND_RATE_LIMIT_PREFIX,
     FORGOT_PASSWORD_SEND_RATE_LIMIT_WINDOW_SECONDS,
 )
-from services.account.login_adapters import RedisConsoleAuthSecurityGateway
+from services.account.login_adapters import RedisAccountSessionGateway, RedisConsoleAuthSecurityGateway
 from services.account.service import AccountSetupProvisioner
 from services.account_password_hasher import DefaultAccountPasswordHasher
 from services.agent.roster_package_exporter import RosterAgentPackageExporter
@@ -569,6 +570,7 @@ def build_application_services(
         webapp_access=webapp_access,
         web_authentication=WebAuthenticationService(
             accounts=accounts,
+            account_sessions=RedisAccountSessionGateway(redis=redis),
             passwords=passwords,
             tokens=web_authentication_tokens,
             security=AccountWebAuthenticationSecurityGateway(
@@ -723,7 +725,7 @@ def build_application_services(
 
 
 def init_app(app: Flask) -> None:
-    from extensions.ext_login import bind_account_loader
+    from extensions.ext_login import bind_account_loader, bind_console_token_verifier
 
     services = build_application_services(
         database_client=get_session_maker(),
@@ -733,6 +735,7 @@ def init_app(app: Flask) -> None:
     )
     app.extensions[_EXTENSION_KEY] = services
     bind_account_loader(app, services.accounts.identity.load_user)
+    bind_console_token_verifier(app, verify_console_access_token)
 
 
 def application_services() -> ApplicationServices:

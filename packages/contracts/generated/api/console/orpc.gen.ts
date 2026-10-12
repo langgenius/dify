@@ -43,6 +43,7 @@ export const contractLoaders = {
     })),
   login: () => import('./login/orpc.gen.ts').then(({ login }) => ({ login })),
   logout: () => import('./logout/orpc.gen.ts').then(({ logout }) => ({ logout })),
+  logoutAll: () => import('./logout-all/orpc.gen.ts').then(({ logoutAll }) => ({ logoutAll })),
   notification: () =>
     import('./notification/orpc.gen.ts').then(({ notification }) => ({ notification })),
   notion: () => import('./notion/orpc.gen.ts').then(({ notion }) => ({ notion })),

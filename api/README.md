@@ -56,6 +56,18 @@
 
 Leave `SECRET_KEY` empty to let Dify generate a persistent key in the storage directory. To manage it explicitly, generate a value with `openssl rand -base64 42` and set `SECRET_KEY` in `api/.env`.
 
+### Console sessions
+
+Each login creates an independent session with a short-lived access JWT and a rotating opaque refresh credential in an `HttpOnly` cookie. `ACCESS_TOKEN_EXPIRE_MINUTES` defaults to 15; explicit settings still apply. `REFRESH_TOKEN_EXPIRE_DAYS` defaults to 30 and limits the session's total lifetime from login. Refreshing does not extend that deadline.
+
+`POST /console/api/logout` revokes only the current refresh session and works even when its access JWT has expired. `POST /console/api/logout-all` requires an authenticated account and a valid CSRF token, then revokes all of that account's refresh sessions. Password changes and resets through both Console and Web require successful session revocation before persistence and revoke again after the write. Already-issued access JWTs remain usable until their expiry.
+
+Refresh and logout requests require an `Origin` header matching the API origin or the configured `CONSOLE_WEB_URL` origin. Browsers send this header automatically; native clients must send a matching trusted origin explicitly. A refresh client can supply an optional UUID in `X-Refresh-Request-ID` and reuse it only when retrying the same operation after a lost response. While that operation remains the latest rotation, retrying within 10 seconds returns the same successor tokens from an encrypted Redis cache. Reusing a consumed refresh token outside this allowance revokes its session, without affecting other logins.
+
+When a same-host reverse proxy changes the scheme or exposed port, refresh and logout also accept the browser's origin with a signed `X-CSRF-Token` matching its CSRF cookie and refresh account. The CSRF cookie remains available for the refresh lifetime; only this origin fallback ignores the CSRF JWT expiry, while ordinary authenticated requests still require an unexpired CSRF JWT. Different frontend hostnames must be configured in `CONSOLE_WEB_URL`.
+
+Deploy the backend and frontend changes together: the `v2` refresh format and access JWT validation require users to sign in once after upgrading. Do not mix old and new backend readers during the cutover. Replicas must share their session Redis and `SECRET_KEY`. Redis holds the session state and token hashes; missing or unavailable state prevents refresh, and lost session state requires a new login. Preserve Redis state across restarts if sessions should survive them.
+
 ## Testing
 
 Run from the repository root:

@@ -2,7 +2,7 @@
 
 from machinery.context import RequestContext
 from services.account_errors import AccountNotFoundError, CurrentAccountPasswordIncorrectError
-from services.account_ports import AccountPasswordHasher, AccountRepository
+from services.account_ports import AccountPasswordHasher, AccountRepository, AccountSessionRevoker
 from services.entities.account_entities import AccountSnapshot
 
 
@@ -12,9 +12,11 @@ class AccountPasswordService:
         *,
         accounts: AccountRepository,
         passwords: AccountPasswordHasher,
+        sessions: AccountSessionRevoker,
     ) -> None:
         self._accounts = accounts
         self._passwords = passwords
+        self._sessions = sessions
 
     def change(self, context: RequestContext, *, current_password: str, new_password: str) -> AccountSnapshot:
         credentials = self._accounts.get_credentials(context.account_id)
@@ -32,7 +34,10 @@ class AccountPasswordService:
             raise CurrentAccountPasswordIncorrectError
 
         password = self._passwords.hash(new_password)
+        # Revoke before persistence for outages and afterward for sessions issued during the write.
+        self._sessions.revoke_all(context.account_id)
         account = self._accounts.update_password(context.account_id, password)
         if account is None:
             raise AccountNotFoundError
+        self._sessions.revoke_all(account.id)
         return account

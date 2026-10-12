@@ -2,7 +2,7 @@
 
 from collections.abc import Callable
 from datetime import datetime
-from unittest.mock import Mock
+from unittest.mock import Mock, call
 
 import pytest
 from sqlalchemy import select
@@ -221,3 +221,34 @@ def test_setup_persists_initialized_owner_before_telemetry(
         SetupInput(email="a@example.com", name="A", password="Valid123!", ip_address="127.0.0.1", language="en-US")
     )
     assert len(reported) == 1
+
+
+def test_reset_password_revokes_sessions_only_after_success(account_domain: AccountDomain) -> None:
+    account = account_domain.accounts.create_account("a@example.com", "A", "en-US", password="Valid123!")
+
+    account_domain.accounts.reset_password(account.id, "Changed123!", email=account.email)
+
+    assert account_domain.accounts.authenticate(account.email, "Changed123!").id == account.id
+    assert account_domain.sessions.revoke_all.call_args_list == [call(account.id), call(account.id)]
+    account_domain.security.reset_login_failures.assert_called_once_with(account.email)
+    account_domain.sessions.revoke_all.reset_mock()
+    with pytest.raises(AccountNotFoundError):
+        account_domain.accounts.reset_password("missing", "Changed123!", email=account.email)
+    account_domain.sessions.revoke_all.assert_not_called()
+
+
+@pytest.mark.parametrize("fail_on_call", [1, 2])
+def test_reset_password_rejects_session_store_failure_around_commit(
+    account_domain: AccountDomain, fail_on_call: int
+) -> None:
+    account = account_domain.accounts.create_account("a@example.com", "A", "en-US", password="Valid123!")
+    before = account_domain.repository.get_credentials(account.id)
+    account_domain.sessions.revoke_all.side_effect = [None] * (fail_on_call - 1) + [
+        RuntimeError("Session storage unavailable")
+    ]
+
+    with pytest.raises(RuntimeError, match="Session storage unavailable"):
+        account_domain.accounts.reset_password(account.id, "Changed123!", email=account.email)
+
+    assert account_domain.sessions.revoke_all.call_count == fail_on_call
+    assert (account_domain.repository.get_credentials(account.id) == before) is (fail_on_call == 1)
