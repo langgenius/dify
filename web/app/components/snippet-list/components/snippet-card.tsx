@@ -55,7 +55,6 @@ const SnippetCard = ({
   const { t: tCommon } = useTranslation(['common'])
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { data: membersData } = useMembers()
-  const [isOperationsMenuOpen, setIsOperationsMenuOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const updateSnippetMutation = useUpdateSnippetMutation()
@@ -88,14 +87,12 @@ const SnippetCard = ({
   )
 
   const handleOpenEditDialog = () => {
-    setIsOperationsMenuOpen(false)
     setIsEditDialogOpen(true)
   }
 
   const handleExportSnippet = async () => {
     if (!canCreateAndModifySnippet) return
 
-    setIsOperationsMenuOpen(false)
     try {
       const data = await exportSnippetMutation.mutateAsync({ snippetId: snippet.id })
       const file = new Blob([data], { type: 'application/yaml' })
@@ -187,11 +184,7 @@ const SnippetCard = ({
           {canShowOperations && (
             <div className="pointer-events-none absolute top-1/2 right-1.5 flex -translate-y-1/2 items-center opacity-0 transition-opacity group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 has-data-popup-open:pointer-events-auto has-data-popup-open:opacity-100">
               <div className="mx-1 h-3.5 w-px shrink-0 bg-divider-regular" />
-              <DropdownMenu
-                modal={false}
-                open={isOperationsMenuOpen}
-                onOpenChange={setIsOperationsMenuOpen}
-              >
+              <DropdownMenu modal={false}>
                 <DropdownMenuTrigger
                   aria-label={tCommon(($) => $['operation.moreActionsFor'], {
                     ns: 'common',
@@ -228,10 +221,7 @@ const SnippetCard = ({
                       <DropdownMenuItem
                         variant="destructive"
                         className="gap-2 px-3"
-                        onClick={() => {
-                          setIsOperationsMenuOpen(false)
-                          setIsDeleteDialogOpen(true)
-                        }}
+                        onClick={() => setIsDeleteDialogOpen(true)}
                       >
                         <span className="system-sm-regular">
                           {t(($) => $['menu.deleteSnippet'])}

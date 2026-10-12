@@ -38,7 +38,6 @@ type Props = Readonly<{
 
 type OperationsMenuProps = {
   list: AnnotationItemBasic[]
-  onClose: () => void
   onBulkImport: () => void
   onClearAll: () => void
   onExportJsonl: () => void
@@ -66,7 +65,6 @@ const downloadAnnotationCsv = (list: AnnotationItemBasic[], locale: string) => {
 
 const OperationsMenu: FC<OperationsMenuProps> = ({
   list,
-  onClose,
   onBulkImport,
   onClearAll,
   onExportJsonl,
@@ -80,7 +78,6 @@ const OperationsMenu: FC<OperationsMenuProps> = ({
       <DropdownMenuItem
         className="gap-2"
         onClick={() => {
-          onClose()
           onBulkImport()
         }}
       >
@@ -102,7 +99,6 @@ const OperationsMenu: FC<OperationsMenuProps> = ({
           <DropdownMenuItem
             disabled={annotationUnavailable}
             onClick={() => {
-              onClose()
               downloadAnnotationCsv(list, locale)
             }}
           >
@@ -111,7 +107,6 @@ const OperationsMenu: FC<OperationsMenuProps> = ({
           <DropdownMenuItem
             disabled={annotationUnavailable}
             onClick={() => {
-              onClose()
               onExportJsonl()
             }}
           >
@@ -123,7 +118,6 @@ const OperationsMenu: FC<OperationsMenuProps> = ({
         variant="destructive"
         className="gap-2"
         onClick={() => {
-          onClose()
           onClearAll()
         }}
       >
@@ -161,7 +155,6 @@ const HeaderOptions: FC<Props> = ({ appId, onAdd, onAdded, controlUpdateList }) 
       },
     }),
   )
-  const [isOperationsMenuOpen, setIsOperationsMenuOpen] = useState(false)
   const handleShowBulkImportModal = React.useCallback(() => {
     setShowBulkImportModal(true)
   }, [])
@@ -179,11 +172,7 @@ const HeaderOptions: FC<Props> = ({ appId, onAdd, onAdded, controlUpdateList }) 
         <span aria-hidden className="i-ri-add-line size-4" />
         <div>{t(($) => $['table.header.addAnnotation'], { ns: 'appAnnotation' })}</div>
       </Button>
-      <DropdownMenu
-        modal={false}
-        open={isOperationsMenuOpen}
-        onOpenChange={setIsOperationsMenuOpen}
-      >
+      <DropdownMenu modal={false}>
         <DropdownMenuTrigger
           aria-label={t(($) => $['operation.more'], { ns: 'common' })}
           className="mr-0 box-border inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg p-0 text-components-button-secondary-text shadow-xs backdrop-blur-[5px] hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover data-popup-open:border-components-button-secondary-border-hover data-popup-open:bg-components-button-secondary-bg-hover"
@@ -193,7 +182,6 @@ const HeaderOptions: FC<Props> = ({ appId, onAdd, onAdded, controlUpdateList }) 
         <DropdownMenuContent placement="bottom-end" sideOffset={4} className="w-38.75">
           <OperationsMenu
             list={list}
-            onClose={() => setIsOperationsMenuOpen(false)}
             onBulkImport={handleShowBulkImportModal}
             onClearAll={handleClearAll}
             onExportJsonl={handleExportJsonl}
