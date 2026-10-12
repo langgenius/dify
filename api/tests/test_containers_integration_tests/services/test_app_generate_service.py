@@ -99,7 +99,7 @@ class TestAppGenerateService:
             mock_advanced_chat_generator_instance.generate.return_value = ["advanced_chat_response"]
             mock_advanced_chat_generator_instance.single_iteration_generate.return_value = ["single_iteration_response"]
             mock_advanced_chat_generator_instance.single_loop_generate.return_value = ["single_loop_response"]
-            mock_advanced_chat_generator_instance.retrieve_events.return_value = ["advanced_chat_events"]
+            mock_advanced_chat_generator.retrieve_events.return_value = ["advanced_chat_events"]
             mock_advanced_chat_generator_instance.convert_to_event_stream.return_value = ["advanced_chat_stream"]
             mock_advanced_chat_generator.convert_to_event_stream.return_value = ["advanced_chat_stream"]
 
@@ -350,10 +350,8 @@ class TestAppGenerateService:
         assert result == ["test_response"]
 
         # Verify advanced chat generator was called
-        mock_external_service_dependencies["advanced_chat_generator"].return_value.retrieve_events.assert_called_once()
-        mock_external_service_dependencies[
-            "advanced_chat_generator"
-        ].return_value.convert_to_event_stream.assert_called_once()
+        mock_external_service_dependencies["advanced_chat_generator"].retrieve_events.assert_called_once()
+        mock_external_service_dependencies["advanced_chat_generator"].convert_to_event_stream.assert_called_once()
 
     def test_generate_workflow_mode_success(
         self, db_session_with_containers: Session, mock_external_service_dependencies
