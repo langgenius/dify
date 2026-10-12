@@ -10,7 +10,6 @@ from machinery.context import RequestContext
 from services.entities.network_access_group_entities import (
     NetworkAccessAppConfig,
     NetworkAccessAppStatus,
-    NetworkAccessAppStatusSnapshot,
     NetworkAccessBinding,
     NetworkAccessBindingUpdate,
     NetworkAccessCurrentIPCheck,
@@ -143,10 +142,6 @@ class NetworkAccessGroupControlPlane(Protocol):
 
     def get_app_binding(self, workspace_id: str, app_id: str, actor_account_id: str) -> NetworkAccessAppConfig: ...
 
-    def get_app_status(
-        self, workspace_id: str, app_id: str, actor_account_id: str
-    ) -> NetworkAccessAppStatusSnapshot: ...
-
     def update_app_binding(
         self,
         workspace_id: str,
@@ -254,15 +249,14 @@ class NetworkAccessGroupService:
     def get_app_status(self, context: RequestContext, *, app_id: str) -> NetworkAccessAppStatus:
         """Expose only the Access Point entry state to Normal workspace members."""
         self._ensure_workspace_role(context, _APP_STATUS_ROLES)
-        app = self._get_manageable_app(context.active_workspace_id, app_id)
-        available_access_points = self._available_access_points(app.mode)
-        status = self._control_plane.get_app_status(context.active_workspace_id, app.id, context.account_id)
+        config = self._read_app_binding(context, app_id=app_id)
+        binding = config.binding
         return NetworkAccessAppStatus(
-            entitled=self._effective_entitlement(context.active_workspace_id, status.entitled),
-            configured=status.configured,
-            enabled=status.enabled,
-            covered_count=len(set(status.access_points).intersection(available_access_points)),
-            available_count=len(available_access_points),
+            entitled=config.entitled,
+            configured=bool(binding and binding.group_id),
+            enabled=bool(binding and binding.enabled),
+            covered_count=len(binding.access_points) if binding else 0,
+            available_count=len(config.available_access_points),
         )
 
     def _read_app_binding(self, context: RequestContext, *, app_id: str) -> NetworkAccessAppConfig:

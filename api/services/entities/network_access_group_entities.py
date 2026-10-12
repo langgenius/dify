@@ -67,17 +67,6 @@ class NetworkAccessAppConfig:
 
 
 @dataclass(frozen=True)
-class NetworkAccessAppStatusSnapshot:
-    """Control-plane entry state without policy identity or configuration."""
-
-    entitled: bool
-    configured: bool
-    enabled: bool
-    # Preserve legacy/future scopes so the service can project current App capabilities.
-    access_points: tuple[str, ...]
-
-
-@dataclass(frozen=True)
 class NetworkAccessAppStatus:
     """Public entry status without policy identity or configuration."""
 
