@@ -322,9 +322,7 @@ describe('AccessControlEntry', () => {
     expect(within(chip).getByText('PRO')).toBeInTheDocument()
     expect(within(chip).queryByRole('button')).not.toBeInTheDocument()
     await user.hover(chip)
-    expect(
-      await screen.findByText('Access control is available on Professional and Team plans.'),
-    ).toBeInTheDocument()
+    expect(await screen.findByText('Available on Professional and Team plans')).toBeInTheDocument()
     expect(screen.queryByText(/No longer protected/)).not.toBeInTheDocument()
   })
 
@@ -369,7 +367,11 @@ describe('AccessControlEntry', () => {
 
     await user.click(getChip())
 
-    expect(screen.getByText('Restrict this app to IP addresses you trust.')).toBeInTheDocument()
+    expect(
+      screen.getByRole('dialog', { name: 'Restrict this app to IP addresses you trust' }),
+    ).toHaveAccessibleDescription(
+      'Only requests from the IP policies you choose can reach this app’s access points. Available on Professional and Team plans.',
+    )
     expect(
       screen.getByText("This app is only available on your organization's network."),
     ).toBeInTheDocument()
@@ -393,13 +395,13 @@ describe('AccessControlEntry', () => {
     renderEntry({ plan: 'sandbox' })
 
     await user.click(getChip())
-    expect(screen.getByText('Restrict this app to IP addresses you trust.')).toBeInTheDocument()
+    expect(screen.getByText('Restrict this app to IP addresses you trust')).toBeInTheDocument()
 
     await user.keyboard('{Escape}')
 
     await waitFor(() => {
       expect(
-        screen.queryByText('Restrict this app to IP addresses you trust.'),
+        screen.queryByText('Restrict this app to IP addresses you trust'),
       ).not.toBeInTheDocument()
     })
     expect(mockSetPricing).not.toHaveBeenCalled()
