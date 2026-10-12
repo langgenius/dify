@@ -35,8 +35,8 @@ const InteractionDockShell = ({
         </h2>
         {description && <p className="mt-1 system-xs-regular text-text-tertiary">{description}</p>}
       </header>
-      {children && <div className="min-h-0 overflow-y-auto px-4 pb-3">{children}</div>}
-      {footer && <div className="flex shrink-0 justify-end px-4 py-4">{footer}</div>}
+      {children ? <div className="min-h-0 overflow-y-auto px-4 pb-3">{children}</div> : null}
+      {footer ? <div className="flex shrink-0 justify-end px-4 py-4">{footer}</div> : null}
     </section>
   )
 }
@@ -52,9 +52,13 @@ const ChoiceInteraction = ({
   recheckReady: boolean
   submitInteraction: SubmitInteraction
 }) => {
-  const { t } = useTranslation(['common'])
+  const { t } = useTranslation(['workflow', 'common'])
   const formId = useId()
   const options = decision.options ?? []
+  const noRepair = options.some((option) => option.id === 'retry_repair')
+  const title = noRepair
+    ? t(($) => $['difyBuilder.noRepair.title'], { ns: 'workflow' })
+    : decision.title
   const [selectedId, setSelectedId] = useState(decision.default_option_id || options[0]?.id || '')
   const [freeText, setFreeText] = useState('')
   const [pending, setPending] = useState(false)
@@ -84,8 +88,12 @@ const ChoiceInteraction = ({
 
   return (
     <InteractionDockShell
-      title={decision.title}
-      description={decision.description}
+      title={title}
+      description={
+        noRepair
+          ? t(($) => $['difyBuilder.noRepair.description'], { ns: 'workflow' })
+          : decision.description
+      }
       footer={
         <Button
           type="submit"
@@ -108,7 +116,7 @@ const ChoiceInteraction = ({
         }}
       >
         <RadioGroup
-          aria-label={decision.title}
+          aria-label={title}
           className="flex-col items-stretch gap-1"
           value={selectedId}
           disabled={busy || pending}
@@ -123,7 +131,13 @@ const ChoiceInteraction = ({
               className="flex min-h-9 w-full cursor-pointer items-center rounded-[10px] border border-transparent bg-background-section px-3 py-2.5 text-left system-sm-medium text-text-secondary outline-hidden transition-colors hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid data-checked:border-state-accent-solid/30 data-checked:bg-util-colors-blue-brand-blue-brand-50 data-checked:text-text-primary data-checked:hover:border-state-accent-solid/30 data-checked:hover:bg-util-colors-blue-brand-blue-brand-50 data-disabled:cursor-not-allowed data-disabled:opacity-50"
             >
               <span className="min-w-0">
-                <span className="block">{option.label}</span>
+                <span className="block">
+                  {option.id === 'retry_repair'
+                    ? t(($) => $['difyBuilder.noRepair.retry'], { ns: 'workflow' })
+                    : option.id === 'finish_repair'
+                      ? t(($) => $['difyBuilder.noRepair.finish'], { ns: 'workflow' })
+                      : option.label}
+                </span>
                 {option.description && (
                   <span className="mt-0.5 block system-xs-regular text-text-tertiary">
                     {option.description}

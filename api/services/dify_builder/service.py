@@ -29,7 +29,6 @@ from core.dify_builder.contract import (
     InteractionResponseField,
     InteractionResponseItem,
     NoticeItem,
-    OptionInput,
     Phase,
     PreflightContextCard,
     PreflightIssue,
@@ -62,6 +61,7 @@ from core.dify_builder.ports import Repository
 from core.dify_builder.state import PcState, canvas_read_only, is_terminal, is_waiting, is_working
 from core.dify_builder.verification import publication_decision
 from services.dify_builder.agent.model_resolver import validate_model_config
+from services.dify_builder.repair_gate import NO_REPAIR_ACTIONS, NO_REPAIR_DECISION_COPY
 
 if TYPE_CHECKING:
     from core.dify_builder.real_call_consent import ConsentReceipt
@@ -432,6 +432,8 @@ def _actions_for(
     if state in {PcState.FIX_AWAIT_APPROVAL, PcState.BUILD_AWAIT_REPAIR, PcState.EDIT_AWAIT_REPAIR} and (
         fc is None or not fc.staged_repair
     ):
+        if state == PcState.FIX_AWAIT_APPROVAL:
+            return list(NO_REPAIR_ACTIONS)
         return [action for action in actions if action.id != "approve_plan"]
     return actions
 
@@ -446,18 +448,6 @@ _ACTION_ID_TO_KIND: dict[str, str] = {
     "restart": "recovery_restart",
     "retry_after_revert": "re_fix",
     # provide_testdata / recheck / keep_draft already match handler kinds → passthrough
-}
-
-
-# Options that need a sentence from the user to be an answer at all. Builder
-# replans from the rejection text, so a bare "no" is not something it can act on.
-_OPTION_INPUTS: dict[str, OptionInput] = {
-    "reject_repair": OptionInput(
-        placeholder="Explain the rejection -- Builder replans from it",
-        min_length=10,
-        max_length=200,
-        required=True,
-    ),
 }
 
 
@@ -480,6 +470,12 @@ _DECISION_COPY_FOR: dict[PcState, tuple[str, str]] = {
 }
 
 
+def _decision_copy_for(state: PcState, actions: list[UiAction]) -> tuple[str, str]:
+    if state == PcState.FIX_AWAIT_APPROVAL and any(action.id == "retry_repair" for action in actions):
+        return NO_REPAIR_DECISION_COPY
+    return _DECISION_COPY_FOR.get(state, ("How should Builder continue?", "Choose one option to continue."))
+
+
 def _decision_for(state: PcState, actions: list[UiAction]) -> Decision | None:
     """Project a non-form gate as one blocking choice interaction."""
     renderable = [a for a in actions if a.kind != ActionKind.AUTOMATIC]
@@ -493,16 +489,12 @@ def _decision_for(state: PcState, actions: list[UiAction]) -> Decision | None:
             label=a.label,
             is_default=(i == default_index),
             tone="destructive" if a.kind == ActionKind.DESTRUCTIVE else "neutral",
-            input=_OPTION_INPUTS.get(a.id),
             next_state=a.next_state,
             canvas_event=a.canvas_event,
         )
         for i, a in enumerate(renderable)
     ]
-    title, description = _DECISION_COPY_FOR.get(
-        state,
-        ("How should Builder continue?", "Choose one option to continue."),
-    )
+    title, description = _decision_copy_for(state, actions)
     return Decision(
         title=title,
         description=description,
@@ -572,23 +564,12 @@ def _interaction_response_for(
 
     card_contract = _ACTIVE_INTERACTION_CARD_FOR_ACTION.get(selected_action.id)
     if card_contract is None:
-        free_text = action.payload.get("free_text")
-        option_input = _OPTION_INPUTS.get(selected_action.id)
-        submitted_data: dict[str, object] = {"option_id": selected_action.id}
-        answer = selected_action.label
-        if option_input is not None and isinstance(free_text, str) and free_text.strip():
-            normalized_free_text = free_text.strip()
-            submitted_data["free_text"] = normalized_free_text
-            answer = f"{answer} — {normalized_free_text}"
-        title, _description = _DECISION_COPY_FOR.get(
-            session.current_state,
-            ("How should Builder continue?", ""),
-        )
+        title, _description = _decision_copy_for(session.current_state, visible_actions)
         return InteractionResponseItem(
             interaction_kind="choice",
             question=title,
-            answer=answer,
-            submitted_data=submitted_data,
+            answer=selected_action.label,
+            submitted_data={"option_id": selected_action.id},
         )
 
     card_kind, expected_variant = card_contract
@@ -655,7 +636,7 @@ def _interaction_response_for(
 # (notably fix.await_decision -> keep_draft), so dispatch must never be the
 # component that decides whether an action is valid.
 _BACKEND_ACTIONS_FOR: dict[PcState, frozenset[str]] = {
-    PcState.FIX_AWAIT_APPROVAL: frozenset({"approve_repair", "reject_repair"}),
+    PcState.FIX_AWAIT_APPROVAL: frozenset({"approve_repair", "reject_repair", "retry_repair", "finish_repair"}),
     PcState.FIX_AWAIT_VERIFY: frozenset({"run_verify", "undo"}),
     PcState.FIX_AWAIT_TESTDATA: frozenset({"provide_testdata"}),
     PcState.FIX_AWAIT_DECISION: frozenset({"run_verify", "publish", "keep_draft", "re_fix", "undo"}),
@@ -1476,6 +1457,11 @@ class DifyBuilderService:
             and not fc.staged_repair
         ):
             raise BadRequestError("no repair is staged for approval")
+        if s.current_state == PcState.FIX_AWAIT_APPROVAL and (
+            (fc.staged_repair and action.kind in {"retry_repair", "finish_repair"})
+            or (not fc.staged_repair and action.kind == "reject_repair")
+        ):
+            raise BadRequestError(f"action {action.kind} is not allowed for the current repair proposal")
         visible_actions = _actions_for(
             s.current_state,
             fc,
