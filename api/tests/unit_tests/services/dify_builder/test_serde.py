@@ -321,3 +321,43 @@ def test_context_roundtrip_cannot_replace_repository_owned_execution_evidence(ha
     )
     assert not decision.allowed
     assert decision.reason == ("simulation_only" if has_run_evidence else "execution_provenance_unbound")
+
+
+def test_confirmed_command_survives_session_commit_round_trip():
+    from core.dify_builder.models import DifyBuilderContext
+
+    original = DifyBuilderContext(confirmed_consent_id="consent-1", confirmed_command_id="command-1")
+    loaded = context_from_dict(context_to_dict(original))
+    assert loaded.confirmed_consent_id == "consent-1"
+    assert loaded.confirmed_command_id == "command-1"
+    assert context_from_dict({}).confirmed_consent_id == ""
+    assert context_from_dict({}).confirmed_command_id == ""
+
+
+def test_confirmed_evidence_summary_round_trips_through_persisted_run_json():
+    summary = ExecutionEvidenceSummary(
+        request_id="request-1",
+        policy_version="builder-confirmed-gmail-read-v1",
+        mode="confirmed_tool",
+        sealed=True,
+        safety_outcome="confirmed_tool_completed",
+        sandbox_profile="disabled",
+        native_run_id="native-1",
+        consent_id="consent-1",
+        action_state="completed",
+        action_reason_code="message_returned",
+    )
+    decoded = ExecutionEvidenceSummary.model_validate(json.loads(json.dumps(summary.model_dump(mode="json"))))
+    assert decoded == summary
+    # An older restricted row without the new optional fields still decodes unchanged.
+    legacy = {
+        "request_id": "request-1",
+        "mode": "restricted",
+        "sealed": True,
+        "safety_outcome": "restricted_execution_completed",
+        "sandbox_profile": "disabled",
+        "fixture_digest": "a" * 64,
+        "native_run_id": "native-1",
+    }
+    old = ExecutionEvidenceSummary.model_validate(legacy)
+    assert (old.policy_version, old.consent_id, old.action_state) == ("builder-restricted-v1", None, None)

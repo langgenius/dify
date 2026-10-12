@@ -19,8 +19,10 @@ from core.app.entities.app_invoke_entities import (
     get_credit_usage_app_type,
 )
 from core.dify_builder.execution_policy import (
+    BuilderExecutionContext,
     BuilderExecutionPolicyError,
     BuilderExecutionRecorder,
+    ConfirmedToolExecutionContext,
     scalar_inputs_digest,
 )
 from core.workflow.node_factory import get_default_root_node_id
@@ -85,6 +87,10 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         entity = self.application_generate_entity
         context = entity.builder_execution
         if context is not None:
+            # Both Builder variants share the owner/input/transport checks below; the
+            # factory then admits each variant's exact node set and collaborators.
+            if not isinstance(context, (BuilderExecutionContext, ConfirmedToolExecutionContext)):
+                raise BuilderExecutionPolicyError("unsupported_execution_policy")
             if self._execution_recorder is None or not self._execution_recorder.healthy:
                 raise BuilderExecutionPolicyError("missing_execution_recorder")
             if (

@@ -38,6 +38,7 @@ from core.dify_builder.execution_policy import (
     BuilderExecutionContext,
     BuilderExecutionPolicyError,
     BuilderExecutionRecorder,
+    ConfirmedToolExecutionContext,
     scalar_inputs_digest,
 )
 from core.helper.trace_id_helper import (
@@ -80,7 +81,12 @@ def _extract_trace_session_id_from_debug_args(args: Mapping[str, Any] | Any) -> 
 
 
 class BuilderExecutionAdmission(Protocol):
-    """Transient service-owned admission, explicitly injected into native execution."""
+    """Transient service-owned admission, explicitly injected into native execution.
+
+    Owns both Builder policy variants: ``admit_raw`` refuses raw metadata for
+    the context it was built with, and ``__call__`` revalidates the reserved
+    sidecar and claims the launch identity once before any native node exists.
+    """
 
     def __call__(
         self,
@@ -98,7 +104,7 @@ class BuilderExecutionAdmission(Protocol):
     def on_worker_finished(
         self,
         *,
-        context: BuilderExecutionContext,
+        context: BuilderExecutionContext | ConfirmedToolExecutionContext,
         native_run_id: str,
         task_id: str,
         recorder: BuilderExecutionRecorder | None,
@@ -150,7 +156,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         allow_human_input: bool = True,
         pause_state_config: PauseStateLayerConfig | None = None,
         capture_agent_evaluation_trace: bool = False,
-        builder_execution: BuilderExecutionContext | None = None,
+        builder_execution: BuilderExecutionContext | ConfirmedToolExecutionContext | None = None,
         builder_execution_admit: BuilderExecutionAdmission | None = None,
     ) -> Generator[Mapping[str, Any] | str]: ...
 
@@ -174,7 +180,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         allow_human_input: bool = True,
         pause_state_config: PauseStateLayerConfig | None = None,
         capture_agent_evaluation_trace: bool = False,
-        builder_execution: BuilderExecutionContext | None = None,
+        builder_execution: BuilderExecutionContext | ConfirmedToolExecutionContext | None = None,
         builder_execution_admit: BuilderExecutionAdmission | None = None,
     ) -> Mapping[str, Any]: ...
 
@@ -198,7 +204,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         allow_human_input: bool = True,
         pause_state_config: PauseStateLayerConfig | None = None,
         capture_agent_evaluation_trace: bool = False,
-        builder_execution: BuilderExecutionContext | None = None,
+        builder_execution: BuilderExecutionContext | ConfirmedToolExecutionContext | None = None,
         builder_execution_admit: BuilderExecutionAdmission | None = None,
     ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str]: ...
 
@@ -221,7 +227,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         allow_human_input: bool = True,
         pause_state_config: PauseStateLayerConfig | None = None,
         capture_agent_evaluation_trace: bool = False,
-        builder_execution: BuilderExecutionContext | None = None,
+        builder_execution: BuilderExecutionContext | ConfirmedToolExecutionContext | None = None,
         builder_execution_admit: BuilderExecutionAdmission | None = None,
     ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str]:
         try:

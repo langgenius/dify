@@ -1860,3 +1860,17 @@ def test_plan_approval_no_op_comparison_preserves_cas_failure():
 
     assert "apply_edit_plan" not in [e["event"] for e in events]
     assert dify.applied == []
+
+
+def test_confirmed_edit_test_uses_saved_input_without_repair_and_returns_to_review():
+    from tests.unit_tests.services.dify_builder.test_confirmed_tool_launch import assert_confirmed_handler_outcome
+
+    assert_confirmed_handler_outcome("edit", PcState.EDIT_TEST_AFFECTED_PATHS, PcState.EDIT_REVIEW)
+
+
+def test_confirmed_edit_action_for_another_command_is_refused_before_any_run():
+    from core.dify_builder.errors import ConflictError
+    from tests.unit_tests.services.dify_builder.test_confirmed_tool_launch import run_confirmed_handler
+
+    with pytest.raises(ConflictError):
+        run_confirmed_handler("edit", PcState.EDIT_TEST_AFFECTED_PATHS, command="command-other")

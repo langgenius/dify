@@ -13,6 +13,9 @@ It must NOT mutate committed session state (that would break resume-from-
 committed -- the user's retry re-runs the working handler from the committed
 state) and must NOT re-enqueue (non-idempotent steps like publish/verify
 require explicit user retry -- this matches the P3b idempotency deferral).
+The one durable write it triggers is the consent owner's conservative
+settlement of a stranded reserved confirmed grant (failed before any claim,
+unknown after one); a recovered step then needs a new prepare + confirm.
 No schema change, no migration.
 
 Runs on the default worker (no ``queue=``), like the other lightweight
@@ -35,6 +38,7 @@ from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from models.dify_builder import DifyBuilderSession
 from services.dify_builder import progress_bus, session_lock
+from services.dify_builder.real_call_consent_service import BuilderRealCallConsentService
 
 logger = logging.getLogger(__name__)
 
@@ -65,9 +69,19 @@ def reconcile_interrupted_sessions() -> int:
         ).all()
 
     flagged = 0
+    consent = BuilderRealCallConsentService(factory)
     for sid, state in rows:
         if session_lock.exists(sid):
             continue  # a live advance holds the lock -- leave it alone
+        try:
+            # No worker can still record into this session: a reserved confirmed
+            # grant settles failed before any claim, unknown after one. Owned by
+            # the consent service; never redispatched, counters never reset.
+            settled = consent.reconcile_stranded(session_id=sid)
+            if settled:
+                logger.warning("Dify Builder session %s settled %s stranded confirmed grant(s)", sid, settled)
+        except Exception:
+            logger.exception("Dify Builder session %s stranded confirmed grant could not be settled", sid)
         progress_bus.publish(sid, {"kind": "error", "error": "interrupted"})
         logger.warning("Dify Builder session %s interrupted (state=%s, no live lock)", sid, state)
         flagged += 1

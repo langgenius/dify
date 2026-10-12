@@ -1541,3 +1541,28 @@ def test_missing_test_input_ref_requests_test_data_without_launch():
     result = handle_verify(env, Turn(actor=_actor()), s, DifyBuilderContext())
     assert result.next == PcState.FIX_AWAIT_TESTDATA
     assert not calls
+
+
+def test_confirmed_fix_verify_uses_saved_input_without_repair_and_returns_to_decision():
+    from tests.unit_tests.services.dify_builder.test_confirmed_tool_launch import assert_confirmed_handler_outcome
+
+    assert_confirmed_handler_outcome("fix", PcState.FIX_VERIFY, PcState.FIX_AWAIT_DECISION)
+
+
+def test_confirmed_fix_without_saved_input_refuses_instead_of_generating_mocks():
+    from core.dify_builder.handlers_fix import handle_verify
+    from core.dify_builder.models import CONFIRMED_TOOL_ACTION, Action
+    from tests.unit_tests.services.dify_builder.test_confirmed_tool_launch import ConfirmedSpyPort, NoModelAgent
+
+    env, _repo = _new_env()
+    env.dify = ConfirmedSpyPort()
+    env.agent = NoModelAgent()
+    s = _session(current_state=PcState.FIX_VERIFY)
+    fc = DifyBuilderContext(confirmed_consent_id="consent-1", confirmed_command_id="command-1")
+    action = Action(kind=CONFIRMED_TOOL_ACTION, base_version=1, command_id="command-1")
+    result = handle_verify(env, Turn(action=action, actor=_actor()), s, fc)
+    assert env.dify.confirmed_calls == []
+    assert result.next == PcState.FIX_AWAIT_DECISION
+    assert (result.context.confirmed_consent_id, result.context.confirmed_command_id) == ("", "")
+    assert result.run is not None
+    assert result.run.execution_refusal is not None

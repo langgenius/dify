@@ -1545,3 +1545,35 @@ def test_publish_verification_locked_guard(mock_session, stale):
             assert app.workflow_id == "published"
             mock_session.commit.assert_called_once()
     mock_session.refresh.assert_called_once_with(draft, with_for_update=True)
+
+
+@pytest.mark.parametrize(
+    "pair", [{"confirmed_consent_id": "consent-1"}, {"command_id": "command-1"}, {"confirmed_consent_id": ""}]
+)
+def test_confirmed_run_requires_both_server_reserved_identifiers_together(mock_session: MagicMock, pair):
+    with patch("services.dify_builder.dify_port.AppGenerateService.generate") as generate:
+        run = WorkflowServiceDifyPort().run_draft(
+            "app-1",
+            _actor(),
+            {},
+            lambda _event: None,
+            session_id="session-1",
+            test_input_id="input-1",
+            **pair,
+        )
+    generate.assert_not_called()
+    mock_session.get.assert_not_called()
+    assert run.status == "failed"
+    assert run.execution_refusal is not None
+    assert run.execution_refusal.reason_code == "confirmed_launch_incomplete"
+    assert run.dify_run_id == ""
+
+
+def test_port_protocol_declares_the_optional_confirmed_pair():
+    import inspect
+
+    for owner in (DifyPort, WorkflowServiceDifyPort):
+        parameters = inspect.signature(owner.run_draft).parameters
+        for name in ("confirmed_consent_id", "command_id"):
+            assert parameters[name].kind is inspect.Parameter.KEYWORD_ONLY
+            assert parameters[name].default is None

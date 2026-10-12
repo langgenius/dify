@@ -202,7 +202,16 @@ class DifyPort(Protocol):
         session_id: str,
         test_input_id: str,
         on_workflow_event: Callable[[Mapping[str, object]], None] | None = None,
-    ) -> Run: ...
+        confirmed_consent_id: str | None = None,
+        command_id: str | None = None,
+    ) -> Run:
+        """Run the saved draft test. Both confirmed IDs ``None``: the default restricted run.
+
+        Both set: launch the server-reserved confirmed command for this
+        invocation only; the adapter reloads the reservation and refuses a
+        mismatch. Supplying exactly one is a refusal, never a fallback.
+        """
+        ...
 
     def publish(
         self, app_id: str, actor: Actor, *, expected_revision: str, expected_graph_revision: str

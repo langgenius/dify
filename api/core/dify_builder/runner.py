@@ -37,6 +37,7 @@ from core.dify_builder.contract import (
 )
 from core.dify_builder.errors import ConflictError
 from core.dify_builder.models import (
+    CONFIRMED_TOOL_ACTION,
     Checkpoint,
     ConversationItem,
     DifyBuilderContext,
@@ -46,7 +47,7 @@ from core.dify_builder.models import (
     Turn,
 )
 from core.dify_builder.ports import DifyBuilderAgent, DifyPort, ReasoningStreamingAgent, Repository
-from core.dify_builder.state import PcState, is_terminal, is_waiting
+from core.dify_builder.state import PcState, is_terminal, is_waiting, is_working
 
 __all__ = ["Env", "Handler", "Runner", "StepResult"]
 
@@ -137,6 +138,9 @@ class Env:
     # service-layer implementation swallows its own errors -- a failed rename
     # leaves the derived name in place and never blocks the build.
     rename_app: Callable[[str], str] | None = None
+    # Set by the runner for a reserved confirmed Tool command: its deterministic
+    # status copy is committed without language detection or model localization.
+    suppress_model_calls: bool = False
     # Correlation metadata for the handler transition currently running.
     # The runner resets it before every independently committed step.
     session_id: str = ""
@@ -292,7 +296,7 @@ class Env:
             reply_text=reply_text,
             cards=list(cards or []),
         ).to_item(seq=context.next_seq, at_version=session.version + 1)
-        if self.localize_items is not None and context.reply_language:
+        if self.localize_items is not None and context.reply_language and not self.suppress_model_calls:
             item = self.localize_items([item], context.reply_language)[0]
             self.prelocalized_seqs.add(item.seq)
         localized_text = item.payload.get("reply_text")
@@ -340,7 +344,7 @@ class Runner:
         settled: bool,
     ) -> None:
         at_version = session.version + 1
-        if self._env.localize_items is not None and context.reply_language:
+        if self._env.localize_items is not None and context.reply_language and not self._env.suppress_model_calls:
             pending_localization = [
                 item
                 for item in items
@@ -420,6 +424,9 @@ class Runner:
                 f"at version {session.version} state {session.current_state}"
             )
         self._env.begin_operation(session)
+        # Terminal: a pending confirmed command reference never survives into a retry.
+        context.confirmed_consent_id = ""
+        context.confirmed_command_id = ""
         items = self._env.append_assistant_turn(
             session,
             context,
@@ -440,16 +447,28 @@ class Runner:
         s, fc = self._env.repo.get_session(session_id)
         if turn.action is not None:
             self._env.command_id = turn.action.command_id
+        action_kind = turn.action.kind if turn.action is not None else ""
+        confirmed = action_kind == CONFIRMED_TOOL_ACTION
+        self._env.suppress_model_calls = confirmed
         self._env.begin_operation(s)
 
-        if self._env.detect_language is not None:
+        if confirmed:
+            # Only the server-reserved command may enter, and only the working
+            # state its atomic reservation already committed (no second transition).
+            assert turn.action is not None
+            if (
+                not is_working(s.current_state)
+                or not fc.confirmed_command_id
+                or not fc.confirmed_consent_id
+                or turn.action.command_id != fc.confirmed_command_id
+            ):
+                raise ConflictError(f"dify_builder: confirmed command is not reserved for session {session_id}")
+        elif self._env.detect_language is not None:
             user_text = turn.action.payload.get("text") if turn.action is not None else None
             if isinstance(user_text, str) and user_text.strip():
                 fc.reply_language = self._env.detect_language(user_text)
             elif not fc.reply_language and fc.goal_text:
                 fc.reply_language = self._env.detect_language(fc.goal_text)
-
-        action_kind = turn.action.kind if turn.action is not None else ""
 
         # A retried message may arrive after its user bubble committed but the
         # worker failed before the assistant bubble. Correlate by the
@@ -483,6 +502,10 @@ class Runner:
             self._commit(s, s.current_state, fc, [], settled=True)
             return s
         if action_kind in ("check_recovery", "recovery_continue", "recovery_restart"):
+            # A recovered or restarted step never reuses a reserved confirmed
+            # command; any later real call needs a new prepare + confirm.
+            fc.confirmed_consent_id = ""
+            fc.confirmed_command_id = ""
             response_item = None
             if turn.action is not None and turn.action.interaction_response is not None:
                 response_item = ConversationItem(

@@ -1,6 +1,7 @@
 """Scoped ownership, immutable claims, receipts and authoritative native result sealing."""
 
 import json
+import re
 from copy import deepcopy
 from dataclasses import dataclass, field
 from enum import Enum
@@ -12,12 +13,14 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
+from core.dify_builder import gmail_read_policy
 from core.dify_builder.execution_policy import (
     MAX_OBSERVATIONS,
     BoundedID,
     BuilderExecutionContext,
     BuilderExecutionObservation,
     BuilderExecutionPolicyError,
+    ConfirmedToolExecutionContext,
     ExecutionEvidenceSummary,
     HttpFixtureSetV1,
     HttpResponseFixtureV1,
@@ -31,17 +34,24 @@ from core.dify_builder.execution_policy import (
     decode_http_fixture_set,
     fixture_digest,
     scalar_inputs_digest,
+    validate_execution_context,
 )
 from core.dify_builder.input_schema import start_schema
 from core.dify_builder.models import Actor, Inputs
 from libs.datetime_utils import naive_utc_now
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
-from models.dify_builder import DifyBuilderExecutionRequest, DifyBuilderSession, DifyBuilderTestInput
+from models.dify_builder import (
+    DifyBuilderExecutionRequest,
+    DifyBuilderRealCallConsent,
+    DifyBuilderSession,
+    DifyBuilderTestInput,
+)
 from models.model import App
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowRun
 from services.dify_builder.revision import executable_graph_revision, execution_revision
 
 _ID_ADAPTER = TypeAdapter(BoundedID)
+_REASON_CODE = re.compile(r"[a-z][a-z0-9_]{0,127}\Z")
 
 
 def _raw_object(raw: Any, reason: str, *, absent_allowed: bool = False) -> dict[str, Any]:
@@ -190,17 +200,47 @@ def check_execution_permission(actor: Actor, app_id: str, session_factory: sessi
         raise BuilderExecutionPolicyError("execution_permission_denied") from None
 
 
-def _validate_context(context: BuilderExecutionContext) -> None:
+ExecutionContext = BuilderExecutionContext | ConfirmedToolExecutionContext
+
+
+def _validate_context(context: ExecutionContext) -> None:
+    if not isinstance(context, (BuilderExecutionContext, ConfirmedToolExecutionContext)):
+        raise BuilderExecutionPolicyError("invalid_execution_context")
     try:
-        # Validate even a model_copy/model_construct crossing a trusted boundary.
-        checked = BuilderExecutionContext.model_validate(context.model_dump(mode="json"))
-    except (ValidationError, ValueError, TypeError):
+        # Validate even a model_copy/model_construct crossing a trusted boundary;
+        # the decoder raises its own invalid/digest reason codes.
+        checked = validate_execution_context(context.model_dump(mode="json"))
+    except (ValidationError, ValueError, TypeError) as error:
+        if isinstance(error, BuilderExecutionPolicyError):
+            raise
         raise BuilderExecutionPolicyError("invalid_execution_context") from None
-    if checked != context or context.context_digest != context_digest(context):
+    if type(checked) is not type(context) or checked != context:
         raise BuilderExecutionPolicyError("context_digest_mismatch")
 
 
-def _bound_request(db: Session, context: BuilderExecutionContext, *, lock: bool) -> DifyBuilderExecutionRequest:
+def admit_confirmed_workflow(context: ConfirmedToolExecutionContext, snapshot: RestrictedAdmissionSnapshot) -> None:
+    """The exact Start → Gmail get_message → End graph the reservation admitted, nothing else."""
+    if not isinstance(context, ConfirmedToolExecutionContext):
+        raise BuilderExecutionPolicyError("unsupported_execution_policy")
+    _validate_context(context)
+    if context.mode != "confirmed_tool" or context.sandbox_profile != "disabled":
+        raise BuilderExecutionPolicyError("execution_mode_mismatch")
+    if gmail_read_policy.admit_get_message_workflow(snapshot).nodes != context.admitted_nodes:
+        raise BuilderExecutionPolicyError("node_binding_mismatch")
+
+
+def admit_execution_workflow(context: ExecutionContext, snapshot: RestrictedAdmissionSnapshot) -> None:
+    """Exhaustive raw-graph admission over the context union; no variant falls through."""
+    match context:
+        case ConfirmedToolExecutionContext():
+            admit_confirmed_workflow(context, snapshot)
+        case BuilderExecutionContext():
+            admit_restricted_workflow(context, snapshot)
+        case _:
+            raise BuilderExecutionPolicyError("unsupported_execution_policy")
+
+
+def _bound_request(db: Session, context: ExecutionContext, *, lock: bool) -> DifyBuilderExecutionRequest:
     _validate_context(context)
     statement = select(DifyBuilderExecutionRequest).where(DifyBuilderExecutionRequest.id == context.request_id)
     if lock:
@@ -315,7 +355,54 @@ class BuilderExecutionPolicyService:
                     raise BuilderExecutionPolicyError("unused_http_fixture")
             return HttpFixtureSetV1(execution_revision=revision, fixtures=fixtures)
 
-    def claim_launch(self, *, context: BuilderExecutionContext, native_run_id: str, task_id: str) -> None:
+    def prepare_confirmed(self, context: ConfirmedToolExecutionContext) -> ConfirmedToolExecutionContext:
+        """Validate and reuse the consent owner's reserved sidecar; never allocates an ID.
+
+        The context must be byte-identical to the stored, still-unlaunched
+        sidecar, and the current owner chain, raw graph, revisions and saved
+        test input must still match it. Grant/command authority stays with the
+        consent owner (``reserved_launch``/``claim_tool``); this only refuses a
+        sidecar that no longer describes the draft about to run.
+        """
+        if not isinstance(context, ConfirmedToolExecutionContext):
+            raise BuilderExecutionPolicyError("unsupported_execution_policy")
+        _validate_context(context)
+        actor = Actor(account_id=context.actor_id, tenant_id=context.tenant_id)
+        check_execution_permission(actor, context.app_id, self._session_factory)
+        with self._session_factory() as db:
+            row = _bound_request(db, context, lock=False)
+            if row.state != "prepared" or row.native_run_id is not None or row.task_id is not None:
+                raise BuilderExecutionPolicyError("execution_already_launched")
+            owner = load_execution_owners(
+                db,
+                app_id=context.app_id,
+                actor=actor,
+                workflow_id=context.workflow_id,
+                session_id=context.session_id,
+                test_input_id=context.test_input_id,
+            )
+            snapshot = restricted_admission_snapshot(owner.workflow, owner.app)
+            self._require_current_confirmed(context, owner, snapshot)
+        return context
+
+    @staticmethod
+    def _require_current_confirmed(
+        context: ConfirmedToolExecutionContext, owner: ExecutionOwnerSnapshot, snapshot: RestrictedAdmissionSnapshot
+    ) -> None:
+        if context.execution_revision != execution_revision(owner.workflow) or context.graph_revision != (
+            executable_graph_revision(snapshot.graph)
+        ):
+            raise BuilderExecutionPolicyError("stale_execution_revision")
+        test_input = owner.test_input
+        if (
+            test_input is None
+            or test_input.http_fixtures is not None
+            or scalar_inputs_digest(test_input.inputs) != context.submitted_inputs_digest
+        ):
+            raise BuilderExecutionPolicyError("test_input_binding_mismatch")
+        admit_confirmed_workflow(context, snapshot)
+
+    def claim_launch(self, *, context: ExecutionContext, native_run_id: str, task_id: str) -> None:
         try:
             _ID_ADAPTER.validate_python(native_run_id)
             _ID_ADAPTER.validate_python(task_id)
@@ -330,7 +417,7 @@ class BuilderExecutionPolicyService:
     def revalidate(
         self,
         *,
-        context: BuilderExecutionContext,
+        context: ExecutionContext,
         workflow: Workflow,
         app: App,
         actor_id: str,
@@ -375,6 +462,12 @@ class BuilderExecutionPolicyService:
                 or context.graph_revision != executable_graph_revision(snapshot.graph)
             ):
                 raise BuilderExecutionPolicyError("stale_execution_revision")
+            if isinstance(context, ConfirmedToolExecutionContext):
+                self._require_current_confirmed(context, owner, snapshot)
+                if scalar_inputs_digest(effective_inputs) != context.effective_inputs_digest:
+                    raise BuilderExecutionPolicyError("effective_input_binding_mismatch")
+                self._require_start_root(snapshot, root_node_id)
+                return
             assert owner.test_input is not None
             envelope = decode_http_fixture_set(owner.test_input.http_fixtures)
             fixtures = envelope.fixtures if envelope is not None else ()
@@ -388,14 +481,18 @@ class BuilderExecutionPolicyService:
             if scalar_inputs_digest(effective_inputs) != context.effective_inputs_digest:
                 raise BuilderExecutionPolicyError("effective_input_binding_mismatch")
             admit_restricted_workflow(context, snapshot)
-            root = next(node["id"] for node in snapshot.graph["nodes"] if node["data"]["type"] == "start")
-            if root_node_id != root:
-                raise BuilderExecutionPolicyError("unsupported_execution_root")
+            self._require_start_root(snapshot, root_node_id)
+
+    @staticmethod
+    def _require_start_root(snapshot: RestrictedAdmissionSnapshot, root_node_id: str) -> None:
+        root = next(node["id"] for node in snapshot.graph["nodes"] if node["data"]["type"] == "start")
+        if root_node_id != root:
+            raise BuilderExecutionPolicyError("unsupported_execution_root")
 
     def record(
         self,
         *,
-        context: BuilderExecutionContext,
+        context: ExecutionContext,
         native_run_id: str,
         task_id: str,
         observation: BuilderExecutionObservation,
@@ -404,6 +501,9 @@ class BuilderExecutionPolicyService:
             observation = BuilderExecutionObservation.model_validate(observation.model_dump(mode="json"))
         except (ValidationError, ValueError, TypeError):
             raise BuilderExecutionPolicyError("invalid_execution_observation") from None
+        if isinstance(context, ConfirmedToolExecutionContext):
+            # A confirmed run serves no fixtures and blocks no effects: no observation is admissible.
+            raise BuilderExecutionPolicyError("observation_binding_mismatch")
         with self._session_factory.begin() as db:
             row = _bound_request(db, context, lock=True)
             if row.state != "running" or row.native_run_id != native_run_id or row.task_id != task_id:
@@ -570,90 +670,264 @@ class BuilderExecutionPolicyService:
                 return ExecutionEvidenceSummary.model_validate(row.completion_summary)
             if row.state not in {"prepared", "running"}:
                 raise BuilderExecutionPolicyError("execution_request_closed")
-            observations = []
-            receipts_valid = True
-            try:
-                for raw_observation in row.observations:
-                    try:
-                        observations.append(BuilderExecutionObservation.model_validate(raw_observation))
-                    except (ValidationError, ValueError, TypeError):
-                        receipts_valid = False
-                bindings = {b.node_id: b for b in context.admitted_nodes}
-                if (
-                    len(observations) > MAX_OBSERVATIONS
-                    or len({o.invocation_id for o in observations}) != len(observations)
-                    or len({o.observation_id for o in observations}) != len(observations)
-                ):
-                    receipts_valid = False
-                for o in observations:
-                    b = bindings.get(o.node_id)
-                    if (
-                        o.request_id != request_id
-                        or b is None
-                        or o.implementation_version != f"{b.implementation}:{b.node_version}"
-                        or not b.implementation.endswith(".HttpRequestNode")
-                        or o.profile_digest is not None
-                        or o.kind not in {"fixture_served", "effect_blocked"}
-                    ):
-                        receipts_valid = False
-                    if o.kind == "fixture_served":
-                        if o.fixture_digest != context.fixture_digest or not any(
-                            f.node_id == o.node_id for f in context.http_fixtures
-                        ):
-                            receipts_valid = False
-                    elif o.fixture_digest is not None:
-                        receipts_valid = False
-            except (ValidationError, ValueError, TypeError):
-                receipts_valid = False
-            blocked = tuple(sorted({o.node_id for o in observations if o.kind == "effect_blocked"}))
-            simulated = tuple(sorted({o.node_id for o in observations if o.kind == "fixture_served"}))
-            complete = (
-                completion.worker_finished
-                and completion.response_completed
-                and completion.recorder_healthy
-                and completion.worker_exit in {"returned", "stopped", "failed"}
-                and native is not None
-                and receipts_valid
-            )
-            if complete:
-                complete = self._native_proof(context, native, nodes, observations)
-            outcome = "execution_evidence_unknown"
-            # A typed pre-native refusal is the only exception to unknown-first.
-            if (
-                native is None
-                and completion.refusal is not None
-                and completion.response_completed
-                and (
-                    completion.preworker_refusal
-                    or (completion.worker_finished and completion.worker_exit == "policy_refused")
-                )
-            ):
-                outcome = "unsupported_safe_execution"
-            elif complete and native is not None:
-                if native.status != "succeeded":
-                    outcome = "native_failed"
-                elif blocked:
-                    outcome = "execution_blocked"
-                elif simulated:
-                    outcome = "simulation_completed"
-                elif context.mode == "restricted":
-                    outcome = "restricted_execution_completed"
-            summary = ExecutionEvidenceSummary(
-                request_id=request_id,
-                mode=context.mode,
-                sealed=True,
-                safety_outcome=outcome,
-                simulated_node_ids=simulated,
-                blocked_node_ids=blocked,
-                sandbox_profile=context.sandbox_profile,
-                fixture_digest=context.fixture_digest,
-                native_run_id=native.id if native is not None else None,
-            )
+            if isinstance(context, ConfirmedToolExecutionContext):
+                # The grant's recorded facts are read, never written, here; the consent
+                # owner settles its own state from this sealed summary afterwards. They
+                # are not fingerprinted: the first seal freezes the summary.
+                summary = self._confirmed_summary(db, context, completion, row, native, nodes)
+            else:
+                summary = self._restricted_summary(request_id, context, completion, row, native, nodes)
             row.state = "sealed"
             row.completion_fingerprint = fingerprint
             row.completion_summary = summary.model_dump(mode="json")
             row.sealed_at = naive_utc_now()
             return summary
+
+    def _confirmed_summary(
+        self,
+        db: Session,
+        context: ConfirmedToolExecutionContext,
+        completion: TrustedExecutionCompletion,
+        row: DifyBuilderExecutionRequest,
+        native: WorkflowRun | None,
+        nodes: list[WorkflowNodeExecutionModel],
+    ) -> ExecutionEvidenceSummary:
+        """Completed only with matching native rows, a healthy recorder and a completed action.
+
+        Unknown first: native success with an unknown or unrecorded action, a
+        stranded claim without a known pre-phase denial, or any mismatch stays
+        ``execution_evidence_unknown``. Native failure is reported only when the
+        grant never spent a phase or recorded a known failure.
+        """
+        consent = db.scalar(
+            select(DifyBuilderRealCallConsent).where(
+                DifyBuilderRealCallConsent.id == context.consent_id,
+                DifyBuilderRealCallConsent.tenant_id == context.tenant_id,
+                DifyBuilderRealCallConsent.actor_id == context.actor_id,
+                DifyBuilderRealCallConsent.session_id == context.session_id,
+                DifyBuilderRealCallConsent.command_id == context.command_id,
+                DifyBuilderRealCallConsent.execution_request_id == context.request_id,
+            )
+        )
+        if consent is None:
+            raise BuilderExecutionPolicyError("execution_request_mismatch")
+        action_state = consent.outcome_state if consent.outcome_state in {"completed", "failed", "unknown"} else None
+        if consent.state == "unknown":
+            action_state = "unknown"
+        reason = consent.reason_code if action_state is not None else None
+        if reason is not None and not _REASON_CODE.fullmatch(reason):
+            reason = "invalid_outcome_input"
+        spent = consent.refresh_claimed_at is not None or consent.business_claimed_at is not None
+        claimed = consent.claimed_at is not None
+        outcome = "execution_evidence_unknown"
+        if (
+            native is None
+            and not claimed
+            and completion.refusal is not None
+            and completion.response_completed
+            and (
+                completion.preworker_refusal
+                or (completion.worker_finished and completion.worker_exit == "policy_refused")
+            )
+        ):
+            outcome = "unsupported_safe_execution"
+        elif (
+            native is not None
+            and completion.worker_finished
+            and completion.response_completed
+            and completion.recorder_healthy
+            and completion.worker_exit in {"returned", "stopped", "failed"}
+            and not row.observations
+            and self._confirmed_native_proof(context, native, nodes, consent)
+        ):
+            uncertain = action_state == "unknown" or (spent and action_state is None)
+            if uncertain:
+                outcome = "execution_evidence_unknown"
+            elif native.status == "succeeded":
+                if action_state == "completed" and consent.state == "claimed":
+                    outcome = "confirmed_tool_completed"
+            elif action_state != "completed" and (
+                not claimed or action_state == "failed" or (consent.state == "failed" and not spent)
+            ):
+                outcome = "native_failed"
+        return ExecutionEvidenceSummary(
+            request_id=context.request_id,
+            policy_version=context.policy_version,
+            mode=context.mode,
+            sealed=True,
+            safety_outcome=outcome,
+            sandbox_profile=context.sandbox_profile,
+            native_run_id=native.id if native is not None else None,
+            consent_id=context.consent_id,
+            action_state=action_state,
+            action_reason_code=reason,
+        )
+
+    @staticmethod
+    def _confirmed_native_proof(
+        context: ConfirmedToolExecutionContext,
+        native: WorkflowRun,
+        nodes: list[WorkflowNodeExecutionModel],
+        consent: DifyBuilderRealCallConsent,
+    ) -> bool:
+        """Exact admitted graph, inputs, ordered Start/Tool/End rows and the claimed Tool row."""
+        from core.app.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY
+
+        try:
+            graph = _raw_object(native.graph, "invalid_native_graph")
+            snapshot = RestrictedAdmissionSnapshot(
+                app_mode="workflow",
+                workflow_kind="standard",
+                graph=graph,
+                input_schema=start_schema(graph),
+                features={},
+                has_environment_variables=False,
+                has_conversation_variables=False,
+                has_external_tracing=False,
+            )
+            admission = gmail_read_policy.admit_get_message_workflow(snapshot)
+            if admission.nodes != context.admitted_nodes or executable_graph_revision(graph) != context.graph_revision:
+                return False
+            inputs = _raw_object(native.inputs, "invalid_native_inputs")
+            if (
+                scalar_inputs_digest({k: v for k, v in inputs.items() if not k.startswith("sys.")})
+                != context.effective_inputs_digest
+            ):
+                return False
+            if native.status not in {"succeeded", "failed", "stopped", "partial-succeeded"} or not native.finished_at:
+                return False
+            if not nodes or any(
+                n.node_execution_id is None
+                or n.finished_at is None
+                or n.status not in {"succeeded", "failed", "exception"}
+                for n in nodes
+            ):
+                return False
+            if len({n.node_execution_id for n in nodes}) != len(nodes) or len({n.node_id for n in nodes}) != len(nodes):
+                return False
+            expected = [binding.node_id for binding in context.admitted_nodes]
+            types = {n["id"]: n["data"]["type"] for n in graph["nodes"]}
+            ordered = sorted(nodes, key=lambda n: n.index)
+            previous: str | None = None
+            for index, node in enumerate(ordered, 1):
+                if (
+                    node.node_id != expected[index - 1]
+                    or node.index != index
+                    or node.node_type != types[node.node_id]
+                    or node.predecessor_node_id not in ({None, ""} if previous is None else {None, previous})
+                ):
+                    return False
+                process = _raw_object(node.process_data, "invalid_native_retries", absent_allowed=True)
+                if process.get(RETRY_HISTORY_PROCESS_DATA_KEY):
+                    return False
+                previous = node.node_id
+            if native.total_steps != len(nodes):
+                return False
+            tool = next((n for n in nodes if n.node_id == admission.tool_node_id), None)
+            if consent.claimed_at is not None and (
+                consent.native_run_id != native.id
+                or tool is None
+                or consent.native_node_execution_id != tool.node_execution_id
+            ):
+                return False
+            if native.status == "succeeded" and (
+                len(nodes) != len(expected)
+                or native.exceptions_count != 0
+                or any(n.status != "succeeded" for n in nodes)
+            ):
+                return False
+            return True
+        except (BuilderExecutionPolicyError, ValidationError, ValueError, TypeError, KeyError, IndexError):
+            return False
+
+    def _restricted_summary(
+        self,
+        request_id: str,
+        context: BuilderExecutionContext,
+        completion: TrustedExecutionCompletion,
+        row: DifyBuilderExecutionRequest,
+        native: WorkflowRun | None,
+        nodes: list[WorkflowNodeExecutionModel],
+    ) -> ExecutionEvidenceSummary:
+        observations = []
+        receipts_valid = True
+        try:
+            for raw_observation in row.observations:
+                try:
+                    observations.append(BuilderExecutionObservation.model_validate(raw_observation))
+                except (ValidationError, ValueError, TypeError):
+                    receipts_valid = False
+            bindings = {b.node_id: b for b in context.admitted_nodes}
+            if (
+                len(observations) > MAX_OBSERVATIONS
+                or len({o.invocation_id for o in observations}) != len(observations)
+                or len({o.observation_id for o in observations}) != len(observations)
+            ):
+                receipts_valid = False
+            for o in observations:
+                b = bindings.get(o.node_id)
+                if (
+                    o.request_id != request_id
+                    or b is None
+                    or o.implementation_version != f"{b.implementation}:{b.node_version}"
+                    or not b.implementation.endswith(".HttpRequestNode")
+                    or o.profile_digest is not None
+                    or o.kind not in {"fixture_served", "effect_blocked"}
+                ):
+                    receipts_valid = False
+                if o.kind == "fixture_served":
+                    if o.fixture_digest != context.fixture_digest or not any(
+                        f.node_id == o.node_id for f in context.http_fixtures
+                    ):
+                        receipts_valid = False
+                elif o.fixture_digest is not None:
+                    receipts_valid = False
+        except (ValidationError, ValueError, TypeError):
+            receipts_valid = False
+        blocked = tuple(sorted({o.node_id for o in observations if o.kind == "effect_blocked"}))
+        simulated = tuple(sorted({o.node_id for o in observations if o.kind == "fixture_served"}))
+        complete = (
+            completion.worker_finished
+            and completion.response_completed
+            and completion.recorder_healthy
+            and completion.worker_exit in {"returned", "stopped", "failed"}
+            and native is not None
+            and receipts_valid
+        )
+        if complete and native is not None:
+            complete = self._native_proof(context, native, nodes, observations)
+        outcome = "execution_evidence_unknown"
+        # A typed pre-native refusal is the only exception to unknown-first.
+        if (
+            native is None
+            and completion.refusal is not None
+            and completion.response_completed
+            and (
+                completion.preworker_refusal
+                or (completion.worker_finished and completion.worker_exit == "policy_refused")
+            )
+        ):
+            outcome = "unsupported_safe_execution"
+        elif complete and native is not None:
+            if native.status != "succeeded":
+                outcome = "native_failed"
+            elif blocked:
+                outcome = "execution_blocked"
+            elif simulated:
+                outcome = "simulation_completed"
+            elif context.mode == "restricted":
+                outcome = "restricted_execution_completed"
+        return ExecutionEvidenceSummary(
+            request_id=request_id,
+            mode=context.mode,
+            sealed=True,
+            safety_outcome=outcome,
+            simulated_node_ids=simulated,
+            blocked_node_ids=blocked,
+            sandbox_profile=context.sandbox_profile,
+            fixture_digest=context.fixture_digest,
+            native_run_id=native.id if native is not None else None,
+        )
 
     @staticmethod
     def _native_proof(
@@ -749,9 +1023,7 @@ class BuilderExecutionPolicyService:
         except (BuilderExecutionPolicyError, ValidationError, ValueError, TypeError, KeyError, StopIteration):
             return False
 
-    def recorder(
-        self, *, context: BuilderExecutionContext, native_run_id: str, task_id: str
-    ) -> "ServiceExecutionRecorder":
+    def recorder(self, *, context: ExecutionContext, native_run_id: str, task_id: str) -> "ServiceExecutionRecorder":
         return ServiceExecutionRecorder(self, context, native_run_id, task_id)
 
 
@@ -760,7 +1032,7 @@ class ServiceExecutionRecorder:
     """Immutable captured launch identity with a monotonic local failure latch."""
 
     _service: BuilderExecutionPolicyService
-    _context: BuilderExecutionContext
+    _context: ExecutionContext
     _native_run_id: str
     _task_id: str
     _failed: bool = field(default=False, init=False)
