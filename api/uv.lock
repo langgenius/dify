@@ -1,5 +1,5 @@
 version = 1
-revision = 5
+revision = 3
 requires-python = "==3.13.*"
 resolution-markers = [
     "sys_platform == 'win32'",
@@ -1392,7 +1392,6 @@ docs = [
 name = "dify-api"
 version = "1.17.1"
 source = { virtual = "." }
-default-groups = ["kms", "storage", "tools", "trace-all", "vdb-all"]
 dependencies = [
     { name = "aliyun-log-python-sdk" },
     { name = "azure-identity" },
@@ -1703,7 +1702,7 @@ requires-dist = [
     { name = "gevent-websocket", specifier = "==0.10.1" },
     { name = "gmpy2", specifier = ">=2.3.0,<3.0.0" },
     { name = "google-api-python-client", specifier = ">=2.201.0,<3.0.0" },
-    { name = "google-cloud-aiplatform", specifier = ">=2.3.0,<3.0.0" },
+    { name = "google-cloud-aiplatform", specifier = ">=2.4.0,<3.0.0" },
     { name = "graphon", specifier = "==0.7.0" },
     { name = "gunicorn", specifier = ">=26.2.0,<27.0.0" },
     { name = "httpx", extras = ["socks"], specifier = "==0.28.1" },
@@ -2907,7 +2906,7 @@ wheels = [
 
 [[package]]
 name = "google-cloud-aiplatform"
-version = "2.3.0"
+version = "2.4.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "certifi" },
@@ -2924,9 +2923,9 @@ dependencies = [
     { name = "pydantic" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/82/61/247c0513bef320519453390d8fd02856f61f72339b6c8155d3626c7075fd/google_cloud_aiplatform-2.3.0.tar.gz", hash = "sha256:9c20e44b7b509bc92dc3364f71628999caf4f87792a40118ca3bae9c27b10d42", size = 11342845, upload-time = "2026-09-30T17:11:20.351Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/7f/02/f8b5e99a8028ed3c295a109300e84e33aa91a32eb9d0a5d9da9c139abfcb/google_cloud_aiplatform-2.4.0.tar.gz", hash = "sha256:41ef8ef68cbda2b2107cb562105fdd57249b386d06be11113efe3986f146b292", size = 11357300, upload-time = "2026-10-07T00:32:24.073Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/15/44/3253b3321309425377b93f9adc4b9c98617e8aec35ff5006653fea74ea71/google_cloud_aiplatform-2.3.0-py2.py3-none-any.whl", hash = "sha256:3a1f52961dfe484f908c6833bc22b575c14f71d74fd67653ca26214f12ddcaca", size = 9464706, upload-time = "2026-09-30T17:11:16.091Z" },
+    { url = "https://files.pythonhosted.org/packages/7e/9d/aee458f3ac09865b9e7226d08e5147759928d22ca8472b58c6a72c897274/google_cloud_aiplatform-2.4.0-py2.py3-none-any.whl", hash = "sha256:d4062b71182a2ca89a9837d2fd8bfa3481ff4c77ea5cb203a016a3442482d951", size = 9473731, upload-time = "2026-10-07T00:32:19.82Z" },
 ]
 
 [[package]]
