@@ -27,7 +27,7 @@ from services.entities.account_entities import (
     ForgotPasswordToken,
     ForgotPasswordVerificationToken,
 )
-from tests.unit_tests.account_domain import FakeAccountSessionRevoker
+from tests.unit_tests.account_domain import FakeAccountSessions
 
 
 def _account(*, email: str = "User@Example.com") -> AccountSnapshot:
@@ -192,7 +192,7 @@ class Dependencies:
     def __init__(self, account: AccountSnapshot | None = None) -> None:
         self.accounts = FakeAccounts(account)
         self.passwords = FakePasswords()
-        self.sessions = FakeAccountSessionRevoker()
+        self.sessions = FakeAccountSessions()
         self.tokens = FakeTokens()
         self.codes = FakeCodeGenerator()
         self.notifications = FakeNotifications()

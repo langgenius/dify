@@ -175,6 +175,13 @@ class AccountSessionTokens:
     csrf_token: str
 
 
+@dataclass(frozen=True, slots=True)
+class AccountPasswordChange:
+    account: AccountSnapshot
+    # None when the caller presented no refresh credential recognized for the account.
+    session: AccountSessionTokens | None
+
+
 class AccountChangeEmailPhase(StrEnum):
     OLD_EMAIL = "old_email"
     OLD_EMAIL_VERIFIED = "old_email_verified"
