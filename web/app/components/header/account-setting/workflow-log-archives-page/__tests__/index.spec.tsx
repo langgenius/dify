@@ -152,7 +152,7 @@ describe('WorkflowLogArchivesPage', () => {
         within(dialog).getByRole('button', { name: 'appLog.archives.delete.deleting' }),
       ).toHaveAttribute('aria-disabled', 'true')
       expect(within(dialog).getByRole('button', { name: 'common.operation.cancel' })).toBeDisabled()
-      expect(download).toBeDisabled()
+      expect(download).toHaveAttribute('aria-disabled', 'true')
 
       await act(async () => resolveDelete({ year: 2026, month: 8, status: 'pending', error: null }))
       await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
@@ -161,7 +161,7 @@ describe('WorkflowLogArchivesPage', () => {
       ).toBeDisabled()
       expect(
         screen.getByRole('button', { name: 'appLog.archives.action.prepareDownload 2026-08' }),
-      ).toBeDisabled()
+      ).toHaveAttribute('aria-disabled', 'true')
       expect(archiveRequests.list).toHaveBeenCalled()
     })
 
@@ -177,7 +177,7 @@ describe('WorkflowLogArchivesPage', () => {
         const deletion = screen.getByRole('button', {
           name: 'appLog.archives.delete.deleting 2025-03',
         })
-        expect(download).toBeDisabled()
+        expect(download).toHaveAttribute('aria-disabled', 'true')
         expect(deletion).toBeDisabled()
         await user.click(download)
         await user.click(deletion)
@@ -216,7 +216,7 @@ describe('WorkflowLogArchivesPage', () => {
       expect(screen.getByRole('alert')).toHaveTextContent('appLog.archives.delete.failed')
       expect(
         screen.getByRole('button', { name: 'appLog.archives.action.prepareDownload 2025-03' }),
-      ).toBeDisabled()
+      ).toHaveAttribute('aria-disabled', 'true')
       await user.click(screen.getByRole('button', { name: 'appLog.archives.delete.retry 2025-03' }))
       const dialog = await screen.findByRole('alertdialog')
       expect(archiveRequests.delete).not.toHaveBeenCalled()
@@ -253,7 +253,7 @@ describe('WorkflowLogArchivesPage', () => {
       ).toBeEnabled()
       expect(
         screen.getByRole('button', { name: 'appLog.archives.action.prepareDownload 2025-03' }),
-      ).toBeDisabled()
+      ).toHaveAttribute('aria-disabled', 'true')
     })
 
     it('keeps confirmation open when both deletion and the following list refresh fail', async () => {
@@ -369,7 +369,7 @@ describe('WorkflowLogArchivesPage', () => {
       ).toBeDisabled()
       expect(
         screen.getByRole('button', { name: 'appLog.archives.action.prepareDownload 2025-03' }),
-      ).toBeDisabled()
+      ).toHaveAttribute('aria-disabled', 'true')
     })
 
     it('shows a request error when retrying an active deletion fails', async () => {
@@ -399,7 +399,7 @@ describe('WorkflowLogArchivesPage', () => {
       await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
       expect(
         screen.getByRole('button', { name: 'appLog.archives.action.prepareDownload 2025-03' }),
-      ).toBeDisabled()
+      ).toHaveAttribute('aria-disabled', 'true')
     })
 
     it('removes a month immediately when deletion is already completed', async () => {
@@ -572,7 +572,7 @@ describe('WorkflowLogArchivesPage', () => {
       )
     })
 
-    it('opens failure details independently of the retry action', async () => {
+    it('shows failure details on the retry button without preparing a download', async () => {
       const user = userEvent.setup()
       renderPage({
         ...archiveData,
@@ -597,10 +597,16 @@ describe('WorkflowLogArchivesPage', () => {
 
       const retry = screen.getByRole('button', { name: 'common.operation.retry 2025-03' })
       expect(retry).toBeEnabled()
-      await user.click(screen.getByRole('button', { name: 'common.operation.learnMore: 2025-03' }))
-      expect(await screen.findByRole('dialog')).toHaveTextContent(
-        'appLog.archives.downloadHint.failedWithReason',
-      )
+      await user.hover(retry)
+      expect(
+        await screen.findByText(
+          'appLog.archives.downloadHint.failedWithReason:{"reason":"Storage unavailable"}',
+        ),
+      ).toBeVisible()
+      expect(archiveRequests.prepareDownload).not.toHaveBeenCalled()
+      expect(
+        screen.queryByRole('button', { name: 'common.operation.learnMore: 2025-03' }),
+      ).not.toBeInTheDocument()
       expect(retry).toBeEnabled()
     })
 

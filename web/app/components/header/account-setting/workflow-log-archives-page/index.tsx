@@ -17,7 +17,7 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { skipToken, useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useQueryState } from 'nuqs'
 import { useEffect, useId, useRef, useState } from 'react'
@@ -188,12 +188,12 @@ export default function WorkflowLogArchivesPage() {
 
       <div className="overflow-hidden rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg shadow-xs">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-115 table-fixed">
+          <table className="w-full min-w-140 table-auto">
             <colgroup>
-              <col className="w-[20.5%]" />
-              <col className="w-[24.2%]" />
-              <col className="w-[24.2%]" />
               <col />
+              <col />
+              <col />
+              <col className="w-64" />
             </colgroup>
             <thead>
               <tr className="h-8 border-b border-divider-subtle bg-background-section-burn">
@@ -461,33 +461,32 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
       </td>
       <td className="px-2 py-3 text-center">
         <div className="flex flex-col items-center gap-2">
-          <div className="flex flex-wrap items-center justify-center gap-1">
-            <Button
-              size="small"
-              variant="secondary"
-              loading={isPreparing}
-              disabled={isDownloadUnavailable}
-              className="px-2"
-              aria-labelledby={`${downloadActionLabelId} ${archiveMonthLabelId}`}
-              onClick={onAction}
-            >
-              {!isPreparing && (
-                <span className={cn(buttonIconClassName, 'size-3.5')} aria-hidden="true" />
-              )}
-              <span id={downloadActionLabelId}>{buttonContent}</span>
-            </Button>
-            <Infotip>
-              <InfotipTrigger
-                aria-label={`${t(($) => $['operation.learnMore'], { ns: 'common' })}: ${archiveMonth}`}
-                iconVariant={isFailed ? 'warning' : 'information'}
-              />
-              <InfotipContent
-                aria-label={`${t(($) => $['operation.learnMore'], { ns: 'common' })}: ${archiveMonth}`}
-                className="whitespace-pre-wrap"
+          <div className="flex items-center justify-center gap-1">
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    size="small"
+                    variant="secondary"
+                    loading={isPreparing}
+                    disabled={isDownloadUnavailable}
+                    focusableWhenDisabled
+                    className="shrink-0 px-2"
+                    aria-labelledby={`${downloadActionLabelId} ${archiveMonthLabelId}`}
+                    onClick={onAction}
+                  />
+                }
               >
-                {downloadHint}
-              </InfotipContent>
-            </Infotip>
+                {!isPreparing && (
+                  <span
+                    className={cn(buttonIconClassName, 'size-3.5 shrink-0')}
+                    aria-hidden="true"
+                  />
+                )}
+                <span id={downloadActionLabelId}>{buttonContent}</span>
+              </TooltipTrigger>
+              <TooltipContent>{downloadHint}</TooltipContent>
+            </Tooltip>
             <AlertDialog
               open={deleteDialogOpen}
               onOpenChange={(open) => {
@@ -502,6 +501,7 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
                     size="small"
                     variant="tertiary"
                     tone="destructive"
+                    className="shrink-0"
                     disabled={isDeleting}
                     aria-labelledby={`${deleteActionLabelId} ${archiveMonthLabelId}`}
                   />
