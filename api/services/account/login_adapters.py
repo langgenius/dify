@@ -13,7 +13,6 @@ from cryptography.fernet import Fernet, InvalidToken
 from pydantic import TypeAdapter, ValidationError
 
 from configs import dify_config
-from core.auth.console_session import build_refresh_token, parse_refresh_token
 from extensions.ext_redis import RedisClientWrapper
 from libs.datetime_utils import naive_utc_now
 from libs.helper import RateLimiter, TokenManager
@@ -22,6 +21,7 @@ from models.account import (
 )
 from repositories.account.repository import SQLAlchemyAccountRepository
 from services import account_errors
+from services.account.console_session import build_refresh_token, parse_refresh_token
 from services.account.console_tokens import issue_console_access_token, issue_console_csrf_token
 from services.account.login_service import (
     AccountRefreshPreparationGateway,

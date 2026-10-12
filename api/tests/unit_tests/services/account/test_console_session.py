@@ -4,7 +4,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from core.auth.console_session import (
+from services.account.console_session import (
     CONSOLE_TOKEN_AUDIENCE,
     access_token_account_id,
     access_token_claims,
