@@ -6,7 +6,7 @@ from sqlalchemy import func, select
 
 import app
 from configs import dify_config
-from extensions.ext_database import db
+from core.db.session_factory import session_factory
 from models.dataset import TidbAuthBinding
 from models.enums import TidbAuthBindingStatus
 
@@ -20,10 +20,10 @@ def create_tidb_serverless_task():
     start_at = time.perf_counter()
     while True:
         try:
-            # check the number of idle tidb serverless
-            idle_tidb_serverless_number = (
-                db.session.scalar(select(func.count(TidbAuthBinding.id)).where(TidbAuthBinding.active == False)) or 0
-            )
+            with session_factory.create_session() as session:
+                idle_tidb_serverless_number = (
+                    session.scalar(select(func.count(TidbAuthBinding.id)).where(TidbAuthBinding.active == False)) or 0
+                )
             if idle_tidb_serverless_number >= tidb_serverless_number:
                 break
             # create tidb serverless
