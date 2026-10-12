@@ -1372,17 +1372,6 @@ class MultiModalTransferConfig(BaseSettings):
     )
 
 
-class NewAgentBetaConfig(BaseSettings):
-    NEW_AGENT_BETA_ACTIVITY_START_AT: datetime | None = Field(
-        description="New Agent Beta Publish window start in RFC3339 UTC (inclusive)",
-        default=None,
-    )
-    NEW_AGENT_BETA_ACTIVITY_END_AT: datetime | None = Field(
-        description="New Agent Beta Publish window end in RFC3339 UTC (exclusive)",
-        default=None,
-    )
-
-
 class OpsTraceConfig(BaseSettings):
     OPS_TRACE_UNIFIED_ENABLED: bool = Field(
         description="Enable unified ops tracing for providers registered in the unified registry.",
@@ -1725,7 +1714,6 @@ class FeatureConfig(
     ModelLoadBalanceConfig,
     ModerationConfig,
     MultiModalTransferConfig,
-    NewAgentBetaConfig,
     OpsTraceConfig,
     PositionConfig,
     RagEtlConfig,
