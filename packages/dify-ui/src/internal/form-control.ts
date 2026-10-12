@@ -1,11 +1,6 @@
 export const formLabelClassName =
   'w-fit cursor-default py-1 text-text-secondary system-sm-medium data-disabled:cursor-not-allowed'
 
-// The focus indicator of a control whose checked fill is the indicator color (Switch, Checkbox, Radio).
-// The gap keeps it distinct from that fill. The color is set at rest so it does not animate in.
-export const checkedControlFocusClassName =
-  'outline-state-accent-solid focus-visible:outline-2 focus-visible:outline-offset-2'
-
 // The field surface when the native control is the visible field (Input, Textarea).
 // Focus selects `:focus`, not `data-focused`: a text control shows focus however it was reached, and
 // Base UI sets `data-focused` only inside a Field. It exposes no read-only attribute on a plain control

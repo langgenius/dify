@@ -2082,11 +2082,6 @@
       "count": 1
     }
   },
-  "web/app/components/plugins/plugin-auth/authorized/index.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/app/components/plugins/plugin-auth/authorized/item.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 1

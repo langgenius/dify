@@ -2,7 +2,8 @@
 
 import { Tabs as BaseTabs } from '@base-ui/react/tabs'
 import { cn } from '../cn'
-import { resolveClassName } from '../internals/resolve-class-name'
+import { focusRingClassName, insetFocusRingClassName } from '../internal/focus'
+import { resolveClassName } from '../internal/resolve-class-name'
 
 type TabsProps = BaseTabs.Root.Props
 type TabsChangeEventReason = BaseTabs.Root.ChangeEventReason
@@ -27,7 +28,8 @@ function TabsTab({ className, ...props }: TabsTabProps) {
     <BaseTabs.Tab
       className={(state) =>
         cn(
-          'relative flex cursor-pointer touch-manipulation items-center border-b-2 border-transparent pt-2.5 pb-2 system-md-semibold text-text-tertiary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-active:border-components-tab-active data-active:text-text-primary data-disabled:cursor-not-allowed data-disabled:text-text-tertiary data-disabled:opacity-30 data-active:data-disabled:text-text-primary',
+          focusRingClassName,
+          'relative flex cursor-pointer touch-manipulation items-center border-b-2 border-transparent pt-2.5 pb-2 system-md-semibold text-text-tertiary data-active:border-components-tab-active data-active:text-text-primary data-disabled:cursor-not-allowed data-disabled:text-text-tertiary data-disabled:opacity-30 data-active:data-disabled:text-text-primary',
           resolveClassName(className, state),
         )
       }
@@ -41,12 +43,7 @@ type TabsPanelProps = BaseTabs.Panel.Props
 function TabsPanel({ className, ...props }: TabsPanelProps) {
   return (
     <BaseTabs.Panel
-      className={(state) =>
-        cn(
-          'outline-hidden focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid',
-          resolveClassName(className, state),
-        )
-      }
+      className={(state) => cn(insetFocusRingClassName, resolveClassName(className, state))}
       {...props}
     />
   )
