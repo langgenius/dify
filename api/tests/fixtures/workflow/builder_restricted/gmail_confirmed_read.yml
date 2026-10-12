@@ -1,0 +1,49 @@
+# Start -> builtin Gmail get_message Tool (node class v1, literal parameters) -> End.
+# The CI module replaces the credential placeholder with its seeded workspace
+# credential row ID; nothing here names a real mailbox, credential or artifact.
+nodes:
+- id: start
+  data:
+    type: start
+    title: Start
+    variables:
+    - variable: path
+      label: Path
+      type: text-input
+      required: false
+- id: gmail
+  data:
+    type: tool
+    title: Get message
+    provider_id: langgenius/dify-gmail/dify-gmail
+    provider_type: builtin
+    provider_name: langgenius/dify-gmail/dify-gmail
+    tool_name: get_message
+    tool_label: Get message
+    tool_configurations: {}
+    credential_id: ci-credential-placeholder
+    tool_node_version: '2'
+    tool_parameters:
+      message_id:
+        type: constant
+        value: 18cab_1
+      include_body:
+        type: constant
+        value: false
+      include_attachments:
+        type: constant
+        value: false
+- id: end
+  data:
+    type: end
+    title: End
+    outputs:
+    - variable: message
+      value_selector:
+      - gmail
+      - json
+edges:
+- source: start
+  target: gmail
+- source: gmail
+  target: end
