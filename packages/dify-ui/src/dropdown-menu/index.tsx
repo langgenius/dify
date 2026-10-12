@@ -7,6 +7,7 @@ import type { Placement } from '../internal/placement'
 import { Menu } from '@base-ui/react/menu'
 import { cn } from '../cn'
 import { InputGroup } from '../input-group'
+import { focusRingClassName } from '../internal/focus'
 import { textControlGroupInputClassName } from '../internal/form-control-shared'
 import {
   menuItemClassName,
@@ -19,7 +20,6 @@ import {
   floatingItemIndicatorClassName,
   floatingPopupAnimationClassName,
   floatingSeparatorClassName,
-  triggerFocusClassName,
 } from '../internal/overlay-shared'
 import { parsePlacement } from '../internal/placement'
 import { resolveClassName } from '../internal/resolve-class-name'
@@ -52,7 +52,7 @@ function DropdownMenuTrigger<Payload = unknown>({
 }: DropdownMenuTriggerProps<Payload>) {
   return (
     <Menu.Trigger
-      className={(state) => cn(triggerFocusClassName, resolveClassName(className, state))}
+      className={(state) => cn(focusRingClassName, resolveClassName(className, state))}
       {...props}
     />
   )

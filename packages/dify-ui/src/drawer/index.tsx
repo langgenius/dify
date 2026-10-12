@@ -2,7 +2,7 @@
 
 import { Drawer as BaseDrawer } from '@base-ui/react/drawer'
 import { cn } from '../cn'
-import { triggerFocusClassName } from '../internal/overlay-shared'
+import { focusRingClassName } from '../internal/focus'
 import { resolveClassName } from '../internal/resolve-class-name'
 
 const Drawer = BaseDrawer.Root
@@ -33,7 +33,7 @@ type DrawerTriggerProps<Payload = unknown> = BaseDrawer.Trigger.Props<Payload>
 function DrawerTrigger<Payload = unknown>({ className, ...props }: DrawerTriggerProps<Payload>) {
   return (
     <BaseDrawer.Trigger
-      className={(state) => cn(triggerFocusClassName, resolveClassName(className, state))}
+      className={(state) => cn(focusRingClassName, resolveClassName(className, state))}
       {...props}
     />
   )

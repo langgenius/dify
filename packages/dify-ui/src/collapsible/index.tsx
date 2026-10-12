@@ -2,7 +2,7 @@
 
 import { Collapsible as BaseCollapsible } from '@base-ui/react/collapsible'
 import { cn } from '../cn'
-import { triggerFocusClassName } from '../internal/overlay-shared'
+import { focusRingClassName } from '../internal/focus'
 import { resolveClassName } from '../internal/resolve-class-name'
 
 type CollapsibleProps = BaseCollapsible.Root.Props
@@ -21,7 +21,7 @@ type CollapsibleTriggerProps = BaseCollapsible.Trigger.Props
 function CollapsibleTrigger({ className, ...props }: CollapsibleTriggerProps) {
   return (
     <BaseCollapsible.Trigger
-      className={(state) => cn(triggerFocusClassName, resolveClassName(className, state))}
+      className={(state) => cn(focusRingClassName, resolveClassName(className, state))}
       {...props}
     />
   )

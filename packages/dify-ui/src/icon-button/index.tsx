@@ -5,11 +5,13 @@ import type * as React from 'react'
 import { Button as BaseButton } from '@base-ui/react/button'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
+import { focusRingClassName } from '../internal/focus'
 import { resolveClassName } from '../internal/resolve-class-name'
 
 const iconButtonVariants = cva(
   [
-    'inline-flex cursor-pointer items-center justify-center focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-disabled:cursor-not-allowed',
+    focusRingClassName,
+    'inline-flex cursor-pointer items-center justify-center data-disabled:cursor-not-allowed',
   ],
   {
     variants: {

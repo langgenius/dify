@@ -2,6 +2,7 @@
 
 import type * as React from 'react'
 import { cn } from '../cn'
+import { focusRingClassName } from '../internal/focus'
 import { mergeProps } from '../merge-props'
 import { useRender } from '../use-render'
 
@@ -44,7 +45,8 @@ function BreadcrumbLink({ className, render, ...props }: BreadcrumbLinkProps) {
     props: mergeProps<'a'>(
       {
         className: cn(
-          'inline-flex min-w-0 items-center gap-1 rounded-sm whitespace-nowrap text-text-tertiary hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden aria-[current=page]:text-text-primary',
+          focusRingClassName,
+          'inline-flex min-w-0 items-center gap-1 rounded-sm whitespace-nowrap text-text-tertiary hover:text-text-secondary aria-[current=page]:text-text-primary',
           className,
         ),
       },

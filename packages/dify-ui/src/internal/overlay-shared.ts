@@ -1,7 +1,3 @@
-// The focus indicator a trigger owns. The caller owns the appearance, directly or through `render`.
-export const triggerFocusClassName =
-  'focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden'
-
 export const floatingItemIndicatorClassName = 'ms-auto flex shrink-0 items-center text-text-accent'
 // The horizontal inset belongs to the component: it depends on whether the label sits in the
 // popup (12px) or in a padded list (8px, with the list's padding supplying the rest).

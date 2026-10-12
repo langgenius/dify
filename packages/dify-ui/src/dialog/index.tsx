@@ -3,11 +3,8 @@
 import type * as React from 'react'
 import { Dialog as BaseDialog } from '@base-ui/react/dialog'
 import { cn } from '../cn'
-import {
-  modalBackdropClassName,
-  modalPopupAnimationClassName,
-  triggerFocusClassName,
-} from '../internal/overlay-shared'
+import { focusRingClassName } from '../internal/focus'
+import { modalBackdropClassName, modalPopupAnimationClassName } from '../internal/overlay-shared'
 import { resolveClassName } from '../internal/resolve-class-name'
 
 const Dialog = BaseDialog.Root
@@ -28,7 +25,7 @@ type DialogTriggerProps<Payload = unknown> = BaseDialog.Trigger.Props<Payload>
 function DialogTrigger<Payload = unknown>({ className, ...props }: DialogTriggerProps<Payload>) {
   return (
     <BaseDialog.Trigger
-      className={(state) => cn(triggerFocusClassName, resolveClassName(className, state))}
+      className={(state) => cn(focusRingClassName, resolveClassName(className, state))}
       {...props}
     />
   )

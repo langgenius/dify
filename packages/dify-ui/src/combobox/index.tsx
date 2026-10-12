@@ -6,13 +6,13 @@ import type { Placement } from '../internal/placement'
 import { Combobox as BaseCombobox } from '@base-ui/react/combobox'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
+import { focusRingClassName } from '../internal/focus'
 import { formLabelClassName, textControlGroupClassName } from '../internal/form-control-shared'
 import {
   floatingGroupLabelClassName,
   floatingItemIndicatorClassName,
   floatingPopupAnimationClassName,
   floatingSeparatorClassName,
-  triggerFocusClassName,
 } from '../internal/overlay-shared'
 import { parsePlacement } from '../internal/placement'
 import { resolveClassName } from '../internal/resolve-class-name'
@@ -107,7 +107,7 @@ function ComboboxTrigger({ className, type = 'button', ...props }: ComboboxTrigg
   return (
     <BaseCombobox.Trigger
       type={type}
-      className={(state) => cn(triggerFocusClassName, resolveClassName(className, state))}
+      className={(state) => cn(focusRingClassName, resolveClassName(className, state))}
       {...props}
     />
   )

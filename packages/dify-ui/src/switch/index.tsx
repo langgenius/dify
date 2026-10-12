@@ -5,7 +5,7 @@ import type * as React from 'react'
 import { Switch as BaseSwitch } from '@base-ui/react/switch'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
-import { checkedControlFocusClassName } from '../internal/form-control-shared'
+import { checkedControlFocusClassName } from '../internal/focus'
 import { resolveClassName } from '../internal/resolve-class-name'
 
 const switchRootVariants = cva(

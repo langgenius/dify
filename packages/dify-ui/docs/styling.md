@@ -66,6 +66,10 @@ after the owning variant, data attribute, and selector structure cannot express 
 
 ## Focus indicator
 
+`src/internal/focus.ts` owns the shared focus-visible ring and the separated indicator for
+checked controls. A package-wide interaction contract can have a shared style owner; visual
+similarity alone is not a reason to share constants. Keep component-specific selectors local.
+
 Controls own their focus indicator, so callers never write one. That includes every trigger that
 opens a surface (Popover, DropdownMenu, Collapsible, Combobox, Dialog, AlertDialog, Drawer); they
 share one ring. Rows inside a composite defer to its highlight. Parts that only attach behavior

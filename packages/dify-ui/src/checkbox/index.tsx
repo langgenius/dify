@@ -3,7 +3,7 @@
 import type * as React from 'react'
 import { Checkbox as BaseCheckbox } from '@base-ui/react/checkbox'
 import { cn } from '../cn'
-import { checkedControlFocusClassName } from '../internal/form-control-shared'
+import { checkedControlFocusClassName } from '../internal/focus'
 import { resolveClassName } from '../internal/resolve-class-name'
 
 const checkboxRootClassName = cn(
