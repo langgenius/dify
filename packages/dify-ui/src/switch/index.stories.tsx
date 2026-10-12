@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
+import type { SwitchProps } from '.'
 import * as React from 'react'
 import { expect } from 'storybook/test'
 import { Switch, SwitchSkeleton } from '.'
@@ -46,7 +47,7 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 type SwitchDemoProps = Partial<
-  Omit<React.ComponentProps<typeof Switch>, 'checked' | 'defaultChecked' | 'onCheckedChange'>
+  Omit<SwitchProps, 'checked' | 'defaultChecked' | 'onCheckedChange'>
 > & {
   checked?: boolean
 }

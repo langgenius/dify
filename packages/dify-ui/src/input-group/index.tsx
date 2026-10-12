@@ -5,8 +5,8 @@ import type * as React from 'react'
 import { Input as BaseInput } from '@base-ui/react/input'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
-import { textControlGroupInputClassName } from '../form-control-shared'
-import { resolveClassName } from '../internals/resolve-class-name'
+import { textControlGroupInputClassName } from '../internal/form-control'
+import { resolveClassName } from '../internal/resolve-class-name'
 
 const interactiveElementSelector =
   'button,a[href],[role="button"],[role="link"],select,[tabindex]:not([tabindex="-1"]),input:not([type="hidden"]):not([disabled]),[contenteditable]:not([contenteditable="false"]),textarea:not([disabled])'
@@ -83,10 +83,8 @@ const inputGroupAddonVariants = cva(
   },
 )
 
-type InputGroupAddonProps = Omit<React.ComponentPropsWithRef<'div'>, 'className'> &
-  VariantProps<typeof inputGroupAddonVariants> & {
-    className?: string
-  }
+type InputGroupAddonProps = React.ComponentProps<'div'> &
+  VariantProps<typeof inputGroupAddonVariants>
 
 function InputGroupAddon({ align = 'inline-start', className, ...props }: InputGroupAddonProps) {
   return (

@@ -1,6 +1,6 @@
 'use client'
 
-import { Avatar } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -22,6 +22,7 @@ import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { useLogout } from '@/service/use-common'
+import { getAvatarInitial } from '@/utils/avatar'
 import { buildOAuthCallbackUrl, buildReturnUrl, useSilentAuthorize } from './use-silent-authorize'
 
 export default function OAuthAuthorize() {
@@ -197,7 +198,10 @@ export default function OAuthAuthorize() {
       {isLoggedIn && userProfile && (
         <div className="flex items-center justify-between rounded-xl bg-background-section-burn-inverted p-3">
           <div className="flex items-center gap-2.5">
-            <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size="lg" />
+            <Avatar size="lg" aria-hidden="true">
+              <AvatarFallback>{getAvatarInitial(userProfile.name)}</AvatarFallback>
+              <AvatarImage src={userProfile.avatar_url || undefined} alt="" />
+            </Avatar>
             <div>
               <div className="text-text-secondary">{userProfile.name}</div>
               <div className="system-xs-regular text-text-tertiary">{userProfile.email}</div>

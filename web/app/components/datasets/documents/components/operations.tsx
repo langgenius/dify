@@ -99,7 +99,6 @@ const Operations = ({
     display_status,
   } = detail || {}
   const [showModal, setShowModal] = useState(false)
-  const [isOperationsMenuOpen, setIsOperationsMenuOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const { t } = useTranslation(['common', 'datasetDocuments'])
   const router = useRouter()
@@ -246,9 +245,6 @@ const Operations = ({
   const handleRenamed = useCallback(() => {
     onUpdate()
   }, [onUpdate])
-  const closeOperationsMenu = useCallback(() => {
-    setIsOperationsMenuOpen(false)
-  }, [])
   const stopPropagation = useCallback((e: React.SyntheticEvent) => {
     e.stopPropagation()
   }, [])
@@ -268,25 +264,22 @@ const Operations = ({
     downloadUrl({ url: res.url, fileName: name })
   }, [canDownload, datasetId, downloadDocument, id, isDownloading, name, t])
   const handleShowRename = useCallback(() => {
-    closeOperationsMenu()
     handleShowRenameModal({
       id: detail.id,
       name: detail.name,
     })
-  }, [closeOperationsMenu, detail.id, detail.name, handleShowRenameModal])
+  }, [detail.id, detail.name, handleShowRenameModal])
   const handleMenuOperation = useCallback(
     (operationName: OperationName) => {
-      closeOperationsMenu()
       void onOperate(operationName)
     },
-    [closeOperationsMenu, onOperate],
+    [onOperate],
   )
   const handleDeleteClick = useCallback(() => {
     if (!canDelete) return
 
-    closeOperationsMenu()
     setShowModal(true)
-  }, [canDelete, closeOperationsMenu])
+  }, [canDelete])
   const handleDownloadClick = useCallback(
     (evt: React.MouseEvent<HTMLElement>) => {
       evt.preventDefault()
@@ -294,10 +287,9 @@ const Operations = ({
       evt.nativeEvent.stopImmediatePropagation?.()
       if (!canDownload) return
 
-      closeOperationsMenu()
       void handleDownload()
     },
-    [canDownload, closeOperationsMenu, handleDownload],
+    [canDownload, handleDownload],
   )
   const menuActionClassName = 'h-9 w-[calc(100%-8px)] gap-2 px-3 py-2 text-left'
   const menuDeleteActionClassName = cn(menuActionClassName, 'group')
@@ -308,10 +300,9 @@ const Operations = ({
       evt.nativeEvent.stopImmediatePropagation?.()
       if (!canViewSettings) return
 
-      closeOperationsMenu()
       router.push(`/datasets/${datasetId}/documents/${detail.id}/settings`)
     },
-    [canViewSettings, closeOperationsMenu, datasetId, detail.id, router],
+    [canViewSettings, datasetId, detail.id, router],
   )
   const settingsMenuItem = (
     <DropdownMenuItem className={menuActionClassName} onClick={handleSettingsClick}>
@@ -391,7 +382,7 @@ const Operations = ({
       )}
       {hasOperationsMenu && (
         <>
-          <DropdownMenu open={isOperationsMenuOpen} onOpenChange={setIsOperationsMenuOpen}>
+          <DropdownMenu>
             <DropdownMenuTrigger
               aria-label={t(($) => $['operation.more'], { ns: 'common' })}
               className={cn(

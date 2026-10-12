@@ -19,13 +19,12 @@ import {
   getNodesWithSameDefaultDataType,
 } from '../utils'
 
-type AddBlockProps = {
+type AddBlockProps = Pick<
+  BlockSelectorProps,
+  'triggerClassName' | 'sideOffset' | 'alignOffset' | 'isolateKeyboardEvents'
+> & {
   renderTrigger?: BlockSelectorProps['trigger']
-  triggerClassName?: BlockSelectorProps['triggerClassName']
-  sideOffset?: BlockSelectorProps['sideOffset']
-  alignOffset?: BlockSelectorProps['alignOffset']
   onClose?: () => void
-  isolateKeyboardEvents?: boolean
 }
 const AddBlock = ({
   renderTrigger,
