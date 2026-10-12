@@ -5,6 +5,8 @@ import * as z from 'zod'
 import {
   zGetFormHumanInputByFormTokenPath,
   zGetFormHumanInputByFormTokenResponse,
+  zGetFormHumanInputV2ByFormTokenPath,
+  zGetFormHumanInputV2ByFormTokenResponse,
   zPostFormHumanInputByFormTokenBody,
   zPostFormHumanInputByFormTokenPath,
   zPostFormHumanInputByFormTokenResponse,
@@ -12,6 +14,21 @@ import {
   zPostFormHumanInputV2ByFormTokenPath,
   zPostFormHumanInputV2ByFormTokenResponse,
 } from './zod.gen.ts'
+
+/**
+ * Read a frozen v2 form using the current Account's Contact authorization.
+ */
+export const get = oc
+  .route({
+    description: "Read a frozen v2 form using the current Account's Contact authorization.",
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getFormHumanInputV2ByFormToken',
+    path: '/form/human-input/v2/{form_token}',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetFormHumanInputV2ByFormTokenPath }))
+  .output(zGetFormHumanInputV2ByFormTokenResponse)
 
 export const post = oc
   .route({
@@ -30,6 +47,7 @@ export const post = oc
   .output(zPostFormHumanInputV2ByFormTokenResponse)
 
 export const byFormToken = {
+  get,
   post,
 }
 
@@ -42,7 +60,7 @@ export const v2 = {
  *
  * GET /console/api/form/human_input/<form_token>
  */
-export const get = oc
+export const get2 = oc
   .route({
     description: 'GET /console/api/form/human_input/<form_token>',
     inputStructure: 'detailed',
@@ -88,7 +106,7 @@ export const post2 = oc
   .output(zPostFormHumanInputByFormTokenResponse)
 
 export const byFormToken2 = {
-  get,
+  get: get2,
   post: post2,
 }
 

@@ -4,6 +4,11 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/console/api` | (string & {})
 }
 
+export type ConsoleHumanInputV2FormDefinitionResponse = {
+  expiration_time: number
+  resolved_form: ResolvedForm
+}
+
 export type ConsoleHumanInputV2SubmitPayload = {
   action: string
   inputs: {
@@ -33,7 +38,101 @@ export type ConsoleHumanInputFormSubmitResponse = {
   [key: string]: unknown
 }
 
+export type ResolvedForm = {
+  actions: Array<UserAction>
+  legacy_form_content: string
+  parts: Array<FormPart>
+  title: string
+}
+
 export type JsonValue = unknown
+
+export type UserAction = {
+  button_style: ButtonStyle
+  id: string
+  title: string
+}
+
+export type FormPart =
+  | ({
+      type: 'markdown_fragment'
+    } & MarkdownFragment)
+  | ({
+      type: 'paragraph_input'
+    } & ParagraphInput)
+  | ({
+      type: 'select_input'
+    } & SelectInput)
+  | ({
+      type: 'file_input'
+    } & FileInput)
+  | ({
+      type: 'file_list_input'
+    } & FileListInput)
+
+export type ButtonStyle = 'accent' | 'default' | 'ghost' | 'primary'
+
+export type MarkdownFragment = {
+  text: string
+  type?: 'markdown_fragment'
+}
+
+export type ParagraphInput = {
+  default_value: string | null
+  output_variable_name: string
+  type?: 'paragraph_input'
+}
+
+export type SelectInput = {
+  default_value: string | null
+  options: Array<string>
+  output_variable_name: string
+  type?: 'select_input'
+}
+
+export type FileInput = {
+  allowed_file_extensions: Array<string>
+  allowed_file_types: Array<FileType>
+  allowed_file_upload_methods: Array<FileTransferMethod>
+  output_variable_name: string
+  type?: 'file_input'
+}
+
+export type FileListInput = {
+  allowed_file_extensions: Array<string>
+  allowed_file_types: Array<FileType>
+  allowed_file_upload_methods: Array<FileTransferMethod>
+  number_limits: number
+  output_variable_name: string
+  type?: 'file_list_input'
+}
+
+export type FileType = 'audio' | 'custom' | 'document' | 'image' | 'video'
+
+export type FileTransferMethod = 'datasource_file' | 'local_file' | 'remote_url' | 'tool_file'
+
+export type GetFormHumanInputV2ByFormTokenData = {
+  body?: never
+  path: {
+    form_token: string
+  }
+  query?: never
+  url: '/form/human-input/v2/{form_token}'
+}
+
+export type GetFormHumanInputV2ByFormTokenErrors = {
+  401: unknown
+  404: unknown
+  409: unknown
+  410: unknown
+}
+
+export type GetFormHumanInputV2ByFormTokenResponses = {
+  200: ConsoleHumanInputV2FormDefinitionResponse
+}
+
+export type GetFormHumanInputV2ByFormTokenResponse =
+  GetFormHumanInputV2ByFormTokenResponses[keyof GetFormHumanInputV2ByFormTokenResponses]
 
 export type PostFormHumanInputV2ByFormTokenData = {
   body: ConsoleHumanInputV2SubmitPayload

@@ -76,6 +76,14 @@ class HumanInputSubmissionService:
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
 
+    def get_console_form(self, *, account_id: AccountId, form_token: str) -> Form:
+        token_hash = hashlib.sha256(form_token.encode()).hexdigest()
+        with self._session_factory() as session:
+            form, _ = self._authorize_console(session, account_id=account_id, token_hash=token_hash)
+        if naive_utc_now() >= min(form.expiration_time, form.global_timeout_deadline):
+            raise HumanInputFormError(HumanInputFormErrorCode.EXPIRED)
+        return form
+
     def submit_console_form(
         self, *, account_id: AccountId, form_token: str, action: str, inputs: Mapping[str, JsonValue]
     ) -> None:

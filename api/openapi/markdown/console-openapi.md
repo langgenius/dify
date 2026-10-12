@@ -6641,6 +6641,25 @@ Verify password reset code
 | 200 | Code verified successfully | **application/json**: [ForgotPasswordCheckResponse](#forgotpasswordcheckresponse)<br> |
 | 400 | Invalid code or token |  |
 
+### [GET] /form/human-input/v2/{form_token}
+Read a frozen v2 form using the current Account's Contact authorization.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| form_token | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Form retrieved | **application/json**: [ConsoleHumanInputV2FormDefinitionResponse](#consolehumaninputv2formdefinitionresponse)<br> |
+| 401 | Login required |  |
+| 404 | Form not found |  |
+| 409 | Already submitted |  |
+| 410 | Expired |  |
+
 ### [GET] /form/human_input/{form_token}
 **Get human input form definition by form token**
 
@@ -17638,6 +17657,15 @@ Enum class for configurate method of provider model.
 | ---- | ---- | ----------- | -------- |
 | ConsoleHumanInputFormSubmitResponse | object |  |  |
 
+#### ConsoleHumanInputV2FormDefinitionResponse
+
+Frozen form definition and effective expiration in UTC epoch seconds.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expiration_time | integer |  | Yes |
+| resolved_form | [ResolvedForm](#resolvedform) |  | Yes |
+
 #### ConsoleSegmentListResponse
 
 | Name | Type | Description | Required |
@@ -19639,6 +19667,18 @@ Enum class for fetch from.
 | ---- | ---- | ----------- | -------- |
 | file_ids | [ string ] |  | Yes |
 
+#### FileInput
+
+Resolved single-file input constraints.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allowed_file_extensions | [ string ] |  | Yes |
+| allowed_file_types | [ [FileType](#filetype) ] |  | Yes |
+| allowed_file_upload_methods | [ [FileTransferMethod](#filetransfermethod) ] |  | Yes |
+| output_variable_name | string |  | Yes |
+| type | string |  | No |
+
 #### FileInputConfig
 
 | Name | Type | Description | Required |
@@ -19646,6 +19686,19 @@ Enum class for fetch from.
 | allowed_file_extensions | [ string ] |  | No |
 | allowed_file_types | [ [FileType](#filetype) ] |  | No |
 | allowed_file_upload_methods | [ [FileTransferMethod](#filetransfermethod) ] |  | No |
+| output_variable_name | string |  | Yes |
+| type | string |  | No |
+
+#### FileListInput
+
+Resolved multi-file input constraints and effective number limit.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allowed_file_extensions | [ string ] |  | Yes |
+| allowed_file_types | [ [FileType](#filetype) ] |  | Yes |
+| allowed_file_upload_methods | [ [FileTransferMethod](#filetransfermethod) ] |  | Yes |
+| number_limits | integer |  | Yes |
 | output_variable_name | string |  | Yes |
 | type | string |  | No |
 
@@ -19764,6 +19817,12 @@ Model class for form option.
 | label | [graphon__model_runtime__entities__common_entities__I18nObject](#graphon__model_runtime__entities__common_entities__i18nobject) |  | Yes |
 | show_on | [ [FormShowOnObject](#formshowonobject) ], <br>**Default:**  |  | No |
 | value | string |  | Yes |
+
+#### FormPart
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| FormPart | [MarkdownFragment](#markdownfragment)<br>[ParagraphInput](#paragraphinput)<br>[SelectInput](#selectinput)<br>[FileInput](#fileinput)<br>[FileListInput](#filelistinput) |  |  |
 
 #### FormShowOnObject
 
@@ -20428,6 +20487,15 @@ Enum class for large language model mode.
 | id | string (uuid) | Server ID | Yes |
 | parameters | object | Server parameters configuration | Yes |
 | status | [AppMCPServerStatus](#appmcpserverstatus) | Server status | No |
+
+#### MarkdownFragment
+
+One source-ordered Markdown fragment in a resolved form.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| text | string |  | Yes |
+| type | string |  | No |
 
 #### Marketplace
 
@@ -21261,6 +21329,16 @@ output check fails and any configured retry attempts have been exhausted.
 | ---- | ---- | ----------- | -------- |
 | limit | integer, <br>**Default:** 20 |  | No |
 | page | integer, <br>**Default:** 1 |  | No |
+
+#### ParagraphInput
+
+Resolved multiline text input.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| default_value | string |  | Yes |
+| output_variable_name | string |  | Yes |
+| type | string |  | No |
 
 #### ParagraphInputConfig
 
@@ -22778,6 +22856,17 @@ Resource types understood by access policies.
 | reranking_model_name | string | Name of the reranking model. | No |
 | reranking_provider_name | string | Provider name of the reranking model. | No |
 
+#### ResolvedForm
+
+Immutable authoritative presentation snapshot for one v2 form.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| actions | [ [UserAction](#useraction) ] |  | Yes |
+| legacy_form_content | string |  | Yes |
+| parts | [ [FormPart](#formpart) ] |  | Yes |
+| title | string |  | Yes |
+
 #### ResourcePermissionKeys
 
 | Name | Type | Description | Required |
@@ -23127,6 +23216,17 @@ Resource types understood by access policies.
 | max_tokens | integer | Maximum token count per chunk. | Yes |
 | separator | string, <br>**Default:**
  | Custom separator for splitting text. | No |
+
+#### SelectInput
+
+Resolved single-choice input with immutable concrete options.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| default_value | string |  | Yes |
+| options | [ string ] |  | Yes |
+| output_variable_name | string |  | Yes |
+| type | string |  | No |
 
 #### SelectInputConfig
 
@@ -24991,6 +25091,16 @@ Payload for updating a snippet.
 | ---- | ---- | ----------- | -------- |
 | count | integer |  | Yes |
 | is_using | boolean |  | Yes |
+
+#### UserAction
+
+Resolved action values required for presentation and submission validation.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| button_style | [ButtonStyle](#buttonstyle) |  | Yes |
+| id | string |  | Yes |
+| title | string |  | Yes |
 
 #### UserActionConfig
 
