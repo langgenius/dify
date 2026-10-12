@@ -363,25 +363,31 @@ def test_download_cleanup_preserves_result(
 ):
     _configure_storage(monkeypatch)
     client, _ = _mock_client(monkeypatch)
-    body = MagicMock(spec=StreamingBody)
-    body.read.return_value = b"payload"
-    body.iter_chunks.return_value = iter([b"payload"])
-    body.close.side_effect = OSError("close failed")
+
+    class CloseFailingBytesIO(BytesIO):
+        close_calls = 0
+
+        def close(self) -> None:
+            self.close_calls += 1
+            super().close()
+            raise OSError("close failed")
+
+    raw = CloseFailingBytesIO(b"payload")
+    body = StreamingBody(raw, 8 if read_fails else 7)
     client.get_object.return_value = {"Body": body}
     storage = ArchiveStorage(bucket=BUCKET_NAME)
 
     if read_fails:
-        read_error = IncompleteReadError(actual_bytes=0, expected_bytes=7)
-        body.read.side_effect = read_error
-        body.iter_chunks.side_effect = read_error
         with pytest.raises(ArchiveStorageError) as exc_info:
             _ = b"".join(storage.get_object_stream("key")) if streaming else storage.get_object("key")
-        assert exc_info.value.__cause__ is read_error
+        assert isinstance(exc_info.value.__cause__, IncompleteReadError)
+        assert exc_info.value.__cause__.kwargs == {"actual_bytes": 7, "expected_bytes": 8}
     else:
         result = b"".join(storage.get_object_stream("key")) if streaming else storage.get_object("key")
         assert result == b"payload"
 
-    body.close.assert_called_once()
+    assert raw.closed
+    assert raw.close_calls == 1
     assert "Failed to close stream" in caplog.text
 
 
