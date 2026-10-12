@@ -23,7 +23,7 @@ def persist_draft_tool_refresh(
     *,
     session_maker: sessionmaker[Session],
     selection: DraftToolRuntimeSelection,
-    original_encrypted_credentials: str,
+    original_encrypted_credentials: str | None,
     original_expires_at: int,
     original_user_id: str | None,
     refreshed_encrypted_credentials: str,
@@ -32,7 +32,9 @@ def persist_draft_tool_refresh(
     """Commit one authorized unchanged selection; no external I/O occurs here.
 
     The original opaque ciphertext/expiry/owner come from the native constrained
-    read, before OAuth I/O. Conditional UPDATE repeats canonical visibility
+    read, before OAuth I/O. ``None`` represents the actual stored SQL NULL;
+    its comparison retains SQLAlchemy's IS NULL semantics rather than a blank
+    ciphertext fallback. Conditional UPDATE repeats canonical visibility
     atomically; a failed compare-and-set rolls back and forbids runtime dispatch.
     Neither token plaintext nor a graph/client permission marker enters this owner.
     """
