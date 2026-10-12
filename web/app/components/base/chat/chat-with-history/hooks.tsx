@@ -90,21 +90,16 @@ function getFormattedChatList(messages: any[]) {
       }
 
       if (!('form_submission_data' in content) || !content.form_submission_data) return
-      // Legacy submissions without a definition expose no form ID. Keep a history-only
-      // identity for their cards without matching or removing a live pending form.
+      // Legacy submissions without a definition expose no form ID, so give their
+      // cards a history-only identity.
       const formId =
         formDefinition?.form_id ??
         `${content.workflow_run_id ?? item.id}:${content.form_submission_data.node_id}:${contentIndex}`
-      const currentFormIndex = humanInputFormDataList.findIndex((item) => item.form_id === formId)
-      const requiredFormData =
-        formDefinition ||
-        (currentFormIndex > -1 ? humanInputFormDataList[currentFormIndex] : undefined)
-      if (currentFormIndex > -1) humanInputFormDataList.splice(currentFormIndex, 1)
       workflowRunId = content.workflow_run_id || workflowRunId
       humanInputFilledFormDataList.push(
         enrichSubmittedHumanInputFormData(
           { ...content.form_submission_data, form_id: formId },
-          requiredFormData,
+          formDefinition,
         ),
       )
     })
