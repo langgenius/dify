@@ -5,7 +5,7 @@ import type { MenuItemVariant } from '../overlay-shared'
 import type { Placement } from '../placement'
 import { ContextMenu as BaseContextMenu } from '@base-ui/react/context-menu'
 import { cn } from '../cn'
-import { resolveClassName } from '../internals/resolve-class-name'
+import { resolveClassName } from '../internal/resolve-class-name'
 import {
   floatingGroupLabelClassName,
   floatingItemIndicatorClassName,

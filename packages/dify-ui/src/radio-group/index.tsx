@@ -5,7 +5,7 @@ import { Radio as BaseRadio } from '@base-ui/react/radio'
 import { RadioGroup as BaseRadioGroup } from '@base-ui/react/radio-group'
 import { cn } from '../cn'
 import { checkedControlFocusClassName } from '../form-control-shared'
-import { resolveClassName } from '../internals/resolve-class-name'
+import { resolveClassName } from '../internal/resolve-class-name'
 
 type RadioGroupProps<Value = string> = BaseRadioGroup.Props<Value>
 type RadioGroupChangeEventReason = BaseRadioGroup.ChangeEventReason

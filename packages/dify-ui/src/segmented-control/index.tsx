@@ -4,7 +4,7 @@ import type * as React from 'react'
 import { Radio as BaseRadio } from '@base-ui/react/radio'
 import { RadioGroup as BaseRadioGroup } from '@base-ui/react/radio-group'
 import { cn } from '../cn'
-import { resolveClassName } from '../internals/resolve-class-name'
+import { resolveClassName } from '../internal/resolve-class-name'
 
 type SegmentedControlSelectionProps<Value> =
   | {

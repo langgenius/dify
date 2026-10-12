@@ -6,7 +6,7 @@ import { Field as BaseField } from '@base-ui/react/field'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
 import { textControlClassName } from '../form-control-shared'
-import { resolveClassName } from '../internals/resolve-class-name'
+import { resolveClassName } from '../internal/resolve-class-name'
 
 const textareaVariants = cva([textControlClassName, 'min-h-20 overflow-auto'], {
   variants: {

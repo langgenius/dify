@@ -8,7 +8,7 @@ import { Menu } from '@base-ui/react/menu'
 import { cn } from '../cn'
 import { textControlGroupInputClassName } from '../form-control-shared'
 import { InputGroup } from '../input-group'
-import { resolveClassName } from '../internals/resolve-class-name'
+import { resolveClassName } from '../internal/resolve-class-name'
 import {
   floatingGroupLabelClassName,
   floatingItemIndicatorClassName,

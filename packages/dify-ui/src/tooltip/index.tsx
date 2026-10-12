@@ -4,7 +4,7 @@ import type * as React from 'react'
 import type { Placement } from '../placement'
 import { Tooltip as BaseTooltip } from '@base-ui/react/tooltip'
 import { cn } from '../cn'
-import { resolveClassName } from '../internals/resolve-class-name'
+import { resolveClassName } from '../internal/resolve-class-name'
 import { hintPopupClassName } from '../overlay-shared'
 import { parsePlacement } from '../placement'
 

@@ -13,7 +13,7 @@ import { cn } from '../../cn'
 import { DirectionProvider, useDirection } from '../../direction-provider'
 import { formLabelClassName } from '../../form-control-shared'
 import { IconButton } from '../../icon-button'
-import { resolveClassName } from '../../internals/resolve-class-name'
+import { resolveClassName } from '../../internal/resolve-class-name'
 import { Popover, PopoverContent, PopoverTrigger } from '../../popover'
 
 type PickerOpenChangeDetails = Omit<

@@ -2,7 +2,7 @@
 
 import { Drawer as BaseDrawer } from '@base-ui/react/drawer'
 import { cn } from '../cn'
-import { resolveClassName } from '../internals/resolve-class-name'
+import { resolveClassName } from '../internal/resolve-class-name'
 import { triggerFocusClassName } from '../overlay-shared'
 
 const Drawer = BaseDrawer.Root

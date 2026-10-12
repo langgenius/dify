@@ -5,7 +5,7 @@ import type { ButtonProps } from '../button'
 import { AlertDialog as BaseAlertDialog } from '@base-ui/react/alert-dialog'
 import { Button } from '../button'
 import { cn } from '../cn'
-import { resolveClassName } from '../internals/resolve-class-name'
+import { resolveClassName } from '../internal/resolve-class-name'
 import {
   modalBackdropClassName,
   modalPopupAnimationClassName,

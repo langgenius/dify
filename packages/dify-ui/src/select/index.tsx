@@ -8,7 +8,7 @@ import { Select as BaseSelect } from '@base-ui/react/select'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
 import { formLabelClassName } from '../form-control-shared'
-import { resolveClassName } from '../internals/resolve-class-name'
+import { resolveClassName } from '../internal/resolve-class-name'
 import {
   floatingGroupLabelClassName,
   floatingItemIndicatorClassName,

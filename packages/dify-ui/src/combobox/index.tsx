@@ -7,7 +7,7 @@ import { Combobox as BaseCombobox } from '@base-ui/react/combobox'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
 import { formLabelClassName, textControlGroupClassName } from '../form-control-shared'
-import { resolveClassName } from '../internals/resolve-class-name'
+import { resolveClassName } from '../internal/resolve-class-name'
 import {
   floatingGroupLabelClassName,
   floatingItemIndicatorClassName,

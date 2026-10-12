@@ -3,7 +3,7 @@
 import type * as React from 'react'
 import { Dialog as BaseDialog } from '@base-ui/react/dialog'
 import { cn } from '../cn'
-import { resolveClassName } from '../internals/resolve-class-name'
+import { resolveClassName } from '../internal/resolve-class-name'
 import {
   modalBackdropClassName,
   modalPopupAnimationClassName,

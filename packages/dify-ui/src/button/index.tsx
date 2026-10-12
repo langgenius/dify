@@ -4,7 +4,7 @@ import type { VariantProps } from 'class-variance-authority'
 import { Button as BaseButton } from '@base-ui/react/button'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
-import { resolveClassName } from '../internals/resolve-class-name'
+import { resolveClassName } from '../internal/resolve-class-name'
 
 const buttonVariants = cva(
   'inline-flex cursor-pointer items-center justify-center overflow-hidden whitespace-nowrap focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-disabled:cursor-not-allowed',

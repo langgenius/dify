@@ -2,7 +2,7 @@
 
 import { Collapsible as BaseCollapsible } from '@base-ui/react/collapsible'
 import { cn } from '../cn'
-import { resolveClassName } from '../internals/resolve-class-name'
+import { resolveClassName } from '../internal/resolve-class-name'
 import { triggerFocusClassName } from '../overlay-shared'
 
 type CollapsibleProps = BaseCollapsible.Root.Props

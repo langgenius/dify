@@ -4,7 +4,7 @@ import type { VariantProps } from 'class-variance-authority'
 import type * as React from 'react'
 import { Button as BaseButton } from '@base-ui/react/button'
 import { cn } from '../cn'
-import { resolveClassName } from '../internals/resolve-class-name'
+import { resolveClassName } from '../internal/resolve-class-name'
 import { iconButtonVariants } from './variants'
 
 type AccessibleName =

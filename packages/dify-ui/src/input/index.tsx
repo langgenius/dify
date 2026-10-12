@@ -3,7 +3,7 @@
 import { Input as BaseInput } from '@base-ui/react/input'
 import { cn } from '../cn'
 import { textControlClassName } from '../form-control-shared'
-import { resolveClassName } from '../internals/resolve-class-name'
+import { resolveClassName } from '../internal/resolve-class-name'
 
 type InputProps = Omit<BaseInput.Props, 'size'>
 type InputChangeEventReason = BaseInput.ChangeEventReason

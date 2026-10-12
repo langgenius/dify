@@ -2,7 +2,7 @@
 
 import { Tabs as BaseTabs } from '@base-ui/react/tabs'
 import { cn } from '../cn'
-import { resolveClassName } from '../internals/resolve-class-name'
+import { resolveClassName } from '../internal/resolve-class-name'
 
 type TabsProps = BaseTabs.Root.Props
 type TabsChangeEventReason = BaseTabs.Root.ChangeEventReason
