@@ -13,7 +13,6 @@ import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { difyBuilderPendingCreationAtom } from '@/app/components/workflow-app/components/dify-builder/creation'
-import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -23,6 +22,7 @@ import { getRedirection } from '@/utils/app-redirection'
 import { trackCreateApp } from '@/utils/create-app-tracking'
 import { hasPermission } from '@/utils/permission'
 import { CreateAppTypeDropdown } from './create-app-type-dropdown'
+import { getAppTransferErrorMessage } from './transfer-error'
 
 const ChatInputStarter = dynamic(() => import('./chat-input-starter'), { ssr: false })
 
@@ -31,6 +31,7 @@ type CreateAppCreationFlowProps = {
     onSelectType: (mode: CreateAppPayload['mode']) => void
     disabled: boolean
     loading: boolean
+    error: string
   }) => ReactNode
   onCreateTemplate?: () => void
 }
@@ -47,7 +48,9 @@ export function CreateAppCreationFlow({ children, onCreateTemplate }: CreateAppC
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
   const setPendingCreation = useSetAtom(difyBuilderPendingCreationAtom)
-  const { mutateAsync: createApp } = useMutation(consoleQuery.apps.post.mutationOptions())
+  const { mutateAsync: createApp } = useMutation(
+    consoleQuery.apps.post.mutationOptions({ context: { silent: true } }),
+  )
   const [starter, setStarter] = useState<{ mode: StarterAppMode; open: boolean } | null>(null)
   const [showQuota, setShowQuota] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
@@ -57,6 +60,7 @@ export function CreateAppCreationFlow({ children, onCreateTemplate }: CreateAppC
   const isCloud = systemFeatures.deployment_edition === 'CLOUD'
   const isAppsFull = isCloud && !!appQuota && appQuota.limit > 0 && appQuota.size >= appQuota.limit
   const unavailable = !canCreateApp || !features || (isCloud && !appQuota)
+  const isStarterOpen = !!(starter?.open && features?.dify_builder_enabled && canCreateApp)
 
   const create = async (mode: CreateAppPayload['mode'], prompt?: string) => {
     if (unavailable || isAppsFull || creatingRef.current) return
@@ -83,7 +87,6 @@ export function CreateAppCreationFlow({ children, onCreateTemplate }: CreateAppC
       }
       if (goal) setPendingCreation({ appId: app.id, prompt: goal, deriveAppName: true })
       setStarter((current) => current && { ...current, open: false })
-      toast.success(t(($) => $['newApp.appCreated'], { ns: 'app' }))
       getRedirection(app, push, {
         currentUserId,
         resourceMaintainer: app.maintainer,
@@ -92,11 +95,9 @@ export function CreateAppCreationFlow({ children, onCreateTemplate }: CreateAppC
       })
     } catch (cause) {
       const message =
-        cause instanceof Error
-          ? cause.message
-          : t(($) => $['newApp.appCreateFailed'], { ns: 'app' })
+        (await getAppTransferErrorMessage(cause)) ||
+        t(($) => $['newApp.appCreateFailed'], { ns: 'app' })
       setError(message)
-      if (!starter?.open) toast.error(message)
     } finally {
       creatingRef.current = false
       setIsCreating(false)
@@ -119,14 +120,21 @@ export function CreateAppCreationFlow({ children, onCreateTemplate }: CreateAppC
 
   return (
     <>
-      {children({ onSelectType, disabled: unavailable, loading: isCreating })}
+      {children({
+        onSelectType,
+        disabled: unavailable,
+        loading: isCreating,
+        error: isStarterOpen ? '' : error,
+      })}
       {starter && (
         <ChatInputStarter
-          show={starter.open && !!features?.dify_builder_enabled && canCreateApp}
+          show={isStarterOpen}
           mode={starter.mode}
           onClose={() => {
-            if (!creatingRef.current)
+            if (!creatingRef.current) {
+              setError('')
               setStarter((current) => current && { ...current, open: false })
+            }
           }}
           onCreate={(prompt) => {
             void create(starter.mode, prompt)
@@ -134,6 +142,7 @@ export function CreateAppCreationFlow({ children, onCreateTemplate }: CreateAppC
           onCreateTemplate={
             onCreateTemplate &&
             (() => {
+              setError('')
               setStarter((current) => current && { ...current, open: false })
               onCreateTemplate()
             })
@@ -172,13 +181,20 @@ export function CreateAppEntry(
 ) {
   return (
     <CreateAppCreationFlow onCreateTemplate={props.onCreateTemplate}>
-      {({ onSelectType, disabled, loading }) => (
-        <CreateAppTypeDropdown
-          {...props}
-          disabled={disabled}
-          loading={loading}
-          onSelectType={onSelectType}
-        />
+      {({ onSelectType, disabled, loading, error }) => (
+        <div className="flex max-w-full min-w-0 flex-col items-end gap-2">
+          <CreateAppTypeDropdown
+            {...props}
+            disabled={disabled}
+            loading={loading}
+            onSelectType={onSelectType}
+          />
+          {error && (
+            <p role="alert" className="max-w-80 system-sm-regular text-text-destructive">
+              {error}
+            </p>
+          )}
+        </div>
       )}
     </CreateAppCreationFlow>
   )
