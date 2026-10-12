@@ -114,6 +114,7 @@ jobs:
               "test_builder_confirmed_tool_native": {
                   "test_confirmed_native_run_reads_once_without_refresh": 1,
                   "test_confirmed_native_run_refreshes_once_then_reads": 1,
+                  "test_cache_invalidation_failure_after_refresh_cas_stays_unknown_without_business": 1,
                   "test_restricted_default_run_has_zero_decrypt_refresh_or_invoke": 1,
                   "test_ordinary_native_gmail_workflow_stays_ordinary": 1,
                   "test_published_native_gmail_workflow_runs_the_published_graph": 1,
@@ -133,6 +134,7 @@ jobs:
                   "test_terminal_repair_never_settles_a_fresh_live_reservation": 1,
                   "test_completed_grant_replays_and_receipts_stay_durable": 1,
                   "test_held_lease_duplicates_never_enqueue_twice": 1,
+                  "test_held_lease_replay_refuses_another_actor_and_a_changed_scope": 1,
                   "test_dispatch_coordinator_metadata_read_runs_outside_sql": 1,
                   "test_stale_recovery_sweep_never_settles_a_fresh_reservation": 1,
               },
