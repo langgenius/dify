@@ -315,25 +315,25 @@ class RedisResetPasswordEmailGateway(ResetPasswordEmailGateway):
         language: str,
         registration_allowed: bool,
     ) -> str:
-        if self._rate_limiter.is_rate_limited(email):
-            raise account_errors.ResetPasswordEmailRateLimitError(int(self._rate_limiter.time_window / 60))
+        with self._rate_limiter.reserve(email) as acquired:
+            if not acquired:
+                raise account_errors.ResetPasswordEmailRateLimitError(int(self._rate_limiter.time_window / 60))
 
-        code = "".join(str(secrets.randbelow(exclusive_upper_bound=10)) for _ in range(6))
-        token = TokenManager.generate_token(
-            account_id=account_id,
-            email=email,
-            token_type="reset_password",
-            additional_data={"code": code},
-        )
-        if account_id is not None:
-            send_reset_password_mail_task.delay(language=language, to=email, code=code)
-        else:
-            send_reset_password_mail_task_when_account_not_exist.delay(
-                language=language,
-                to=email,
-                is_allow_register=registration_allowed,
+            code = "".join(str(secrets.randbelow(exclusive_upper_bound=10)) for _ in range(6))
+            token = TokenManager.generate_token(
+                account_id=account_id,
+                email=email,
+                token_type="reset_password",
+                additional_data={"code": code},
             )
-        self._rate_limiter.increment_rate_limit(email)
+            if account_id is not None:
+                send_reset_password_mail_task.delay(language=language, to=email, code=code)
+            else:
+                send_reset_password_mail_task_when_account_not_exist.delay(
+                    language=language,
+                    to=email,
+                    is_allow_register=registration_allowed,
+                )
         return token
 
 
