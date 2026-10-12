@@ -15,7 +15,6 @@ project-excludes = [
   "clients/agent_backend/test_request_builder.py",
   "clients/agent_backend/test_session_cleanup.py",
   "commands/test_archive_workflow_runs.py",
-  "commands/test_clean_expired_messages.py",
   "commands/test_data_migration_commands.py",
   "commands/test_generate_swagger_markdown_docs.py",
   "commands/test_generate_swagger_specs.py",
