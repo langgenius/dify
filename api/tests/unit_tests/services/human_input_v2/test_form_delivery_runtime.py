@@ -171,7 +171,9 @@ def context(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Context
 
     @sa.event.listens_for(engine, "begin")
     def begin_transaction(connection):
-        connection.exec_driver_sql("BEGIN")
+        # SQLite cannot upgrade competing read transactions to writers. Reserve
+        # its writer at begin so concurrent calls can wait for serialized commits.
+        connection.exec_driver_sql("BEGIN IMMEDIATE")
 
     for model in (
         Account,

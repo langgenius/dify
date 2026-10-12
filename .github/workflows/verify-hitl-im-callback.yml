@@ -1,0 +1,64 @@
+name: Verify HITL IM callback deployment
+
+on:
+  push:
+    branches:
+      - 'build/feat/hitl-im-dev'
+  workflow_dispatch:
+    inputs:
+      expected_revision:
+        description: 'Already deployed API and worker commit to verify'
+        required: true
+        type: string
+
+concurrency:
+  group: hitl-im-callback-deployment
+  cancel-in-progress: true
+
+jobs:
+  callback-e2e:
+    runs-on: depot-ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Validate target revision
+        id: target
+        env:
+          CALLBACK_REVISION: ${{ inputs.expected_revision || github.sha }}
+        run: |
+          [[ "$CALLBACK_REVISION" =~ ^[0-9a-f]{40}$ ]]
+          printf 'revision=%s\n' "$CALLBACK_REVISION" >> "$GITHUB_OUTPUT"
+      - name: Wait for deployment and verify signed Slack callbacks
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2
+        with:
+          host: ${{ secrets.HITL_SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          command_timeout: 40m
+          script: |
+            set -eu
+            cd ~/langgenius
+            test -n '${{ vars.HITL_IM_E2E_TENANT_ID }}'
+            callback_expected_revision='${{ steps.target.outputs.revision }}'
+            callback_deployed=false
+            for callback_attempt in $(seq 1 180); do
+              callback_current=true
+              callback_api=$(docker compose ps -q api)
+              callback_workers=$(docker compose ps -q worker)
+              test -n "$callback_api" && test -n "$callback_workers" || callback_current=false
+              callback_containers="$callback_api $callback_workers"
+              for callback_container in $callback_containers; do
+                callback_image=$(docker inspect --format '{{.Image}}' "$callback_container")
+                callback_revision=$(docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' "$callback_image")
+                test "$callback_revision" = "$callback_expected_revision" || callback_current=false
+              done
+              if $callback_current && docker compose exec -T api curl -fsS http://127.0.0.1:5001/health >/dev/null; then
+                callback_deployed=true
+                break
+              fi
+              sleep 10
+            done
+            $callback_deployed || { echo 'Expected API and worker revision was not deployed'; exit 1; }
+            callback_script_file=$(mktemp /tmp/hitl-callback-e2e.XXXXXX.py)
+            trap 'rm -f "$callback_script_file"' EXIT
+            curl -fsS --max-time 30 'https://raw.githubusercontent.com/langgenius/dify/${{ github.sha }}/api/dev/verify_hitl_im_callback_e2e.py' -o "$callback_script_file"
+            docker compose exec -T --workdir /app/api api uv run --no-cache --no-sync --project /app/api python - --tenant-id '${{ vars.HITL_IM_E2E_TENANT_ID }}' < "$callback_script_file"

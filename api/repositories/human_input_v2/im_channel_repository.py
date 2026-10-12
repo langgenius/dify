@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, NewType, Protocol
 from pydantic import NaiveDatetime
 
 from core.human_input_v2.entities import IMProvider
+from core.human_input_v2.shared.values import DirectoryScope
 
 if TYPE_CHECKING:
     from models.human_input_v2 import IMEncryptedCredentials
@@ -45,6 +46,14 @@ class IMChannel:
 
 class IMChannelAlreadyConfiguredError(Exception):
     """The constructor-bound owner key already has a current Channel."""
+
+
+@dataclass(frozen=True, slots=True)
+class IMWebhookChannelRoute:
+    """Current Channel and credential owner resolved from persisted routing data."""
+
+    channel: IMChannel
+    scope: DirectoryScope
 
 
 class StaleIMChannelWriteError(Exception):

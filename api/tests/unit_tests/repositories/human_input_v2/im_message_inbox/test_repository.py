@@ -20,6 +20,7 @@ from core.human_input_v2.im_message_inbox import (
 from core.human_input_v2.shared import IntegrationId
 from models.human_input_v2 import IMMessageInbox
 from repositories.human_input_v2.im_message_inbox.repository import SQLAlchemyIMMessageInboxRepository
+from services.human_input_v2.im_message_inbox.storage import IMInboxStorage
 
 _NOW = datetime(2026, 8, 2, 8, tzinfo=UTC)
 _RECEIVED_AT = datetime(2026, 8, 2, 8)
@@ -47,11 +48,11 @@ def _event(
     )
 
 
-def _repository(sqlite_engine: Engine) -> tuple[SQLAlchemyIMMessageInboxRepository, sessionmaker[Session]]:
+def _repository(sqlite_engine: Engine) -> tuple[IMInboxStorage, sessionmaker[Session]]:
     inbox_table = IMMessageInbox.metadata.tables[IMMessageInbox.__tablename__]
     IMMessageInbox.metadata.create_all(sqlite_engine, tables=[inbox_table])
     session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
-    return SQLAlchemyIMMessageInboxRepository(session_maker), session_maker
+    return IMInboxStorage(session_maker), session_maker
 
 
 def test_unidentified_callbacks_create_independent_records(sqlite_engine: Engine) -> None:
@@ -65,6 +66,17 @@ def test_unidentified_callbacks_create_independent_records(sqlite_engine: Engine
     assert first.record_id != second.record_id
     with session_maker() as session:
         assert session.scalar(sa.select(sa.func.count(IMMessageInbox.id))) == 2
+
+
+def test_repository_callback_write_can_be_rolled_back_by_its_caller(sqlite_engine: Engine) -> None:
+    _, sessions = _repository(sqlite_engine)
+    with sessions() as session:
+        SQLAlchemyIMMessageInboxRepository(session).insert_or_resolve(
+            IntegrationId("integration-1"), _event(), now=_NOW
+        )
+        session.rollback()
+    with sessions() as session:
+        assert session.scalar(sa.select(sa.func.count(IMMessageInbox.id))) == 0
 
 
 @pytest.mark.parametrize("blank_event_id", ["", " \t\n", " " * 129])
