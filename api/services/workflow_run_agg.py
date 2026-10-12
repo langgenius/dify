@@ -59,9 +59,11 @@ from repositories.workflow_tool_source_repository import SQLAlchemyWorkflowToolS
 from services.conversation_variable_updater import ConversationVariableUpdater
 from services.workflow_persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from services.workflow_run_index import WorkflowRunIndex
-from services.workflow_tool_source_service import WorkflowToolSourceService
+from services.workflow_tool_source_service import WorkflowToolSnapshot, WorkflowToolSourceService
 
 logger = logging.getLogger(__name__)
+
+_WORKFLOW_TOOL_SNAPSHOT_KEY = "workflow_tool_snapshot"
 
 
 class WorkflowRunAgg:
@@ -87,29 +89,37 @@ class WorkflowRunAgg:
             raise ValueError("Workflow run ID is required")
         self._run_id = run_id
         self._run_context = resolve_dify_run_context(self._entry.graph_engine.graph.root_node.run_context)
-        self._entry.workflow_tool_sources.update(
-            WorkflowToolSourceService(SQLAlchemyWorkflowToolSourceRepository(session_factory.get_session_maker())).load(
-                tenant_id=self._run_context.tenant_id,
-                graph_config=self._entry.graph_config,
-                allow_human_input=(
-                    prepared.generate_entity.allow_human_input
-                    if isinstance(prepared.generate_entity, WorkflowAppGenerateEntity)
-                    else True
-                ),
-                suspended_tools=[
-                    WorkflowToolContainerPayload.model_validate_json(run.payload)
-                    for run in self._runtime_state.container_runs()
-                    if isinstance(run, CustomContainerRunState)
-                ],
-            )
+        extras = prepared.generate_entity.extras
+        tool_snapshot = (
+            WorkflowToolSnapshot.model_validate(extras[_WORKFLOW_TOOL_SNAPSHOT_KEY])
+            if _WORKFLOW_TOOL_SNAPSHOT_KEY in extras
+            else None
         )
+        materialized_tools = WorkflowToolSourceService(
+            SQLAlchemyWorkflowToolSourceRepository(session_factory.get_session_maker())
+        ).load(
+            tenant_id=self._run_context.tenant_id,
+            graph_config=self._entry.graph_config,
+            allow_human_input=(
+                prepared.generate_entity.allow_human_input
+                if isinstance(prepared.generate_entity, WorkflowAppGenerateEntity)
+                else True
+            ),
+            suspended_tools=[
+                WorkflowToolContainerPayload.model_validate_json(run.payload)
+                for run in self._runtime_state.container_runs()
+                if isinstance(run, CustomContainerRunState)
+            ],
+            snapshot=tool_snapshot,
+        )
+        self._entry.workflow_tool_sources.update(materialized_tools.sources)
+        if tool_snapshot is None:
+            # The generate entity is serialized by both durable pause/resume paths.
+            # Capture every reachable provider before any node can pause or republish it.
+            extras[_WORKFLOW_TOOL_SNAPSHOT_KEY] = materialized_tools.snapshot().model_dump(mode="json")
         node_factory = self._entry.graph_engine.graph.node_factory
         if isinstance(node_factory, DifyNodeFactory):
-            node_factory.workflow_tools.update(
-                (source.tool.workflow_as_tool_id, source.tool)
-                for source in self._entry.workflow_tool_sources.values()
-                if source.tool is not None
-            )
+            node_factory.workflow_tools.update(materialized_tools.tools)
         self._pending_forms = {
             default_session_binding.resolve_form_id_from_session_id(session_id=reason.session_id): reason
             for reason in self._runtime_state.graph_execution.pause_reasons

@@ -152,6 +152,18 @@ def test_driver_publishes_persisted_start_index_and_success(sqlite_engine: Engin
         assert run.status == "succeeded"
 
 
+@pytest.mark.parametrize("snapshot", [None, {}, {"tools": []}])
+def test_invalid_saved_tool_snapshot_is_rejected(sqlite_engine: Engine, snapshot: object) -> None:
+    from pydantic import ValidationError
+
+    runner, workflow_repository, node_repository = make_workflow_runner(sqlite_engine)
+    runner.application_generate_entity.extras["workflow_tool_snapshot"] = snapshot
+    with pytest.raises(ValidationError):
+        WorkflowRunAgg.run(runner, None, workflow_repository, node_repository)
+    with Session(sqlite_engine) as session:
+        assert session.scalar(select(WorkflowRun)) is None
+
+
 @pytest.fixture
 def _local_storage(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(storage, "storage_runner", OpenDALStorage(scheme="fs", root=str(tmp_path)), raising=False)
@@ -373,6 +385,187 @@ def test_durable_pause_resumes_with_one_form_completion_and_continuing_indexes(s
             select(WorkflowNodeExecutionModel).order_by(WorkflowNodeExecutionModel.index)
         ).all()
         assert [(row.node_id, row.index) for row in executions] == [("start", 1), ("approval", 2), ("end", 3)]
+
+
+@pytest.mark.usefixtures("_local_storage")
+def test_pause_before_first_tool_call_preserves_its_published_definition(sqlite_engine: Engine) -> None:
+    from core.app.entities.queue_entities import QueueHumanInputFormFilledEvent
+    from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
+    from graphon.nodes.tool.entities import ToolNodeData
+    from models.human_input import HumanInputForm
+    from models.model import App
+    from models.tools import WorkflowToolProvider
+
+    original, workflow_repository, node_repository = make_workflow_runner(sqlite_engine, human_input=True)
+    original_entity = original.application_generate_entity
+    tenant_id = original_entity.app_config.tenant_id
+    source_app_id = str(uuid4())
+    source_workflow_ids = [str(uuid4()), str(uuid4())]
+    with Session(sqlite_engine) as session, session.begin():
+        session.add(
+            App(
+                id=source_app_id,
+                tenant_id=tenant_id,
+                name="Source",
+                mode=AppMode.WORKFLOW,
+                enable_site=False,
+                enable_api=False,
+            )
+        )
+        for workflow_id, version, marker in zip(source_workflow_ids, ("old", "new"), ("original", "republished")):
+            session.add(
+                Workflow(
+                    id=workflow_id,
+                    app_id=source_app_id,
+                    tenant_id=tenant_id,
+                    created_by=original_entity.user_id,
+                    type="workflow",
+                    version=version,
+                    features="{}",
+                    graph=json.dumps(
+                        {
+                            "nodes": [
+                                {
+                                    "id": "source-start",
+                                    "data": {
+                                        "type": "start",
+                                        "title": "Start",
+                                        "variables": [
+                                            {
+                                                "variable": "marker",
+                                                "type": "text-input",
+                                                "label": "Marker",
+                                                "default": marker,
+                                                "required": False,
+                                            }
+                                        ],
+                                    },
+                                },
+                                {
+                                    "id": "source-end",
+                                    "data": {
+                                        "type": "end",
+                                        "title": "End",
+                                        "outputs": [
+                                            {"variable": "marker", "value_selector": ["source-start", "marker"]}
+                                        ],
+                                    },
+                                },
+                            ],
+                            "edges": [{"source": "source-start", "target": "source-end"}],
+                        }
+                    ),
+                )
+            )
+        provider = WorkflowToolProvider(
+            tenant_id=tenant_id,
+            app_id=source_app_id,
+            version="old",
+            name="source",
+            label="Original source",
+            icon="{}",
+            user_id=original_entity.user_id,
+            description="Source",
+            parameter_configuration='[{"name":"marker","description":"Marker","form":"llm"}]',
+        )
+        session.add(provider)
+        session.flush()
+        provider_id = provider.id
+    graph = dict(original._workflow.graph_dict)
+    graph["nodes"].append(
+        {
+            "id": "tool",
+            "data": {
+                "type": "tool",
+                **ToolNodeData(
+                    title="Tool",
+                    provider_id=provider_id,
+                    provider_type="workflow",
+                    provider_name="source",
+                    tool_name="source",
+                    tool_label="Source",
+                    tool_configurations={},
+                    tool_parameters={},
+                ).model_dump(mode="json"),
+            },
+        }
+    )
+    graph["nodes"][2]["data"]["outputs"] = [{"variable": "result", "value_selector": ["tool", "json"]}]
+    graph["edges"][1]["target"] = "tool"
+    graph["edges"].append({"source": "tool", "target": "end"})
+    original._workflow.graph = json.dumps(graph)
+    config = PauseStateLayerConfig(sqlite_engine, original_entity.user_id)
+    WorkflowRunAgg.run(original, config, workflow_repository, node_repository)
+    before = [message.event for message in original._queue_manager.listen()]
+    assert isinstance(before[-1], QueueWorkflowPausedEvent)
+    assert not any(isinstance(event, QueueNodeStartedEvent) and event.node_id == "tool" for event in before)
+    with Session(sqlite_engine) as session, session.begin():
+        pause = session.scalar(select(WorkflowPause))
+        form = session.scalar(select(HumanInputForm))
+        provider = session.get(WorkflowToolProvider, provider_id)
+        assert pause is not None
+        assert form is not None
+        assert provider is not None
+        form_id = form.id
+        snapshot = WorkflowResumptionContext.loads(storage.load(pause.state_object_key).decode())
+        provider.version = "new"
+        provider.label = "Republished source"
+    HumanInputFormSubmissionRepository().mark_submitted(
+        form_id=form_id,
+        recipient_id=None,
+        selected_action_id="approve",
+        form_data={"answer": "approved"},
+        submission_user_id=None,
+        submission_end_user_id=None,
+    )
+    entity = snapshot.get_generate_entity().model_copy(update={"task_id": str(uuid4())})
+    assert isinstance(entity, WorkflowAppGenerateEntity)
+    queue = WorkflowAppQueueManager(entity.task_id, entity.user_id, entity.invoke_from, AppMode.WORKFLOW)
+    resumed = WorkflowAppRunner(
+        application_generate_entity=entity,
+        queue_manager=queue,
+        variable_loader=DUMMY_VARIABLE_LOADER,
+        workflow=original._workflow,
+        system_user_id=entity.user_id,
+        graph_runtime_state=RuntimeState.from_snapshot(snapshot.serialized_graph_runtime_state),
+        response_stream_filter=snapshot.get_response_stream_filter(),
+        execution_driver=WorkflowRunAgg.run,
+    )
+    WorkflowRunAgg.run(resumed, config, workflow_repository, node_repository)
+    after = [message.event for message in queue.listen()]
+    assert [event.form_id for event in after if isinstance(event, QueueHumanInputFormFilledEvent)] == [form_id]
+    assert isinstance(after[-1], QueueWorkflowSucceededEvent), after
+    assert after[-1].outputs == {"result": [{"marker": "original"}]}
+    assert entity.extras == original_entity.extras
+    with Session(sqlite_engine) as session:
+        child_workflows = session.scalars(
+            select(WorkflowNodeExecutionModel.workflow_id).where(WorkflowNodeExecutionModel.app_id == source_app_id)
+        ).all()
+    assert child_workflows
+    assert set(child_workflows) == {source_workflow_ids[0]}
+
+    # A new execution resolves the newly published graph and parameter defaults.
+    graph["nodes"] = [node for node in graph["nodes"] if node["id"] != "approval"]
+    graph["edges"] = [{"source": "start", "target": "tool"}, {"source": "tool", "target": "end"}]
+    original._workflow.graph = json.dumps(graph)
+    fresh_entity = original_entity.model_copy(
+        update={"task_id": str(uuid4()), "workflow_execution_id": str(uuid4()), "extras": {}}
+    )
+    fresh_queue = WorkflowAppQueueManager(
+        fresh_entity.task_id, fresh_entity.user_id, fresh_entity.invoke_from, AppMode.WORKFLOW
+    )
+    fresh = WorkflowAppRunner(
+        application_generate_entity=fresh_entity,
+        queue_manager=fresh_queue,
+        variable_loader=DUMMY_VARIABLE_LOADER,
+        workflow=original._workflow,
+        system_user_id=fresh_entity.user_id,
+        execution_driver=WorkflowRunAgg.run,
+    )
+    WorkflowRunAgg.run(fresh, None, workflow_repository, node_repository)
+    fresh_events = [message.event for message in fresh_queue.listen()]
+    assert isinstance(fresh_events[-1], QueueWorkflowSucceededEvent), fresh_events
+    assert fresh_events[-1].outputs == {"result": [{"marker": "republished"}]}
 
 
 def test_active_execution_snapshot_failure_is_not_published_as_a_pause(sqlite_engine: Engine) -> None:
