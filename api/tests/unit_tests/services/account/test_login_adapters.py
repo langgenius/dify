@@ -316,7 +316,11 @@ def test_provisioning_rejects_equivalent_normalized_email(
         )
 
 
-def test_email_code_gateway_sends_and_maps_shared_challenge_status(monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize("account_id", [None, "account-1"])
+@pytest.mark.parametrize("registration_allowed", [False, True])
+def test_email_code_gateway_sends_and_maps_shared_challenge_status(
+    monkeypatch: pytest.MonkeyPatch, account_id: str | None, registration_allowed: bool
+) -> None:
     limiter = FakeRateLimiter()
     task = FakeTask()
     created: list[tuple[str | None, str, str]] = []
@@ -336,16 +340,20 @@ def test_email_code_gateway_sends_and_maps_shared_challenge_status(monkeypatch: 
     gateway = adapters.RedisEmailCodeGateway(rate_limiter=limiter)
 
     token = gateway.send(
-        account_id="account-1",
+        account_id=account_id,
         normalized_email="User@Example.COM",
         recipient_email="Historical@Example.COM",
         language="en-US",
+        registration_allowed=registration_allowed,
     )
 
     assert token == "challenge-token"
     assert created[0][1] == "user@example.com"
     assert len(created[0][2]) == 6
-    assert task.calls[0]["to"] == "Historical@Example.COM"
+    if account_id is not None or registration_allowed:
+        assert task.calls[0]["to"] == "Historical@Example.COM"
+    else:
+        assert task.calls == []
     assert limiter.recorded == ["user@example.com"]
     assert (
         gateway.verify(normalized_email="User@Example.COM", code="123456", token="challenge-token")
@@ -370,6 +378,7 @@ def test_email_code_gateway_maps_challenge_store_outage(
                 normalized_email="user@example.com",
                 recipient_email="user@example.com",
                 language="en-US",
+                registration_allowed=False,
             )
 
     record = caplog.records[-1]
@@ -431,6 +440,7 @@ def test_email_gateways_raise_framework_neutral_rate_limit_errors() -> None:
             normalized_email="user@example.com",
             recipient_email="user@example.com",
             language="en-US",
+            registration_allowed=False,
         )
     with pytest.raises(account_errors.ResetPasswordEmailRateLimitError) as reset_error:
         adapters.RedisResetPasswordEmailGateway(rate_limiter=FakeRateLimiter(limited=True, time_window=60)).send(
