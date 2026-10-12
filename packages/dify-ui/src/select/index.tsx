@@ -7,13 +7,13 @@ import type { Placement } from '../internal/placement'
 import { Select as BaseSelect } from '@base-ui/react/select'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
-import { formLabelClassName } from '../internal/form-control-shared'
+import { formLabelClassName } from '../internal/form-control'
 import {
   floatingGroupLabelClassName,
   floatingItemIndicatorClassName,
   floatingPopupAnimationClassName,
   floatingSeparatorClassName,
-} from '../internal/overlay-shared'
+} from '../internal/overlay'
 import { parsePlacement } from '../internal/placement'
 import { resolveClassName } from '../internal/resolve-class-name'
 

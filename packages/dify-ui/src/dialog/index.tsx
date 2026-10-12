@@ -4,7 +4,7 @@ import type * as React from 'react'
 import { Dialog as BaseDialog } from '@base-ui/react/dialog'
 import { cn } from '../cn'
 import { focusRingClassName } from '../internal/focus'
-import { modalBackdropClassName, modalPopupAnimationClassName } from '../internal/overlay-shared'
+import { modalBackdropClassName, modalPopupAnimationClassName } from '../internal/overlay'
 import { resolveClassName } from '../internal/resolve-class-name'
 
 const Dialog = BaseDialog.Root

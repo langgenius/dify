@@ -2,7 +2,7 @@
 
 import { Slider as BaseSlider } from '@base-ui/react/slider'
 import { cn } from '../cn'
-import { formLabelClassName } from '../internal/form-control-shared'
+import { formLabelClassName } from '../internal/form-control'
 import { resolveClassName } from '../internal/resolve-class-name'
 
 type SliderRootValue = NonNullable<BaseSlider.Root.Props['value']>

@@ -5,7 +5,7 @@ import type * as React from 'react'
 import { Input as BaseInput } from '@base-ui/react/input'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
-import { textControlGroupInputClassName } from '../internal/form-control-shared'
+import { textControlGroupInputClassName } from '../internal/form-control'
 import { resolveClassName } from '../internal/resolve-class-name'
 
 const interactiveElementSelector =

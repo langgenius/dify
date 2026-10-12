@@ -5,7 +5,7 @@ import type { Placement } from '../internal/placement'
 import { Popover as BasePopover } from '@base-ui/react/popover'
 import { cn } from '../cn'
 import { focusRingClassName } from '../internal/focus'
-import { floatingPopupAnimationClassName } from '../internal/overlay-shared'
+import { floatingPopupAnimationClassName } from '../internal/overlay'
 import { parsePlacement } from '../internal/placement'
 import { resolveClassName } from '../internal/resolve-class-name'
 

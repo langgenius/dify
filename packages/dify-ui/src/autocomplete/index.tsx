@@ -6,13 +6,13 @@ import type { Placement } from '../internal/placement'
 import { Autocomplete as BaseAutocomplete } from '@base-ui/react/autocomplete'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
-import { textControlGroupClassName } from '../internal/form-control-shared'
+import { textControlGroupClassName } from '../internal/form-control'
 import {
   floatingGroupLabelClassName,
   floatingItemIndicatorClassName,
   floatingPopupAnimationClassName,
   floatingSeparatorClassName,
-} from '../internal/overlay-shared'
+} from '../internal/overlay'
 import { parsePlacement } from '../internal/placement'
 import { resolveClassName } from '../internal/resolve-class-name'
 

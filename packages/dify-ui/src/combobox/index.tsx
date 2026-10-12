@@ -7,13 +7,13 @@ import { Combobox as BaseCombobox } from '@base-ui/react/combobox'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
 import { focusRingClassName } from '../internal/focus'
-import { formLabelClassName, textControlGroupClassName } from '../internal/form-control-shared'
+import { formLabelClassName, textControlGroupClassName } from '../internal/form-control'
 import {
   floatingGroupLabelClassName,
   floatingItemIndicatorClassName,
   floatingPopupAnimationClassName,
   floatingSeparatorClassName,
-} from '../internal/overlay-shared'
+} from '../internal/overlay'
 import { parsePlacement } from '../internal/placement'
 import { resolveClassName } from '../internal/resolve-class-name'
 

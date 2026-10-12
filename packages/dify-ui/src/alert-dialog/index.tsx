@@ -6,7 +6,7 @@ import { AlertDialog as BaseAlertDialog } from '@base-ui/react/alert-dialog'
 import { Button } from '../button'
 import { cn } from '../cn'
 import { focusRingClassName } from '../internal/focus'
-import { modalBackdropClassName, modalPopupAnimationClassName } from '../internal/overlay-shared'
+import { modalBackdropClassName, modalPopupAnimationClassName } from '../internal/overlay'
 import { resolveClassName } from '../internal/resolve-class-name'
 
 const AlertDialog = BaseAlertDialog.Root

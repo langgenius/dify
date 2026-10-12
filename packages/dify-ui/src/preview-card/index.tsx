@@ -4,7 +4,7 @@ import type * as React from 'react'
 import type { Placement } from '../internal/placement'
 import { PreviewCard as BasePreviewCard } from '@base-ui/react/preview-card'
 import { cn } from '../cn'
-import { floatingPopupAnimationClassName } from '../internal/overlay-shared'
+import { floatingPopupAnimationClassName } from '../internal/overlay'
 import { parsePlacement } from '../internal/placement'
 import { resolveClassName } from '../internal/resolve-class-name'
 

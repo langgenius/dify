@@ -8,7 +8,7 @@ import { Menu } from '@base-ui/react/menu'
 import { cn } from '../cn'
 import { InputGroup } from '../input-group'
 import { focusRingClassName } from '../internal/focus'
-import { textControlGroupInputClassName } from '../internal/form-control-shared'
+import { textControlGroupInputClassName } from '../internal/form-control'
 import {
   menuItemClassName,
   menuItemDestructiveClassName,
@@ -20,7 +20,7 @@ import {
   floatingItemIndicatorClassName,
   floatingPopupAnimationClassName,
   floatingSeparatorClassName,
-} from '../internal/overlay-shared'
+} from '../internal/overlay'
 import { parsePlacement } from '../internal/placement'
 import { resolveClassName } from '../internal/resolve-class-name'
 
