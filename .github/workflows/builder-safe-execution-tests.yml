@@ -18,6 +18,27 @@ on:
       - 'api/tests/**/test_builder*'
       - 'api/tests/fixtures/workflow/builder_restricted/**'
       - '.github/workflows/builder-safe-execution-tests.yml'
+      # Confirmed Tool owners: controllers, Tool/OAuth/plugin, config, credentials, worker and sweeper.
+      - 'api/controllers/console/dify_builder*.py'
+      - 'api/core/tools/**'
+      - 'api/core/plugin/**'
+      - 'api/core/helper/credential_utils.py'
+      - 'api/core/helper/encrypter.py'
+      - 'api/core/helper/provider_cache.py'
+      - 'api/core/helper/provider_encryption.py'
+      - 'api/configs/**'
+      - 'api/models/account.py'
+      - 'api/models/tools.py'
+      - 'api/models/workflow.py'
+      - 'api/services/tools/**'
+      - 'api/services/plugin/**'
+      - 'api/libs/key_providers/**'
+      - 'api/libs/rsa.py'
+      - 'api/extensions/ext_celery.py'
+      - 'api/extensions/ext_redis.py'
+      - 'api/tasks/dify_builder_advance_task.py'
+      - 'api/schedule/dify_builder_reconcile_task.py'
+      - 'api/tests/test_containers_integration_tests/conftest.py'
   workflow_dispatch:
 permissions:
   contents: read
@@ -27,7 +48,7 @@ concurrency:
 jobs:
   native-postgres:
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 60
     env:
       STORAGE_TYPE: opendal
       OPENDAL_SCHEME: fs
@@ -46,8 +67,75 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          timeout --kill-after=30s 20m uv run --project api --no-sync python -u - <<'PY' 2>&1 | tee builder-safe-execution.log
+          timeout --kill-after=30s 45m uv run --project api --no-sync python -u - <<'PY' 2>&1 | tee builder-safe-execution.log
+          import xml.etree.ElementTree as ElementTree
+          from pathlib import Path
+
           import pytest
+
+          JUNIT = "builder-safe-execution.xml"
+          # Every required case, per module and test function, with its exact collected count.
+          # The run is not accepted if a module or case is missing, skipped/xfailed or unexpected.
+          EXPECTED = {
+              "test_builder_restricted_native": {
+                  "test_actual_native_port_to_persistence": 3,
+                  "test_real_native_result_missing_proof_is_unknown": 4,
+                  "test_composed_prelaunch_refusals_have_no_native_id": 6,
+                  "test_composed_worker_reload_trace_race_refuses": 1,
+                  "test_composed_effective_default_binding": 1,
+                  "test_async_native_repositories_without_delivered_saves_stay_unknown": 1,
+                  "test_ordinary_native_scalar_execution_remains_ordinary": 1,
+                  "test_composed_class_replacement_refuses_before_native_validation": 1,
+                  "test_composed_http_retry_receipts_and_recorder_poison": 2,
+                  "test_composed_canonical_seal_replay_cannot_upgrade_or_change": 1,
+              },
+              "test_builder_execution_policy_persistence": {
+                  "test_postgres_duplicate_claim_has_one_winner": 1,
+                  "test_postgres_append_race_preserves_both_receipts": 1,
+                  "test_postgres_append_seal_and_duplicate_seal_are_serialized": 1,
+                  "test_real_postgres_execution_migration_upgrade_downgrade": 1,
+                  "test_postgres_context_owner_replay_is_rejected": 7,
+              },
+              "test_builder_real_call_consent_persistence": {
+                  "test_postgres_identical_prepare_collision_has_one_row": 1,
+                  "test_postgres_simultaneous_execute_commits_exactly_one_launch": 1,
+                  "test_postgres_execute_with_colliding_keys_has_one_winner": 1,
+                  "test_postgres_reservation_and_unrelated_commit_cannot_both_advance": 1,
+                  "test_postgres_stale_session_cas_rolls_back_every_reservation_write": 1,
+                  "test_postgres_simultaneous_tool_claims_have_one_winner_and_survive_restart": 1,
+                  "test_postgres_simultaneous_phase_claims_spend_once": 2,
+                  "test_postgres_expiry_boundary_blocks_the_grant_claim": 1,
+                  "test_postgres_spend_blocked_on_row_lock_across_expiry_is_refused": 2,
+                  "test_postgres_refresh_cas_never_overwrites_same_timestamp_rotation": 1,
+                  "test_postgres_concurrent_client_change_never_admits_a_stale_business_claim": 1,
+                  "test_race_tables_are_built_by_the_actual_migrations": 1,
+                  "test_real_postgres_consent_migration_upgrade_downgrade": 1,
+              },
+              "test_builder_confirmed_tool_native": {
+                  "test_confirmed_native_run_reads_once_without_refresh": 1,
+                  "test_confirmed_native_run_refreshes_once_then_reads": 1,
+                  "test_restricted_default_run_has_zero_decrypt_refresh_or_invoke": 1,
+                  "test_ordinary_native_gmail_workflow_stays_ordinary": 1,
+                  "test_changes_after_reservation_are_denied_without_effects": 9,
+                  "test_postgres_tool_claim_has_one_winner": 1,
+                  "test_duplicate_native_launches_create_one_run": 1,
+                  "test_refresh_cas_conflict_keeps_the_rotation_and_blocks_business": 1,
+                  "test_partial_stream_is_unknown": 1,
+                  "test_native_success_with_text_only_result_is_unknown": 1,
+                  "test_expiry_blocks_a_new_phase": 1,
+                  "test_completion_of_a_dispatched_phase_after_expiry_is_recorded": 1,
+                  "test_crash_after_refresh_claim_before_persistence_settles_unknown_once": 1,
+                  "test_crash_after_business_claim_before_transport_settles_unknown_once": 1,
+                  "test_same_token_worker_deliveries_activate_once": 1,
+                  "test_agent_setup_failure_settles_the_grant_without_spend": 1,
+                  "test_transient_settlement_failure_is_repaired_by_the_terminal_scan": 1,
+                  "test_terminal_repair_never_settles_a_fresh_live_reservation": 1,
+                  "test_completed_grant_replays_and_receipts_stay_durable": 1,
+                  "test_held_lease_duplicates_never_enqueue_twice": 1,
+                  "test_dispatch_coordinator_metadata_read_runs_outside_sql": 1,
+                  "test_stale_recovery_sweep_never_settles_a_fresh_reservation": 1,
+              },
+          }
 
 
           class ImmediateFailureReport:
@@ -59,26 +147,71 @@ jobs:
                           print(f"\n{heading}\n{content}", flush=True)
 
 
-          raise SystemExit(
-              pytest.main(
-                  [
-                      "-p",
-                      "no:benchmark",
-                      "--no-cov",
-                      "-vv",
-                      "-x",
-                      "--tb=long",
-                      "--timeout=360",
-                      "--timeout-method=thread",
-                      "-o",
-                      "faulthandler_timeout=120",
-                      "api/tests/test_containers_integration_tests/core/workflow/test_builder_restricted_native.py",
-                      "api/tests/test_containers_integration_tests/core/workflow/test_builder_execution_policy_persistence.py",
-                      "--junitxml=builder-safe-execution.xml",
-                  ],
-                  plugins=[ImmediateFailureReport()],
-              )
+          def completeness() -> list[str]:
+              """Collected cases from the JUnit report checked against EXPECTED; returns the problems."""
+              if not Path(JUNIT).is_file():
+                  return [f"{JUNIT} was not written"]
+              cases: dict[tuple[str, str], str] = {}
+              for case in ElementTree.parse(JUNIT).getroot().iter("testcase"):
+                  module = (case.get("classname") or "").rsplit(".", 1)[-1]
+                  if case.find("skipped") is not None:
+                      status = "skipped"
+                  elif case.find("failure") is not None or case.find("error") is not None:
+                      status = "failed"
+                  else:
+                      status = "passed"
+                  key = (module, case.get("name") or "")
+                  if cases.get(key) in (None, "passed"):
+                      cases[key] = status
+              problems = []
+              for module, functions in EXPECTED.items():
+                  statuses = [status for (name, _case), status in cases.items() if name == module]
+                  print(
+                      f"COLLECTED {module}: {len(statuses)} cases, {statuses.count('passed')} passed, "
+                      f"{statuses.count('failed')} failed, {statuses.count('skipped')} skipped",
+                      flush=True,
+                  )
+                  for function, count in functions.items():
+                      found = [
+                          status
+                          for (name, case_name), status in cases.items()
+                          if name == module and case_name.split("[", 1)[0] == function
+                      ]
+                      if len(found) != count:
+                          problems.append(f"{module}::{function} collected {len(found)} of {count}")
+                      if "skipped" in found:
+                          problems.append(f"{module}::{function} skipped {found.count('skipped')}")
+              for module, case_name in sorted(cases):
+                  if case_name.split("[", 1)[0] not in EXPECTED.get(module, {}):
+                      problems.append(f"unexpected case {module}::{case_name}")
+              print(f"COLLECTED total: {len(cases)} cases", flush=True)
+              return problems
+
+
+          code = pytest.main(
+              [
+                  "-p",
+                  "no:benchmark",
+                  "--no-cov",
+                  "-vv",
+                  "-rA",
+                  "--tb=long",
+                  "--timeout=360",
+                  "--timeout-method=thread",
+                  "-o",
+                  "faulthandler_timeout=120",
+                  "api/tests/test_containers_integration_tests/core/workflow/test_builder_restricted_native.py",
+                  "api/tests/test_containers_integration_tests/core/workflow/test_builder_execution_policy_persistence.py",
+                  "api/tests/test_containers_integration_tests/core/workflow/test_builder_real_call_consent_persistence.py",
+                  "api/tests/test_containers_integration_tests/core/workflow/test_builder_confirmed_tool_native.py",
+                  f"--junitxml={JUNIT}",
+              ],
+              plugins=[ImmediateFailureReport()],
           )
+          problems = completeness()
+          for problem in problems:
+              print(f"COMPLETENESS {problem}", flush=True)
+          raise SystemExit(int(code) or (1 if problems else 0))
           PY
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: always()
