@@ -297,6 +297,7 @@
   "settings.ipPolicyUsedBy": "Vẫn được {{count}} ứng dụng sử dụng",
   "settings.ipPolicyUsedByLabel": "Được dùng bởi",
   "settings.ipPolicyUsedBy_one": "Vẫn được {{count}} ứng dụng sử dụng",
+  "settings.ipPolicyViewDescription": "Chỉ chủ sở hữu và quản trị viên không gian làm việc mới có thể chỉnh sửa chính sách IP.",
   "sort.cancelled": "Đã hủy sắp xếp {{item}}.",
   "sort.finished": "Đã đặt {{item}} ở vị trí {{position}} trên {{count}}.",
   "sort.handle": "Sắp xếp lại {{item}}",

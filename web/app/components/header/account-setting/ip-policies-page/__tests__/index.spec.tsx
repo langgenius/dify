@@ -80,6 +80,11 @@ describe('IpPoliciesPage', () => {
       await user.keyboard('{Enter}')
 
       const dialog = screen.getByRole('dialog', { name: 'Internal Network' })
+      expect(dialog).toHaveAccessibleDescription(
+        'Only the workspace owner and admins can edit IP policies.',
+      )
+      expect(within(dialog).getAllByText('Internal Network')).toHaveLength(1)
+      expect(within(dialog).queryByText('Name')).not.toBeInTheDocument()
       expect(trackEvent).toHaveBeenCalledWith('ip_policy_interaction', {
         action: 'settings_tab_viewed',
       })
@@ -713,6 +718,10 @@ describe('IpPoliciesPage', () => {
     expect(
       screen.getByRole('heading', { name: 'No IP policies in this workspace yet' }),
     ).toBeInTheDocument()
+    expect(screen.getByText('Ask a workspace owner or admin to create one.')).toBeInTheDocument()
+    expect(
+      screen.queryByText('A policy is the list of IP addresses allowed in.'),
+    ).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Create an IP policy' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Add' })).not.toBeInTheDocument()
     expect(trackEvent).toHaveBeenCalledExactlyOnceWith('ip_policy_interaction', {

@@ -297,6 +297,7 @@
   "settings.ipPolicyUsedBy": "Numărul de aplicații care încă folosesc politica: {{count}}",
   "settings.ipPolicyUsedByLabel": "Folosit de",
   "settings.ipPolicyUsedBy_one": "Numărul de aplicații care încă folosesc politica: {{count}}",
+  "settings.ipPolicyViewDescription": "Doar proprietarul și administratorii spațiului de lucru pot edita politicile IP.",
   "sort.cancelled": "Sortarea pentru {{item}} a fost anulată.",
   "sort.finished": "{{item}} plasat la poziția {{position}} din {{count}}.",
   "sort.handle": "Reordonează {{item}}",

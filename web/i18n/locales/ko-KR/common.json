@@ -297,6 +297,7 @@
   "settings.ipPolicyUsedBy": "아직 {{count}}개의 앱에서 사용 중",
   "settings.ipPolicyUsedByLabel": "사용 중",
   "settings.ipPolicyUsedBy_one": "아직 {{count}}개의 앱에서 사용 중",
+  "settings.ipPolicyViewDescription": "워크스페이스 소유자와 관리자만 IP 정책을 수정할 수 있습니다.",
   "sort.cancelled": "{{item}} 순서 변경을 취소했습니다.",
   "sort.finished": "{{item}} 항목을 {{count}}개 중 {{position}}번째에 배치했습니다.",
   "sort.handle": "{{item}} 순서 변경",

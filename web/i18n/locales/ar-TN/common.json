@@ -297,6 +297,7 @@
   "settings.ipPolicyUsedBy": "لا تزال مستخدمة في {{count}} من التطبيقات",
   "settings.ipPolicyUsedByLabel": "مستخدم بواسطة",
   "settings.ipPolicyUsedBy_one": "لا تزال مستخدمة في {{count}} من التطبيقات",
+  "settings.ipPolicyViewDescription": "يمكن لمالك مساحة العمل والمسؤولين فقط تعديل سياسات IP.",
   "sort.cancelled": "تم إلغاء ترتيب {{item}}.",
   "sort.finished": "تم وضع {{item}} في الموضع {{position}} من {{count}}.",
   "sort.handle": "إعادة ترتيب {{item}}",

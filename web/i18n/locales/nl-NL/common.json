@@ -297,6 +297,7 @@
   "settings.ipPolicyUsedBy": "Nog in gebruik door {{count}} apps",
   "settings.ipPolicyUsedByLabel": "Gebruikt door",
   "settings.ipPolicyUsedBy_one": "Nog in gebruik door {{count}} apps",
+  "settings.ipPolicyViewDescription": "Alleen de eigenaar en beheerders van de werkruimte kunnen IP-beleid bewerken.",
   "sort.cancelled": "Sorteren van {{item}} geannuleerd.",
   "sort.finished": "{{item}} neergezet op positie {{position}} van {{count}}.",
   "sort.handle": "{{item}} opnieuw ordenen",

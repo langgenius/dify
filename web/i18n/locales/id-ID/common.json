@@ -297,6 +297,7 @@
   "settings.ipPolicyUsedBy": "Masih digunakan oleh {{count}} aplikasi",
   "settings.ipPolicyUsedByLabel": "Digunakan oleh",
   "settings.ipPolicyUsedBy_one": "Masih digunakan oleh {{count}} aplikasi",
+  "settings.ipPolicyViewDescription": "Hanya pemilik dan admin ruang kerja yang dapat mengedit kebijakan IP.",
   "sort.cancelled": "Pengurutan {{item}} dibatalkan.",
   "sort.finished": "{{item}} ditempatkan pada posisi {{position}} dari {{count}}.",
   "sort.handle": "Urutkan ulang {{item}}",

@@ -297,6 +297,7 @@
   "settings.ipPolicyUsedBy": "Количество приложений, всё ещё использующих политику: {{count}}",
   "settings.ipPolicyUsedByLabel": "Используется",
   "settings.ipPolicyUsedBy_one": "Количество приложений, всё ещё использующих политику: {{count}}",
+  "settings.ipPolicyViewDescription": "Только владелец и администраторы рабочего пространства могут редактировать политики IP.",
   "sort.cancelled": "Сортировка {{item}} отменена.",
   "sort.finished": "{{item}} размещён на позиции {{position}} из {{count}}.",
   "sort.handle": "Изменить порядок: {{item}}",

@@ -322,9 +322,7 @@ describe('AccessControlEntry', () => {
     expect(within(chip).getByText('PRO')).toBeInTheDocument()
     expect(within(chip).queryByRole('button')).not.toBeInTheDocument()
     await user.hover(chip)
-    expect(
-      await screen.findByText('Access control is available on Professional and Team plans.'),
-    ).toBeInTheDocument()
+    expect(await screen.findByText('Available on Professional and Team plans')).toBeInTheDocument()
     expect(screen.queryByText(/No longer protected/)).not.toBeInTheDocument()
   })
 
@@ -372,7 +370,11 @@ describe('AccessControlEntry', () => {
 
     await user.click(getChip())
 
-    expect(screen.getByText('Restrict this app to IP addresses you trust.')).toBeInTheDocument()
+    expect(
+      screen.getByRole('dialog', { name: 'Restrict this app to IP addresses you trust' }),
+    ).toHaveAccessibleDescription(
+      'Only requests from the IP policies you choose can reach this app’s access points. Available on Professional and Team plans.',
+    )
     expect(
       screen.getByText("This app is only available on your organization's network."),
     ).toBeInTheDocument()
@@ -396,13 +398,13 @@ describe('AccessControlEntry', () => {
     renderEntry({ plan: 'sandbox' })
 
     await user.click(getChip())
-    expect(screen.getByText('Restrict this app to IP addresses you trust.')).toBeInTheDocument()
+    expect(screen.getByText('Restrict this app to IP addresses you trust')).toBeInTheDocument()
 
     await user.keyboard('{Escape}')
 
     await waitFor(() => {
       expect(
-        screen.queryByText('Restrict this app to IP addresses you trust.'),
+        screen.queryByText('Restrict this app to IP addresses you trust'),
       ).not.toBeInTheDocument()
     })
     expect(mockSetPricing).not.toHaveBeenCalled()
@@ -1046,10 +1048,15 @@ describe('supported access points and binding permission', () => {
           expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument(),
         )
         expect(screen.getByRole('switch', { name: 'Restrict by IP address' })).not.toBeChecked()
-        expect(screen.getByText('Configured but paused')).toBeInTheDocument()
+        expect(
+          screen.getByText('Paused — Internal Network is configured but not enforcing'),
+        ).toBeInTheDocument()
         expect(within(getChip()).getByText('Paused')).toBeInTheDocument()
         expect(screen.queryByText(/Protecting/)).not.toBeInTheDocument()
         expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument()
+        await waitFor(() =>
+          expect(screen.getByRole('switch', { name: 'Restrict by IP address' })).toBeEnabled(),
+        )
         await user.click(screen.getByRole('switch', { name: 'Restrict by IP address' }))
         await waitFor(() => expect(payloads).toHaveLength(2))
         expect(payloads[1]).toEqual({

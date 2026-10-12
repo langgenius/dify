@@ -77,12 +77,12 @@ export function AccessControlPolicyField({
       <div className="flex w-full flex-col items-center gap-3 overflow-hidden rounded-lg border border-dashed border-divider-regular px-4 py-5">
         <div className="flex w-full flex-col gap-1 text-center">
           <p className="system-sm-medium text-text-secondary">
-            {canManagePolicies
-              ? t(($) => $['studio.accessControl.emptyPoliciesTitle'], { ns: 'deployments' })
-              : t(($) => $['studio.accessControl.emptyPoliciesReadOnly'], { ns: 'deployments' })}
+            {t(($) => $['studio.accessControl.emptyPoliciesTitle'], { ns: 'deployments' })}
           </p>
           <p className="system-xs-regular text-text-tertiary">
-            {t(($) => $['settings.ipPolicyEmptyDescription'], { ns: 'common' })}
+            {canManagePolicies
+              ? t(($) => $['settings.ipPolicyEmptyDescription'], { ns: 'common' })
+              : t(($) => $['studio.accessControl.emptyPoliciesReadOnly'], { ns: 'deployments' })}
           </p>
         </div>
         {canCreatePolicy ? (
@@ -230,7 +230,8 @@ export function AccessControlPolicyField({
               : summary.moreCount > 0
                 ? t(($) => $['studio.accessControl.policySummaryMany'], {
                     ns: 'deployments',
-                    listed: summary.listed.join(', '),
+                    first: summary.listed[0] ?? '',
+                    second: summary.listed[1] ?? '',
                     count: summary.moreCount,
                   })
                 : t(($) => $['studio.accessControl.policySummaryTwo'], {

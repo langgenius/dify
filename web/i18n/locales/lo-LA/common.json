@@ -297,6 +297,7 @@
   "settings.ipPolicyUsedBy": "ຍັງມີ {{count}} ແອັບທີ່ໃຊ້ຢູ່",
   "settings.ipPolicyUsedByLabel": "ຖືກໃຊ້ໂດຍ",
   "settings.ipPolicyUsedBy_one": "ຍັງມີ {{count}} ແອັບທີ່ໃຊ້ຢູ່",
+  "settings.ipPolicyViewDescription": "ມີພຽງເຈົ້າຂອງ ແລະ ຜູ້ດູແລພື້ນທີ່ເຮັດວຽກເທົ່ານັ້ນທີ່ສາມາດແກ້ໄຂນະໂຍບາຍ IP ໄດ້.",
   "sort.cancelled": "ຍົກເລີກການຈັດລຳດັບ {{item}} ແລ້ວ.",
   "sort.finished": "ວາງ {{item}} ຢູ່ລຳດັບ {{position}} ຈາກ {{count}} ແລ້ວ.",
   "sort.handle": "ຈັດລຳດັບ {{item}} ໃໝ່",

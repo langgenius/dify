@@ -11,8 +11,9 @@ import {
 } from '@langgenius/dify-ui/scroll-area'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useRef } from 'react'
+import { Suspense, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import BillingPage from '@/app/components/billing/billing-page'
 import CustomPage from '@/app/components/custom/custom-page'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
@@ -274,18 +275,21 @@ export default function AccountSetting({
                   </div>
                 )}
                 <div className="max-w-full min-w-0 px-4 pt-6 sm:px-8">
-                  {activeMenu === ACCOUNT_SETTING_TAB.MEMBERS && <MembersPage />}
-                  {activeMenu === ACCOUNT_SETTING_TAB.IP_POLICIES && <IpPoliciesPage />}
-                  {activeMenu === ACCOUNT_SETTING_TAB.ROLES_AND_PERMISSIONS && (
-                    <PermissionsPage containerRef={scrollContainerRef} />
-                  )}
-                  {activeMenu === ACCOUNT_SETTING_TAB.PERMISSION_SET && <AccessRulesPage />}
-                  {activeMenu === ACCOUNT_SETTING_TAB.BILLING && <BillingPage />}
-                  {activeMenu === ACCOUNT_SETTING_TAB.WORKFLOW_LOG_ARCHIVES && (
-                    <WorkflowLogArchivesPage />
-                  )}
-                  {activeMenu === ACCOUNT_SETTING_TAB.CUSTOM && <CustomPage />}
-                  {activeMenu === ACCOUNT_SETTING_TAB.PREFERENCES && <PreferencePage />}
+                  {/* First-use translations and queries must not suspend the dialog shell. */}
+                  <Suspense fallback={<LoadingPlaceholder className="py-10" />}>
+                    {activeMenu === ACCOUNT_SETTING_TAB.MEMBERS && <MembersPage />}
+                    {activeMenu === ACCOUNT_SETTING_TAB.IP_POLICIES && <IpPoliciesPage />}
+                    {activeMenu === ACCOUNT_SETTING_TAB.ROLES_AND_PERMISSIONS && (
+                      <PermissionsPage containerRef={scrollContainerRef} />
+                    )}
+                    {activeMenu === ACCOUNT_SETTING_TAB.PERMISSION_SET && <AccessRulesPage />}
+                    {activeMenu === ACCOUNT_SETTING_TAB.BILLING && <BillingPage />}
+                    {activeMenu === ACCOUNT_SETTING_TAB.WORKFLOW_LOG_ARCHIVES && (
+                      <WorkflowLogArchivesPage />
+                    )}
+                    {activeMenu === ACCOUNT_SETTING_TAB.CUSTOM && <CustomPage />}
+                    {activeMenu === ACCOUNT_SETTING_TAB.PREFERENCES && <PreferencePage />}
+                  </Suspense>
                 </div>
               </ScrollAreaContent>
             </ScrollAreaViewport>

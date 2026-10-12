@@ -297,6 +297,7 @@
   "settings.ipPolicyUsedBy": "Noch von {{count}} Apps verwendet",
   "settings.ipPolicyUsedByLabel": "Verwendet von",
   "settings.ipPolicyUsedBy_one": "Noch von {{count}} App verwendet",
+  "settings.ipPolicyViewDescription": "Nur der Eigentümer und die Administratoren des Arbeitsbereichs können IP-Richtlinien bearbeiten.",
   "sort.cancelled": "Sortierung von {{item}} abgebrochen.",
   "sort.finished": "{{item}} an Position {{position}} von {{count}} abgelegt.",
   "sort.handle": "{{item}} umsortieren",
