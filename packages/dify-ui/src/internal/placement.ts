@@ -1,29 +1,10 @@
+import type { Align, Side } from '@base-ui/react/internals/useAnchorPositioning'
+
 // Base UI positions a popup with `side` and `align`; a placement joins the two in Floating UI's
 // `side-align` notation, with the `center` alignment left off. The inline sides follow the text
 // direction, so `inline-end` is right in LTR and left in RTL.
 
-type Side = 'top' | 'bottom' | 'left' | 'right' | 'inline-start' | 'inline-end'
-type Align = 'start' | 'center' | 'end'
-
-export type Placement =
-  | 'top'
-  | 'top-start'
-  | 'top-end'
-  | 'right'
-  | 'right-start'
-  | 'right-end'
-  | 'bottom'
-  | 'bottom-start'
-  | 'bottom-end'
-  | 'left'
-  | 'left-start'
-  | 'left-end'
-  | 'inline-start'
-  | 'inline-start-start'
-  | 'inline-start-end'
-  | 'inline-end'
-  | 'inline-end-start'
-  | 'inline-end-end'
+type Positioning = { side: Side; align: Align }
 
 const PLACEMENT_PARTS = {
   top: { side: 'top', align: 'center' },
@@ -44,8 +25,10 @@ const PLACEMENT_PARTS = {
   'inline-end': { side: 'inline-end', align: 'center' },
   'inline-end-start': { side: 'inline-end', align: 'start' },
   'inline-end-end': { side: 'inline-end', align: 'end' },
-} satisfies Record<Placement, { side: Side; align: Align }>
+} satisfies Record<string, Positioning>
 
-export function parsePlacement(placement: Placement): { side: Side; align: Align } {
+export type Placement = keyof typeof PLACEMENT_PARTS
+
+export function parsePlacement(placement: Placement): Positioning {
   return PLACEMENT_PARTS[placement]
 }

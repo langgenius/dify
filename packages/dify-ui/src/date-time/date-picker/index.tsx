@@ -69,7 +69,7 @@ function DatePicker({
     default: defaultValue,
     name: 'DatePicker',
   })
-  requireDateValue(value)
+  const parsedValue = requireDateValue(value)
   if (props.minDate) requireDateValue(props.minDate)
   if (props.maxDate) requireDateValue(props.maxDate)
   if (props.minDate && props.maxDate && props.minDate > props.maxDate)
@@ -99,14 +99,14 @@ function DatePicker({
         }
         placeholder={props.placeholder ?? 'Select date'}
         displayValue={
-          value
+          parsedValue
             ? new Intl.DateTimeFormat(props.locale?.code ?? 'en-US', {
                 year: 'numeric',
                 calendar: 'gregory',
                 month: 'short',
                 day: 'numeric',
                 timeZone: 'UTC',
-              }).format(requireDateValue(value)!)
+              }).format(parsedValue)
             : ''
         }
         serializedValue={value ?? ''}

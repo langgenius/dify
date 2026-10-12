@@ -101,9 +101,9 @@ function OptionColumn({
       // A positioning scroll that never reaches its target was taken over; rest decides.
       if (positioning || !supportsScrollEnd) quietTimer.start(150, () => finishScroll())
     }
-    function onScrollEnd() {
+    const onScrollEnd = function onScrollEnd() {
       const { target } = scrollRef.current
-      if (target === null || Math.abs(column!.scrollTop - target) < 1) finishScroll()
+      if (target === null || Math.abs(column.scrollTop - target) < 1) finishScroll()
     }
     column.addEventListener('scroll', onScroll, { passive: true })
     if (supportsScrollEnd) column.addEventListener('scrollend', onScrollEnd)
@@ -168,7 +168,9 @@ function OptionColumn({
           event.stopPropagation()
           const currentOption = scrollRef.current.moved
             ? nearestOption()
-            : (event.target as HTMLElement)
+            : event.target instanceof HTMLElement
+              ? event.target
+              : undefined
           const currentValue = Number(currentOption?.dataset.optionValue)
           const currentIndex = Math.max(
             0,
