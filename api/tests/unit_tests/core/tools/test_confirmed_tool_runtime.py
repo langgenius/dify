@@ -20,6 +20,7 @@ from threading import Lock
 from types import SimpleNamespace
 from typing import Literal
 from unittest.mock import Mock
+from uuid import uuid4
 
 import pytest
 from sqlalchemy import Engine, event, select
@@ -30,7 +31,13 @@ import core.db.session_factory as session_factory_module
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
 from core.dify_builder.execution_policy import BuilderExecutionPolicyError
-from core.dify_builder.real_call_consent import ConfirmedToolBinding, ConfirmedToolGuard, InstalledToolBinding
+from core.dify_builder.models import Actor
+from core.dify_builder.real_call_consent import (
+    ConfirmedToolBinding,
+    ConfirmedToolGuard,
+    CredentialReference,
+    InstalledToolBinding,
+)
 from core.entities import PluginCredentialType
 from core.entities.provider_entities import ProviderConfig, ProviderConfigType
 from core.helper import credential_utils, encrypter
@@ -56,6 +63,7 @@ from core.tools.tool_manager import ToolManager
 from models.dify_builder import DifyBuilderRealCallConsent
 from models.tools import BuiltinToolProvider, ToolOAuthTenantClient
 from services.dify_builder import real_call_metadata
+from services.tools.builtin_tools_manage_service import BuilderCredentialRuntime, BuiltinToolManageService
 from tests.unit_tests.services.dify_builder.test_execution_policy_service import (
     owned as owned,  # noqa: PLC0414 - shared pytest fixture
 )
@@ -581,11 +589,12 @@ def test_post_cas_cache_invalidation_failure_is_sanitized_durable_unknown(
     )
     assert_no_secret_text(json.dumps(get(world.owner, reserved.consent_id).model_dump(mode="json")))
 
-    # A fresh guard for the same claimed node cannot continue the closed grant.
+    # A fresh guard for the same claimed node cannot re-admit a snapshot of the closed grant.
     world.cache_error = None
-    tool = build(world, guard_for(world.owner, binding))
+    decrypted_before = list(world.decrypted)
     with pytest.raises(BuilderExecutionPolicyError, match="consent_not_claimed"):
-        run(tool)
+        build(world, guard_for(world.owner, binding))
+    assert world.decrypted == decrypted_before
     assert world.invoke_calls == []
     assert len(world.refresh_calls) == 1
     after = world.consent(reserved.consent_id)
@@ -709,6 +718,206 @@ def test_denied_runtime_never_decrypts_or_dispatches(
     assert NATIVE_SECRET not in caplog.text
     consent = world.consent(reserved.consent_id)
     assert (consent.refresh_count, consent.business_count) == (0, 0)
+
+
+# --- selected detached snapshot admission (review I1) -------------------------------------------
+
+SNAPSHOT_REFUSAL = "Builder execution policy refused: credential_snapshot_mismatch"
+UNAPPROVED_CIPHERTEXT = '{"access_token":"enc-unapproved-access","refresh_token":"enc-unapproved-refresh"}'
+
+
+def _transient(world: World, change: Callable[[], None], restore: Callable[[], None]) -> None:
+    """Apply an unapproved change before native selection and restore the approved row right after it.
+
+    Simulates a concurrent writer: the detached snapshot holds the unapproved state while every
+    later current-state check (phase claims) would see the approved row again.
+    """
+    change()
+    original = BuiltinToolManageService.load_builder_credential
+
+    def select_then_restore(
+        *, actor: Actor, provider_id: str, credential_id: str, verified_plugin: bool
+    ) -> BuilderCredentialRuntime:
+        selection = original(
+            actor=actor, provider_id=provider_id, credential_id=credential_id, verified_plugin=verified_plugin
+        )
+        world.mark("selected")
+        restore()
+        return selection
+
+    world.monkeypatch.setattr(BuiltinToolManageService, "load_builder_credential", staticmethod(select_then_restore))
+
+
+def _swap_credential(world: World) -> None:
+    _transient(
+        world,
+        lambda: update_credential(world.owner, encrypted_credentials=UNAPPROVED_CIPHERTEXT),
+        lambda: update_credential(world.owner, encrypted_credentials=CIPHERTEXT),
+    )
+
+
+def _set_client(world: World, ciphertext: str) -> None:
+    with world.owner.factory.begin() as db:
+        client = db.get(ToolOAuthTenantClient, world.owner.client_id)
+        assert client is not None
+        client.encrypted_oauth_params = ciphertext
+
+
+def _swap_client(world: World) -> None:
+    with world.owner.factory() as db:
+        client = db.get(ToolOAuthTenantClient, world.owner.client_id)
+        assert client is not None
+        approved = client.encrypted_oauth_params
+    _transient(
+        world,
+        lambda: _set_client(world, '{"client_id":"enc-unapproved-client","client_secret":"enc-unapproved-secret"}'),
+        lambda: _set_client(world, approved),
+    )
+
+
+def _swap_access(world: World) -> None:
+    # Another member's all-team row: the acting member's effective access basis changes (owner -> all_team).
+    owner_id = world.owner.actor.account_id
+    _transient(
+        world,
+        lambda: update_credential(world.owner, user_id=str(uuid4())),
+        lambda: update_credential(world.owner, user_id=owner_id),
+    )
+
+
+@pytest.mark.parametrize("refresh_due", [False, True], ids=["business", "refresh"])
+@pytest.mark.parametrize(
+    "swap", [_swap_credential, _swap_client, _swap_access], ids=["credential", "oauth-client", "actor-access"]
+)
+def test_transient_unapproved_snapshot_is_refused_before_any_credential_work(
+    world: World, swap: Callable[[World], None], refresh_due: bool, caplog: pytest.LogCaptureFixture
+) -> None:
+    if refresh_due:
+        make_refresh_due(world)
+    reserved, binding = claimed(world.owner)
+    approved_row = world.row()
+    swap(world)
+
+    with pytest.raises(BuilderExecutionPolicyError, match="credential_snapshot_mismatch") as raised:
+        build(world, guard_for(world.owner, binding))
+
+    assert str(raised.value) == SNAPSHOT_REFUSAL
+    assert "selected" in [name for name, _ in world.events]
+    # Nothing after the selection ran: no compliance, decryption (credential or client), refresh or invoke.
+    assert [name for name, _ in world.events if name in {"compliance", "decrypt", "refresh_transport"}] == []
+    assert world.decrypted == []
+    assert world.refresh_calls == []
+    assert world.invoke_calls == []
+    assert world.cache_deletes == []
+    # The approved row is back and untouched by the boundary.
+    after_row = world.row()
+    assert (after_row.encrypted_credentials, after_row.expires_at, after_row.user_id) == (
+        approved_row.encrypted_credentials,
+        approved_row.expires_at,
+        approved_row.user_id,
+    )
+    consent = world.consent(reserved.consent_id)
+    assert (consent.refresh_count, consent.business_count, consent.outcome_state) == (0, 0, None)
+    assert (consent.state, consent.reason_code) == ("failed", "credential_snapshot_mismatch")
+    receipt = get(world.owner, reserved.consent_id)
+    assert_public(receipt, owner=world.owner)
+    assert_no_secret_text(caplog.text + json.dumps(receipt.model_dump(mode="json")))
+    for unapproved in ("enc-unapproved-access", "enc-unapproved-client", "enc-unapproved-secret"):
+        assert unapproved not in caplog.text
+
+    # The failed grant cannot be re-admitted by a later, approved-looking selection.
+    with pytest.raises(BuilderExecutionPolicyError, match="consent_not_claimed"):
+        build(world, guard_for(world.owner, binding))
+    assert world.decrypted == []
+    assert world.invoke_calls == []
+
+
+def _approved_reference(world: World) -> CredentialReference:
+    selection = BuiltinToolManageService.load_builder_credential(
+        actor=world.owner.actor, provider_id=PROVIDER, credential_id=world.owner.credential_id, verified_plugin=False
+    )
+    return selection.snapshot.reference
+
+
+def test_wrong_native_binding_cannot_admit_a_snapshot(world: World) -> None:
+    reserved, binding = claimed(world.owner)
+    reference = _approved_reference(world)
+    for forged in (
+        binding.model_copy(update={"native_node_execution_id": "replayed-node-execution"}),
+        binding.model_copy(update={"node_id": "other-node"}),
+    ):
+        with pytest.raises(BuilderExecutionPolicyError) as raised:
+            BuiltinToolManageService.validate_builder_credential_snapshot(binding=forged, reference=reference)
+        assert raised.value.reason_code in {"execution_launch_mismatch", "unsupported_tool_node"}
+    consent = world.consent(reserved.consent_id)
+    assert (consent.state, consent.reason_code, consent.refresh_count, consent.business_count) == (
+        "claimed",
+        None,
+        0,
+        0,
+    )
+    # The approved snapshot is admitted for the exact claimed binding, without any write.
+    BuiltinToolManageService.validate_builder_credential_snapshot(binding=binding, reference=reference)
+    assert world.consent(reserved.consent_id).state == "claimed"
+
+
+def test_spent_or_malformed_state_never_re_admits_and_is_not_rewritten(world: World) -> None:
+    reserved, binding = claimed(world.owner)
+    reference = _approved_reference(world)
+    # Bypasses validation, as a model_copy/model_construct crossing the in-process boundary could.
+    malformed = reference.model_copy(update={"revision": "not-a-digest"})
+    with pytest.raises(BuilderExecutionPolicyError, match="credential_snapshot_mismatch"):
+        BuiltinToolManageService.validate_builder_credential_snapshot(binding=binding, reference=malformed)
+    assert world.consent(reserved.consent_id).state == "claimed"
+
+    run(build(world, guard_for(world.owner, binding)))
+    spent = world.consent(reserved.consent_id)
+    assert (spent.state, spent.business_count, spent.outcome_state) == ("claimed", 1, "completed")
+    # Replay after the business phase: refused conservatively, nothing rewritten.
+    with pytest.raises(BuilderExecutionPolicyError, match="phase_already_claimed"):
+        BuiltinToolManageService.validate_builder_credential_snapshot(binding=binding, reference=reference)
+    replayed = world.consent(reserved.consent_id)
+    assert (replayed.state, replayed.business_count, replayed.outcome_state, replayed.reason_code) == (
+        "claimed",
+        1,
+        "completed",
+        "message_returned",
+    )
+    assert len(world.invoke_calls) == 1
+
+
+@pytest.mark.parametrize("refresh_due", [False, True], ids=["business", "refresh"])
+def test_admitted_snapshot_is_the_one_used_outside_sql(world: World, refresh_due: bool) -> None:
+    if refresh_due:
+        make_refresh_due(world)
+    reserved, binding = claimed(world.owner)
+    admitted: list[CredentialReference] = []
+    original = BuiltinToolManageService.validate_builder_credential_snapshot
+
+    def record(*, binding: ConfirmedToolBinding, reference: CredentialReference) -> None:
+        original(binding=binding, reference=reference)
+        world.mark("snapshot_admitted")
+        admitted.append(reference)
+
+    world.monkeypatch.setattr(BuiltinToolManageService, "validate_builder_credential_snapshot", staticmethod(record))
+    run(build(world, guard_for(world.owner, binding)))
+
+    order = [name for name, _ in world.events]
+    assert order.index("snapshot_admitted") < order.index("compliance") < order.index("decrypt")
+    assert_outside_sql(world, "snapshot_admitted", "compliance", "decrypt", "invoke_transport")
+    stored = world.consent(reserved.consent_id)
+    assert len(admitted) == 1
+    assert admitted[0].revision == stored.initial_credential_revision
+    assert admitted[0].oauth_client_revision == stored.oauth_client_revision
+    # The decrypted credentials of exactly that approved ciphertext reached the transport.
+    expected = {"access_token": "plain(enc-access-sentinel)", "refresh_token": "plain(enc-refresh-sentinel)"}
+    if refresh_due:
+        assert_outside_sql(world, "refresh_transport")
+        assert world.refresh_calls[0].payload["credentials"] == expected
+        assert world.invoke_calls[0].payload["credentials"] == REFRESHED
+    else:
+        assert world.invoke_calls[0].payload["credentials"] == expected
+    assert (stored.business_count, stored.refresh_count) == (1, 1 if refresh_due else 0)
 
 
 def test_guard_for_another_tenant_is_refused_before_any_lookup(world: World) -> None:

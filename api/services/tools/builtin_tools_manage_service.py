@@ -13,7 +13,7 @@ from constants import HIDDEN_VALUE, UNKNOWN_VALUE
 from core.db.session_factory import session_factory
 from core.dify_builder.execution_policy import BuilderExecutionPolicyError
 from core.dify_builder.models import Actor
-from core.dify_builder.real_call_consent import CredentialReference
+from core.dify_builder.real_call_consent import ConfirmedToolBinding, CredentialReference
 from core.helper.name_generator import generate_incremental_name
 from core.helper.position_helper import is_filtered
 from core.helper.provider_cache import NoOpProviderCredentialCache, ToolProviderCredentialsCache
@@ -689,6 +689,22 @@ class BuiltinToolManageService:
                 raise BuilderExecutionPolicyError("credential_reference_unavailable")
             owner_user_id = row.user_id
         return BuilderCredentialRuntime(snapshot=snapshot, owner_user_id=owner_user_id)
+
+    @staticmethod
+    def validate_builder_credential_snapshot(*, binding: ConfirmedToolBinding, reference: CredentialReference) -> None:
+        """Admit a selected snapshot only if it is exactly the one the claimed grant approved.
+
+        Internal bridge for the confirmed native path: delegates to the consent
+        owner's SQL-local check over the same configured session factory as
+        ``load_builder_credential``. Its transaction closes before returning, so
+        compliance, decryption, refresh and dispatch stay outside SQL.
+        """
+        # Method-local: the consent service imports this module.
+        from services.dify_builder.real_call_consent_service import BuilderRealCallConsentService
+
+        BuilderRealCallConsentService(session_factory.get_session_maker()).validate_runtime_snapshot(
+            binding=binding, reference=reference
+        )
 
     @staticmethod
     def decrypt_builder_oauth_client(

@@ -509,6 +509,11 @@ class ToolManager:
             verified_plugin=verified,
         )
         snapshot = selection.snapshot
+        # Admit exactly the selected detached snapshot against the claimed grant before any
+        # compliance, decryption, refresh or dispatch; later phases use this same snapshot.
+        BuiltinToolManageService.validate_builder_credential_snapshot(
+            binding=guard.binding, reference=snapshot.reference
+        )
         try:
             runtime_check_credential_policy_compliance(
                 credential_id=credential_id,
