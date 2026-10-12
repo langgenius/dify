@@ -105,6 +105,7 @@ from core.workflow import node_factory
 from core.workflow.node_runtime import DifyToolNodeRuntime
 from core.workflow.system_variables import SystemVariableKey, get_system_text
 from enums import DeploymentEdition
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from extensions.ext_key_provider import key_provider_manager
 from extensions.ext_redis import redis_client
@@ -3037,6 +3038,10 @@ def console(gmail: Gmail, monkeypatch: pytest.MonkeyPatch) -> Iterator[ConsoleHa
     monkeypatch.setattr(dify_config, "LOGIN_DISABLED", False)
     monkeypatch.setattr(dify_config, "DIFY_BUILDER_ENABLED", True)
     monkeypatch.setattr(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
+    # Main's account migration binds this actual identity owner in create_app. The HTTP proof
+    # must use that composition, including its real short repository Sessions, never inject g.
+    identity = application_services().accounts.identity
+    assert getattr(gmail.app.extensions["account_identity_loader"], "__self__", None) is identity
     with gmail.factory.begin() as session:
         if session.scalar(select(DifySetup.version).limit(1)) is None:
             session.add(DifySetup(version="ci-authenticated-native"))

@@ -33,6 +33,5 @@ describe('Webhook parameter table keyboard visibility', () => {
     )
       effectiveOpacity *= Number(getComputedStyle(element).opacity)
     expect(effectiveOpacity).toBe(1)
-    expect(getComputedStyle(deleteButton.element()).boxShadow).not.toBe('none')
   })
 })

@@ -1,14 +1,20 @@
 """CI-only PostgreSQL locking and actual Alembic migration controls."""
 
 import importlib.util
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from threading import Barrier
+from typing import TYPE_CHECKING, cast
 from uuid import uuid4
 
 import pytest
+from alembic.config import Config
+from alembic.environment import EnvironmentContext
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
+from alembic.runtime.migration import RevisionStep
+from alembic.script import ScriptDirectory
 from sqlalchemy import inspect, text
 
 from core.dify_builder.execution_policy import (
@@ -23,6 +29,9 @@ from tests.test_containers_integration_tests.core.workflow.test_builder_restrict
 from tests.test_containers_integration_tests.core.workflow.test_builder_restricted_native import (
     native_owner as native_owner,  # noqa: PLC0414 - shared pytest fixture
 )
+
+if TYPE_CHECKING:
+    from dify_app import DifyApp
 
 
 def prepare(owner, http=False):
@@ -180,6 +189,135 @@ def test_real_postgres_execution_migration_upgrade_downgrade(flask_app_with_cont
                 == "historical"
             )
             migration.upgrade()
+        connection.execute(text("SET LOCAL search_path TO public"))
+        connection.execute(text(f'DROP SCHEMA "{schema}" CASCADE'))
+
+
+def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_containers: "DifyApp") -> None:
+    """Real Alembic traversal upgrades both branches, merges/splits heads without changing their data."""
+    from extensions.ext_database import db
+
+    merge_revision = "f9a3c62de418"
+    branch_heads = {"d82f9a6c31e0", "a8c9e2f1b704"}
+    predecessor = "733e4c46f90e"
+    config = Config()
+    config.set_main_option("script_location", str(Path(__file__).parents[4] / "migrations"))
+    scripts = ScriptDirectory.from_config(config)
+    assert scripts.get_heads() == [merge_revision]
+    merged = scripts.get_revision(merge_revision)
+    assert merged is not None
+    assert isinstance(merged.down_revision, tuple)
+    assert set(merged.down_revision) == branch_heads
+
+    schema = "builder_forward_merge_" + uuid4().hex
+    with flask_app_with_containers.app_context(), db.engine.begin() as connection:
+        assert connection.dialect.name == "postgresql"
+        connection.execute(text(f'CREATE SCHEMA "{schema}"'))
+        connection.execute(text(f'SET LOCAL search_path TO "{schema}"'))
+        # Only the two preexisting tables touched by descendants of 733 are prerequisites.
+        # Their structures come from the real database; remove the later nullable additions.
+        for table in ("dify_builder_test_inputs", "dify_builder_runs"):
+            connection.execute(text(f"CREATE TABLE {table} (LIKE public.{table} INCLUDING ALL)"))
+        connection.execute(text("ALTER TABLE dify_builder_test_inputs DROP COLUMN http_fixtures"))
+        connection.execute(text("ALTER TABLE dify_builder_runs DROP COLUMN verification"))
+        identity = str(uuid4())
+        connection.execute(
+            text(
+                "INSERT INTO dify_builder_test_inputs (id,session_id,source,inputs,start_schema_hash) "
+                "VALUES (:id,:id,'user','{}','historical')"
+            ),
+            {"id": identity},
+        )
+        context = MigrationContext.configure(connection, opts={"version_table_schema": schema})
+        context.stamp(scripts, predecessor)
+
+        def migrate(target: str, *, downgrade: bool = False) -> tuple[str, ...]:
+            def revisions(current: tuple[str, ...], _context: MigrationContext) -> list[RevisionStep]:
+                # These are the same real graph planners used by Alembic command upgrade/downgrade.
+                # Alembic passes head tuples here; its planner annotations still declare a scalar.
+                planner = cast(
+                    Callable[[str, tuple[str, ...]], list[RevisionStep]],
+                    scripts._downgrade_revs if downgrade else scripts._upgrade_revs,
+                )
+                return planner(target, current)
+
+            with EnvironmentContext(config, scripts, fn=revisions) as environment:
+                environment.configure(connection=connection, version_table_schema=schema)
+                environment.run_migrations()
+            return MigrationContext.configure(connection, opts={"version_table_schema": schema}).get_current_heads()
+
+        # Execute real b6/c84/d82 and a8 migrations, not metadata.create_all or handwritten branch DDL.
+        assert migrate("d82f9a6c31e0") == ("d82f9a6c31e0",)
+        assert set(migrate("a8c9e2f1b704")) == branch_heads
+        parameters = {"id": identity}
+        connection.execute(
+            text(
+                "INSERT INTO dify_builder_execution_requests "
+                "(id,tenant_id,app_id,workflow_id,actor_id,session_id,test_input_id,"
+                "context,context_digest,state,observations) "
+                "VALUES (:id,:id,:id,:id,:id,:id,:id,'{}',repeat('0',64),'prepared','[]')"
+            ),
+            parameters,
+        )
+        connection.execute(
+            text(
+                "INSERT INTO dify_builder_real_call_consents "
+                "(id,tenant_id,app_id,workflow_id,actor_id,session_id,prepared_commit_id,test_input_id,prepared_version,"
+                "binding,scope_digest,disclosure,disclosure_digest,expires_at,state,prepare_key,prepare_body_digest,"
+                "prepare_receipt,initial_credential_revision,oauth_client_revision) "
+                "VALUES (:id,:id,:id,:id,:id,:id,:id,:id,1,'{}',repeat('0',64),'{}',repeat('0',64),"
+                "CURRENT_TIMESTAMP,'prepared','merge-control',repeat('0',64),'{}',repeat('0',64),repeat('0',64))"
+            ),
+            parameters,
+        )
+        connection.execute(
+            text(
+                "INSERT INTO resource_access_tokens (id,tenant_id,name,track_id,token,created_by) "
+                "VALUES (:id,:id,'merge-control','merge-control','synthetic-merge-token',:id)"
+            ),
+            parameters,
+        )
+        connection.execute(
+            text(
+                "INSERT INTO resource_access_tokens_relation (id,token_id,resource_type,app_id) "
+                "VALUES (:id,:id,'app',:id)"
+            ),
+            parameters,
+        )
+        tables = (
+            "dify_builder_test_inputs",
+            "dify_builder_runs",
+            "dify_builder_execution_requests",
+            "dify_builder_real_call_consents",
+            "resource_access_tokens",
+            "resource_access_tokens_relation",
+        )
+
+        def witness() -> dict[str, object]:
+            inspector = inspect(connection)
+            assert set(inspector.get_table_names(schema=schema)) == {*tables, "alembic_version"}
+            return {
+                table: {
+                    "columns": [
+                        (column["name"], str(column["type"]), column["nullable"], column["default"])
+                        for column in inspector.get_columns(table, schema=schema)
+                    ],
+                    "primary_key": inspector.get_pk_constraint(table, schema=schema),
+                    "indexes": inspector.get_indexes(table, schema=schema),
+                    "unique": inspector.get_unique_constraints(table, schema=schema),
+                    "checks": inspector.get_check_constraints(table, schema=schema),
+                    "rows": list(connection.execute(text(f"SELECT * FROM {table} ORDER BY id")).tuples()),
+                }
+                for table in tables
+            }
+
+        before = witness()
+        assert migrate("head") == (merge_revision,)
+        assert witness() == before
+        assert set(migrate("-1", downgrade=True)) == branch_heads
+        assert witness() == before
+        assert migrate("head") == (merge_revision,)
+        assert witness() == before
         connection.execute(text("SET LOCAL search_path TO public"))
         connection.execute(text(f'DROP SCHEMA "{schema}" CASCADE'))
 

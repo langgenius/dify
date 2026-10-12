@@ -14,8 +14,10 @@ from models.base import TypeBase
 from models.model import EndUser
 from models.oauth import DatasourceOauthParamConfig, DatasourceOauthTenantParamConfig, DatasourceProvider
 from models.provider_ids import DatasourceProviderID
-from services import datasource_provider_service as service_module
-from services.datasource_provider_service import DatasourceProviderService, get_current_user
+from repositories.credentials.query_repository import CredentialQueryRepository
+from repositories.data_source.credential_repository import SQLAlchemyDatasourceCredentialRepository
+from services.data_source import provider_service as service_module
+from services.data_source.provider_service import DatasourceProviderService, get_current_user
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -65,9 +67,46 @@ def persist(session: Session, *models: TypeBase) -> None:
 class TestDatasourceProviderService:
     """Comprehensive tests for DatasourceProviderService targeting >95% coverage."""
 
+    @pytest.mark.parametrize(
+        ("credential_id", "credentials", "integration_token", "expected"),
+        [
+            ("cred", {"integration_secret": "saved-token"}, "env-token", "saved-token"),
+            (None, {"integration_secret": "default-token"}, "env-token", "env-token"),
+            ("cred", {}, "env-token", "env-token"),
+            ("cred", {}, None, None),
+            (None, {}, None, None),
+        ],
+    )
+    def test_stored_notion_access_token_resolves_saved_credential_or_fallback(
+        self, service, config_overrides, credential_id, credentials, integration_token, expected
+    ):
+        config_overrides(NOTION_INTEGRATION_TOKEN=integration_token)
+        with patch.object(service, "get_datasource_credentials", return_value=credentials) as resolve:
+            if expected is None:
+                with pytest.raises(ValueError, match="Must specify `integration_token`"):
+                    service.get_stored_notion_access_token(tenant_id="tenant", credential_id=credential_id)
+            else:
+                assert (
+                    service.get_stored_notion_access_token(tenant_id="tenant", credential_id=credential_id) == expected
+                )
+
+        if credential_id is None:
+            resolve.assert_not_called()
+        else:
+            resolve.assert_called_once_with(
+                tenant_id="tenant",
+                credential_id=credential_id,
+                provider="notion_datasource",
+                plugin_id="langgenius/notion_datasource",
+            )
+
     @pytest.fixture
-    def service(self):
-        return DatasourceProviderService()
+    def service(self, sqlite_session: Session):
+        return DatasourceProviderService(
+            credentials=SQLAlchemyDatasourceCredentialRepository(
+                session_factory=sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False)
+            )
+        )
 
     @pytest.fixture
     def sqlite_session(self, sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> Iterator[Session]:
@@ -89,10 +128,10 @@ class TestDatasourceProviderService:
             patch("core.plugin.impl.base._httpx_client.request", side_effect=lambda **kw: httpx.request(**kw)),
             patch("core.plugin.impl.base._httpx_client.stream", side_effect=lambda **kw: httpx.stream(**kw)),
             patch("httpx.request") as mock_httpx,
-            patch("services.datasource_provider_service.encrypter") as mock_enc,
-            patch("services.datasource_provider_service.redis_client") as mock_redis,
-            patch("services.datasource_provider_service.generate_incremental_name") as mock_genname,
-            patch("services.datasource_provider_service.OAuthHandler") as mock_oauth,
+            patch("services.data_source.provider_service.encrypter") as mock_enc,
+            patch("services.data_source.provider_service.redis_client") as mock_redis,
+            patch("services.data_source.provider_service.generate_incremental_name") as mock_genname,
+            patch("services.data_source.provider_service.OAuthHandler") as mock_oauth,
         ):
             mock_enc.encrypt_token.return_value = "enc_tok"
             mock_enc.decrypt_token.return_value = "dec_tok"
@@ -299,7 +338,7 @@ class TestDatasourceProviderService:
     # -----------------------------------------------------------------------
 
     def test_should_return_empty_dict_when_credential_not_found(self, service, sqlite_session, mock_user):
-        with patch("services.datasource_provider_service.get_current_user", return_value=mock_user):
+        with patch("services.data_source.provider_service.get_current_user", return_value=mock_user):
             assert service.get_datasource_credentials("t1", "prov", "org/plug") == {}
 
     def test_should_refresh_oauth_tokens_when_expired(self, service, sqlite_session, mock_user):
@@ -307,7 +346,7 @@ class TestDatasourceProviderService:
         p = make_provider(auth_type="oauth2", expires_at=0, encrypted_credentials={"tok": "x"})
         persist(sqlite_session, p)
         with (
-            patch("services.datasource_provider_service.get_current_user", return_value=mock_user),
+            patch("services.data_source.provider_service.get_current_user", return_value=mock_user),
             patch.object(service, "get_oauth_client", return_value={"oc": "v"}),
             patch.object(service, "decrypt_datasource_provider_credentials", return_value={"tok": "plain"}),
         ):
@@ -324,8 +363,8 @@ class TestDatasourceProviderService:
         )
         persist(sqlite_session, p)
         with (
-            patch("services.datasource_provider_service.get_current_user", return_value=mock_user),
-            patch("services.datasource_provider_service.OAuthHandler") as oauth_handler,
+            patch("services.data_source.provider_service.get_current_user", return_value=mock_user),
+            patch("services.data_source.provider_service.OAuthHandler") as oauth_handler,
             patch.object(service, "get_oauth_client", return_value={"oc": "v"}),
             patch.object(service, "decrypt_datasource_provider_credentials", return_value={"tok": "plain"}),
         ):
@@ -338,7 +377,7 @@ class TestDatasourceProviderService:
         p = make_provider(encrypted_credentials={"k": "v"})
         persist(sqlite_session, p)
         with (
-            patch("services.datasource_provider_service.get_current_user", return_value=mock_user),
+            patch("services.data_source.provider_service.get_current_user", return_value=mock_user),
             patch.object(service, "decrypt_datasource_provider_credentials", return_value={"k": "plain"}),
         ):
             result = service.get_datasource_credentials("t1", "prov", "org/plug")
@@ -346,28 +385,84 @@ class TestDatasourceProviderService:
 
     def test_should_fetch_by_credential_id_when_provided(self, service, sqlite_session, mock_user):
         """When credential_id is passed, the credential_id filter path (line 113) is taken."""
-        p = make_provider(credential_id="cred-id", provider="other-provider", plugin_id="other-plugin")
+        p = make_provider(credential_id="cred-id")
         persist(sqlite_session, p)
         with (
-            patch("services.datasource_provider_service.get_current_user", return_value=mock_user),
+            patch("services.data_source.provider_service.get_current_user", return_value=mock_user),
             patch.object(service, "decrypt_datasource_provider_credentials", return_value={"k": "v"}),
         ):
             result = service.get_datasource_credentials("t1", "prov", "org/plug", credential_id="cred-id")
         assert result == {"k": "v"}
+
+    @pytest.mark.parametrize("concurrent_update", [False, True])
+    def test_refresh_closes_read_session_and_preserves_concurrent_credentials(
+        self,
+        service: DatasourceProviderService,
+        sqlite_session: Session,
+        mock_user: Account,
+        monkeypatch: pytest.MonkeyPatch,
+        concurrent_update: bool,
+    ) -> None:
+        import time
+
+        from sqlalchemy import update
+
+        row = make_provider(auth_type="oauth2", expires_at=0, encrypted_credentials={"token": "old"})
+        persist(sqlite_session, row)
+        opened: list[Session] = []
+
+        class ObservedSession(Session):
+            def __init__(self, **kwargs) -> None:
+                super().__init__(**kwargs)
+                opened.append(self)
+
+        def refresh(**_kwargs: object) -> tuple[dict[str, str], int]:
+            assert opened
+            assert all(not session.in_transaction() for session in opened)
+            if concurrent_update:
+                with Session(sqlite_session.get_bind()) as session, session.begin():
+                    session.execute(
+                        update(DatasourceProvider)
+                        .where(DatasourceProvider.id == row.id)
+                        .values(encrypted_credentials={"token": "concurrent"}, expires_at=int(time.time()) + 3600)
+                    )
+            return {"token": "refreshed"}, int(time.time()) + 3600
+
+        service = DatasourceProviderService(
+            credentials=SQLAlchemyDatasourceCredentialRepository(
+                session_factory=sessionmaker(bind=sqlite_session.get_bind(), class_=ObservedSession)
+            )
+        )
+        monkeypatch.setattr(service_module, "get_current_user", lambda: mock_user)
+        monkeypatch.setattr(service, "_refresh_datasource_credentials", refresh)
+        monkeypatch.setattr(
+            service,
+            "decrypt_datasource_provider_credentials",
+            lambda **kwargs: dict(kwargs["datasource_provider"].encrypted_credentials),
+        )
+        result = service.get_datasource_credentials("t1", "prov", "org/plug")
+        assert result == {"token": "concurrent" if concurrent_update else "refreshed"}
+        assert all(not session.in_transaction() for session in opened)
+
+    def test_selected_credential_must_belong_to_the_requested_provider(
+        self, service: DatasourceProviderService, sqlite_session: Session
+    ) -> None:
+        persist(sqlite_session, make_provider(provider="other-provider", plugin_id="other-plugin"))
+        assert service.get_datasource_credentials("t1", "prov", "org/plug", credential_id="cred-id") == {}
 
     # -----------------------------------------------------------------------
     # get_all_datasource_credentials_by_provider (lines 176-228)
     # -----------------------------------------------------------------------
 
     def test_should_return_empty_list_when_no_provider_credentials_exist(self, service, sqlite_session, mock_user):
-        with patch("services.datasource_provider_service.get_current_user", return_value=mock_user):
+        with patch("services.data_source.provider_service.get_current_user", return_value=mock_user):
             assert service.get_all_datasource_credentials_by_provider("t1", "prov", "org/plug") == []
 
     def test_should_refresh_and_return_credentials_when_oauth_expired(self, service, sqlite_session, mock_user):
         p = make_provider(auth_type="oauth2", expires_at=0, encrypted_credentials={"t": "x"})
         persist(sqlite_session, p)
         with (
-            patch("services.datasource_provider_service.get_current_user", return_value=mock_user),
+            patch("services.data_source.provider_service.get_current_user", return_value=mock_user),
             patch.object(service, "get_oauth_client", return_value={"oc": "v"}),
             patch.object(service, "decrypt_datasource_provider_credentials", return_value={"t": "plain"}),
         ):
@@ -391,7 +486,7 @@ class TestDatasourceProviderService:
         )
         persist(sqlite_session, failed_provider, working_provider)
         with (
-            patch("services.datasource_provider_service.get_current_user", return_value=mock_user),
+            patch("services.data_source.provider_service.get_current_user", return_value=mock_user),
             patch.object(
                 service,
                 "_refresh_datasource_credentials",
@@ -410,7 +505,7 @@ class TestDatasourceProviderService:
         p = make_provider(auth_type="oauth2", encrypted_credentials={"t": "x"})
         persist(sqlite_session, p)
         with (
-            patch("services.datasource_provider_service.get_current_user", return_value=mock_user),
+            patch("services.data_source.provider_service.get_current_user", return_value=mock_user),
             patch.object(service, "_refresh_datasource_credentials") as refresh_credentials,
             patch.object(service, "decrypt_datasource_provider_credentials", return_value={"t": "plain"}),
         ):
@@ -514,7 +609,7 @@ class TestDatasourceProviderService:
         with (
             patch.object(service.provider_manager, "fetch_datasource_provider", return_value=pm),
             patch(
-                "services.datasource_provider_service.create_provider_encrypter",
+                "services.data_source.provider_service.create_provider_encrypter",
                 return_value=(MagicMock(), MagicMock()),
             ),
         ):
@@ -567,7 +662,9 @@ class TestDatasourceProviderService:
                 enabled=True,
             ),
         )
-        with patch.object(service, "get_oauth_encrypter", return_value=(self._enc, None)):
+        with patch(
+            "services.data_source.credential_adapters.create_provider_encrypter", return_value=(self._enc, None)
+        ):
             result = service.get_oauth_client("t1", make_id())
         assert result == {"k": "dec"}
 
@@ -582,7 +679,7 @@ class TestDatasourceProviderService:
         )
         with (
             patch.object(service.provider_manager, "fetch_datasource_provider"),
-            patch("services.datasource_provider_service.PluginService.is_plugin_verified", return_value=True),
+            patch("services.data_source.credential_adapters.PluginService.is_plugin_verified", return_value=True),
         ):
             result = service.get_oauth_client("t1", make_id())
         assert result == {"k": "sys"}
@@ -591,7 +688,7 @@ class TestDatasourceProviderService:
         """Neither tenant nor system credentials → raises ValueError."""
         with (
             patch.object(service.provider_manager, "fetch_datasource_provider"),
-            patch("services.datasource_provider_service.PluginService.is_plugin_verified", return_value=False),
+            patch("services.data_source.credential_adapters.PluginService.is_plugin_verified", return_value=False),
         ):
             with pytest.raises(ValueError, match="Please configure oauth client params"):
                 service.get_oauth_client("t1", make_id())
@@ -734,13 +831,13 @@ class TestDatasourceProviderService:
             sqlite_session,
             make_provider(name="clash", provider="provider", plugin_id="org/plugin"),
         )
-        with patch("services.datasource_provider_service.get_current_user", return_value=mock_user):
+        with patch("services.data_source.provider_service.get_current_user", return_value=mock_user):
             with pytest.raises(ValueError, match="already exists"):
                 service.add_datasource_api_key_provider("clash", "t1", make_id(), {"sk": "v"})
 
     def test_should_raise_value_error_when_credentials_validation_fails(self, service, sqlite_session, mock_user):
         with (
-            patch("services.datasource_provider_service.get_current_user", return_value=mock_user),
+            patch("services.data_source.provider_service.get_current_user", return_value=mock_user),
             patch.object(service.provider_manager, "validate_provider_credentials", side_effect=Exception("bad cred")),
             patch.object(service, "extract_secret_variables", return_value=[]),
         ):
@@ -749,7 +846,7 @@ class TestDatasourceProviderService:
 
     def test_should_add_api_key_provider_and_commit_when_valid(self, service, sqlite_session, mock_user):
         with (
-            patch("services.datasource_provider_service.get_current_user", return_value=mock_user),
+            patch("services.data_source.provider_service.get_current_user", return_value=mock_user),
             patch.object(service.provider_manager, "validate_provider_credentials"),
             patch.object(service, "extract_secret_variables", return_value=["sk"]),
         ):
@@ -761,7 +858,7 @@ class TestDatasourceProviderService:
 
     def test_should_acquire_redis_lock_when_adding_api_key_provider(self, service, sqlite_session, mock_user):
         with (
-            patch("services.datasource_provider_service.get_current_user", return_value=mock_user),
+            patch("services.data_source.provider_service.get_current_user", return_value=mock_user),
             patch.object(service.provider_manager, "validate_provider_credentials"),
             patch.object(service, "extract_secret_variables", return_value=[]),
         ):
@@ -805,13 +902,30 @@ class TestDatasourceProviderService:
     # -----------------------------------------------------------------------
 
     def test_should_return_empty_list_when_no_credentials_stored(self, service, sqlite_session):
-        assert service.list_datasource_credentials("t1", "prov", "org/plug", session=sqlite_session) == []
+        assert (
+            service.list_datasource_credentials(
+                "t1",
+                "prov",
+                "org/plug",
+                credential_query=CredentialQueryRepository(
+                    session_factory=sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False)
+                ),
+            )
+            == []
+        )
 
     def test_should_return_masked_credentials_list_when_credentials_exist(self, service, sqlite_session):
         p = make_provider(encrypted_credentials={"sk": "v"})
         persist(sqlite_session, p)
         with patch.object(service, "extract_secret_variables", return_value=["sk"]):
-            result = service.list_datasource_credentials("t1", "prov", "org/plug", session=sqlite_session)
+            result = service.list_datasource_credentials(
+                "t1",
+                "prov",
+                "org/plug",
+                credential_query=CredentialQueryRepository(
+                    session_factory=sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False)
+                ),
+            )
         assert len(result) == 1
         assert result[0]["credential"] == {"sk": "obf"}
 
@@ -820,7 +934,7 @@ class TestDatasourceProviderService:
     # -----------------------------------------------------------------------
 
     def test_should_aggregate_credentials_for_non_hardcoded_plugin(self, service, sqlite_session):
-        with patch("services.datasource_provider_service.PluginDatasourceManager") as mock_mgr:
+        with patch("services.data_source.provider_service.PluginDatasourceManager") as mock_mgr:
             ds = MagicMock()
             ds.provider = "prov"
             ds.plugin_id = "org/plug"
@@ -828,12 +942,18 @@ class TestDatasourceProviderService:
             mock_mgr.return_value.fetch_installed_datasource_providers.return_value = [ds]
             cred = {"credential": {"k": "v"}, "is_default": True}
             with patch.object(service, "list_datasource_credentials", return_value=[cred]):
-                results = service.get_all_datasource_credentials("t1", session=sqlite_session)
+                results = service.get_all_datasource_credentials(
+                    "t1",
+                    session=sqlite_session,
+                    credential_query=CredentialQueryRepository(
+                        session_factory=sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False)
+                    ),
+                )
         assert len(results) == 1
 
     def test_should_include_oauth_schema_for_hardcoded_plugin_ids(self, service, sqlite_session):
         """Lines 819-871: get_all_datasource_credentials covers hardcoded langgenius plugin IDs."""
-        with patch("services.datasource_provider_service.PluginDatasourceManager") as mock_mgr:
+        with patch("services.data_source.provider_service.PluginDatasourceManager") as mock_mgr:
             ds = MagicMock()
             ds.plugin_id = "langgenius/firecrawl_datasource"
             ds.provider = "firecrawl"
@@ -853,7 +973,13 @@ class TestDatasourceProviderService:
                 patch.object(service, "is_tenant_oauth_params_enabled", return_value=False),
                 patch.object(service, "is_system_oauth_params_exist", return_value=False),
             ):
-                results = service.get_all_datasource_credentials("t1", session=sqlite_session)
+                results = service.get_all_datasource_credentials(
+                    "t1",
+                    session=sqlite_session,
+                    credential_query=CredentialQueryRepository(
+                        session_factory=sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False)
+                    ),
+                )
         assert len(results) == 1
         assert results[0]["oauth_schema"] is not None
 
@@ -877,7 +1003,7 @@ class TestDatasourceProviderService:
     # -----------------------------------------------------------------------
 
     def test_should_raise_value_error_when_credential_not_found_on_update(self, service, sqlite_session, mock_user):
-        with patch("services.datasource_provider_service.get_current_user", return_value=mock_user):
+        with patch("services.data_source.provider_service.get_current_user", return_value=mock_user):
             with pytest.raises(ValueError, match="not found"):
                 service.update_datasource_credentials("t1", "id", "prov", "org/plug", {}, "name")
 
@@ -885,7 +1011,7 @@ class TestDatasourceProviderService:
         p = make_provider(credential_id="id", name="old_name", encrypted_credentials={"sk": "e"})
         conflict = make_provider(credential_id="conflict-id", name="new_name")
         persist(sqlite_session, p, conflict)
-        with patch("services.datasource_provider_service.get_current_user", return_value=mock_user):
+        with patch("services.data_source.provider_service.get_current_user", return_value=mock_user):
             with pytest.raises(ValueError, match="already exists"):
                 service.update_datasource_credentials("t1", "id", "prov", "org/plug", {}, "new_name")
 
@@ -895,7 +1021,7 @@ class TestDatasourceProviderService:
         p = make_provider(credential_id="id", name="old_name", encrypted_credentials={"sk": "e"})
         persist(sqlite_session, p)
         with (
-            patch("services.datasource_provider_service.get_current_user", return_value=mock_user),
+            patch("services.data_source.provider_service.get_current_user", return_value=mock_user),
             patch.object(service, "extract_secret_variables", return_value=["sk"]),
             patch.object(service.provider_manager, "validate_provider_credentials", side_effect=Exception("bad")),
         ):
@@ -907,7 +1033,7 @@ class TestDatasourceProviderService:
         p = make_provider(credential_id="id", name="old_name", encrypted_credentials={"sk": "old_enc"})
         persist(sqlite_session, p)
         with (
-            patch("services.datasource_provider_service.get_current_user", return_value=mock_user),
+            patch("services.data_source.provider_service.get_current_user", return_value=mock_user),
             patch.object(service, "extract_secret_variables", return_value=["sk"]),
             patch.object(service.provider_manager, "validate_provider_credentials"),
         ):

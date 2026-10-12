@@ -26,8 +26,8 @@ from werkzeug.exceptions import Forbidden
 
 import controllers.console.dify_builder as mod
 import core.db.session_factory as session_factory_module
+from constants import COOKIE_NAME_CSRF_TOKEN, HEADER_NAME_CSRF_TOKEN
 from controllers.common.rbac import RBACPermission
-from controllers.common.rbac import locators as rbac_locators
 from controllers.console import bp as console_bp
 from controllers.console import wraps as wraps_mod
 from controllers.console.dify_builder_fields import (
@@ -54,7 +54,12 @@ from core.dify_builder.models import Session as DomainSession
 from core.dify_builder.ports import Repository
 from core.dify_builder.real_call_consent import ConsentReceipt, gmail_message_url
 from core.dify_builder.state import PcState
-from models.account import Account, AccountStatus, TenantAccountJoin, TenantAccountRole
+from enums import DeploymentEdition
+from extensions.ext_application_services import init_app as init_application_services
+from extensions.ext_login import login_manager
+from libs.passport import PassportService
+from libs.token import _real_cookie_name, generate_csrf_token
+from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
 from models.base import Base, TypeBase
 from models.model import App, DifySetup
 from services.dify_builder import wiring
@@ -1815,8 +1820,9 @@ def request_sql_world(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterat
 
     ``db`` of the console wraps, the controller and the wiring is one real ``scoped_session`` over
     SQLite (the unit app does not initialize Flask-SQLAlchemy); request teardown removes it, as the
-    extension does. Identity is injected the same way as ``_consent_http``. The Redis advance lease
-    and the consent owner are boundary spies that record, at each external call, whether the
+    extension does. Real incoming application services bind the account identity and RBAC query
+    owners; signed Passport/CSRF tokens enter through the actual request loader and wrappers.
+    The Redis advance lease and the consent owner remain unit boundary spies that record whether the
     request-scoped session is in a transaction and how many connection transactions are open.
     """
     engine = create_engine(f"sqlite:///{tmp_path / 'request-sql.sqlite3'}")
@@ -1828,15 +1834,22 @@ def request_sql_world(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterat
     monkeypatch.setattr(session_factory_module, "_session_maker", factory)
     monkeypatch.setattr(wraps_mod, "db", database)
     monkeypatch.setattr(wiring, "db", database)
-    monkeypatch.setattr(rbac_locators, "db", database)
     monkeypatch.setattr(mod, "db", database, raising=False)
-    apply_config_overrides(monkeypatch, RBAC_ENABLED=False, LOGIN_DISABLED=False)
-    monkeypatch.setattr("libs.login.check_csrf_token", lambda _request, _user_id: None)
+    apply_config_overrides(
+        monkeypatch,
+        RBAC_ENABLED=False,
+        LOGIN_DISABLED=False,
+        DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY,
+        SECRET_KEY="unit-builder-request-sql-passport-key",
+    )
     with factory.begin() as session:
         account = Account(name="tester", email="tester@example.com")
         session.add(account)
         session.flush()
         session.add(DifySetup(version="unit"))
+        tenant = Tenant(name="Request SQL workspace")
+        tenant.id = "ten-1"
+        session.add(tenant)
         session.add(
             App(
                 id="app-1",
@@ -1848,10 +1861,9 @@ def request_sql_world(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterat
                 enable_api=False,
             )
         )
-        session.add(TenantAccountJoin(tenant_id="ten-1", account_id=account.id, role=TenantAccountRole.EDITOR))
-    account.role = TenantAccountRole.EDITOR
-    account.status = AccountStatus.ACTIVE
-    account._current_tenant = make_tenant(tenant_id="ten-1")
+        session.add(
+            TenantAccountJoin(tenant_id="ten-1", account_id=account.id, role=TenantAccountRole.EDITOR, current=True)
+        )
     witness = _OpenTransactions(engine)
     boundaries: list[tuple[str, bool, int]] = []
 
@@ -1908,11 +1920,10 @@ def request_sql_world(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterat
     app = Flask("dify-builder-request-sql")
     app.config["TESTING"] = True
     app.register_blueprint(console_bp)
-
-    def login() -> None:
-        g._login_user = account
-
-    app.before_request(login)
+    # Use the incoming production composition: repositories own their short Sessions, and the
+    # actual login request loader resolves the app-bound account identity before the guard.
+    init_application_services(app)
+    login_manager.init_app(app)
     teardown: list[tuple[bool, bool, bool]] = []
 
     def capture(_error: BaseException | None) -> None:
@@ -1930,8 +1941,14 @@ def request_sql_world(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterat
     # Uncached: the real first ``_is_setup_completed`` must close its owned DifySetup read.
     setup_check = wraps_mod._is_setup_completed
     setup_check.reset_success()
+    client = app.test_client()
+    access = PassportService().issue({"user_id": account.id, "exp": int(datetime.now(UTC).timestamp()) + 600})
+    csrf = generate_csrf_token(account.id)
+    client.set_cookie(_real_cookie_name(COOKIE_NAME_CSRF_TOKEN), csrf)
+    client.environ_base["HTTP_AUTHORIZATION"] = f"Bearer {access}"
+    client.environ_base[f"HTTP_{HEADER_NAME_CSRF_TOKEN.upper().replace('-', '_')}"] = csrf
     try:
-        yield _RequestSqlWorld(app.test_client(), registry, witness, consent, boundaries, enqueued, teardown)
+        yield _RequestSqlWorld(client, registry, witness, consent, boundaries, enqueued, teardown)
     finally:
         setup_check.reset_success()
         witness.close()

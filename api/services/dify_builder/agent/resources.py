@@ -21,14 +21,12 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from core.workflow.generator.tool_catalogue import build_tool_catalogue, tool_capability_text
+from core.workflow.generator.tool_catalogue import ToolCatalogueEntry, build_tool_catalogue, tool_capability_text
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
-from models.credential_permission import CredentialType as CredentialPermissionType
 from models.dataset import Dataset
 from models.provider_ids import ToolProviderID
-from models.tools import BuiltinToolProvider
-from services.credential_permission_service import CredentialPermissionService
-from services.model_provider_service import ModelProviderService
+from services.model_provider.service import ModelProviderService
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +64,7 @@ def _list_datasets(tenant_id: str) -> list[Any]:
         return list(session.scalars(select(Dataset).where(Dataset.tenant_id == tenant_id)).all())
 
 
-def _list_tools(tenant_id: str) -> list[dict]:
+def _list_tools(tenant_id: str) -> list[ToolCatalogueEntry]:
     return list(build_tool_catalogue(tenant_id))
 
 
@@ -76,7 +74,7 @@ def _authorized_providers(tenant_id: str, account_id: str | None) -> set[str]:
     A provider is usable when it needs no credentials, or when a
     ``tool_builtin_providers`` row in this tenant is visible to the member
     under the native per-credential policy
-    (``CredentialPermissionService``). ``account_id=None`` (no acting
+    (``CredentialQuery``). ``account_id=None`` (no acting
     member) sees team-shared rows only, never a teammate's private or
     partial-member credential. Only the ``provider`` column is selected.
 
@@ -86,17 +84,10 @@ def _authorized_providers(tenant_id: str, account_id: str | None) -> set[str]:
     Matching stays on the full id, so another organization's plugin with
     the same short provider name never borrows the authorization.
     """
-    query = select(BuiltinToolProvider.provider).where(BuiltinToolProvider.tenant_id == tenant_id)
-    query = CredentialPermissionService.apply_account_visibility_filter(
-        query,
-        model_id_column=BuiltinToolProvider.id,
-        model_user_id_column=BuiltinToolProvider.user_id,
-        model_visibility_column=BuiltinToolProvider.visibility,
-        credential_type=CredentialPermissionType.BUILTIN_TOOL_PROVIDER,
-        account_id=account_id,
+    raw_providers = application_services().credential_queries.list_visible_tool_provider_ids(
+        workspace_id=tenant_id,
+        actor_id=account_id,
     )
-    with Session(db.engine) as session:
-        raw_providers = set(session.scalars(query).all())
     authorized: set[str] = set()
     for raw in raw_providers:
         authorized.add(raw)
@@ -107,7 +98,7 @@ def _authorized_providers(tenant_id: str, account_id: str | None) -> set[str]:
     return authorized
 
 
-def _tool_readiness(entry: dict, authorized: set[str] | None) -> tuple[str, str]:
+def _tool_readiness(entry: ToolCatalogueEntry, authorized: set[str] | None) -> tuple[str, str]:
     """``(readiness, note)``: "ready" unless the tool needs credentials the
     acting member cannot use.
 
@@ -126,7 +117,7 @@ def _tool_readiness(entry: dict, authorized: set[str] | None) -> tuple[str, str]
     return "missing_config", SETUP_REQUIRED_NOTE
 
 
-def _tool_ref(entry: dict, authorized: set[str] | None) -> ResourceRef:
+def _tool_ref(entry: ToolCatalogueEntry, authorized: set[str] | None) -> ResourceRef:
     readiness, note = _tool_readiness(entry, authorized)
     description = str(entry.get("description") or "")
     # The readiness reason leads so a bounded rendering of a long description

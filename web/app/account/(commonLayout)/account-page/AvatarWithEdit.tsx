@@ -37,23 +37,21 @@ const AvatarWithEdit = (props: AvatarProps) => {
       try {
         await updateProfile({ body: { avatar: uploadedFileId } })
         setIsShowAvatarPicker(false)
-        toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
       } catch (e) {
         toast.error((e as Error).message)
       }
     },
-    [t, updateProfile],
+    [updateProfile],
   )
 
   const handleDeleteAvatar = useCallback(async () => {
     try {
       await updateProfile({ body: { avatar: '' } })
-      toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
       setIsShowDeleteConfirm(false)
     } catch (e) {
       toast.error((e as Error).message)
     }
-  }, [t, updateProfile])
+  }, [updateProfile])
 
   const handleDeleteAvatarClick = useCallback(() => {
     setIsShowAvatarPicker(false)

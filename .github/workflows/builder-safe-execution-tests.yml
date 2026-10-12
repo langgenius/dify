@@ -60,7 +60,7 @@ jobs:
           persist-credentials: false
       - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7
         with:
-          python-version: '3.12'
+          python-version: '3.13'
           enable-cache: true
           cache-dependency-glob: api/uv.lock
       - run: uv sync --project api --dev --locked
@@ -95,6 +95,7 @@ jobs:
                   "test_postgres_append_race_preserves_both_receipts": 1,
                   "test_postgres_append_seal_and_duplicate_seal_are_serialized": 1,
                   "test_real_postgres_execution_migration_upgrade_downgrade": 1,
+                  "test_real_postgres_forward_merge_preserves_both_branches": 1,
                   "test_postgres_context_owner_replay_is_rejected": 7,
               },
               "test_builder_real_call_consent_persistence": {
@@ -234,3 +235,80 @@ jobs:
           path: |
             builder-safe-execution.xml
             builder-safe-execution.log
+  confirmed-tool-units:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7
+        with:
+          python-version: '3.13'
+          enable-cache: true
+          cache-dependency-glob: api/uv.lock
+      - run: uv sync --project api --dev --locked
+      - name: Confirmed Tool units on the integrated Python runtime
+        shell: bash
+        run: |
+          set -o pipefail
+          uv run --project api --no-sync python -u - <<'PY' 2>&1 | tee builder-confirmed-tool-units.log
+          import xml.etree.ElementTree as ElementTree
+          from pathlib import Path
+
+          import pytest
+
+          JUNIT = "builder-confirmed-tool-units.xml"
+          FILES = [
+              "api/tests/unit_tests/services/dify_builder/test_reconcile.py",
+              "api/tests/unit_tests/services/dify_builder/test_real_call_consent_service.py",
+              "api/tests/unit_tests/services/dify_builder/test_confirmed_tool_launch.py",
+              "api/tests/unit_tests/services/dify_builder/test_wiring.py",
+              "api/tests/unit_tests/controllers/console/test_dify_builder_routes.py",
+              "api/tests/unit_tests/controllers/console/test_wraps.py",
+              "api/tests/unit_tests/core/dify_builder/test_gmail_read_policy.py",
+              "api/tests/unit_tests/core/tools/test_confirmed_tool_runtime.py",
+              "api/tests/unit_tests/libs/key_providers/test_rsa_key_provider.py",
+              "api/tests/unit_tests/core/helper/test_encrypter.py",
+              "api/tests/unit_tests/services/dify_builder/test_resources.py",
+              "api/tests/unit_tests/core/workflow/generator/test_tool_catalogue.py",
+          ]
+          code = pytest.main([
+              *FILES, "-p", "no:benchmark", "--no-cov", "-vv", "-rA", "--tb=long",
+              f"--junitxml={JUNIT}",
+          ])
+          modules = {Path(path).stem: 0 for path in FILES}
+          identities = set()
+          problems = []
+          if not Path(JUNIT).is_file():
+              problems.append("unit JUnit report missing")
+          else:
+              for case in ElementTree.parse(JUNIT).getroot().iter("testcase"):
+                  classname, name = case.get("classname") or "", case.get("name") or ""
+                  matching = [module for module in modules if module in classname.split(".")]
+                  if len(matching) != 1:
+                      problems.append(f"unexpected unit case {classname}::{name}")
+                      continue
+                  identity = (classname, name)
+                  if identity in identities:
+                      problems.append(f"duplicate unit case {classname}::{name}")
+                  identities.add(identity)
+                  modules[matching[0]] += 1
+                  if any(case.find(tag) is not None for tag in ("skipped", "failure", "error")):
+                      problems.append(f"nonpassing unit case {classname}::{name}")
+          for module, count in modules.items():
+              print(f"COLLECTED {module}: {count} unit cases", flush=True)
+              if count == 0:
+                  problems.append(f"missing unit module {module}")
+          print(f"COLLECTED total: {len(identities)} unit cases", flush=True)
+          for problem in problems:
+              print(f"COMPLETENESS {problem}", flush=True)
+          raise SystemExit(int(code) or (1 if problems else 0))
+          PY
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        if: always()
+        with:
+          name: builder-confirmed-tool-units
+          path: |
+            builder-confirmed-tool-units.xml
+            builder-confirmed-tool-units.log

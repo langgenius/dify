@@ -31,6 +31,7 @@
   "error.passwordEmpty": "Geslo je obvezno",
   "error.passwordInvalid": "Geslo mora vsebovati črke in številke, dolžina pa mora biti več kot 8 znakov",
   "error.registrationNotAllowed": "Računa ni mogoče najti. Za registracijo se obrnite na skrbnika sistema.",
+  "error.ssoFailed": "Prijava SSO ni uspela. Poskusite znova ali se obrnite na skrbnika.",
   "explore": "Razišči Dify",
   "forget": "Ste pozabili geslo?",
   "forgotPassword": "Ste pozabili geslo?",

@@ -248,7 +248,7 @@ class PluginToolManager(BasePluginClient):
         message_id: str | None = None,
         *,
         confirmed_dispatch_headers: Mapping[str, str] | None = None,
-    ) -> Generator[ToolInvokeMessage, None, None]:
+    ) -> Generator[ToolInvokeMessage]:
         """
         Invoke the tool with the given tenant, user, plugin, provider, name, credentials and parameters.
 

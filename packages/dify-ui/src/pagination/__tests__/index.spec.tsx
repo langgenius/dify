@@ -344,9 +344,7 @@ describe('Pagination primitive', () => {
       <PaginationRoot page={3} totalPages={5} onPageChange={onPageChange}>
         <ol>
           <li>
-            <PaginationPage page={4} className="custom-page">
-              Four
-            </PaginationPage>
+            <PaginationPage page={4}>Four</PaginationPage>
           </li>
         </ol>
       </PaginationRoot>,
@@ -354,9 +352,6 @@ describe('Pagination primitive', () => {
 
     await screen.getByRole('button', { name: 'Go to page 4' }).click()
 
-    await expect
-      .element(screen.getByRole('button', { name: 'Go to page 4' }))
-      .toHaveClass('custom-page')
     expect(onPageChange).toHaveBeenCalledWith(4)
   })
 

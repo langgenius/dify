@@ -9,7 +9,9 @@ vi.mock('@/features/agent-v2/permissions', () => ({
 }))
 
 vi.mock('@/app/components/workflow/block-selector/agent-selector', () => ({
-  AgentSelectorContent: () => null,
+  AgentSelectorMenu: () => null,
+  AgentSelectorMenuContent: () => null,
+  AgentSelectorMenuTrigger: () => null,
 }))
 
 function renderDetailRosterField(permissionKeys = ['agent.acl.edit']) {

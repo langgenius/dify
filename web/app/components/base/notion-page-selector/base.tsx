@@ -100,6 +100,7 @@ const NotionPageSelector = ({
     isFetching: isFetchingNotionPages,
     isError: isFetchingNotionPagesError,
   } = usePreImportNotionPages({ datasetId, credentialId: currentCredentialId })
+  const notionPages = notionsPages?.notion_info?.flatMap((workspace) => workspace.pages) || []
 
   const pagesMapAndSelectedPagesId: [DataSourceNotionPageMap, Set<string>, Set<string>] =
     useMemo(() => {
@@ -206,7 +207,7 @@ const NotionPageSelector = ({
               value={selectedPagesId}
               disabledValue={pagesMapAndSelectedPagesId[2]}
               searchValue={searchValue}
-              list={notionsPages!.notion_info?.[0]!.pages || []}
+              list={notionPages}
               pagesMap={pagesMapAndSelectedPagesId[0]}
               onSelect={handleSelectPages}
               canPreview={canPreview}

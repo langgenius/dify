@@ -3,21 +3,23 @@ import json
 from collections.abc import Mapping
 from types import SimpleNamespace
 from typing import NoReturn, cast, override
-from unittest.mock import MagicMock, Mock, patch, sentinel
+from unittest.mock import MagicMock, patch, sentinel
 from uuid import uuid4
 
 import pytest
 from pydantic import ValidationError
-from sqlalchemy import Engine
+from sqlalchemy import Engine, Table
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext, InvokeFrom, UserFrom
 from core.dify_builder.execution_policy import BuilderExecutionObservation, BuilderExecutionRecorder
 from core.dify_builder.models import Graph
 from core.dify_builder.real_call_consent import ConsentReceipt
+from core.model_manager import ModelInstance
 from core.plugin.impl.model import PluginModelClient
 from core.plugin.impl.model_runtime import PluginModelRuntime
 from core.plugin.plugin_service import PluginService
+from core.prompt.entities.advanced_prompt_entities import MemoryConfig
 from core.workflow import node_factory
 from core.workflow import template_rendering as workflow_template_rendering
 from core.workflow.llm_node import DifyLLMNode
@@ -33,10 +35,13 @@ from graphon.nodes.llm.entities import LLMNodeData
 from graphon.nodes.llm.node import LLMNode
 from graphon.nodes.llm.runtime_protocols import LLMPollingCapableProtocol
 from graphon.nodes.parameter_extractor.entities import ParameterExtractorNodeData
+from graphon.nodes.question_classifier.entities import QuestionClassifierNodeData
 from graphon.nodes.tool.tool_node import ToolNode
+from graphon.runtime import GraphRuntimeState
 from graphon.variables.segments import ArrayObjectSegment, ObjectSegment, StringSegment
 from models.base import TypeBase
 from models.model import AppMode, Conversation, ConversationFromSource
+from tests.unit_tests.core.model_fixtures import make_model_config, make_model_instance
 from tests.unit_tests.services.dify_builder.test_execution_policy_service import (
     owned as owned,  # noqa: PLC0414 - shared pytest fixture
 )
@@ -52,7 +57,7 @@ from tests.unit_tests.services.dify_builder.test_real_call_consent_service impor
 def memory_session_maker(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> sessionmaker[Session]:
     """Bind node memory lookup to an explicit SQLite session factory."""
 
-    TypeBase.metadata.create_all(sqlite_engine, tables=[Conversation.__table__])
+    TypeBase.metadata.create_all(sqlite_engine, tables=[cast(Table, Conversation.__table__)])
     session_maker = sessionmaker(sqlite_engine, expire_on_commit=False)
     monkeypatch.setattr(node_factory.session_factory, "create_session", session_maker)
     return session_maker
@@ -102,26 +107,24 @@ def _build_llm_model_schema(*, features: list[ModelFeature] | None = None) -> AI
     )
 
 
-class _ModelTypeInstanceStub(LargeLanguageModel):
-    def __init__(self, *, model_runtime: object) -> None:
-        self.model_runtime = model_runtime
-
-
-class _ModelInstanceStub:
+class _ModelInstanceStub(ModelInstance):
     def __init__(
         self,
         *,
-        model_runtime: object,
+        model_runtime: PluginModelRuntime,
         model_schema: AIModelEntity,
     ) -> None:
-        self.provider = "langgenius/openai/openai"
-        self.model_name = "model"
-        self.credentials = {"api_key": "secret"}
-        self.parameters = {}
-        self.stop = ()
-        self.model_type_instance = _ModelTypeInstanceStub(model_runtime=model_runtime)
+        config = make_model_config(provider="langgenius/openai/openai", model="model", mode="chat")
+        config.provider_model_bundle.model_type_instance = LargeLanguageModel(
+            provider_schema=config.provider_model_bundle.configuration.provider,
+            model_runtime=model_runtime,
+        )
+        super().__init__(
+            provider_model_bundle=config.provider_model_bundle, model="model", credentials={"api_key": "secret"}
+        )
         self._model_schema = model_schema
 
+    @override
     def get_model_schema(self) -> AIModelEntity:
         return self._model_schema
 
@@ -186,7 +189,7 @@ class TestFetchMemory:
         result = node_factory.fetch_memory(
             conversation_id="conversation-id",
             app_id="app-id",
-            node_data_memory=object(),
+            node_data_memory=MemoryConfig(window=MemoryConfig.WindowConfig(enabled=False)),
             model_instance=sentinel.model_instance,
         )
 
@@ -203,7 +206,7 @@ class TestFetchMemory:
         result = node_factory.fetch_memory(
             conversation_id="conversation-id",
             app_id="app-id",
-            node_data_memory=object(),
+            node_data_memory=MemoryConfig(window=MemoryConfig.WindowConfig(enabled=False)),
             model_instance=sentinel.model_instance,
         )
 
@@ -229,7 +232,7 @@ class TestFetchMemory:
         result = node_factory.fetch_memory(
             conversation_id="conversation-id",
             app_id="app-id",
-            node_data_memory=object(),
+            node_data_memory=MemoryConfig(window=MemoryConfig.WindowConfig(enabled=False)),
             model_instance=sentinel.model_instance,
         )
 
@@ -365,12 +368,13 @@ class TestDifyNodeFactoryCreateNode:
     def factory(self):
         factory = object.__new__(node_factory.DifyNodeFactory)
         factory.graph_init_params = sentinel.graph_init_params
-        factory.graph_runtime_state = SimpleNamespace(variable_pool=MagicMock())
-        factory._dify_context = SimpleNamespace(
+        factory.graph_runtime_state = MagicMock(spec=GraphRuntimeState, variable_pool=MagicMock())
+        factory._dify_context = DifyRunContext(
             builder_execution=None,
             tenant_id="tenant-id",
             app_id="app-id",
             user_id="user-id",
+            user_from=UserFrom.ACCOUNT,
             invoke_from=InvokeFrom.DEBUGGER,
             app_type=None,
             created_by=None,
@@ -582,7 +586,7 @@ class TestDifyNodeFactoryCreateNode:
                 },
             }
         )
-        wrapped_model_instance = MagicMock(spec=DifyPreparedLLM)
+        wrapped_model_instance = DifyPreparedLLM(make_model_instance(provider="openai", model="gpt-4"))
         memory = sentinel.memory
         factory._build_model_instance_for_llm_node = MagicMock(return_value=sentinel.model_instance)
         factory._build_memory_for_llm_node = MagicMock(return_value=memory)
@@ -611,7 +615,7 @@ class TestDifyNodeFactoryCreateNode:
             request_metadata={"app_id": "app-id"},
         )
         assert kwargs["model_instance"] is wrapped_model_instance
-        assert kwargs["polling_finalizer"] is wrapped_model_instance.finalize_llm_polling
+        assert kwargs["polling_finalizer"] == wrapped_model_instance.finalize_llm_polling
 
     def test_resolve_llm_model_reference_uses_shared_model_and_parameters(self, factory):
         node_data = LLMNodeData.model_validate(
@@ -740,7 +744,7 @@ class TestDifyNodeFactoryCreateNode:
         plugin_runtime = PluginModelRuntime(
             tenant_id="tenant-id",
             user_id="user-id",
-            client=Mock(spec=PluginModelClient),
+            client=PluginModelClient(),
             plugin_service=PluginService,
         )
         model_instance = _ModelInstanceStub(
@@ -768,7 +772,7 @@ class TestDifyNodeFactoryCreateNode:
         plugin_runtime = PluginModelRuntime(
             tenant_id="tenant-id",
             user_id="user-id",
-            client=Mock(spec=PluginModelClient),
+            client=PluginModelClient(),
             plugin_service=PluginService,
         )
         model_instance = _ModelInstanceStub(
@@ -776,8 +780,13 @@ class TestDifyNodeFactoryCreateNode:
             model_schema=_build_llm_model_schema(features=[ModelFeature.POLLING]),
         )
 
+        node_data = (
+            QuestionClassifierNodeData.model_construct(type=node_type)
+            if node_type == BuiltinNodeTypes.QUESTION_CLASSIFIER
+            else ParameterExtractorNodeData.model_construct(type=node_type)
+        )
         wrapped = node_factory.DifyNodeFactory._wrap_model_instance_for_node(
-            node_data=SimpleNamespace(type=node_type),
+            node_data=node_data,
             model_instance=model_instance,
         )
 
@@ -1033,7 +1042,7 @@ class TestDifyNodeFactoryRetrieverAttachmentAccess:
     @pytest.fixture
     def factory(self):
         factory = object.__new__(node_factory.DifyNodeFactory)
-        factory.graph_runtime_state = SimpleNamespace(variable_pool=MagicMock())
+        factory.graph_runtime_state = MagicMock(spec=GraphRuntimeState, variable_pool=MagicMock())
         return factory
 
     def test_retriever_attachment_loader_is_typed_for_llm_node_data_only(self):
@@ -1163,8 +1172,14 @@ class TestDifyNodeFactoryMemory:
     @pytest.fixture
     def factory(self):
         factory = object.__new__(node_factory.DifyNodeFactory)
-        factory._dify_context = SimpleNamespace(app_id="app-id")
-        factory.graph_runtime_state = SimpleNamespace(variable_pool=MagicMock())
+        factory._dify_context = DifyRunContext(
+            tenant_id="tenant-id",
+            app_id="app-id",
+            user_id="user-id",
+            user_from=UserFrom.ACCOUNT,
+            invoke_from=InvokeFrom.DEBUGGER,
+        )
+        factory.graph_runtime_state = MagicMock(spec=GraphRuntimeState, variable_pool=MagicMock())
         return factory
 
     def test_returns_none_when_memory_is_not_configured(self, factory):
@@ -1286,7 +1301,7 @@ class TestNodeConfigErrorsNameTheNode:
     def factory(self):
         factory = object.__new__(node_factory.DifyNodeFactory)
         factory.graph_init_params = sentinel.graph_init_params
-        factory.graph_runtime_state = SimpleNamespace(variable_pool=MagicMock())
+        factory.graph_runtime_state = MagicMock(spec=GraphRuntimeState, variable_pool=MagicMock())
         factory._dify_context = DifyRunContext(
             tenant_id="tenant-id",
             app_id="app-id",
@@ -1338,7 +1353,8 @@ class TestNodeConfigErrorsNameTheNode:
 
     def test_validate_node_config_accepts_the_same_node_once_the_value_is_a_string(self):
         healed = copy.deepcopy(self.ESQ1_303_IF_ELSE_NODE)
-        healed["data"]["cases"][0]["conditions"][0]["value"] = "60"
+        condition = cast(dict[str, object], healed["data"]["cases"][0]["conditions"][0])
+        condition["value"] = "60"
 
         data = node_factory.validate_node_config(healed)
 

@@ -10,11 +10,11 @@ from uuid import UUID
 from flask import Response, request
 from flask_restx import Resource
 from pydantic import AliasChoices, BaseModel, Field, field_validator
-from werkzeug.exceptions import HTTPException, InternalServerError, NotFound, Unauthorized
 
 import services
 from configs import dify_config
 from controllers.common.audio_response import audio_binary_response
+from controllers.common.errors import InternalServerError, NotFoundError, UnauthorizedError
 from controllers.common.fields import (
     AudioBinaryResponse,
     AudioTranscriptResponse,
@@ -46,16 +46,17 @@ from controllers.console.app.error import (
 )
 from controllers.console.app.preview_admission import get_preview_app
 from controllers.console.explore.error import (
-    AppPreviewOwnerUnavailableError as AppPreviewOwnerUnavailableHttpError,
-)
-from controllers.console.explore.error import (
-    AppPreviewSiteUnavailableError as AppPreviewSiteUnavailableHttpError,
-)
-from controllers.console.explore.error import (
+    AgentVersionNotFoundHTTPError,
     AppSuggestedQuestionsAfterAnswerDisabledError,
     NotChatAppError,
     NotCompletionAppError,
     NotWorkflowAppError,
+)
+from controllers.console.explore.error import (
+    AppPreviewOwnerUnavailableError as AppPreviewOwnerUnavailableHttpError,
+)
+from controllers.console.explore.error import (
+    AppPreviewSiteUnavailableError as AppPreviewSiteUnavailableHttpError,
 )
 from controllers.console.explore.trial_app_admission import get_trial_app, get_trial_app_for_stop
 from controllers.console.files import FILE_UPLOAD_PARAMS, upload_file_from_request_context
@@ -82,6 +83,7 @@ from fields.message_fields import SuggestedQuestionsResponse
 from graphon.model_runtime.errors.invoke import InvokeError
 from graphon.variables import SecretVariable, VariableBase
 from libs import helper
+from libs.exception import BaseHTTPException
 from libs.helper import dump_response, to_timestamp, uuid_value
 from libs.stream import close_stream
 from libs.url_utils import normalize_api_base_url
@@ -89,6 +91,7 @@ from machinery.context import RequestContext
 from models.enums import CreatorUserRole
 from models.model import AppMode
 from services.account_errors import AccountNotFoundError
+from services.agent.errors import AgentVersionNotFoundError
 from services.app_definition_query_service import AppDefinitionUnavailableError
 from services.app_preview_query_service import (
     AppPreviewOwnerUnavailableError,
@@ -531,7 +534,7 @@ class TrialAppWorkflowRunApi(Resource):
         except AppDefinitionUnavailableError as error:
             raise AppUnavailableError() from error
         except AccountNotFoundError as error:
-            raise Unauthorized("Account no longer exists.") from error
+            raise UnauthorizedError("Account no longer exists.") from error
         except services.errors.app_model_config.AppModelConfigBrokenError as error:
             raise AppUnavailableError() from error
         except ProviderTokenNotInitError as ex:
@@ -600,9 +603,9 @@ class TrialChatApi(Resource):
         except AppDefinitionUnavailableError as error:
             raise AppUnavailableError() from error
         except AccountNotFoundError as error:
-            raise Unauthorized("Account no longer exists.") from error
+            raise UnauthorizedError("Account no longer exists.") from error
         except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+            raise NotFoundError("Conversation Not Exists.")
         except services.errors.conversation.ConversationCompletedError:
             raise ConversationCompletedError()
         except services.errors.app_model_config.AppModelConfigBrokenError:
@@ -671,11 +674,11 @@ class TrialMessageSuggestedQuestionApi(Resource):
         except AppDefinitionUnavailableError as error:
             raise AppUnavailableError() from error
         except SuggestedQuestionsActorNotFoundError as error:
-            raise Unauthorized("Account no longer exists.") from error
+            raise UnauthorizedError("Account no longer exists.") from error
         except MessageNotExistsError:
-            raise NotFound("Message not found")
+            raise NotFoundError("Message not found")
         except ConversationNotExistsError:
-            raise NotFound("Conversation not found")
+            raise NotFoundError("Conversation not found")
         except SuggestedQuestionsAfterAnswerDisabledError:
             raise AppSuggestedQuestionsAfterAnswerDisabledError()
         except ProviderTokenNotInitError as ex:
@@ -718,7 +721,9 @@ def _trial_audio_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
             raise ProviderModelCurrentlyNotSupportError() from error
         except InvokeError as error:
             raise CompletionRequestError(error.description) from error
-        except (HTTPException, ValueError):
+        except AgentVersionNotFoundError as error:
+            raise AgentVersionNotFoundHTTPError() from error
+        except (BaseHTTPException, ValueError):
             raise
         except Exception as error:
             logger.exception("Trial audio operation failed")
@@ -735,10 +740,17 @@ class TrialChatAudioApi(Resource):
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AudioTranscriptResponse.__name__])
     @console_account_admission()
     @get_trial_app
-    @_trial_audio_errors
     def post(self, request_context: RequestContext, trial_app: TrialAppRef) -> dict[str, object]:
+        # Let Flask handle multipart parsing errors before mapping audio operation failures.
         file = request.files.get("file")
         audio = AudioUpload(stream=file.stream, mime_type=file.mimetype) if file is not None else None
+        return self._transcript_asr(request_context=request_context, trial_app=trial_app, audio=audio)
+
+    @_trial_audio_errors
+    def _transcript_asr(
+        self, *, request_context: RequestContext, trial_app: TrialAppRef, audio: AudioUpload | None
+    ) -> dict[str, object]:
+        """Transcribe an upload; None lets the audio service report a missing file."""
         transcript = application_services().app_audio.transcript_asr(
             app=AudioAppRef(app_id=trial_app.app_id, tenant_id=trial_app.tenant_id, app_mode=trial_app.app_mode),
             audio=audio,
@@ -807,9 +819,9 @@ class TrialCompletionApi(Resource):
         except AppDefinitionUnavailableError as error:
             raise AppUnavailableError() from error
         except AccountNotFoundError as error:
-            raise Unauthorized("Account no longer exists.") from error
+            raise UnauthorizedError("Account no longer exists.") from error
         except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+            raise NotFoundError("Conversation Not Exists.")
         except services.errors.conversation.ConversationCompletedError:
             raise ConversationCompletedError()
         except services.errors.app_model_config.AppModelConfigBrokenError:
@@ -890,7 +902,7 @@ class AppApi(Resource):
         except AppDefinitionUnavailableError as error:
             raise AppUnavailableError() from error
         except AccountNotFoundError as error:
-            raise Unauthorized("Account no longer exists.") from error
+            raise UnauthorizedError("Account no longer exists.") from error
         except AppPreviewSiteUnavailableError as error:
             raise AppPreviewSiteUnavailableHttpError(str(error)) from error
 

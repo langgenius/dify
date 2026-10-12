@@ -174,7 +174,7 @@ def test_quota_managed_non_streaming_invocation_finalizes_reservation() -> None:
     )
     model_instance = manager.get_model_instance("tenant-1", "openai", ModelType.LLM, "gpt-4")
     usage = LLMUsage.empty_usage().model_copy(update={"total_tokens": 12})
-    result = MagicMock(spec=LLMResult, usage=usage)
+    result = LLMResult(model="gpt-4", prompt_messages=[], message=AssistantPromptMessage(content="answer"), usage=usage)
     reservation = MagicMock(commit_before_delivery=True)
 
     invocation_id = str(uuid4())

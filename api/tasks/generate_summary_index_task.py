@@ -11,7 +11,7 @@ from core.db.session_factory import session_factory
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from models.dataset import Dataset, DocumentSegment
 from models.dataset import Document as DatasetDocument
-from services.summary_index_service import SummaryIndexService
+from services.knowledge.summaries.adapters import SummaryIndexAdapter
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +45,13 @@ def generate_summary_index_task(dataset_id: str, document_id: str, segment_ids: 
                 logger.error(click.style(f"Dataset not found: {dataset_id}", fg="red"))
                 return
 
-            document = session.scalar(select(DatasetDocument).where(DatasetDocument.id == document_id).limit(1))
+            document = session.scalar(
+                select(DatasetDocument).where(
+                    DatasetDocument.id == document_id,
+                    DatasetDocument.dataset_id == dataset.id,
+                    DatasetDocument.tenant_id == dataset.tenant_id,
+                )
+            )
             if not document:
                 logger.error(click.style(f"Document not found: {document_id}", fg="red"))
                 return
@@ -85,8 +91,9 @@ def generate_summary_index_task(dataset_id: str, document_id: str, segment_ids: 
             # Determine if only parent chunks should be processed
             only_parent_chunks = dataset.chunk_structure == "parent_child_index"
 
-            # Generate summaries
-            summary_records = SummaryIndexService.generate_summaries_for_document(
+            # Release the task's read transaction before the adapter invokes models.
+            session.commit()
+            summary_records = SummaryIndexAdapter.generate_summaries_for_document(
                 dataset=dataset,
                 document=document,
                 summary_index_setting=summary_index_setting,

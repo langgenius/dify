@@ -30,9 +30,9 @@ def current_account() -> Account:
 
 
 class TestGetRagPipeline:
-    def test_missing_pipeline_id(self):
+    def test_missing_pipeline_id(self) -> None:
         @get_rag_pipeline
-        def dummy_view(**kwargs):
+        def dummy_view(**kwargs: object) -> str:
             return "ok"
 
         with pytest.raises(ValueError, match="missing pipeline_id"):
@@ -43,9 +43,9 @@ class TestGetRagPipeline:
         mocker: MockerFixture,
         database_session: scoped_session[Session],
         current_account: Account,
-    ):
+    ) -> None:
         @get_rag_pipeline
-        def dummy_view(**kwargs):
+        def dummy_view(**kwargs: object) -> str:
             return "ok"
 
         mocker.patch(
@@ -67,7 +67,7 @@ class TestGetRagPipeline:
         mocker: MockerFixture,
         database_session: scoped_session[Session],
         current_account: Account,
-    ):
+    ) -> None:
         pipeline = Pipeline(
             tenant_id="tenant-1",
             name="Test Pipeline",
@@ -75,7 +75,7 @@ class TestGetRagPipeline:
         pipeline.id = "pipeline-1"
 
         @get_rag_pipeline
-        def dummy_view(**kwargs):
+        def dummy_view(**kwargs: object) -> object:
             return kwargs["pipeline"]
 
         mocker.patch(
@@ -95,7 +95,7 @@ class TestGetRagPipeline:
 
     def test_load_rag_pipeline_uses_provided_session(
         self, mocker: MockerFixture, sqlite_session: Session, current_account: Account
-    ):
+    ) -> None:
         pipeline = Pipeline(tenant_id="tenant-id", name="Test Pipeline")
 
         mocker.patch(
@@ -117,11 +117,11 @@ class TestGetRagPipeline:
         mocker: MockerFixture,
         database_session: scoped_session[Session],
         current_account: Account,
-    ):
+    ) -> None:
         pipeline = Pipeline(tenant_id="tenant-id", name="Test Pipeline")
 
         @get_rag_pipeline
-        def dummy_view(**kwargs):
+        def dummy_view(**kwargs: object) -> str:
             assert "pipeline_id" not in kwargs
             return "ok"
 
@@ -145,11 +145,11 @@ class TestGetRagPipeline:
         mocker: MockerFixture,
         database_session: scoped_session[Session],
         current_account: Account,
-    ):
+    ) -> None:
         pipeline = Pipeline(tenant_id="tenant-id", name="Test Pipeline")
 
         @get_rag_pipeline
-        def dummy_view(**kwargs):
+        def dummy_view(**kwargs: object) -> object:
             return kwargs["pipeline"]
 
         mocker.patch(

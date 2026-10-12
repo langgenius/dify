@@ -8,12 +8,13 @@ from unittest.mock import MagicMock, patch
 import pytest
 from sqlalchemy import create_engine, event, insert, select
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
-from werkzeug.exceptions import Forbidden, NotFound
+from werkzeug.exceptions import Forbidden
 
-from controllers.common.rbac import PlainApp, RBACPermission, RBACResourceScope, ResourceIdentity
-from controllers.common.rbac import locators as rbac_locators
+from core.dify_builder.contract import RunStatus
 from core.dify_builder.errors import BusyError, ConflictError, ModelUnavailableError, NotFoundError
 from core.dify_builder.models import Action, Actor
+from core.rbac import RBACPermission, RBACResourceScope
+from extensions.application_services.rbac import build_rbac_resource_queries
 from models import TenantAccountRole
 from models.account import TenantAccountJoin
 from models.agent import Agent, AgentScope, AgentSource, AgentStatus
@@ -22,6 +23,15 @@ from models.model import App, AppMode
 from services.dify_builder import wiring
 from services.dify_builder.service import AppAccess, SessionView
 from services.enterprise.rbac_service import RBACService
+from services.rbac.resource_queries import ResourceQueryService
+
+
+def _rbac_queries(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
+    queries = MagicMock(spec=ResourceQueryService)
+    queries.get_app_agent_binding.return_value = None
+    queries.get_app_maintainer.return_value = None
+    monkeypatch.setattr(wiring, "application_services", lambda: SimpleNamespace(rbac=SimpleNamespace(queries=queries)))
+    return queries
 
 
 def test_session_view_to_dict_projects_only_browser_fields():
@@ -31,7 +41,7 @@ def test_session_view_to_dict_projects_only_browser_fields():
         version=3,
         state="fix.await_verify",
         canvas_read_only=False,
-        run_status="waiting_input",
+        run_status=RunStatus.WAITING_INPUT,
         interrupted=False,
         conversation_last_seq=7,
     )
@@ -121,8 +131,10 @@ def test_error_map():
         {"code": "model_unavailable", "message": "Builder model is unavailable", "recoverable": True},
         400,
     )
-    assert wiring.dify_builder_error_response(NotFoundError("x"))[1] == 404
-    assert wiring.dify_builder_error_response(NotFoundError("x"))[0]["code"] == "not_found"
+    not_found = wiring.dify_builder_error_response(NotFoundError("x"))
+    assert not_found is not None
+    assert not_found[1] == 404
+    assert not_found[0]["code"] == "not_found"
     assert wiring.dify_builder_error_response(ConflictError("x")) == ({"code": "conflict"}, 409)
     assert wiring.dify_builder_error_response(BusyError("x")) == ({"code": "session_busy"}, 409)
     assert wiring.dify_builder_error_response(ValueError("x")) is None  # unknown → caller re-raises
@@ -154,7 +166,8 @@ def authorizer_db(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterator[_
     registry = scoped_session(factory)
     database = SimpleNamespace(session=registry, engine=engine)
     monkeypatch.setattr(wiring, "db", database)
-    monkeypatch.setattr(rbac_locators, "db", database)
+    queries = build_rbac_resource_queries(database_client=factory)
+    monkeypatch.setattr(wiring, "application_services", lambda: SimpleNamespace(rbac=SimpleNamespace(queries=queries)))
     opened: list[int] = [0]
 
     def begin(_conn: object) -> None:
@@ -195,20 +208,12 @@ def test_authorize_app_legacy_requires_tenant_editor_role(
 ) -> None:
     _seed_app(authorizer_db, role=TenantAccountRole.EDITOR)
     monkeypatch.setattr(wiring.dify_config, "RBAC_ENABLED", False)
-    enforce = MagicMock()
-    monkeypatch.setattr(wiring, "enforce_rbac_checks", enforce)
+    check = MagicMock()
+    monkeypatch.setattr(wiring, "check_app_permissions", check)
 
     wiring._authorize_app(Actor(account_id="acc-1", tenant_id="ten-1"), "app-1", AppAccess.EDIT)
 
-    enforce.assert_called_once_with(
-        tenant_id="ten-1",
-        account_id="acc-1",
-        checks=enforce.call_args.kwargs["checks"],
-        path_args={"app_id": "app-1"},
-    )
-    check = enforce.call_args.kwargs["checks"][0]
-    assert check.scene is RBACPermission.APP_EDIT
-    assert isinstance(check.locator, PlainApp)
+    check.assert_not_called()
 
 
 def test_authorize_app_legacy_rejects_non_editor(monkeypatch: pytest.MonkeyPatch, authorizer_db: _AuthorizerDb) -> None:
@@ -232,23 +237,69 @@ def test_authorize_app_rbac_enforces_base_and_operation_permission(
 ) -> None:
     _seed_app(authorizer_db, role=TenantAccountRole.NORMAL)
     monkeypatch.setattr(wiring.dify_config, "RBAC_ENABLED", True)
-    enforce = MagicMock()
-    monkeypatch.setattr(wiring, "enforce_rbac_checks", enforce)
+    queries = _rbac_queries(monkeypatch)
+    check = MagicMock(return_value=True)
+    monkeypatch.setattr(RBACService.CheckAccess, "check", check)
 
     wiring._authorize_app(Actor(account_id="acc-1", tenant_id="ten-1"), "app-1", access)
 
-    assert [item.kwargs["checks"][0].scene for item in enforce.call_args_list] == scenes
+    queries.get_app_agent_binding.assert_called_once_with("ten-1", "app-1")
+    queries.get_app_maintainer.assert_called_once_with("ten-1", "app-1")
+    assert [item.kwargs["scene"] for item in check.call_args_list] == scenes
     assert all(
-        item.kwargs["checks"][0].locator.locate("ten-1", {"app_id": "app-1"})
-        == ResourceIdentity(RBACResourceScope.APP, "app-1")
-        for item in enforce.call_args_list
+        item.args == ("ten-1", "acc-1")
+        and item.kwargs["resource_type"] == RBACResourceScope.APP
+        and item.kwargs["resource_id"] == "app-1"
+        for item in check.call_args_list
     )
-    assert all(
-        item.kwargs["tenant_id"] == "ten-1"
-        and item.kwargs["account_id"] == "acc-1"
-        and item.kwargs["path_args"] == {"app_id": "app-1"}
-        for item in enforce.call_args_list
-    )
+
+
+@pytest.mark.parametrize("edit_allowed", [False, True])
+def test_authorize_app_rbac_requires_both_edit_and_run(
+    monkeypatch: pytest.MonkeyPatch, authorizer_db: _AuthorizerDb, edit_allowed: bool
+) -> None:
+    _seed_app(authorizer_db, role=TenantAccountRole.NORMAL)
+    monkeypatch.setattr(wiring.dify_config, "RBAC_ENABLED", True)
+    _rbac_queries(monkeypatch)
+    check = MagicMock(side_effect=[edit_allowed, False])
+    monkeypatch.setattr(RBACService.CheckAccess, "check", check)
+
+    with pytest.raises(Forbidden):
+        wiring._authorize_app(Actor(account_id="acc-1", tenant_id="ten-1"), "app-1", AppAccess.TEST_AND_RUN)
+
+    assert check.call_count == (2 if edit_allowed else 1)
+
+
+def test_authorize_app_rbac_recognizes_the_app_maintainer(
+    monkeypatch: pytest.MonkeyPatch, authorizer_db: _AuthorizerDb
+) -> None:
+    _seed_app(authorizer_db, role=TenantAccountRole.NORMAL)
+    monkeypatch.setattr(wiring.dify_config, "RBAC_ENABLED", True)
+    queries = _rbac_queries(monkeypatch)
+    queries.get_app_maintainer.return_value = "acc-1"
+    check = MagicMock()
+    monkeypatch.setattr(RBACService.CheckAccess, "check", check)
+
+    wiring._authorize_app(Actor(account_id="acc-1", tenant_id="ten-1"), "app-1", AppAccess.RELEASE)
+
+    check.assert_not_called()
+
+
+def test_authorize_app_rbac_refuses_agent_backed_apps(
+    monkeypatch: pytest.MonkeyPatch, authorizer_db: _AuthorizerDb
+) -> None:
+    _seed_app(authorizer_db, role=TenantAccountRole.NORMAL)
+    monkeypatch.setattr(wiring.dify_config, "RBAC_ENABLED", True)
+    queries = _rbac_queries(monkeypatch)
+    queries.get_app_agent_binding.return_value = MagicMock()
+    check = MagicMock()
+    monkeypatch.setattr(RBACService.CheckAccess, "check", check)
+
+    with pytest.raises(NotFoundError):
+        wiring._authorize_app(Actor(account_id="acc-1", tenant_id="ten-1"), "app-1", AppAccess.EDIT)
+
+    queries.get_app_maintainer.assert_not_called()
+    check.assert_not_called()
 
 
 @pytest.mark.parametrize("app_tenant", ["ten-1", "other-tenant"], ids=["missing", "foreign"])
@@ -412,7 +463,7 @@ def test_actual_enabled_rbac_preserves_plain_app_agent_distinction(
         wiring._authorize_app(Actor(account_id="acc-1", tenant_id="ten-1"), "app-1", AppAccess.EDIT)
         assert checked == [RBACPermission.APP_EDIT]
     else:
-        with pytest.raises(NotFound):
+        with pytest.raises(NotFoundError, match="app not found"):
             wiring._authorize_app(Actor(account_id="acc-1", tenant_id="ten-1"), "app-1", AppAccess.EDIT)
         assert checked == []
     assert not authorizer_db.registry().in_transaction()

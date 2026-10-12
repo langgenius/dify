@@ -5,10 +5,14 @@ import { cn } from '../cn'
 import { formLabelClassName } from '../form-control-shared'
 import { resolveClassName } from '../internals/resolve-class-name'
 
-type SliderValue = number | readonly number[]
-type SliderProps<Value extends SliderValue = SliderValue> = BaseSlider.Root.Props<Value>
+type SliderRootValue = NonNullable<BaseSlider.Root.Props['value']>
+type SliderProps<Value extends SliderRootValue = SliderRootValue> = BaseSlider.Root.Props<Value>
+type SliderChangeEventReason = BaseSlider.Root.ChangeEventReason
+type SliderChangeEventDetails = BaseSlider.Root.ChangeEventDetails
+type SliderCommitEventReason = BaseSlider.Root.CommitEventReason
+type SliderCommitEventDetails = BaseSlider.Root.CommitEventDetails
 
-function Slider<Value extends SliderValue = SliderValue>({
+function Slider<Value extends SliderRootValue = SliderRootValue>({
   className,
   ...props
 }: SliderProps<Value>) {
@@ -36,6 +40,9 @@ function SliderLabel({ className, ...props }: SliderLabelProps) {
     />
   )
 }
+
+type SliderValueProps = BaseSlider.Value.Props
+const SliderValue = BaseSlider.Value
 
 type SliderControlProps = BaseSlider.Control.Props
 
@@ -109,13 +116,26 @@ function SliderThumb({ className, ...props }: SliderThumbProps) {
   )
 }
 
-export { Slider, SliderControl, SliderIndicator, SliderLabel, SliderThumb, SliderTrack }
+export {
+  Slider,
+  SliderControl,
+  SliderIndicator,
+  SliderLabel,
+  SliderThumb,
+  SliderTrack,
+  SliderValue,
+}
 
 export type {
+  SliderChangeEventDetails,
+  SliderChangeEventReason,
+  SliderCommitEventDetails,
+  SliderCommitEventReason,
   SliderControlProps,
   SliderIndicatorProps,
   SliderLabelProps,
   SliderProps,
   SliderThumbProps,
   SliderTrackProps,
+  SliderValueProps,
 }

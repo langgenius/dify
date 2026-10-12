@@ -2,6 +2,7 @@ import type { ChecklistItem } from '../../hooks/use-checklist'
 import type { CommonEdgeType } from '../../types'
 import type { ChecklistErrorPayload } from '@/app/components/workflow-app/components/dify-builder/types'
 import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import {
   Popover,
   PopoverClose,
@@ -148,11 +149,16 @@ const WorkflowChecklist = ({ disabled, showGoTo = true, onItemClick }: WorkflowC
                 </PopoverTitle>
               </div>
               <PopoverClose
-                className="-mt-0.5 -mr-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg"
-                aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              >
-                <span className="i-ri-close-line size-4 text-text-tertiary" aria-hidden="true" />
-              </PopoverClose>
+                render={
+                  <IconButton
+                    size="lg"
+                    aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                    className="-mt-1 -mr-1 shrink-0"
+                  >
+                    <span className="i-ri-close-line size-4" aria-hidden="true" />
+                  </IconButton>
+                }
+              />
             </div>
             {needWarningNodes.length > 0 && (
               <PopoverDescription className="px-1 text-xs/4 text-text-tertiary">

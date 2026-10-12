@@ -24,7 +24,7 @@ from services.auth.api_key_contracts import (
     ApiKeyNotFoundError,
     ApiKeyResourceNotFoundError,
 )
-from services.errors.account import NoPermissionError
+from services.errors.base import NoPermissionError
 from services.knowledge.api_key_service import UnknownDatasetIdsError
 
 API_KEY_EDIT_ROLES = frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR})

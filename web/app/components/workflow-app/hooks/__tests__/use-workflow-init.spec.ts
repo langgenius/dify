@@ -198,6 +198,7 @@ describe('useWorkflowInit', () => {
             nodes: [],
             edges: [],
           },
+          force: true,
         }),
       }),
     )
@@ -230,6 +231,7 @@ describe('useWorkflowInit', () => {
               nodes: [{ id: 'start', data: { type: BlockEnum.Start } }],
               edges: [],
             },
+            force: true,
           }),
         }),
       ),

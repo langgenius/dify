@@ -2,6 +2,7 @@
 
 import json
 import re
+from collections.abc import Sequence
 from copy import deepcopy
 from dataclasses import dataclass, field
 from enum import Enum
@@ -38,6 +39,7 @@ from core.dify_builder.execution_policy import (
 )
 from core.dify_builder.input_schema import start_schema
 from core.dify_builder.models import Actor, Inputs
+from core.rbac import RBACPermission, RBACResourceScope
 from libs.datetime_utils import naive_utc_now
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.dify_builder import (
@@ -49,6 +51,7 @@ from models.dify_builder import (
 from models.model import App
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowRun
 from services.dify_builder.revision import executable_graph_revision, execution_revision
+from services.rbac.resource_queries import ResourceQueryService
 
 _ID_ADAPTER = TypeAdapter(BoundedID)
 _REASON_CODE = re.compile(r"[a-z][a-z0-9_]{0,127}\Z")
@@ -172,26 +175,43 @@ def load_execution_owners(
 
 
 def check_execution_permission(actor: Actor, app_id: str, session_factory: sessionmaker[Session]) -> None:
-    """Use native RBAC service owners with the PlainApp locator semantics.
+    """Require edit and test/run access using the caller's database owner."""
+    if not dify_config.RBAC_ENABLED:
+        return
+    from extensions.application_services.rbac import build_rbac_resource_queries
 
-    The transport helper gives OR semantics to a check list, so require each
-    scene separately. Resource/maintainer reads close before permission RPC.
+    check_app_permissions(
+        actor,
+        app_id,
+        queries=build_rbac_resource_queries(database_client=session_factory),
+        permissions=(RBACPermission.APP_EDIT, RBACPermission.APP_TEST_AND_RUN),
+    )
+
+
+def check_app_permissions(
+    actor: Actor,
+    app_id: str,
+    *,
+    queries: ResourceQueryService,
+    permissions: Sequence[RBACPermission],
+) -> None:
+    """Require every Builder permission with native PlainApp ownership semantics.
+
+    Resource and maintainer reads close before permission RPC. An agent-backed
+    app is ineligible, and the app maintainer already owns its permissions.
     """
     if not dify_config.RBAC_ENABLED:
         return
-    from core.rbac import RBACPermission, RBACResourceScope
     from services.enterprise.rbac_service import RBACService
-    from services.rbac_resource_service import RBACResourceService
 
-    with session_factory() as db:
-        binding = RBACResourceService.get_app_agent_binding(db, actor.tenant_id, app_id)
-        maintainer = RBACResourceService.get_app_maintainer(db, actor.tenant_id, app_id)
+    binding = queries.get_app_agent_binding(actor.tenant_id, app_id)
     if binding is not None:
         raise BuilderExecutionPolicyError("unsupported_workflow")
+    maintainer = queries.get_app_maintainer(actor.tenant_id, app_id)
     if maintainer == actor.account_id:
         return
     try:
-        for scene in (RBACPermission.APP_EDIT, RBACPermission.APP_TEST_AND_RUN):
+        for scene in permissions:
             if not RBACService.CheckAccess.check(
                 actor.tenant_id, actor.account_id, scene=scene, resource_type=RBACResourceScope.APP, resource_id=app_id
             ):

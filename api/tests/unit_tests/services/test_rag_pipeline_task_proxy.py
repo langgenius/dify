@@ -1,7 +1,7 @@
 import json
 import logging
 from datetime import datetime
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, Mock, call, patch
 
 import pytest
 
@@ -26,15 +26,6 @@ class RagPipelineTaskProxyTestDataFactory:
         features.billing.subscription = Mock()
         features.billing.subscription.plan = plan
         return features
-
-    @staticmethod
-    def create_mock_tenant_queue(has_task_key: bool = False) -> Mock:
-        """Create mock TenantIsolatedTaskQueue."""
-        queue = Mock(spec=TenantIsolatedTaskQueue)
-        queue.get_task_key.return_value = "task_key" if has_task_key else None
-        queue.push_tasks = Mock()
-        queue.set_task_waiting_time = Mock()
-        return queue
 
     @staticmethod
     def create_rag_pipeline_invoke_entity(
@@ -226,70 +217,66 @@ class TestRagPipelineTaskProxy:
         assert parsed_json[0]["pipeline_id"] == "pipeline-1"
         assert parsed_json[1]["pipeline_id"] == "pipeline-2"
 
-    @patch("services.rag_pipeline.rag_pipeline_task_proxy.rag_pipeline_run_task")
-    def test_send_to_direct_queue(self, mock_task: MagicMock):
+    def test_send_to_direct_queue(self, tenant_queue_commands: MagicMock):
         """Test _send_to_direct_queue method."""
         # Arrange
         proxy = RagPipelineTaskProxyTestDataFactory.create_rag_pipeline_task_proxy()
-        proxy._tenant_isolated_task_queue = RagPipelineTaskProxyTestDataFactory.create_mock_tenant_queue()
         upload_file_id = "file-123"
-        mock_task.delay = Mock()
+        mock_task = Mock()
 
         # Act
         proxy._send_to_direct_queue(upload_file_id, mock_task)
 
         # If sent to direct queue, tenant_isolated_task_queue should not be called
-        proxy._tenant_isolated_task_queue.push_tasks.assert_not_called()
+        assert all(entry.args[0] != "LPUSH" for entry in tenant_queue_commands.call_args_list)
 
         # Celery should be called directly
         mock_task.delay.assert_called_once_with(
             rag_pipeline_invoke_entities_file_id=upload_file_id, tenant_id="tenant-123"
         )
 
-    @patch("services.rag_pipeline.rag_pipeline_task_proxy.rag_pipeline_run_task")
-    def test_send_to_tenant_queue_with_existing_task_key(self, mock_task: MagicMock):
+    def test_send_to_tenant_queue_with_existing_task_key(self, tenant_queue_commands: MagicMock):
         """Test _send_to_tenant_queue when task key exists."""
         # Arrange
         proxy = RagPipelineTaskProxyTestDataFactory.create_rag_pipeline_task_proxy()
-        proxy._tenant_isolated_task_queue = RagPipelineTaskProxyTestDataFactory.create_mock_tenant_queue(
-            has_task_key=True
-        )
+        tenant_queue_commands.return_value = "task_key"
         upload_file_id = "file-123"
-        mock_task.delay = Mock()
+        mock_task = Mock()
 
         # Act
         proxy._send_to_tenant_queue(upload_file_id, mock_task)
 
         # If task key exists, should push tasks to the queue
-        proxy._tenant_isolated_task_queue.push_tasks.assert_called_once_with([upload_file_id])
+        tenant_queue_commands.assert_any_call("LPUSH", "tenant_self_pipeline_task_queue:tenant-123", upload_file_id)
         # Celery should not be called directly
         mock_task.delay.assert_not_called()
 
-    @patch("services.rag_pipeline.rag_pipeline_task_proxy.rag_pipeline_run_task")
-    def test_send_to_tenant_queue_without_task_key(self, mock_task: MagicMock):
+    def test_send_to_tenant_queue_without_task_key(self, tenant_queue_commands: MagicMock):
         """Test _send_to_tenant_queue when no task key exists."""
         # Arrange
         proxy = RagPipelineTaskProxyTestDataFactory.create_rag_pipeline_task_proxy()
-        proxy._tenant_isolated_task_queue = RagPipelineTaskProxyTestDataFactory.create_mock_tenant_queue(
-            has_task_key=False
-        )
+        tenant_queue_commands.return_value = None
         upload_file_id = "file-123"
-        mock_task.delay = Mock()
+        mock_task = Mock()
 
         # Act
         proxy._send_to_tenant_queue(upload_file_id, mock_task)
 
         # If no task key, should set task waiting time key first
-        proxy._tenant_isolated_task_queue.set_task_waiting_time.assert_called_once()
+        tenant_queue_commands.assert_has_calls(
+            [
+                call("GET", "tenant_pipeline_task:tenant-123", keys=["tenant_pipeline_task:tenant-123"]),
+                call("SETEX", "tenant_pipeline_task:tenant-123", 3600, 1),
+            ]
+        )
         mock_task.delay.assert_called_once_with(
             rag_pipeline_invoke_entities_file_id=upload_file_id, tenant_id="tenant-123"
         )
 
         # The first task should be sent to celery directly, so push tasks should not be called
-        proxy._tenant_isolated_task_queue.push_tasks.assert_not_called()
+        assert all(entry.args[0] != "LPUSH" for entry in tenant_queue_commands.call_args_list)
 
-    @patch("services.rag_pipeline.rag_pipeline_task_proxy.rag_pipeline_run_task")
-    def test_send_to_default_tenant_queue(self, mock_task: MagicMock):
+    def test_send_to_default_tenant_queue(self):
         """Test _send_to_default_tenant_queue method."""
         # Arrange
         proxy = RagPipelineTaskProxyTestDataFactory.create_rag_pipeline_task_proxy()
@@ -300,10 +287,13 @@ class TestRagPipelineTaskProxy:
         proxy._send_to_default_tenant_queue(upload_file_id)
 
         # Assert
-        proxy._send_to_tenant_queue.assert_called_once_with(upload_file_id, mock_task)
+        proxy._send_to_tenant_queue.assert_called_once()
+        sent_file_id, task = proxy._send_to_tenant_queue.call_args.args
+        assert sent_file_id == upload_file_id
+        assert task.task == "tasks.rag_pipeline.rag_pipeline_run_task.rag_pipeline_run_task"
+        assert task.options["queue"] == "pipeline"
 
-    @patch("services.rag_pipeline.rag_pipeline_task_proxy.priority_rag_pipeline_run_task")
-    def test_send_to_priority_tenant_queue(self, mock_task: MagicMock):
+    def test_send_to_priority_tenant_queue(self):
         """Test _send_to_priority_tenant_queue method."""
         # Arrange
         proxy = RagPipelineTaskProxyTestDataFactory.create_rag_pipeline_task_proxy()
@@ -314,10 +304,13 @@ class TestRagPipelineTaskProxy:
         proxy._send_to_priority_tenant_queue(upload_file_id)
 
         # Assert
-        proxy._send_to_tenant_queue.assert_called_once_with(upload_file_id, mock_task)
+        proxy._send_to_tenant_queue.assert_called_once()
+        sent_file_id, task = proxy._send_to_tenant_queue.call_args.args
+        assert sent_file_id == upload_file_id
+        assert task.task == "tasks.rag_pipeline.priority_rag_pipeline_run_task.priority_rag_pipeline_run_task"
+        assert task.options["queue"] == "priority_pipeline"
 
-    @patch("services.rag_pipeline.rag_pipeline_task_proxy.priority_rag_pipeline_run_task")
-    def test_send_to_priority_direct_queue(self, mock_task: MagicMock):
+    def test_send_to_priority_direct_queue(self):
         """Test _send_to_priority_direct_queue method."""
         # Arrange
         proxy = RagPipelineTaskProxyTestDataFactory.create_rag_pipeline_task_proxy()
@@ -328,7 +321,11 @@ class TestRagPipelineTaskProxy:
         proxy._send_to_priority_direct_queue(upload_file_id)
 
         # Assert
-        proxy._send_to_direct_queue.assert_called_once_with(upload_file_id, mock_task)
+        proxy._send_to_direct_queue.assert_called_once()
+        sent_file_id, task = proxy._send_to_direct_queue.call_args.args
+        assert sent_file_id == upload_file_id
+        assert task.task == "tasks.rag_pipeline.priority_rag_pipeline_run_task.priority_rag_pipeline_run_task"
+        assert task.options["queue"] == "priority_pipeline"
 
     @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     @patch("services.rag_pipeline.rag_pipeline_task_proxy.FeatureService")

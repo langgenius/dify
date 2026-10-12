@@ -1,38 +1,13 @@
 import type { ComponentProps, ReactNode } from 'react'
-import { screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import { fetchTracingConfig, fetchTracingStatus, updateTracingStatus } from '@/service/apps'
-import { renderWithAccountProfile as render } from '@/test/console/account-profile'
-import { AppACLPermission } from '@/utils/permission'
 import Panel from '../panel'
 
 const testState = vi.hoisted(() => ({
-  appPermissionKeys: [] as string[],
-  workspacePermissionKeys: [] as string[],
   configButtonProps: [] as Array<{
     readOnly: boolean
     hasConfigured: boolean
   }>,
-}))
-
-vi.mock('@/context/workspace-state', async () => {
-  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
-  return createWorkspaceStateModuleMock(() => ({
-    currentWorkspace: { id: 'workspace-1' },
-  }))
-})
-
-vi.mock('@/next/navigation', () => ({
-  usePathname: () => '/app/app-1/overview',
-}))
-
-vi.mock('@/app/components/app/store', () => ({
-  useStore: vi.fn((selector: (state: { appDetail: { permission_keys: string[] } }) => unknown) =>
-    selector({
-      appDetail: {
-        permission_keys: testState.appPermissionKeys,
-      },
-    }),
-  ),
 }))
 
 vi.mock('@/service/apps', () => ({
@@ -79,24 +54,13 @@ const mockedFetchTracingStatus = vi.mocked(fetchTracingStatus)
 const mockedFetchTracingConfig = vi.mocked(fetchTracingConfig)
 const mockedUpdateTracingStatus = vi.mocked(updateTracingStatus)
 
-const renderPanel = async () => {
-  render(<Panel />)
-
+const renderPanel = async (readOnly = true) => {
+  render(<Panel appId="app-1" readOnly={readOnly} />)
   await screen.findAllByTestId('config-button')
 }
 
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-
-  return createPermissionStateModuleMock(() => ({
-    workspacePermissionKeys: [],
-  }))
-})
-
-describe('Tracing overview panel permissions', () => {
+describe('Tracing overview panel', () => {
   beforeEach(() => {
-    testState.appPermissionKeys = []
-    testState.workspacePermissionKeys = []
     testState.configButtonProps = []
     mockedFetchTracingStatus.mockResolvedValue({
       enabled: false,
@@ -116,7 +80,7 @@ describe('Tracing overview panel permissions', () => {
     vi.clearAllMocks()
   })
 
-  it('marks tracing config as read-only without app monitor or workspace tracking permissions', async () => {
+  it('marks tracing config as read-only when requested by its owner', async () => {
     await renderPanel()
 
     await waitFor(() => {
@@ -127,23 +91,8 @@ describe('Tracing overview panel permissions', () => {
     })
   })
 
-  it('marks tracing config as read-only with app monitor permission only', async () => {
-    testState.appPermissionKeys = [AppACLPermission.Monitor]
-
-    await renderPanel()
-
-    await waitFor(() => {
-      expect(testState.configButtonProps[0]).toMatchObject({
-        readOnly: true,
-        hasConfigured: false,
-      })
-    })
-  })
-
-  it('allows tracing config when app ACL includes tracing config permission', async () => {
-    testState.appPermissionKeys = [AppACLPermission.TracingConfig]
-
-    await renderPanel()
+  it('allows tracing config when the owner grants write access', async () => {
+    await renderPanel(false)
 
     await waitFor(() => {
       expect(testState.configButtonProps[0]).toMatchObject({

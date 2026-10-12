@@ -5,6 +5,12 @@ module-local and publish the complete surface through separate `export { ... }` 
 `export type { ... }` manifests at the bottom of the file. Do not mix scattered inline exports
 with the manifest or use wildcard exports.
 
+## Base UI imports
+
+Import a Base UI part once per module and read its types from that binding's namespace, such as
+`BaseRadio.Root.Props`. Use `import type` only when the module has no runtime use of the part. Do
+not keep a value import and a type import of the same module side by side.
+
 ## React imports
 
 Use React namespace imports throughout this package, including stories and tests. Use
@@ -12,6 +18,15 @@ Use React namespace imports throughout this package, including stories and tests
 `import type * as React from 'react'` when referencing only React types. A runtime namespace
 import also covers React types; do not add separate named type imports. JSX alone does not
 require an explicit React import.
+
+Use namespace imports for `react-dom`, `react-dom/client`, and `react-dom/server` as well.
+Write grouping fragments as `<React.Fragment>` and remove unnecessary fragment wrappers.
+
+## Component writing style
+
+Define named components with function declarations or function expressions. Arrow functions
+remain appropriate for event handlers, render props, and Storybook render callbacks. Name function
+expressions when JavaScript cannot infer their name. Use `event` or `error` instead of `e`.
 
 ## Subpaths and names
 
@@ -53,9 +68,13 @@ A type is not public merely because Base UI names it or an implementation once e
 addition to matching component props, export a type only when it pairs with a public factory or a
 real consumer must name it independently.
 
-State, event details and reasons, actions, controlled-state helpers, context values, render
-helpers, styling helpers, and upstream passthrough aliases are private by default. Public props
-already provide contextual typing for inline render and event callbacks.
+State, controlled-state helpers, context values, render helpers, styling helpers, and upstream
+passthrough aliases are private by default. Public props already provide contextual typing for
+inline render and event callbacks.
+
+Event details and reasons are the exception. A component that aliases or wraps a Base UI part
+re-exports that part's `*EventDetails` and `*EventReason` types under its own name. A composite
+that only uses a part internally does not. `State` and enum namespaces stay private.
 
 Preserve upstream `className` and `style` callbacks. Resolve `className` with the owning Base UI
 part's state before merging default classes with `cn()`, including through composite wrappers.

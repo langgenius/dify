@@ -4,6 +4,7 @@ import type {
 } from '@dify/contracts/api/console/agent/types.gen'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import type { OnFeedback } from '@/app/components/base/chat/types'
+import { Drawer } from '@langgenius/dify-ui/drawer'
 import { QueryClient } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -149,7 +150,9 @@ function renderPanel(log: AgentLogConversationItemResponse, messages: AgentLogMe
 
   render(
     <QueryClientTestProvider queryClient={queryClient}>
-      <AgentLogDetailPanel agentId="agent-1" log={log} onClose={vi.fn()} />
+      <Drawer open>
+        <AgentLogDetailPanel agentId="agent-1" log={log} onClose={vi.fn()} />
+      </Drawer>
     </QueryClientTestProvider>,
   )
 
@@ -195,7 +198,6 @@ describe('AgentLogDetailPanel', () => {
     })
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['agent-logs'] })
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['agent-log-messages'] })
-    expect(mocks.toastSuccess).toHaveBeenCalled()
   })
 
   it('reports operator feedback failures without refreshing log queries', async () => {

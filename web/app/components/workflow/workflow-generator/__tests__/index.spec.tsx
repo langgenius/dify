@@ -166,7 +166,9 @@ describe('WorkflowGeneratorModal', () => {
         'EMPTY_PLAN',
         'GRAPH_CYCLE',
         'INSTRUCTION_TOO_LONG',
+        'INVALID_BRANCH_HANDLE',
         'INVALID_CONTAINER',
+        'INVALID_HTTP_BODY',
         'INVALID_JSON',
         'INVALID_SCHEMA',
         'MISSING_START',
@@ -206,8 +208,10 @@ describe('WorkflowGeneratorModal', () => {
               })
         await user.click(action)
 
+        const messageCode =
+          code === 'INVALID_BRANCH_HANDLE' || code === 'INVALID_HTTP_BODY' ? 'INVALID_SCHEMA' : code
         expect(
-          await screen.findByText(new RegExp(`workflowGenerator\\.errors\\.${code}`, 'i')),
+          await screen.findByText(new RegExp(`workflowGenerator\\.errors\\.${messageCode}`, 'i')),
         ).toBeInTheDocument()
       }
     })

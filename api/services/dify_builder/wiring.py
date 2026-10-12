@@ -9,7 +9,7 @@ import json
 import logging
 import re
 import time
-from collections.abc import Generator, Iterator, Mapping, Sequence
+from collections.abc import Generator, Iterator, Sequence
 from typing import Any
 
 from pydantic import TypeAdapter, ValidationError
@@ -18,28 +18,22 @@ from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
-from controllers.common.rbac import (
-    PlainApp,
-    RBACCheck,
-    RBACPermission,
-    RBACResourceScope,
-    ResourceIdentity,
-    enforce_rbac_checks,
-)
 from core.dify_builder.errors import BadRequestError, BusyError, ConflictError, ModelUnavailableError, NotFoundError
 from core.dify_builder.execution_policy import BuilderExecutionPolicyError
 from core.dify_builder.models import Action, Actor, ConversationItem
+from core.rbac import RBACPermission
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from fields.workflow_stream_fields import WorkflowStreamPayload
 from libs.broadcast_channel.exc import SubscriptionClosedError
 from models import App, TenantAccountJoin, TenantAccountRole
 from services.dify_builder import app_naming, progress_bus, session_lock
 from services.dify_builder.dify_port import WorkflowServiceDifyPort
+from services.dify_builder.execution_policy_service import check_app_permissions
 from services.dify_builder.real_call_consent_service import BuilderRealCallConsentService
 from services.dify_builder.repository import SqlDifyBuilderRepository
 from services.dify_builder.revision import executable_graph_revision
 from services.dify_builder.service import AppAccess, DifyBuilderService, SessionView
-from services.rbac_resource_service import RBACResourceService
 from tasks.dify_builder_advance_task import advance_session
 
 __all__ = [
@@ -68,33 +62,6 @@ def _enqueue(session_id: str, action: Action, actor: Actor, token: str) -> None:
     advance_session.delay(session_id, dataclasses.asdict(action), dataclasses.asdict(actor), token)
 
 
-@dataclasses.dataclass(frozen=True)
-class _AppPermissionFacts:
-    """Detached PlainApp locator facts, resolved through the ordinary resource owner.
-
-    The shared evaluator calls ``locate``/``owner_id`` immediately before its
-    external access check. These methods must therefore do no SQL. Bound Agent
-    Apps (including archived bindings) remain ineligible for PlainApp checks,
-    and the evaluator retains its ordinary maintainer shortcut.
-    """
-
-    tenant_id: str
-    app_id: str
-    is_plain_app: bool
-    maintainer_id: str | None
-    scope = RBACResourceScope.APP
-
-    def locate(self, tenant_id: str, path_args: Mapping[str, object]) -> ResourceIdentity | None:
-        if self.is_plain_app and tenant_id == self.tenant_id and path_args.get("app_id") == self.app_id:
-            return ResourceIdentity(self.scope, self.app_id)
-        return None
-
-    def owner_id(self, tenant_id: str, identity: ResourceIdentity) -> str | None:
-        if tenant_id == self.tenant_id and identity == ResourceIdentity(self.scope, self.app_id):
-            return self.maintainer_id
-        return None
-
-
 def _authorize_app(actor: Actor, app_id: str, access: AppAccess) -> None:
     """Resolve a tenant-owned normal App, then enforce Builder permissions.
 
@@ -104,12 +71,12 @@ def _authorize_app(actor: Actor, app_id: str, access: AppAccess) -> None:
     permission point, matching the existing workflow run/publish routes.
 
     SQL lifetime: the App and membership facts are read and detached in this
-    authorizer's own short session, including the ordinary PlainApp binding
-    and maintainer facts. The session closes before the RBAC evaluator can
-    call the external permission service. The request-scoped session is never
-    read, committed or rolled back here.
+    authorizer's own short session. The migrated resource queries separately
+    own short sessions and return detached Agent binding and maintainer facts
+    to ``check_app_permissions`` before its external permission RPC. No SQL
+    read here spans that RPC; the request-scoped session is never read,
+    committed or rolled back here.
     """
-    locator: PlainApp | _AppPermissionFacts = PlainApp()
     with sessionmaker(bind=db.engine, expire_on_commit=False)() as session:
         trusted_app_id = session.scalar(
             select(App.id).where(App.id == app_id, App.tenant_id == actor.tenant_id, App.status == "normal")
@@ -124,35 +91,29 @@ def _authorize_app(actor: Actor, app_id: str, access: AppAccess) -> None:
             if trusted_app_id is not None
             else None
         )
-        if trusted_app_id is not None and role is not None and dify_config.RBAC_ENABLED:
-            is_plain_app = RBACResourceService.get_app_agent_binding(session, actor.tenant_id, trusted_app_id) is None
-            locator = _AppPermissionFacts(
-                tenant_id=actor.tenant_id,
-                app_id=trusted_app_id,
-                is_plain_app=is_plain_app,
-                maintainer_id=(
-                    RBACResourceService.get_app_maintainer(session, actor.tenant_id, trusted_app_id)
-                    if is_plain_app
-                    else None
-                ),
-            )
     if trusted_app_id is None:
         raise NotFoundError("app not found")
     if role is None or (not dify_config.RBAC_ENABLED and not TenantAccountRole.is_editing_role(role)):
         raise Forbidden()
+    if not dify_config.RBAC_ENABLED:
+        return
 
     scenes = [RBACPermission.APP_EDIT]
     if access == AppAccess.TEST_AND_RUN:
         scenes.append(RBACPermission.APP_TEST_AND_RUN)
     elif access == AppAccess.RELEASE:
         scenes.append(RBACPermission.APP_RELEASE_AND_VERSION)
-    for scene in scenes:
-        enforce_rbac_checks(
-            tenant_id=actor.tenant_id,
-            account_id=actor.account_id,
-            checks=[RBACCheck(scene, locator)],
-            path_args={"app_id": str(trusted_app_id)},
+    try:
+        check_app_permissions(
+            actor,
+            str(trusted_app_id),
+            queries=application_services().rbac.queries,
+            permissions=scenes,
         )
+    except BuilderExecutionPolicyError as error:
+        if error.reason_code == "unsupported_workflow":
+            raise NotFoundError("app not found") from None
+        raise Forbidden() from None
 
 
 def _get_app_revision(app_id: str, actor: Actor) -> str:
@@ -540,7 +501,7 @@ class _ClosingFrameStream:
     spec requires the server to call ``close()`` on the response iterable even on
     an early disconnect."""
 
-    def __init__(self, frames: Generator[str, None, None], subscription) -> None:
+    def __init__(self, frames: Generator[str], subscription) -> None:
         self._frames = frames
         self._subscription = subscription
 
@@ -582,7 +543,7 @@ def stream_advance_frames(
     activated ``subscription`` is closed even when the WSGI server closes the
     response body without ever iterating it -- see _ClosingFrameStream."""
 
-    def _frames() -> Generator[str, None, None]:
+    def _frames() -> Generator[str]:
         try:
             if emit_command_started:
                 yield _event_frame(

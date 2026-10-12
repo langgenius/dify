@@ -19,8 +19,9 @@ from controllers.openapi.auth.requirements import (
     Requirement,
     ResolveCaller,
 )
+from controllers.openapi.auth.resource_access import CheckResourceAccess
 from controllers.openapi.auth.spec import EndpointSpec
-from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject, Subject
+from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject, ResourceAccessSubject, Subject
 from core.logging.context import get_request_id, get_trace_id
 from enums import DeploymentEdition
 from libs.oauth_bearer import AuthContext, reset_auth_ctx, set_auth_ctx
@@ -87,6 +88,10 @@ class _RequiresCurrentCatalog(Requirement):
 
 class AccountPipeline(Pipeline, serves=AccountSubject):
     fixed = (_RequiresCurrentCatalog(), ResolveCaller())
+
+
+class ResourceAccessPipeline(Pipeline, serves=ResourceAccessSubject):
+    fixed = (_RequiresCurrentCatalog(), CheckResourceAccess(), ResolveCaller())
 
 
 class _RequiresEnterprise(Requirement):

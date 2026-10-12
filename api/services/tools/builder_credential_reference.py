@@ -8,11 +8,9 @@ ciphertext, so a same-timestamp rotation still changes them; the HMAC reveals
 nothing about its inputs. ``is_default`` is deliberately excluded: changing the
 workspace default never switches an explicitly pinned credential.
 
-Access reuses the native account visibility filter, then re-establishes the
-documented per-credential semantics exactly, because that generic predicate
-admits any grant row regardless of visibility, tenant or ``has_permission``:
-the owner, legacy NULL-owner and all-team rows are eligible; another member's
-``only_me`` row never is; ``partial_members`` needs the acting member's active
+Access follows the native tenant- and actor-scoped credential policy in the
+caller's session: the owner, legacy NULL-owner and all-team rows are eligible;
+another member's ``only_me`` row never is; ``partial_members`` needs the acting member's active
 builtin-tool grant in this tenant. That effective access is bound into the
 opaque ``CredentialReference.revision`` together with the row primitive, so a
 revoke-then-regrant changes it while other members' grants do not. Later phase
@@ -43,7 +41,6 @@ from models.credential_permission import CredentialType as CredentialPermissionT
 from models.enums import PermissionEnum
 from models.provider_ids import ToolProviderID
 from models.tools import BuiltinToolProvider, ToolOAuthSystemClient, ToolOAuthTenantClient
-from services.credential_permission_service import CredentialPermissionService
 
 OAuthClientSource = Literal["tenant", "system", "missing"]
 AccessBasis = Literal["owner", "legacy_shared", "all_team", "partial_grant"]
@@ -284,14 +281,6 @@ def select_builder_credential(
     query = select(BuiltinToolProvider).where(
         BuiltinToolProvider.id == credential_id,
         BuiltinToolProvider.tenant_id == actor.tenant_id,
-    )
-    query = CredentialPermissionService.apply_account_visibility_filter(
-        query,
-        model_id_column=BuiltinToolProvider.id,
-        model_user_id_column=BuiltinToolProvider.user_id,
-        model_visibility_column=BuiltinToolProvider.visibility,
-        credential_type=CredentialPermissionType.BUILTIN_TOOL_PROVIDER,
-        account_id=actor.account_id,
     )
     row = db.scalar(query)
     if row is None:

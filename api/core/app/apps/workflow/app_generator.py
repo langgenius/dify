@@ -160,7 +160,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         pause_state_config: PauseStateLayerConfig | None = None,
         builder_execution: BuilderExecutionContext | ConfirmedToolExecutionContext | None = None,
         builder_execution_admit: BuilderExecutionAdmission | None = None,
-    ) -> Generator[Mapping[str, Any] | str, None, None]: ...
+    ) -> Generator[Mapping[str, Any] | str]: ...
 
     @overload
     def generate(
@@ -200,7 +200,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         pause_state_config: PauseStateLayerConfig | None = None,
         builder_execution: BuilderExecutionContext | ConfirmedToolExecutionContext | None = None,
         builder_execution_admit: BuilderExecutionAdmission | None = None,
-    ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str, None, None]: ...
+    ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str]: ...
 
     def generate(
         self,
@@ -219,7 +219,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         pause_state_config: PauseStateLayerConfig | None = None,
         builder_execution: BuilderExecutionContext | ConfirmedToolExecutionContext | None = None,
         builder_execution_admit: BuilderExecutionAdmission | None = None,
-    ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str, None, None]:
+    ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str]:
         try:
             if builder_execution is not None and (
                 builder_execution_admit is None
@@ -387,7 +387,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         pause_state_config: PauseStateLayerConfig | None = None,
         variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER,
         response_stream_filter: ResponseStreamFilter | None = None,
-    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
+    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any]]:
         """
         Resume a paused workflow execution using the persisted runtime state.
 
@@ -440,7 +440,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         pause_state_config: PauseStateLayerConfig | None = None,
         response_stream_filter: ResponseStreamFilter | None = None,
         builder_execution_admit: BuilderExecutionAdmission | None = None,
-    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
+    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any]]:
         """
         Generate App response.
 
@@ -550,7 +550,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         streaming: bool = True,
         *,
         session: Session,
-    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
+    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any]]:
         """
         Generate App response.
 
@@ -644,7 +644,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         streaming: bool = True,
         *,
         session: Session,
-    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], None, None]:
+    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any]]:
         """
         Generate App response.
 
@@ -881,11 +881,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         user: Account | EndUser,
         draft_var_saver_factory: DraftVariableSaverFactory,
         stream: bool = False,
-    ) -> (
-        WorkflowAppBlockingResponse
-        | WorkflowAppPausedBlockingResponse
-        | Generator[WorkflowAppStreamResponse, None, None]
-    ):
+    ) -> WorkflowAppBlockingResponse | WorkflowAppPausedBlockingResponse | Generator[WorkflowAppStreamResponse]:
         """
         Handle response.
         :param application_generate_entity: application generate entity
