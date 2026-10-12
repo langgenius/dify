@@ -1,7 +1,6 @@
 import type { HumanInputFilledFormData } from '@/types/workflow'
-import { screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { renderWithAccountProfile as render } from '@/test/console/account-profile'
 import HumanInputFilledFormList from '../human-input-filled-form-list'
 
 it('keeps expansion with the same form when same-Tool submissions are reordered', async () => {
