@@ -73,7 +73,7 @@ function AvatarImage({ className, ...props }: AvatarImageProps) {
 
 type AvatarGroupProps = React.ComponentProps<'span'> & { size?: AvatarSize }
 
-function AvatarGroup({ size = 'md', className, ...props }: AvatarGroupProps) {
+function AvatarGroup({ size, className, ...props }: AvatarGroupProps) {
   return (
     <span
       className={cn(

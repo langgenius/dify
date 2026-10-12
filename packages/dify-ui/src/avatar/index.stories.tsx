@@ -28,7 +28,7 @@ const meta = {
 | \`AvatarGroup\` | Dify visual extension for overlapping children by 4px. Avatars and counts use a 1px panel ring, including inside wrappers. Supplies their default size; explicit child sizes win. Callers control stacking with \`z-index\`. |
 | \`AvatarGroupCount\` | Dify visual extension for caller-provided overflow text such as \`+2\`. Inherits Group size, or defaults to \`md\` (32px) outside a group, matching Avatar. |
 
-Group defaults to \`md\`. Override a grouped ring with \`group-[&]/avatar-group:ring-0\`; ring colors use ordinary \`ring-*\` classes.
+Without an explicit size, children inherit the enclosing group's size or fall back to \`md\`. Override a grouped ring with \`group-[&]/avatar-group:ring-0\`; ring colors use ordinary \`ring-*\` classes.
 
 The first three parts preserve Base UI \`render\`, refs, and state-aware \`className\` / \`style\` props. See the [Base UI Avatar documentation](https://base-ui.com/react/components/avatar) for their underlying API. Group and GroupCount accept native span props; they do not expose Base UI render or state callbacks.
 
