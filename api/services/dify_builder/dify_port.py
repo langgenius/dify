@@ -1082,6 +1082,11 @@ class WorkflowServiceDifyPort:
     def publish(
         self, app_id: str, actor: Actor, *, expected_revision: str, expected_graph_revision: str
     ) -> PublishResult:
+        """Read public Tool declarations before locking the verified publication draft."""
+        with _session_factory()() as read_session:
+            app_to_prepare = load_app(read_session, app_id, actor)
+        workflow_service = WorkflowService()
+        workflow_service.prepare_draft_tool_publish(app_model=app_to_prepare)
         with _session_factory()() as session:
             account = resolve_account(session, actor)
             app = load_app(session, app_id, actor)
@@ -1096,7 +1101,7 @@ class WorkflowServiceDifyPort:
             ):
                 raise HashMismatchError(f"workflow verification is stale: {app_id}")
             # Reselect only this locked identity, even if duplicate draft rows exist.
-            workflow = WorkflowService().publish_workflow(
+            workflow = workflow_service.publish_workflow(
                 session=session,
                 app_model=app,
                 account=account,

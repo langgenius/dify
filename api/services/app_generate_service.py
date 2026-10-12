@@ -41,6 +41,7 @@ from services.errors.app import (
 )
 from services.errors.llm import InvokeRateLimitError
 from services.quota_service import QuotaService, unlimited
+from services.tools.draft_tool_setup import admit_draft_tool_setup
 from services.workflow_service import WorkflowService
 from tasks.app_generate.workflow_execute_task import AppExecutionParams, workflow_based_app_execution_task
 
@@ -286,6 +287,10 @@ class AppGenerateService:
             case AppMode.ADVANCED_CHAT:
                 workflow_id = args.get("workflow_id")
                 workflow = cls._get_workflow(app_model, invoke_from, workflow_id, session=session)
+                if builder_execution is None:
+                    cls._admit_normal_draft_tools(
+                        app_model=app_model, workflow=workflow, user=user, invoke_from=invoke_from
+                    )
 
                 if streaming and workflow_execution_mode == "celery":
                     # Streaming mode: subscribe to SSE and enqueue the execution on first subscriber
@@ -344,6 +349,10 @@ class AppGenerateService:
             case AppMode.WORKFLOW:
                 workflow_id = args.get("workflow_id")
                 workflow = cls._get_workflow(app_model, invoke_from, workflow_id, session=session)
+                if builder_execution is None:
+                    cls._admit_normal_draft_tools(
+                        app_model=app_model, workflow=workflow, user=user, invoke_from=invoke_from
+                    )
                 if builder_execution is not None:
                     restricted_admission_snapshot(workflow, app_model)
                 cls._ensure_workflow_service_mode_available(workflow=workflow, invoke_from=invoke_from)
@@ -403,6 +412,21 @@ class AppGenerateService:
                 raise ValueError(f"Invalid app mode {app_model.mode}")
 
     @staticmethod
+    def _admit_normal_draft_tools(
+        *,
+        app_model: App,
+        workflow: Workflow,
+        user: Account | EndUser,
+        invoke_from: InvokeFrom,
+    ) -> None:
+        """Ordinary draft metadata gate; published delegation and Builder grants stay separate."""
+        if invoke_from != InvokeFrom.DEBUGGER or workflow.version != Workflow.VERSION_DRAFT:
+            return
+        if not isinstance(user, Account):
+            raise ValueError("Draft execution requires the acting workspace member.")
+        admit_draft_tool_setup(tenant_id=app_model.tenant_id, graph=workflow.graph_dict, actor_id=user.id)
+
+    @staticmethod
     def _ensure_workflow_service_mode_available(*, workflow: Workflow, invoke_from: InvokeFrom) -> None:
         if invoke_from not in _MANUAL_WORKFLOW_INVOKE_SOURCES:
             return
@@ -449,6 +473,12 @@ class AppGenerateService:
                 raise ValueError(f"Invalid app mode {app_model.mode}")
             case AppMode.ADVANCED_CHAT:
                 workflow = cls._get_workflow(app_model, InvokeFrom.DEBUGGER, session=session)
+                cls._admit_normal_draft_tools(
+                    app_model=app_model,
+                    workflow=workflow,
+                    user=user,
+                    invoke_from=InvokeFrom.DEBUGGER,
+                )
                 return AdvancedChatAppGenerator.convert_to_event_stream(
                     AdvancedChatAppGenerator().single_iteration_generate(
                         app_model=app_model,
@@ -462,6 +492,12 @@ class AppGenerateService:
                 )
             case AppMode.WORKFLOW:
                 workflow = cls._get_workflow(app_model, InvokeFrom.DEBUGGER, session=session)
+                cls._admit_normal_draft_tools(
+                    app_model=app_model,
+                    workflow=workflow,
+                    user=user,
+                    invoke_from=InvokeFrom.DEBUGGER,
+                )
                 return AdvancedChatAppGenerator.convert_to_event_stream(
                     WorkflowAppGenerator().single_iteration_generate(
                         app_model=app_model,
@@ -494,6 +530,12 @@ class AppGenerateService:
                 raise ValueError(f"Invalid app mode {app_model.mode}")
             case AppMode.ADVANCED_CHAT:
                 workflow = cls._get_workflow(app_model, InvokeFrom.DEBUGGER, session=session)
+                cls._admit_normal_draft_tools(
+                    app_model=app_model,
+                    workflow=workflow,
+                    user=user,
+                    invoke_from=InvokeFrom.DEBUGGER,
+                )
                 return AdvancedChatAppGenerator.convert_to_event_stream(
                     AdvancedChatAppGenerator().single_loop_generate(
                         app_model=app_model,
@@ -507,6 +549,12 @@ class AppGenerateService:
                 )
             case AppMode.WORKFLOW:
                 workflow = cls._get_workflow(app_model, InvokeFrom.DEBUGGER, session=session)
+                cls._admit_normal_draft_tools(
+                    app_model=app_model,
+                    workflow=workflow,
+                    user=user,
+                    invoke_from=InvokeFrom.DEBUGGER,
+                )
                 return AdvancedChatAppGenerator.convert_to_event_stream(
                     WorkflowAppGenerator().single_loop_generate(
                         app_model=app_model,

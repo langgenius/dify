@@ -1343,6 +1343,7 @@ class PublishedWorkflowApi(Resource):
         """
 
         workflow_service = WorkflowService()
+        workflow_service.prepare_draft_tool_publish(app_model=app_model)
         with sessionmaker(db.engine).begin() as session:
             workflow = workflow_service.publish_workflow(
                 session=session,

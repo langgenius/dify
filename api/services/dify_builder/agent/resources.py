@@ -4,8 +4,9 @@ One entry point -- list_tenant_resources -- returns the tenant's configured
 models and datasets and every INSTALLED tool, normalized to id+label. A tool
 is listed whether or not it is authorized; its ``readiness`` is metadata
 readiness: whether a credential row visible to the acting member exists (or
-none is needed), which makes the tool eligible for Builder planning, binding
-and generation. Readiness is computed from credential-row metadata only
+none is needed). Verified installed action schemas are eligible for Builder
+planning, binding and generation even when setup is missing. Readiness is
+computed from credential-row metadata only
 (provider id, owner, visibility) -- never credential values, decryption,
 OAuth refresh, validation or invocation. It is not live credential
 validation, does not pin a ``credential_id``, and grants no runtime
@@ -46,6 +47,9 @@ class ResourceRef:
     # description and tags, used to rank tools against a request.
     description: str = ""
     capability: str = ""
+    # Verified public declaration facts, for draft annotation/native selection.
+    needs_credentials: bool = False
+    plugin_id: str = ""
 
 
 @dataclass(frozen=True)
@@ -130,6 +134,8 @@ def _tool_ref(entry: ToolCatalogueEntry, authorized: set[str] | None) -> Resourc
         readiness=readiness,
         description=description,
         capability=tool_capability_text(entry),
+        needs_credentials=entry.get("needs_credentials", False),
+        plugin_id=entry.get("plugin_id", ""),
     )
 
 

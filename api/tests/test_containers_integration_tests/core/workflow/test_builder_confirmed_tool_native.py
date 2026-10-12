@@ -1221,6 +1221,23 @@ def gmail(
         )
         world.credential_id, world.client_id = credential.id, client.id
 
+    # Normal draft admission now verifies the complete installed catalogue.
+    # Fake only its daemon HTTP transport; transformation, installed-ID checks,
+    # catalogue, scalar credential query and native owners remain real.
+    from tests.unit_tests.services.dify_builder.installed_tool_inventory import FakeToolDaemon, install_fake_daemon
+
+    metadata_daemon = install_fake_daemon(monkeypatch, FakeToolDaemon())
+    metadata_request = metadata_daemon.request
+
+    def public_metadata_request(**kwargs: Any):
+        boundary.mark("draft_schema")
+        payload = boundary.declaration.model_dump(mode="json")
+        payload["declaration"]["identity"]["name"] = boundary.declaration.provider
+        metadata_daemon.providers_by_tenant = {actor.tenant_id: [payload]}
+        return metadata_request(**kwargs)
+
+    monkeypatch.setattr(metadata_daemon, "request", public_metadata_request)
+
     # SYNTHETIC qualification of exactly the fixture declaration's tool schema.
     original_tool = boundary.declaration.declaration.tools[0]
     monkeypatch.setattr(gmail_read_policy, "QUALIFIED_GMAIL_ARTIFACT", SYNTHETIC_ARTIFACT)
@@ -1710,6 +1727,7 @@ def test_ordinary_native_gmail_workflow_stays_ordinary(gmail: Gmail) -> None:
     assert call.headers == {"X-Plugin-ID": PLUGIN, "Content-Type": "application/json"}
     assert call.payload["credentials"] == {"access_token": ACCESS_TOKEN, "refresh_token": REFRESH_TOKEN}
     assert gmail.boundary.count("metadata") == 0
+    assert gmail.boundary.count("draft_schema") > 0
     assert gmail.count(DifyBuilderRealCallConsent) == 0
     with gmail.factory() as session:
         assert session.scalars(select(DifyBuilderExecutionRequest)).first() is None
@@ -1748,6 +1766,8 @@ def test_published_native_gmail_workflow_runs_the_published_graph(gmail: Gmail) 
         )
         published_id, published_graph, published_version = published.id, published.graph, published.version
     assert published_version != Workflow.VERSION_DRAFT
+    schema_reads_at_publish = gmail.boundary.count("draft_schema")
+    assert schema_reads_at_publish > 0
     # The draft moves on after publication; the published run must not see it.
     _edit_tool(gmail, _another_message)
     with gmail.factory() as session:
@@ -1802,6 +1822,7 @@ def test_published_native_gmail_workflow_runs_the_published_graph(gmail: Gmail) 
     assert gmail.boundary.refresh_calls == []
     # No Builder consent, sidecar, metadata read or draft-variable write on the published path.
     assert gmail.boundary.count("metadata") == 0
+    assert gmail.boundary.count("draft_schema") == schema_reads_at_publish
     assert gmail.count(DifyBuilderRealCallConsent) == 0
     with gmail.factory() as session:
         assert session.scalars(select(DifyBuilderExecutionRequest)).first() is None

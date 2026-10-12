@@ -37,6 +37,7 @@ from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, Conversation, EndUser, Message
 from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
 from repositories.factory import DifyAPIRepositoryFactory
+from services.tools.draft_tool_setup import admit_draft_tool_setup
 
 logger = logging.getLogger(__name__)
 
@@ -215,6 +216,13 @@ class _AppRunner:
         session: Session,
     ):
         exec_params = self._exec_params
+        if exec_params.invoke_from == InvokeFrom.DEBUGGER and workflow.version == Workflow.VERSION_DRAFT:
+            if not isinstance(user, Account) or workflow.tenant_id != app.tenant_id or workflow.app_id != app.id:
+                raise ValueError("Draft execution requires the acting workspace member and app.")
+            # Request-time admission can go stale in a queue. Closed read
+            # sessions above supplied the current draft/user; no writes or
+            # native effects precede this fresh worker metadata check.
+            admit_draft_tool_setup(tenant_id=app.tenant_id, graph=workflow.graph_dict, actor_id=user.id)
         if exec_params.app_mode == AppMode.ADVANCED_CHAT:
             return AdvancedChatAppGenerator().generate(
                 app_model=app,
@@ -567,6 +575,15 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
             type(generate_entity),
         )
         return
+
+    if generate_entity.invoke_from == InvokeFrom.DEBUGGER and workflow.version == Workflow.VERSION_DRAFT:
+        if (
+            not isinstance(user, Account)
+            or workflow.tenant_id != app_model.tenant_id
+            or workflow.app_id != app_model.id
+        ):
+            raise ValueError("Draft execution requires the acting workspace member and app.")
+        admit_draft_tool_setup(tenant_id=app_model.tenant_id, graph=workflow.graph_dict, actor_id=user.id)
 
     # The resumed attempt reuses the paused run's task ID, so cancellation
     # signals armed against that ID before or during the pause would abort it

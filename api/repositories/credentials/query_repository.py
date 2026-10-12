@@ -17,6 +17,7 @@ from services.credentials.query import (
     CredentialQuery,
     DatasourceCredentialListItem,
     ModelCredentialRecord,
+    ToolCredentialMetadata,
     ToolCredentialRecord,
     TriggerSubscriptionRecord,
 )
@@ -88,6 +89,58 @@ class CredentialQueryRepository(CredentialQuery):
             )
         with self._session_factory() as session:
             return set(session.scalars(query))
+
+    @override
+    def resolve_tool_credential_metadata(
+        self,
+        *,
+        workspace_id: str,
+        provider: str,
+        legacy_provider: str | None,
+        actor_id: str | None,
+        credential_id: str | None,
+    ) -> ToolCredentialMetadata | None:
+        """Read scalar native selection without borrowing a different visible row."""
+        providers = (provider, legacy_provider) if legacy_provider is not None else (provider,)
+        owner = (BuiltinToolProvider.tenant_id == workspace_id, BuiltinToolProvider.provider.in_(providers))
+        query = select(BuiltinToolProvider.id, BuiltinToolProvider.provider).where(*owner)
+        if credential_id is not None:
+            query = query.where(BuiltinToolProvider.id == credential_id)
+        else:
+            # Native orders only by default/creation time. Refuse tied winners:
+            # a visible row must never mask a hidden equally ranked native row.
+            candidates = (
+                select(
+                    BuiltinToolProvider.id,
+                    BuiltinToolProvider.is_default,
+                    BuiltinToolProvider.created_at,
+                )
+                .where(*owner)
+                .order_by(BuiltinToolProvider.is_default.desc(), BuiltinToolProvider.created_at.asc())
+                .limit(2)
+            )
+            with self._session_factory() as session:
+                rows = session.execute(candidates).all()
+            if not rows or (len(rows) > 1 and rows[0][1:] == rows[1][1:]):
+                return None
+            query = query.where(BuiltinToolProvider.id == rows[0][0])
+        if actor_id is None:
+            query = query.where(
+                or_(BuiltinToolProvider.visibility == PermissionEnum.ALL_TEAM, BuiltinToolProvider.user_id.is_(None))
+            )
+        else:
+            query = apply_credential_visibility_filter_for_actor(
+                query,
+                tenant_id=workspace_id,
+                model_id_column=BuiltinToolProvider.id,
+                model_user_id_column=BuiltinToolProvider.user_id,
+                model_visibility_column=BuiltinToolProvider.visibility,
+                credential_type=CredentialType.BUILTIN_TOOL_PROVIDER,
+                actor_id=actor_id,
+            )
+        with self._session_factory() as session:
+            row = session.execute(query).first()
+            return ToolCredentialMetadata(id=row[0], provider=row[1]) if row is not None else None
 
     @override
     def list_models(self, *, workspace_id: str, provider: str, actor_id: str | None) -> Sequence[ModelCredentialRecord]:

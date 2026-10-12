@@ -38,6 +38,14 @@ class ToolCredentialRecord:
 
 
 @dataclass(frozen=True, slots=True)
+class ToolCredentialMetadata:
+    """Detached identity of an actor-visible native selection; no credential values."""
+
+    id: str
+    provider: str
+
+
+@dataclass(frozen=True, slots=True)
 class TriggerSubscriptionRecord:
     id: str
     name: str
@@ -61,6 +69,28 @@ class CredentialQuery(Protocol):
 
     def list_visible_tool_provider_ids(self, *, workspace_id: str, actor_id: str | None) -> set[str]:
         """Return provider IDs only, without loading credential values."""
+        ...
+
+    def resolve_tool_credential_metadata(
+        self,
+        *,
+        workspace_id: str,
+        provider: str,
+        legacy_provider: str | None,
+        actor_id: str | None,
+        credential_id: str | None,
+    ) -> ToolCredentialMetadata | None:
+        """Select the exact ID, or native default/oldest, then apply visibility.
+
+        ``legacy_provider`` is the installed plugin's native short-name fallback;
+        ``None`` means a hardcoded provider with exact-name selection. An absent
+        credential ID selects the actual native row before actor filtering, so
+        another visible credential cannot replace a hidden default. Ambiguous
+        default/creation-time ties are unavailable; callers can select an exact
+        authorized ID. An absent
+        actor sees only team-shared metadata. ``None`` result means unavailable;
+        query failures propagate and consumers must refuse uncertainty.
+        """
         ...
 
     def list_models(
