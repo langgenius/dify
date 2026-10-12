@@ -47,7 +47,7 @@ async function getNewAccessToken(timeout: number): Promise<void> {
       // it can lead to an infinite loop if the refresh attempt also returns 401.
       // To avoid this, handle token refresh separately in a dedicated function
       // that does not call baseFetch and uses a single retry mechanism.
-      const [error, ret] = await fetchWithRetry(
+      const [error, ret] = await fetchWithRetry(() =>
         globalThis.fetch(`${API_PREFIX}/refresh-token`, {
           method: 'POST',
           credentials: 'include', // Important: include cookies in the request
