@@ -995,7 +995,7 @@ def test_topology_directive_no_longer_steers_away_from_installed_tools():
     assert "example.com" in lowered
 
 
-def test_ready_tool_catalogue_lists_only_ready_tools_and_is_capped(monkeypatch):
+def test_planner_catalogue_includes_setup_tools_and_remains_capped(monkeypatch):
     tools = [resources.ResourceRef(id=f"p/t{i}", label=f"Tool {i}") for i in range(60)]
     tools.append(resources.ResourceRef(id="p/nope", label="Nope", readiness="missing_config"))
     monkeypatch.setattr(
@@ -1007,8 +1007,7 @@ def test_ready_tool_catalogue_lists_only_ready_tools_and_is_capped(monkeypatch):
     out = build.ready_tool_catalogue("t1")
 
     assert len(out) == build._MAX_PLANNER_TOOLS
-    assert all(t.readiness == "ready" for t in out)
-    assert all(t.id != "p/nope" for t in out)
+    assert any(t.id == "p/nope" and t.readiness == "missing_config" for t in out)
 
 
 def test_ready_tool_catalogue_degrades_to_empty_when_the_listing_fails(monkeypatch):
@@ -1359,7 +1358,9 @@ def test_discovery_with_no_model_signal_still_recommends_nothing():
     assert build.discover_resources(model, TENANT_ID, ["tool node posts to chat"]) == []
 
 
-def test_planner_sees_a_relevant_ready_tool_beyond_the_old_name_cap_and_no_setup_tools(installed_tools, monkeypatch):
+def test_planner_sees_relevant_installed_tools_including_delayed_setup_beyond_the_old_name_cap(
+    installed_tools, monkeypatch
+):
     from services.dify_builder.agent.llm_agent import LlmBuilderAgent
 
     _daemon, forbidden = installed_tools
@@ -1376,29 +1377,30 @@ def test_planner_sees_a_relevant_ready_tool_beyond_the_old_name_cap_and_no_setup
     agent.propose_plan_v1({"severity": "high"}, goal_text="Page the on-call responders when an incident opens.")
 
     system = captured["system"]
-    section = system.split("# Installed tools you may name (ready to use)", 1)[1]
+    section = system.split("# Installed tools you may name", 1)[1]
     listed = [line for line in section.splitlines() if line.startswith("- ")]
     assert _PAGER_OPEN in section
-    # a better-worded missing_config tool is never offered as executable
-    assert _PAGER_PLUS not in section
+    # Installation is enough to plan a draft; setup remains a later admission check.
+    assert _PAGER_PLUS in section
+    assert "setup" in section.lower()
     assert _HUDDLE_POST not in section
     assert 0 < len(listed) <= build._MAX_PLANNER_TOOLS
     assert forbidden == []
 
 
 @pytest.mark.usefixtures("installed_tools")
-def test_bind_resources_binds_only_ready_tools():
+def test_bind_resources_retains_installed_tools_requiring_setup():
     plan = ["tool node echoes the ticket", "tool node posts to the team chat"]
 
     bound = build.bind_resources(None, TENANT_ID, plan, [_FREE_ECHO, _HUDDLE_POST])
 
     joined = "\n".join(bound)
     assert f"[{_FREE_ECHO}]" in joined
-    assert _HUDDLE_POST not in joined
+    assert f"[{_HUDDLE_POST}]" in joined
 
 
 @pytest.mark.usefixtures("installed_tools")
-def test_bind_resources_honours_the_actors_credential_visibility(sqlite_session):
+def test_bind_resources_allows_schema_binding_without_borrowing_a_private_credential(sqlite_session):
     from models.enums import PermissionEnum
 
     add_credential(
@@ -1414,7 +1416,8 @@ def test_bind_resources_honours_the_actors_credential_visibility(sqlite_session)
     teammate = build.bind_resources(None, TENANT_ID, plan, [_ONLYME_RUN], account_id=ACCOUNT_A)
 
     assert _ONLYME_RUN in "\n".join(owner)
-    assert _ONLYME_RUN not in "\n".join(teammate)
+    assert _ONLYME_RUN in "\n".join(teammate)
+    assert ACCOUNT_B not in "\n".join(teammate)
 
 
 def _session_model_config():
@@ -1467,7 +1470,7 @@ def _tool_intents(result) -> list[tuple[str, str]]:
 
 
 @pytest.mark.usefixtures("installed_tools")
-def test_build_nodes_restricts_generation_to_the_uncapped_ready_inventory(monkeypatch):
+def test_build_nodes_restricts_generation_to_the_uncapped_installed_inventory(monkeypatch):
     generator = _CapturingGenerator()
     monkeypatch.setattr(build, "WorkflowGeneratorService", generator)
     monkeypatch.setattr(build, "_generator_model_config", lambda *a, **k: _session_model_config())  # noqa: ARG005
@@ -1480,12 +1483,12 @@ def test_build_nodes_restricts_generation_to_the_uncapped_ready_inventory(monkey
     assert ("time", "current_time") in ready
     # every ready filler, not a name-sorted planner window
     assert sum(1 for provider, _tool in ready if provider.startswith("aaa/filler_")) == _FILLER_COUNT
-    assert ("acme/huddle/huddle", "post") not in ready
-    assert ("zeta/pagerplus/pagerplus", "page_oncall") not in ready
+    assert ("acme/huddle/huddle", "post") in ready
+    assert ("zeta/pagerplus/pagerplus", "page_oncall") in ready
 
 
 @pytest.mark.usefixtures("installed_tools")
-def test_build_nodes_ready_inventory_uses_the_actor(sqlite_session, monkeypatch):
+def test_build_nodes_private_credentials_do_not_hide_the_installed_action_schema(sqlite_session, monkeypatch):
     from models.enums import PermissionEnum
 
     add_credential(
@@ -1503,22 +1506,22 @@ def test_build_nodes_ready_inventory_uses_the_actor(sqlite_session, monkeypatch)
     build.build_nodes(TENANT_ID, {}, ["tool node runs"], account_id=ACCOUNT_A)
 
     assert ("acme/onlyme/onlyme", "run") in generator.calls[0]["ready_tool_keys"]
-    assert ("acme/onlyme/onlyme", "run") not in generator.calls[1]["ready_tool_keys"]
+    assert ("acme/onlyme/onlyme", "run") in generator.calls[1]["ready_tool_keys"]
 
 
 @pytest.mark.parametrize(
     ("provider_id", "tool_name", "admitted"),
     [
         ("acme/free/free", "echo", True),  # ready control
-        ("acme/huddle/huddle", "post", False),  # installed, missing_config
+        ("acme/huddle/huddle", "post", True),  # installed, delayed setup
+        ("acme/huddle/huddle", "not_installed", False),
+        ("foreign/huddle/huddle", "post", False),
+        ("acme/notinstalled/notinstalled", "post", False),
     ],
 )
 @pytest.mark.usefixtures("installed_tools")
-def test_build_nodes_never_admits_a_generated_tool_node_outside_the_ready_inventory(
-    monkeypatch, provider_id, tool_name, admitted
-):
-    """Defense in depth: even a generator that ignores the allowlist cannot
-    smuggle a missing_config tool into the applied graph."""
+def test_build_nodes_admits_only_actual_installed_action_schemas(monkeypatch, provider_id, tool_name, admitted):
+    """A generated draft may delay setup, but cannot invent an installed action."""
     generator = _CapturingGenerator(_tool_graph(provider_id, tool_name))
     monkeypatch.setattr(build, "WorkflowGeneratorService", generator)
     monkeypatch.setattr(build, "_generator_model_config", lambda *a, **k: _session_model_config())  # noqa: ARG005
