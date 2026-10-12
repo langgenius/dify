@@ -13,6 +13,11 @@ Installed metadata, qualification constants, tokens and message values are SYNTH
 fixtures; they attest nothing about any installed or deployed artifact, daemon or mailbox, and
 real qualification stays unavailable outside this module.
 
+Concurrency is contained in this module: every case's connections carry server-side SQL deadlines,
+worker threads are joined under one shared deadline with liveness asserted in ``finally``, and a
+worker that still outlives it fails that case and every later case here at setup. Crash cases run
+in a killable forked child.
+
 ``test_stale_recovery_sweep_never_settles_a_fresh_reservation`` is a regression for a known,
 root-owned defect in ``reconcile_stranded`` and is expected to fail until that owner is fixed.
 """
@@ -35,12 +40,14 @@ import pytest
 from flask import Flask
 from pydantic import TypeAdapter
 from sqlalchemy import Engine, event, func, select, text, update
+from sqlalchemy.engine.interfaces import DBAPIConnection
 from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.pool import ConnectionPoolEntry, PoolProxiedConnection
 
 import contexts
 from configs import dify_config
 from core.dify_builder import gmail_read_policy
-from core.dify_builder.errors import BusyError
+from core.dify_builder.errors import BusyError, NotFoundError
 from core.dify_builder.execution_policy import (
     BuilderExecutionContextValue,
     BuilderExecutionPolicyError,
@@ -53,6 +60,7 @@ from core.dify_builder.real_call_consent import ConsentReceipt, InstalledToolBin
 from core.dify_builder.state import PcState
 from core.entities.provider_entities import ProviderConfig, ProviderConfigType
 from core.helper import encrypter
+from core.helper.provider_cache import ToolProviderCredentialsCache
 from core.plugin.entities.oauth import OAuthSchema
 from core.plugin.entities.plugin_daemon import CredentialType, PluginOAuthCredentialsResponse, PluginToolProviderEntity
 from core.plugin.impl.oauth import OAuthHandler
@@ -101,7 +109,6 @@ from services.dify_builder.revision import execution_revision
 from services.dify_builder.serde import context_to_dict
 from tasks import dify_builder_advance_task
 from tasks.dify_builder_advance_task import advance_session
-from tests.test_containers_integration_tests.core.workflow.test_builder_execution_policy_persistence import race
 from tests.test_containers_integration_tests.core.workflow.test_builder_real_call_consent_persistence import (
     MIGRATED_TABLES,
     PLUGIN,
@@ -138,10 +145,24 @@ _REAL_DECRYPT = encrypter.decrypt_token
 
 # Bounds: every wait is finite and every started thread/process is joined, also on failure.
 _HOLD_SECONDS = 60
-_JOIN_SECONDS = 120
 _CHILD_RESULT_SECONDS = 180
 _CHILD_JOIN_SECONDS = 10
 _CRASH_EXIT = 86
+# Server-side deadlines on every connection this module's cases check out (see ``SqlDeadlines``):
+# no SQL statement, lock wait or abandoned transaction can block a worker past them.
+_SQL_DEADLINES = (
+    "SET statement_timeout = 30000",
+    "SET lock_timeout = 20000",
+    "SET idle_in_transaction_session_timeout = 90000",
+)
+# One shared join deadline per supervised group: above every SQL deadline and the 60 s holds,
+# below pytest's 360 s per-case timeout so cleanup still runs inside the case.
+_WORK_SECONDS = 150
+_RACE_START_SECONDS = 10
+# Names of worker threads that outlived their deadline. Python threads cannot be killed, so any
+# entry fails this case in its ``finally`` and every later case of this module at setup, instead
+# of letting a live worker silently share the per-test database and Redis cleanup.
+_LEAKED: list[str] = []
 
 
 # -- external boundary --------------------------------------------------------------------------
@@ -313,6 +334,10 @@ class Boundary:
     invoke_fail_after: int | None = None
     on_refresh: Callable[[], None] | None = None
     on_invoke: Callable[[], None] | None = None
+    # Called at the ordinary credential-cache invalidation, which then raises ``cache_error`` if set
+    # instead of deleting the entry.
+    on_cache_delete: Callable[[], None] | None = None
+    cache_error: Exception | None = None
     # Set only in a forked crash child: the process exits at that boundary.
     crash_at: Literal["refresh", "invoke"] | None = None
     crash_channel: Connection | None = None
@@ -371,6 +396,84 @@ def in_request[T](app: Flask, call: Callable[[], T]) -> Callable[[], T]:
             return call()
 
     return run
+
+
+# -- bounded, failure-safe concurrency containment -----------------------------------------------
+
+
+class SqlDeadlines:
+    """Apply ``_SQL_DEADLINES`` to every connection checked out of the shared engine during a case.
+
+    Session-level settings, committed at checkout so a later rollback cannot drop them. ``close``
+    removes the listener and disposes the pool, so later cases and the per-test cleanup get fresh
+    connections without these settings.
+    """
+
+    def __init__(self, engine: Engine) -> None:
+        self.engine = engine
+        self._listener: Callable[[DBAPIConnection, ConnectionPoolEntry, PoolProxiedConnection], None] = self._apply
+        event.listen(engine, "checkout", self._listener)
+
+    @staticmethod
+    def _apply(dbapi_connection: DBAPIConnection, _record: ConnectionPoolEntry, _proxy: PoolProxiedConnection) -> None:
+        cursor = dbapi_connection.cursor()
+        try:
+            for statement in _SQL_DEADLINES:
+                cursor.execute(statement)
+        finally:
+            cursor.close()
+        dbapi_connection.commit()
+
+    def close(self) -> None:
+        event.remove(self.engine, "checkout", self._listener)
+        self.engine.dispose()
+
+
+def _supervise(threads: list[Thread], *, seconds: float = _WORK_SECONDS) -> list[str]:
+    """Join every started thread within one shared deadline; record and return the ones still alive."""
+    deadline = monotonic() + seconds
+    for thread in threads:
+        if thread.ident is not None:
+            thread.join(timeout=max(0.0, deadline - monotonic()))
+    alive = [thread.name for thread in threads if thread.is_alive()]
+    _LEAKED.extend(alive)
+    return alive
+
+
+def contained_race(*calls: Callable[[], object]) -> list[object]:
+    """The inherited ``race`` semantics with failure-safe bounds (supersedes it in this module).
+
+    All calls start together behind a bounded barrier; a ``BuilderExecutionPolicyError`` becomes
+    its reason code, any other exception is re-raised after every worker was joined. The join and
+    the liveness assertion run in ``finally`` under one shared deadline, and blocking SQL inside
+    the calls is bounded by ``SqlDeadlines``.
+    """
+    barrier = Barrier(len(calls))
+    results: list[object] = [None] * len(calls)
+    errors: list[BaseException] = []
+
+    def run(index: int, call: Callable[[], object]) -> None:
+        try:
+            barrier.wait(timeout=_RACE_START_SECONDS)
+            results[index] = call()
+        except BuilderExecutionPolicyError as error:
+            results[index] = error.reason_code
+        except BaseException as error:
+            errors.append(error)
+
+    threads = [
+        Thread(target=run, args=(index, call), name=f"contained-race-{index}", daemon=True)
+        for index, call in enumerate(calls)
+    ]
+    try:
+        for thread in threads:
+            thread.start()
+    finally:
+        alive = _supervise(threads)
+        assert not alive, f"race workers outlived their {_WORK_SECONDS} s deadline: {alive}"
+    if errors:
+        raise errors[0]
+    return results
 
 
 # -- the seeded Builder world ------------------------------------------------------------------
@@ -586,6 +689,32 @@ class Gmail:
             assert row is not None
             row.encrypted_credentials = ciphertext
 
+    def other_editor(self) -> Actor:
+        """Another authorized editor of the same workspace (not the session's owner)."""
+        with self.factory.begin() as session:
+            other = Account(name="Other editor", email=f"{uuid4()}@example.invalid")
+            session.add(other)
+            session.flush()
+            session.add(
+                TenantAccountJoin(
+                    tenant_id=self.actor.tenant_id, account_id=other.id, role=TenantAccountRole.EDITOR, current=True
+                )
+            )
+            return Actor(account_id=other.id, tenant_id=self.actor.tenant_id)
+
+    def credential_cache(self) -> ToolProviderCredentialsCache:
+        """The ordinary (Redis) credential cache entry the native refresh owner invalidates."""
+        return ToolProviderCredentialsCache(
+            tenant_id=self.actor.tenant_id, provider=PROVIDER, credential_id=self.credential_id
+        )
+
+    def make_refresh_due(self) -> None:
+        """Due for refresh when the Tool node runs (native rule: within 60 seconds of expiry)."""
+        with self.factory.begin() as session:
+            row = session.get(BuiltinToolProvider, self.credential_id)
+            assert row is not None
+            row.expires_at = int(time()) + 45
+
     def credential(self) -> BuiltinToolProvider:
         with self.factory() as session:
             row = session.get(BuiltinToolProvider, self.credential_id)
@@ -610,12 +739,27 @@ def deliveries(monkeypatch: pytest.MonkeyPatch) -> list[Delivery]:
 
 
 @pytest.fixture
+def sql_deadlines(flask_app_with_containers: Flask) -> Iterator[SqlDeadlines]:
+    """Bounded SQL for the whole case: set up before the native owner, removed after it, also on failure."""
+    assert not _LEAKED, f"an earlier case left worker threads alive against the shared fixture: {_LEAKED}"
+    with flask_app_with_containers.app_context():
+        deadlines = SqlDeadlines(db.engine)
+    try:
+        yield deadlines
+    finally:
+        deadlines.close()
+
+
+@pytest.fixture
 def gmail(
+    sql_deadlines: SqlDeadlines,
     native_owner: tuple[sessionmaker[Session], Actor, App, Workflow, str, str],
     flask_app_with_containers: Flask,
     monkeypatch: pytest.MonkeyPatch,
 ) -> Iterator[Gmail]:
     factory, actor, app, workflow, session_id, test_input_id = native_owner
+    # The deadlines bound exactly the engine every native owner and worker of this case uses.
+    assert sql_deadlines.engine is factory.kw["bind"]
     with factory() as session:
         for table, marker in MIGRATED_TABLES.items():
             comment = session.scalar(text("SELECT obj_description(CAST(:t AS regclass), 'pg_class')"), {"t": table})
@@ -756,6 +900,17 @@ def gmail(
     def utcnow() -> datetime:
         return world.clock["now"] or _now()
 
+    original_cache_delete = ToolProviderCredentialsCache.delete
+
+    def cache_delete(cache: ToolProviderCredentialsCache) -> None:
+        # The ordinary credential-cache invalidation (a Redis delete): observed, or failed on demand.
+        boundary.mark("cache_delete")
+        if boundary.on_cache_delete is not None:
+            boundary.on_cache_delete()
+        if boundary.cache_error is not None:
+            raise boundary.cache_error
+        original_cache_delete(cache)
+
     monkeypatch.setattr(real_call_metadata, "resolve_installed_get_message", installed)
     monkeypatch.setattr(PluginService, "is_plugin_verified", verified)
     monkeypatch.setattr(PluginToolManager, "fetch_tool_provider", fetch_tool_provider)
@@ -764,6 +919,7 @@ def gmail(
     monkeypatch.setattr(PluginToolManager, "_request_with_plugin_daemon_response_stream", invoke_stream)
     monkeypatch.setattr(LlmBuilderAgent, "_model", no_model)
     monkeypatch.setattr(real_call_consent_service, "_utcnow", utcnow)
+    monkeypatch.setattr(ToolProviderCredentialsCache, "delete", cache_delete)
     try:
         yield world
         assert boundary.model_calls == []
@@ -825,8 +981,8 @@ def native_claim_candidate(
             outcome["error"] = type(error).__name__
 
     worker = Thread(target=launch, name="held-native-confirmed-run", daemon=True)
-    worker.start()
     try:
+        worker.start()
         assert reached.wait(timeout=_HOLD_SECONDS), "native worker never reached the Tool get_runtime callback"
         run_id, node_execution_id = captured["run"], captured["node"]
         assert run_id
@@ -838,9 +994,10 @@ def native_claim_candidate(
         assert (context.consent_id, context.command_id) == (reserved.consent_id, reserved.command_id)
         yield gmail.service(), context, run_id, node_execution_id
     finally:
+        # Runs on every exit (setup failure, test failure or success): release, bounded join, liveness.
         release.set()
-        worker.join(timeout=_JOIN_SECONDS)
-    assert not worker.is_alive(), "held native worker did not finish"
+        alive = _supervise([worker])
+        assert not alive, f"held native worker outlived its {_WORK_SECONDS} s deadline"
     assert captured.get("released") == "yes"
     assert "error" not in outcome, outcome
     # The held worker's own claim was refused: nothing was decrypted, refreshed or sent.
@@ -935,16 +1092,29 @@ def test_confirmed_native_run_reads_once_without_refresh(gmail: Gmail) -> None:
 
 
 def test_confirmed_native_run_refreshes_once_then_reads(gmail: Gmail) -> None:
-    with gmail.factory.begin() as session:
-        row = session.get(BuiltinToolProvider, gmail.credential_id)
-        assert row is not None
-        # Due for refresh when the Tool node runs (native rule: within 60 seconds of expiry).
-        row.expires_at = int(time()) + 45
+    gmail.make_refresh_due()
     reserved = gmail.reserved()
     before = gmail.credential().encrypted_credentials
+    # A real stale ordinary-cache entry the native refresh owner must remove after its CAS commits.
+    cache = gmail.credential_cache()
+    cache.set({"access_token": "ci-stale-cached-token"})
+    assert cache.get() is not None
+    at_invalidation: dict[str, object] = {}
+
+    def observe_invalidation() -> None:
+        row = gmail.consent(reserved.consent_id)
+        at_invalidation["derived"] = row.derived_credential_revision
+        at_invalidation["invoke_calls"] = len(gmail.boundary.invoke_calls)
+
+    gmail.boundary.on_cache_delete = observe_invalidation
     result = gmail.run(reserved)
 
     _assert_completed_native_run(gmail, reserved, result)
+    # Invalidation ran once, after the CAS committed and before the business dispatch, outside SQL.
+    assert gmail.boundary.count("cache_delete") == 1
+    assert at_invalidation["derived"] is not None
+    assert at_invalidation["invoke_calls"] == 0
+    assert cache.get() is None
     assert len(gmail.boundary.refresh_calls) == 1
     refresh = gmail.boundary.refresh_calls[0]
     assert refresh.path == f"plugin/{gmail.actor.tenant_id}/dispatch/oauth/refresh_credentials"
@@ -955,8 +1125,8 @@ def test_confirmed_native_run_refreshes_once_then_reads(gmail: Gmail) -> None:
     assert len(gmail.boundary.invoke_calls) == 1
     _assert_confirmed_dispatch(gmail, gmail.boundary.invoke_calls[0], REFRESHED)
     order = gmail.boundary.order()
-    assert order.index("refresh") < order.index("invoke")
-    assert_outside_sql(gmail.boundary, "metadata", "decrypt", "refresh", "invoke")
+    assert order.index("refresh") < order.index("cache_delete") < order.index("invoke")
+    assert_outside_sql(gmail.boundary, "metadata", "decrypt", "refresh", "cache_delete", "invoke")
     # The CAS persisted natively re-encrypted refreshed credentials, once.
     credential = gmail.credential()
     assert credential.encrypted_credentials != before
@@ -965,6 +1135,71 @@ def test_confirmed_native_run_refreshes_once_then_reads(gmail: Gmail) -> None:
     consent = gmail.consent(reserved.consent_id)
     assert (consent.refresh_count, consent.business_count) == (1, 1)
     assert consent.derived_credential_revision is not None
+
+
+def test_cache_invalidation_failure_after_refresh_cas_stays_unknown_without_business(gmail: Gmail) -> None:
+    """The refreshed credential is committed, then the ordinary cache cannot be invalidated.
+
+    Only the Redis invalidation fails (after the real CAS); the native refresh owner must close the
+    spent grant unknown before any business dispatch, keep the committed refresh, and never repeat
+    either phase on reconciliation or redelivery.
+    """
+    gmail.make_refresh_due()
+    reserved = gmail.reserved()
+    assert reserved.execution_request_id is not None
+    before = gmail.credential().encrypted_credentials
+    cache = gmail.credential_cache()
+    stale = {"access_token": "ci-stale-cached-token"}
+    cache.set(stale)
+    gmail.boundary.cache_error = ConnectionError(f"redis unavailable: {NATIVE_SECRET}")
+    result = gmail.run(reserved)
+
+    assert len(gmail.boundary.refresh_calls) == 1
+    assert gmail.boundary.invoke_calls == []
+    assert gmail.boundary.count("cache_delete") == 1
+    order = gmail.boundary.order()
+    assert order.index("refresh") < order.index("cache_delete")
+    assert_outside_sql(gmail.boundary, "decrypt", "refresh", "cache_delete")
+    # The real CAS committed the natively re-encrypted refresh before the cache fault; it stays durable.
+    credential = gmail.credential()
+    assert credential.encrypted_credentials != before
+    stored = json.loads(credential.encrypted_credentials or "{}")
+    assert {name: _REAL_DECRYPT(gmail.actor.tenant_id, value) for name, value in stored.items()} == REFRESHED
+    assert cache.get() == stale
+    row = gmail.consent(reserved.consent_id)
+    assert row.derived_credential_revision is not None
+    assert row.business_claimed_at is None
+    assert (row.state, row.outcome_state, row.reason_code, row.refresh_count, row.business_count) == (
+        "unknown",
+        "unknown",
+        "business_not_dispatched",
+        1,
+        0,
+    )
+    assert result.verification is not None
+    assert result.verification.execution_evidence is not None
+    assert result.verification.execution_evidence.safety_outcome == "execution_evidence_unknown"
+    assert_no_secret(repr(result), gmail.builder_state_text())
+
+    # Neither reconciliation nor a redelivered command repeats the refresh or reaches the business phase.
+    gmail.boundary.cache_error = None
+    gmail.make_stale()
+    reconcile_interrupted_sessions()
+    gmail.service().reconcile_terminal_grants(limit=100, lease_held=session_lock.exists)
+    redelivered = gmail.run(reserved)
+    assert redelivered.execution_refusal is not None
+    assert redelivered.execution_refusal.reason_code == "execution_already_launched"
+    after = gmail.consent(reserved.consent_id)
+    assert (after.state, after.reason_code, after.refresh_count, after.business_count) == (
+        "unknown",
+        "business_not_dispatched",
+        1,
+        0,
+    )
+    assert (len(gmail.boundary.refresh_calls), len(gmail.boundary.invoke_calls)) == (1, 0)
+    assert gmail.boundary.count("cache_delete") == 1
+    assert gmail.credential().encrypted_credentials == credential.encrypted_credentials
+    assert_no_secret(repr(redelivered), gmail.builder_state_text())
 
 
 @pytest.fixture
@@ -1260,16 +1495,24 @@ def test_postgres_tool_claim_has_one_winner(
         )
         return "claimed"
 
-    assert sorted(str(result) for result in race(claim, claim)) == ["claimed", "consent_already_claimed"]
+    assert sorted(str(result) for result in contained_race(claim, claim)) == ["claimed", "consent_already_claimed"]
     row = gmail.consent(context.consent_id)
     assert (row.state, row.native_run_id, row.native_node_execution_id) == ("claimed", run_id, node_execution_id)
-    # A fresh service (another process) can never reopen the committed claim.
-    assert race(claim) == ["consent_already_claimed"]
+
+    def fresh_claim() -> str:
+        BuilderRealCallConsentService(gmail.factory).claim_tool(
+            context=context, node_id=TOOL_NODE, native_run_id=run_id, native_node_execution_id=node_execution_id
+        )
+        return "claimed"
+
+    # A newly constructed service instance on another thread (same process; process-restart
+    # coverage stays with the Task 4 module) cannot reopen the committed claim.
+    assert contained_race(fresh_claim) == ["consent_already_claimed"]
 
 
 def test_duplicate_native_launches_create_one_run(gmail: Gmail) -> None:
     reserved = gmail.reserved()
-    results = race(
+    results = contained_race(
         in_request(gmail.app, lambda: gmail.run(reserved)), in_request(gmail.app, lambda: gmail.run(reserved))
     )
     runs = [result for result in results if isinstance(result, Run)]
@@ -1591,16 +1834,16 @@ def test_same_token_worker_deliveries_activate_once(gmail: Gmail, deliveries: li
 
     def delivery(name: str) -> None:
         try:
-            barrier.wait(timeout=10)
+            barrier.wait(timeout=_RACE_START_SECONDS)
             _deliver(gmail, deliveries[0])()
             outcomes[name] = "returned"
         except BaseException as error:
             outcomes[name] = f"error:{type(error).__name__}"
 
     threads = [Thread(target=delivery, args=(name,), name=f"delivery-{name}", daemon=True) for name in ("a", "b")]
-    for thread in threads:
-        thread.start()
     try:
+        for thread in threads:
+            thread.start()
         assert in_transport.wait(timeout=_HOLD_SECONDS), "no delivery reached the native transport"
         deadline = monotonic() + 30
         while all(thread.is_alive() for thread in threads) and monotonic() < deadline:
@@ -1622,10 +1865,10 @@ def test_same_token_worker_deliveries_activate_once(gmail: Gmail, deliveries: li
         assert gmail.head()[1] == reserved_version
         assert len(gmail.native_runs()) == 1
     finally:
+        # Runs on every exit: release the held winner, one bounded join for both, liveness.
         release.set()
-        for thread in threads:
-            thread.join(timeout=_JOIN_SECONDS)
-    assert not any(thread.is_alive() for thread in threads)
+        alive = _supervise(threads)
+        assert not alive, f"worker deliveries outlived their {_WORK_SECONDS} s deadline: {alive}"
     assert held.get("released") is True
     assert outcomes == {"a": "returned", "b": "returned"}
     # Only the winner released its own lease after its terminal commit.
@@ -1768,17 +2011,7 @@ def test_completed_grant_replays_and_receipts_stay_durable(gmail: Gmail) -> None
     assert reserved.execution_request_id is not None
     _assert_completed_native_run(gmail, reserved, gmail.run(reserved))
     service = gmail.service()
-
-    with gmail.factory.begin() as session:
-        other = Account(name="Other editor", email=f"{uuid4()}@example.invalid")
-        session.add(other)
-        session.flush()
-        session.add(
-            TenantAccountJoin(
-                tenant_id=gmail.actor.tenant_id, account_id=other.id, role=TenantAccountRole.EDITOR, current=True
-            )
-        )
-        other_actor = Actor(account_id=other.id, tenant_id=gmail.actor.tenant_id)
+    other_actor = gmail.other_editor()
     for call in (
         lambda: service.get(actor=other_actor, session_id=gmail.session_id, consent_id=reserved.consent_id),
         lambda: service.reserve_execution(
@@ -1893,6 +2126,79 @@ def test_held_lease_duplicates_never_enqueue_twice(gmail: Gmail, deliveries: lis
     assert len(gmail.native_runs()) == 1
     assert len(gmail.boundary.invoke_calls) == 1
     assert len(deliveries) == 1
+
+
+def test_held_lease_replay_refuses_another_actor_and_a_changed_scope(gmail: Gmail, deliveries: list[Delivery]) -> None:
+    """While the reserved command's dispatch lease is held, the replay branch keeps actor and scope ownership.
+
+    Another authorized editor of the workspace and a changed ``scope_digest`` are refused by the real
+    coordinator and by the replay owner itself; nothing is reserved, enqueued, launched or settled.
+    """
+    decided = gmail.confirmed()
+    first = gmail.execute(decided)
+    assert first.command_id is not None
+    assert len(deliveries) == 1
+    token = deliveries[0][3]
+    head_before = gmail.head()[:2]
+    other_actor = gmail.other_editor()
+    changed_scope = "0" * 64
+    assert changed_scope != decided.scope_digest
+
+    # Another editor: the coordinator refuses the session it does not own; the replay owner the consent.
+    with pytest.raises(NotFoundError):
+        wiring.build_service().execute_confirmed_tool(
+            gmail.session_id,
+            other_actor,
+            consent_id=decided.consent_id,
+            scope_digest=decided.scope_digest,
+            at_version=decided.at_version,
+            idempotency_key="execute-1",
+        )
+    with pytest.raises(BuilderExecutionPolicyError, match="consent_not_found"):
+        gmail.service().replay_execution(
+            actor=other_actor,
+            session_id=gmail.session_id,
+            consent_id=decided.consent_id,
+            scope_digest=decided.scope_digest,
+            at_version=decided.at_version,
+            idempotency_key="execute-1",
+        )
+    # The owner with a changed scope (same key): the held-lease replay refuses the different body.
+    with pytest.raises(BuilderExecutionPolicyError, match="idempotency_conflict"):
+        wiring.build_service().execute_confirmed_tool(
+            gmail.session_id,
+            gmail.actor,
+            consent_id=decided.consent_id,
+            scope_digest=changed_scope,
+            at_version=decided.at_version,
+            idempotency_key="execute-1",
+        )
+    with pytest.raises(BuilderExecutionPolicyError, match="idempotency_conflict"):
+        gmail.service().replay_execution(
+            actor=gmail.actor,
+            session_id=gmail.session_id,
+            consent_id=decided.consent_id,
+            scope_digest=changed_scope,
+            at_version=decided.at_version,
+            idempotency_key="execute-1",
+        )
+
+    assert gmail.lease() == token
+    assert gmail.head()[:2] == head_before
+    assert len(deliveries) == 1
+    assert gmail.count(DifyBuilderExecutionRequest) == 1
+    assert gmail.count(DifyBuilderRealCallConsent) == 1
+    row = gmail.consent(decided.consent_id)
+    assert (row.state, row.command_id, row.execution_request_id, row.claimed_at, row.reason_code) == (
+        "confirmed",
+        first.command_id,
+        first.execution_request_id,
+        None,
+        None,
+    )
+    assert gmail.native_runs() == []
+    for boundary in ("decrypt", "refresh", "invoke"):
+        assert gmail.boundary.count(boundary) == 0, boundary
 
 
 def test_dispatch_coordinator_metadata_read_runs_outside_sql(gmail: Gmail, deliveries: list[Delivery]) -> None:
