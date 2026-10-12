@@ -2,10 +2,11 @@
 
 The missing-feature RED is valid Template refusal, never a future-module import.
 Literal outputs catch incorrect whitespace, operand semantics and byte accounting.
-Only external/effectful owners and deliberate parser faults are replaced.
+Effectful owners, Jinja compilation/rendering and deliberate parser faults are replaced.
 """
 
 from copy import deepcopy
+from unittest.mock import Mock
 
 import pytest
 import yaml
@@ -27,6 +28,26 @@ from tests.unit_tests.core.workflow.graph_engine.test_builder_restricted_native 
     forbid_live as forbid_live,  # noqa: PLC0414
 )
 from tests.unit_tests.services.dify_builder.test_execution_policy_service import owned as owned  # noqa: PLC0414
+
+
+@pytest.fixture(autouse=True)
+def no_jinja_compilation(monkeypatch):
+    """Restricted rendering interprets finite AST only; lex/parse stay real."""
+    from jinja2 import Environment, Template
+
+    spies = []
+    for owner, names in (
+        (Environment, ("from_string", "compile", "compile_expression", "compile_templates", "_generate", "_compile")),
+        (Template, ("render", "generate", "render_async", "generate_async")),
+    ):
+        for name in names:
+            spy = Mock(side_effect=AssertionError(f"Jinja compilation/rendering reached: {name}"))
+            monkeypatch.setattr(owner, name, spy)
+            spies.append(spy)
+    yield
+    # Assert even if a renderer catches the forbidden call and reports failure.
+    for spy in spies:
+        spy.assert_not_called()
 
 
 def template_graph(template=None, names=("subject", "body")):
