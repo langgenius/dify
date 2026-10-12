@@ -278,10 +278,17 @@ def test_native_default_hidden_credential_is_not_replaced_by_some_visible_creden
         provider="huddle" if hidden_selection == "legacy-short-default" else AUTH_PROVIDER,
         user_id=ACCOUNT_B,
         visibility=PermissionEnum.ONLY_ME,
+        name="Hidden native selection",
     )
     hidden.is_default = hidden_selection != "oldest"
     hidden.created_at = datetime(2026, 10, 1)
-    visible = add_credential(sqlite_session, tenant_id=TENANT_ID, provider=AUTH_PROVIDER, user_id=ACCOUNT_A)
+    visible = add_credential(
+        sqlite_session,
+        tenant_id=TENANT_ID,
+        provider=AUTH_PROVIDER,
+        user_id=ACCOUNT_A,
+        name="Actor-visible alternative",
+    )
     visible.is_default = False
     visible.created_at = datetime(2026, 10, 2)
     sqlite_session.commit()
@@ -346,7 +353,13 @@ def test_configured_and_credential_free_drafts_reach_native_dispatch_without_rem
     if configured == "credential-free":
         set_tool(native_draft, sqlite_session, provider_id=FREE_PROVIDER, provider_name=FREE_PROVIDER, tool_name="echo")
     else:
-        credential = add_credential(sqlite_session, tenant_id=TENANT_ID, provider=AUTH_PROVIDER, user_id=ACCOUNT_A)
+        credential = add_credential(
+            sqlite_session,
+            tenant_id=TENANT_ID,
+            provider=AUTH_PROVIDER,
+            user_id=ACCOUNT_A,
+            name="Explicit actor credential",
+        )
         if configured == "explicit":
             # An explicit authorized selection overrides the hidden default.
             credential.is_default = False
@@ -357,6 +370,7 @@ def test_configured_and_credential_free_drafts_reach_native_dispatch_without_rem
                 provider=AUTH_PROVIDER,
                 user_id=ACCOUNT_B,
                 visibility=PermissionEnum.ONLY_ME,
+                name="Hidden provider default",
             )
             set_tool(native_draft, sqlite_session, credential_id=credential.id)
     statements = record_sql(native_draft.tools.engine)
