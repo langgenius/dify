@@ -95,7 +95,6 @@ function WorkspaceSwitchControls({
                 <DropdownMenuRadioItem<WorkspaceSort>
                   key={option.value}
                   value={option.value}
-                  closeOnClick
                   className="mx-0 h-8 gap-1 px-2 py-1"
                 >
                   <span className="flex size-4 shrink-0 items-center justify-center">
