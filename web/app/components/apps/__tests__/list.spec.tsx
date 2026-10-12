@@ -531,7 +531,7 @@ const openAppTypeSelect = async (user = userEvent.setup()) => {
 }
 
 const openAppSortSelect = async (user = userEvent.setup()) => {
-  await user.click(screen.getByRole('button', { name: 'Sort by Last modified' }))
+  await user.click(screen.getByRole('combobox', { name: 'Sort by' }))
   return user
 }
 
@@ -616,7 +616,7 @@ describe('List', () => {
       const searchInput = screen.getByRole('searchbox', {
         name: 'app.gotoAnything.actions.searchApplications',
       })
-      const sortButton = screen.getByRole('button', { name: 'Sort by Last modified' })
+      const sortButton = screen.getByRole('combobox', { name: 'Sort by' })
       const snippetsLink = screen.getByRole('link', { name: 'app.studio.viewSnippets' })
       const createButton = screen.getByRole('button', { name: 'common.operation.create' })
 
@@ -1240,15 +1240,44 @@ describe('List', () => {
       }
     })
 
-    it('should update app list query when sort option changes', async () => {
+    it.each([
+      ['earliest_created', 'earliest_created', 'Earliest created'],
+      ['invalid', 'last_modified', 'Last modified'],
+    ])('should resolve URL sort %s for the control and query', (urlSort, expectedSort, label) => {
+      renderList(`?sort_by=${urlSort}`)
+
+      expect(screen.getByRole('combobox', { name: 'Sort by' })).toHaveTextContent(label)
+      const options = mockAppListInfiniteOptions.mock.calls.at(-1)?.[0] as AppListInfiniteOptions
+      expect(options.input(1).query.sort_by).toBe(expectedSort)
+    })
+
+    it('should update URL and query sorting while preserving filters and resetting scroll', async () => {
       const user = userEvent.setup()
-      renderList()
+      const { onUrlUpdate } = renderList('?category=workflow&keywords=sales')
+      const scrollContainer = screen.getByRole('region', { name: 'navigation.menus.apps' })
+      const scrollTo = vi.fn()
+      scrollContainer.scrollTo = scrollTo
       await openAppSortSelect(user)
 
-      await user.click(await screen.findByRole('menuitemradio', { name: 'Recently created' }))
+      await user.click(await screen.findByRole('option', { name: 'Recently created' }))
 
       const options = mockAppListInfiniteOptions.mock.calls.at(-1)?.[0] as AppListInfiniteOptions
       expect(options.input(1).query.sort_by).toBe('recently_created')
+      expect(scrollTo).toHaveBeenCalledWith({ top: 0 })
+      await waitFor(() => {
+        const params = onUrlUpdate.mock.calls.at(-1)?.[0].searchParams
+        expect(params?.get('sort_by')).toBe('recently_created')
+        expect(params?.get('category')).toBe('workflow')
+        expect(params?.get('keywords')).toBe('sales')
+      })
+
+      await openAppSortSelect(user)
+      await user.click(await screen.findByRole('option', { name: 'Last modified' }))
+
+      await waitFor(() => {
+        expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.has('sort_by')).toBe(false)
+      })
+      expect(screen.getByRole('combobox', { name: 'Sort by' })).toHaveTextContent('Last modified')
     })
   })
 

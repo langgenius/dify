@@ -431,7 +431,7 @@ export const Complex: Story = {
 }
 
 function DetachedTriggerDemo() {
-  const handle = React.useMemo(() => createDropdownMenuHandle<{ name: string }>(), [])
+  const [handle] = React.useState(() => createDropdownMenuHandle<{ name: string }>())
   const [selected, setSelected] = React.useState('')
   return (
     <React.Fragment>
