@@ -1663,7 +1663,7 @@ export const zPostFormHumanInputV2PublicByFormTokenPath = z.object({
 })
 
 /**
- * Success
+ * Form submitted
  */
 export const zPostFormHumanInputV2PublicByFormTokenResponse = zFormSubmitResponse
 

@@ -1,4 +1,4 @@
-"""Authorize session-backed recipients and commit Human Input v2 approvals."""
+"""Authorize recipients and atomically commit Human Input v2 approvals."""
 
 import hashlib
 from collections.abc import Callable, Mapping
@@ -20,13 +20,27 @@ from graphon.variables.segments import ArrayFileSegment, FileSegment, Segment, S
 from libs.datetime_utils import naive_utc_now
 from models.human_input_v2 import HumanInputForm
 from repositories.factory import DifyAPIRepositoryFactory
-from repositories.human_input_v2.delivery_repository import SubmissionAuthType
+from repositories.human_input_v2.contact import ContactType
+from repositories.human_input_v2.delivery_repository import EmailTargetSnapshot, SubmissionAuthType
 from repositories.human_input_v2.form_repository import Form, FormSubmissionFailure
-from repositories.human_input_v2.recipient_repository import ContactRecipientSubject, EndUserRecipientSubject, Recipient
+from repositories.human_input_v2.recipient_repository import (
+    ContactRecipientSubject,
+    EmailRecipientSubject,
+    EndUserRecipientSubject,
+    Recipient,
+)
 from repositories.human_input_v2.sqlalchemy_contact_repository import SQLAlchemyContactRepository
 from repositories.human_input_v2.sqlalchemy_delivery_repository import SQLAlchemyDeliveryRepository
 from repositories.human_input_v2.sqlalchemy_form_repository import SQLAlchemyFormRepository
 from repositories.human_input_v2.sqlalchemy_recipient_repository import SQLAlchemyRecipientRepository
+from services.human_input_v2.email_otp_service import (
+    EmailOtpError,
+    EmailOtpService,
+    EmailSubject,
+    ExternalContactSubject,
+    OtpFailure,
+    VerifiedEmail,
+)
 
 _STRING = TypeAdapter(str)
 _FILE = TypeAdapter(dict[str, JsonValue])
@@ -70,7 +84,8 @@ class HumanInputSubmissionService:
         def authorize(session: Session) -> tuple[Form, Recipient]:
             return self._authorize_console(session, account_id=account_id, token_hash=token_hash)
 
-        self._submit_form(authorize=authorize, action=action, inputs=inputs)
+        form = self._submit_form(authorize=authorize, action=action, inputs=inputs)
+        self._enqueue_resume(form)
 
     def get_web_app_form(self, *, actor: WebAppFormActor, form_token: str) -> Form:
         token_hash = hashlib.sha256(form_token.encode()).hexdigest()
@@ -88,7 +103,35 @@ class HumanInputSubmissionService:
         def authorize(session: Session) -> tuple[Form, Recipient]:
             return self._authorize_web_app(session, actor=actor, token_hash=token_hash)
 
-        self._submit_form(authorize=authorize, action=action, inputs=inputs)
+        form = self._submit_form(authorize=authorize, action=action, inputs=inputs)
+        self._enqueue_resume(form)
+
+    def submit_public_form(
+        self,
+        *,
+        email_otp_service: EmailOtpService,
+        form_token: str,
+        action: str,
+        inputs: Mapping[str, JsonValue],
+        challenge_token: str | None,
+        otp_code: str | None,
+        ip_address: str | None,
+    ) -> None:
+        # OTP verification accesses Redis and owns failure audits. Complete it
+        # outside the submission transaction and retain proof on rejected writes.
+        verified = email_otp_service.verify(
+            form_token, challenge_token=challenge_token, otp_code=otp_code, ip_address=ip_address
+        )
+
+        def authorize(session: Session) -> tuple[Form, Recipient]:
+            return self._authorize_public(session, verified=verified)
+
+        def audit_submission(session: Session) -> None:
+            verified.add_submission_audit(session, ip_address=ip_address)
+
+        form = self._submit_form(authorize=authorize, action=action, inputs=inputs, after_submission=audit_submission)
+        email_otp_service.cleanup(verified.delivery.id, verified.challenge_token)
+        self._enqueue_resume(form)
 
     def _submit_form(
         self,
@@ -96,7 +139,8 @@ class HumanInputSubmissionService:
         authorize: Callable[[Session], tuple[Form, Recipient]],
         action: str,
         inputs: Mapping[str, JsonValue],
-    ) -> None:
+        after_submission: Callable[[Session], None] | None = None,
+    ) -> Form:
         with self._session_factory() as session:
             form, _ = authorize(session)
         # File reconstruction can access storage or remote URLs. Keep it outside
@@ -132,6 +176,9 @@ class HumanInputSubmissionService:
                     run_id=run.id,
                 ):
                     raise HumanInputFormError(HumanInputFormErrorCode.WORKFLOW_NOT_ACTIVE)
+                # The run lock may have waited for another transaction. Recheck
+                # current recipient authorization before accepting the form.
+                form, recipient = authorize(session)
             result = SQLAlchemyFormRepository(session, form.tenant_id, form.app_id).submit_form(
                 form.id,
                 submitted_by_recipient_id=recipient.id,
@@ -147,7 +194,13 @@ class HumanInputSubmissionService:
                 case FormSubmissionFailure.FORM_EXPIRED | FormSubmissionFailure.GLOBAL_TIMEOUT:
                     raise HumanInputFormError(HumanInputFormErrorCode.EXPIRED)
                 case Form():
-                    pass
+                    form = result
+            if after_submission is not None:
+                after_submission(session)
+        return form
+
+    @staticmethod
+    def _enqueue_resume(form: Form) -> None:
         if form.workflow_run_id is not None:
             from tasks.app_generate.workflow_execute_task import resume_app_execution
 
@@ -197,6 +250,40 @@ class HumanInputSubmissionService:
             raise HumanInputFormError(HumanInputFormErrorCode.NOT_FOUND)
         if recipient.subject.end_user_id != actor.end_user_id:
             raise HumanInputFormError(HumanInputFormErrorCode.NOT_FOUND)
+        _ensure_form_waiting(form)
+        return form, recipient
+
+    @staticmethod
+    def _authorize_public(session: Session, *, verified: VerifiedEmail) -> tuple[Form, Recipient]:
+        delivery = SQLAlchemyDeliveryRepository(session).get_delivery_by_token_hash(verified.delivery.token_hash)
+        if delivery is None or delivery.auth_type != SubmissionAuthType.EMAIL_OTP:
+            raise HumanInputFormError(HumanInputFormErrorCode.NOT_FOUND)
+        if delivery.id != verified.delivery.id or not isinstance(delivery.target_snapshot, EmailTargetSnapshot):
+            raise HumanInputFormError(HumanInputFormErrorCode.NOT_FOUND)
+        form = SQLAlchemyFormRepository(session, delivery.tenant_id, verified.app_id).get_form_by_id(delivery.form_id)
+        if form is None:
+            raise HumanInputFormError(HumanInputFormErrorCode.NOT_FOUND)
+        recipient = SQLAlchemyRecipientRepository(session, form.tenant_id, form.id).get_recipient(delivery.recipient_id)
+        if recipient is None:
+            raise HumanInputFormError(HumanInputFormErrorCode.NOT_FOUND)
+        match verified.subject:
+            case EmailSubject():
+                if not isinstance(recipient.subject, EmailRecipientSubject):
+                    raise HumanInputFormError(HumanInputFormErrorCode.NOT_FOUND)
+                if recipient.subject.email.value != verified.subject.email:
+                    raise EmailOtpError(OtpFailure.STALE)
+            case ExternalContactSubject():
+                if not isinstance(recipient.subject, ContactRecipientSubject):
+                    raise HumanInputFormError(HumanInputFormErrorCode.NOT_FOUND)
+                if recipient.subject.contact_id != verified.subject.contact_id:
+                    raise HumanInputFormError(HumanInputFormErrorCode.NOT_FOUND)
+                contact = SQLAlchemyContactRepository(session).get_contacts_by_id(
+                    form.tenant_id, recipient.subject.contact_id
+                )
+                if contact is None or contact.type != ContactType.EXTERNAL:
+                    raise HumanInputFormError(HumanInputFormErrorCode.NOT_FOUND)
+                if contact.email != verified.subject.email:
+                    raise EmailOtpError(OtpFailure.STALE)
         _ensure_form_waiting(form)
         return form, recipient
 

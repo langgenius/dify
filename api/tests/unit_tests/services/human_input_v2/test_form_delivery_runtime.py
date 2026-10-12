@@ -8,6 +8,7 @@ from uuid import uuid4
 
 import pytest
 import sqlalchemy as sa
+from flask.testing import FlaskClient
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -47,6 +48,7 @@ from models.human_input_v2 import (
 from models.model import EndUser
 from models.workflow import WorkflowPause, WorkflowPauseReason, WorkflowRun
 from repositories.human_input_v2.recipient_repository import ContactRecipientSubject, EmailRecipientSubject
+from services.human_input_v2.email_otp_service import AccessChallenge
 from services.human_input_v2.form_service import (
     AccountInitiator,
     CreatedForm,
@@ -2449,4 +2451,328 @@ def test_web_app_approval_rejects_invalid_payload(context: Context, web_app_appr
     assert response.status_code == status
     with context.sessions() as session:
         assert session.get(HumanInputForm, form_id).status == HumanInputFormStatus.WAITING
+    enqueue.assert_not_called()
+
+
+@dataclass
+class PublicFormApproval:
+    client: FlaskClient
+    form_id: str
+    token: str
+    challenge: AccessChallenge
+    otp_code: str
+    redis: Mock
+
+    def submit(self, *, action: str = "approve", inputs=None, proof=True):
+        body = {"action": action, "inputs": {"note": "Approved"} if inputs is None else inputs}
+        if proof:
+            body.update(challenge_token=self.challenge.challenge_token, otp_code=self.otp_code)
+        return self.client.post(f"/api/form/human-input/v2/public/{self.token}", json=body)
+
+
+@pytest.fixture(params=["email", "external_contact"])
+def public_form_approval(context: Context, monkeypatch, request):
+    import hashlib
+    from unittest.mock import MagicMock
+
+    from flask import Flask
+
+    from controllers.web import human_input_form_access_request as controller
+    from extensions.ext_redis import RedisClientWrapper
+    from extensions.redis_names import serialize_redis_name
+    from libs.external_api import ExternalApi
+    from libs.helper import RateLimiter
+    from models.human_input_v2 import HumanInputAuditEvent
+    from models.model import App, AppMode
+    from repositories.human_input_v2.contact import ExternalContact
+    from repositories.human_input_v2.delivery_repository import (
+        DeliveryCreateParams,
+        EmailTargetSnapshot,
+        SubmissionAuthType,
+    )
+    from repositories.human_input_v2.sqlalchemy_contact_repository import SQLAlchemyContactRepository
+    from repositories.human_input_v2.sqlalchemy_delivery_repository import SQLAlchemyDeliveryRepository
+    from services.human_input_v2.email_otp_service import EmailOtpService, OtpMail
+
+    with context.sessions.begin() as session:
+        App.__table__.create(session.get_bind())
+        HumanInputAuditEvent.__table__.create(session.get_bind(), checkfirst=True)
+        session.add(
+            App(id=_APP, tenant_id=_TENANT, name="Email form", mode=AppMode.WORKFLOW, enable_api=True, enable_site=True)
+        )
+        contact_id = ContactId(str(uuid4()))
+        if request.param == "external_contact":
+            SQLAlchemyContactRepository(session).save_external_contact(
+                _TENANT,
+                ExternalContact(
+                    id=contact_id,
+                    name="Approver",
+                    email="approver@example.com",
+                    avatar_file_id=None,
+                    created_at=naive_utc_now(),
+                ),
+            )
+    recipient = (
+        Contact(contact_id=contact_id)
+        if request.param == "external_contact"
+        else OnetimeEmail(email="approver@example.com")
+    )
+    node_data = _node(recipient).model_dump(mode="json")
+    node_data.update(
+        form_content="Review: {{#$output.note#}}", inputs=[{"type": "paragraph", "output_variable_name": "note"}]
+    )
+    created = context.prepare(HumanInputNodeData.model_validate(node_data))
+    assert isinstance(created, CreatedForm)
+    token = "public-form-test-token"
+    with context.sessions.begin() as session:
+        SQLAlchemyDeliveryRepository(session).create_delivery(
+            tenant_id=_TENANT,
+            form_id=created.form.id,
+            params=DeliveryCreateParams(
+                recipient_id=created.recipients[0].id,
+                token_hash=hashlib.sha256(token.encode()).hexdigest(),
+                auth_type=SubmissionAuthType.EMAIL_OTP,
+                target_snapshot=EmailTargetSnapshot(email_address="approver@example.com"),
+            ),
+        )
+        run = session.get(WorkflowRun, _RUN)
+        run.status = WorkflowExecutionStatus.PAUSED
+        session.add(
+            WorkflowPause(workflow_id=run.workflow_id, workflow_run_id=_RUN, state_object_key="public-checkpoint")
+        )
+    cache: dict[str, bytes] = {}
+    redis = Mock(spec=RedisClientWrapper)
+    pipeline = MagicMock()
+    pipeline.__enter__.return_value = pipeline
+    pipeline.set.side_effect = lambda key, value, **_kwargs: cache.__setitem__(key, str(value).encode())
+    redis.pipeline.return_value = pipeline
+    redis.get.side_effect = lambda key: cache.get(serialize_redis_name(key))
+    redis.ttl.side_effect = lambda key: 600 if serialize_redis_name(key) in cache else -2
+
+    def increment(key):
+        physical = serialize_redis_name(key)
+        if physical not in cache:
+            return None
+        count = int(cache[physical]) + 1
+        cache[physical] = str(count).encode()
+        return count
+
+    def delete(*keys):
+        for key in keys:
+            cache.pop(serialize_redis_name(key), None)
+
+    redis.incr_if_exists.side_effect = increment
+    redis.delete.side_effect = delete
+    limiter = Mock(spec=RateLimiter)
+    limiter.acquire.return_value = 0
+    limiter.retry_after.return_value = 60
+    send = Mock()
+    otp_service = EmailOtpService(
+        session_factory=context.sessions, redis=redis, limiter=limiter, mail=OtpMail(available=lambda: True, send=send)
+    )
+    challenge = otp_service.request_access(token)
+    monkeypatch.setattr(controller, "build_email_otp_service", lambda: otp_service)
+    app = Flask(__name__)
+    ExternalApi(app).add_namespace(controller.web_ns, path="/api")
+    return PublicFormApproval(app.test_client(), created.form.id, token, challenge, send.call_args.args[1], redis)
+
+
+def test_public_form_submission_commits_form_and_audit_before_resuming(
+    context: Context, public_form_approval, monkeypatch
+):
+    import json
+
+    from models.human_input_v2 import HumanInputAuditEvent, OtpVerificationEvent
+    from tasks.app_generate.workflow_execute_task import resume_app_execution
+
+    approval = public_form_approval
+    published = []
+
+    def publish(*, kwargs):
+        with context.sessions() as session:
+            form = session.get(HumanInputForm, approval.form_id)
+            assert form.status == HumanInputFormStatus.SUBMITTED
+            assert json.loads(form.raw_submission_inputs) == {"note": " First "}
+            audit = session.scalars(sa.select(HumanInputAuditEvent)).one()
+            assert isinstance(audit.payload, OtpVerificationEvent)
+            assert audit.payload.succeeded
+            assert audit.payload.recipient_id == form.submitted_by_recipient_id
+            assert audit.payload.recipient_email == "approver@example.com"
+            assert audit.payload.submitter_ip_address == "127.0.0.1"
+            stored_proof = audit.payload.model_dump_json()
+            assert approval.otp_code not in stored_proof
+            assert approval.challenge.challenge_token not in stored_proof
+        assert approval.redis.delete.called
+        published.append(kwargs)
+
+    monkeypatch.setattr(resume_app_execution, "apply_async", publish)
+    accepted = approval.submit(inputs={"note": " First "})
+    assert accepted.status_code == 200, accepted.json
+    assert accepted.json == {}
+    duplicate = approval.submit(inputs={"note": "Second"})
+    assert duplicate.status_code == 412
+    assert duplicate.json["code"] == "human_input_form_submitted"
+    assert published == [{"payload": {"workflow_run_id": _RUN}}]
+
+
+@pytest.mark.parametrize("scenario", ["missing", "wrong_code", "unknown_challenge"])
+def test_public_form_submission_requires_proof(context: Context, public_form_approval, monkeypatch, scenario):
+    from models.human_input_v2 import HumanInputAuditEvent, OtpVerificationEvent
+    from tasks.app_generate.workflow_execute_task import resume_app_execution
+
+    approval = public_form_approval
+    if scenario == "wrong_code":
+        approval.otp_code = "wrong-code"
+    elif scenario == "unknown_challenge":
+        approval.challenge = approval.challenge.model_copy(update={"challenge_token": "unknown-challenge"})
+    enqueue = Mock()
+    monkeypatch.setattr(resume_app_execution, "apply_async", enqueue)
+    response = approval.submit(proof=scenario != "missing")
+    assert response.status_code == 400
+    assert response.json["code"] == (
+        "human_input_challenge_expired" if scenario == "unknown_challenge" else "human_input_invalid_otp"
+    )
+    with context.sessions() as session:
+        assert session.get(HumanInputForm, approval.form_id).status == HumanInputFormStatus.WAITING
+        assert not any(
+            event.payload.succeeded
+            for event in session.scalars(sa.select(HumanInputAuditEvent))
+            if isinstance(event.payload, OtpVerificationEvent)
+        )
+    approval.redis.delete.assert_not_called()
+    enqueue.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("action", "inputs"), [("reject", {"note": "Approved"}), ("approve", {}), ("approve", {"note": 123})]
+)
+def test_public_form_invalid_input_keeps_proof_for_retry(
+    context: Context, public_form_approval, monkeypatch, action, inputs
+):
+    from models.human_input_v2 import HumanInputAuditEvent
+    from tasks.app_generate.workflow_execute_task import resume_app_execution
+
+    approval = public_form_approval
+    enqueue = Mock()
+    monkeypatch.setattr(resume_app_execution, "apply_async", enqueue)
+    rejected = approval.submit(action=action, inputs=inputs)
+    assert rejected.status_code == 400
+    with context.sessions() as session:
+        assert session.get(HumanInputForm, approval.form_id).status == HumanInputFormStatus.WAITING
+        assert session.scalar(sa.select(sa.func.count()).select_from(HumanInputAuditEvent)) == 0
+    approval.redis.delete.assert_not_called()
+    enqueue.assert_not_called()
+    assert approval.submit().status_code == 200
+
+
+@pytest.mark.parametrize("deadline", ["expiration_time", "global_timeout_deadline"])
+def test_public_form_submission_rejects_expiration(context: Context, public_form_approval, monkeypatch, deadline):
+    from tasks.app_generate.workflow_execute_task import resume_app_execution
+
+    approval = public_form_approval
+    with context.sessions.begin() as session:
+        session.execute(
+            sa.update(HumanInputForm)
+            .where(HumanInputForm.id == approval.form_id)
+            .values({deadline: naive_utc_now() - timedelta(seconds=1)})
+        )
+    enqueue = Mock()
+    monkeypatch.setattr(resume_app_execution, "apply_async", enqueue)
+    response = approval.submit()
+    assert response.status_code == 412
+    assert response.json["code"] == "human_input_form_expired"
+    approval.redis.delete.assert_not_called()
+    enqueue.assert_not_called()
+
+
+@pytest.mark.parametrize("scenario", ["running", "missing_pause", "resumed_pause"])
+def test_public_form_submission_requires_active_pause(context: Context, public_form_approval, monkeypatch, scenario):
+    from tasks.app_generate.workflow_execute_task import resume_app_execution
+
+    with context.sessions.begin() as session:
+        pause = session.scalar(sa.select(WorkflowPause))
+        if scenario == "running":
+            session.get(WorkflowRun, _RUN).status = WorkflowExecutionStatus.RUNNING
+        elif scenario == "missing_pause":
+            session.delete(pause)
+        else:
+            pause.resumed_at = naive_utc_now()
+    enqueue = Mock()
+    monkeypatch.setattr(resume_app_execution, "apply_async", enqueue)
+    response = public_form_approval.submit()
+    assert response.status_code == 409
+    assert response.json["code"] == "workflow_not_active"
+    public_form_approval.redis.delete.assert_not_called()
+    enqueue.assert_not_called()
+
+
+def test_public_form_audit_failure_rolls_back_and_keeps_proof(context: Context, public_form_approval, monkeypatch):
+    from models.human_input_v2 import HumanInputAuditEvent
+    from tasks.app_generate.workflow_execute_task import resume_app_execution
+
+    approval = public_form_approval
+    with context.sessions() as session:
+        engine = session.get_bind()
+
+    def fail_audit(_connection, _cursor, statement, _parameters, _execution, _many):
+        if statement.startswith("INSERT INTO hitlv2_audit_events"):
+            raise OSError("Audit storage unavailable")
+
+    enqueue = Mock()
+    monkeypatch.setattr(resume_app_execution, "apply_async", enqueue)
+    sa.event.listen(engine, "before_cursor_execute", fail_audit)
+    try:
+        assert approval.submit().status_code == 500
+    finally:
+        sa.event.remove(engine, "before_cursor_execute", fail_audit)
+    with context.sessions() as session:
+        assert session.get(HumanInputForm, approval.form_id).status == HumanInputFormStatus.WAITING
+        assert session.scalar(sa.select(sa.func.count()).select_from(HumanInputAuditEvent)) == 0
+    approval.redis.delete.assert_not_called()
+    enqueue.assert_not_called()
+    assert approval.submit().status_code == 200
+
+
+@pytest.mark.parametrize("scenario", ["contact_email", "recipient_removed", "delivery_auth", "form_owner"])
+def test_public_form_submission_rechecks_current_authorization(
+    context: Context, public_form_approval, monkeypatch, scenario
+):
+    from models.human_input_v2 import HumanInputAuditEvent
+    from tasks.app_generate.workflow_execute_task import resume_app_execution
+
+    approval = public_form_approval
+    read = approval.redis.get.side_effect
+    changed = False
+
+    def revoke_on_read(key):
+        nonlocal changed
+        stored = read(key)
+        if not changed:
+            changed = True
+            with context.sessions.begin() as session:
+                delivery = session.scalar(sa.select(HumanInputDelivery))
+                recipient = session.get(HumanInputRecipient, delivery.recipient_id)
+                match scenario:
+                    case "contact_email":
+                        if recipient.subject_type == "contact":
+                            session.scalar(sa.select(HumanInputExternalContactProfile)).email = "changed@example.com"
+                        else:
+                            recipient.subject_value = "changed@example.com"
+                    case "recipient_removed":
+                        session.delete(recipient)
+                    case "delivery_auth":
+                        delivery.auth_type = "console"
+                    case "form_owner":
+                        session.get(HumanInputForm, approval.form_id).app_id = str(uuid4())
+        return stored
+
+    approval.redis.get.side_effect = revoke_on_read
+    enqueue = Mock()
+    monkeypatch.setattr(resume_app_execution, "apply_async", enqueue)
+    response = approval.submit()
+    assert response.status_code == (400 if scenario == "contact_email" else 404)
+    with context.sessions() as session:
+        assert session.get(HumanInputForm, approval.form_id).status == HumanInputFormStatus.WAITING
+        assert session.scalar(sa.select(sa.func.count()).select_from(HumanInputAuditEvent)) == 0
+    approval.redis.delete.assert_not_called()
     enqueue.assert_not_called()

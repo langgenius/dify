@@ -12,7 +12,7 @@ from libs.external_api import ExternalApi
 
 @pytest.mark.parametrize(
     ("method", "suffix", "json_body"),
-    [("GET", "", None), ("POST", "", {"inputs": {}, "action": "approve"}), ("POST", "/upload-token", None)],
+    [("GET", "", None), ("POST", "/upload-token", None)],
 )
 def test_v2_public_form_uses_explicit_public_path(app: Flask, method, suffix, json_body) -> None:
     ExternalApi(app).add_namespace(human_input_form_v2.web_ns)
@@ -27,12 +27,6 @@ def test_v2_public_form_uses_explicit_public_path(app: Flask, method, suffix, js
     ("resource_name", "method_name", "path", "json_body"),
     [
         ("HumanInputV2FormApi", "get", "/api/form/human-input/v2/public/token", None),
-        (
-            "HumanInputV2FormApi",
-            "post",
-            "/api/form/human-input/v2/public/token",
-            {"inputs": {}, "action": "approve"},
-        ),
         (
             "HumanInputV2FormUploadTokenApi",
             "post",

@@ -106,6 +106,9 @@ class AccessChallenge(BaseModel):
 class VerifiedEmail:
     delivery: Delivery
     subject: EmailOtpSubject
+    # The app owner resolved while verifying the delivery, never supplied by the client.
+    app_id: str
+    challenge_token: str = field(repr=False)
 
     def add_submission_audit(self, session: Session, *, ip_address: str | None) -> None:
         """Call only after accepting FormSubmission, in that same caller-owned transaction."""
@@ -151,7 +154,7 @@ class EmailOtpService:
         self._mail = mail
 
     def request_access(self, form_token: str) -> AccessChallenge:
-        delivery, subject = self._authorize(form_token)
+        delivery, subject, _ = self._authorize(form_token)
         if not self._mail.available():
             raise EmailOtpError(OtpFailure.UNAVAILABLE)
         try:
@@ -188,7 +191,7 @@ class EmailOtpService:
     def verify(
         self, form_token: str, *, challenge_token: str | None, otp_code: str | None, ip_address: str | None
     ) -> VerifiedEmail:
-        delivery, subject = self._authorize(form_token, submitting=True, ip_address=ip_address)
+        delivery, subject, app_id = self._authorize(form_token, submitting=True, ip_address=ip_address)
         reason = None
         if not challenge_token or not otp_code:
             reason = OtpFailure.INVALID
@@ -200,7 +203,7 @@ class EmailOtpService:
             else:
                 match status:
                     case VerificationStatus.VERIFIED:
-                        return VerifiedEmail(delivery, subject)
+                        return VerifiedEmail(delivery, subject, app_id, challenge_token)
                     case VerificationStatus.INVALID:
                         reason = OtpFailure.INVALID
                     case VerificationStatus.STALE:
@@ -281,7 +284,8 @@ class EmailOtpService:
 
     def _authorize(
         self, form_token: str, *, submitting: bool = False, ip_address: str | None = None
-    ) -> tuple[Delivery, EmailOtpSubject]:
+    ) -> tuple[Delivery, EmailOtpSubject, str]:
+        """Return the delivery, email subject, and resolved app ID."""
         with self._sessions() as session:
             delivery = SQLAlchemyDeliveryRepository(session).get_delivery_by_token_hash(
                 sha256(form_token.encode()).hexdigest()
@@ -335,7 +339,7 @@ class EmailOtpService:
                             )
                             session.commit()
                         raise EmailOtpError(OtpFailure.STALE if submitting else OtpFailure.NOT_FOUND)
-                    return delivery, EmailSubject(email=address)
+                    return delivery, EmailSubject(email=address), form.app_id
                 case ContactRecipientSubject(contact_id):
                     contact = SQLAlchemyContactRepository(session).get_contacts_by_id(delivery.tenant_id, contact_id)
                     if contact is None or contact.type != ContactType.EXTERNAL:
@@ -347,6 +351,6 @@ class EmailOtpService:
                             )
                             session.commit()
                         raise EmailOtpError(OtpFailure.STALE if submitting else OtpFailure.NOT_FOUND)
-                    return delivery, ExternalContactSubject(contact_id=contact_id, email=address)
+                    return delivery, ExternalContactSubject(contact_id=contact_id, email=address), form.app_id
                 case _:
                     raise EmailOtpError(OtpFailure.NOT_FOUND)

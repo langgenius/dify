@@ -358,6 +358,8 @@ Verify password reset token validity
 | 200 | Success | **application/json**: [FormDefinitionResponse](#formdefinitionresponse)<br> |
 
 ### [POST] /form/human-input/v2/public/{form_token}
+Submit a form with inputs, an action, and email verification proof.
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -374,7 +376,13 @@ Verify password reset token validity
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [FormSubmitResponse](#formsubmitresponse)<br> |
+| 200 | Form submitted | **application/json**: [FormSubmitResponse](#formsubmitresponse)<br> |
+| 400 | Invalid form or email proof |  |
+| 404 | Form not found |  |
+| 409 | Workflow not active |  |
+| 412 | Already submitted or expired |  |
+| 422 | Invalid request body |  |
+| 503 | Email verification unavailable |  |
 
 ### [POST] /form/human-input/v2/public/{form_token}/access-request
 #### Parameters

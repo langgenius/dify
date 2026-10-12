@@ -1544,6 +1544,15 @@ export type PostFormHumanInputV2PublicByFormTokenData = {
   url: '/form/human-input/v2/public/{form_token}'
 }
 
+export type PostFormHumanInputV2PublicByFormTokenErrors = {
+  400: unknown
+  404: unknown
+  409: unknown
+  412: unknown
+  422: unknown
+  503: unknown
+}
+
 export type PostFormHumanInputV2PublicByFormTokenResponses = {
   200: FormSubmitResponse
 }

@@ -505,8 +505,12 @@ export const get2 = oc
   .input(z.object({ params: zGetFormHumanInputV2PublicByFormTokenPath }))
   .output(zGetFormHumanInputV2PublicByFormTokenResponse)
 
+/**
+ * Submit a form with inputs, an action, and email verification proof.
+ */
 export const post15 = oc
   .route({
+    description: 'Submit a form with inputs, an action, and email verification proof.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postFormHumanInputV2PublicByFormToken',
