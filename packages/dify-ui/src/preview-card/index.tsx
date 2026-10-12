@@ -4,7 +4,7 @@ import type * as React from 'react'
 import type { Placement } from '../internal/placement'
 import { PreviewCard as BasePreviewCard } from '@base-ui/react/preview-card'
 import { cn } from '../cn'
-import { floatingPopupAnimationClassName } from '../internal/overlay'
+import { floatingPopupAnimationClassName, positionerClassName } from '../internal/overlay'
 import { parsePlacement } from '../internal/placement'
 import { resolveClassName } from '../internal/resolve-class-name'
 
@@ -55,7 +55,7 @@ function PreviewCardPositioner({
       align={align}
       sideOffset={sideOffset}
       alignOffset={alignOffset}
-      className={(state) => cn('z-50 outline-hidden', resolveClassName(className, state))}
+      className={(state) => cn(positionerClassName, resolveClassName(className, state))}
       {...props}
     />
   )

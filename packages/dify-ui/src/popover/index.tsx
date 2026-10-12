@@ -5,7 +5,7 @@ import type { Placement } from '../internal/placement'
 import { Popover as BasePopover } from '@base-ui/react/popover'
 import { cn } from '../cn'
 import { focusRingClassName } from '../internal/focus'
-import { floatingPopupAnimationClassName } from '../internal/overlay'
+import { floatingPopupAnimationClassName, positionerClassName } from '../internal/overlay'
 import { parsePlacement } from '../internal/placement'
 import { resolveClassName } from '../internal/resolve-class-name'
 
@@ -72,7 +72,7 @@ function PopoverPositioner({
       align={align}
       sideOffset={sideOffset}
       alignOffset={alignOffset}
-      className={(state) => cn('z-50 outline-hidden', resolveClassName(className, state))}
+      className={(state) => cn(positionerClassName, resolveClassName(className, state))}
       {...props}
     />
   )

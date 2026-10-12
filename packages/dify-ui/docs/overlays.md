@@ -52,6 +52,10 @@ clipping.
 Overlays at `z-50` rely on portal DOM order; the portal mounted later appears above earlier ones.
 Toast remains one layer above ordinary overlays.
 
+Positioners hide with their anchor: Base UI marks them `data-anchor-hidden` when the anchor is
+clipped, `display: none` or unmounted, and the shared positioner class turns that into
+`visibility: hidden` plus `pointer-events: none` so a popup never lingers at the viewport origin.
+
 - Do not add call-site `z-*` overrides. Fix the owning overlay structure when content is clipped
   or hidden.
 - Do not wrap a Dify UI overlay in another manual portal.

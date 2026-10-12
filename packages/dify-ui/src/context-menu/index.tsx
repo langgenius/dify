@@ -16,6 +16,7 @@ import {
   floatingItemIndicatorClassName,
   floatingPopupAnimationClassName,
   floatingSeparatorClassName,
+  positionerClassName,
 } from '../internal/overlay'
 import { parsePlacement } from '../internal/placement'
 import { resolveClassName } from '../internal/resolve-class-name'
@@ -75,7 +76,7 @@ function ContextMenuContent({
         align={align}
         sideOffset={sideOffset}
         alignOffset={alignOffset}
-        className="z-50 outline-hidden"
+        className={positionerClassName}
       >
         <BaseContextMenu.Popup
           className={(state) =>
@@ -244,7 +245,7 @@ function ContextMenuSubContent({
         align={align}
         sideOffset={sideOffset}
         alignOffset={alignOffset}
-        className="z-50 outline-hidden"
+        className={positionerClassName}
       >
         <BaseContextMenu.Popup
           className={(state) =>
