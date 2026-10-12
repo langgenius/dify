@@ -8,9 +8,10 @@ import json
 import queue
 import threading
 import time
+from concurrent.futures import Future, ThreadPoolExecutor
 from datetime import timedelta
 from typing import Any
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import httpx
 import pytest
@@ -1326,146 +1327,109 @@ class TestGetSessionIdNew:
 
 
 class TestStreamablehttpClientContextManagerNew:
-    def test_yields_queues_and_callback(self):
-        from core.mcp.client.streamable_client import streamablehttp_client
+    @pytest.fixture
+    def requests(self) -> list[httpx.Request]:
+        return []
 
-        with patch("core.mcp.client.streamable_client.create_ssrf_proxy_mcp_http_client") as mock_cf:
-            mock_client = MagicMock()
-            mock_cf.return_value.__enter__.return_value = mock_client
+    @pytest.fixture
+    def client(self, monkeypatch: pytest.MonkeyPatch, requests: list[httpx.Request]):
+        def respond(request: httpx.Request) -> httpx.Response:
+            requests.append(request)
+            return httpx.Response(
+                200, headers={MCP_SESSION_ID: "active-session"}, json={"jsonrpc": "2.0", "id": 1, "result": {}}
+            )
 
-            with patch("core.mcp.client.streamable_client.ThreadPoolExecutor") as mock_exec:
-                mock_executor = MagicMock()
-                mock_exec.return_value = mock_executor
+        client = httpx.Client(transport=httpx.MockTransport(respond))
 
-                with streamablehttp_client("http://example.com/mcp") as (s2c, c2s, get_sid):
-                    assert s2c is not None
-                    assert c2s is not None
-                    assert callable(get_sid)
+        def create_client(*, headers: dict[str, str], timeout: httpx.Timeout) -> httpx.Client:
+            client.headers.update(headers)
+            client.timeout = timeout
+            return client
 
-    def test_terminate_on_close_false_does_not_delete(self):
-        from core.mcp.client.streamable_client import streamablehttp_client
+        monkeypatch.setattr("core.mcp.client.streamable_client.create_ssrf_proxy_mcp_http_client", create_client)
+        yield client
+        client.close()
 
-        with patch("core.mcp.client.streamable_client.create_ssrf_proxy_mcp_http_client") as mock_cf:
-            mock_client = MagicMock()
-            mock_cf.return_value.__enter__.return_value = mock_client
+    @pytest.fixture(autouse=True)
+    def submissions(self, monkeypatch: pytest.MonkeyPatch):
+        futures: list[Future] = []
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            original_submit = executor.submit
 
-            with patch("core.mcp.client.streamable_client.ThreadPoolExecutor") as mock_exec:
-                mock_executor = MagicMock()
-                mock_exec.return_value = mock_executor
+            def submit(fn, *args, **kwargs):
+                future = original_submit(fn, *args, **kwargs)
+                futures.append(future)
+                return future
 
-                with streamablehttp_client("http://example.com/mcp", terminate_on_close=False) as (s2c, c2s, get_sid):
-                    pass
-                mock_client.delete.assert_not_called()
+            def create_executor(*, max_workers: int) -> ThreadPoolExecutor:
+                assert max_workers == 2
+                return executor
 
-    def test_queue_cleanup_on_outer_exception(self):
-        """Verify cleanup in finally block runs even when create_ssrf raises."""
-        from core.mcp.client.streamable_client import streamablehttp_client
+            monkeypatch.setattr(executor, "submit", submit)
+            monkeypatch.setattr("core.mcp.client.streamable_client.ThreadPoolExecutor", create_executor)
+            yield futures
 
-        with patch("core.mcp.client.streamable_client.create_ssrf_proxy_mcp_http_client") as mock_cf:
-            mock_cf.side_effect = RuntimeError("connection failed")
+    def test_yields_queues_and_get_session_id(self, client: httpx.Client):
+        with streamablehttp_client("http://example.com/mcp") as (s2c, c2s, get_sid):
+            assert isinstance(s2c, queue.Queue)
+            assert isinstance(c2s, queue.Queue)
+            assert get_sid() is None
+        assert client.is_closed
 
-            with pytest.raises(RuntimeError):
-                with streamablehttp_client("http://example.com/mcp"):
-                    pass  # pragma: no cover
+    def test_terminate_on_close_false_does_not_delete(self, client: httpx.Client, requests: list[httpx.Request]):
+        with streamablehttp_client("http://example.com/mcp", terminate_on_close=False) as (s2c, c2s, get_sid):
+            c2s.put(SessionMessage(_make_request_msg("initialize")))
+            assert isinstance(s2c.get(timeout=2), SessionMessage)
+            assert get_sid() == "active-session"
+        assert client.is_closed
+        assert [request.method for request in requests] == ["POST"]
 
-    def test_timedelta_args_accepted(self):
-        from core.mcp.client.streamable_client import streamablehttp_client
+    def test_queue_cleanup_on_outer_exception(self, monkeypatch: pytest.MonkeyPatch):
+        """Cleanup still runs when the client factory raises."""
 
-        with patch("core.mcp.client.streamable_client.create_ssrf_proxy_mcp_http_client") as mock_cf:
-            mock_client = MagicMock()
-            mock_cf.return_value.__enter__.return_value = mock_client
+        def fail(**_kwargs):
+            raise RuntimeError("connection failed")
 
-            with patch("core.mcp.client.streamable_client.ThreadPoolExecutor") as mock_exec:
-                mock_executor = MagicMock()
-                mock_exec.return_value = mock_executor
+        monkeypatch.setattr("core.mcp.client.streamable_client.create_ssrf_proxy_mcp_http_client", fail)
+        with pytest.raises(RuntimeError, match="connection failed"):
+            with streamablehttp_client("http://example.com/mcp"):
+                pytest.fail("Client factory failure must prevent context entry")
 
-                with streamablehttp_client(
-                    "http://example.com/mcp",
-                    timeout=timedelta(seconds=15),
-                    sse_read_timeout=timedelta(seconds=60),
-                ) as (s2c, c2s, get_sid):
-                    assert callable(get_sid)
+    def test_timedelta_args_accepted(self, client: httpx.Client):
+        with streamablehttp_client(
+            "http://example.com/mcp",
+            timeout=timedelta(seconds=15),
+            sse_read_timeout=timedelta(seconds=60),
+        ) as (_, _, get_sid):
+            assert callable(get_sid)
+            assert client.timeout == httpx.Timeout(15, read=60)
 
-    def test_start_get_stream_submits_to_executor(self):
-        """When context starts, post_writer is submitted to executor."""
-        from core.mcp.client.streamable_client import streamablehttp_client
+    def test_start_get_stream_submits_to_executor(self, client: httpx.Client, submissions: list[Future]):
+        """The submitted writer processes a message on the real executor."""
+        with streamablehttp_client("http://example.com/mcp") as (s2c, c2s, _):
+            c2s.put(SessionMessage(_make_request_msg()))
+            assert isinstance(s2c.get(timeout=2), SessionMessage)
+            assert len(submissions) == 1
+        assert client.is_closed
+        submissions[0].result(timeout=2)
 
-        with patch("core.mcp.client.streamable_client.create_ssrf_proxy_mcp_http_client") as mock_cf:
-            mock_client = MagicMock()
-            mock_cf.return_value.__enter__.return_value = mock_client
+    def test_cleanup_puts_none_sentinels_to_queues(self, client: httpx.Client, submissions: list[Future]):
+        """After the writer exits, context cleanup leaves sentinels in both queues."""
+        with streamablehttp_client("http://example.com/mcp") as (s2c, c2s, _):
+            c2s.put(None)
+            submissions[0].result(timeout=2)
+        assert client.is_closed
+        assert c2s.get_nowait() is None
+        assert s2c.get_nowait() is None
 
-            submitted_calls = []
-
-            with patch("core.mcp.client.streamable_client.ThreadPoolExecutor") as mock_exec:
-                mock_executor = MagicMock()
-
-                def capture_submit(fn, *args, **kwargs):
-                    submitted_calls.append((fn, args))
-
-                mock_executor.submit.side_effect = capture_submit
-                mock_exec.return_value = mock_executor
-
-                with streamablehttp_client("http://example.com/mcp") as (s2c, c2s, get_sid):
-                    pass
-
-                # post_writer was submitted
-                assert len(submitted_calls) >= 1
-
-    def test_cleanup_puts_none_sentinels_to_queues(self):
-        """After context exit, None sentinels are put into both queues."""
-        from core.mcp.client.streamable_client import streamablehttp_client
-
-        with patch("core.mcp.client.streamable_client.create_ssrf_proxy_mcp_http_client") as mock_cf:
-            mock_client = MagicMock()
-            mock_cf.return_value.__enter__.return_value = mock_client
-
-            with patch("core.mcp.client.streamable_client.ThreadPoolExecutor") as mock_exec:
-                mock_executor = MagicMock()
-                mock_exec.return_value = mock_executor
-
-                with streamablehttp_client("http://example.com/mcp") as (s2c, c2s, get_sid):
-                    pass
-
-                # After context exit, None sentinel should be in c2s queue from cleanup
-                val = c2s.get_nowait()
-                assert val is None
-
-    def test_terminate_called_when_session_id_set(self):
-        """When session_id is set and terminate_on_close=True, terminate_session is called."""
-        from core.mcp.client.streamable_client import streamablehttp_client
-
-        with patch("core.mcp.client.streamable_client.create_ssrf_proxy_mcp_http_client") as mock_cf:
-            mock_client = MagicMock()
-            mock_cf.return_value.__enter__.return_value = mock_client
-
-            mock_delete_resp = MagicMock()
-            mock_delete_resp.status_code = 200
-            mock_client.delete.return_value = mock_delete_resp
-
-            with patch("core.mcp.client.streamable_client.ThreadPoolExecutor") as mock_exec:
-                mock_executor = MagicMock()
-                mock_exec.return_value = mock_executor
-
-                with patch("core.mcp.client.streamable_client.StreamableHTTPTransport") as MockTransport:
-                    mock_transport = MockTransport.return_value
-                    mock_transport.request_headers = {
-                        "Accept": "application/json, text/event-stream",
-                        "content-type": "application/json",
-                    }
-                    mock_transport.timeout = 30
-                    mock_transport.sse_read_timeout = 300
-                    mock_transport.session_id = "active-session"
-                    mock_transport.stop_event = MagicMock()
-                    mock_transport.get_session_id = MagicMock(return_value="active-session")
-
-                    with streamablehttp_client("http://example.com/mcp", terminate_on_close=True) as (
-                        s2c,
-                        c2s,
-                        get_sid,
-                    ):
-                        pass
-
-                    mock_transport.terminate_session.assert_called_once_with(mock_client)
+    def test_terminate_called_when_session_id_set(self, client: httpx.Client, requests: list[httpx.Request]):
+        with streamablehttp_client("http://example.com/mcp", terminate_on_close=True) as (s2c, c2s, get_sid):
+            c2s.put(SessionMessage(_make_request_msg("initialize")))
+            assert isinstance(s2c.get(timeout=2), SessionMessage)
+            assert get_sid() == "active-session"
+        assert client.is_closed
+        assert [request.method for request in requests] == ["POST", "DELETE"]
+        assert requests[-1].headers[MCP_SESSION_ID] == "active-session"
 
 
 # ── Exception hierarchy ───────────────────────────────────────────────────────

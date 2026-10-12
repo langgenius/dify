@@ -1,8 +1,8 @@
 import * as React from 'react'
-import { OptionColumn } from '../internal/option-column'
-import { PickerColumns } from '../internal/picker-panel'
-import { usePickerNumbers } from '../internal/use-picker-numbers'
+import { OptionColumn } from './option-column'
+import { PickerColumns } from './picker-panel'
 import { formatTimeValue, parseTimeValue } from './time-value'
+import { usePickerNumbers } from './use-picker-numbers'
 
 type TimePanelLabels = { hour: string; minute: string; period: string; am: string; pm: string }
 type TimePanelProps = {
@@ -31,7 +31,8 @@ function TimePanel({
   const displayHour = hourCycle === 24 ? current.hour : current.hour % 12 || 12
   function update(part: 'hour' | 'minute' | 'period', next: number) {
     onValueChange((previous) => {
-      const time = parseTimeValue(previous)!
+      const time = parseTimeValue(previous)
+      if (!time) throw new RangeError(`Invalid time of day: ${previous}`)
       if (part === 'minute') time.minute = next
       else if (part === 'period') time.hour = (time.hour % 12) + next * 12
       else time.hour = hourCycle === 24 ? next : (next % 12) + Math.floor(time.hour / 12) * 12

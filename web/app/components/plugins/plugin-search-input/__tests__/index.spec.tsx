@@ -19,16 +19,18 @@ function SearchHarness() {
 }
 
 describe('PluginSearchInput', () => {
-  it('clears search from the keyboard without clearing tags, and restores input focus', async () => {
+  it('clears search with Escape without clearing tags, and keeps the clear button out of the tab order', async () => {
     const user = userEvent.setup()
     render(<SearchHarness />)
     const input = screen.getByRole('searchbox', { name: 'Search plugins' })
     await user.click(input)
     await user.tab()
-    expect(screen.getByRole('button', { name: /^plugin\.clearSearch/ })).toHaveFocus()
-    await user.keyboard('{Enter}')
+    expect(screen.getByRole('button', { name: 'pluginTags.tags.rag' })).toHaveFocus()
+    await user.click(input)
+    await user.keyboard('{Escape}')
     expect(input).toHaveValue('')
     expect(input).toHaveFocus()
+    expect(screen.queryByRole('button', { name: /^plugin\.clearSearch/ })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'pluginTags.tags.rag' })).toBeInTheDocument()
   })
 

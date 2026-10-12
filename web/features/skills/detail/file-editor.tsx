@@ -97,7 +97,7 @@ export function FileEditor({
   onOpenBuilder,
   onOpenVersions,
   onPublish,
-  onRestoreVersion,
+  onVersionRestored,
   onExitVersion,
   onCloseFile,
   onDraftDetailChange,
@@ -122,7 +122,7 @@ export function FileEditor({
   onOpenBuilder?: () => void
   onOpenVersions: () => void
   onPublish: () => void
-  onRestoreVersion: () => void
+  onVersionRestored: () => void
   onExitVersion: () => void
   onCloseFile: (path: string) => void
   onDraftDetailChange: (detail: SkillDetailResponse) => void
@@ -1513,8 +1513,7 @@ export function FileEditor({
       {readonly && selectedVersion && (
         <VersionActionBar
           version={selectedVersion}
-          restoring={publishing}
-          onRestore={onRestoreVersion}
+          onRestored={onVersionRestored}
           onExit={onExitVersion}
         />
       )}

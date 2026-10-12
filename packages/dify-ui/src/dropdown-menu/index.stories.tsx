@@ -431,7 +431,7 @@ export const Complex: Story = {
 }
 
 function DetachedTriggerDemo() {
-  const handle = React.useMemo(() => createDropdownMenuHandle<{ name: string }>(), [])
+  const [handle] = React.useState(() => createDropdownMenuHandle<{ name: string }>())
   const [selected, setSelected] = React.useState('')
   return (
     <React.Fragment>
@@ -685,11 +685,18 @@ export const Filterable: Story = {
     )
 
     await userEvent.click(trigger)
-    await body.findByRole('searchbox', { name: 'Filter actions' })
+    const finalInput = await body.findByRole('searchbox', { name: 'Filter actions' })
+    const popup = body.getByRole('menu')
+    await waitFor(async () => {
+      await expect(finalInput).toHaveFocus()
+    })
     await userEvent.keyboard('{Shift>}{Tab}{/Shift}')
     await waitFor(async () => {
       await expect(trigger).toHaveFocus()
     })
     await expect(trigger).toHaveAttribute('aria-expanded', 'false')
+    await waitFor(async () => {
+      await expect(popup).not.toBeInTheDocument()
+    })
   },
 }
