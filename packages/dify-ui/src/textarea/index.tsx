@@ -1,6 +1,5 @@
 'use client'
 
-import type { Field as BaseFieldNS } from '@base-ui/react/field'
 import type { VariantProps } from 'class-variance-authority'
 import type * as React from 'react'
 import { Field as BaseField } from '@base-ui/react/field'
@@ -23,7 +22,7 @@ const textareaVariants = cva([textControlClassName, 'min-h-20 overflow-auto'], {
 })
 
 type TextareaValue = string | number
-type TextareaChangeEventDetails = BaseFieldNS.Control.ChangeEventDetails
+type TextareaChangeEventDetails = BaseField.Control.ChangeEventDetails
 type TextareaOnValueChange = (value: string, eventDetails: TextareaChangeEventDetails) => void
 
 type ControlledTextareaProps = {
@@ -57,12 +56,12 @@ type TextareaElementProps = Omit<
 type TextareaControlProps = ControlledTextareaProps | UncontrolledTextareaProps
 type TextareaVariantProps = VariantProps<typeof textareaVariants>
 type FieldControlTextareaProps = Omit<
-  BaseFieldNS.Control.Props,
+  BaseField.Control.Props,
   'className' | 'defaultValue' | 'onValueChange' | 'render' | 'value'
 >
 
 type TextareaProps = TextareaElementProps &
-  Pick<BaseFieldNS.Control.Props, 'className' | 'style'> &
+  Pick<BaseField.Control.Props, 'className' | 'style'> &
   TextareaOnlyProps &
   TextareaControlProps &
   TextareaVariantProps & {

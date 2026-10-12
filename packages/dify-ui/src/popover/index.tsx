@@ -14,11 +14,15 @@ const PopoverPortal = BasePopover.Portal
 const PopoverClose = BasePopover.Close
 const PopoverTitle = BasePopover.Title
 const PopoverDescription = BasePopover.Description
+// Transition container for one popup shared by several triggers; unstyled passthrough.
+const PopoverViewport = BasePopover.Viewport
 const createPopoverHandle = BasePopover.createHandle
 
 type PopoverActions = BasePopover.Root.Actions
 
 type PopoverProps<Payload = unknown> = BasePopover.Root.Props<Payload>
+type PopoverChangeEventReason = BasePopover.Root.ChangeEventReason
+type PopoverChangeEventDetails = BasePopover.Root.ChangeEventDetails
 type PopoverArrowProps = BasePopover.Arrow.Props
 type PopoverPortalProps = BasePopover.Portal.Props
 type PopoverHandle<Payload = unknown> = BasePopover.Handle<Payload>
@@ -35,6 +39,7 @@ function PopoverTrigger<Payload = unknown>({ className, ...props }: PopoverTrigg
 type PopoverCloseProps = BasePopover.Close.Props
 type PopoverTitleProps = BasePopover.Title.Props
 type PopoverDescriptionProps = BasePopover.Description.Props
+type PopoverViewportProps = BasePopover.Viewport.Props
 
 type PopoverBackdropProps = BasePopover.Backdrop.Props
 
@@ -134,11 +139,14 @@ export {
   PopoverPositioner,
   PopoverTitle,
   PopoverTrigger,
+  PopoverViewport,
 }
 export type {
   PopoverActions,
   PopoverArrowProps,
   PopoverBackdropProps,
+  PopoverChangeEventDetails,
+  PopoverChangeEventReason,
   PopoverCloseProps,
   PopoverContentProps,
   PopoverDescriptionProps,
@@ -149,4 +157,5 @@ export type {
   PopoverProps,
   PopoverTitleProps,
   PopoverTriggerProps,
+  PopoverViewportProps,
 }

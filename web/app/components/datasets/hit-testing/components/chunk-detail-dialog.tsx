@@ -1,5 +1,5 @@
 'use client'
-import type { DialogProps } from '@langgenius/dify-ui/dialog'
+import type { DialogChangeEventDetails } from '@langgenius/dify-ui/dialog'
 import type { FileAppearanceTypeEnum } from '@/app/components/base/file-uploader/types'
 import type { HitTesting } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -31,7 +31,7 @@ const i18nPrefix = ''
 type ChunkDetailDialogProps = {
   payload: HitTesting
   open: boolean
-  onOpenChange: DialogProps['onOpenChange']
+  onOpenChange: (open: boolean, eventDetails: DialogChangeEventDetails) => void
 }
 
 export function ChunkDetailDialog({ payload, open, onOpenChange }: ChunkDetailDialogProps) {

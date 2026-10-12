@@ -19,8 +19,11 @@ import { parsePlacement } from '../placement'
 type AutocompleteActions = BaseAutocomplete.Root.Actions
 
 type AutocompleteProps<ItemValue> = BaseAutocomplete.Root.Props<ItemValue>
+type AutocompleteChangeEventReason = BaseAutocomplete.Root.ChangeEventReason
 type AutocompleteChangeEventDetails = BaseAutocomplete.Root.ChangeEventDetails
 type AutocompleteOpenChangeEventDetails = BaseAutocomplete.Root.OpenChangeEventDetails
+type AutocompleteHighlightEventReason = BaseAutocomplete.Root.HighlightEventReason
+type AutocompleteHighlightEventDetails = BaseAutocomplete.Root.HighlightEventDetails
 type AutocompleteGroupedProps<Items extends readonly { items: readonly unknown[] }[]> = Omit<
   AutocompleteProps<Items[number]['items'][number]>,
   'items'
@@ -439,6 +442,7 @@ export {
 export type {
   AutocompleteActions,
   AutocompleteChangeEventDetails,
+  AutocompleteChangeEventReason,
   AutocompleteClearProps,
   AutocompleteCollectionProps,
   AutocompleteEmptyProps,
@@ -446,6 +450,8 @@ export type {
   AutocompleteGroupedProps,
   AutocompleteGroupLabelProps,
   AutocompleteGroupProps,
+  AutocompleteHighlightEventDetails,
+  AutocompleteHighlightEventReason,
   AutocompleteIconProps,
   AutocompleteInputGroupProps,
   AutocompleteInputProps,
