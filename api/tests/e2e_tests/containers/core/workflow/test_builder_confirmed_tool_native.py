@@ -17,8 +17,9 @@ Test-created concurrency never runs in the pytest process. Each concurrent scena
 race, duplicate launches, concurrent worker deliveries) and each crash runs in a forked, killable
 test host (``run_in_host`` / ``_crash_in_child``): the real port, task bodies, native pipeline,
 PostgreSQL and Redis run there on host-owned connections, every host ends with ``os._exit`` (which
-ends all of its threads), and the parent, holding no SQL, supervises a pipe with a deadline, then
-joins, terminates and kills, and asserts the host is dead before the test returns — that is, before
+ends all of its threads), and the parent, holding no SQL, reads the host's one bounded report frame
+without blocking under an absolute deadline, then joins, terminates and kills, and asserts the host
+is dead before the test returns — that is, before
 any fixture restores its patches and before the shared database/Redis cleanup. Boundary
 observations of a host are the host's own records, reported over the pipe. Every case's
 connections also carry server-side SQL deadlines.
@@ -30,12 +31,15 @@ root-owned defect in ``reconcile_stranded`` and is expected to fail until that o
 import json
 import multiprocessing
 import os
+import signal
+import struct
 import traceback
 from collections.abc import Callable, Iterator, Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from multiprocessing.connection import Connection
 from pathlib import Path
+from select import select as wait_readable
 from threading import Barrier, Event, Lock, Thread, get_ident
 from time import monotonic, sleep, time
 from typing import Literal
@@ -164,10 +168,16 @@ _SQL_DEADLINES = (
 # 60 s holds). Threads still alive after it are reported, then ended by the host's ``os._exit``.
 _WORK_SECONDS = 120
 _RACE_START_SECONDS = 10
-# The parent's deadline for a host's report; with join/terminate/kill (3 x 10 s) it stays below
-# pytest's 360 s per-case timeout, so the host is always dead before the test returns.
+# The parent's ABSOLUTE deadline for a host's complete report transfer (readiness, header and every
+# payload byte); with join/terminate/kill (3 x 10 s) it stays below pytest's 360 s per-case timeout,
+# so the host is always dead before the test returns.
 _HOST_RESULT_SECONDS = 200
 _HOST_JOIN_SECONDS = 10
+# A host report is one frame on a raw pipe: an 8-byte big-endian length, then that many bytes of
+# UTF-8 JSON. The parent accepts at most this many payload bytes.
+_REPORT_HEADER = struct.Struct("!Q")
+_HOST_REPORT_BYTES = 8 * 1024 * 1024
+_REPORT_CHUNK = 65_536
 # Bounded text a host may report for one exception, and for one Builder Run representation.
 _HOST_TEXT_LIMIT = 20_000
 _RUN_TEXT_LIMIT = 200_000
@@ -562,59 +572,108 @@ def _supervise(threads: list[Thread], *, seconds: float = _WORK_SECONDS) -> list
     return [thread.name for thread in threads if thread.is_alive()]
 
 
-def run_in_host(gmail: "Gmail", scenario: Callable[[], dict[str, object]], *, name: str) -> dict[str, object]:
-    """Run ``scenario`` in a forked, killable test host and return its bounded, truthful report.
+def _write_report_frame(fd: int, report: dict[str, object]) -> None:
+    """Host side: one length-prefixed UTF-8 JSON frame, written completely (blocking) to ``fd``.
 
-    The host drops the inherited SQL pool without closing the parent's sockets, uses a fresh
-    request context (its own scoped session and connections), runs the real scenario, reports
-    plain data plus only its own boundary records over a pipe, then ``os._exit``s, which ends
-    every thread it started. The parent closes its scoped session before forking, holds no SQL
-    while it supervises the pipe with a deadline, then joins, terminates and kills (each
-    bounded) and asserts the host is dead before returning, so before any fixture restores its
-    patches and before the shared database/Redis cleanup. Host exceptions come back as bounded
-    text and fail the case here.
+    A report that cannot be encoded is replaced by a host error frame instead of being dropped.
+    """
+    try:
+        payload = json.dumps(report).encode("utf-8")
+    except (TypeError, ValueError) as error:
+        payload = json.dumps({"host_error": f"unencodable host report: {type(error).__name__}"}).encode("utf-8")
+    remaining = memoryview(_REPORT_HEADER.pack(len(payload)) + payload)
+    while remaining:
+        remaining = remaining[os.write(fd, remaining) :]
+
+
+ReportStatus = Literal["complete", "timeout", "incomplete", "closed", "oversize", "malformed"]
+
+
+def _read_report_frame(fd: int, deadline: float) -> tuple[ReportStatus, dict[str, object] | None]:
+    """Parent side: read one frame under an ABSOLUTE ``deadline``, without any blocking read.
+
+    The descriptor is non-blocking and every wait is a ``select`` bounded by the time left, so
+    readiness, the header and every payload byte together finish by ``deadline``. The frame is
+    bounded by ``_HOST_REPORT_BYTES``. Statuses: ``complete``; ``timeout`` (nothing arrived);
+    ``incomplete`` (a partial frame by the deadline or before end of file); ``closed`` (end of
+    file before any byte); ``oversize`` (an advertised or received frame beyond the bound);
+    ``malformed`` (a complete frame that is not a JSON object).
+    """
+    os.set_blocking(fd, False)
+    buffer = bytearray()
+    while True:
+        if len(buffer) >= _REPORT_HEADER.size:
+            (length,) = _REPORT_HEADER.unpack_from(buffer)
+            if length > _HOST_REPORT_BYTES:
+                return "oversize", None
+            end = _REPORT_HEADER.size + length
+            if len(buffer) >= end:
+                try:
+                    decoded = json.loads(bytes(buffer[_REPORT_HEADER.size : end]).decode("utf-8"))
+                except ValueError:
+                    return "malformed", None
+                return ("complete", decoded) if isinstance(decoded, dict) else ("malformed", None)
+        remaining = deadline - monotonic()
+        if remaining <= 0:
+            return ("incomplete" if buffer else "timeout"), None
+        nothing: list[int] = []
+        readable, _, _ = wait_readable([fd], nothing, nothing, remaining)
+        if not readable:
+            continue
+        try:
+            chunk = os.read(fd, _REPORT_CHUNK)
+        except BlockingIOError:
+            continue
+        if not chunk:
+            return ("incomplete" if buffer else "closed"), None
+        buffer += chunk
+
+
+@dataclass(frozen=True)
+class HostTransfer:
+    """What the parent established about one host: the report transfer and the host's confirmed end."""
+
+    status: ReportStatus
+    report: dict[str, object] | None
+    exitcode: int | None
+    elapsed: float
+
+
+def _supervise_host(target: Callable[[int], None], *, name: str, seconds: float = _HOST_RESULT_SECONDS) -> HostTransfer:
+    """Fork ``target(write_fd)`` as a killable host; read its one report frame; always reap it.
+
+    The parent runs no SQL and starts no thread here. It reads under the absolute ``seconds``
+    deadline (``_read_report_frame``), then in ``finally`` joins, terminates and kills (each bounded
+    by ``_HOST_JOIN_SECONDS``), closes both pipe ends and asserts the host is dead, whatever the
+    transfer status. The host always ends with ``os._exit``, which ends every thread it started.
     """
     assert os.getpid() == _PYTEST_PID, "test hosts are started by pytest only"
     assert "fork" in multiprocessing.get_all_start_methods(), "test-host containment needs fork (Linux CI)"
-    db.session.close()  # the parent holds no transaction or connection across the fork or supervision
     ctx = multiprocessing.get_context("fork")
-    receiver, sender = ctx.Pipe(duplex=False)
-    point = gmail.boundary.checkpoint()
+    read_fd, write_fd = os.pipe()
 
-    def host_main(channel: Connection) -> None:
-        report: dict[str, object] = {}
+    def host_main() -> None:
         try:
-            with gmail.app.test_request_context():
-                db.engine.dispose(close=False)
-                gmail.boundary.witness.forget_inherited()
-                reset_provider_cache()
-                report["result"] = scenario()
-        except BaseException as error:
-            report["host_error"] = f"{type(error).__name__}: {error}"[:_HOST_TEXT_LIMIT]
-            report["host_traceback"] = traceback.format_exc()[-_HOST_TEXT_LIMIT:]
+            os.close(read_fd)
+            target(write_fd)
         finally:
-            try:
-                report["observed"] = gmail.boundary.facts_since(point)
-                channel.send(report)
-                channel.close()
-            finally:
-                os._exit(0)  # ends this host and every thread it started, finished or not
+            os._exit(0)  # ends this host and every thread it started, finished or not
 
-    host = ctx.Process(target=host_main, args=(sender,), name=f"test-host-{name}", daemon=True)
+    host = ctx.Process(target=host_main, name=f"test-host-{name}", daemon=True)
+    started = monotonic()
+    status: ReportStatus = "timeout"
     report: dict[str, object] | None = None
     host_alive = False
     exitcode: int | None = None
+    write_open = True
     try:
         host.start()
-        sender.close()
-        if receiver.poll(_HOST_RESULT_SECONDS):
-            try:
-                received = receiver.recv()
-            except EOFError:
-                received = None
-            report = received if isinstance(received, dict) else None
+        os.close(write_fd)  # only the host may write; its exit then reads as end of file
+        write_open = False
+        status, report = _read_report_frame(read_fd, started + seconds)
     finally:
-        sender.close()
+        if write_open:
+            os.close(write_fd)
         if host.pid is not None:
             host.join(timeout=_HOST_JOIN_SECONDS)
             if host.is_alive():
@@ -627,11 +686,50 @@ def run_in_host(gmail: "Gmail", scenario: Callable[[], dict[str, object]], *, na
             exitcode = host.exitcode
             if not host_alive:
                 host.close()
-        receiver.close()
+        os.close(read_fd)
     assert not host_alive, f"test host {name} survived terminate() and kill()"
-    assert report is not None, f"test host {name} reported nothing within {_HOST_RESULT_SECONDS} s (exit {exitcode})"
+    return HostTransfer(status=status, report=report, exitcode=exitcode, elapsed=monotonic() - started)
+
+
+def run_in_host(gmail: "Gmail", scenario: Callable[[], dict[str, object]], *, name: str) -> dict[str, object]:
+    """Run ``scenario`` in a forked, killable test host and return its bounded, truthful report.
+
+    The host drops the inherited SQL pool without closing the parent's sockets, uses a fresh
+    request context (its own scoped session and connections), runs the real scenario, writes
+    one bounded JSON frame of plain data plus only its own boundary records, then ``os._exit``s,
+    which ends every thread it started. The parent closes its scoped session before forking,
+    holds no SQL while it reads the complete frame under an absolute deadline
+    (``_supervise_host``), then joins, terminates and kills (each bounded) and asserts the host is
+    dead before returning, so before any fixture restores its patches and before the shared
+    database/Redis cleanup. Host exceptions come back as bounded text and fail the case here.
+    """
+    db.session.close()  # the parent holds no transaction or connection across the fork or supervision
+    point = gmail.boundary.checkpoint()
+
+    def host_main(write_fd: int) -> None:
+        report: dict[str, object] = {}
+        try:
+            with gmail.app.test_request_context():
+                db.engine.dispose(close=False)
+                gmail.boundary.witness.forget_inherited()
+                reset_provider_cache()
+                report["result"] = scenario()
+        except BaseException as error:
+            report["host_error"] = f"{type(error).__name__}: {error}"[:_HOST_TEXT_LIMIT]
+            report["host_traceback"] = traceback.format_exc()[-_HOST_TEXT_LIMIT:]
+        finally:
+            report["observed"] = gmail.boundary.facts_since(point)
+            _write_report_frame(write_fd, report)
+
+    transfer = _supervise_host(host_main, name=name)
+    assert transfer.status == "complete", (
+        f"test host {name}: report transfer {transfer.status} within {_HOST_RESULT_SECONDS} s "
+        f"(exit {transfer.exitcode})"
+    )
+    report = transfer.report
+    assert report is not None
     assert "host_error" not in report, f"{report['host_error']}\n{report.get('host_traceback', '')}"
-    assert exitcode == 0, exitcode
+    assert transfer.exitcode == 0, transfer.exitcode
     observed = Observed(report["observed"])
     assert observed.pid != _PYTEST_PID
     assert observed.model_calls == 0, "a Builder model was resolved in the test host"
@@ -1797,6 +1895,39 @@ def test_duplicate_native_launches_create_one_run(gmail: Gmail) -> None:
     observed = facts["observed"]
     assert isinstance(observed, Observed)
     assert len(observed.invoke_calls) == 1
+
+
+_STALLED_REPORT: dict[str, ReportStatus] = {"silent": "timeout", "partial_frame": "incomplete", "oversize": "oversize"}
+
+
+def _stalled_host(kind: str) -> Callable[[int], None]:
+    """A host that never completes its report and never exits by itself."""
+
+    def target(write_fd: int) -> None:
+        if kind == "partial_frame":
+            # A header advertising more payload than ever arrives: the case a blocking recv cannot leave.
+            os.write(write_fd, _REPORT_HEADER.pack(1_000) + b'{"partial')
+        elif kind == "oversize":
+            os.write(write_fd, _REPORT_HEADER.pack(_HOST_REPORT_BYTES + 1))
+        sleep(3_600)
+
+    return target
+
+
+@pytest.mark.parametrize("kind", list(_STALLED_REPORT))
+def test_host_report_transfer_is_bounded_and_the_host_reaped(kind: str) -> None:
+    """The real supervisor cannot be held past its transfer deadline by a stalled host report.
+
+    Silent, partial-frame and oversized reports each end the read with their status, then the
+    supervisor's own bounded join/terminate/kill reaps the host and confirms its death.
+    """
+    seconds = 5.0
+    transfer = _supervise_host(_stalled_host(kind), name=f"stalled-report-{kind}", seconds=seconds)
+    assert transfer.status == _STALLED_REPORT[kind]
+    assert transfer.report is None
+    # It never exited by itself: the supervisor terminated (or killed) it and confirmed its death.
+    assert transfer.exitcode in (-signal.SIGTERM, -signal.SIGKILL), transfer.exitcode
+    assert transfer.elapsed < seconds + 3 * _HOST_JOIN_SECONDS + 5, transfer.elapsed
 
 
 def test_refresh_cas_conflict_keeps_the_rotation_and_blocks_business(gmail: Gmail) -> None:

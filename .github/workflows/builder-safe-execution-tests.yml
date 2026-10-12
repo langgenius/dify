@@ -121,6 +121,7 @@ jobs:
                   "test_changes_after_reservation_are_denied_without_effects": 9,
                   "test_postgres_tool_claim_has_one_winner": 1,
                   "test_duplicate_native_launches_create_one_run": 1,
+                  "test_host_report_transfer_is_bounded_and_the_host_reaped": 3,
                   "test_refresh_cas_conflict_keeps_the_rotation_and_blocks_business": 1,
                   "test_partial_stream_is_unknown": 1,
                   "test_native_success_with_text_only_result_is_unknown": 1,
