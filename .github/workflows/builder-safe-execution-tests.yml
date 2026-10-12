@@ -116,6 +116,7 @@ jobs:
                   "test_confirmed_native_run_refreshes_once_then_reads": 1,
                   "test_restricted_default_run_has_zero_decrypt_refresh_or_invoke": 1,
                   "test_ordinary_native_gmail_workflow_stays_ordinary": 1,
+                  "test_published_native_gmail_workflow_runs_the_published_graph": 1,
                   "test_changes_after_reservation_are_denied_without_effects": 9,
                   "test_postgres_tool_claim_has_one_winner": 1,
                   "test_duplicate_native_launches_create_one_run": 1,
