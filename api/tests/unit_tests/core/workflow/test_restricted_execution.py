@@ -255,8 +255,21 @@ def test_fixed_utf8_header_and_scalar_defaults_are_admitted():
 
 @pytest.mark.parametrize("name", ["code_increment.yml", "template_greeting.yml"])
 def test_reserved_sandbox_fixtures_are_unavailable_before_sandbox_owner(owned, name):
-    with pytest.raises(BuilderExecutionPolicyError, match="unsupported_node_implementation"):
-        prepare_native(owned, name, inputs={"n": 41, "name": "Ada"})
+    # Keep both negative identities: Code still needs the sandbox owner; an
+    # unsafe Template remains unavailable under the bounded native adapter.
+    if name == "template_greeting.yml":
+        import yaml
+
+        from tests.unit_tests.core.workflow.graph_engine.test_builder_restricted_native import FIXTURES
+
+        raw_graph = yaml.safe_load((FIXTURES / name).read_text())
+        raw_graph["nodes"][1]["data"]["template"] = "{{ name.__class__ }}"
+        reason = "unsupported_template_syntax"
+    else:
+        raw_graph = None
+        reason = "unsupported_node_implementation"
+    with pytest.raises(BuilderExecutionPolicyError, match=reason):
+        prepare_native(owned, name, inputs={"n": 41, "name": "Ada"}, graph_config=raw_graph)
 
 
 @pytest.mark.parametrize("change", ["fixture_digest", "fixture_node", "fixture_body", "context_digest"])
