@@ -8,7 +8,7 @@ import type {
   PickerTriggerProps,
   PickerValueProps,
 } from '../internal/picker-parts'
-import type { TimePanelHandle, TimePanelLabels, TimePanelProps } from '../time-picker/time-panel'
+import type { TimePanelLabels, TimePanelProps } from '../time-picker/time-panel'
 import { useControlled } from '@base-ui/utils/useControlled'
 import { TZDate } from '@date-fns/tz'
 import * as React from 'react'
@@ -177,7 +177,6 @@ function Session() {
     minuteStep = 1,
   } = useContext()
   const { close } = usePickerContext()
-  const panelRef = React.useRef<TimePanelHandle>(null)
   const [draft, setDraft] = React.useState(() => value ?? currentTime(timeZone, minuteStep))
   const text = { ...defaultLabels, ...labels }
   const unavailable = Boolean(
@@ -214,12 +213,8 @@ function Session() {
             disabled={unavailable}
             aria-describedby={unavailable ? errorId : undefined}
             onClick={() => {
-              const next = panelRef.current?.settle() ?? draft
-              setDraft(next)
-              if (!isTimeUnavailable?.(next) && Number(next.slice(3)) % minuteStep === 0) {
-                commit(next)
-                close()
-              }
+              commit(draft)
+              close()
             }}
           >
             {text.apply}
@@ -228,7 +223,6 @@ function Session() {
       }
     >
       <TimePanel
-        ref={panelRef}
         minuteStep={minuteStep}
         scrollRequest={scrollRequest}
         value={draft}

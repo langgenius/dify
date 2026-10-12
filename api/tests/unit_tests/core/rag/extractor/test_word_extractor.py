@@ -408,7 +408,7 @@ def test_close_closes_awaitable_close_result():
     class FakeAwaitable:
         closed: bool = False
 
-        def __await__(self) -> Generator[None, None, None]:
+        def __await__(self) -> Generator[None]:
             if False:
                 yield None
             return None

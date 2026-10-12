@@ -1,24 +1,31 @@
-"""Runtime Dify config layer with shell-backed eager pulls."""
+"""Shell-backed config pulls with instructions derived from current Config.
+
+Only pull results and successful initialization persist. The manifest and CLI
+help are rendered from current configuration and the installed CLI reference.
+"""
 
 from __future__ import annotations
 
 import json
 import shlex
 from dataclasses import dataclass
-from typing import ClassVar
+from typing import override
 
-from pydantic_ai import ModelRetry, Tool
-from typing_extensions import Self, override
 
-from agenton.layers import LayerDeps, PydanticAILayer, PydanticAIPrompt, PydanticAITool
+from pydantic_ai import ModelRetry, RunContext
+from pydantic_ai.capabilities import AbstractCapability, CapabilityOrdering
+from pydantic_ai.capabilities.abstract import WrapRunHandler
+from pydantic_ai.run import AgentRunResult
+from pydantic_ai.tools import ToolDefinition
+from pydantic_ai.toolsets import FunctionToolset
+from dify_agent.runtime.context import Deps
 from dify_agent.layers._agent_cli_help import render_agent_stub_cli_help
 from dify_agent.layers._agent_file_cli_help import AGENT_FILE_UPLOAD_REPLY_HINT as _AGENT_FILE_UPLOAD_REPLY_HINT
 from dify_agent.layers.config.configs import (
-    DIFY_CONFIG_LAYER_TYPE_ID,
     DifyConfigLayerConfig,
     DifyConfigRuntimeState,
 )
-from dify_agent.layers.shell.layer import DifyShellLayer
+from dify_agent.layers.shell.layer import Capability as ShellCapability, ShellSession
 
 _CONFIG_CONTEXT_HEADING = "Current Agent config manifest for this run:"
 _CONFIG_CONTEXT_COMMAND = "dify-agent config manifest"
@@ -53,92 +60,87 @@ _AGENT_FILE_CLI_HELP_COMMANDS: dict[str, tuple[str, ...]] = {
     "dify-agent file public-url --help": ("file", "public-url"),
     "dify-agent file download --help": ("file", "download"),
 }
-_CONFIG_CONTEXT_EXCLUDE = {"mentioned_skill_names": True, "mentioned_file_names": True}
+_READ_SKILL_TOOL_PROMPT = (
+    "Use read_config_skill_md(name) to read a configured skill's full SKILL.md. "
+    "Shell output can omit the middle of a large SKILL.md."
+)
+_CONFIG_CONTEXT_EXCLUDE = {"mentioned_skill_names": True, "mentioned_file_names": True, "shell": True}
 
 
 class DifyConfigLayerError(RuntimeError):
     """Raised when one eager-pull config operation fails."""
 
 
-class DifyConfigDeps(LayerDeps):
-    shell: DifyShellLayer  # pyright: ignore[reportUninitializedInstanceVariable]
+class Config(DifyConfigLayerConfig):
+    pass
 
 
-@dataclass(slots=True)
-class DifyConfigLayer(PydanticAILayer[DifyConfigDeps, object, DifyConfigLayerConfig, DifyConfigRuntimeState]):
-    """Materialize prompt-mentioned assets and expose a full SKILL.md reader for config skills."""
+class State(DifyConfigRuntimeState):
+    initialized: bool = False
 
-    type_id: ClassVar[str | None] = DIFY_CONFIG_LAYER_TYPE_ID
 
-    config: DifyConfigLayerConfig
+class Capability(AbstractCapability[Deps]):
+    """First-run eager pulls with explicit JSON writeback and native ordering."""
 
-    @classmethod
+    def __init__(self, name: str):
+        self.id = name
+        self.name = name
+
     @override
-    def from_config(cls, config: DifyConfigLayerConfig) -> Self:
-        return cls(config=DifyConfigLayerConfig.model_validate(config))
+    def get_ordering(self) -> CapabilityOrdering:
+        return CapabilityOrdering(wrapped_by=[ShellCapability], requires=[ShellCapability])
 
-    @property
     @override
-    def prefix_prompts(self) -> list[PydanticAIPrompt[object]]:
-        return [self.build_prompt_context]
+    def get_instructions(self):
+        return self._instructions
 
-    @property
+    def _instructions(self, ctx: RunContext[Deps]) -> str:
+        context = self._context(ctx.deps)
+        return f"{context.build_prompt_context()}\n\n{context.build_suffix_prompt()}"
+
     @override
-    def suffix_prompts(self) -> list[PydanticAIPrompt[object]]:
-        return [self.build_suffix_prompt]
+    def get_toolset(self) -> FunctionToolset[Deps]:
+        toolset = FunctionToolset[Deps](id=self.name, sequential=True)
 
-    @property
-    @override
-    def tools(self) -> list[PydanticAITool[object]]:
-        if not self.config.skills:
-            return []
-        return [Tool(self._read_skill, name="read_config_skill_md")]
+        async def hide_without_skills(ctx: RunContext[Deps], tool_def: ToolDefinition) -> ToolDefinition | None:
+            return tool_def if self._context(ctx.deps).config.skills else None
 
-    async def _read_skill(self, name: str) -> str:
-        """Return the full SKILL.md of one configured skill."""
-        try:
-            return await self._read_skill_md(name)
-        except (RuntimeError, ValueError) as exc:
-            # Tool callers can correct input or retry a pull; eager context pulls still fail fast.
-            raise ModelRetry(str(exc)) from exc
+        @toolset.tool(name="read_config_skill_md", prepare=hide_without_skills)
+        async def read_config_skill_md(ctx: RunContext[Deps], name: str) -> str:
+            """Return the full SKILL.md of one configured skill."""
+            try:
+                return await self._context(ctx.deps).read_skill_md(name)
+            except (RuntimeError, ValueError) as exc:
+                # Tool callers can correct input or retry a pull; eager pulls in wrap_run still fail fast.
+                raise ModelRetry(str(exc)) from exc
 
-    async def _read_skill_md(self, name: str) -> str:
-        if name not in {skill.name for skill in self.config.skills}:
-            raise ValueError(f"unknown config skill: {name}")
-        output = await self._run_mentioned_pull(
-            script=self._build_shell_skill_pull_script([name]),
-            target_kind="skill",
+        return toolset
+
+    def _context(self, deps: Deps) -> _ConfigContext:
+        config = Config.model_validate(deps.layers[self.name]["config"])
+        return _ConfigContext(
+            config, State.model_validate(deps.layers[self.name]["state"]), deps.resources.shells[config.shell]
         )
-        item = _parse_pull_items(output, target_kind="skill").get(name)
-        skill_md = item.get("skill_md") if item is not None else None
-        if not isinstance(skill_md, str):
-            raise DifyConfigLayerError(f"missing skill content in pull output for {name}")
-        return skill_md
 
     @override
-    async def on_context_create(self) -> None:
-        await self._initialize_context()
+    async def wrap_run(self, ctx: RunContext[Deps], *, handler: WrapRunHandler) -> AgentRunResult:
+        context = self._context(ctx.deps)
+        try:
+            if not context.runtime_state.initialized:
+                await context._pull_mentioned_targets()
+                context.runtime_state.initialized = True
+        finally:
+            ctx.deps.layers[self.name]["state"] = context.runtime_state.model_dump(mode="json")
+        return await handler()
 
-    @override
-    async def on_context_resume(self) -> None:
-        return None
 
-    async def _initialize_context(self) -> None:
-        self._initialize_runtime_prompt_state()
-        await self._pull_mentioned_targets()
+@dataclass
+class _ConfigContext:
+    """Short-lived validated data for prompt rendering or an eager-pull operation."""
 
-    def _initialize_runtime_prompt_state(self) -> None:
-        command_paths = dict(_CONFIG_CLI_HELP_COMMANDS)
-        if self._config_writable:
-            command_paths.update(_CONFIG_CLI_MUTATION_HELP_COMMANDS)
-        command_paths.update(_AGENT_FILE_CLI_HELP_COMMANDS)
-        self.runtime_state.config_context_json = self._format_config_context_json()
-        self.runtime_state.config_cli_help = {
-            command: render_agent_stub_cli_help(args) for command, args in command_paths.items()
-        }
-        self.runtime_state.push_spec_semantics = ""
-        self.runtime_state.push_spec_json_schema = ""
-        self.runtime_state.push_spec_example = ""
+    config: Config
+    runtime_state: State
+    shell: ShellSession
 
     def build_prompt_context(self) -> str:
         sections: list[str] = []
@@ -170,22 +172,14 @@ class DifyConfigLayer(PydanticAILayer[DifyConfigDeps, object, DifyConfigLayerCon
         return "\n\n".join(section for section in sections if section)
 
     def build_suffix_prompt(self) -> str:
-        sections: list[str] = []
-        if self.runtime_state.config_context_json:
-            sections.append(
-                f"{_CONFIG_CONTEXT_HEADING}\n"
-                f"{_format_command_output(_CONFIG_CONTEXT_COMMAND, self.runtime_state.config_context_json)}"
-            )
+        sections = [
+            f"{_CONFIG_CONTEXT_HEADING}\n"
+            f"{_format_command_output(_CONFIG_CONTEXT_COMMAND, self._format_config_context_json())}"
+        ]
         usage_lines = [_CONFIG_CLI_USAGE_PROMPT]
         if self.config.skills:
-            usage_lines.append(
-                "Use read_config_skill_md(name) to read a configured skill's full SKILL.md. "
-                "Shell output can omit the middle of a large SKILL.md."
-            )
-        if cli_help := self._format_config_cli_help():
-            usage_lines.append(cli_help)
-        if file_cli_help := self._format_agent_file_cli_help():
-            usage_lines.append(file_cli_help)
+            usage_lines.append(_READ_SKILL_TOOL_PROMPT)
+        usage_lines += [self._format_config_cli_help(), self._format_agent_file_cli_help()]
         sections.append("\n".join(usage_lines))
         return "\n\n".join(section for section in sections if section)
 
@@ -194,26 +188,19 @@ class DifyConfigLayer(PydanticAILayer[DifyConfigDeps, object, DifyConfigLayerCon
         return self.config.config_version is not None and self.config.config_version.writable
 
     def _format_config_cli_help(self) -> str:
-        commands = list(_CONFIG_CLI_HELP_COMMANDS)
+        commands = dict(_CONFIG_CLI_HELP_COMMANDS)
         if self._config_writable:
-            commands.extend(_CONFIG_CLI_MUTATION_HELP_COMMANDS)
+            commands.update(_CONFIG_CLI_MUTATION_HELP_COMMANDS)
         command_sections = [
-            _format_command_output(command, self.runtime_state.config_cli_help[command])
-            for command in commands
-            if command in self.runtime_state.config_cli_help
+            _format_command_output(command, render_agent_stub_cli_help(args)) for command, args in commands.items()
         ]
-        if not command_sections:
-            return ""
         return "Agent config CLI reference for installed `dify-agent`:\n" + "\n\n".join(command_sections)
 
     def _format_agent_file_cli_help(self) -> str:
         command_sections = [
-            _format_command_output(command, self.runtime_state.config_cli_help[command])
-            for command in _AGENT_FILE_CLI_HELP_COMMANDS
-            if command in self.runtime_state.config_cli_help
+            _format_command_output(command, render_agent_stub_cli_help(args))
+            for command, args in _AGENT_FILE_CLI_HELP_COMMANDS.items()
         ]
-        if not command_sections:
-            return ""
         return (
             "Agent file CLI reference for installed `dify-agent`:\n"
             + "\n\n".join(command_sections)
@@ -243,8 +230,18 @@ class DifyConfigLayer(PydanticAILayer[DifyConfigDeps, object, DifyConfigLayerCon
             )
             self.runtime_state.pulled_file_outputs = _parse_file_pull_outputs(output, names)
 
+    async def read_skill_md(self, name: str) -> str:
+        if name not in {skill.name for skill in self.config.skills}:
+            raise ValueError(f"unknown config skill: {name}")
+        output = await self._run_mentioned_pull(script=self._build_shell_skill_pull_script([name]), target_kind="skill")
+        item = _parse_pull_items(output, target_kind="skill").get(name)
+        skill_md = item.get("skill_md") if item is not None else None
+        if not isinstance(skill_md, str):
+            raise DifyConfigLayerError(f"missing skill content in pull output for {name}")
+        return skill_md
+
     async def _run_mentioned_pull(self, *, script: str, target_kind: str) -> str:
-        result = await self.deps.shell.run_remote_script(
+        result = await self.shell.run_remote_script(
             script,
             inject_agent_stub_env=True,
         )
@@ -330,4 +327,4 @@ def _format_command_output(command: str, output: str) -> str:
     return f"Command:\n$ {command}\nOutput:\n{output}"
 
 
-__all__ = ["DifyConfigLayer", "DifyConfigLayerError"]
+__all__ = ["Config", "State", "Capability", "DifyConfigLayerError"]

@@ -602,7 +602,7 @@ class WorkflowGenerateStreamApi(Resource):
         if guard is not None:
             return guard
 
-        def generate() -> Generator[str, None, None]:
+        def generate() -> Generator[str]:
             try:
                 for event_name, payload in WorkflowGeneratorService.generate_workflow_graph_stream(
                     tenant_id=current_tenant_id,

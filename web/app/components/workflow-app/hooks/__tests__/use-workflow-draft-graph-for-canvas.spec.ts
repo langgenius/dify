@@ -1,3 +1,4 @@
+import type { Node } from '@/app/components/workflow/types'
 import { renderHook } from '@testing-library/react'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { AppModeEnum } from '@/types/app'
@@ -109,4 +110,75 @@ describe('useWorkflowDraftGraphForCanvas', () => {
     expect(graph.viewport).toEqual({ x: 1, y: 2, zoom: 0.5 })
     expect(generateNewNodeCalls).toHaveLength(0)
   })
+
+  it('removes residual LLM memory from workflow drafts, including container children', () => {
+    const memory = {
+      enabled: false,
+      role_prefix: { user: '', assistant: '' },
+      window: { enabled: false, size: 10 },
+    }
+    const nodes: Node<{ memory?: typeof memory }>[] = [
+      {
+        id: 'start',
+        position: { x: 0, y: 0 },
+        data: { type: BlockEnum.Start, title: 'Start', desc: '' },
+      },
+      ...[undefined, 'iteration', 'loop'].map((parentId, index) => ({
+        id: `llm-${index}`,
+        parentId,
+        position: { x: 100, y: index * 100 },
+        data: { type: BlockEnum.LLM, title: 'LLM', desc: '', memory },
+      })),
+      ...[BlockEnum.Iteration, BlockEnum.Loop].map((type) => ({
+        id: type,
+        position: { x: 200, y: 0 },
+        data: { type, title: type, desc: '' },
+      })),
+      {
+        id: 'classifier',
+        position: { x: 300, y: 0 },
+        data: { type: BlockEnum.QuestionClassifier, title: 'Classifier', desc: '', memory },
+      },
+    ]
+    const originalNodes = structuredClone(nodes)
+    const { result } = renderHook(() => useWorkflowDraftGraphForCanvas(AppModeEnum.WORKFLOW))
+
+    const graph = result.current.getWorkflowDraftGraphForCanvas({ nodes, edges: [] })
+
+    expect(graph.nodes).toHaveLength(nodes.length)
+    const llmNodes = graph.nodes.filter((node) => node.data.type === BlockEnum.LLM)
+    expect(llmNodes).toHaveLength(3)
+    llmNodes.forEach((node) => {
+      expect(node.data).not.toHaveProperty('memory')
+      expect(node).toMatchObject({
+        parentId: originalNodes.find((original) => original.id === node.id)?.parentId,
+        data: { type: BlockEnum.LLM, title: 'LLM', desc: '' },
+      })
+    })
+    expect(graph.nodes.find((node) => node.id === 'classifier')).toEqual(originalNodes.at(-1))
+    expect(nodes).toEqual(originalNodes)
+  })
+
+  it.each([AppModeEnum.ADVANCED_CHAT, undefined])(
+    'preserves memory when app mode is %s',
+    (appMode) => {
+      const nodes: Node<{ memory: { window: { enabled: boolean; size: number } } }>[] = [
+        {
+          id: 'llm',
+          position: { x: 0, y: 0 },
+          data: {
+            type: BlockEnum.LLM,
+            title: 'LLM',
+            desc: '',
+            memory: { window: { enabled: false, size: 10 } },
+          },
+        },
+      ]
+      const { result } = renderHook(() => useWorkflowDraftGraphForCanvas(appMode))
+
+      const graph = result.current.getWorkflowDraftGraphForCanvas({ nodes, edges: [] })
+
+      expect(graph.nodes).toEqual(nodes)
+    },
+  )
 })

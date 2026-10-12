@@ -40,7 +40,7 @@ def test_convert_blocking_full_and_simple_response():
 
 
 def test_convert_stream_full_response():
-    def stream() -> Generator[AppStreamResponse, None, None]:
+    def stream() -> Generator[AppStreamResponse]:
         yield WorkflowAppStreamResponse(
             stream_response=PingStreamResponse(task_id="t"),
             workflow_run_id="run",
@@ -99,7 +99,7 @@ def test_convert_stream_simple_response_node_ignore_details():
         ),
     )
 
-    def stream() -> Generator[AppStreamResponse, None, None]:
+    def stream() -> Generator[AppStreamResponse]:
         yield WorkflowAppStreamResponse(stream_response=node_start, workflow_run_id="run")
         yield WorkflowAppStreamResponse(stream_response=node_finish, workflow_run_id="run")
 

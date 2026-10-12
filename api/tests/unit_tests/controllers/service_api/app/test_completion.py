@@ -630,6 +630,7 @@ class TestChatApiController:
             (DeploymentEdition.CLOUD, CloudPlan.PROFESSIONAL, str(uuid.uuid4())),
             (DeploymentEdition.CLOUD, CloudPlan.SANDBOX, None),
         ],
+        ids=["community-version", "enterprise-version", "cloud-paid-version", "cloud-default-version"],
     )
     def test_allows_default_or_entitled_workflow_version_execution(
         self,

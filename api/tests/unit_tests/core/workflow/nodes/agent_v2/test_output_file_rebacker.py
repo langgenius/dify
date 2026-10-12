@@ -17,7 +17,7 @@ TENANT = "11111111-1111-1111-1111-111111111111"
 
 
 @pytest.fixture(autouse=True)
-def _tables() -> Generator[None, None, None]:
+def _tables() -> Generator[None]:
     engine = session_factory.get_session_maker().kw["bind"]
     ToolFile.__table__.create(bind=engine, checkfirst=True)
     yield
