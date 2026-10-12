@@ -18,6 +18,8 @@ const DialogClose = BaseDialog.Close
 const createDialogHandle = BaseDialog.createHandle
 
 type DialogActions = BaseDialog.Root.Actions
+type DialogChangeEventReason = BaseDialog.Root.ChangeEventReason
+type DialogChangeEventDetails = BaseDialog.Root.ChangeEventDetails
 
 type DialogProps<Payload = unknown> = BaseDialog.Root.Props<Payload>
 type DialogHandle<Payload = unknown> = BaseDialog.Handle<Payload>
@@ -116,6 +118,8 @@ export {
 export type {
   DialogActions,
   DialogBackdropProps,
+  DialogChangeEventDetails,
+  DialogChangeEventReason,
   DialogCloseProps,
   DialogContentProps,
   DialogDescriptionProps,

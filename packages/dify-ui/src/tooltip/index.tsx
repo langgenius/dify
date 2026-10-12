@@ -14,6 +14,8 @@ const TooltipTrigger = BaseTooltip.Trigger
 
 type TooltipProviderProps = BaseTooltip.Provider.Props
 type TooltipActions = BaseTooltip.Root.Actions
+type TooltipChangeEventReason = BaseTooltip.Root.ChangeEventReason
+type TooltipChangeEventDetails = BaseTooltip.Root.ChangeEventDetails
 
 type TooltipProps<Payload = unknown> = BaseTooltip.Root.Props<Payload>
 type TooltipTriggerProps<Payload = unknown> = BaseTooltip.Trigger.Props<Payload>
@@ -58,6 +60,8 @@ export { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger }
 
 export type {
   TooltipActions,
+  TooltipChangeEventDetails,
+  TooltipChangeEventReason,
   TooltipContentProps,
   TooltipProps,
   TooltipProviderProps,

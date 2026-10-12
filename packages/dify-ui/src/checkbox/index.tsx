@@ -1,6 +1,5 @@
 'use client'
 
-import type { Checkbox as BaseCheckboxNS } from '@base-ui/react/checkbox'
 import type * as React from 'react'
 import { Checkbox as BaseCheckbox } from '@base-ui/react/checkbox'
 import { cn } from '../cn'
@@ -27,7 +26,9 @@ const checkboxIndicatorClassName =
 
 const checkboxSkeletonClassName = 'size-4 shrink-0 rounded-sm bg-text-quaternary opacity-20'
 
-type CheckboxProps = Omit<BaseCheckboxNS.Root.Props, 'children'>
+type CheckboxProps = Omit<BaseCheckbox.Root.Props, 'children'>
+type CheckboxChangeEventReason = BaseCheckbox.Root.ChangeEventReason
+type CheckboxChangeEventDetails = BaseCheckbox.Root.ChangeEventDetails
 
 function Checkbox({ className, ...props }: CheckboxProps) {
   return (
@@ -61,4 +62,9 @@ function CheckboxSkeleton({ className, ...props }: CheckboxSkeletonProps) {
 
 export { Checkbox, CheckboxSkeleton }
 
-export type { CheckboxProps, CheckboxSkeletonProps }
+export type {
+  CheckboxChangeEventDetails,
+  CheckboxChangeEventReason,
+  CheckboxProps,
+  CheckboxSkeletonProps,
+}

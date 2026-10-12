@@ -18,6 +18,7 @@ import {
 import { parsePlacement } from '../placement'
 
 type SelectActions = BaseSelect.Root.Actions
+type SelectChangeEventReason = BaseSelect.Root.ChangeEventReason
 type SelectChangeEventDetails = BaseSelect.Root.ChangeEventDetails
 type SelectOpenChangeEventDetails = BaseSelect.Root.OpenChangeEventDetails
 
@@ -298,6 +299,7 @@ export {
 export type {
   SelectActions,
   SelectChangeEventDetails,
+  SelectChangeEventReason,
   SelectContentProps,
   SelectGroupLabelProps,
   SelectGroupProps,

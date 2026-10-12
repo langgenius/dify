@@ -1360,19 +1360,6 @@
       "count": 1
     }
   },
-  "web/app/components/base/search-input/__tests__/index.spec.tsx": {
-    "dify/require-disable-directive-description": {
-      "count": 1
-    }
-  },
-  "web/app/components/base/search-input/index.stories.tsx": {
-    "jsx-a11y/label-has-associated-control": {
-      "count": 3
-    },
-    "no-console": {
-      "count": 3
-    }
-  },
   "web/app/components/base/tag-input/index.stories.tsx": {
     "jsx-a11y/label-has-associated-control": {
       "count": 12
@@ -4346,7 +4333,7 @@
       "count": 1
     },
     "typescript/no-explicit-any": {
-      "count": 4
+      "count": 3
     }
   },
   "web/service/apps.ts": {

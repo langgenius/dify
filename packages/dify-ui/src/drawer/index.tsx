@@ -17,6 +17,10 @@ const DrawerClose = BaseDrawer.Close
 const createDrawerHandle = BaseDrawer.createHandle
 
 type DrawerActions = BaseDrawer.Root.Actions
+type DrawerChangeEventReason = BaseDrawer.Root.ChangeEventReason
+type DrawerChangeEventDetails = BaseDrawer.Root.ChangeEventDetails
+type DrawerSnapPointChangeEventReason = BaseDrawer.Root.SnapPointChangeEventReason
+type DrawerSnapPointChangeEventDetails = BaseDrawer.Root.SnapPointChangeEventDetails
 
 type DrawerProps<Payload = unknown> = BaseDrawer.Root.Props<Payload>
 type DrawerHandle<Payload = unknown> = BaseDrawer.Handle<Payload>
@@ -134,6 +138,8 @@ export {
 export type {
   DrawerActions,
   DrawerBackdropProps,
+  DrawerChangeEventDetails,
+  DrawerChangeEventReason,
   DrawerCloseProps,
   DrawerContentProps,
   DrawerDescriptionProps,
@@ -144,6 +150,8 @@ export type {
   DrawerPortalProps,
   DrawerProps,
   DrawerProviderProps,
+  DrawerSnapPointChangeEventDetails,
+  DrawerSnapPointChangeEventReason,
   DrawerSwipeAreaProps,
   DrawerTitleProps,
   DrawerTriggerProps,

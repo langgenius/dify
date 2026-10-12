@@ -15,10 +15,14 @@ import {
 const AlertDialog = BaseAlertDialog.Root
 const AlertDialogTitle = BaseAlertDialog.Title
 const AlertDialogDescription = BaseAlertDialog.Description
+const createAlertDialogHandle = BaseAlertDialog.createHandle
 
 type AlertDialogActions = BaseAlertDialog.Root.Actions
+type AlertDialogChangeEventReason = BaseAlertDialog.Root.ChangeEventReason
+type AlertDialogChangeEventDetails = BaseAlertDialog.Root.ChangeEventDetails
 
 type AlertDialogProps<Payload = unknown> = BaseAlertDialog.Root.Props<Payload>
+type AlertDialogHandle<Payload = unknown> = BaseAlertDialog.Handle<Payload>
 type AlertDialogTriggerProps<Payload = unknown> = BaseAlertDialog.Trigger.Props<Payload>
 
 function AlertDialogTrigger<Payload = unknown>({
@@ -114,15 +118,19 @@ export {
   AlertDialogFooter,
   AlertDialogTitle,
   AlertDialogTrigger,
+  createAlertDialogHandle,
 }
 
 export type {
   AlertDialogActions,
   AlertDialogCancelButtonProps,
+  AlertDialogChangeEventDetails,
+  AlertDialogChangeEventReason,
   AlertDialogConfirmButtonProps,
   AlertDialogContentProps,
   AlertDialogDescriptionProps,
   AlertDialogFooterProps,
+  AlertDialogHandle,
   AlertDialogProps,
   AlertDialogTitleProps,
   AlertDialogTriggerProps,
