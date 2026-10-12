@@ -578,7 +578,7 @@ docs = [
 
 [package.metadata]
 requires-dist = [
-    { name = "e2b", marker = "extra == 'server'", specifier = ">=2.38.0,<3.0.0" },
+    { name = "e2b", marker = "extra == 'server'", specifier = ">=2.52.0,<3.0.0" },
     { name = "fastapi", marker = "extra == 'server'", specifier = "==0.136.0" },
     { name = "graphon", marker = "extra == 'server'", specifier = "==0.5.2" },
     { name = "grpcio", marker = "extra == 'server'", specifier = ">=1.60.0,<2.0.0" },
@@ -644,7 +644,7 @@ wheels = [
 
 [[package]]
 name = "e2b"
-version = "2.46.4"
+version = "2.52.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "attrs" },
@@ -660,9 +660,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "wcmatch" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/7d/04/3e7d3ca8abaeffcfc41d36b9d6fe3aa055cecf3b56234e051991de848b2d/e2b-2.46.4.tar.gz", hash = "sha256:777d35beb00194b401a6c4ac2498aa836628839649f17aae86e85920382c8f6c", size = 228801, upload-time = "2026-09-02T20:48:36.725Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/3c/c4/560e7de54cece3573086f09d304e595729964aa18593b437125d9f8bd926/e2b-2.52.0.tar.gz", hash = "sha256:58c0042609513799341d4c1837e2581a4a5e73d3d62c9f1c57495c5e23eedee2", size = 235496, upload-time = "2026-10-01T10:44:02.439Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a0/b5/585a30223d9ee95bc94f32f8d5358b147bf93832e37b809545a3ab7892a0/e2b-2.46.4-py3-none-any.whl", hash = "sha256:5d77e9fee8571a0d24a179f14244984127d18bd93a99a5e90226c876087035b5", size = 403067, upload-time = "2026-09-02T20:48:35.082Z" },
+    { url = "https://files.pythonhosted.org/packages/53/71/1a01b7e4486b5962eaade7dba7026876a1b4569e49b464e82912d8801e38/e2b-2.52.0-py3-none-any.whl", hash = "sha256:6f4b5084b09986db43e99c7405bae6b14dc56984a69bbb1dc0687f1c71515cfb", size = 396242, upload-time = "2026-10-01T10:44:00.38Z" },
 ]
 
 [[package]]
