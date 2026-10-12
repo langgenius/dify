@@ -179,7 +179,7 @@ class TestWorkflowEntryRun:
             ) as from_engine,
             patch.object(
                 workflow_entry,
-                "ResponseStreamFilter",
+                "DifyResponseStreamFilter",
                 return_value=sentinel.response_stream_filter,
             ) as response_stream_filter_cls,
             patch.object(
