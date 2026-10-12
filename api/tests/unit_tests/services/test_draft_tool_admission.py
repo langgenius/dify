@@ -1127,3 +1127,369 @@ def test_native_draft_oauth_refresh_refuses_concurrent_selection_change(native_d
                 "refresh_token": "cipher:concurrent-refresh",
             }
             assert expiry == 4202444800
+
+
+@pytest.fixture
+def paused_native_draft(native_draft, sqlite_session, monkeypatch):
+    """Real saved run/pause/context; only blob, Redis and final resume effects are external."""
+    from decimal import Decimal
+
+    from sqlalchemy import event
+
+    import core.app.apps.execution_coordinator as cancellation_owner
+    import repositories.sqlalchemy_api_workflow_run_repository as pause_owner
+    import tasks.app_generate.workflow_execute_task as worker
+    from core.app.app_config.entities import WorkflowUIBasedAppConfig
+    from core.app.apps.base_app_generator import BaseAppGenerator
+    from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
+    from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext
+    from graphon.enums import WorkflowExecutionStatus
+    from graphon.runtime import GraphRuntimeState, VariablePool
+    from models.enums import ConversationFromSource, CreatorUserRole, WorkflowRunTriggeredFrom
+    from models.model import Conversation, Message
+    from models.workflow import WorkflowPause, WorkflowRun
+
+    run_id = "eeeeeeee-0000-4000-8000-000000000001"
+    conversation_id = "eeeeeeee-0000-4000-8000-000000000002"
+    task_id = "eeeeeeee-0000-4000-8000-000000000003"
+    state_key = "resume-draft-tool-state.json"
+    state = SimpleNamespace(
+        saved_blob=b"",
+        redis_calls=[],
+        native_calls=[],
+        pause_writes=[],
+        storage_loads=[],
+        run_id=run_id,
+        task_id=task_id,
+        run=None,
+        entity=None,
+    )
+
+    class BlobBoundary:
+        @staticmethod
+        def load(key):
+            assert key == state_key
+            state.storage_loads.append(key)
+            return state.saved_blob
+
+    class RedisBoundary:
+        def __init__(self):
+            self.values = {
+                "generate_task_stopped:eeeeeeee-0000-4000-8000-000000000003": b"1",
+                "workflow:eeeeeeee-0000-4000-8000-000000000003:commands:pending": b"1",
+                "workflow:eeeeeeee-0000-4000-8000-000000000003:commands": [],
+            }
+
+        def delete(self, key):
+            state.redis_calls.append(("delete", key))
+            return int(self.values.pop(key, None) is not None)
+
+        def get(self, key):
+            state.redis_calls.append(("get", key))
+            return self.values.get(key)
+
+        def pipeline(self):
+            state.redis_calls.append(("pipeline",))
+            return RedisPipeline(self)
+
+    class RedisPipeline:
+        def __init__(self, redis):
+            self.redis = redis
+            self.operations = []
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def get(self, key):
+            self.operations.append(("get", key))
+            return self
+
+        def delete(self, key):
+            self.operations.append(("delete", key))
+            return self
+
+        def lrange(self, key, _start, _end):
+            self.operations.append(("lrange", key))
+            return self
+
+        def execute(self):
+            return [
+                self.redis.values.get(key, []) if operation == "lrange" else getattr(self.redis, operation)(key)
+                for operation, key in self.operations
+            ]
+
+    redis = RedisBoundary()
+    monkeypatch.setattr(cancellation_owner, "redis_client", redis)
+    monkeypatch.setattr(pause_owner, "storage", BlobBoundary())
+    monkeypatch.setattr(worker, "db", SimpleNamespace(engine=native_draft.tools.engine))
+
+    def observe_pause_write(_connection, _cursor, statement, _params, _context, _many):
+        if statement.lstrip().lower().startswith(("update workflow_pauses ", "update workflow_runs ")):
+            state.pause_writes.append(statement)
+
+    def resume_boundary(_self, **kwargs):
+        entity = kwargs["application_generate_entity"]
+        execution_id = (
+            entity.workflow_execution_id if isinstance(entity, WorkflowAppGenerateEntity) else entity.workflow_run_id
+        )
+        state.native_calls.append(execution_id)
+        # Keep the actual saved-graph restoration owner used by both native
+        # workers; the final generator boundary stops before business effects.
+        with Session(native_draft.tools.engine) as session:
+            BaseAppGenerator._restore_workflow_run_graph(
+                session=session,
+                workflow=kwargs["workflow"],
+                workflow_run_id=execution_id,
+            )
+        state.executed_graph = kwargs["workflow"].graph_dict
+        raise NativeDispatchReachedError("normal native resume reached before saved graph admission")
+
+    monkeypatch.setattr(worker.WorkflowAppGenerator, "resume", resume_boundary)
+    monkeypatch.setattr(worker.AdvancedChatAppGenerator, "resume", resume_boundary)
+
+    def save_context():
+        context = WorkflowResumptionContext(
+            generate_entity={"type": state.mode, "entity": state.entity},
+            serialized_graph_runtime_state=GraphRuntimeState(variable_pool=VariablePool(), start_at=0.0).dumps(),
+        )
+        state.saved_blob = context.dumps().encode()
+
+    def store(mode, saved_graph):
+        state.mode = AppMode(mode)
+        native_draft.app.mode = state.mode
+        native_draft.workflow.type = WorkflowType.CHAT if state.mode == AppMode.ADVANCED_CHAT else WorkflowType.WORKFLOW
+        sqlite_session.add(native_draft.user)
+        run = WorkflowRun(
+            id=run_id,
+            tenant_id=TENANT_ID,
+            app_id=APP_ID,
+            workflow_id=DRAFT_ID,
+            type=native_draft.workflow.type,
+            triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
+            version=Workflow.VERSION_DRAFT,
+            graph=json.dumps(saved_graph),
+            inputs="{}",
+            status=WorkflowExecutionStatus.PAUSED,
+            created_by_role=CreatorUserRole.ACCOUNT,
+            created_by=ACCOUNT_A,
+        )
+        pause = WorkflowPause(workflow_id=DRAFT_ID, workflow_run_id=run_id, state_object_key=state_key)
+        sqlite_session.add_all([run, pause])
+        app_config = WorkflowUIBasedAppConfig(
+            tenant_id=TENANT_ID,
+            app_id=APP_ID,
+            app_mode=state.mode,
+            workflow_id=DRAFT_ID,
+        )
+        invocation = {
+            "app_config": app_config,
+            "task_id": task_id,
+            "inputs": {},
+            "files": [],
+            "user_id": ACCOUNT_A,
+            "stream": True,
+            "invoke_from": InvokeFrom.DEBUGGER,
+        }
+        if state.mode == AppMode.WORKFLOW:
+            state.entity = WorkflowAppGenerateEntity(**invocation, workflow_execution_id=run_id)
+        else:
+            conversation = Conversation(
+                id=conversation_id,
+                app_id=APP_ID,
+                mode=AppMode.ADVANCED_CHAT,
+                name="Paused draft",
+                inputs={},
+                from_source=ConversationFromSource.CONSOLE,
+                from_account_id=ACCOUNT_A,
+                invoke_from=InvokeFrom.DEBUGGER,
+            )
+            message = Message(
+                id="eeeeeeee-0000-4000-8000-000000000004",
+                app_id=APP_ID,
+                conversation_id=conversation_id,
+                inputs={},
+                query="hello",
+                message={"role": "user", "content": "hello"},
+                answer="",
+                message_unit_price=Decimal(0),
+                answer_unit_price=Decimal(0),
+                currency="USD",
+                from_source=ConversationFromSource.CONSOLE,
+                from_account_id=ACCOUNT_A,
+                invoke_from=InvokeFrom.DEBUGGER,
+                workflow_run_id=run_id,
+                app_mode=AppMode.ADVANCED_CHAT,
+            )
+            sqlite_session.add_all([conversation, message])
+            state.entity = AdvancedChatAppGenerateEntity(
+                **invocation,
+                workflow_run_id=run_id,
+                conversation_id=conversation_id,
+                query="hello",
+            )
+        sqlite_session.commit()
+        state.run = run
+        save_context()
+
+    def assert_not_resumed():
+        assert state.storage_loads == ["resume-draft-tool-state.json"]
+        assert state.redis_calls == []
+        assert redis.values["generate_task_stopped:eeeeeeee-0000-4000-8000-000000000003"] == b"1"
+        assert state.pause_writes == []
+        assert state.native_calls == []
+        with Session(native_draft.tools.engine) as session:
+            assert session.get(WorkflowRun, run_id).status == WorkflowExecutionStatus.PAUSED
+            assert (
+                session.scalar(select(WorkflowPause).where(WorkflowPause.workflow_run_id == run_id)).resumed_at is None
+            )
+        assert native_draft.tools.forbidden == []
+
+    state.store = store
+    state.save_context = save_context
+    state.resume = lambda: worker._resume_app_execution({"workflow_run_id": run_id})
+    state.assert_not_resumed = assert_not_resumed
+    state.redis = redis
+    event.listen(native_draft.tools.engine, "before_cursor_execute", observe_pause_write)
+    try:
+        yield state
+    finally:
+        event.remove(native_draft.tools.engine, "before_cursor_execute", observe_pause_write)
+
+
+@pytest.mark.parametrize("mode", ["workflow", "advanced-chat"])
+@pytest.mark.parametrize("draft_edit", ["removed-tool", "changed-credential"])
+def test_resume_refuses_saved_revoked_tool_before_any_resume_effect(
+    paused_native_draft,
+    native_draft,
+    sqlite_session,
+    mode,
+    draft_edit,
+):
+    owner = Account(name="Saved Tool credential owner", email="saved-tool-owner@example.test")
+    owner.id = ACCOUNT_B
+    sqlite_session.add(owner)
+    sqlite_session.commit()
+    selected = add_credential(
+        sqlite_session,
+        tenant_id=TENANT_ID,
+        provider=AUTH_PROVIDER,
+        user_id=ACCOUNT_B,
+        visibility=PermissionEnum.PARTIAL_TEAM,
+        partial_members=[ACCOUNT_A],
+        name="Saved selected credential",
+    )
+    set_tool(native_draft, sqlite_session, credential_id=selected.id)
+    paused_native_draft.store(mode, native_draft.workflow.graph_dict)
+    grant = sqlite_session.scalar(select(CredentialPermission).where(CredentialPermission.credential_id == selected.id))
+    grant.has_permission = False
+    if draft_edit == "removed-tool":
+        graph = native_draft.workflow.graph_dict
+        graph["nodes"] = [node for node in graph["nodes"] if node["id"] != "t"]
+        graph["edges"] = [{"id": "bypass", "source": "s", "target": "e"}]
+        native_draft.workflow.graph = json.dumps(graph)
+        sqlite_session.commit()
+    else:
+        alternative = add_credential(
+            sqlite_session,
+            tenant_id=TENANT_ID,
+            provider=AUTH_PROVIDER,
+            user_id=ACCOUNT_A,
+            name="Current draft accessible alternative",
+        )
+        set_tool(native_draft, sqlite_session, credential_id=alternative.id)
+    with pytest.raises(ValueError):
+        paused_native_draft.resume()
+    paused_native_draft.assert_not_resumed()
+
+
+@pytest.mark.parametrize("mode", ["workflow", "advanced-chat"])
+def test_resume_configured_saved_graph_ignores_later_unconfigured_draft_tool(
+    paused_native_draft,
+    native_draft,
+    sqlite_session,
+    mode,
+):
+    from tests.unit_tests.services.dify_builder.installed_tool_inventory import FakeTool, provider_payload
+
+    selected = add_credential(sqlite_session, tenant_id=TENANT_ID, provider=AUTH_PROVIDER, user_id=ACCOUNT_A)
+    set_tool(native_draft, sqlite_session, credential_id=selected.id)
+    saved_graph = native_draft.workflow.graph_dict
+    paused_native_draft.store(mode, saved_graph)
+    # A later draft contains a different installed but unconfigured Tool. The
+    # saved configured execution remains entitled to resume without regeneration.
+    native_draft.tools.daemon.providers_by_tenant[TENANT_ID].append(
+        provider_payload("acme/other", "other", [FakeTool("post", "Other post")], needs_credentials=True)
+    )
+    current_graph = native_draft.workflow.graph_dict
+    current_tool = current_graph["nodes"][1]["data"]
+    current_tool.update(
+        {
+            "provider_id": "acme/other/other",
+            "provider_name": "acme/other/other",
+            "tool_parameters": {},
+            "tool_label": "Other post",
+        }
+    )
+    current_tool.pop("credential_id", None)
+    native_draft.workflow.graph = json.dumps(current_graph)
+    sqlite_session.commit()
+    with pytest.raises(NativeDispatchReachedError):
+        paused_native_draft.resume()
+    assert paused_native_draft.executed_graph == saved_graph
+    assert paused_native_draft.native_calls == [paused_native_draft.run_id]
+    assert "generate_task_stopped:eeeeeeee-0000-4000-8000-000000000003" not in paused_native_draft.redis.values
+    assert paused_native_draft.pause_writes
+    assert native_draft.tools.forbidden == []
+
+
+@pytest.mark.parametrize("mode", ["workflow", "advanced-chat"])
+@pytest.mark.parametrize(
+    "saved_graph", [None, "not JSON", "[]", "{}"], ids=["absent", "malformed", "array", "missing-nodes"]
+)
+def test_resume_unverifiable_saved_graph_refuses_before_resume_effects(
+    paused_native_draft,
+    native_draft,
+    sqlite_session,
+    mode,
+    saved_graph,
+):
+    selected = add_credential(sqlite_session, tenant_id=TENANT_ID, provider=AUTH_PROVIDER, user_id=ACCOUNT_A)
+    set_tool(native_draft, sqlite_session, credential_id=selected.id)
+    paused_native_draft.store(mode, native_draft.workflow.graph_dict)
+    paused_native_draft.run.graph = saved_graph
+    sqlite_session.commit()
+    with pytest.raises(ValueError):
+        paused_native_draft.resume()
+    paused_native_draft.assert_not_resumed()
+
+
+@pytest.mark.parametrize("mode", ["workflow", "advanced-chat"])
+@pytest.mark.parametrize("scope", ["run-tenant", "context-actor", "context-workflow", "context-run"])
+def test_resume_saved_graph_requires_actual_run_and_invocation_owners(
+    paused_native_draft,
+    native_draft,
+    sqlite_session,
+    mode,
+    scope,
+):
+    selected = add_credential(sqlite_session, tenant_id=TENANT_ID, provider=AUTH_PROVIDER, user_id=ACCOUNT_A)
+    set_tool(native_draft, sqlite_session, credential_id=selected.id)
+    paused_native_draft.store(mode, native_draft.workflow.graph_dict)
+    if scope == "run-tenant":
+        paused_native_draft.run.tenant_id = OTHER_TENANT_ID
+        sqlite_session.commit()
+    elif scope == "context-actor":
+        paused_native_draft.entity.user_id = ACCOUNT_B
+    elif scope == "context-workflow":
+        paused_native_draft.entity.app_config.workflow_id = "dddddddd-0000-4000-8000-000000000002"
+    elif mode == "workflow":
+        paused_native_draft.entity.workflow_execution_id = "eeeeeeee-0000-4000-8000-000000000099"
+    else:
+        paused_native_draft.entity.workflow_run_id = "eeeeeeee-0000-4000-8000-000000000099"
+    paused_native_draft.save_context()
+    with pytest.raises(ValueError):
+        paused_native_draft.resume()
+    paused_native_draft.assert_not_resumed()
