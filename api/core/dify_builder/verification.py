@@ -2,6 +2,7 @@
 
 from core.dify_builder.contract import TestResultCard
 from core.dify_builder.models import PublicationDecision, Run
+from services.dify_builder.execution_messages import FALLBACK, execution_refusal_message
 
 REVIEW_NOTE = "Other paths and goal acceptance were not verified."
 SUCCESS_REPLY = "Execution succeeded; output needs review."
@@ -148,8 +149,12 @@ def result_card(run: Run) -> TestResultCard:
     if is_execution_policy_blocker(run):
         card.outcome = "execution_unknown"
         card.failure_reason = (
-            "Execution safety requires review or revised test inputs; automatic repair and publication are blocked."
+            execution_refusal_message(run.execution_refusal.reason_code) if run.execution_refusal else FALLBACK
         )
+        if run.execution_refusal is not None:
+            card.terminal_outputs = None
+            if not run.dify_run_id:
+                card.executed_node_ids = []
         return card
     if run.status == "succeeded" and has_output_blocker(run):
         card.status = "failed"
