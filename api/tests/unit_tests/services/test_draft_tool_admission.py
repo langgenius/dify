@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session, sessionmaker
 import services.app_generate_service as generate_module
 import services.workflow_service as workflow_module
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.tools.tool_manager import ToolManager
 from models.account import Account
 from models.credential_permission import CredentialPermission, CredentialType
 from models.enums import EndUserType, PermissionEnum
@@ -43,6 +44,8 @@ from tests.unit_tests.services.dify_builder.installed_tool_inventory import (
 )
 
 draft_tools = installed_draft_tools
+# Preserve the production method before the metadata fixture forbids runtime use.
+_NATIVE_TOOL_RUNTIME = ToolManager.get_tool_runtime.__func__
 
 
 class NativeDispatchReachedError(AssertionError):
@@ -492,4 +495,321 @@ def test_published_execution_keeps_normal_credential_delegation(native_draft, sq
             streaming=False,
             workflow_execution_mode="in_process",
         )
+    assert native_draft.tools.forbidden == []
+
+
+@pytest.mark.parametrize("owner", ["console", "builder"])
+def test_native_publish_owners_read_declarations_before_writes_or_draft_locks(
+    native_draft,
+    sqlite_session,
+    monkeypatch,
+    owner,
+):
+    """A real locked/write publication cannot perform external schema I/O."""
+    from inspect import unwrap
+
+    from sqlalchemy import event
+
+    import controllers.console.app.workflow as console_owner
+    import services.dify_builder.dify_port as builder_owner
+    from core.dify_builder.models import Actor
+    from services.dify_builder.revision import executable_graph_revision, execution_revision
+
+    add_credential(sqlite_session, tenant_id=TENANT_ID, provider=AUTH_PROVIDER, user_id=ACCOUNT_A)
+    sqlite_session.add(native_draft.user)
+    sqlite_session.commit()
+    database = SimpleNamespace(engine=native_draft.tools.engine)
+    monkeypatch.setattr(console_owner, "db", database)
+    monkeypatch.setattr(builder_owner, "db", database)
+    guarded_sessions = set()
+    write_connections = set()
+    requests = []
+    daemon_request = native_draft.tools.daemon.request
+
+    def on_orm_execute(state):
+        if (
+            state.session.bind is native_draft.tools.engine
+            and getattr(state.statement, "_for_update_arg", None) is not None
+        ):
+            guarded_sessions.add(state.session)
+
+    def on_flush(session, _context, _instances):
+        if session.bind is native_draft.tools.engine and (session.new or session.dirty or session.deleted):
+            guarded_sessions.add(session)
+
+    def on_end(session, transaction):
+        if transaction.parent is None:
+            guarded_sessions.discard(session)
+
+    def on_sql(connection, _cursor, statement, _parameters, _context, _executemany):
+        if statement.lstrip().upper().startswith(("INSERT ", "UPDATE ", "DELETE ")):
+            write_connections.add(connection)
+
+    def on_connection_end(connection):
+        write_connections.discard(connection)
+
+    def metadata_request(*args, **kwargs):
+        assert not guarded_sessions, "external Tool declarations fetched during writes or a held draft lock"
+        assert not write_connections, "external Tool declarations fetched inside an active SQL write transaction"
+        requests.append(args)
+        return daemon_request(*args, **kwargs)
+
+    event.listen(Session, "do_orm_execute", on_orm_execute)
+    event.listen(Session, "before_flush", on_flush)
+    event.listen(Session, "after_transaction_end", on_end)
+    event.listen(native_draft.tools.engine, "before_cursor_execute", on_sql)
+    event.listen(native_draft.tools.engine, "commit", on_connection_end)
+    event.listen(native_draft.tools.engine, "rollback", on_connection_end)
+    monkeypatch.setattr(native_draft.tools.daemon, "request", metadata_request)
+    try:
+        if owner == "console":
+            unwrap(console_owner.PublishedWorkflowApi.post)(
+                console_owner.PublishedWorkflowApi(),
+                args=console_owner.PublishWorkflowPayload(),
+                current_user=native_draft.user,
+                app_model=native_draft.app,
+            )
+        else:
+            builder_owner.WorkflowServiceDifyPort().publish(
+                APP_ID,
+                Actor(account_id=ACCOUNT_A, tenant_id=TENANT_ID),
+                expected_revision=execution_revision(native_draft.workflow),
+                expected_graph_revision=executable_graph_revision(native_draft.workflow.graph_dict),
+            )
+        assert requests, "native publication never verified the actual installed Tool declaration"
+        sqlite_session.expire_all()
+        assert sqlite_session.get(App, APP_ID).workflow_id != DRAFT_ID
+        assert sqlite_session.get(App, APP_ID).workflow_id is not None
+        assert len(list(sqlite_session.scalars(select(Workflow).where(Workflow.app_id == APP_ID)))) == 2
+        assert native_draft.tools.forbidden == []
+    finally:
+        event.remove(Session, "do_orm_execute", on_orm_execute)
+        event.remove(Session, "before_flush", on_flush)
+        event.remove(Session, "after_transaction_end", on_end)
+        event.remove(native_draft.tools.engine, "before_cursor_execute", on_sql)
+        event.remove(native_draft.tools.engine, "commit", on_connection_end)
+        event.remove(native_draft.tools.engine, "rollback", on_connection_end)
+
+
+@pytest.mark.parametrize("mode", [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
+def test_queued_draft_rechecks_revoked_selection_before_native_dispatch(
+    native_draft,
+    sqlite_session,
+    monkeypatch,
+    mode,
+):
+    """Request-time setup is not authorization after a queued credential revoke."""
+    import tasks.app_generate.workflow_execute_task as worker
+
+    credential = add_credential(
+        sqlite_session,
+        tenant_id=TENANT_ID,
+        provider=AUTH_PROVIDER,
+        user_id=ACCOUNT_B,
+        visibility=PermissionEnum.PARTIAL_TEAM,
+        partial_members=[ACCOUNT_A],
+    )
+    native_draft.app.mode = mode
+    sqlite_session.add(native_draft.user)
+    sqlite_session.commit()
+    payload = worker.AppExecutionParams.new(
+        app_model=native_draft.app,
+        workflow=native_draft.workflow,
+        user=native_draft.user,
+        args={"inputs": {}, "query": "hello"},
+        invoke_from=InvokeFrom.DEBUGGER,
+        streaming=True,
+    ).model_dump_json()
+    grant = sqlite_session.scalar(
+        select(CredentialPermission).where(CredentialPermission.credential_id == credential.id)
+    )
+    grant.has_permission = False
+    sqlite_session.commit()
+    monkeypatch.setattr(worker, "db", SimpleNamespace(engine=native_draft.tools.engine))
+    monkeypatch.setattr(worker.WorkflowAppGenerator, "generate", dispatch)
+    monkeypatch.setattr(worker.AdvancedChatAppGenerator, "generate", dispatch)
+    monkeypatch.setattr(
+        worker.MessageBasedAppGenerator,
+        "get_response_topic",
+        lambda *_args: SimpleNamespace(publish=lambda _value: None),
+    )
+    with pytest.raises(ValueError):
+        worker.workflow_based_app_execution_task.run(payload)
+    assert native_draft.tools.forbidden == []
+
+
+@pytest.mark.parametrize("default", [True, False])
+def test_ambiguous_native_default_cannot_mask_hidden_credential(native_draft, sqlite_session, monkeypatch, default):
+    visible = add_credential(
+        sqlite_session,
+        tenant_id=TENANT_ID,
+        provider=AUTH_PROVIDER,
+        user_id=ACCOUNT_A,
+        visibility=PermissionEnum.ONLY_ME,
+        name="Visible tied native selection",
+    )
+    hidden = add_credential(
+        sqlite_session,
+        tenant_id=TENANT_ID,
+        provider=AUTH_PROVIDER,
+        user_id=ACCOUNT_B,
+        visibility=PermissionEnum.ONLY_ME,
+        name="Hidden tied native selection",
+    )
+    visible.is_default = hidden.is_default = default
+    visible.created_at = hidden.created_at = datetime(2026, 1, 1)
+    sqlite_session.commit()
+    with pytest.raises(ValueError):
+        invoke(native_draft, sqlite_session, monkeypatch, "workflow-full")
+    # An explicit authorized choice removes the native ambiguity on this same node.
+    set_tool(native_draft, sqlite_session, credential_id=visible.id)
+    with pytest.raises(NativeDispatchReachedError):
+        invoke(native_draft, sqlite_session, monkeypatch, "workflow-full")
+    assert native_draft.tools.forbidden == []
+
+
+def native_tool_node(case, *, workflow_id=None):
+    """Construct the real Tool through the production native factory and scope."""
+    from core.app.entities.app_invoke_entities import UserFrom, build_dify_run_context
+    from core.workflow.node_factory import DifyGraphInitContext, DifyNodeFactory
+    from graphon.runtime import GraphRuntimeState, VariablePool
+
+    pool = VariablePool()
+    factory = DifyNodeFactory.from_graph_init_context(
+        graph_init_context=DifyGraphInitContext(
+            workflow_id=workflow_id or case.workflow.id,
+            graph_config=case.workflow.graph_dict,
+            run_context=build_dify_run_context(
+                tenant_id=TENANT_ID,
+                app_id=APP_ID,
+                user_id=ACCOUNT_A,
+                user_from=UserFrom.ACCOUNT,
+                invoke_from=InvokeFrom.DEBUGGER,
+            ),
+            call_depth=0,
+        ),
+        graph_runtime_state=GraphRuntimeState(variable_pool=pool, start_at=0.0),
+    )
+    return factory.create_node(case.workflow.get_node_config_by_id("t")), pool
+
+
+@pytest.mark.parametrize("change", ["revoked", "hidden-default", "wrong-provider", "after-metadata"])
+def test_native_tool_rechecks_selection_after_run_admission(native_draft, sqlite_session, monkeypatch, change):
+    """A native node cannot decrypt a selection whose access changed since admission."""
+    from sqlalchemy import event
+
+    from graphon.nodes.tool.exc import ToolRuntimeResolutionError
+    from models.tools import BuiltinToolProvider
+
+    credential = add_credential(
+        sqlite_session,
+        tenant_id=TENANT_ID,
+        provider=AUTH_PROVIDER,
+        user_id=ACCOUNT_B,
+        visibility=PermissionEnum.PARTIAL_TEAM,
+        partial_members=[ACCOUNT_A],
+    )
+    if change != "hidden-default":
+        set_tool(native_draft, sqlite_session, credential_id=credential.id)
+    else:
+        sqlite_session.commit()
+    # Real public admission succeeds before the eventual Tool executes.
+    with pytest.raises(NativeDispatchReachedError):
+        invoke(native_draft, sqlite_session, monkeypatch, "workflow-full")
+    grant = sqlite_session.scalar(
+        select(CredentialPermission).where(CredentialPermission.credential_id == credential.id)
+    )
+    if change == "revoked":
+        grant.has_permission = False
+    elif change == "hidden-default":
+        credential.is_default = False
+        add_credential(
+            sqlite_session,
+            tenant_id=TENANT_ID,
+            provider=AUTH_PROVIDER,
+            user_id=ACCOUNT_B,
+            visibility=PermissionEnum.ONLY_ME,
+            name="New hidden default",
+        )
+    elif change == "wrong-provider":
+        credential.provider = FREE_PROVIDER
+    sqlite_session.commit()
+    monkeypatch.setattr(ToolManager, "get_tool_runtime", classmethod(_NATIVE_TOOL_RUNTIME))
+    node, pool = native_tool_node(native_draft)
+    revoked_between_reads = []
+
+    def revoke_before_native_value_read(state):
+        if change == "after-metadata" and not revoked_between_reads:
+            descriptions = getattr(state.statement, "column_descriptions", ())
+            if descriptions and descriptions[0].get("expr") is BuiltinToolProvider:
+                revoked_between_reads.append(True)
+                grant.has_permission = False
+                sqlite_session.commit()
+
+    event.listen(Session, "do_orm_execute", revoke_before_native_value_read)
+    try:
+        with pytest.raises(ToolRuntimeResolutionError, match="authorized Tool credential"):
+            node._runtime.get_runtime(node_id="t", node_data=node.node_data, variable_pool=pool)
+        assert revoked_between_reads == ([True] if change == "after-metadata" else [])
+        assert native_draft.tools.forbidden == []
+    finally:
+        event.remove(Session, "do_orm_execute", revoke_before_native_value_read)
+
+
+def test_published_child_inherited_debugger_keeps_native_tool_delegation(native_draft, sqlite_session, monkeypatch):
+    """Actual published child scope preserves delegation even with inherited DEBUGGER."""
+    from graphon.nodes.tool.exc import ToolRuntimeResolutionError
+
+    credential = add_credential(
+        sqlite_session,
+        tenant_id=TENANT_ID,
+        provider=AUTH_PROVIDER,
+        user_id=ACCOUNT_B,
+        visibility=PermissionEnum.ONLY_ME,
+    )
+    set_tool(native_draft, sqlite_session, credential_id=credential.id)
+    owner = Account(name="Publishing credential owner", email="credential-owner@example.test")
+    owner.id = ACCOUNT_B
+    sqlite_session.add(owner)
+    sqlite_session.commit()
+    published = WorkflowService(sessionmaker(bind=native_draft.tools.engine)).publish_workflow(
+        session=sqlite_session,
+        app_model=native_draft.app,
+        # The credential owner performs actual publication, preserving native scope.
+        account=owner,
+    )
+    sqlite_session.commit()
+    # Only actual publication above needs draft setup metadata. Inherited debugger
+    # execution of the published child must reach the existing native crypto owner.
+    metadata_reads = len(native_draft.tools.daemon.requests)
+    monkeypatch.setattr(ToolManager, "get_tool_runtime", classmethod(_NATIVE_TOOL_RUNTIME))
+    import core.tools.tool_manager as tool_manager_module
+
+    monkeypatch.setattr(
+        tool_manager_module, "db", SimpleNamespace(engine=native_draft.tools.engine, session=sqlite_session)
+    )
+    node, pool = native_tool_node(native_draft, workflow_id=published.id)
+    with pytest.raises(
+        ToolRuntimeResolutionError, match="discovery must not call tool_manager.create_provider_encrypter"
+    ):
+        node._runtime.get_runtime(node_id="t", node_data=node.node_data, variable_pool=pool)
+    assert native_draft.tools.forbidden == ["tool_manager.create_provider_encrypter"]
+    # Native schema fetch is possible, but installed-catalogue admission must not run.
+    assert not any("/management/tools" in r.path for r in native_draft.tools.daemon.requests[metadata_reads:])
+
+
+@pytest.mark.parametrize("scope", ["deleted", "foreign"])
+def test_native_tool_unknown_workflow_scope_refuses_before_crypto(native_draft, sqlite_session, monkeypatch, scope):
+    from graphon.nodes.tool.exc import ToolRuntimeResolutionError
+
+    add_credential(sqlite_session, tenant_id=TENANT_ID, provider=AUTH_PROVIDER, user_id=ACCOUNT_A)
+    if scope == "deleted":
+        sqlite_session.delete(native_draft.workflow)
+    else:
+        native_draft.workflow.tenant_id = OTHER_TENANT_ID
+    sqlite_session.commit()
+    monkeypatch.setattr(ToolManager, "get_tool_runtime", classmethod(_NATIVE_TOOL_RUNTIME))
+    node, pool = native_tool_node(native_draft)
+    with pytest.raises(ToolRuntimeResolutionError, match="workflow scope could not be verified"):
+        node._runtime.get_runtime(node_id="t", node_data=node.node_data, variable_pool=pool)
     assert native_draft.tools.forbidden == []

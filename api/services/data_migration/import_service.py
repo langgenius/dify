@@ -708,6 +708,7 @@ class MigrationImportService:
         if app.workflow_id:
             return
         workflow_service = WorkflowService()
+        workflow_service.prepare_draft_tool_publish(app_model=app)
         with sessionmaker(db.engine).begin() as session:
             app_in_session = session.get(App, app_id)
             account_in_session = session.get(Account, account.id)

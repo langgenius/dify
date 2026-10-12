@@ -25,6 +25,7 @@ from services.dify_builder import preflight
 from services.dify_builder.agent import form_schema, graph_translate, llm, resources, user_supplied
 from services.dify_builder.agent.model_resolver import resolve_model_instance
 from services.dify_builder.agent.resources import ResourceRef
+from services.dify_builder.tool_setup import reconcile_generated_tool_setup
 from services.workflow_generator_service import WorkflowGeneratorService
 
 logger = logging.getLogger(__name__)
@@ -390,10 +391,12 @@ def ready_tool_catalogue(
     goal_text: str = "",
     requirements: dict[str, Any] | None = None,
 ) -> list[ResourceRef]:
-    """The installed tools the planner may name: ``ready`` ones only (an
-    installed tool needing setup cannot cover a step), ranked by relevance to
-    the goal and requirements, then capped. ``account_id`` is the acting
-    member whose credentials decide readiness (``None``: team-shared only).
+    """Installed schemas the planner may name, including delayed credential setup.
+
+    The historical name is retained for existing consumers. Relevance ranking
+    and the planner cap remain; readiness describes later setup rather than
+    permission to bind a draft. ``account_id`` controls metadata visibility
+    (``None``: team-shared only), never access to another member's credential.
     A listing failure yields ``[]`` -- the plan then just cannot name tools,
     which is the pre-existing behaviour, never a crashed advance."""
     try:
@@ -401,21 +404,22 @@ def ready_tool_catalogue(
     except Exception:
         logger.warning("dify_builder: tool listing failed; planning without a tool catalogue", exc_info=True)
         return []
-    ready = [t for t in tools if t.readiness == "ready"]
-    return _rank_tools(ready, _request_text(goal_text, requirements))[:_MAX_PLANNER_TOOLS]
+    return _rank_tools(tools, _request_text(goal_text, requirements))[:_MAX_PLANNER_TOOLS]
 
 
 def _planner_tool_section(tools: Sequence[ResourceRef]) -> str:
     if not tools:
         return ""
-    listing = "\n".join(f"- {t.id} — {t.label}" for t in tools)
+    listing = "\n".join(f"- {t.id} ({t.readiness}): {t.label} — {t.meta.replace(chr(10), ' ')[:240]}" for t in tools)
     # "as a separate word": the generator pins a tool only on its id bounded by
     # non-word characters (tool_catalogue's identifier boundary), and CJK counts
     # as a word character -- "使用bowenliang123/..." never pins.
     return (
-        "\n\n# Installed tools you may name (ready to use)\n"
+        "\n\n# Installed tools you may name (draft binding; setup may be required)\n"
         "When one of these covers a step, plan that step as a `tool` node and name the tool "
-        "by its id -- write the id exactly as listed, as a separate word (with a space on "
+        "by its id. Installed missing_config actions may be bound now and configured before testing or "
+        "publishing; never select another member's credentials. Write the id exactly as listed, "
+        "as a separate word (with a space on "
         "each side, even in Chinese or Japanese text). An `http-request` endpoint must be "
         "user-supplied or a required Start input supplied at runtime -- never invent one.\n"
         f"{listing}"
@@ -584,9 +588,9 @@ _GAP_SYSTEM = (
     "alone is not a required invocation. A missing HTTP endpoint can be a required Start input "
     "provided at runtime; do not treat a missing URL alone as an unsupported capability or "
     "invent an API contract. Each resource is "
-    "shown with its readiness: 'ready' or 'missing_config' -- installed but not authorized for "
-    "this workspace, so it is not usable; treat a missing_config resource as unavailable, the "
-    "same as if it were not listed at all. "
+    "shown with its readiness: 'ready' or 'missing_config'. A missing_config Tool is installed "
+    "and can cover a draft step with delayed credential setup; credentials must be configured "
+    "or selected before testing or publishing. Setup is not a missing capability. "
     "Name in ONE plain sentence any step no listed resource can perform, and say what "
     "capability is missing -- never which product to install. Reply with ONLY JSON: "
     '{"gap": "<sentence, or empty string when the plan is covered>"}.'
@@ -605,9 +609,8 @@ def assess_capability_gap(
 
     Grounded only in what is installed -- there is no marketplace lookup, so
     this says a capability is missing, never which plugin would supply it. A
-    ``missing_config`` tool (installed but unauthorized) cannot actually cover
-    a step, so it counts against the plan the same as if it weren't there at
-    all -- the readiness the model is shown reflects that. A model we cannot
+    ``missing_config`` Tool has an installed action schema and can cover a draft
+    step; its credentials require later setup before testing or publishing. A model we cannot
     reach reports no gap: inventing one would block a build that might be
     fine.
     """
@@ -714,17 +717,16 @@ def bind_resources(
     deselected resource must not keep its old suffix, and a re-bind of the
     same selection must not pile a duplicate on top of it.
 
-    Only tools ``ready`` for the acting member (``account_id``; ``None``:
-    team-shared credentials only) are bound, re-checked against a fresh
-    inventory: a selected tool that requires setup is dropped, because the
-    bound id is what the generator pins as executable.
+    Verified installed actions remain bound when credentials require setup.
+    The fresh inventory remains authoritative for tenant/action identity;
+    binding a schema does not select or authorize any stored credential.
     """
     inv = resources.list_tenant_resources(tenant_id, account_id=account_id)
-    ready_tools = [r for r in inv.tools if r.readiness == "ready"]
+    installed_tools = inv.tools
     kinds: dict[str, str] = {}
-    kinds.update({r.id: "plugin" for r in ready_tools})
+    kinds.update({r.id: "plugin" for r in installed_tools})
     kinds.update({r.id: "model" for r in inv.models})
-    by_id = {r.id: r for r in (*ready_tools, *inv.models)}
+    by_id = {r.id: r for r in (*installed_tools, *inv.models)}
     chosen = [by_id[rid] for rid in resource_ids if rid in by_id]
     stripped = [_TRAILING_USING_SUFFIX.sub("", item) for item in plan_items]
     if not chosen:
@@ -980,25 +982,24 @@ def _prepare_build_candidate(
     return preflight.vet_intents({"nodes": [], "edges": []}, intents, _ALLOWED_NODE_TYPES)
 
 
-# Tool-node provider types whose readiness the Builder's inventory decides.
+# Tool-node provider types whose installed schema the Builder inventory verifies.
 # Plugin tools are "builtin" on workflow nodes (see tool_catalogue); API,
 # workflow and MCP tools keep their existing handling.
 _INVENTORY_TOOL_PROVIDER_TYPES = frozenset({"builtin", "plugin"})
 
 
-def _ready_tool_keys(tenant_id: str, account_id: str | None) -> frozenset[tuple[str, str]]:
-    """Every tool ready for the acting member, uncapped; empty on failure so
-    generation fails closed rather than allowing unverified tools."""
+def _installed_tool_refs(tenant_id: str, account_id: str | None) -> dict[tuple[str, str], ResourceRef]:
+    """Every verified installed Tool schema, uncapped; empty on lookup failure."""
     try:
         tools = resources.list_tenant_resources(tenant_id, account_id=account_id).tools
     except Exception:
-        logger.warning("dify_builder: tool listing failed; generating without executable tools", exc_info=True)
-        return frozenset()
-    return frozenset(_tool_key(t) for t in tools if t.readiness == "ready")
+        logger.warning("dify_builder: tool listing failed; generating without installed tools", exc_info=True)
+        return {}
+    return {_tool_key(t): t for t in tools}
 
 
-def _unready_tool_refusals(graph: dict[str, Any], ready_tool_keys: frozenset[tuple[str, str]]) -> list[str]:
-    """Refuse every generated built-in/plugin tool node outside the ready set."""
+def _uninstalled_tool_refusals(graph: dict[str, Any], ready_tool_keys: frozenset[tuple[str, str]]) -> list[str]:
+    """Refuse every generated built-in/plugin action outside the installed set."""
     refusals: list[str] = []
     for node in graph.get("nodes") or []:
         data = node.get("data") if isinstance(node, dict) else None
@@ -1010,8 +1011,8 @@ def _unready_tool_refusals(graph: dict[str, Any], ready_tool_keys: frozenset[tup
         tool_name = str(data.get("tool_name") or "").strip()
         if (provider_name, tool_name) not in ready_tool_keys:
             refusals.append(
-                f"Tool node {node.get('id')!s} uses {provider_name}/{tool_name}, which is not a ready installed "
-                "tool for this workspace member; use a ready tool or another node type."
+                f"Tool node {node.get('id')!s} uses {provider_name}/{tool_name}, which is not a verified installed "
+                "action for this workspace; use an installed tool or another node type."
             )
     return refusals
 
@@ -1025,18 +1026,20 @@ def build_nodes(
     trusted_text: str = "",
     account_id: str | None = None,
 ) -> BuildNodesResult:
-    """Generate the approved plan's nodes with ready tools only.
+    """Generate installed Tool schemas with delayed setup and no credential borrowing.
 
-    The complete (uncapped) set of tools ready for the acting member
-    (``account_id``; ``None``: team-shared credentials only) is read from a
-    fresh inventory and handed to the generator as its tool allowlist. A
+    The complete uncapped installed inventory is read freshly and handed to
+    the shared generator as its eligibility allowlist. Credential metadata is
+    checked separately to sanitize generated references and append a visible
+    setup reminder. Native execution/publication performs its own fresh check. A
     generated candidate naming any other built-in/plugin tool is refused like
     any other invalid candidate, whatever the generator returned.
     """
     diagnostics: list[dict[str, Any]] = []
     try:
         mc = _generator_model_config(tenant_id, model_config)
-        ready_tool_keys = _ready_tool_keys(tenant_id, account_id)
+        tool_refs = _installed_tool_refs(tenant_id, account_id)
+        ready_tool_keys = frozenset(tool_refs)
         base_instruction = f"{_WORKFLOW_TOPOLOGY_DIRECTIVE}\n\nAPPROVED PLAN:\n" + "\n".join(plan_items)
         if trusted_text:
             base_instruction += (
@@ -1068,8 +1071,14 @@ def build_nodes(
                 # follows the user's selected model, or the session fallback.
                 if grounding_mc is None:
                     grounding_mc = _selected_workflow_model(tenant_id, resource_ids) or mc
+                reconcile_generated_tool_setup(
+                    tenant_id=tenant_id,
+                    actor_id=account_id,
+                    graph=graph,
+                    tools=tool_refs,
+                )
                 candidate = _prepare_build_candidate(graph, grounding_mc, trusted_text)
-                rejections = [*_unready_tool_refusals(graph, ready_tool_keys), *candidate.rejections]
+                rejections = [*_uninstalled_tool_refusals(graph, ready_tool_keys), *candidate.rejections]
                 if not rejections and candidate.applicable:
                     return BuildNodesResult(intents=candidate.applicable, diagnostics=diagnostics)
                 # vet_intents supplies credential-safe node/field refusals from

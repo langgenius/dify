@@ -70,8 +70,8 @@ class WorkflowGeneratorService:
 
         ``ready_tool_keys`` restricts generation to the ``(provider_name,
         tool_name)`` tools the caller deems eligible for generation (the
-        Builder passes tools whose credential metadata is ready for the
-        acting member): both the routed catalogue and the validator's
+        Builder passes verified installed schemas, including actions needing
+        credential setup in the draft): both the routed catalogue and the validator's
         installed-tool keys are filtered to it, so any other tool node fails
         validation. The set is not live credential validation, pins no
         ``credential_id`` and grants no runtime authorization; native runtime

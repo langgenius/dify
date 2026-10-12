@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any, ClassVar, Literal, Protocol, cast
 import sqlalchemy as sa
 from pydantic import TypeAdapter
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 from typing_extensions import TypedDict
 from yarl import URL
 
@@ -225,6 +225,8 @@ class ToolManager:
         execution_driver: "WorkflowRunDriver | None" = None,
         *,
         confirmed_guard: ConfirmedToolGuard | None = None,
+        draft_tool_workflow_id: str | None = None,
+        draft_tool_app_id: str | None = None,
     ) -> BuiltinTool | PluginTool | ApiTool | WorkflowTool | MCPTool:
         """
         get the tool runtime
@@ -241,6 +243,11 @@ class ToolManager:
             default keeps them unchanged); a consented Builder call takes the
             separate confirmed branch before any credential, config or schema work
 
+        :param draft_tool_workflow_id: internal native-factory workflow scope;
+            ordinary debugger drafts recheck setup at Tool resolution. Published
+            children keep delegation even if debugger invocation is inherited.
+        :param draft_tool_app_id: actual native app owner for that workflow scope
+
         :return: the tool
         """
         if confirmed_guard is not None:
@@ -253,6 +260,21 @@ class ToolManager:
                 user_id=user_id,
                 invoke_from=invoke_from,
                 tool_invoke_from=tool_invoke_from,
+                credential_id=credential_id,
+            )
+        draft_selection = None
+        if provider_type == ToolProviderType.BUILT_IN and draft_tool_workflow_id is not None:
+            from services.tools.draft_tool_setup import prepare_draft_tool_runtime_selection
+
+            draft_selection = prepare_draft_tool_runtime_selection(
+                tenant_id=tenant_id,
+                app_id=draft_tool_app_id or "",
+                workflow_id=draft_tool_workflow_id,
+                session_maker=sessionmaker(bind=db.engine),
+                actor_id=user_id,
+                invoke_from=invoke_from,
+                provider=provider_id,
+                action=tool_name,
                 credential_id=credential_id,
             )
         match provider_type:
@@ -598,6 +620,7 @@ class ToolManager:
         workflow_tool_definition: WorkflowTool | None = None,
         *,
         confirmed_guard: ConfirmedToolGuard | None = None,
+        draft_tool_workflow_id: str | None = None,
     ) -> Tool:
         """
         get the workflow tool runtime
@@ -605,7 +628,9 @@ class ToolManager:
         ``confirmed_guard`` is ``None`` for every ordinary workflow node. A
         consented Builder node converts and decrypts no tool configuration: its
         literal parameters arrive only with the node's own invocation, where the
-        guard checks the complete final envelope.
+        guard checks the complete final envelope. ``draft_tool_workflow_id``
+        comes only from the ordinary native node factory; it never changes the
+        confirmed early branch or grants authority from graph/client markers.
         """
         if confirmed_guard is not None:
             return cls.get_tool_runtime(
@@ -631,6 +656,11 @@ class ToolManager:
                 tool_invoke_from=ToolInvokeFrom.WORKFLOW,
                 credential_id=workflow_tool.credential_id,
                 execution_driver=execution_driver,
+                **(
+                    {"draft_tool_workflow_id": draft_tool_workflow_id, "draft_tool_app_id": app_id}
+                    if draft_tool_workflow_id is not None
+                    else {}
+                ),
             )
         else:
             tool_runtime = workflow_tool_definition.fork_tool_runtime(
