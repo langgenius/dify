@@ -44,7 +44,6 @@ function WorkspaceSwitchControls({
   onSortChange: (value: WorkspaceSort) => void
 }) {
   const { t } = useTranslation(['common', 'navigation'])
-  const [sortMenuOpen, setSortMenuOpen] = useState(false)
   const sortMenuLabel = t(($) => $['mainNav.workspace.sort.openMenu'], {
     ns: 'navigation',
   })
@@ -74,7 +73,7 @@ function WorkspaceSwitchControls({
             {t(($) => $['userProfile.workspace'], { ns: 'common' })}
           </span>
         </div>
-        <DropdownMenu open={sortMenuOpen} onOpenChange={setSortMenuOpen}>
+        <DropdownMenu>
           <DropdownMenuTrigger
             disabled={disabled}
             className="data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary"
@@ -91,17 +90,12 @@ function WorkspaceSwitchControls({
             sideOffset={4}
             className="w-40 bg-components-panel-bg-blur! p-1! backdrop-blur-[5px]"
           >
-            <DropdownMenuRadioGroup<WorkspaceSort>
-              value={sort}
-              onValueChange={(value) => {
-                onSortChange(value)
-                setSortMenuOpen(false)
-              }}
-            >
+            <DropdownMenuRadioGroup<WorkspaceSort> value={sort} onValueChange={onSortChange}>
               {sortOptions.map((option) => (
                 <DropdownMenuRadioItem<WorkspaceSort>
                   key={option.value}
                   value={option.value}
+                  closeOnClick
                   className="mx-0 h-8 gap-1 px-2 py-1"
                 >
                   <span className="flex size-4 shrink-0 items-center justify-center">

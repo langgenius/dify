@@ -44,7 +44,6 @@ const MemberMenu = ({
 }: MemberMenuProps) => {
   const { t } = useTranslation(['common', 'workspaceMembers'])
   const queryClient = useQueryClient()
-  const [open, setOpen] = useState(false)
   const [assignModalOpen, setAssignModalOpen] = useState(false)
   const [removeConfirmOpen, setRemoveConfirmOpen] = useState(false)
   const [removing, setRemoving] = useState(false)
@@ -61,7 +60,6 @@ const MemberMenu = ({
     : t(($) => $['members.editRole'], { ns: 'workspaceMembers', defaultValue: 'Edit Role' })
 
   const handleOpenAssignRoles = useCallback(() => {
-    setOpen(false)
     setAssignModalOpen(true)
   }, [])
 
@@ -89,7 +87,6 @@ const MemberMenu = ({
   )
 
   const handleOpenRemoveConfirm = useCallback(() => {
-    setOpen(false)
     setRemoveConfirmOpen(true)
   }, [])
 
@@ -106,7 +103,6 @@ const MemberMenu = ({
   }, [member.id, queryClient])
 
   const handleTransferOwnership = useCallback(() => {
-    setOpen(false)
     onTransferOwnership?.()
   }, [onTransferOwnership])
 
@@ -114,7 +110,7 @@ const MemberMenu = ({
 
   return (
     <div>
-      <DropdownMenu open={open} onOpenChange={setOpen}>
+      <DropdownMenu>
         <DropdownMenuTrigger
           render={
             <IconButton
