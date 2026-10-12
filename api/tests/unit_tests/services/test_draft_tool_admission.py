@@ -91,7 +91,8 @@ def native_draft(draft_tools, sqlite_session, monkeypatch, config_overrides):
         enable_site=True,
         max_active_requests=0,
     )
-    user = Account(id=ACCOUNT_A, name="Acting member", email="actor@example.test")
+    user = Account(name="Acting member", email="actor@example.test")
+    user.id = ACCOUNT_A
     graph = {
         "nodes": [
             {"id": "s", "type": "custom", "data": {"type": "start", "title": "Start", "variables": []}},
