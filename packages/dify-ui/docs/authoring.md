@@ -11,6 +11,9 @@ Import a Base UI part once per module and read its types from that binding's nam
 `BaseRadio.Root.Props`. Use `import type` only when the module has no runtime use of the part. Do
 not keep a value import and a type import of the same module side by side.
 
+Add a public utility subpath only when an application consumer needs it. Inside the package,
+use an existing utility entrypoint; otherwise import directly from `@base-ui/utils`.
+
 ## React imports
 
 Use React namespace imports throughout this package, including stories and tests. Use
@@ -74,7 +77,8 @@ real consumer must name it independently.
 
 State, controlled-state helpers, context values, render helpers, styling helpers, and upstream
 passthrough aliases are private by default. Public props already provide contextual typing for
-inline render and event callbacks.
+inline render and event callbacks. Expose styling helpers only when consumers need to reuse
+appearance independently.
 
 Event details and reasons are the exception. A component that aliases or wraps a Base UI part
 re-exports that part's `*EventDetails` and `*EventReason` types under its own name. A composite
