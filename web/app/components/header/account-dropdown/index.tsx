@@ -252,16 +252,32 @@ export default function AccountDropdown({ trigger }: AccountDropdownProps) {
             if (event.key !== 'Escape') keyboardNavigationRef.current = true
           }}
           finalFocus={(interactionType) => {
-            const activeElement = document.activeElement
+            const canRestoreFocus = () => {
+              const activeElement = document.activeElement
+              return (
+                activeElement === document.body ||
+                activeElement === triggerRef.current ||
+                !!popupRef.current?.contains(activeElement)
+              )
+            }
             if (
-              activeElement !== document.body &&
-              activeElement !== triggerRef.current &&
-              !popupRef.current?.contains(activeElement)
+              interactionType === 'touch' ||
+              interactionType === '' ||
+              (interactionType === 'keyboard' && keyboardNavigationRef.current)
             )
-              return false
-            if (keyboardNavigationRef.current || interactionType !== 'keyboard') return true
-            // Escape alone should not turn a pointer-opened menu into keyboard navigation.
-            triggerRef.current?.focus({ preventScroll: true, focusVisible: false })
+              return canRestoreFocus()
+            // Restore after dismissal, respecting focus moved into a destination dialog.
+            queueMicrotask(() => {
+              if (!canRestoreFocus()) return
+              const triggerElement = triggerRef.current
+              // Focusing an already focused element does not update its focus-visible state.
+              if (
+                document.activeElement === triggerElement &&
+                triggerElement?.matches(':focus-visible')
+              )
+                triggerElement.blur()
+              triggerElement?.focus({ preventScroll: true, focusVisible: false })
+            })
             return false
           }}
           placement="top-start"

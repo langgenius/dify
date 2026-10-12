@@ -112,3 +112,40 @@ it.each(['keyboard', 'pointer then keyboard'])(
     expect(getComputedStyle(trigger.element()).boxShadow).not.toBe('none')
   },
 )
+
+it('clears the keyboard focus ring when the same account menu is reopened and dismissed with the pointer', async () => {
+  const settings = globalThis as typeof globalThis & { BASE_UI_ANIMATIONS_DISABLED: boolean }
+  const animationsDisabled = settings.BASE_UI_ANIMATIONS_DISABLED
+  settings.BASE_UI_ANIMATIONS_DISABLED = false
+  try {
+    const screen = await renderAccount()
+    const trigger = screen.getByRole('button', {
+      name: 'Current User accountSettings.account.account',
+    })
+    const menu = screen.getByRole('menu')
+    const dismissWithPointer = async () => {
+      await trigger.click()
+      await expect.element(menu).toBeVisible()
+      await screen
+        .getByRole('presentation')
+        .filter({ hasNotText: 'current@example.com' })
+        .click({ position: { x: 10, y: 600 } })
+      await expect.element(menu).not.toBeInTheDocument()
+      expect(trigger.element().matches(':focus-visible')).toBe(false)
+    }
+
+    await dismissWithPointer()
+
+    await screen.getByRole('button', { name: 'Before account' }).click()
+    await userEvent.keyboard('{Tab}{Enter}{ArrowDown}')
+    await expect.element(menu).toBeVisible()
+    await userEvent.keyboard('{Escape}')
+    await expect.element(menu).not.toBeInTheDocument()
+    await expect.element(trigger).toHaveFocus()
+    expect(trigger.element().matches(':focus-visible')).toBe(true)
+
+    await dismissWithPointer()
+  } finally {
+    settings.BASE_UI_ANIMATIONS_DISABLED = animationsDisabled
+  }
+})
