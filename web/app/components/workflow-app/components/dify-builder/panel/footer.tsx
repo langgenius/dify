@@ -2,8 +2,9 @@ import type { ReactNode } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useAtomValue, useSetAtom } from 'jotai'
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { SkeletonContainer, SkeletonRectangle } from '@/app/components/base/skeleton'
 import DifyBuilderComposer from '../composer'
 import { DifyBuilderInteractionDock } from '../interactions/interaction-dock'
 import {
@@ -116,19 +117,32 @@ export const DifyBuilderPanelFooter = () => {
         </div>
       )}
       <div className="relative">
-        {interactionPending && (
-          <AnimatedInteractionDock key={interactionKey} visible={interactionVisible}>
-            <DifyBuilderInteractionDock
-              activeInteraction={activeInteraction}
-              busy={interactionBusy || !canvasReady}
-              decision={decision}
-              interactionPending={Boolean(interactionRef)}
-              recheckReady={recheckReady}
-              submitInteraction={submitInteraction}
-            />
-          </AnimatedInteractionDock>
-        )}
-        {!interactionVisible && <DifyBuilderComposer />}
+        <Suspense
+          fallback={
+            <SkeletonContainer
+              role="status"
+              aria-label={t(($) => $.loading, { ns: 'common' })}
+              className="mx-4 gap-3 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-4"
+            >
+              <SkeletonRectangle aria-hidden className="h-4 w-1/2" />
+              <SkeletonRectangle aria-hidden className="h-18 w-full rounded-lg" />
+            </SkeletonContainer>
+          }
+        >
+          {interactionPending && (
+            <AnimatedInteractionDock key={interactionKey} visible={interactionVisible}>
+              <DifyBuilderInteractionDock
+                activeInteraction={activeInteraction}
+                busy={interactionBusy || !canvasReady}
+                decision={decision}
+                interactionPending={Boolean(interactionRef)}
+                recheckReady={recheckReady}
+                submitInteraction={submitInteraction}
+              />
+            </AnimatedInteractionDock>
+          )}
+          {!interactionVisible && <DifyBuilderComposer />}
+        </Suspense>
       </div>
     </footer>
   )
