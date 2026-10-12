@@ -58,7 +58,7 @@ Leave `SECRET_KEY` empty to let Dify generate a persistent key in the storage di
 
 ### Console sessions
 
-Console session controllers delegate authentication and request checks to `services/account/`. Pure token claims, refresh credential syntax, and origin policy live in `core/auth/`; services own signing and persistence. Import contracts enforce these boundaries. Socket.IO session authentication and database access also go through the application service composed in `extensions/ext_application_services.py`.
+Console session controllers delegate authentication and request checks to `services/account/`. Pure token claims and refresh credential syntax live in `services/account/console_session.py`, and origin policy lives in `services/account/refresh_origin.py`; the surrounding account services own signing and persistence. Import contracts enforce these boundaries. Socket.IO session authentication and database access also go through the application service composed in `extensions/ext_application_services.py`.
 
 Each login creates an independent session with a short-lived access JWT and a rotating opaque refresh credential in an `HttpOnly` cookie. `ACCESS_TOKEN_EXPIRE_MINUTES` defaults to 15; explicit settings still apply. `REFRESH_TOKEN_EXPIRE_DAYS` defaults to 30 and limits the session's total lifetime from login. Refreshing does not extend that deadline.
 

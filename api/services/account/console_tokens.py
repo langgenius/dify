@@ -7,7 +7,7 @@ from datetime import UTC, datetime, timedelta
 import jwt
 
 from configs import dify_config
-from core.auth.console_session import (
+from services.account.console_session import (
     CONSOLE_TOKEN_AUDIENCE,
     access_token_account_id,
     access_token_claims,

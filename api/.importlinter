@@ -1194,6 +1194,8 @@ forbidden_modules =
     extensions.ext_database
     models
     repositories
+    services.account.console_session
+    services.account.refresh_origin
     sqlalchemy
     jwt
     cryptography
@@ -1219,15 +1221,22 @@ forbidden_modules =
 name = Console session domain policy is independent of application services and infrastructure
 type = forbidden
 source_modules =
-    core.auth
+    services.account.console_session
+    services.account.refresh_origin
+# Forbidding the ancestor `services` package would not be checked, so name the application owners.
 forbidden_modules =
     configs
     controllers
+    core
     extensions
     libs
     models
     repositories
-    services
+    services.account.console_tokens
+    services.account.login_adapters
+    services.account.login_service
+    services.account.session_security
+    services.account_errors
     flask
     werkzeug
     redis

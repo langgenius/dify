@@ -1,8 +1,8 @@
 """Verify request evidence before a cookie-backed Console session mutation."""
 
 from configs import dify_config
-from core.auth.refresh_origin import refresh_origin_requires_csrf
 from services.account.console_tokens import verify_refresh_csrf_proof
+from services.account.refresh_origin import refresh_origin_requires_csrf
 from services.account_errors import UntrustedSessionOriginError
 
 

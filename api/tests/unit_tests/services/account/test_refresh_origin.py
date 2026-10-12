@@ -2,7 +2,7 @@
 
 import pytest
 
-from core.auth.refresh_origin import refresh_origin_requires_csrf
+from services.account.refresh_origin import refresh_origin_requires_csrf
 
 
 @pytest.mark.parametrize("origin", ["http://api.example", "http://API.example:80", "https://console.example:443"])
