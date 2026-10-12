@@ -5,6 +5,16 @@ import type {
   WorkflowRunArchiveDownloadTaskResponse,
   WorkflowRunArchiveMonthResponse,
 } from '@dify/contracts/api/console/workflow-run-archives/types.gen'
+import {
+  AlertDialog,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
@@ -28,6 +38,7 @@ const byteFormatter = new Intl.NumberFormat(undefined, {
 })
 const BYTE_UNITS = ['B', 'KB', 'MB', 'GB', 'TB']
 const DOWNLOAD_TASK_POLLING_INTERVAL = 3000
+const DELETION_RETRY_DELAY = 60_000
 const ARCHIVE_MONTH_PAGE_SIZE = 20
 
 function formatNumber(value: number) {
@@ -59,6 +70,10 @@ function isPreparingStatus(status: WorkflowRunArchiveDownloadStatus | undefined)
   return status === 'pending' || status === 'processing'
 }
 
+function isDeletingStatus(status: WorkflowRunArchiveMonthResponse['deletion_status']) {
+  return status === 'pending' || status === 'processing'
+}
+
 function buildArchiveDownloadFileUrl(downloadId: string) {
   return `${API_PREFIX}/workflow-run-archives/downloads/${downloadId}/file`
 }
@@ -80,6 +95,10 @@ export default function WorkflowLogArchivesPage() {
   const archiveListQuery = useQuery(
     consoleQuery.workflowRunArchives.get.queryOptions({
       enabled: deploymentEdition === 'CLOUD' && (plan === 'professional' || plan === 'team'),
+      refetchInterval: (query) =>
+        query.state.data?.months.some((archive) => isDeletingStatus(archive.deletion_status))
+          ? DOWNLOAD_TASK_POLLING_INTERVAL
+          : false,
     }),
   )
   const archiveData = archiveListQuery.data
@@ -254,7 +273,6 @@ export default function WorkflowLogArchivesPage() {
                 </tr>
               )}
               {!isLoading &&
-                !archiveListQuery.isError &&
                 visibleArchiveMonths.map((archive) => {
                   const archiveMonth = formatMonth(archive.year, archive.month)
 
@@ -309,10 +327,30 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
   const { t } = useTranslation(['appLog', 'common'])
   const archiveMonthLabelId = useId()
   const downloadActionLabelId = useId()
+  const deleteActionLabelId = useId()
+  const confirmDeleteLabelId = useId()
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [deletionRetryAvailable, setDeletionRetryAvailable] = useState(false)
   const [downloadTask, setDownloadTask] = useState<WorkflowRunArchiveDownloadTaskResponse | null>(
     null,
   )
   const archiveMonth = formatMonth(archive.year, archive.month)
+  const deleteArchiveMutation = useMutation(
+    consoleQuery.workflowRunArchives.byYear.byMonth.delete.mutationOptions({
+      context: { silent: true },
+    }),
+  )
+  const isDeletionActive = isDeletingStatus(archive.deletion_status)
+  const canRetryDeletion = isDeletionActive && deletionRetryAvailable
+  const isDeleting = deleteArchiveMutation.isPending || (isDeletionActive && !canRetryDeletion)
+  const isDownloadUnavailable = deleteArchiveMutation.isPending || archive.deletion_status != null
+
+  useEffect(() => {
+    if (!isDeletionActive || deleteArchiveMutation.isPending) return
+
+    const timer = setTimeout(() => setDeletionRetryAvailable(true), DELETION_RETRY_DELAY)
+    return () => clearTimeout(timer)
+  }, [isDeletionActive, deleteArchiveMutation.isPending, deleteArchiveMutation.submittedAt])
   const cachedTask = downloadTask ?? archive.download_task ?? null
   const downloadTaskId = cachedTask?.download_id
   const taskQuery = useQuery(
@@ -324,9 +362,9 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
             },
           }
         : skipToken,
-      enabled: !!downloadTaskId && isPreparingStatus(cachedTask?.status),
+      enabled: !!downloadTaskId && !isDownloadUnavailable && isPreparingStatus(cachedTask?.status),
       refetchInterval: (query) =>
-        isPreparingStatus(query.state.data?.status ?? cachedTask?.status)
+        !isDownloadUnavailable && isPreparingStatus(query.state.data?.status ?? cachedTask?.status)
           ? DOWNLOAD_TASK_POLLING_INTERVAL
           : false,
     }),
@@ -339,21 +377,25 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
   const isReady = currentTask?.status === 'ready'
   const isFailed = currentTask?.status === 'failed'
   const failureReason = isFailed ? currentTask?.error?.trim() : undefined
-  const downloadHint = isReady
-    ? t(($) => $['archives.downloadHint.ready'], { ns: 'appLog' })
-    : isFailed
-      ? failureReason
-        ? t(($) => $['archives.downloadHint.failedWithReason'], {
-            ns: 'appLog',
-            reason: failureReason,
-          })
-        : t(($) => $['archives.downloadHint.failed'], { ns: 'appLog' })
-      : isPreparing
-        ? t(($) => $['archives.downloadHint.preparing'], { ns: 'appLog' })
-        : t(($) => $['archives.downloadHint.prepare'], { ns: 'appLog' })
+  const downloadHint = isDownloadUnavailable
+    ? archive.deletion_status === 'failed'
+      ? t(($) => $['archives.delete.failed'], { ns: 'appLog' })
+      : t(($) => $['archives.delete.deleting'], { ns: 'appLog' })
+    : isReady
+      ? t(($) => $['archives.downloadHint.ready'], { ns: 'appLog' })
+      : isFailed
+        ? failureReason
+          ? t(($) => $['archives.downloadHint.failedWithReason'], {
+              ns: 'appLog',
+              reason: failureReason,
+            })
+          : t(($) => $['archives.downloadHint.failed'], { ns: 'appLog' })
+        : isPreparing
+          ? t(($) => $['archives.downloadHint.preparing'], { ns: 'appLog' })
+          : t(($) => $['archives.downloadHint.prepare'], { ns: 'appLog' })
 
   const prepareDownload = () => {
-    if (createDownloadMutation.isPending) return
+    if (createDownloadMutation.isPending || isDownloadUnavailable) return
 
     createDownloadMutation.mutate(
       {
@@ -379,7 +421,7 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
   }
 
   const downloadArchive = () => {
-    if (!currentTask || currentTask.status !== 'ready') return
+    if (isDownloadUnavailable || !currentTask || currentTask.status !== 'ready') return
 
     globalThis.location.assign(buildArchiveDownloadFileUrl(currentTask.download_id))
   }
@@ -393,6 +435,16 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
 
   const buttonIconClassName = isReady ? 'i-ri-download-2-line' : 'i-ri-inbox-archive-line'
   const onAction = isReady ? downloadArchive : prepareDownload
+
+  const deleteArchive = () => {
+    if (isDeleting) return
+
+    setDeletionRetryAvailable(false)
+    deleteArchiveMutation.mutate(
+      { params: { year: archive.year, month: archive.month } },
+      { onSuccess: () => setDeleteDialogOpen(false) },
+    )
+  }
 
   return (
     <tr className="h-15 border-b border-divider-subtle last:border-b-0">
@@ -408,32 +460,104 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
         {formatBytes(archive.archive_bytes)}
       </td>
       <td className="px-2 py-3 text-center">
-        <div className="flex items-center justify-center gap-1">
-          <Button
-            size="small"
-            variant="secondary"
-            loading={isPreparing}
-            className="px-2"
-            aria-labelledby={`${downloadActionLabelId} ${archiveMonthLabelId}`}
-            onClick={onAction}
-          >
-            {!isPreparing && (
-              <span className={cn(buttonIconClassName, 'size-3.5')} aria-hidden="true" />
-            )}
-            <span id={downloadActionLabelId}>{buttonContent}</span>
-          </Button>
-          <Infotip>
-            <InfotipTrigger
-              aria-label={`${t(($) => $['operation.learnMore'], { ns: 'common' })}: ${archiveMonth}`}
-              iconVariant={isFailed ? 'warning' : 'information'}
-            />
-            <InfotipContent
-              aria-label={`${t(($) => $['operation.learnMore'], { ns: 'common' })}: ${archiveMonth}`}
-              className="whitespace-pre-wrap"
+        <div className="flex flex-col items-center gap-2">
+          <div className="flex flex-wrap items-center justify-center gap-1">
+            <Button
+              size="small"
+              variant="secondary"
+              loading={isPreparing}
+              disabled={isDownloadUnavailable}
+              className="px-2"
+              aria-labelledby={`${downloadActionLabelId} ${archiveMonthLabelId}`}
+              onClick={onAction}
             >
-              {downloadHint}
-            </InfotipContent>
-          </Infotip>
+              {!isPreparing && (
+                <span className={cn(buttonIconClassName, 'size-3.5')} aria-hidden="true" />
+              )}
+              <span id={downloadActionLabelId}>{buttonContent}</span>
+            </Button>
+            <Infotip>
+              <InfotipTrigger
+                aria-label={`${t(($) => $['operation.learnMore'], { ns: 'common' })}: ${archiveMonth}`}
+                iconVariant={isFailed ? 'warning' : 'information'}
+              />
+              <InfotipContent
+                aria-label={`${t(($) => $['operation.learnMore'], { ns: 'common' })}: ${archiveMonth}`}
+                className="whitespace-pre-wrap"
+              >
+                {downloadHint}
+              </InfotipContent>
+            </Infotip>
+            <AlertDialog
+              open={deleteDialogOpen}
+              onOpenChange={(open) => {
+                if (deleteArchiveMutation.isPending) return
+                if (open) deleteArchiveMutation.reset()
+                setDeleteDialogOpen(open)
+              }}
+            >
+              <AlertDialogTrigger
+                render={
+                  <Button
+                    size="small"
+                    variant="tertiary"
+                    tone="destructive"
+                    disabled={isDeleting}
+                    aria-labelledby={`${deleteActionLabelId} ${archiveMonthLabelId}`}
+                  />
+                }
+              >
+                <span className="i-ri-delete-bin-line size-3.5" aria-hidden="true" />
+                <span id={deleteActionLabelId}>
+                  {isDeleting
+                    ? t(($) => $['archives.delete.deleting'], { ns: 'appLog' })
+                    : archive.deletion_status === 'failed' || canRetryDeletion
+                      ? t(($) => $['archives.delete.retry'], { ns: 'appLog' })
+                      : t(($) => $['operation.delete'], { ns: 'common' })}
+                </span>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+                  <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
+                    {t(($) => $['archives.delete.title'], { ns: 'appLog', month: archiveMonth })}
+                  </AlertDialogTitle>
+                  <AlertDialogDescription className="system-md-regular wrap-break-word text-text-tertiary">
+                    {t(($) => $['archives.delete.description'], { ns: 'appLog' })}
+                  </AlertDialogDescription>
+                  {deleteArchiveMutation.isError && (
+                    <div role="alert" className="system-sm-regular text-text-destructive">
+                      {t(($) => $['archives.delete.requestFailed'], { ns: 'appLog' })}
+                    </div>
+                  )}
+                </div>
+                <AlertDialogFooter>
+                  <AlertDialogCancelButton
+                    variant="secondary"
+                    disabled={deleteArchiveMutation.isPending}
+                  >
+                    {t(($) => $['operation.cancel'], { ns: 'common' })}
+                  </AlertDialogCancelButton>
+                  <AlertDialogConfirmButton
+                    loading={deleteArchiveMutation.isPending}
+                    disabled={isDeletionActive && !canRetryDeletion}
+                    aria-labelledby={confirmDeleteLabelId}
+                    onClick={deleteArchive}
+                  >
+                    <span id={confirmDeleteLabelId}>
+                      {isDeleting
+                        ? t(($) => $['archives.delete.deleting'], { ns: 'appLog' })
+                        : t(($) => $['archives.delete.confirm'], { ns: 'appLog' })}
+                    </span>
+                  </AlertDialogConfirmButton>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+          {archive.deletion_status === 'failed' && (
+            <div role="alert" className="max-w-56 system-xs-regular text-text-destructive">
+              {t(($) => $['archives.delete.failed'], { ns: 'appLog' })}
+            </div>
+          )}
         </div>
       </td>
     </tr>

@@ -318,6 +318,7 @@ class WorkflowRunBundleArchiveMaintenance:
         conditions = [
             WorkflowRunArchiveBundle.year == target_year,
             WorkflowRunArchiveBundle.month == target_month,
+            WorkflowRunArchiveBundle.deletion_status.is_(None),
         ]
         if tenant_ids is not None:
             conditions.append(WorkflowRunArchiveBundle.tenant_id.in_(tenant_ids))
@@ -419,6 +420,7 @@ class WorkflowRunBundleArchiveMaintenance:
         conditions = [
             WorkflowRunArchiveBundle.year == target_year,
             WorkflowRunArchiveBundle.month == target_month,
+            WorkflowRunArchiveBundle.deletion_status.is_(None),
         ]
         if tenant_ids:
             conditions.append(WorkflowRunArchiveBundle.tenant_id.in_(tenant_ids))
@@ -697,16 +699,18 @@ class WorkflowRunBundleArchiveMaintenance:
 
     @staticmethod
     def _lock_catalog_entry(session: Session, catalog_entry: ArchiveBundleCatalogEntry) -> None:
-        locked_catalog_id = session.scalar(
-            select(WorkflowRunArchiveBundle.id)
+        locked_catalog = session.scalar(
+            select(WorkflowRunArchiveBundle)
             .where(
                 WorkflowRunArchiveBundle.id == catalog_entry.catalog_id,
                 WorkflowRunArchiveBundle.tenant_id == catalog_entry.tenant_id,
             )
             .with_for_update()
         )
-        if locked_catalog_id is None:
+        if locked_catalog is None:
             raise ValueError("archive catalog row disappeared before bundle maintenance")
+        if locked_catalog.deletion_status is not None:
+            raise ValueError("archive files are pending permanent deletion; source rows cannot be deleted or restored")
 
     def _validate_archive_object(
         self,
