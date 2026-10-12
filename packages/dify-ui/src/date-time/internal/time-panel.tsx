@@ -31,7 +31,8 @@ function TimePanel({
   const displayHour = hourCycle === 24 ? current.hour : current.hour % 12 || 12
   function update(part: 'hour' | 'minute' | 'period', next: number) {
     onValueChange((previous) => {
-      const time = parseTimeValue(previous)!
+      const time = parseTimeValue(previous)
+      if (!time) throw new RangeError(`Invalid time of day: ${previous}`)
       if (part === 'minute') time.minute = next
       else if (part === 'period') time.hour = (time.hour % 12) + next * 12
       else time.hour = hourCycle === 24 ? next : (next % 12) + Math.floor(time.hour / 12) * 12

@@ -221,8 +221,8 @@ function OptionColumn({
             : undefined
           if (!numeric) {
             for (let offset = 0; offset < options.length; offset++) {
-              const option = options[(startIndex + offset) % options.length]!
-              if (option.label.toLowerCase().startsWith(text)) {
+              const option = options[(startIndex + offset) % options.length]
+              if (option?.label.toLowerCase().startsWith(text)) {
                 match = option
                 break
               }

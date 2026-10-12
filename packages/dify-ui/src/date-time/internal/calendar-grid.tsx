@@ -59,7 +59,8 @@ function CalendarNavigation({
   onNextClick,
   ...navProps
 }: NavProps) {
-  const navigation = React.useContext(NavigationContext)!
+  const navigation = React.useContext(NavigationContext)
+  if (!navigation) throw new Error('CalendarNavigation requires CalendarGrid.')
   return (
     <nav {...navProps} className="flex h-10 items-center justify-between px-2 pt-2">
       {navigation.monthTrigger}
