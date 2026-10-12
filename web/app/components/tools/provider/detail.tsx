@@ -10,11 +10,11 @@ import type {
 import type { WorkflowToolDrawerPayload } from '@/app/components/tools/workflow-tool'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
@@ -44,7 +44,6 @@ import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-m
 import { useCanManageTools } from '@/app/components/tools/hooks/use-tool-permissions'
 import ConfigCredential from '@/app/components/tools/setting/build-in/config-credentials'
 import { WorkflowToolDrawer } from '@/app/components/tools/workflow-tool'
-import { toast } from '@/app/notifications'
 import { useModalContext } from '@/context/modal-context'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import { getPluginLanguage } from '@/i18n/metadata'
@@ -159,7 +158,6 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
     await getCustomProvider()
     // Use fresh data from form submission to avoid race condition with collection.labels
     setCustomCollection((prev) => (prev ? { ...prev, labels: data.labels } : null))
-    toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
     setIsShowEditCustomCollectionModal(false)
   }
   const doRemoveCustomToolCollection = async () => {
@@ -167,7 +165,6 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
 
     await removeCustomCollection(collection?.name as string)
     onRefreshData()
-    toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
     setIsShowEditCustomCollectionModal(false)
   }
   // workflow provider
@@ -197,7 +194,6 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
 
     await deleteWorkflowTool(collection.id)
     onRefreshData()
-    toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
     setWorkflowToolDrawerOpen(false)
   }
   const updateWorkflowToolProvider = async (
@@ -213,7 +209,6 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
     invalidateAllWorkflowTools()
     onRefreshData()
     getWorkflowToolProvider()
-    toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
     setWorkflowToolDrawerOpen(false)
   }
   const onClickCustomToolDelete = () => {
@@ -515,7 +510,6 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
                       if (!canSaveCredentialSettings) return
 
                       await updateBuiltInToolCredential(collection.name, value)
-                      toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
                       await onRefreshData()
                       setShowSettingAuth(false)
                     }}
@@ -523,7 +517,6 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
                       if (!canManageCredential) return
 
                       await removeBuiltInToolCredential(collection.name)
-                      toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
                       await onRefreshData()
                       setShowSettingAuth(false)
                     }}
@@ -559,14 +552,14 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
                         {t(($) => $['createTool.deleteToolConfirmContent'], { ns: 'tools' })}
                       </AlertDialogDescription>
                     </div>
-                    <AlertDialogActions>
+                    <AlertDialogFooter>
                       <AlertDialogCancelButton>
                         {t(($) => $['operation.cancel'], { ns: 'common' })}
                       </AlertDialogCancelButton>
                       <AlertDialogConfirmButton onClick={handleConfirmDelete}>
                         {t(($) => $['operation.confirm'], { ns: 'common' })}
                       </AlertDialogConfirmButton>
-                    </AlertDialogActions>
+                    </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
               </div>

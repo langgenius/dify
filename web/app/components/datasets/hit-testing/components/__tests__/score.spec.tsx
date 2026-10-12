@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import Score from '../score'
+import { Score } from '../score'
 
 describe('Score', () => {
   it('displays a retrieval score rounded to two decimal places', () => {

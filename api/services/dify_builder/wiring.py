@@ -18,16 +18,18 @@ from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
-from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission, enforce_rbac_checks
 from core.dify_builder.errors import BadRequestError, BusyError, ConflictError, ModelUnavailableError, NotFoundError
 from core.dify_builder.execution_policy import BuilderExecutionPolicyError
 from core.dify_builder.models import Action, Actor, ConversationItem
+from core.rbac import RBACPermission
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from fields.workflow_stream_fields import WorkflowStreamPayload
 from libs.broadcast_channel.exc import SubscriptionClosedError
 from models import App, TenantAccountJoin, TenantAccountRole
 from services.dify_builder import app_naming, progress_bus, session_lock
 from services.dify_builder.dify_port import WorkflowServiceDifyPort
+from services.dify_builder.execution_policy_service import check_app_permissions
 from services.dify_builder.real_call_consent_service import BuilderRealCallConsentService
 from services.dify_builder.repository import SqlDifyBuilderRepository
 from services.dify_builder.revision import executable_graph_revision
@@ -82,19 +84,25 @@ def _authorize_app(actor: Actor, app_id: str, access: AppAccess) -> None:
     )
     if role is None or (not dify_config.RBAC_ENABLED and not TenantAccountRole.is_editing_role(role)):
         raise Forbidden()
+    if not dify_config.RBAC_ENABLED:
+        return
 
     scenes = [RBACPermission.APP_EDIT]
     if access == AppAccess.TEST_AND_RUN:
         scenes.append(RBACPermission.APP_TEST_AND_RUN)
     elif access == AppAccess.RELEASE:
         scenes.append(RBACPermission.APP_RELEASE_AND_VERSION)
-    for scene in scenes:
-        enforce_rbac_checks(
-            tenant_id=actor.tenant_id,
-            account_id=actor.account_id,
-            checks=[RBACCheck(scene, PlainApp())],
-            path_args={"app_id": str(trusted_app_id)},
+    try:
+        check_app_permissions(
+            actor,
+            str(trusted_app_id),
+            queries=application_services().rbac.queries,
+            permissions=scenes,
         )
+    except BuilderExecutionPolicyError as error:
+        if error.reason_code == "unsupported_workflow":
+            raise NotFoundError("app not found") from None
+        raise Forbidden() from None
 
 
 def _get_app_revision(app_id: str, actor: Actor) -> str:
@@ -482,7 +490,7 @@ class _ClosingFrameStream:
     spec requires the server to call ``close()`` on the response iterable even on
     an early disconnect."""
 
-    def __init__(self, frames: Generator[str, None, None], subscription) -> None:
+    def __init__(self, frames: Generator[str], subscription) -> None:
         self._frames = frames
         self._subscription = subscription
 
@@ -524,7 +532,7 @@ def stream_advance_frames(
     activated ``subscription`` is closed even when the WSGI server closes the
     response body without ever iterating it -- see _ClosingFrameStream."""
 
-    def _frames() -> Generator[str, None, None]:
+    def _frames() -> Generator[str]:
         try:
             if emit_command_started:
                 yield _event_frame(

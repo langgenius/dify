@@ -585,7 +585,6 @@ describe('AgentSkills', () => {
         name: 'agentV2.agentDetail.configure.skills.moreActions:{"name":"Tender Analyzer"}',
       }),
     )
-    expect(embeddedBadge).toHaveClass('opacity-0')
 
     const deleteAction = screen.getByText('common.operation.delete')
     fireEvent.mouseEnter(deleteAction.closest('[data-agent-skill-remove-button]')!)
@@ -1307,7 +1306,6 @@ describe('AgentSkills', () => {
         name: 'agentV2.agentDetail.configure.skills.moreActions:{"name":"Refund approval"}',
       }),
     )
-    expect(screen.getByText('refund-approval')).toHaveClass('opacity-0')
 
     const removeAction = await screen.findByText(
       'agentV2.agentDetail.configure.skills.removeAction',

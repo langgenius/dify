@@ -18,19 +18,21 @@ import json
 from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, field
 from types import SimpleNamespace
+from typing import NoReturn, cast
 from urllib.parse import urlsplit
 
 import httpx
 import pytest
 from sqlalchemy import event
 from sqlalchemy.engine import Engine
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.plugin.entities.plugin_daemon import CredentialType
 from models.credential_permission import CredentialPermission
 from models.credential_permission import CredentialType as CredentialPermissionType
 from models.enums import PermissionEnum
 from models.tools import BuiltinToolProvider
+from repositories.credentials.query_repository import CredentialQueryRepository
 
 TENANT_ID = "aaaaaaaa-0000-4000-8000-000000000001"
 OTHER_TENANT_ID = "aaaaaaaa-0000-4000-8000-000000000002"
@@ -230,7 +232,7 @@ class FakeToolDaemon:
         content: str | bytes | None = None,
         data: dict[str, object] | None = None,
         **_kwargs: object,
-    ):
+    ) -> httpx.Response:
         path = urlsplit(url).path
         params = dict(params or {})
         parts = [part for part in path.split("/") if part]
@@ -259,7 +261,7 @@ class FakeToolDaemon:
                 return respond(400, {"code": -400, "message": "bad category"})
             return respond(200, {"code": 0, "message": "", "data": {"plugin_ids": self._installed_ids(tenant_id)}})
         if route == INSTALLATION_BATCH:
-            plugin_ids = [str(plugin_id) for plugin_id in (body or {}).get("plugin_ids") or []]
+            plugin_ids = [str(plugin_id) for plugin_id in cast(list[object], (body or {}).get("plugin_ids") or [])]
             if len(plugin_ids) > 256:
                 return respond(400, {"code": -400, "message": "plugin_ids exceeds max=256"})
             rows = [installation_payload(tenant_id, p) for p in providers if p["plugin_id"] in plugin_ids]
@@ -284,7 +286,12 @@ class FakeToolDaemon:
             payload = self.single_payload_hook(payload)
         return respond(200, {"code": 0, "message": "", "data": payload})
 
-    def _list_tools(self, respond, params: dict[str, object], providers: list[dict[str, object]]) -> httpx.Response:
+    def _list_tools(
+        self,
+        respond: Callable[[int, object], httpx.Response],
+        params: dict[str, object],
+        providers: list[dict[str, object]],
+    ) -> httpx.Response:
         page = int(str(params.get("page", 0)))
         page_size = int(str(params.get("page_size", 0)))
         if page < 1 or not 1 <= page_size <= 256:
@@ -322,12 +329,16 @@ def install_fake_daemon(monkeypatch: pytest.MonkeyPatch, daemon: FakeToolDaemon)
 
 
 def bind_database(monkeypatch: pytest.MonkeyPatch, engine: Engine) -> None:
-    """Point the module-level ``db`` handles of the inventory owners at SQLite."""
+    """Point inventory database handles and its credential query owner at SQLite."""
     import core.tools.tool_manager as tool_manager_module
     from services.dify_builder.agent import resources
 
     database = SimpleNamespace(engine=engine)
     monkeypatch.setattr(resources, "db", database, raising=False)
+    credential_queries = CredentialQueryRepository(session_factory=sessionmaker(bind=engine, expire_on_commit=False))
+    monkeypatch.setattr(
+        resources, "application_services", lambda: SimpleNamespace(credential_queries=credential_queries)
+    )
     monkeypatch.setattr(tool_manager_module, "db", database)
 
 
@@ -370,7 +381,14 @@ def add_credential(
 def record_sql(engine: Engine) -> list[str]:
     statements: list[str] = []
 
-    def _before(_conn, _cursor, statement, _parameters, _context, _executemany):
+    def _before(
+        _conn: object,
+        _cursor: object,
+        statement: str,
+        _parameters: object,
+        _context: object,
+        _executemany: bool,
+    ) -> None:
         statements.append(statement)
 
     event.listen(engine, "before_cursor_execute", _before)
@@ -388,8 +406,8 @@ def forbid_secret_and_business_calls(monkeypatch: pytest.MonkeyPatch) -> list[st
 
     calls: list[str] = []
 
-    def _forbidden(name: str):
-        def _raise(*_args: object, **_kwargs: object):
+    def _forbidden(name: str) -> Callable[..., NoReturn]:
+        def _raise(*_args: object, **_kwargs: object) -> NoReturn:
             calls.append(name)
             raise AssertionError(f"discovery must not call {name}")
 

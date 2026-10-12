@@ -1777,8 +1777,10 @@ export type PipelineUploadFileResponse = {
 
 export type PreProcessingRule = {
   enabled: boolean
-  id: 'remove_extra_spaces' | 'remove_stopwords' | 'remove_urls_emails'
+  id: PreProcessingRuleKey
 }
+
+export type PreProcessingRuleKey = 'remove_extra_spaces' | 'remove_stopwords' | 'remove_urls_emails'
 
 export type ProcessRule = {
   mode: ProcessRuleMode
@@ -1855,17 +1857,26 @@ export type RetrieverResource = {
   data_source_type?: string | null
   dataset_id?: string | null
   dataset_name?: string | null
+  doc_metadata?: {
+    [key: string]: JsonValueType
+  } | null
   document_id?: string | null
   document_name?: string | null
+  files?: Array<{
+    [key: string]: JsonValueType
+  }> | null
   hit_count?: number | null
   id?: string
   index_node_hash?: string | null
   message_id?: string
+  page?: number | null
   position: number
+  retriever_from?: string | null
   score?: number | null
   segment_id?: string | null
   segment_position?: number | null
   summary?: string | null
+  title?: string | null
   word_count?: number | null
 }
 

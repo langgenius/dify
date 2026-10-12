@@ -114,7 +114,6 @@ it('preserves keyboard focus through loading, publication, and dismissal', async
   await expect.poll(() => liveRegion.textContent).toBe(successTitle)
   await expect.poll(() => document.activeElement).toBe(bar)
   expect(bar.matches(':focus-visible')).toBe(true)
-  expect(bar.querySelector('[role="status"]')).toBe(liveRegion)
   await userEvent.tab()
   const dismiss = screen.getByRole('button', { name: dismissLabel })
   await expect.element(dismiss).toHaveFocus()

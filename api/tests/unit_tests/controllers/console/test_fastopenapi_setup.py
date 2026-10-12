@@ -12,13 +12,8 @@ from controllers.console.error import AlreadySetupError, NotInitValidateError
 from dify_app import DifyApp
 from enums import DeploymentEdition
 from extensions import ext_fastopenapi
-from services.setup_service import (
-    InitializationValidationRequiredError,
-    SetupAlreadyCompletedError,
-    SetupInput,
-    SetupService,
-    SetupStatus,
-)
+from services.account.contracts import SetupInput, SetupStatus
+from services.setup_service import InitializationValidationRequiredError, SetupAlreadyCompletedError, SetupService
 
 if not hasattr(builtins, "MethodView"):
     builtins.MethodView = MethodView  # type: ignore[attr-defined]

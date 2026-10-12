@@ -3,24 +3,72 @@
 import * as z from 'zod'
 
 /**
- * Success
+ * SimpleResultResponse
  */
-export const zGetDataSourceIntegratesResponse = z.record(z.string(), z.unknown())
+export const zSimpleResultResponse = z.object({
+  result: z.string(),
+})
 
 /**
- * Success
+ * DataSourceIntegrateIconResponse
  */
-export const zPatchDataSourceIntegratesResponse = z.record(z.string(), z.unknown())
+export const zDataSourceIntegrateIconResponse = z.object({
+  emoji: z.string().nullish(),
+  type: z.string().nullish(),
+  url: z.string().nullish(),
+})
 
-export const zGetDataSourceIntegratesByBindingIdByActionPath = z.object({
-  action: z.string(),
-  binding_id: z.uuid(),
+/**
+ * NotionPageType
+ */
+export const zNotionPageType = z.enum(['database', 'page'])
+
+/**
+ * DataSourceIntegratePageResponse
+ */
+export const zDataSourceIntegratePageResponse = z.object({
+  page_icon: zDataSourceIntegrateIconResponse.nullable(),
+  page_id: z.string(),
+  page_name: z.string(),
+  parent_id: z.string(),
+  type: zNotionPageType,
+})
+
+/**
+ * DataSourceIntegrateWorkspaceResponse
+ */
+export const zDataSourceIntegrateWorkspaceResponse = z.object({
+  pages: z.array(zDataSourceIntegratePageResponse),
+  total: z.int(),
+  workspace_icon: z.string().nullable(),
+  workspace_id: z.string().nullable(),
+  workspace_name: z.string().nullable(),
+})
+
+/**
+ * DataSourceIntegrateResponse
+ */
+export const zDataSourceIntegrateResponse = z.object({
+  created_at: z.int().nullable(),
+  disabled: z.boolean().nullable(),
+  id: z.string().nullable(),
+  is_bound: z.boolean(),
+  link: z.string(),
+  provider: z.string(),
+  source_info: zDataSourceIntegrateWorkspaceResponse.nullable(),
+})
+
+/**
+ * DataSourceIntegrateListResponse
+ */
+export const zDataSourceIntegrateListResponse = z.object({
+  data: z.array(zDataSourceIntegrateResponse),
 })
 
 /**
  * Success
  */
-export const zGetDataSourceIntegratesByBindingIdByActionResponse = z.record(z.string(), z.unknown())
+export const zGetDataSourceIntegratesResponse = zDataSourceIntegrateListResponse
 
 export const zPatchDataSourceIntegratesByBindingIdByActionPath = z.object({
   action: z.string(),
@@ -30,7 +78,4 @@ export const zPatchDataSourceIntegratesByBindingIdByActionPath = z.object({
 /**
  * Success
  */
-export const zPatchDataSourceIntegratesByBindingIdByActionResponse = z.record(
-  z.string(),
-  z.unknown(),
-)
+export const zPatchDataSourceIntegratesByBindingIdByActionResponse = zSimpleResultResponse

@@ -244,7 +244,7 @@ class DifyPreparedLLM(LLMProtocol):
         tools: Sequence[PromptMessageTool] | None,
         stop: Sequence[str] | None,
         stream: Literal[True],
-    ) -> Generator[LLMResultChunk, None, None]: ...
+    ) -> Generator[LLMResultChunk]: ...
 
     @override
     def invoke_llm(
@@ -255,7 +255,7 @@ class DifyPreparedLLM(LLMProtocol):
         tools: Sequence[PromptMessageTool] | None,
         stop: Sequence[str] | None,
         stream: bool,
-    ) -> LLMResult | Generator[LLMResultChunk, None, None]:
+    ) -> LLMResult | Generator[LLMResultChunk]:
         return self._model_instance.invoke_llm(
             prompt_messages=list(prompt_messages),
             model_parameters=dict(model_parameters),
@@ -285,7 +285,7 @@ class DifyPreparedLLM(LLMProtocol):
         model_parameters: Mapping[str, Any],
         stop: Sequence[str] | None,
         stream: Literal[True],
-    ) -> Generator[LLMResultChunkWithStructuredOutput, None, None]: ...
+    ) -> Generator[LLMResultChunkWithStructuredOutput]: ...
 
     @override
     def invoke_llm_with_structured_output(
@@ -296,7 +296,7 @@ class DifyPreparedLLM(LLMProtocol):
         model_parameters: Mapping[str, Any],
         stop: Sequence[str] | None,
         stream: bool,
-    ) -> LLMResultWithStructuredOutput | Generator[LLMResultChunkWithStructuredOutput, None, None]:
+    ) -> LLMResultWithStructuredOutput | Generator[LLMResultChunkWithStructuredOutput]:
         return invoke_llm_with_structured_output(
             provider=self.provider,
             model_schema=self.get_model_schema(),
@@ -664,7 +664,7 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
         tool_parameters: Mapping[str, Any],
         workflow_call_depth: int,
         provider_name: str,
-    ) -> Generator[ToolRuntimeMessage, None, None]:
+    ) -> Generator[ToolRuntimeMessage]:
         runtime_binding = self._binding_from_handle(tool_runtime)
         tool = runtime_binding.tool
         if self._confirmed:
@@ -922,10 +922,10 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
 
     def _adapt_messages(
         self,
-        messages: Generator[CoreToolInvokeMessage, None, None],
+        messages: Generator[CoreToolInvokeMessage],
         *,
         provider_name: str,
-    ) -> Generator[ToolRuntimeMessage, None, None]:
+    ) -> Generator[ToolRuntimeMessage]:
         try:
             for message in messages:
                 yield self._convert_message(message)

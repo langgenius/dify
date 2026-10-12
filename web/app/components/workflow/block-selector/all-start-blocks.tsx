@@ -117,9 +117,12 @@ function AllStartBlocks({
   )
   const { data: marketplacePluginsData, isFetching: isMarketplaceFetching } =
     useMarketplacePlugins(marketplaceSearchParams)
-  const marketplacePlugins = useMemo(
-    () => marketplacePluginsData?.pages.flatMap((page) => page.plugins) ?? [],
-    [marketplacePluginsData?.pages],
+  const notInstalledPlugins = useMemo(
+    () =>
+      marketplacePluginsData?.pages.flatMap((page) =>
+        page.plugins.filter((plugin) => !providerMap.has(plugin.plugin_id)),
+      ) ?? [],
+    [marketplacePluginsData?.pages, providerMap],
   )
 
   const shouldShowFeatured = enableTriggerPlugin && enable_marketplace && !hasFilter
@@ -136,7 +139,7 @@ function AllStartBlocks({
 
   const hasInstalledPluginContent = enableTriggerPlugin && hasPluginContent
   const hasMarketplaceContent =
-    enableTriggerPlugin && enable_marketplace && marketplacePlugins.length > 0
+    enableTriggerPlugin && enable_marketplace && notInstalledPlugins.length > 0
   const hasAnyContent =
     hasStartBlocksContent ||
     hasInstalledPluginContent ||
@@ -231,7 +234,7 @@ function AllStartBlocks({
                 <PluginList
                   ref={pluginRef}
                   wrapElemRef={wrapElemRef as RefObject<HTMLElement>}
-                  list={marketplacePlugins}
+                  list={notInstalledPlugins}
                   searchText={trimmedSearchText}
                   category={PluginCategoryEnum.trigger}
                   tags={tags}

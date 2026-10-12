@@ -15,7 +15,7 @@ import {
   SelectValue,
 } from '.'
 import { Button } from '../button'
-import { Field, FieldDescription } from '../field'
+import { Field, FieldError } from '../field'
 import { Form } from '../form'
 
 const triggerWidth = 'w-64'
@@ -25,6 +25,12 @@ const cityItems = [
   { label: 'New York', value: 'new-york' },
   { label: 'Tokyo', value: 'tokyo' },
   { label: 'Paris', value: 'paris' },
+]
+
+const timezoneItems = [
+  { label: 'UTC', value: 'utc' },
+  { label: 'Pacific (PST)', value: 'pst' },
+  { label: 'Japan (JST)', value: 'jst' },
 ]
 
 const deploymentRegionItems = [
@@ -298,7 +304,38 @@ export const ReadOnly: Story = {
   ),
 }
 
-const ControlledDemo = () => {
+export const Invalid: Story = {
+  render: () => (
+    <React.Fragment>
+      {(['Editable', 'Read only', 'Disabled'] as const).map((state) => (
+        <Field key={state} invalid>
+          <Select
+            items={cityItems}
+            defaultValue="seattle"
+            readOnly={state === 'Read only'}
+            disabled={state === 'Disabled'}
+          >
+            <SelectLabel>{state}</SelectLabel>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {cityItems.map((item) => (
+                <SelectItem key={item.value} value={item.value}>
+                  <SelectItemText>{item.label}</SelectItemText>
+                  <SelectItemIndicator />
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <FieldError match>This city is no longer available.</FieldError>
+        </Field>
+      ))}
+    </React.Fragment>
+  ),
+}
+
+function ControlledDemo() {
   const [value, setValue] = React.useState<string | null>('balanced')
 
   return (
@@ -336,7 +373,7 @@ export const Controlled: Story = {
   render: () => <ControlledDemo />,
 }
 
-const MultipleControlledDemo = () => {
+function MultipleControlledDemo() {
   const [value, setValue] = React.useState<DeploymentRegion[]>(['us-east', 'eu-west'])
 
   return (
@@ -399,30 +436,27 @@ export const MultipleControlled: Story = {
 }
 
 export const InForm: Story = {
+  parameters: {
+    docs: { story: { autoplay: false } },
+  },
   render: () => (
     <Form aria-label="Timezone form" className="grid w-72 gap-3" onFormSubmit={() => undefined}>
       <Field name="timezone">
-        <Select name="timezone" defaultValue="utc">
+        <Select items={timezoneItems} required>
           <SelectLabel>Timezone</SelectLabel>
           <SelectTrigger>
-            <SelectValue />
+            <SelectValue placeholder="Choose a timezone" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="utc">
-              <SelectItemText>UTC</SelectItemText>
-              <SelectItemIndicator />
-            </SelectItem>
-            <SelectItem value="pst">
-              <SelectItemText>Pacific (PST)</SelectItemText>
-              <SelectItemIndicator />
-            </SelectItem>
-            <SelectItem value="jst">
-              <SelectItemText>Japan (JST)</SelectItemText>
-              <SelectItemIndicator />
-            </SelectItem>
+            {timezoneItems.map((item) => (
+              <SelectItem key={item.value} value={item.value}>
+                <SelectItemText>{item.label}</SelectItemText>
+                <SelectItemIndicator />
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
-        <FieldDescription>Used to schedule workflow runs.</FieldDescription>
+        <FieldError match="valueMissing">Timezone is required.</FieldError>
       </Field>
       <div className="flex justify-end">
         <Button type="submit" variant="primary">
@@ -431,4 +465,27 @@ export const InForm: Story = {
       </div>
     </Form>
   ),
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const trigger = canvas.getByRole('combobox', { name: 'Timezone' })
+    const body = within(canvasElement.ownerDocument.body)
+
+    await expect(trigger).not.toHaveAttribute('data-invalid')
+    await expect(trigger).not.toHaveAttribute('data-valid')
+    await userEvent.click(canvas.getByRole('button', { name: 'Save' }))
+
+    await expect(await canvas.findByText('Timezone is required.')).toBeVisible()
+    await expect(trigger).toHaveAttribute('data-invalid')
+    await expect(trigger).toHaveAttribute('aria-invalid', 'true')
+
+    trigger.focus()
+    await userEvent.keyboard('{ArrowDown}')
+    await userEvent.click(await body.findByRole('option', { name: 'UTC' }))
+
+    await expect(trigger).toHaveTextContent('UTC')
+    await waitFor(async () => {
+      await expect(trigger).not.toHaveAttribute('data-invalid')
+      await expect(trigger).toHaveAttribute('data-valid')
+      await expect(canvas.queryByText('Timezone is required.')).not.toBeInTheDocument()
+    })
+  },
 }

@@ -6,7 +6,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
-  DropdownMenuLabel,
+  DropdownMenuGroupLabel,
   DropdownMenuLinkItem,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
@@ -40,7 +40,7 @@ export function AgentWorkflowReferencesDropdown({
 
   return (
     <DropdownMenu modal={false}>
-      <DropdownMenuTrigger className="pointer-events-auto relative -m-1 flex h-6 shrink-0 cursor-pointer items-center gap-1 rounded-md p-1 outline-hidden before:pointer-events-none before:absolute before:inset-0 before:rounded-md before:content-[''] hover:before:bg-state-base-hover focus-visible:before:ring-2 focus-visible:before:ring-state-accent-solid data-popup-open:before:bg-state-base-hover">
+      <DropdownMenuTrigger className="pointer-events-auto relative -m-1 flex h-6 shrink-0 cursor-pointer items-center gap-1 rounded-md p-1 before:pointer-events-none before:absolute before:inset-0 before:rounded-md before:content-[''] hover:before:bg-state-base-hover data-popup-open:before:bg-state-base-hover">
         <span
           aria-hidden
           className="i-custom-vender-agent-v2-plan size-3 shrink-0 text-text-tertiary"
@@ -52,9 +52,9 @@ export function AgentWorkflowReferencesDropdown({
       </DropdownMenuTrigger>
       <DropdownMenuContent placement="bottom-start" sideOffset={4} className="w-66 p-1">
         <DropdownMenuGroup>
-          <DropdownMenuLabel className="flex w-full min-w-0 truncate pt-2 pr-3 pb-1.5 pl-2 system-xs-medium text-text-tertiary normal-case">
+          <DropdownMenuGroupLabel className="flex w-full min-w-0 truncate pt-2 pr-3 pb-1.5 pl-2 system-xs-medium normal-case">
             {t(($) => $['roster.references.label'], { ns: 'agentRoster', name: agentName })}
-          </DropdownMenuLabel>
+          </DropdownMenuGroupLabel>
           {publishedReferences.map((reference) => {
             const { iconType, imageUrl } = getWorkflowReferenceIcon(reference)
 
@@ -68,7 +68,7 @@ export function AgentWorkflowReferencesDropdown({
                     rel="noopener noreferrer"
                   />
                 }
-                className="group mx-0 h-8 gap-2 px-2 py-1 pr-2.5 system-md-regular text-text-secondary"
+                className="group mx-0 gap-2 py-1 pr-2.5 system-md-regular text-text-secondary"
               >
                 <span aria-hidden className="shrink-0">
                   <AppIcon

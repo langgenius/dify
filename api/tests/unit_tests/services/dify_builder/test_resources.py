@@ -1,9 +1,13 @@
 import logging
+from collections.abc import Sequence
 from unittest.mock import patch
 
 import pytest
-from sqlalchemy import text
+from sqlalchemy import select, text
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session
 
+from models.credential_permission import CredentialPermission, CredentialType
 from models.enums import PermissionEnum
 from tests.unit_tests.services.dify_builder.installed_tool_inventory import (
     ACCOUNT_A,
@@ -24,19 +28,19 @@ from tests.unit_tests.services.dify_builder.installed_tool_inventory import (
 )
 
 
-def test_list_tenant_resources_normalizes_all_three_kinds():
+def test_list_tenant_resources_normalizes_all_three_kinds() -> None:
     from services.dify_builder.agent import resources
 
     class _Model:
-        def __init__(self, m):
+        def __init__(self, m: str) -> None:
             self.model = m
 
     class _ProvResp:
-        def __init__(self, p, ms):
+        def __init__(self, p: str, ms: list[str]) -> None:
             self.provider, self.models = p, [_Model(m) for m in ms]
 
     class _DS:
-        def __init__(self, i, n):
+        def __init__(self, i: str, n: str) -> None:
             self.id, self.name = i, n
 
     tool_record = {
@@ -59,7 +63,7 @@ def test_list_tenant_resources_normalizes_all_three_kinds():
     assert out.tools[0].label == "Google Search"
 
 
-def test_each_source_degrades_to_empty():
+def test_each_source_degrades_to_empty() -> None:
     from services.dify_builder.agent import resources
 
     with (
@@ -71,11 +75,11 @@ def test_each_source_degrades_to_empty():
     assert out == resources.TenantResources(models=[], datasets=[], tools=[])
 
 
-def test_mixed_failure_partial_success():
+def test_mixed_failure_partial_success() -> None:
     from services.dify_builder.agent import resources
 
     class _DS:
-        def __init__(self, i, n):
+        def __init__(self, i: str, n: str) -> None:
             self.id, self.name = i, n
 
     tool_record = {
@@ -98,7 +102,7 @@ def test_mixed_failure_partial_success():
     assert out.tools[0].id == "google/search"
 
 
-def test_malformed_tool_record_degrades():
+def test_malformed_tool_record_degrades() -> None:
     from services.dify_builder.agent import resources
 
     with (
@@ -113,7 +117,7 @@ def test_malformed_tool_record_degrades():
     assert out.datasets == []
 
 
-def test_an_unauthorized_tool_is_reported_as_missing_config(monkeypatch):
+def test_an_unauthorized_tool_is_reported_as_missing_config(monkeypatch: pytest.MonkeyPatch) -> None:
     """Recommending an unusable tool is how a build fails at test time."""
     from services.dify_builder.agent import resources
 
@@ -135,7 +139,7 @@ def test_an_unauthorized_tool_is_reported_as_missing_config(monkeypatch):
     assert inv.tools[0].readiness == "missing_config"
 
 
-def test_a_tool_needing_no_credentials_is_ready(monkeypatch):
+def test_a_tool_needing_no_credentials_is_ready(monkeypatch: pytest.MonkeyPatch) -> None:
     from services.dify_builder.agent import resources
 
     monkeypatch.setattr(
@@ -155,7 +159,7 @@ def test_a_tool_needing_no_credentials_is_ready(monkeypatch):
     assert resources.list_tenant_resources("t1").tools[0].readiness == "ready"
 
 
-def test_an_authorized_tool_is_ready(monkeypatch):
+def test_an_authorized_tool_is_ready(monkeypatch: pytest.MonkeyPatch) -> None:
     from services.dify_builder.agent import resources
 
     monkeypatch.setattr(
@@ -175,13 +179,13 @@ def test_an_authorized_tool_is_ready(monkeypatch):
     assert resources.list_tenant_resources("t1").tools[0].readiness == "ready"
 
 
-def test_authorization_lookup_failure_is_never_reported_ready(caplog):
+def test_authorization_lookup_failure_is_never_reported_ready(caplog: pytest.LogCaptureFixture) -> None:
     """ENG-1191 ruling: an unverified credential lookup must not claim a tool
     is usable. The tool stays discoverable as missing_config with an
     explanatory note; runtime authorization remains the final gate."""
     from services.dify_builder.agent import resources
 
-    def _boom(*_args, **_kwargs):
+    def _boom(*_args: object, **_kwargs: object) -> None:
         raise RuntimeError("db down")
 
     with (
@@ -223,15 +227,15 @@ def test_authorization_lookup_failure_is_never_reported_ready(caplog):
     assert "authorization" in warnings[0].getMessage()
 
 
-def test_list_tenant_resources_logs_when_a_source_fails(caplog):
+def test_list_tenant_resources_logs_when_a_source_fails(caplog: pytest.LogCaptureFixture) -> None:
     from services.dify_builder.agent import resources
 
     class _Model:
-        def __init__(self, m):
+        def __init__(self, m: str) -> None:
             self.model = m
 
     class _ProvResp:
-        def __init__(self, p, ms):
+        def __init__(self, p: str, ms: list[str]) -> None:
             self.provider, self.models = p, [_Model(m) for m in ms]
 
     with (
@@ -260,9 +264,25 @@ def test_list_tenant_resources_logs_when_a_source_fails(caplog):
 _HUDDLE = "acme/huddle/huddle"
 
 
-def _tenant_providers() -> list[dict]:
-    def creds(plugin_id: str, provider: str, tool: FakeTool, **kwargs) -> dict:
-        return provider_payload(plugin_id, provider, [tool], needs_credentials=True, **kwargs)
+def _tenant_providers() -> list[dict[str, object]]:
+    def creds(
+        plugin_id: str,
+        provider: str,
+        tool: FakeTool,
+        *,
+        label: str = "",
+        description: str = "",
+        tags: Sequence[str] = (),
+    ) -> dict[str, object]:
+        return provider_payload(
+            plugin_id,
+            provider,
+            [tool],
+            needs_credentials=True,
+            label=label,
+            description=description,
+            tags=tags,
+        )
 
     return [
         creds(
@@ -284,7 +304,7 @@ def _tenant_providers() -> list[dict]:
 
 
 @pytest.fixture
-def installed(monkeypatch, sqlite_engine):
+def installed(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> tuple[FakeToolDaemon, list[str]]:
     """Real inventory owners over a faked daemon and real SQLite credential rows."""
     bind_database(monkeypatch, sqlite_engine)
     daemon = install_fake_daemon(
@@ -309,13 +329,15 @@ def installed(monkeypatch, sqlite_engine):
     return daemon, forbidden
 
 
-def _readiness(tenant_id: str = TENANT_ID, **kwargs) -> dict[str, str]:
+def _readiness(tenant_id: str = TENANT_ID, *, account_id: str | None = None) -> dict[str, str]:
     from services.dify_builder.agent import resources
 
-    return {tool.id: tool.readiness for tool in resources.list_tenant_resources(tenant_id, **kwargs).tools}
+    return {tool.id: tool.readiness for tool in resources.list_tenant_resources(tenant_id, account_id=account_id).tools}
 
 
-def test_installed_unauthenticated_tool_is_discoverable_as_missing_config(installed, sqlite_engine):
+def test_installed_unauthenticated_tool_is_discoverable_as_missing_config(
+    installed: tuple[FakeToolDaemon, list[str]], sqlite_engine: Engine
+) -> None:
     from services.dify_builder.agent import resources
 
     daemon, forbidden = installed
@@ -339,7 +361,7 @@ def test_installed_unauthenticated_tool_is_discoverable_as_missing_config(instal
 
 
 @pytest.mark.usefixtures("installed")
-def test_configured_no_auth_and_hardcoded_tools_are_ready(sqlite_session):
+def test_configured_no_auth_and_hardcoded_tools_are_ready(sqlite_session: Session) -> None:
     add_credential(sqlite_session, tenant_id=TENANT_ID, provider="acme/vault/vault", user_id=ACCOUNT_B)
 
     readiness = _readiness()
@@ -362,7 +384,9 @@ def test_configured_no_auth_and_hardcoded_tools_are_ready(sqlite_session):
     ],
 )
 @pytest.mark.usefixtures("installed")
-def test_credential_visibility_follows_the_acting_account(sqlite_session, account_id, provider, expected):
+def test_credential_visibility_follows_the_acting_account(
+    sqlite_session: Session, account_id: str, provider: str, expected: str
+) -> None:
     add_credential(
         sqlite_session,
         tenant_id=TENANT_ID,
@@ -387,7 +411,7 @@ def test_credential_visibility_follows_the_acting_account(sqlite_session, accoun
 
 
 @pytest.mark.usefixtures("installed")
-def test_without_an_actor_only_team_shared_credentials_count(sqlite_session):
+def test_without_an_actor_only_team_shared_credentials_count(sqlite_session: Session) -> None:
     """A compatibility caller with no actor must not borrow a teammate's
     private or partial credential to claim readiness."""
     add_credential(
@@ -414,6 +438,32 @@ def test_without_an_actor_only_team_shared_credentials_count(sqlite_session):
     assert readiness["acme/vault/vault/lookup"] == "ready"
 
 
+@pytest.mark.parametrize("invalid_grant", ["disabled", "foreign-tenant", "wrong-type"])
+@pytest.mark.usefixtures("installed")
+def test_invalid_partial_grants_do_not_make_a_tool_ready(sqlite_session: Session, invalid_grant: str) -> None:
+    credential = add_credential(
+        sqlite_session,
+        tenant_id=TENANT_ID,
+        provider="acme/partial/partial",
+        user_id=ACCOUNT_B,
+        visibility=PermissionEnum.PARTIAL_TEAM,
+        partial_members=[ACCOUNT_A],
+    )
+    grant = sqlite_session.scalar(
+        select(CredentialPermission).where(CredentialPermission.credential_id == credential.id)
+    )
+    assert grant is not None
+    if invalid_grant == "disabled":
+        grant.has_permission = False
+    elif invalid_grant == "foreign-tenant":
+        grant.tenant_id = OTHER_TENANT_ID
+    else:
+        grant.credential_type = CredentialType.PROVIDER_CREDENTIAL
+    sqlite_session.commit()
+
+    assert _readiness(account_id=ACCOUNT_A)["acme/partial/partial/run"] == "missing_config"
+
+
 @pytest.mark.parametrize(
     ("row_provider", "ready_ids", "missing_ids"),
     [
@@ -428,8 +478,8 @@ def test_without_an_actor_only_team_shared_credentials_count(sqlite_session):
 )
 @pytest.mark.usefixtures("installed")
 def test_legacy_and_colliding_provider_ids_follow_native_normalization(
-    sqlite_session, row_provider, ready_ids, missing_ids
-):
+    sqlite_session: Session, row_provider: str, ready_ids: set[str], missing_ids: set[str]
+) -> None:
     add_credential(sqlite_session, tenant_id=TENANT_ID, provider=row_provider, user_id=ACCOUNT_B)
 
     readiness = _readiness()
@@ -439,7 +489,7 @@ def test_legacy_and_colliding_provider_ids_follow_native_normalization(
 
 
 @pytest.mark.usefixtures("installed")
-def test_other_tenants_rows_and_installs_never_leak(sqlite_session):
+def test_other_tenants_rows_and_installs_never_leak(sqlite_session: Session) -> None:
     add_credential(sqlite_session, tenant_id=OTHER_TENANT_ID, provider=_HUDDLE, user_id=ACCOUNT_A)
 
     readiness = _readiness(account_id=ACCOUNT_A)
@@ -450,7 +500,9 @@ def test_other_tenants_rows_and_installs_never_leak(sqlite_session):
 
 
 @pytest.mark.usefixtures("installed")
-def test_an_unverifiable_credential_lookup_reports_not_ready_with_a_reason(sqlite_engine, caplog):
+def test_an_unverifiable_credential_lookup_reports_not_ready_with_a_reason(
+    sqlite_engine: Engine, caplog: pytest.LogCaptureFixture
+) -> None:
     from services.dify_builder.agent import resources
 
     with sqlite_engine.begin() as connection:
@@ -465,7 +517,9 @@ def test_an_unverifiable_credential_lookup_reports_not_ready_with_a_reason(sqlit
     assert any("authorization" in r.getMessage() for r in caplog.records if r.levelno == logging.WARNING)
 
 
-def test_a_plugin_daemon_outage_keeps_hardcoded_tools_in_the_inventory(monkeypatch, sqlite_engine):
+def test_a_plugin_daemon_outage_keeps_hardcoded_tools_in_the_inventory(
+    monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine
+) -> None:
     from services.dify_builder.agent import resources
 
     bind_database(monkeypatch, sqlite_engine)
@@ -478,19 +532,19 @@ def test_a_plugin_daemon_outage_keeps_hardcoded_tools_in_the_inventory(monkeypat
     assert readiness.get("time/current_time") == "ready"
 
 
-def test_models_and_datasets_keep_their_semantics_for_an_actor(monkeypatch):
+def test_models_and_datasets_keep_their_semantics_for_an_actor(monkeypatch: pytest.MonkeyPatch) -> None:
     from services.dify_builder.agent import resources
 
     class _Model:
-        def __init__(self, m):
+        def __init__(self, m: str) -> None:
             self.model = m
 
     class _ProvResp:
-        def __init__(self, p, ms):
+        def __init__(self, p: str, ms: list[str]) -> None:
             self.provider, self.models = p, [_Model(m) for m in ms]
 
     class _DS:
-        def __init__(self, i, n):
+        def __init__(self, i: str, n: str) -> None:
             self.id, self.name = i, n
 
     monkeypatch.setattr(resources, "_list_models", lambda _tenant_id: [_ProvResp("anthropic", ["claude-opus-4-8"])])

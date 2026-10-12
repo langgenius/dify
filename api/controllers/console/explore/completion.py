@@ -6,9 +6,9 @@ from uuid import UUID
 from flask import Response
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
-from werkzeug.exceptions import InternalServerError, NotFound, Unauthorized
 
 import services
+from controllers.common.errors import InternalServerError, NotFoundError, UnauthorizedError
 from controllers.common.fields import SimpleResultResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console.app.error import (
@@ -112,11 +112,11 @@ class CompletionApi(Resource):
         except InstalledAppNotCompletionError:
             raise NotCompletionAppError() from None
         except InstalledAppNotFoundError:
-            raise NotFound("Installed app not found") from None
+            raise NotFoundError("Installed app not found") from None
         except AccountNotFoundError:
-            raise Unauthorized("Account no longer exists.") from None
+            raise UnauthorizedError("Account no longer exists.") from None
         except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+            raise NotFoundError("Conversation Not Exists.")
         except services.errors.conversation.ConversationCompletedError:
             raise ConversationCompletedError()
         except services.errors.app_model_config.AppModelConfigBrokenError:
@@ -192,11 +192,11 @@ class ChatApi(Resource):
         except InstalledAppNotChatError:
             raise NotChatAppError() from None
         except InstalledAppNotFoundError:
-            raise NotFound("Installed app not found") from None
+            raise NotFoundError("Installed app not found") from None
         except AccountNotFoundError:
-            raise Unauthorized("Account no longer exists.") from None
+            raise UnauthorizedError("Account no longer exists.") from None
         except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+            raise NotFoundError("Conversation Not Exists.")
         except services.errors.conversation.ConversationCompletedError:
             raise ConversationCompletedError()
         except services.errors.app_model_config.AppModelConfigBrokenError:

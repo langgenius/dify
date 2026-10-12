@@ -3,11 +3,11 @@ import logging
 import os
 from collections.abc import Sequence
 from typing import Any, Literal, NotRequired, TypedDict
+from warnings import deprecated
 
 import httpx
 from pydantic import TypeAdapter, ValidationError
 from tenacity import retry, retry_if_exception_type, stop_before_delay, wait_fixed
-from typing_extensions import deprecated
 from werkzeug.exceptions import InternalServerError
 
 from core.helper.http_client_pooling import get_pooled_http_client
@@ -607,11 +607,6 @@ class BillingService:
     @classmethod
     def clean_billing_info_cache(cls, tenant_id: str) -> None:
         redis_client.delete(f"tenant:{tenant_id}:billing_info")
-
-    @classmethod
-    def sync_partner_tenants_bindings(cls, account_id: str, partner_key: str, click_id: str) -> dict[str, Any]:
-        payload = {"account_id": account_id, "click_id": click_id}
-        return cls._send_request("PUT", f"/partners/{partner_key}/tenants", json=payload)
 
     @classmethod
     def get_plan_bulk(cls, tenant_ids: Sequence[str]) -> dict[str, SubscriptionPlan]:

@@ -1,11 +1,11 @@
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -48,7 +48,6 @@ export const TagItemEditor = ({ tag, onTagsChange }: TagItemEditorProps) => {
       },
       {
         onSuccess: () => {
-          toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
           setIsEditing(false)
           onTagsChange?.()
         },
@@ -163,7 +162,7 @@ export const TagItemEditor = ({ tag, onTagsChange }: TagItemEditorProps) => {
               {t(($) => $['tag.deleteTip'], { ns: 'common' })}
             </AlertDialogDescription>
           </div>
-          <AlertDialogActions>
+          <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
@@ -175,7 +174,7 @@ export const TagItemEditor = ({ tag, onTagsChange }: TagItemEditorProps) => {
             >
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>

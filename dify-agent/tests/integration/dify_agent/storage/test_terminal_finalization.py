@@ -12,7 +12,7 @@ import httpx
 import pytest
 from redis.asyncio import Redis
 
-from agenton.compositor import CompositorSessionSnapshot
+from dify_agent.protocol.snapshot import SessionSnapshot
 from dify_agent.protocol.schemas import (
     CancelRunRequest,
     CreateRunRequest,
@@ -25,6 +25,7 @@ from dify_agent.protocol.schemas import (
     RunSucceededEventData,
     utc_now,
 )
+from dify_agent.runtime.context import Services
 from dify_agent.runtime.cancellation import RunCancellationIntent
 from dify_agent.runtime.run_scheduler import RunScheduler
 from dify_agent.storage.redis_keys import run_cancel_intent_key, run_events_key, run_record_key
@@ -40,7 +41,7 @@ def _success_or_failure_event(kind: str, run_id: str) -> RunSucceededEvent | Run
             run_id=run_id,
             data=RunSucceededEventData(
                 output="done",
-                session_snapshot=CompositorSessionSnapshot(layers=[]),
+                session_snapshot=SessionSnapshot(layers={}),
             ),
         )
     return RunFailedEvent(run_id=run_id, data=RunFailedEventData(error="model failed"))
@@ -108,7 +109,7 @@ def test_success_and_cancel_intent_commit_exactly_one_matching_terminal(redis_ur
                 run_id=record.run_id,
                 data=RunSucceededEventData(
                     output="done",
-                    session_snapshot=CompositorSessionSnapshot(layers=[]),
+                    session_snapshot=SessionSnapshot(layers={}),
                 ),
             )
 
@@ -175,7 +176,7 @@ def test_event_stream_is_trimmed_and_keeps_the_terminal_event(redis_url: str) ->
                     run_id=record.run_id,
                     data=RunSucceededEventData(
                         output="done",
-                        session_snapshot=CompositorSessionSnapshot(layers=[]),
+                        session_snapshot=SessionSnapshot(layers={}),
                     ),
                 )
             )
@@ -263,7 +264,7 @@ def test_cancellation_intent_lifecycle_and_terminal_exclusion(redis_url: str) ->
             first_finalization = await store.finalize_cancellation(
                 record.run_id,
                 intent,
-                session_snapshot=CompositorSessionSnapshot(layers=[]),
+                session_snapshot=SessionSnapshot(layers={}),
             )
             repeated_finalization = await store.finalize_cancellation(record.run_id, intent)
             post_terminal_status = await store.request_cancellation(
@@ -369,17 +370,12 @@ def test_non_owner_scheduler_cancellation_stops_owner_runner(redis_url: str) -> 
         async with httpx.AsyncClient() as http_client:
             owner_scheduler = RunScheduler(
                 store=owner_store,
-                plugin_daemon_http_client=http_client,
-                dify_api_http_client=http_client,
-                runner_factory=lambda _record, _request: BlockingRunner(
-                    started=runner_started,
-                    stopped=runner_stopped,
-                ),
+                runner_factory=lambda _record, _request: BlockingRunner(started=runner_started, stopped=runner_stopped),
+                services=Services(plugin_daemon_http_client=http_client, dify_api_http_client=http_client),
             )
             remote_scheduler = RunScheduler(
                 store=remote_store,
-                plugin_daemon_http_client=http_client,
-                dify_api_http_client=http_client,
+                services=Services(plugin_daemon_http_client=http_client, dify_api_http_client=http_client),
             )
             try:
                 record = await owner_scheduler.create_run(CreateRunRequest(composition=RunComposition(layers=[])))

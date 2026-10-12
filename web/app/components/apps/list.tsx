@@ -39,10 +39,9 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
 
   const [urlQuery, setUrlQuery] = useQueryStates(appListQueryParsers)
-  const { category, keywords } = urlQuery
+  const { category, keywords, sort_by: sortBy } = urlQuery
   const [creatorIDs, setCreatorIDs] = useState<string[]>([])
   const [tagIDs, setTagIDs] = useState<string[]>([])
-  const [sortBy, setSortBy] = useState<AppListSortBy>('last_modified')
   const debouncedKeywords = useDebounce(keywords, { wait: APP_LIST_SEARCH_DEBOUNCE_MS })
   const dropZoneRef = useRef<HTMLDivElement>(null)
   const scrollViewportRef = useRef<HTMLDivElement>(null)
@@ -106,7 +105,7 @@ export function List({ onCreateLearnDify, onTryLearnDify }: Props) {
   }
   const changeSortBy = (nextSortBy: AppListSortBy) => {
     resetCatalogScroll()
-    setSortBy(nextSortBy)
+    void setUrlQuery({ sort_by: nextSortBy })
   }
 
   const openCreateTemplateDialog = useCallback(() => {

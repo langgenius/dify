@@ -1,14 +1,15 @@
 'use client'
 
-import type { Tabs as BaseTabsNS } from '@base-ui/react/tabs'
 import { Tabs as BaseTabs } from '@base-ui/react/tabs'
 import { cn } from '../cn'
 import { resolveClassName } from '../internals/resolve-class-name'
 
-type TabsProps = BaseTabsNS.Root.Props
+type TabsProps = BaseTabs.Root.Props
+type TabsChangeEventReason = BaseTabs.Root.ChangeEventReason
+type TabsChangeEventDetails = BaseTabs.Root.ChangeEventDetails
 const Tabs = BaseTabs.Root
 
-type TabsListProps = BaseTabsNS.List.Props
+type TabsListProps = BaseTabs.List.Props
 
 function TabsList({ className, ...props }: TabsListProps) {
   return (
@@ -19,7 +20,7 @@ function TabsList({ className, ...props }: TabsListProps) {
   )
 }
 
-type TabsTabProps = BaseTabsNS.Tab.Props
+type TabsTabProps = BaseTabs.Tab.Props
 
 function TabsTab({ className, ...props }: TabsTabProps) {
   return (
@@ -35,7 +36,7 @@ function TabsTab({ className, ...props }: TabsTabProps) {
   )
 }
 
-type TabsPanelProps = BaseTabsNS.Panel.Props
+type TabsPanelProps = BaseTabs.Panel.Props
 
 function TabsPanel({ className, ...props }: TabsPanelProps) {
   return (
@@ -52,8 +53,16 @@ function TabsPanel({ className, ...props }: TabsPanelProps) {
 }
 
 const TabsIndicator = BaseTabs.Indicator
-type TabsIndicatorProps = BaseTabsNS.Indicator.Props
+type TabsIndicatorProps = BaseTabs.Indicator.Props
 
 export { Tabs, TabsIndicator, TabsList, TabsPanel, TabsTab }
 
-export type { TabsIndicatorProps, TabsListProps, TabsPanelProps, TabsProps, TabsTabProps }
+export type {
+  TabsChangeEventDetails,
+  TabsChangeEventReason,
+  TabsIndicatorProps,
+  TabsListProps,
+  TabsPanelProps,
+  TabsProps,
+  TabsTabProps,
+}

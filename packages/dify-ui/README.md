@@ -23,10 +23,10 @@ Import from a public subpath. The package intentionally has no root barrel:
 
 ```tsx
 import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent, DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Input } from '@langgenius/dify-ui/input'
-import { cn } from '@langgenius/dify-ui/cn'
 import '@langgenius/dify-ui/styles.css'
 ```
 
@@ -52,6 +52,9 @@ Utilities:
 - `./direction-provider` exports Base UI `DirectionProvider` and `useDirection`. Set HTML `dir` as well for CSS layout; pickers propagate their resolved direction to their trigger and portaled content.
 
 - `./cn` re-exports `cn` from the `cn` package through Dify UI's public subpath.
+- `./use-merged-refs` exports `useMergedRefs` for combining internal and caller refs, including callback cleanup.
+- `./use-ref-with-init` exports `useRefWithInit` for lazy ref initialization. Later initializer or argument changes do not reset the ref; initialization runs during render and must be safe to retry or discard.
+- `./use-render` exports `useRender` for building a part with Base UI's `render` prop, `className(state)` callback and state data attributes; `./merge-props` exports `mergeProps` for chaining event handlers and merging `className`/`style` when composing parts.
 - `./styles.css` provides design tokens, theme variables, and shared utilities.
 
 ## Guides

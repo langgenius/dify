@@ -110,7 +110,7 @@ export const States: Story = {
   ),
 }
 
-const FormDemo = () => {
+function FormDemo() {
   const [savedDescription, setSavedDescription] = React.useState<string | null>(null)
 
   return (
@@ -153,7 +153,7 @@ export const WithField: Story = {
   render: () => <FormDemo />,
 }
 
-const ControlledDemo = () => {
+function ControlledDemo() {
   const [value, setValue] = React.useState(
     'Summarize customer feedback into actionable product themes.',
   )
@@ -180,7 +180,7 @@ export const Controlled: Story = {
   ),
 }
 
-const CharacterCounterDemo = () => {
+function CharacterCounterDemo() {
   const maxLength = 120
   const [value, setValue] = React.useState(
     'Summarize customer feedback into actionable product themes.',

@@ -520,6 +520,23 @@ describe('useEmbeddedChatbot', () => {
       expect(forms.find((f: InputForm) => f.variable === 'f1')?.type).toBe('file')
       expect(forms.find((f: InputForm) => f.variable === 'j1')?.type).toBe('json_object')
     })
+
+    it('should preserve numeric zero supplied via URL params', async () => {
+      mockGetProcessedInputsFromUrlParams.mockResolvedValue({ n1: '0' })
+      mockStoreState.appParams = {
+        user_input_form: [{ number: { variable: 'n1', default: 10 } }],
+      } as unknown as ChatConfig
+
+      const { result } = await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
+
+      await waitFor(() => {
+        expect(result.current.inputsForms).toHaveLength(1)
+      })
+      expect(result.current.inputsForms[0].default).toBe(0)
+      await waitFor(() => {
+        expect(result.current.newConversationInputsRef.current.n1).toBe(0)
+      })
+    })
   })
 
   // Scenario: checkInputsRequired validates empty fields and pending multi-file uploads
@@ -589,6 +606,26 @@ describe('useEmbeddedChatbot', () => {
       })
 
       expect(callback).toHaveBeenCalled()
+    })
+
+    it('should accept numeric zero for a required number input', async () => {
+      mockStoreState.appParams = {
+        user_input_form: [{ number: { variable: 'n1', required: true, label: 'N1' } }],
+      } as unknown as ChatConfig
+
+      const { result } = await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
+
+      act(() => {
+        result.current.handleNewConversationInputsChange({ n1: 0 })
+      })
+      const onStart = vi.fn()
+      act(() => {
+        ;(
+          result.current as unknown as { handleStartChat: (cb?: () => void) => void }
+        ).handleStartChat(onStart)
+      })
+
+      expect(onStart).toHaveBeenCalled()
     })
   })
 

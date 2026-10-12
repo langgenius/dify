@@ -1,6 +1,9 @@
 import { act, waitFor } from '@testing-library/react'
-import { renderWorkflowHook as renderHook } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { renderWorkflowHook } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { DSL_EXPORT_CHECK } from '@/app/components/workflow/constants'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient } from '@/test/console/query-data'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import { useDSLByCanEdit } from '../use-DSL'
 
 const toastMocks = vi.hoisted(() => ({
@@ -35,7 +38,7 @@ const mockExportAppConfig = vi.fn()
 const mockFetchEnvironmentVariables = vi.fn()
 const mockDownloadBlob = vi.fn()
 
-let appStoreState: {
+let appQueryFixture: {
   appDetail?: {
     id: string
     name: string
@@ -50,9 +53,12 @@ vi.mock('@/context/event-emitter', () => ({
   }),
 }))
 
-vi.mock('@/app/components/app/store', () => ({
-  useStore: <T>(selector: (state: typeof appStoreState) => T) => selector(appStoreState),
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  request: () => new Promise<Response>(() => {}),
 }))
+
+vi.mock('@/next/navigation', () => ({ useParams: () => ({ appId: 'app-1' }) }))
 
 vi.mock('../use-nodes-sync-draft', () => ({
   useNodesSyncDraftByCanEdit: () => ({
@@ -60,27 +66,23 @@ vi.mock('../use-nodes-sync-draft', () => ({
   }),
 }))
 
-vi.mock('@/service/console', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/service/console')>()
-
-  return {
-    ...actual,
-    consoleClient: {
-      apps: {
-        byAppId: {
-          export: { get: (...args: unknown[]) => mockExportAppConfig(...args) },
-          workflows: {
-            draft: {
-              environmentVariables: {
-                get: (...args: unknown[]) => mockFetchEnvironmentVariables(...args),
-              },
+vi.mock('@/service/console', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/console')>()),
+  consoleClient: {
+    apps: {
+      byAppId: {
+        export: { get: (...args: unknown[]) => mockExportAppConfig(...args) },
+        workflows: {
+          draft: {
+            environmentVariables: {
+              get: (...args: unknown[]) => mockFetchEnvironmentVariables(...args),
             },
           },
         },
       },
     },
-  }
-})
+  },
+}))
 
 vi.mock('@/utils/download', () => ({
   downloadBlob: (...args: unknown[]) => mockDownloadBlob(...args),
@@ -94,18 +96,46 @@ const createDeferred = <T>() => {
   return { promise, resolve }
 }
 
+let queryClient: ReturnType<typeof createConsoleQueryClient>
+const renderHook: typeof renderWorkflowHook = (hook, options) =>
+  renderWorkflowHook(hook, { queryClient, ...options })
+
 describe('useDSLByCanEdit', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    appStoreState = {
+    queryClient = createConsoleQueryClient()
+    appQueryFixture = {
       appDetail: {
         id: 'app-1',
         name: 'Workflow App',
       },
     }
+    queryClient.setQueryData(
+      consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'app-1' } } }),
+      createAppDetailFixture(appQueryFixture.appDetail),
+    )
     mockDoSyncWorkflowDraft.mockResolvedValue(undefined)
     mockExportAppConfig.mockResolvedValue({ data: 'yaml-content' })
     mockFetchEnvironmentVariables.mockResolvedValue({ items: [] })
+  })
+
+  it('exports with the latest name from the detail query', async () => {
+    const { result } = renderHook(() => useDSLByCanEdit(true))
+    const beforeRename = result.current
+    act(() => {
+      queryClient.setQueryData(
+        consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'app-1' } } }),
+        createAppDetailFixture({ name: 'Renamed workflow' }),
+      )
+    })
+    await waitFor(() => expect(result.current).not.toBe(beforeRename))
+    await act(async () => {
+      await result.current.handleExportDSL()
+    })
+    expect(mockDownloadBlob).toHaveBeenCalledWith({
+      data: expect.any(Blob),
+      fileName: 'Renamed workflow.yml',
+    })
   })
 
   it('does not export a stale draft after synchronization reports a failure', async () => {
@@ -242,7 +272,9 @@ workflow:
   })
 
   it('should return early when app detail is unavailable', async () => {
-    appStoreState = {}
+    queryClient.removeQueries({
+      queryKey: consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'app-1' } } }),
+    })
 
     const { result } = renderHook(() => useDSLByCanEdit(true))
 

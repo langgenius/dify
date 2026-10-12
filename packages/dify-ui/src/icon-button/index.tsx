@@ -1,6 +1,5 @@
 'use client'
 
-import type { Button as BaseButtonNS } from '@base-ui/react/button'
 import type { VariantProps } from 'class-variance-authority'
 import type * as React from 'react'
 import { Button as BaseButton } from '@base-ui/react/button'
@@ -18,7 +17,7 @@ type AccessibleName =
       'aria-labelledby': string
     }
 
-type IconButtonProps = Omit<BaseButtonNS.Props, 'aria-label' | 'aria-labelledby' | 'children'> &
+type IconButtonProps = Omit<BaseButton.Props, 'aria-label' | 'aria-labelledby' | 'children'> &
   AccessibleName &
   VariantProps<typeof iconButtonVariants> & {
     children: React.ReactElement

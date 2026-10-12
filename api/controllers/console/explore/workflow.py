@@ -3,9 +3,9 @@ from http import HTTPStatus
 
 from flask import Response
 from flask_restx import Resource
-from werkzeug.exceptions import InternalServerError, Unauthorized
 
 from controllers.common.controller_schemas import WorkflowRunPayload
+from controllers.common.errors import InternalServerError, UnauthorizedError
 from controllers.common.fields import SimpleResultResponse
 from controllers.common.schema import register_response_schema_models, register_schema_model
 from controllers.console.app.error import (
@@ -70,7 +70,7 @@ class InstalledAppWorkflowRunApi(Resource):
         except (AppDefinitionUnavailableError, InstalledAppNotWorkflowError):
             raise NotWorkflowAppError() from None
         except AccountNotFoundError:
-            raise Unauthorized("Account no longer exists.") from None
+            raise UnauthorizedError("Account no longer exists.") from None
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
         except QuotaExceededError:

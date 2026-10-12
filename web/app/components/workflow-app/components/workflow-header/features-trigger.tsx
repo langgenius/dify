@@ -165,10 +165,13 @@ const FeaturesTrigger = () => {
 
       const res = await consoleClient.apps.byAppId.get({ params: { app_id: appID } })
       setAppDetail({ ...res })
+      void queryClient.invalidateQueries({
+        queryKey: consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: appID } } }),
+      })
     } catch (error) {
       console.error(error)
     }
-  }, [appID, setAppDetail])
+  }, [appID, setAppDetail, queryClient])
 
   const { mutateAsync: publishWorkflow } = usePublishWorkflow()
   // const { validateBeforeRun } = useWorkflowRunValidation()
@@ -198,10 +201,10 @@ const FeaturesTrigger = () => {
           releaseNotes: publishParams?.releaseNotes || '',
         })
         if (res) {
-          if (options?.showSuccessToast !== false) {
-            toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
-          }
+          // One toast per publish: a warning from the server replaces the success message.
           if (res.warning) toast.warning(res.warning)
+          else if (options?.showSuccessToast !== false)
+            toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
           updatePublishedWorkflow(appID!)
           updateAppDetail()
           invalidateAppTriggers(appID!)
@@ -276,6 +279,7 @@ const FeaturesTrigger = () => {
         </Button>
       )}
       <AppPublisher
+        appId={appID!}
         {...{
           publishedAt,
           draftUpdatedAt,

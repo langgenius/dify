@@ -504,8 +504,6 @@ export type MessageFeedbackPayload = {
   rating?: 'dislike' | 'like' | null
 }
 
-export type TextFileResponse = string
-
 export type AppIconPayload = {
   icon?: string | null
   icon_background?: string | null
@@ -922,6 +920,7 @@ export type SyncDraftWorkflowPayload = {
   features: {
     [key: string]: unknown
   }
+  force?: boolean
   graph: {
     [key: string]: unknown
   }
@@ -4187,6 +4186,7 @@ export type GetAppsData = {
       | 'completion'
       | 'workflow'
     name?: string
+    openapi_visible?: boolean
     page?: number
     sort_by?: 'earliest_created' | 'last_modified' | 'recently_created'
     tag_ids?: Array<string>
@@ -4322,6 +4322,7 @@ export type GetAppsStarredData = {
       | 'completion'
       | 'workflow'
     name?: string
+    openapi_visible?: boolean
     page?: number
     sort_by?: 'earliest_created' | 'last_modified' | 'recently_created'
     tag_ids?: Array<string>
@@ -5545,34 +5546,6 @@ export type PostAppsByAppIdFeedbacksResponses = {
 
 export type PostAppsByAppIdFeedbacksResponse =
   PostAppsByAppIdFeedbacksResponses[keyof PostAppsByAppIdFeedbacksResponses]
-
-export type GetAppsByAppIdFeedbacksExportData = {
-  body?: never
-  path: {
-    app_id: string
-  }
-  query?: {
-    end_date?: string
-    format?: 'csv' | 'json'
-    from_source?: 'admin' | 'user'
-    has_comment?: boolean
-    rating?: 'dislike' | 'like'
-    start_date?: string
-  }
-  url: '/apps/{app_id}/feedbacks/export'
-}
-
-export type GetAppsByAppIdFeedbacksExportErrors = {
-  400: unknown
-  500: unknown
-}
-
-export type GetAppsByAppIdFeedbacksExportResponses = {
-  200: TextFileResponse
-}
-
-export type GetAppsByAppIdFeedbacksExportResponse =
-  GetAppsByAppIdFeedbacksExportResponses[keyof GetAppsByAppIdFeedbacksExportResponses]
 
 export type PostAppsByAppIdIconData = {
   body: AppIconPayload

@@ -62,7 +62,7 @@ from services.entities.dsl_entities import (
     Import,
     ImportStatus,
 )
-from services.model_provider_service import ModelProviderService
+from services.model_provider.service import ModelProviderService
 
 CONTEXT = RequestContext("request", "trace", "actor", "workspace")
 RECORD = AppRecord(id="app", name="Example", mode_compatible_with_agent="chat")
@@ -296,10 +296,14 @@ def test_empty_list_skips_external_enrichment(ports: Ports) -> None:
 
 
 def test_starred_list_preserves_existing_visibility_contract(ports: Ports) -> None:
-    service, _, access, _, _ = ports
-    page = service.list_apps(CONTEXT, StarredAppListParams())
-    assert page.data[0].permission_keys == []
-    assert access.calls == [("modes", ["app"])]
+    service, apps, access, _, _ = ports
+    params = StarredAppListParams()
+    page = service.list_apps(CONTEXT, params)
+    assert page.data[0].permission_keys == ["app.preview"]
+    assert access.calls == [("permissions", CONTEXT, None), ("modes", ["app"])]
+    # visibility filtering is still skipped for starred lists
+    _, _, listed_params = apps.calls[0]
+    assert listed_params is params
 
 
 def test_recent_uses_list_visibility_and_permission_keys(ports: Ports) -> None:
@@ -340,7 +344,7 @@ def test_copy_success_requires_materialized_app_and_enriches_permissions(ports: 
     assert access.calls == [("inherit", "app", "app"), ("created_permissions", CONTEXT, "app")]
     assert apps.calls == [("get", CONTEXT, "app")]
     assert transfers.calls == [
-        ("dsl", CONTEXT, "app", AppExportOptions(include_secret=True)),
+        ("dsl", CONTEXT, "app", AppExportOptions(include_secret=True, preserve_agent_bindings=True)),
         (
             "import",
             CONTEXT,

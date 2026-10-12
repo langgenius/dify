@@ -40,8 +40,8 @@ export default function AppSelector() {
       <DropdownMenuTrigger
         aria-label={userProfile.name}
         className={cn(
-          'inline-flex size-8 items-center justify-center rounded-full border-none bg-transparent p-0 text-sm text-text-primary outline-hidden',
-          'hover:opacity-80 focus-visible:ring-1 focus-visible:ring-components-input-border-hover active:opacity-70 data-popup-open:opacity-80',
+          'inline-flex size-8 items-center justify-center rounded-full border-none bg-transparent p-0 text-sm text-text-primary',
+          'hover:opacity-80 active:opacity-70 data-popup-open:opacity-80',
         )}
       >
         <Avatar avatar={userProfile.avatar_url} name={userProfile.name} />

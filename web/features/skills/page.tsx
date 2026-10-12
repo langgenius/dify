@@ -5,11 +5,11 @@ import type { QueryClient } from '@tanstack/react-query'
 import type { DragEvent, UIEvent } from 'react'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -304,7 +304,6 @@ function DeleteSkillDialog({
       },
       {
         onSuccess: () => {
-          toast.success(t(($) => $['skillManagement.deleteSuccess']))
           invalidateSkillListQueries(queryClient)
           onOpenChange(false)
         },
@@ -382,7 +381,7 @@ function DeleteSkillDialog({
             </Field>
           )}
         </div>
-        <AlertDialogActions>
+        <AlertDialogFooter>
           <AlertDialogCancelButton disabled={deleteMutation.isPending}>
             {tCommon(($) => $['operation.cancel'])}
           </AlertDialogCancelButton>
@@ -394,7 +393,7 @@ function DeleteSkillDialog({
           >
             {tCommon(($) => $['operation.delete'])}
           </AlertDialogConfirmButton>
-        </AlertDialogActions>
+        </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
   )
@@ -450,7 +449,6 @@ function SkillCard({
       },
       {
         onSuccess: (copiedSkill) => {
-          toast.success(t(($) => $['skillManagement.duplicateSuccess']))
           invalidateSkillListQueries(queryClient)
           router.push(`/skills/${copiedSkill.id}?rename=true`)
         },
@@ -1055,7 +1053,6 @@ export default function SkillsPage() {
       },
       {
         onSuccess: (skill) => {
-          toast.success(t(($) => $['skillManagement.createSuccess']))
           invalidateSkillListQueries(queryClient)
           router.push(`/skills/${skill.id}`)
         },
@@ -1083,7 +1080,6 @@ export default function SkillsPage() {
       {
         onSuccess: (skill) => {
           setImportOpen(false)
-          toast.success(t(($) => $['skillManagement.importSuccess']))
           invalidateSkillListQueries(queryClient)
           router.push(`/skills/${skill.id}`)
         },

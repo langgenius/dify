@@ -30,9 +30,6 @@ vi.mock('@/context/workspace-state', async () => {
 
 vi.mock('@/app/components/base/badge/index', () => ({
   __esModule: true,
-  BadgeState: {
-    Warning: 'warning',
-  },
   default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }))
 
