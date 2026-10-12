@@ -820,13 +820,13 @@ def test_native_tool_unknown_workflow_scope_refuses_before_crypto(native_draft, 
     assert native_draft.tools.forbidden == []
 
 
-def test_authorized_native_draft_oauth_refresh_persists_rotated_credentials_and_expiry(
+@pytest.fixture
+def native_draft_oauth(
     native_draft,
     sqlite_session,
     monkeypatch,
-    request,
 ):
-    """Refresh success must survive a fresh SQL read, not just the returned runtime.
+    """Authorized synthetic OAuth effects through real native/SQL ownership.
 
     Actual stored draft ownership, installed declaration, credential visibility,
     native ToolManager/OAuth orchestration and ORM commit stay real. Synthetic
@@ -841,7 +841,7 @@ def test_authorized_native_draft_oauth_refresh_persists_rotated_credentials_and_
     from core.plugin.entities.plugin_daemon import CredentialType as ToolCredentialType
     from core.plugin.entities.plugin_daemon import PluginOAuthCredentialsResponse
     from core.tools.entities.tool_entities import ToolInvokeFrom, ToolProviderType
-    from models.tools import BuiltinToolProvider, ToolOAuthTenantClient
+    from models.tools import ToolOAuthTenantClient
 
     # Earlier direct native calls can populate the implicit counter-zero cache.
     # The first recycle increment merely initializes zero; explicitly start a
@@ -851,7 +851,6 @@ def test_authorized_native_draft_oauth_refresh_persists_rotated_credentials_and_
         contexts.plugin_tool_providers_lock.set(Lock())
 
     reset_native_provider_cache()
-    request.addfinalizer(reset_native_provider_cache)
     declaration = native_draft.tools.daemon.providers_by_tenant[TENANT_ID][0]["declaration"]
     declaration["credentials_schema"] = []
     declaration["oauth_schema"] = {
@@ -905,6 +904,7 @@ def test_authorized_native_draft_oauth_refresh_persists_rotated_credentials_and_
     crypto_calls = []
     refresh_calls = []
     cache_deletions = []
+    refresh_boundary = SimpleNamespace(action=None, credential_owner=ACCOUNT_A)
 
     class SyntheticCrypto:
         @staticmethod
@@ -933,7 +933,7 @@ def test_authorized_native_draft_oauth_refresh_persists_rotated_credentials_and_
         assert path == "plugin/aaaaaaaa-0000-4000-8000-000000000001/dispatch/oauth/refresh_credentials"
         assert response_type is PluginOAuthCredentialsResponse
         assert kwargs["headers"] == {"X-Plugin-ID": "acme/huddle", "Content-Type": "application/json"}
-        assert kwargs["data"]["user_id"] == ACCOUNT_A
+        assert kwargs["data"]["user_id"] == refresh_boundary.credential_owner
         assert kwargs["data"]["data"]["provider"] == "huddle"
         assert kwargs["data"]["data"]["credentials"] == {
             "access_token": "synthetic-old-access",
@@ -944,6 +944,8 @@ def test_authorized_native_draft_oauth_refresh_persists_rotated_credentials_and_
             "client_secret": "synthetic-client-secret",
         }
         refresh_calls.append(path)
+        if refresh_boundary.action is not None:
+            refresh_boundary.action()
         return iter(
             [
                 PluginOAuthCredentialsResponse(
@@ -963,56 +965,165 @@ def test_authorized_native_draft_oauth_refresh_persists_rotated_credentials_and_
     monkeypatch.setattr(client_module, "create_provider_encrypter", crypto_factory)
     monkeypatch.setattr(OAuthHandler, "_request_with_plugin_daemon_response_stream", refresh_stream)
     monkeypatch.setattr(provider_cache, "redis_client", RedisBoundary())
-    runtime = ToolManager.get_tool_runtime(
-        provider_type=ToolProviderType.BUILT_IN,
-        provider_id=AUTH_PROVIDER,
-        tool_name="post",
-        tenant_id=TENANT_ID,
-        user_id=ACCOUNT_A,
-        invoke_from=InvokeFrom.DEBUGGER,
-        tool_invoke_from=ToolInvokeFrom.WORKFLOW,
-        credential_id=credential_id,
-        draft_tool_workflow_id=DRAFT_ID,
-        draft_tool_app_id=APP_ID,
-    )
+
+    def resolve_runtime():
+        return ToolManager.get_tool_runtime(
+            provider_type=ToolProviderType.BUILT_IN,
+            provider_id=AUTH_PROVIDER,
+            tool_name="post",
+            tenant_id=TENANT_ID,
+            user_id=ACCOUNT_A,
+            invoke_from=InvokeFrom.DEBUGGER,
+            tool_invoke_from=ToolInvokeFrom.WORKFLOW,
+            credential_id=credential_id,
+            draft_tool_workflow_id=DRAFT_ID,
+            draft_tool_app_id=APP_ID,
+        )
+
+    try:
+        yield SimpleNamespace(
+            resolve=resolve_runtime,
+            engine=native_draft.tools.engine,
+            credential_id=credential_id,
+            crypto_calls=crypto_calls,
+            refresh_calls=refresh_calls,
+            cache_deletions=cache_deletions,
+            forbidden=native_draft.tools.forbidden,
+            refresh_boundary=refresh_boundary,
+        )
+    finally:
+        reset_native_provider_cache()
+
+
+def test_authorized_native_draft_oauth_refresh_persists_rotated_credentials_and_expiry(native_draft_oauth):
+    """Native rotation survives fresh SQL and a second resolution without refresh."""
+    from models.tools import BuiltinToolProvider
+
+    boundary = native_draft_oauth
+    runtime = boundary.resolve()
     assert runtime.runtime.credentials == {
         "access_token": "synthetic-new-access",
         "refresh_token": "synthetic-new-refresh",
     }
-    assert len(refresh_calls) == 1
-    assert crypto_calls == ["decrypt", "decrypt", "encrypt"]
-    assert len(cache_deletions) == 1
-    assert native_draft.tools.forbidden == []
+    assert len(boundary.refresh_calls) == 1
+    assert boundary.crypto_calls == ["decrypt", "decrypt", "encrypt"]
+    assert len(boundary.cache_deletions) == 1
+    assert boundary.forbidden == []
     # A fresh independent read observes actual committed storage, not either
     # runtime state or the fixture session's potentially stale identity map.
-    with Session(native_draft.tools.engine) as fresh_session:
+    with Session(boundary.engine) as fresh_session:
         encrypted, expiry = fresh_session.execute(
             select(BuiltinToolProvider.encrypted_credentials, BuiltinToolProvider.expires_at).where(
                 BuiltinToolProvider.tenant_id == TENANT_ID,
                 BuiltinToolProvider.provider == AUTH_PROVIDER,
-                BuiltinToolProvider.id == credential_id,
+                BuiltinToolProvider.id == boundary.credential_id,
             )
         ).one()
     assert json.loads(encrypted) == {"access_token": "cipher:new-access", "refresh_token": "cipher:new-refresh"}
     assert expiry == 4102444800
 
-    subsequent_runtime = ToolManager.get_tool_runtime(
-        provider_type=ToolProviderType.BUILT_IN,
-        provider_id=AUTH_PROVIDER,
-        tool_name="post",
-        tenant_id=TENANT_ID,
-        user_id=ACCOUNT_A,
-        invoke_from=InvokeFrom.DEBUGGER,
-        tool_invoke_from=ToolInvokeFrom.WORKFLOW,
-        credential_id=credential_id,
-        draft_tool_workflow_id=DRAFT_ID,
-        draft_tool_app_id=APP_ID,
-    )
+    subsequent_runtime = boundary.resolve()
     assert subsequent_runtime.runtime.credentials == {
         "access_token": "synthetic-new-access",
         "refresh_token": "synthetic-new-refresh",
     }
-    assert len(refresh_calls) == 1
-    assert crypto_calls == ["decrypt", "decrypt", "encrypt", "decrypt"]
-    assert len(cache_deletions) == 1
-    assert native_draft.tools.forbidden == []
+    assert len(boundary.refresh_calls) == 1
+    assert boundary.crypto_calls == ["decrypt", "decrypt", "encrypt", "decrypt"]
+    assert len(boundary.cache_deletions) == 1
+    assert boundary.forbidden == []
+
+
+@pytest.mark.parametrize("change", ["revoked", "rotated"])
+def test_native_draft_oauth_refresh_refuses_concurrent_selection_change(native_draft_oauth, change):
+    """Real current permission/token updates cannot be overwritten after OAuth I/O."""
+    from core.tools.errors import ToolProviderCredentialValidationError
+    from models.tools import BuiltinToolProvider
+
+    boundary = native_draft_oauth
+    if change == "revoked":
+        # Admit a real teammate-owned partial grant, then revoke during refresh.
+        with Session(boundary.engine) as session, session.begin():
+            owner = Account(name="OAuth credential owner", email="oauth-owner@example.test")
+            owner.id = ACCOUNT_B
+            session.add(owner)
+            credential = session.scalar(
+                select(BuiltinToolProvider).where(
+                    BuiltinToolProvider.id == boundary.credential_id,
+                    BuiltinToolProvider.tenant_id == TENANT_ID,
+                    BuiltinToolProvider.provider == AUTH_PROVIDER,
+                )
+            )
+            credential.user_id = ACCOUNT_B
+            credential.visibility = PermissionEnum.PARTIAL_TEAM
+            session.add(
+                CredentialPermission(
+                    credential_id=boundary.credential_id,
+                    credential_type=CredentialType.BUILTIN_TOOL_PROVIDER,
+                    account_id=ACCOUNT_A,
+                    tenant_id=TENANT_ID,
+                    has_permission=True,
+                )
+            )
+        boundary.refresh_boundary.credential_owner = ACCOUNT_B
+
+    def concurrent_change():
+        with Session(boundary.engine) as session, session.begin():
+            if change == "revoked":
+                grant = session.scalar(
+                    select(CredentialPermission).where(
+                        CredentialPermission.tenant_id == TENANT_ID,
+                        CredentialPermission.credential_id == boundary.credential_id,
+                        CredentialPermission.credential_type == CredentialType.BUILTIN_TOOL_PROVIDER,
+                        CredentialPermission.account_id == ACCOUNT_A,
+                    )
+                )
+                grant.has_permission = False
+            else:
+                credential = session.scalar(
+                    select(BuiltinToolProvider).where(
+                        BuiltinToolProvider.tenant_id == TENANT_ID,
+                        BuiltinToolProvider.provider == AUTH_PROVIDER,
+                        BuiltinToolProvider.id == boundary.credential_id,
+                    )
+                )
+                credential.encrypted_credentials = json.dumps(
+                    {
+                        "access_token": "cipher:concurrent-access",
+                        "refresh_token": "cipher:concurrent-refresh",
+                    }
+                )
+                credential.expires_at = 4202444800
+
+    boundary.refresh_boundary.action = concurrent_change
+    with pytest.raises(ToolProviderCredentialValidationError, match="changed or access was revoked"):
+        boundary.resolve()
+    assert len(boundary.refresh_calls) == 1
+    assert boundary.crypto_calls == ["decrypt", "decrypt", "encrypt"]
+    assert boundary.cache_deletions == []
+    assert boundary.forbidden == []
+    with Session(boundary.engine) as session:
+        encrypted, expiry = session.execute(
+            select(BuiltinToolProvider.encrypted_credentials, BuiltinToolProvider.expires_at).where(
+                BuiltinToolProvider.tenant_id == TENANT_ID,
+                BuiltinToolProvider.provider == AUTH_PROVIDER,
+                BuiltinToolProvider.id == boundary.credential_id,
+            )
+        ).one()
+        if change == "revoked":
+            assert json.loads(encrypted) == {"access_token": "cipher:old-access", "refresh_token": "cipher:old-refresh"}
+            assert expiry == 1
+            grant = session.scalar(
+                select(CredentialPermission).where(
+                    CredentialPermission.tenant_id == TENANT_ID,
+                    CredentialPermission.credential_id == boundary.credential_id,
+                    CredentialPermission.account_id == ACCOUNT_A,
+                    CredentialPermission.credential_type == CredentialType.BUILTIN_TOOL_PROVIDER,
+                )
+            )
+            assert grant.has_permission is False
+        else:
+            assert json.loads(encrypted) == {
+                "access_token": "cipher:concurrent-access",
+                "refresh_token": "cipher:concurrent-refresh",
+            }
+            assert expiry == 4202444800
