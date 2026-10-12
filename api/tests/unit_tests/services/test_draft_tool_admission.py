@@ -18,8 +18,8 @@ import services.workflow_service as workflow_module
 from core.app.entities.app_invoke_entities import InvokeFrom
 from models.account import Account
 from models.credential_permission import CredentialPermission, CredentialType
-from models.enums import PermissionEnum
-from models.model import App, AppMode
+from models.enums import EndUserType, PermissionEnum
+from models.model import App, AppMode, EndUser
 from models.workflow import Workflow, WorkflowType
 from services.app_generate_service import AppGenerateService
 from services.workflow_service import WorkflowService
@@ -225,12 +225,14 @@ def invoke(case, session, monkeypatch, entrypoint, *, invoke_from=InvokeFrom.DEB
             streaming=False,
         )
     if entrypoint.endswith("loop"):
+        from controllers.console.app.workflow import LoopNodeRunPayload
+
         nest_tool_in_container(case, session, "loop")
         return AppGenerateService.generate_single_loop(
             case.app,
             case.user,
             "container",
-            {"inputs": {}},
+            LoopNodeRunPayload(inputs={}),
             session=session,
             streaming=False,
         )
@@ -417,6 +419,8 @@ def test_publish_without_credentials_and_plugin_manager_disabled_creates_no_vers
     assert [row.version for row in sqlite_session.scalars(select(Workflow).where(Workflow.app_id == APP_ID))] == [
         "draft"
     ]
+    # Signal receivers are isolated above: this assertion covers the service's
+    # in-memory pointer only, not the normal signal-driven database update owner.
     assert native_draft.app.workflow_id == before_pointer
     assert native_draft.tools.forbidden == []
 
@@ -450,7 +454,27 @@ def test_publish_configured_or_credential_free_draft_with_plugin_manager_disable
 def test_published_execution_keeps_normal_credential_delegation(native_draft, sqlite_session, monkeypatch, invoke_from):
     native_draft.workflow.version = "2026-10-12 12:00:00"
     native_draft.app.workflow_id = DRAFT_ID
+    end_user = EndUser(
+        id="eeeeeeee-0000-4000-8000-000000000001",
+        tenant_id=TENANT_ID,
+        app_id=APP_ID,
+        type=EndUserType.SERVICE_API if invoke_from == InvokeFrom.SERVICE_API else EndUserType.BROWSER,
+        session_id="ffffffff-0000-4000-8000-000000000001",
+        external_user_id="external-customer-1",
+        name="External customer",
+        is_anonymous=False,
+    )
+    sqlite_session.add(end_user)
     sqlite_session.commit()
+    monkeypatch.setattr(generate_module.WorkflowAppGenerator, "generate", dispatch)
     with pytest.raises(NativeDispatchReachedError):
-        invoke(native_draft, sqlite_session, monkeypatch, "workflow-full", invoke_from=invoke_from)
+        AppGenerateService.generate(
+            app_model=native_draft.app,
+            user=end_user,
+            args={"inputs": {}, "query": "hello"},
+            invoke_from=invoke_from,
+            session=sqlite_session,
+            streaming=False,
+            workflow_execution_mode="in_process",
+        )
     assert native_draft.tools.forbidden == []
