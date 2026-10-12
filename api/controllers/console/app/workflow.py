@@ -1360,6 +1360,7 @@ class PublishedWorkflowApi(Resource):
         """
 
         workflow_service = WorkflowService()
+        workflow_service.prepare_draft_tool_publish(app_model=app_model)
         with session_factory.get_session_maker().begin() as session:
             try:
                 workflow = workflow_service.publish_workflow(
@@ -1375,6 +1376,7 @@ class PublishedWorkflowApi(Resource):
                 raise ServiceUnavailable("Billing entitlement is temporarily unavailable.") from exc
             except TriggerNodeLimitExceededServiceError as exc:
                 raise TriggerNodeLimitExceededError(count=exc.count, limit=exc.limit) from exc
+
 
             # Update app_model within the same session to ensure atomicity
             app_model_in_session = session.get(App, app_model.id)
