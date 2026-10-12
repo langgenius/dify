@@ -1054,6 +1054,100 @@ def test_ordinary_native_gmail_workflow_stays_ordinary(gmail: Gmail) -> None:
     assert gmail.draft_variables() > drafts_before
 
 
+def test_published_native_gmail_workflow_runs_the_published_graph(gmail: Gmail) -> None:
+    """An actually published Gmail workflow runs through the native published path, without Builder consent.
+
+    The real publish owner (``WorkflowService.publish_workflow``) creates the published version from
+    the draft; the draft then changes. The invocation mirrors the Service API's blocking run of that
+    published version (app-scoped end user, ``SERVICE_API``, ``workflow_id``, ``streaming=False``),
+    which ``AppGenerateService`` resolves through ``get_published_workflow_by_id``. The app's
+    current-version pointer is deliberately left alone: the shared native owner verifies it.
+    """
+    from core.app.entities.app_invoke_entities import InvokeFrom
+    from extensions.ext_application_services import application_services
+    from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+    from services.app_generate_service import AppGenerateService
+    from services.workflow_service import WorkflowService
+
+    with gmail.factory.begin() as session:
+        native_app = session.get(App, gmail.app_id)
+        assert native_app is not None
+        current_version = native_app.workflow_id
+        # The Service API refuses an app whose API service is disabled.
+        native_app.enable_api = True
+    with gmail.factory.begin() as session:
+        account = session.get(Account, gmail.actor.account_id)
+        native_app = session.get(App, gmail.app_id)
+        assert account is not None
+        assert native_app is not None
+        published = WorkflowService().publish_workflow(
+            session=session, app_model=native_app, account=account, marked_name="ci-published-gmail"
+        )
+        published_id, published_graph, published_version = published.id, published.graph, published.version
+    assert published_version != Workflow.VERSION_DRAFT
+    # The draft moves on after publication; the published run must not see it.
+    _edit_tool(gmail, _another_message)
+    with gmail.factory() as session:
+        draft = session.get(Workflow, gmail.workflow_id)
+        assert draft is not None
+        assert json.loads(draft.graph) != json.loads(published_graph)
+
+    end_user = application_services().app_scoped_end_users.commands.get_or_create_end_user(
+        gmail.actor.tenant_id, gmail.app_id, "ci-published-caller"
+    )
+    drafts_before = gmail.draft_variables()
+    with gmail.factory() as session:
+        native_app = session.get(App, gmail.app_id)
+        assert native_app is not None
+        response = AppGenerateService.generate(
+            session=session,
+            app_model=native_app,
+            user=end_user,
+            args={"inputs": dict(gmail.inputs), "workflow_id": published_id},
+            invoke_from=InvokeFrom.SERVICE_API,
+            streaming=False,
+        )
+    assert isinstance(response, Mapping)
+    data = response.get("data")
+    reported = data.get("id") if isinstance(data, Mapping) else response.get("workflow_run_id")
+
+    runs = gmail.native_runs()
+    assert len(runs) == 1
+    native = runs[0]
+    assert reported == native.id
+    assert (native.workflow_id, native.triggered_from, native.created_by_role, native.created_by) == (
+        published_id,
+        WorkflowRunTriggeredFrom.APP_RUN,
+        CreatorUserRole.END_USER,
+        end_user.id,
+    )
+    assert json.loads(native.graph or "{}") == json.loads(published_graph)
+    assert native.status == "succeeded"
+    assert BODY in (native.outputs or "")
+    nodes = gmail.native_nodes(native.id)
+    assert [(node.node_id, node.status) for node in nodes] == [
+        ("start", "succeeded"),
+        (TOOL_NODE, "succeeded"),
+        ("end", "succeeded"),
+    ]
+    # One ordinary dispatch of the published literal (not the later draft's), no companion headers.
+    assert len(gmail.boundary.invoke_calls) == 1
+    call = gmail.boundary.invoke_calls[0]
+    assert call.headers == {"X-Plugin-ID": PLUGIN, "Content-Type": "application/json"}
+    assert call.payload["tool_parameters"] == APPROVED_PARAMETERS
+    assert call.payload["credentials"] == {"access_token": ACCESS_TOKEN, "refresh_token": REFRESH_TOKEN}
+    assert gmail.boundary.refresh_calls == []
+    # No Builder consent, sidecar, metadata read or draft-variable write on the published path.
+    assert gmail.boundary.count("metadata") == 0
+    assert gmail.count(DifyBuilderRealCallConsent) == 0
+    with gmail.factory() as session:
+        assert session.scalars(select(DifyBuilderExecutionRequest)).first() is None
+        app_after = session.get(App, gmail.app_id)
+        assert app_after is not None
+        assert app_after.workflow_id == current_version
+    assert gmail.draft_variables() == drafts_before
+
+
 # -- denials, claims and races ---------------------------------------------------------------------
 
 
