@@ -272,12 +272,18 @@ jobs:
               "api/tests/unit_tests/core/helper/test_encrypter.py",
               "api/tests/unit_tests/services/dify_builder/test_resources.py",
               "api/tests/unit_tests/core/workflow/generator/test_tool_catalogue.py",
+              "api/tests/unit_tests/services/dify_builder/test_build_cognition.py",
+              "api/tests/unit_tests/services/dify_builder/test_build_nodes.py",
+              "api/tests/unit_tests/services/dify_builder/test_draft_tool_setup.py",
+              "api/tests/unit_tests/services/test_draft_tool_admission.py",
+              "api/tests/unit_tests/repositories/credentials/test_query_repository.py",
           ]
           code = pytest.main([
               *FILES, "-p", "no:benchmark", "--no-cov", "-vv", "-rA", "--tb=long",
               f"--junitxml={JUNIT}",
           ])
-          modules = {Path(path).stem: 0 for path in FILES}
+          # Full module identity avoids silently merging same-basename owners.
+          modules = {Path(path).with_suffix("").as_posix().removeprefix("api/").replace("/", "."): 0 for path in FILES}
           identities = set()
           problems = []
           if not Path(JUNIT).is_file():
@@ -285,7 +291,8 @@ jobs:
           else:
               for case in ElementTree.parse(JUNIT).getroot().iter("testcase"):
                   classname, name = case.get("classname") or "", case.get("name") or ""
-                  matching = [module for module in modules if module in classname.split(".")]
+                  normalized = classname.removeprefix("api.")
+                  matching = [module for module in modules if normalized == module or normalized.startswith(module + ".")]
                   if len(matching) != 1:
                       problems.append(f"unexpected unit case {classname}::{name}")
                       continue
