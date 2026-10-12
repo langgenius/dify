@@ -98,6 +98,7 @@ from graphon.nodes.start.start_node import StartNode
 from graphon.nodes.tool.tool_node import ToolNode
 from graphon.variables.segments import ArrayObjectSegment, ObjectSegment
 from models.model import Conversation
+from services.dify_builder.template_execution import MAX_OUTPUT_BYTES, BoundedJinja2TemplateRenderer
 
 if TYPE_CHECKING:
     from graphon.entities import GraphInitParams
@@ -600,6 +601,11 @@ class DifyNodeFactory(NodeFactory):
                     "file_manager": files,
                     "file_reference_factory": files,
                 }
+            elif node_data.type == BuiltinNodeTypes.TEMPLATE_TRANSFORM:
+                kwargs = {
+                    "jinja2_template_renderer": BoundedJinja2TemplateRenderer(),
+                    "max_output_length": MAX_OUTPUT_BYTES,
+                }
             return node_class(
                 node_id=node_id,
                 data=resolved_node_data.model_dump(mode="python", by_alias=True),
@@ -746,7 +752,11 @@ class DifyNodeFactory(NodeFactory):
         if not isinstance(data, Mapping) or not isinstance(node_id, str):
             raise BuilderExecutionPolicyError("invalid_node_configuration")
         node_type, version = data.get("type"), data.get("version", "1")
-        if not isinstance(node_type, str) or node_type not in {"start", "end", "http-request"} or version != "1":
+        if (
+            not isinstance(node_type, str)
+            or node_type not in {"start", "end", "http-request", "template-transform"}
+            or version != "1"
+        ):
             raise BuilderExecutionPolicyError("unsupported_node_implementation")
         if node_class is None:
             node_class = self._resolve_node_class(node_type=node_type, node_version=version, node_data=data)

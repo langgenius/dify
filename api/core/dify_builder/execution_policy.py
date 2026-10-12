@@ -518,14 +518,26 @@ def admitted_node_bindings(snapshot: RestrictedAdmissionSnapshot) -> tuple[Admit
     from graphon.nodes.end.end_node import EndNode
     from graphon.nodes.http_request.node import HttpRequestNode
     from graphon.nodes.start.start_node import StartNode
+    from graphon.nodes.template_transform.template_transform_node import TemplateTransformNode
+    from services.dify_builder.template_execution import validate_template_configuration, validate_template_source
 
     admit_raw_execution_metadata(snapshot)
     graph = snapshot.graph
-    canonical_digest(graph)
     nodes, edges = graph.get("nodes"), graph.get("edges")
     if not isinstance(nodes, list) or not 2 <= len(nodes) <= 128 or not isinstance(edges, list):
         raise BuilderExecutionPolicyError("unsupported_graph")
-    audited = {"start": StartNode, "end": EndNode, "http-request": HttpRequestNode}
+    # Source limits precede the existing graph digest's UTF-8 allocation.
+    for node in nodes:
+        if isinstance(node, dict) and isinstance(node.get("data"), dict):
+            if node["data"].get("type") == "template-transform":
+                validate_template_source(node["data"].get("template"))
+    canonical_digest(graph)
+    audited = {
+        "start": StartNode,
+        "end": EndNode,
+        "http-request": HttpRequestNode,
+        "template-transform": TemplateTransformNode,
+    }
     bindings = []
     types: dict[str, str] = {}
     raw_data: dict[str, dict[str, Any]] = {}
@@ -548,6 +560,8 @@ def admitted_node_bindings(snapshot: RestrictedAdmissionSnapshot) -> tuple[Admit
             raise BuilderExecutionPolicyError("unsupported_node_implementation")
         if node_type == "http-request":
             validate_restricted_http_defaults(data)
+        elif node_type == "template-transform":
+            validate_template_configuration(data)
         try:
             cls.validate_node_data(data)
         except (ValidationError, ValueError, TypeError):
@@ -604,17 +618,29 @@ def admitted_node_bindings(snapshot: RestrictedAdmissionSnapshot) -> tuple[Admit
         raise BuilderExecutionPolicyError("unsupported_start_input")
     start_outputs = {v.get("variable") for v in variables}
 
-    def selector_allowed(node_id: str, selector: Any) -> bool:
+    def selector_allowed(node_id: str, selector: Any, *, template_input: bool = False) -> bool:
         if (
             not isinstance(selector, (list, tuple))
             or len(selector) != 2
             or not isinstance(selector[0], str)
+            or not isinstance(selector[1], str)
             or selector[0] not in upstream[node_id]
         ):
             return False
-        return selector[1] in (start_outputs if types[selector[0]] == "start" else {"body", "status_code", "headers"})
+        outputs = {
+            "start": start_outputs,
+            "http-request": {"body"} if template_input else {"body", "status_code", "headers"},
+            "template-transform": {"output"},
+        }
+        return selector[1] in outputs[types[selector[0]]]
 
     for node_id, data in raw_data.items():
+        if types[node_id] == "template-transform":
+            if any(
+                not selector_allowed(node_id, variable["value_selector"], template_input=True)
+                for variable in data["variables"]
+            ):
+                raise BuilderExecutionPolicyError("unsupported_template_selector")
         if types[node_id] == "http-request":
             auth = data.get("authorization")
             if (

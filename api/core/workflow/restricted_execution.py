@@ -27,8 +27,16 @@ from graphon.nodes.end.end_node import EndNode
 from graphon.nodes.http_request.entities import HttpRequestNodeConfig, HttpRequestNodeData
 from graphon.nodes.http_request.node import HttpRequestNode
 from graphon.nodes.start.start_node import StartNode
+from graphon.nodes.template_transform.entities import TemplateTransformNodeData
+from graphon.nodes.template_transform.template_transform_node import TemplateTransformNode
+from services.dify_builder.template_execution import validate_template_configuration, validate_template_source
 
-_AUDITED_CLASSES = {"start": StartNode, "end": EndNode, "http-request": HttpRequestNode}
+_AUDITED_CLASSES = {
+    "start": StartNode,
+    "end": EndNode,
+    "http-request": HttpRequestNode,
+    "template-transform": TemplateTransformNode,
+}
 _CONTENT_TYPES = frozenset(
     ("application/json", "text/plain", "application/json; charset=utf-8", "text/plain; charset=utf-8")
 )
@@ -58,6 +66,9 @@ def validate_restricted_raw_node(
         or node_class.version() != "1"
     ):
         raise BuilderExecutionPolicyError("unsupported_node_implementation")
+    if node_class is TemplateTransformNode:
+        # Refuse oversized drift before canonicalizing the raw binding.
+        validate_template_source(raw_node_data.get("template"))
     binding = next((binding for binding in context.admitted_nodes if binding.node_id == node_id), None)
     if (
         binding is None
@@ -66,6 +77,8 @@ def validate_restricted_raw_node(
         or binding.normalized_config_digest != canonical_digest({**raw_node_data, "version": "1"})
     ):
         raise BuilderExecutionPolicyError("execution_binding_mismatch")
+    if node_class is TemplateTransformNode:
+        validate_template_configuration(raw_node_data)
 
 
 def validate_restricted_node(
@@ -82,6 +95,10 @@ def validate_restricted_node(
         or resolved_node_data.version != "1"
     ):
         raise BuilderExecutionPolicyError("unsupported_node_implementation")
+    if node_class is TemplateTransformNode:
+        if not isinstance(resolved_node_data, TemplateTransformNodeData):
+            raise BuilderExecutionPolicyError("invalid_node_configuration")
+        validate_template_configuration(resolved_node_data.model_dump(mode="python"))
     if node_class is HttpRequestNode:
         if not isinstance(resolved_node_data, HttpRequestNodeData):
             raise BuilderExecutionPolicyError("invalid_node_configuration")
