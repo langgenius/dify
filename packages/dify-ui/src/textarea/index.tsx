@@ -5,8 +5,8 @@ import type * as React from 'react'
 import { Field as BaseField } from '@base-ui/react/field'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
-import { textControlClassName } from '../form-control-shared'
-import { resolveClassName } from '../internals/resolve-class-name'
+import { textControlClassName } from '../internal/form-control'
+import { resolveClassName } from '../internal/resolve-class-name'
 
 const textareaVariants = cva([textControlClassName, 'min-h-20 overflow-auto'], {
   variants: {
@@ -37,7 +37,7 @@ type UncontrolledTextareaProps = {
   onValueChange?: TextareaOnValueChange
 }
 
-type TextareaNativeProps = React.ComponentPropsWithRef<'textarea'>
+type TextareaNativeProps = React.ComponentProps<'textarea'>
 type TextareaOnlyProps = Pick<TextareaNativeProps, 'cols' | 'rows' | 'wrap'>
 type TextareaElementProps = Omit<
   TextareaNativeProps,

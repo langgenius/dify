@@ -1,6 +1,6 @@
 'use client'
 
-import type { CalendarPanelLabels, CalendarPanelProps } from '../date-picker/calendar-panel'
+import type { CalendarPanelLabels, CalendarPanelProps } from '../internal/calendar-panel'
 import type {
   PickerClearProps,
   PickerContentProps,
@@ -9,14 +9,14 @@ import type {
   PickerTriggerProps,
   PickerValueProps,
 } from '../internal/picker-parts'
-import type { TimePanelLabels, TimePanelProps } from '../time-picker/time-panel'
+import type { TimePanelLabels, TimePanelProps } from '../internal/time-panel'
 import type { ZonedWallTime } from './zoned-value'
 import { useControlled } from '@base-ui/utils/useControlled'
 import { enUS } from '@daypicker/react/locale/en-US'
 import * as React from 'react'
 import { Button } from '../../button'
-import { CalendarPanel } from '../date-picker/calendar-panel'
-import { getInitialMonth, requireDateValue } from '../date-picker/date-value'
+import { CalendarPanel } from '../internal/calendar-panel'
+import { getInitialMonth, requireDateValue } from '../internal/date-value'
 import { PickerPanel, PickerPanelHeader } from '../internal/picker-panel'
 import {
   PickerClear,
@@ -27,7 +27,7 @@ import {
   PickerValue,
   usePickerContext,
 } from '../internal/picker-parts'
-import { TimePanel } from '../time-picker/time-panel'
+import { TimePanel } from '../internal/time-panel'
 import { getZonedWallTime, resolveZonedWallTime } from './zoned-value'
 
 type DateTimePickerLabels = CalendarPanelLabels &
