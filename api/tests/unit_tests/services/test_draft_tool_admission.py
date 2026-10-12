@@ -851,136 +851,136 @@ def native_draft_oauth(
         contexts.plugin_tool_providers_lock.set(Lock())
 
     reset_native_provider_cache()
-    declaration = native_draft.tools.daemon.providers_by_tenant[TENANT_ID][0]["declaration"]
-    declaration["credentials_schema"] = []
-    declaration["oauth_schema"] = {
-        "client_schema": [
-            {"name": "client_id", "type": "text-input"},
-            {"name": "client_secret", "type": "secret-input"},
-        ],
-        "credentials_schema": [
-            {"name": "access_token", "type": "secret-input"},
-            {"name": "refresh_token", "type": "secret-input"},
-        ],
-    }
-    controller = ToolManager.get_builtin_provider(AUTH_PROVIDER, TENANT_ID)
-    assert [schema.name for schema in controller.get_credentials_schema_by_type(ToolCredentialType.OAUTH2)] == [
-        "access_token",
-        "refresh_token",
-    ]
-    assert [schema.name for schema in controller.get_oauth_client_schema()] == ["client_id", "client_secret"]
-    credential = add_credential(
-        sqlite_session,
-        tenant_id=TENANT_ID,
-        provider=AUTH_PROVIDER,
-        user_id=ACCOUNT_A,
-        visibility=PermissionEnum.ONLY_ME,
-    )
-    credential.credential_type = ToolCredentialType.OAUTH2
-    credential.encrypted_credentials = json.dumps(
-        {
-            "access_token": "cipher:old-access",
-            "refresh_token": "cipher:old-refresh",
-        }
-    )
-    credential.expires_at = 1
-    client = ToolOAuthTenantClient(tenant_id=TENANT_ID, plugin_id="acme/huddle", provider="huddle")
-    client.enabled = True
-    client.encrypted_oauth_params = json.dumps(
-        {
-            "client_id": "synthetic-client",
-            "client_secret": "cipher:client-secret",
-        }
-    )
-    sqlite_session.add_all([client, native_draft.user])
-    sqlite_session.commit()
-    set_tool(native_draft, sqlite_session, credential_id=credential.id)
-    credential_id = credential.id
-    native_database = SimpleNamespace(engine=native_draft.tools.engine, session=sqlite_session)
-    monkeypatch.setattr(runtime_module, "db", native_database)
-    monkeypatch.setattr(client_module, "db", native_database)
-    monkeypatch.setattr(ToolManager, "get_tool_runtime", classmethod(_NATIVE_TOOL_RUNTIME))
-    monkeypatch.setattr(OAuthHandler, "refresh_credentials", _NATIVE_OAUTH_REFRESH)
-    crypto_calls = []
-    refresh_calls = []
-    cache_deletions = []
-    refresh_boundary = SimpleNamespace(action=None, credential_owner=ACCOUNT_A)
-
-    class SyntheticCrypto:
-        @staticmethod
-        def decrypt(values):
-            crypto_calls.append("decrypt")
-            if values == {"client_id": "synthetic-client", "client_secret": "cipher:client-secret"}:
-                return {"client_id": "synthetic-client", "client_secret": "synthetic-client-secret"}
-            if values == {"access_token": "cipher:new-access", "refresh_token": "cipher:new-refresh"}:
-                return {"access_token": "synthetic-new-access", "refresh_token": "synthetic-new-refresh"}
-            assert values == {"access_token": "cipher:old-access", "refresh_token": "cipher:old-refresh"}
-            return {"access_token": "synthetic-old-access", "refresh_token": "synthetic-old-refresh"}
-
-        @staticmethod
-        def encrypt(values):
-            crypto_calls.append("encrypt")
-            assert values == {"access_token": "synthetic-new-access", "refresh_token": "synthetic-new-refresh"}
-            return {"access_token": "cipher:new-access", "refresh_token": "cipher:new-refresh"}
-
-    def crypto_factory(*, tenant_id, config, cache):
-        assert tenant_id == TENANT_ID
-        assert len(config) == 2
-        return SyntheticCrypto(), cache
-
-    def refresh_stream(_self, method, path, response_type, **kwargs):
-        assert method == "POST"
-        assert path == "plugin/aaaaaaaa-0000-4000-8000-000000000001/dispatch/oauth/refresh_credentials"
-        assert response_type is PluginOAuthCredentialsResponse
-        assert kwargs["headers"] == {"X-Plugin-ID": "acme/huddle", "Content-Type": "application/json"}
-        assert kwargs["data"]["user_id"] == refresh_boundary.credential_owner
-        assert kwargs["data"]["data"]["provider"] == "huddle"
-        assert kwargs["data"]["data"]["credentials"] == {
-            "access_token": "synthetic-old-access",
-            "refresh_token": "synthetic-old-refresh",
-        }
-        assert kwargs["data"]["data"]["system_credentials"] == {
-            "client_id": "synthetic-client",
-            "client_secret": "synthetic-client-secret",
-        }
-        refresh_calls.append(path)
-        if refresh_boundary.action is not None:
-            refresh_boundary.action()
-        return iter(
-            [
-                PluginOAuthCredentialsResponse(
-                    credentials={"access_token": "synthetic-new-access", "refresh_token": "synthetic-new-refresh"},
-                    expires_at=4102444800,
-                )
-            ]
-        )
-
-    class RedisBoundary:
-        @staticmethod
-        def delete(key):
-            cache_deletions.append(key)
-            return 1
-
-    monkeypatch.setattr(runtime_module, "create_provider_encrypter", crypto_factory)
-    monkeypatch.setattr(client_module, "create_provider_encrypter", crypto_factory)
-    monkeypatch.setattr(OAuthHandler, "_request_with_plugin_daemon_response_stream", refresh_stream)
-    monkeypatch.setattr(provider_cache, "redis_client", RedisBoundary())
-
-    def resolve_runtime():
-        return ToolManager.get_tool_runtime(
-            provider_type=ToolProviderType.BUILT_IN,
-            provider_id=AUTH_PROVIDER,
-            tool_name="post",
-            tenant_id=TENANT_ID,
-            user_id=ACCOUNT_A,
-            invoke_from=InvokeFrom.DEBUGGER,
-            tool_invoke_from=ToolInvokeFrom.WORKFLOW,
-            credential_id=credential_id,
-            draft_tool_workflow_id=DRAFT_ID,
-            draft_tool_app_id=APP_ID,
-        )
-
     try:
+        declaration = native_draft.tools.daemon.providers_by_tenant[TENANT_ID][0]["declaration"]
+        declaration["credentials_schema"] = []
+        declaration["oauth_schema"] = {
+            "client_schema": [
+                {"name": "client_id", "type": "text-input"},
+                {"name": "client_secret", "type": "secret-input"},
+            ],
+            "credentials_schema": [
+                {"name": "access_token", "type": "secret-input"},
+                {"name": "refresh_token", "type": "secret-input"},
+            ],
+        }
+        controller = ToolManager.get_builtin_provider(AUTH_PROVIDER, TENANT_ID)
+        assert [schema.name for schema in controller.get_credentials_schema_by_type(ToolCredentialType.OAUTH2)] == [
+            "access_token",
+            "refresh_token",
+        ]
+        assert [schema.name for schema in controller.get_oauth_client_schema()] == ["client_id", "client_secret"]
+        credential = add_credential(
+            sqlite_session,
+            tenant_id=TENANT_ID,
+            provider=AUTH_PROVIDER,
+            user_id=ACCOUNT_A,
+            visibility=PermissionEnum.ONLY_ME,
+        )
+        credential.credential_type = ToolCredentialType.OAUTH2
+        credential.encrypted_credentials = json.dumps(
+            {
+                "access_token": "cipher:old-access",
+                "refresh_token": "cipher:old-refresh",
+            }
+        )
+        credential.expires_at = 1
+        client = ToolOAuthTenantClient(tenant_id=TENANT_ID, plugin_id="acme/huddle", provider="huddle")
+        client.enabled = True
+        client.encrypted_oauth_params = json.dumps(
+            {
+                "client_id": "synthetic-client",
+                "client_secret": "cipher:client-secret",
+            }
+        )
+        sqlite_session.add_all([client, native_draft.user])
+        sqlite_session.commit()
+        set_tool(native_draft, sqlite_session, credential_id=credential.id)
+        credential_id = credential.id
+        native_database = SimpleNamespace(engine=native_draft.tools.engine, session=sqlite_session)
+        monkeypatch.setattr(runtime_module, "db", native_database)
+        monkeypatch.setattr(client_module, "db", native_database)
+        monkeypatch.setattr(ToolManager, "get_tool_runtime", classmethod(_NATIVE_TOOL_RUNTIME))
+        monkeypatch.setattr(OAuthHandler, "refresh_credentials", _NATIVE_OAUTH_REFRESH)
+        crypto_calls = []
+        refresh_calls = []
+        cache_deletions = []
+        refresh_boundary = SimpleNamespace(action=None, credential_owner=ACCOUNT_A)
+
+        class SyntheticCrypto:
+            @staticmethod
+            def decrypt(values):
+                crypto_calls.append("decrypt")
+                if values == {"client_id": "synthetic-client", "client_secret": "cipher:client-secret"}:
+                    return {"client_id": "synthetic-client", "client_secret": "synthetic-client-secret"}
+                if values == {"access_token": "cipher:new-access", "refresh_token": "cipher:new-refresh"}:
+                    return {"access_token": "synthetic-new-access", "refresh_token": "synthetic-new-refresh"}
+                assert values == {"access_token": "cipher:old-access", "refresh_token": "cipher:old-refresh"}
+                return {"access_token": "synthetic-old-access", "refresh_token": "synthetic-old-refresh"}
+
+            @staticmethod
+            def encrypt(values):
+                crypto_calls.append("encrypt")
+                assert values == {"access_token": "synthetic-new-access", "refresh_token": "synthetic-new-refresh"}
+                return {"access_token": "cipher:new-access", "refresh_token": "cipher:new-refresh"}
+
+        def crypto_factory(*, tenant_id, config, cache):
+            assert tenant_id == TENANT_ID
+            assert len(config) == 2
+            return SyntheticCrypto(), cache
+
+        def refresh_stream(_self, method, path, response_type, **kwargs):
+            assert method == "POST"
+            assert path == "plugin/aaaaaaaa-0000-4000-8000-000000000001/dispatch/oauth/refresh_credentials"
+            assert response_type is PluginOAuthCredentialsResponse
+            assert kwargs["headers"] == {"X-Plugin-ID": "acme/huddle", "Content-Type": "application/json"}
+            assert kwargs["data"]["user_id"] == refresh_boundary.credential_owner
+            assert kwargs["data"]["data"]["provider"] == "huddle"
+            assert kwargs["data"]["data"]["credentials"] == {
+                "access_token": "synthetic-old-access",
+                "refresh_token": "synthetic-old-refresh",
+            }
+            assert kwargs["data"]["data"]["system_credentials"] == {
+                "client_id": "synthetic-client",
+                "client_secret": "synthetic-client-secret",
+            }
+            refresh_calls.append(path)
+            if refresh_boundary.action is not None:
+                refresh_boundary.action()
+            return iter(
+                [
+                    PluginOAuthCredentialsResponse(
+                        credentials={"access_token": "synthetic-new-access", "refresh_token": "synthetic-new-refresh"},
+                        expires_at=4102444800,
+                    )
+                ]
+            )
+
+        class RedisBoundary:
+            @staticmethod
+            def delete(key):
+                cache_deletions.append(key)
+                return 1
+
+        monkeypatch.setattr(runtime_module, "create_provider_encrypter", crypto_factory)
+        monkeypatch.setattr(client_module, "create_provider_encrypter", crypto_factory)
+        monkeypatch.setattr(OAuthHandler, "_request_with_plugin_daemon_response_stream", refresh_stream)
+        monkeypatch.setattr(provider_cache, "redis_client", RedisBoundary())
+
+        def resolve_runtime():
+            return ToolManager.get_tool_runtime(
+                provider_type=ToolProviderType.BUILT_IN,
+                provider_id=AUTH_PROVIDER,
+                tool_name="post",
+                tenant_id=TENANT_ID,
+                user_id=ACCOUNT_A,
+                invoke_from=InvokeFrom.DEBUGGER,
+                tool_invoke_from=ToolInvokeFrom.WORKFLOW,
+                credential_id=credential_id,
+                draft_tool_workflow_id=DRAFT_ID,
+                draft_tool_app_id=APP_ID,
+            )
+
         yield SimpleNamespace(
             resolve=resolve_runtime,
             engine=native_draft.tools.engine,
