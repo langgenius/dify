@@ -177,7 +177,7 @@ class _DifyAgentJudgeModel:
             model_schema=self._model.get_model_schema(),
             model_instance=self._model,
             prompt_messages=prompt_messages,
-            json_schema=schema.model_json_schema(),
+            json_schema=_strict_judge_json_schema(schema),
             model_parameters={"temperature": 0.0},
             stream=False,
         )
@@ -366,6 +366,29 @@ class AgentLLMJudgeEvaluator:
                 "evaluator_model": judge_model.model_identifier,
             }
         return EvaluationMetric(name=metric_name, value=score, details=details)
+
+
+def _strict_judge_json_schema(schema: type[BaseModel]) -> dict[str, Any]:
+    """Build a JSON Schema accepted by strict structured-output providers."""
+    json_schema = schema.model_json_schema()
+    _make_object_schemas_strict(json_schema)
+    return json_schema
+
+
+def _make_object_schemas_strict(value: Any) -> None:
+    if isinstance(value, dict):
+        properties = value.get("properties")
+        if value.get("type") == "object":
+            value["additionalProperties"] = False
+        if isinstance(properties, dict):
+            # Strict structured output requires every property to be present. Fields
+            # that are logically optional use nullable types rather than being omitted.
+            value["required"] = list(properties)
+        for nested_value in value.values():
+            _make_object_schemas_strict(nested_value)
+    elif isinstance(value, list):
+        for nested_value in value:
+            _make_object_schemas_strict(nested_value)
 
 
 def _task_completion_payload(item: AgentEvaluationItem) -> dict[str, Any]:
