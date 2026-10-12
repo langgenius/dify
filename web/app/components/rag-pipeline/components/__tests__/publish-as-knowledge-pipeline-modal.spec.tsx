@@ -1,7 +1,7 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { mockEmojiData } from '@/test/emoji-picker'
+import { mockEmojiData, renderWithEmoji as render } from '@/test/emoji-picker'
 import PublishAsKnowledgePipelineModal from '../publish-as-knowledge-pipeline-modal'
 
 vi.mock('@/app/components/workflow/store', () => ({
@@ -169,7 +169,7 @@ describe('PublishAsKnowledgePipelineModal', () => {
     render(<PublishAsKnowledgePipelineModal {...defaultProps} />)
 
     fireEvent.click(getIconButton())
-    fireEvent.click(screen.getByRole('button', { name: '#F3FEE7' }))
+    fireEvent.click(screen.getByRole('radio', { name: 'app.iconPicker.color.green' }))
     fireEvent.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
 
     await waitFor(() => {
@@ -181,7 +181,7 @@ describe('PublishAsKnowledgePipelineModal', () => {
     render(<PublishAsKnowledgePipelineModal {...defaultProps} />)
 
     fireEvent.click(getIconButton())
-    fireEvent.click(screen.getByRole('button', { name: '#F3FEE7' }))
+    fireEvent.click(screen.getByRole('radio', { name: 'app.iconPicker.color.green' }))
 
     expect(screen.getByPlaceholderText('app.iconPicker.search')).toBeInTheDocument()
   })

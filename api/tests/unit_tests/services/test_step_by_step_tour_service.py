@@ -3,16 +3,16 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import replace
 from datetime import datetime
-from unittest.mock import Mock
 
 import pytest
+from sqlalchemy.orm import Session, sessionmaker
 
 from machinery.context import RequestContext
-from services.account_ports import AccountRepository
+from repositories.account.repository import SQLAlchemyAccountRepository
 from services.entities.account_entities import AccountSnapshot
 from services.entities.onboarding_entities import StepByStepTourPatch, StepByStepTourResult, StepByStepTourState
 from services.step_by_step_tour_service import StepByStepTourService
-from tests.unit_tests.model_factories import make_account_snapshot
+from tests.unit_tests.model_factories import make_account, make_account_snapshot
 
 
 def _context(*, workspace_id: str = "workspace-1") -> RequestContext:
@@ -59,13 +59,19 @@ def _account(*, started_at: datetime = datetime(2026, 6, 28)) -> AccountSnapshot
     return make_account_snapshot(initialized_at=started_at, created_at=started_at)
 
 
-def _accounts(account: AccountSnapshot | None) -> Mock:
-    accounts = Mock(spec=AccountRepository)
-    accounts.get.return_value = account
-    return accounts
+def _accounts(session_factory: sessionmaker[Session], account: AccountSnapshot | None) -> SQLAlchemyAccountRepository:
+    """Persist the supplied account; None leaves the repository empty."""
+    if account is not None:
+        row = make_account(account_id=account.id, name=account.name, email=account.email)
+        row.created_at = account.created_at
+        row.initialized_at = account.initialized_at
+        with session_factory.begin() as session:
+            session.add(row)
+    return SQLAlchemyAccountRepository(session_factory)
 
 
 def _service(
+    session_factory: sessionmaker[Session],
     *,
     states: StateRepositoryStub,
     account: AccountSnapshot | None = None,
@@ -73,17 +79,19 @@ def _service(
     rollout_started_at: datetime | None = datetime(2026, 6, 1),
 ) -> StepByStepTourService:
     return StepByStepTourService(
-        accounts=_accounts(account or _account()),
+        accounts=_accounts(session_factory, account or _account()),
         states=states,
         enabled=enabled,
         rollout_started_at=rollout_started_at,
     )
 
 
-def test_get_state_creates_state_and_records_first_workspace_for_eligible_account() -> None:
+def test_get_state_creates_state_and_records_first_workspace_for_eligible_account(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
     states = StateRepositoryStub()
 
-    result = _service(states=states).get_state(_context())
+    result = _service(sqlite_session_factory, states=states).get_state(_context())
 
     assert result.first_workspace_id == "workspace-1"
     assert states.get_account_ids == []
@@ -91,20 +99,22 @@ def test_get_state_creates_state_and_records_first_workspace_for_eligible_accoun
     assert states.mutation_account_ids == []
 
 
-def test_get_state_returns_existing_state_without_rewriting_first_workspace() -> None:
+def test_get_state_returns_existing_state_without_rewriting_first_workspace(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
     state = StepByStepTourState(account_id="account-1", first_workspace_id="workspace-original")
     states = StateRepositoryStub(state)
 
-    result = _service(states=states).get_state(_context(workspace_id="workspace-current"))
+    result = _service(sqlite_session_factory, states=states).get_state(_context(workspace_id="workspace-current"))
 
     assert result.first_workspace_id == "workspace-original"
     assert states.initialize_calls == [("account-1", "workspace-current")]
     assert states.mutation_account_ids == []
 
 
-def test_get_state_does_not_create_state_for_ineligible_account() -> None:
+def test_get_state_does_not_create_state_for_ineligible_account(sqlite_session_factory: sessionmaker[Session]) -> None:
     states = StateRepositoryStub()
-    service = _service(states=states, account=_account(started_at=datetime(2026, 5, 31)))
+    service = _service(sqlite_session_factory, states=states, account=_account(started_at=datetime(2026, 5, 31)))
 
     result = service.get_state(_context())
 
@@ -113,18 +123,18 @@ def test_get_state_does_not_create_state_for_ineligible_account() -> None:
     assert states.mutation_account_ids == []
 
 
-def test_get_state_does_not_create_state_when_tour_is_disabled() -> None:
+def test_get_state_does_not_create_state_when_tour_is_disabled(sqlite_session_factory: sessionmaker[Session]) -> None:
     states = StateRepositoryStub()
 
-    result = _service(states=states, enabled=False).get_state(_context())
+    result = _service(sqlite_session_factory, states=states, enabled=False).get_state(_context())
 
     assert result == StepByStepTourResult()
     assert states.get_account_ids == ["account-1"]
 
 
-def test_patch_state_persists_even_when_tour_is_disabled() -> None:
+def test_patch_state_persists_even_when_tour_is_disabled(sqlite_session_factory: sessionmaker[Session]) -> None:
     states = StateRepositoryStub()
-    service = _service(states=states, enabled=False)
+    service = _service(sqlite_session_factory, states=states, enabled=False)
 
     result = service.patch_state(_context(workspace_id="workspace-2"), StepByStepTourPatch("enable_current_workspace"))
 
@@ -132,7 +142,7 @@ def test_patch_state_persists_even_when_tour_is_disabled() -> None:
     assert states.mutation_account_ids == ["account-1"]
 
 
-def test_patch_state_skip_removes_current_workspace_enable() -> None:
+def test_patch_state_skip_removes_current_workspace_enable(sqlite_session_factory: sessionmaker[Session]) -> None:
     states = StateRepositoryStub(
         StepByStepTourState(
             account_id="account-1",
@@ -140,13 +150,13 @@ def test_patch_state_skip_removes_current_workspace_enable() -> None:
         )
     )
 
-    result = _service(states=states).patch_state(_context(), StepByStepTourPatch("skip"))
+    result = _service(sqlite_session_factory, states=states).patch_state(_context(), StepByStepTourPatch("skip"))
 
     assert result.skipped is True
     assert result.manually_enabled_workspace_ids == ("workspace-2",)
 
 
-def test_patch_state_disable_moves_current_workspace_to_disabled() -> None:
+def test_patch_state_disable_moves_current_workspace_to_disabled(sqlite_session_factory: sessionmaker[Session]) -> None:
     states = StateRepositoryStub(
         StepByStepTourState(
             account_id="account-1",
@@ -154,7 +164,7 @@ def test_patch_state_disable_moves_current_workspace_to_disabled() -> None:
         )
     )
 
-    result = _service(states=states).patch_state(
+    result = _service(sqlite_session_factory, states=states).patch_state(
         _context(),
         StepByStepTourPatch("disable_current_workspace"),
     )
@@ -163,9 +173,9 @@ def test_patch_state_disable_moves_current_workspace_to_disabled() -> None:
     assert result.manually_disabled_workspace_ids == ("workspace-1",)
 
 
-def test_patch_state_complete_and_uncomplete_task() -> None:
+def test_patch_state_complete_and_uncomplete_task(sqlite_session_factory: sessionmaker[Session]) -> None:
     states = StateRepositoryStub(StepByStepTourState(account_id="account-1", completed_task_ids=("home",)))
-    service = _service(states=states)
+    service = _service(sqlite_session_factory, states=states)
 
     service.patch_state(_context(), StepByStepTourPatch("complete_task", "studio"))
     result = service.patch_state(_context(), StepByStepTourPatch("uncomplete_task", "home"))
@@ -178,10 +188,10 @@ def test_rejects_unsupported_task_id() -> None:
         StepByStepTourService._require_task_id("unknown")
 
 
-def test_get_state_rejects_unknown_admitted_account() -> None:
+def test_get_state_rejects_unknown_admitted_account(sqlite_session_factory: sessionmaker[Session]) -> None:
     states = StateRepositoryStub()
     service = StepByStepTourService(
-        accounts=_accounts(None),
+        accounts=_accounts(sqlite_session_factory, None),
         states=states,
         enabled=True,
         rollout_started_at=datetime(2026, 6, 1),

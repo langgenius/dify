@@ -9,7 +9,7 @@ from flask import has_request_context
 from sqlalchemy import Engine, event, func, select, text
 from sqlalchemy.orm import Session, sessionmaker
 
-from fields.app_fields import AppDetailWithSite, AppPagination
+from fields.app_fields import AppPagination
 from machinery.context import RequestContext
 from models.agent import Agent, AgentScope, AgentSource, AgentStatus
 from models.enums import CustomizeTokenStrategy
@@ -53,6 +53,27 @@ def persist_app(session: Session, **changes: object) -> App:
 @pytest.fixture
 def repository(sqlite_session_factory: sessionmaker[Session]) -> ConsoleAppRepository:
     return ConsoleAppRepository(session_factory=sqlite_session_factory)
+
+
+def test_rbac_maintainer_lookup_requires_owning_workspace(
+    repository: ConsoleAppRepository, sqlite_session: Session
+) -> None:
+    app = persist_app(sqlite_session, maintainer=ACTOR)
+    assert repository.get_maintainer_id(WORKSPACE, app.id) == ACTOR
+    assert repository.get_maintainer_id("other-workspace", app.id) is None
+    assert repository.get_maintainer_id(WORKSPACE, "missing") is None
+
+
+@pytest.mark.parametrize("normal", [True, False])
+def test_authorization_maintainer_requires_normal_app(
+    repository: ConsoleAppRepository, sqlite_session: Session, normal: bool
+) -> None:
+    app = persist_app(sqlite_session, maintainer=ACTOR)
+    if not normal:
+        sqlite_session.execute(text("UPDATE apps SET status = 'disabled' WHERE id = :id"), {"id": app.id})
+        sqlite_session.commit()
+    assert repository.get_maintainer_id(WORKSPACE, app.id) == ACTOR
+    assert repository.get_maintainer_id(WORKSPACE, app.id, normal_only=True) == (ACTOR if normal else None)
 
 
 @pytest.mark.parametrize(
@@ -101,13 +122,11 @@ def test_all_single_app_operations_preserve_visibility(
     assert sqlite_session.scalar(select(func.count()).select_from(AppStar)) == 0
 
 
-def test_detail_is_serializable_after_repository_session_closes(
+def test_detail_is_materialized_after_repository_session_closes(
     repository: ConsoleAppRepository,
     sqlite_session: Session,
     sqlite_engine: Engine,
-    config_overrides: Callable[..., None],
 ) -> None:
-    config_overrides(SERVICE_API_URL="", APP_WEB_URL="")
     assert not has_request_context()
     app = persist_app(sqlite_session)
     config = AppModelConfig(app_id=app.id, model='{"provider":"openai","name":"example"}', pre_prompt="Prompt")
@@ -129,14 +148,16 @@ def test_detail_is_serializable_after_repository_session_closes(
 
     event.listen(sqlite_engine, "before_cursor_execute", reject_queries)
     try:
-        data = AppDetailWithSite.model_validate(record, from_attributes=True).model_dump(mode="json")
+        model_config = record.app_model_config
+        site_data = record.site
+        description = record.description
     finally:
         event.remove(sqlite_engine, "before_cursor_execute", reject_queries)
-    assert data["model_config"]["model"] == {"provider": "openai", "name": "example"}
-    assert data["site"]["access_token"] == "site-code"
-    assert data["description"] == ""
-    assert data["api_base_url"] is None
-    assert data["site"]["app_base_url"] is None
+    assert model_config is not None
+    assert model_config["model"] == {"provider": "openai", "name": "example"}
+    assert site_data is not None
+    assert site_data["code"] == "site-code"
+    assert description == ""
 
 
 @pytest.mark.parametrize(
@@ -220,6 +241,18 @@ def test_writes_use_explicit_actor_and_preserve_omitted_icon_type(
     persisted = sqlite_session.get(App, app.id)
     assert persisted is not None
     assert persisted.name == "Updated"
+
+
+def test_openapi_visible_app_list_only_includes_apps_with_api_enabled(
+    repository: ConsoleAppRepository, sqlite_session: Session
+) -> None:
+    visible = persist_app(sqlite_session, name="Visible")
+    persist_app(sqlite_session, name="API disabled", enable_api=False)
+
+    page = repository.list_apps(CONTEXT, AppListParams(openapi_visible=True))
+
+    assert [app.id for app in page.data] == [visible.id]
+    assert page.total == 1
 
 
 def test_trace_settings_commit_and_default(repository: ConsoleAppRepository, sqlite_session: Session) -> None:

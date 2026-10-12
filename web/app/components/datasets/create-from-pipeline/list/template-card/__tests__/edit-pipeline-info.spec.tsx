@@ -1,11 +1,11 @@
 import type { ReactElement } from 'react'
 import type { PipelineTemplate } from '@/models/pipeline'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
-import { fireEvent, screen, render as testingLibraryRender, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { ChunkingMode } from '@/models/datasets'
-import { mockEmojiData } from '@/test/emoji-picker'
+import { mockEmojiData, renderWithEmoji as testingLibraryRender } from '@/test/emoji-picker'
 import EditPipelineInfo from '../edit-pipeline-info'
 
 const render = (ui: ReactElement) =>
@@ -371,10 +371,11 @@ describe('EditPipelineInfo', () => {
 
       // Open picker and select emoji
       fireEvent.click(getIconButton())
+      fireEvent.click(screen.getByRole('tab', { name: 'app.iconPicker.emoji' }))
       const emojiButton = await screen.findByRole('gridcell', { name: 'Grinning face' })
       expect(emojiButton).toBeTruthy()
       fireEvent.click(emojiButton!)
-      fireEvent.click(screen.getByRole('button', { name: '#F3FEE7' }))
+      fireEvent.click(screen.getByRole('radio', { name: 'app.iconPicker.color.green' }))
       fireEvent.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
 
       const saveButton = screen.getByText(/operation\.save/i)
@@ -398,15 +399,18 @@ describe('EditPipelineInfo', () => {
       render(<EditPipelineInfo {...defaultProps} />)
 
       fireEvent.click(getIconButton())
-      fireEvent.click(screen.getByRole('radio', { name: /iconPicker\.image/ }))
+      fireEvent.click(screen.getByRole('tab', { name: /iconPicker\.image/ }))
 
-      expect(screen.getByRole('radio', { name: /iconPicker\.image/ })).toBeChecked()
+      expect(screen.getByRole('tab', { name: /iconPicker\.image/ })).toHaveAttribute(
+        'aria-selected',
+        'true',
+      )
       expect(screen.queryByRole('button', { name: /iconPicker\.ok/ })).not.toBeInTheDocument()
     })
   })
 
-  // AppIconPicker Tests (Branch Coverage)
-  describe('AppIconPicker', () => {
+  // IconPickerDialog Tests (Branch Coverage)
+  describe('IconPickerDialog', () => {
     it('should not show picker initially', () => {
       render(<EditPipelineInfo {...defaultProps} />)
       expect(screen.queryByPlaceholderText('app.iconPicker.search')).not.toBeInTheDocument()
@@ -423,7 +427,7 @@ describe('EditPipelineInfo', () => {
       render(<EditPipelineInfo {...defaultProps} />)
       fireEvent.click(getIconButton())
 
-      fireEvent.click(screen.getByRole('button', { name: '#F3FEE7' }))
+      fireEvent.click(screen.getByRole('radio', { name: 'app.iconPicker.color.green' }))
       fireEvent.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
 
       await waitFor(() => {
@@ -435,9 +439,12 @@ describe('EditPipelineInfo', () => {
       render(<EditPipelineInfo {...defaultProps} />)
       fireEvent.click(getIconButton())
 
-      fireEvent.click(screen.getByRole('radio', { name: /iconPicker\.image/ }))
+      fireEvent.click(screen.getByRole('tab', { name: /iconPicker\.image/ }))
 
-      expect(screen.getByRole('radio', { name: /iconPicker\.image/ })).toBeChecked()
+      expect(screen.getByRole('tab', { name: /iconPicker\.image/ })).toHaveAttribute(
+        'aria-selected',
+        'true',
+      )
       expect(screen.queryByRole('button', { name: /iconPicker\.ok/ })).not.toBeInTheDocument()
     })
 
@@ -462,7 +469,7 @@ describe('EditPipelineInfo', () => {
 
       // Open picker and select new emoji
       fireEvent.click(getIconButton())
-      fireEvent.click(screen.getByRole('button', { name: '#F3FEE7' }))
+      fireEvent.click(screen.getByRole('radio', { name: 'app.iconPicker.color.green' }))
       fireEvent.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
 
       const saveButton = screen.getByText(/operation\.save/i)
@@ -491,10 +498,11 @@ describe('EditPipelineInfo', () => {
       render(<EditPipelineInfo {...defaultProps} pipeline={createImagePipelineTemplate()} />)
 
       fireEvent.click(getIconButton())
+      fireEvent.click(screen.getByRole('tab', { name: 'app.iconPicker.emoji' }))
       const emojiButton = await screen.findByRole('gridcell', { name: 'Grinning face' })
       expect(emojiButton).toBeTruthy()
       fireEvent.click(emojiButton!)
-      fireEvent.click(screen.getByRole('button', { name: '#F3FEE7' }))
+      fireEvent.click(screen.getByRole('radio', { name: 'app.iconPicker.color.green' }))
       fireEvent.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
 
       const saveButton = screen.getByText(/operation\.save/i)

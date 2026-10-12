@@ -4,13 +4,14 @@ import { cn } from '@langgenius/dify-ui/cn'
 import {
   Drawer,
   DrawerBackdrop,
-  DrawerCloseButton,
+  DrawerClose,
   DrawerContent,
   DrawerPopup,
   DrawerPortal,
   DrawerTitle,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useTranslation } from 'react-i18next'
 
 type IFloatRightContainerProps = {
@@ -68,9 +69,15 @@ const FloatRightContainer = ({
                         </DrawerTitle>
                       )}
                       {showClose && (
-                        <DrawerCloseButton
-                          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                          className="size-6 rounded-md"
+                        <DrawerClose
+                          render={
+                            <IconButton
+                              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                              size="md"
+                            >
+                              <span aria-hidden="true" className="i-ri-close-line size-4" />
+                            </IconButton>
+                          }
                         />
                       )}
                     </div>

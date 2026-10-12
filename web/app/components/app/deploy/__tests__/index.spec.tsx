@@ -641,18 +641,8 @@ function seedWorkflowDeploymentConfigurationQueries(queryClient: QueryClient) {
   })
 }
 
-const mockBuiltInEnvironment = vi.hoisted(() => ({
-  appDetail: {
-    enable_api: false,
-    enable_site: true,
-    id: 'app-1',
-    maintainer: 'user-2',
-    mode: 'workflow',
-  },
-  mcpServerDetail: {
-    status: 'active',
-  },
-  publishedWorkflow: {
+const mockBuiltInEnvironment = vi.hoisted(() => {
+  const publishedWorkflow: WorkflowResponse = {
     conversation_variables: [],
     created_at: 1_710_000_100,
     created_by: {
@@ -676,10 +666,23 @@ const mockBuiltInEnvironment = vi.hoisted(() => ({
       email: 'bob@example.com',
       id: 'user-3',
       name: 'Bob',
-    } as { email: string; id: string; name: string } | null,
+    },
     version: '2026-07-30.1',
-  },
-}))
+  }
+  return {
+    appDetail: {
+      enable_api: false,
+      enable_site: true,
+      id: 'app-1',
+      maintainer: 'user-2',
+      mode: 'workflow',
+    },
+    mcpServerDetail: {
+      status: 'active',
+    },
+    publishedWorkflow,
+  }
+})
 
 function render(
   ui: ReactElement,
@@ -869,6 +872,11 @@ describe('AppDeploy', () => {
     mockBuiltInEnvironment.publishedWorkflow.graph.nodes = [
       { data: { type: 'start' }, id: 'start' },
     ]
+    mockBuiltInEnvironment.publishedWorkflow.created_by = {
+      email: 'alice@example.com',
+      id: 'user-2',
+      name: 'Alice',
+    }
     mockBuiltInEnvironment.publishedWorkflow.updated_by = {
       email: 'bob@example.com',
       id: 'user-3',
@@ -1107,6 +1115,18 @@ describe('AppDeploy', () => {
     expect(builtInEnvironment.getByText('Updated at 03-09 16:03 by Alice')).toBeInTheDocument()
   })
 
+  it('shows a fallback when the workflow publisher and updater are unavailable', () => {
+    mockBuiltInEnvironment.publishedWorkflow.created_by = null
+    mockBuiltInEnvironment.publishedWorkflow.updated_by = null
+
+    render(<AppDeploy />)
+
+    const builtInEnvironment = within(
+      screen.getByRole('region', { name: 'deployments.studio.builtInTitle' }),
+    )
+    expect(builtInEnvironment.getByText('Updated at 03-09 16:03 by --')).toBeInTheDocument()
+  })
+
   it('shows loading while the app detail is unavailable', () => {
     appDetailAvailable = false
 
@@ -1190,7 +1210,7 @@ describe('AppDeploy', () => {
 
     const menu = await screen.findByRole('menu')
     expect(within(menu).getByRole('alert')).toHaveTextContent('deployments.common.loadFailed')
-    await user.click(within(menu).getByRole('button', { name: 'common.operation.retry' }))
+    await user.click(within(menu).getByRole('menuitem', { name: 'common.operation.retry' }))
 
     expect(await screen.findByText('8 of 12 environments in use')).toBeInTheDocument()
     expect(requestCount).toBe(2)

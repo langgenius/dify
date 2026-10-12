@@ -1,4 +1,8 @@
 {
+  "callback.error": "مجوزدهی ناموفق بود",
+  "callback.errorHint": "لطفاً به صفحه قبلی برگردید و دوباره تلاش کنید.",
+  "callback.success": "مجوزدهی تکمیل شد",
+  "callback.successHint": "اکنون می‌توانید این برگه را ببندید و به صفحه قبلی بازگردید.",
   "connect": "متصل به",
   "continue": "ادامه دهید",
   "error.authAppInfoFetchFailed": "عدم موفقیت در دریافت اطلاعات برنامه برای مجوز",

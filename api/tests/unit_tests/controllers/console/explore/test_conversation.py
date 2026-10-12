@@ -34,8 +34,13 @@ _OPERATIONS: tuple[_Operation, ...] = ("list", "delete", "rename", "pin", "unpin
 
 
 @dataclass(frozen=True)
+class _InstalledAppServices:
+    conversations: InstalledAppConversationService
+
+
+@dataclass(frozen=True)
 class _Services:
-    installed_app_conversations: InstalledAppConversationService
+    installed_apps: _InstalledAppServices
 
 
 @dataclass
@@ -109,10 +114,12 @@ def conversations(
         state.sessions.append(session)
 
     services = _Services(
-        InstalledAppConversationService(
-            conversations=SQLAlchemyInstalledAppConversationRepository(session_factory=factory),
-            generate_name=state.generate_name,
-            enqueue_delete_cleanup=state.enqueue_cleanup,
+        installed_apps=_InstalledAppServices(
+            conversations=InstalledAppConversationService(
+                conversations=SQLAlchemyInstalledAppConversationRepository(session_factory=factory),
+                generate_name=state.generate_name,
+                enqueue_delete_cleanup=state.enqueue_cleanup,
+            )
         )
     )
     monkeypatch.setattr(module, "application_services", lambda: services)

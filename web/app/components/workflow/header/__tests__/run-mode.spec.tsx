@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import type { TestRunMenuRef } from '../test-run-menu'
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import RunMode from '../run-mode'
@@ -14,16 +15,7 @@ const mockHandleWorkflowRunAllTriggersInWorkflow = vi.fn()
 const mockHandleStopRun = vi.fn()
 const mockNotify = vi.fn()
 const mockTrackEvent = vi.fn()
-const hotkeyRegistrations = vi.hoisted(
-  () =>
-    new Map<
-      string,
-      {
-        callback: () => void
-        options?: { ignoreInputs?: boolean }
-      }
-    >(),
-)
+const mockToggleMenu = vi.fn()
 
 let mockWarningNodes: Array<{ id: string }> = []
 let mockWorkflowRunningData:
@@ -85,16 +77,6 @@ vi.mock('@/app/components/workflow/hooks-store', () => ({
     }),
 }))
 
-vi.mock('@tanstack/react-hotkeys', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-hotkeys')>()
-  return {
-    ...actual,
-    useHotkey: (hotkey: string, callback: () => void, options?: { ignoreInputs?: boolean }) => {
-      hotkeyRegistrations.set(hotkey, { callback, options })
-    },
-  }
-})
-
 vi.mock('../../hooks/use-dynamic-test-run-options', () => ({
   useDynamicTestRunOptions: () => mockDynamicOptions,
 }))
@@ -134,7 +116,7 @@ vi.mock('../test-run-menu', async (importOriginal) => {
     ref?: React.Ref<TestRunMenuRef>
   }) => {
     React.useImperativeHandle(ref, () => ({
-      toggle: vi.fn(),
+      toggle: mockToggleMenu,
     }))
     return (
       <div>
@@ -159,7 +141,6 @@ describe('RunMode', () => {
     mockWorkflowRunningData = undefined
     mockIsListening = false
     mockCanRun = true
-    hotkeyRegistrations.clear()
     mockDynamicOptions = [{ type: TriggerType.UserInput, nodeId: 'start-node' }]
   })
 
@@ -212,12 +193,33 @@ describe('RunMode', () => {
     expect(screen.getByText(/listening/i))!.toBeInTheDocument()
   })
 
-  it('should register the test run menu shortcut as a page command outside text inputs', () => {
-    render(<RunMode />)
-
-    expect(hotkeyRegistrations.get('Alt+R')?.options).toEqual(
-      expect.objectContaining({ ignoreInputs: true }),
+  it('opens the test run menu from the page but not an input, handled key, or disabled trigger', async () => {
+    const user = userEvent.setup()
+    const { rerender } = render(
+      <>
+        <RunMode />
+        <input aria-label="Prompt" />
+        <button onKeyDown={(event) => event.preventDefault()}>Local control</button>
+      </>,
     )
+    const runKeyEvents: KeyboardEvent[] = []
+    const recordRunKeys = (event: KeyboardEvent) => {
+      if (event.key === 'r') runKeyEvents.push(event)
+    }
+    document.addEventListener('keydown', recordRunKeys)
+    await user.keyboard('{Alt>}{r>3/}{/Alt}')
+    document.removeEventListener('keydown', recordRunKeys)
+    expect(runKeyEvents).toHaveLength(3)
+    expect(runKeyEvents.every((event) => event.defaultPrevented)).toBe(true)
+    expect(mockToggleMenu).toHaveBeenCalledTimes(1)
+    await user.click(screen.getByRole('textbox', { name: 'Prompt' }))
+    await user.keyboard('{Alt>}r{/Alt}')
+    await user.click(screen.getByRole('button', { name: 'Local control' }))
+    await user.keyboard('{Alt>}r{/Alt}')
+    expect(mockToggleMenu).toHaveBeenCalledTimes(1)
+    rerender(<RunMode disabled />)
+    await user.keyboard('{Alt>}r{/Alt}')
+    expect(mockToggleMenu).toHaveBeenCalledTimes(1)
   })
 
   it('should keep the run trigger visible and disabled when workflow run permission is denied', () => {

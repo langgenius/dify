@@ -1,3 +1,4 @@
+import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
 import type { AppPublisherPublishParams } from '../types'
 import type { WorkflowToolOutputVariable } from '@/app/components/tools/types'
 import type { InputVar } from '@/app/components/workflow/types'
@@ -10,11 +11,11 @@ import { AppModeEnum } from '@/types/app'
 
 type UseWorkflowToolParams = {
   appDescription?: string
-  appIcon?: string
+  appIcon?: string | null
   appIconBackground?: string | null
   appIconType?: string | null
   appId?: string
-  appMode?: AppModeEnum
+  appMode?: AppMode
   appName?: string
   appPublished: boolean
   hasHumanInputNode: boolean

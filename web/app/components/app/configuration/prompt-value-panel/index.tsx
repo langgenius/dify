@@ -21,7 +21,6 @@ import * as React from 'react'
 import { useEffect, useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import FeatureBar from '@/app/components/base/features/new-feature-panel/feature-bar'
 import TextGenerationImageUploader from '@/app/components/base/image-uploader/text-generation-image-uploader'
 import BoolInput from '@/app/components/workflow/nodes/_base/components/before-run-form/bool-input'
@@ -48,6 +47,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
   const {
     readonly,
     canTestAndRun = false,
+    onOpenFeatures,
     modelModeType,
     modelConfig,
     setInputs,
@@ -130,8 +130,6 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
     })
     setInputs(newInputs)
   }
-
-  const setShowAppConfigureFeaturesModal = useAppStore((s) => s.setShowAppConfigureFeaturesModal)
 
   return (
     <>
@@ -323,7 +321,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
         <FeatureBar
           showFileUpload={false}
           isChatMode={appType !== AppModeEnum.COMPLETION}
-          onFeatureBarClick={setShowAppConfigureFeaturesModal}
+          onFeatureBarClick={onOpenFeatures}
           disabled={readonly}
           hideEditEntrance={readonly}
         />

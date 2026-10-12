@@ -201,6 +201,49 @@ describe('Comment keyboard focus lifecycle', () => {
     },
   )
 
+  it.each(['actions menu', 'mention suggestions'] as const)(
+    'closes %s before the thread and restores its marker on the next Escape',
+    async (surface) => {
+      const user = userEvent.setup()
+      const { store } = renderCommentCanvas()
+      act(() => {
+        store
+          .getState()
+          .setMentionableUsersCache('app-1', [
+            { id: 'user-2', name: 'Bob', email: 'bob@example.com', avatar_url: null },
+          ])
+      })
+
+      await user.tab()
+      await user.keyboard('{Enter}')
+      const reply = await screen.findByRole('textbox')
+      await waitFor(() => expect(reply).toHaveFocus())
+
+      const commentActions = screen.getByRole('button', { name: /comments.aria.commentActions/ })
+      if (surface === 'actions menu') {
+        await user.click(commentActions)
+        expect(await screen.findByRole('menu')).toBeInTheDocument()
+      } else {
+        await user.type(reply, '@Bo')
+        expect(await screen.findByText('bob@example.com')).toBeInTheDocument()
+      }
+
+      await user.keyboard('{Escape}')
+      await waitFor(() => {
+        expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+        expect(screen.queryByText('bob@example.com')).not.toBeInTheDocument()
+      })
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
+      await waitFor(() => {
+        expect(surface === 'actions menu' ? commentActions : reply).toHaveFocus()
+      })
+
+      await user.keyboard('{Escape}')
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      expect(screen.getByRole('button', { name: /keyboard.openComment/ })).toHaveFocus()
+    },
+  )
+
   it('restores the last viewed comment marker after navigating to another thread', async () => {
     const user = userEvent.setup()
     const otherComment: WorkflowCommentList = {

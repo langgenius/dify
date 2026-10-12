@@ -295,6 +295,7 @@ class ConversationService:
                 "created_at": row.created_at,
                 "updated_at": row.updated_at,
                 **row.to_variable().model_dump(),
+                "id": row.id,
             }
             for row in rows
         ]
@@ -379,4 +380,5 @@ class ConversationService:
             "created_at": existing_variable.created_at,
             "updated_at": naive_utc_now(),  # Update timestamp
             **updated_variable.model_dump(),
+            "id": existing_variable.id,
         }

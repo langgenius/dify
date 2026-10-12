@@ -1,6 +1,6 @@
 'use client'
 
-import type { AppModeEnum } from '@/types/app'
+import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
 import type { VersionHistory } from '@/types/workflow'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
@@ -47,7 +47,7 @@ const HISTORY_PER_PAGE = 10
 const INITIAL_PAGE = 1
 
 export type VersionHistoryPanelProps = {
-  appMode?: AppModeEnum
+  appMode?: AppMode
   getVersionListUrl?: string
   deleteVersionUrl?: (versionId: string) => string
   restoreVersionUrl: (versionId: string) => string
@@ -314,9 +314,6 @@ export const VersionHistoryPanel = ({
       await deleteWorkflow(deleteVersionUrl?.(id) || '', {
         onSuccess: () => {
           setDeleteConfirmOpen(false)
-          toast.success(
-            t(($) => $['versionHistory.action.deleteSuccess'], { ns: 'workflowHistory' }),
-          )
           resetWorkflowVersionHistory()
           deleteAllInspectVars()
           invalidAllLastRun()
@@ -355,9 +352,6 @@ export const VersionHistoryPanel = ({
         {
           onSuccess: () => {
             setEditModalOpen(false)
-            toast.success(
-              t(($) => $['versionHistory.action.updateSuccess'], { ns: 'workflowHistory' }),
-            )
             if (
               id === latestVersionId &&
               configsMap?.flowType === FlowType.appFlow &&

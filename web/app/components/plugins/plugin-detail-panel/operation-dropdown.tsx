@@ -25,6 +25,7 @@ type OperationDropdownProps = Readonly<
     detailUrl: string
     popupClassName?: string
     triggerSize?: 'm' | 'xs'
+    triggerAriaLabel?: string
     destructiveRemove?: boolean
     showCheckVersion?: boolean
     showRemove?: boolean
@@ -43,6 +44,7 @@ export function OperationDropdown({
   alignOffset = 0,
   popupClassName,
   triggerSize = 'm',
+  triggerAriaLabel,
   destructiveRemove = false,
   showCheckVersion = true,
   showRemove = true,
@@ -73,7 +75,9 @@ export function OperationDropdown({
       <DropdownMenuTrigger
         render={
           <IconButton
-            aria-label={t(($) => $['detailPanel.operation.moreActions'], { ns: 'plugin' })}
+            aria-label={
+              triggerAriaLabel ?? t(($) => $['detailPanel.operation.moreActions'], { ns: 'plugin' })
+            }
             size={triggerSize === 'xs' ? 'xs' : 'md'}
             className="data-popup-open:bg-state-base-hover"
           >

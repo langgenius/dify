@@ -25,6 +25,7 @@ from tests.unit_tests.controllers.console.explore.test_installed_app_admission i
 )
 from tests.unit_tests.controllers.console.explore.test_installed_app_completion import (
     _USED_AT,
+    _InstalledAppServices,
     _last_used_at,
     _Runtime,
     _RuntimeCall,
@@ -353,9 +354,11 @@ def test_chat_conversation_preflight_returns_404_before_starting_generation_and_
             )
 
     services = _Services(
-        installed_app_generation=InstalledAppGenerationService(
-            usage=SQLAlchemyInstalledAppRepository(session_factory=sqlite_session_factory),
-            runtime=AppGenerateServiceRuntime(session_factory=sqlite_session_factory),
+        installed_apps=_InstalledAppServices(
+            generation=InstalledAppGenerationService(
+                usage=SQLAlchemyInstalledAppRepository(session_factory=sqlite_session_factory),
+                runtime=AppGenerateServiceRuntime(session_factory=sqlite_session_factory),
+            )
         )
     )
     monkeypatch.setattr(completion_module, "application_services", lambda: services)

@@ -20,6 +20,11 @@ def test_trial_routes_keep_paths_and_endpoints() -> None:
             None,
         ),
         "TrialChatApi": (("/trial-apps/<uuid:app_id>/chat-messages",), "trial_app_chat_completion"),
+        "TrialChatTaskStopApi": (
+            ("/trial-apps/<uuid:app_id>/chat-messages/<string:task_id>/stop",),
+            "trial_app_stop_chat_completion",
+        ),
+        "TrialAgentComposerApi": (("/trial-apps/<uuid:app_id>/agent-composer",), None),
         "TrialMessageSuggestedQuestionApi": (
             ("/trial-apps/<uuid:app_id>/messages/<uuid:message_id>/suggested-questions",),
             "trial_app_suggested_question",

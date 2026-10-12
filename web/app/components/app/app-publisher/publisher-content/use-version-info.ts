@@ -1,5 +1,4 @@
-import type { WorkflowResponse } from '@dify/contracts/api/console/apps/types.gen'
-import type { AppModeEnum } from '@/types/app'
+import type { AppMode, WorkflowResponse } from '@dify/contracts/api/console/apps/types.gen'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
@@ -18,7 +17,7 @@ export function useVersionInfo({
   onClosePublisher,
 }: {
   appId?: string
-  appMode?: AppModeEnum
+  appMode?: AppMode
   publishedWorkflow?: WorkflowResponse | null
   onClosePublisher: () => void
 }) {

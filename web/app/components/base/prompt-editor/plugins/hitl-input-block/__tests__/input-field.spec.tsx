@@ -1,8 +1,5 @@
-import type {
-  FormInputItem,
-  ParagraphFormInput,
-} from '@/app/components/workflow/nodes/human-input/types'
-import { render, screen } from '@testing-library/react'
+import type { ParagraphFormInput } from '@/app/components/workflow/nodes/human-input/types'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { InputVarType, SupportUploadFileTypes, VarType } from '@/app/components/workflow/types'
 import { TransferMethod } from '@/types/app'
@@ -80,6 +77,26 @@ describe('InputField', () => {
     vi.clearAllMocks()
     lastVarReferencePickerProps = undefined
     fileUploadSettingMaxLength = 4
+  })
+
+  it('saves only from the field surface and ignores composition', () => {
+    const onChange = vi.fn()
+    render(
+      <InputField
+        nodeId="node-scope"
+        isEdit={false}
+        payload={createPayload()}
+        onChange={onChange}
+        onCancel={vi.fn()}
+      />,
+    )
+    fireEvent.keyDown(document.body, { key: 'Enter', ctrlKey: true })
+    const input = screen.getByRole('textbox', { name: /saveResponseAs/ })
+    fireEvent.keyDown(input, { key: 'Enter', ctrlKey: true, isComposing: true })
+    expect(onChange).not.toHaveBeenCalled()
+    fireEvent.keyUp(input, { key: 'Enter', ctrlKey: true })
+    fireEvent.keyDown(input, { key: 'Enter', ctrlKey: true })
+    expect(onChange).toHaveBeenCalledTimes(1)
   })
 
   it('should keep the header and actions visible while the field content scrolls internally', () => {
@@ -283,7 +300,7 @@ describe('InputField', () => {
           default: {
             type: 'constant',
             selector: [],
-            value: '',
+            value: 'initial',
           },
         })}
         onChange={onChange}
@@ -291,9 +308,9 @@ describe('InputField', () => {
       />,
     )
 
-    await user.keyboard('{Tab}')
-    const inputs = screen.getAllByRole('textbox')
-    await user.type(inputs[1]!, 'constant-default')
+    const input = screen.getByRole('textbox', { name: /staticContent/ })
+    await user.clear(input)
+    await user.type(input, 'constant-default')
     await user.keyboard('{Control>}{Enter}{/Control}')
 
     expect(onChange).toHaveBeenCalledTimes(1)
@@ -403,42 +420,6 @@ describe('InputField', () => {
     expect(onChange.mock.calls[0]![0].default).toEqual({
       type: 'variable',
       selector: ['node-a', 'var-a'],
-      value: '',
-    })
-  })
-
-  it('should initialize default config when missing and selector is selected', async () => {
-    const user = userEvent.setup()
-    const onChange = vi.fn()
-    const payloadWithoutDefault = {
-      ...createPayload(),
-      default: undefined,
-    } as unknown as FormInputItem
-
-    render(
-      <InputField
-        nodeId="node-6"
-        isEdit={false}
-        payload={payloadWithoutDefault}
-        onChange={onChange}
-        onCancel={vi.fn()}
-      />,
-    )
-
-    await user.keyboard('{Tab}')
-    await user.click(
-      screen.getByText(/workflowHumanInput\.nodes\.humanInput\.insertInputField\.useVarInstead/i),
-    )
-    await user.click(
-      screen.getByRole('button', {
-        name: /workflowHumanInput\.nodes\.humanInput\.insertInputField\.insert/i,
-      }),
-    )
-
-    expect(onChange).toHaveBeenCalledTimes(1)
-    expect(onChange.mock.calls[0]![0].default).toEqual({
-      type: 'variable',
-      selector: [],
       value: '',
     })
   })

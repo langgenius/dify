@@ -42,6 +42,7 @@ from models import Account
 from models.dataset import Dataset, DatasetCollectionBinding, Pipeline
 from models.enums import CollectionBindingType, DatasetRuntimeMode
 from models.workflow import Workflow, WorkflowType
+from repositories.knowledge.dataset_read_repository import get_pipeline_dataset
 from services.dsl_content import DSL_MAX_SIZE, dsl_content_size
 from services.dsl_version import check_version_compatibility
 from services.entities.dsl_entities import CheckDependenciesResult, ImportMode, ImportStatus, PendingImportOwner
@@ -217,7 +218,7 @@ class RagPipelineDslService:
                         status=ImportStatus.FAILED,
                         error="Pipeline not found",
                     )
-                dataset = pipeline.retrieve_dataset(session=self._session)
+                dataset = get_pipeline_dataset(pipeline, session=self._session)
 
             # If major version mismatch, store import info in Redis
             if status == ImportStatus.PENDING:
@@ -414,7 +415,7 @@ class RagPipelineDslService:
                 data=data,
                 account=account,
             )
-            dataset = pipeline.retrieve_dataset(session=self._session)
+            dataset = get_pipeline_dataset(pipeline, session=self._session)
 
             # create dataset
             name = pipeline.name
@@ -656,7 +657,7 @@ class RagPipelineDslService:
         :param include_secret: Whether include secret variable
         :return:
         """
-        dataset = pipeline.retrieve_dataset(session=self._session)
+        dataset = get_pipeline_dataset(pipeline, session=self._session)
         if not dataset:
             raise ValueError("Missing dataset for rag pipeline")
         icon_info = dataset.icon_info

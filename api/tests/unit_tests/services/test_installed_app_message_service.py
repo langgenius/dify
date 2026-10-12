@@ -6,7 +6,7 @@ from decimal import Decimal
 import pytest
 from pydantic import JsonValue
 
-from services.errors.message import MessageNotExistsError, SuggestedQuestionsAfterAnswerDisabledError
+from services.errors.message import MessageNotExistsError
 from services.installed_app_access_service import InstalledAppRef
 from services.installed_app_message_service import (
     InstalledAppMessageService,
@@ -105,21 +105,12 @@ class _Callbacks:
     store: _Store
     queried_ids: list[tuple[str, ...]] = field(default_factory=list)
     feedback: list[MessageFeedbackEvent] = field(default_factory=list)
-    suggestion_error: Exception | None = None
 
     def get_extra_contents(self, *, message_ids: Sequence[str]) -> Mapping[str, list[dict[str, JsonValue]]]:
         assert self.store.events == ["read closed"]
         self.store.events.append("extra contents")
         self.queried_ids.append(tuple(message_ids))
         return {"first": [{"type": "workflow", "workflow_run_id": "run"}], "not-in-page": [{"type": "ignored"}]}
-
-    def suggested_questions(self, *, installed_app: InstalledAppRef, account_id: str, message_id: str) -> list[str]:
-        assert installed_app.app_id == _REF.app_id
-        assert (account_id, message_id) == ("account", "message")
-        self.store.events.append("suggested questions")
-        if self.suggestion_error is not None:
-            raise self.suggestion_error
-        return ["Next question?"]
 
     def emit_feedback(self, *, feedback: MessageFeedbackEvent) -> None:
         assert self.store.events[-1] == "write committed and closed"
@@ -131,7 +122,6 @@ class _Callbacks:
         return InstalledAppMessageService(
             messages=self.store,
             get_extra_contents=self.get_extra_contents,
-            suggested_questions=self.suggested_questions,
             emit_feedback=self.emit_feedback,
         )
 
@@ -202,27 +192,11 @@ def test_feedback_write_error_propagates_without_emitting() -> None:
 
 
 @pytest.mark.parametrize("mode", ["completion", "workflow"])
-def test_non_chat_admission_rejects_reads_before_database_or_generation(mode: str) -> None:
+def test_non_chat_admission_rejects_reads_before_database(mode: str) -> None:
     state = _Callbacks(store=_Store())
     ref = replace(_REF, app_mode=mode)
     with pytest.raises(MessageNotChatAppError):
         state.service().get_page(
             installed_app=ref, account_id="account", conversation_id="conversation", first_id=None, limit=2
         )
-    with pytest.raises(MessageNotChatAppError):
-        state.service().get_suggested_questions(installed_app=ref, account_id="account", message_id="message")
     assert state.store.events == []
-
-
-@pytest.mark.parametrize("mode", ["chat", "agent-chat", "advanced-chat"])
-def test_suggested_questions_accepts_all_chat_modes_and_preserves_errors(mode: str) -> None:
-    state = _Callbacks(store=_Store())
-    ref = replace(_REF, app_mode=mode)
-    assert state.service().get_suggested_questions(installed_app=ref, account_id="account", message_id="message") == [
-        "Next question?"
-    ]
-    failure = SuggestedQuestionsAfterAnswerDisabledError("Suggested questions are disabled")
-    state.suggestion_error = failure
-    with pytest.raises(SuggestedQuestionsAfterAnswerDisabledError) as error:
-        state.service().get_suggested_questions(installed_app=ref, account_id="account", message_id="message")
-    assert error.value is failure

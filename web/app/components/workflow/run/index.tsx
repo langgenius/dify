@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import type { WorkflowRunDetailResponse } from '@/models/log'
 import type { NodeTracing } from '@/types/workflow'
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
@@ -23,19 +23,63 @@ type RunProps = {
   tracingListUrl: string
 }
 
+type RunTab = NonNullable<RunProps['activeTab']>
+type RequestLifetime = {
+  active: boolean
+  detailRequest: number
+  tracingRequest: number
+  detailSettled: boolean
+  tracingSettled: boolean
+}
+
 const RunPanel: FC<RunProps> = ({
-  hideResult,
   activeTab = 'RESULT',
+  hideResult,
   getResultCallback,
   runDetailUrl,
   tracingListUrl,
 }) => {
+  const [currentTab, setCurrentTab] = useState<RunTab>(activeTab)
+  const isListening = useStore((s) => s.isListening)
+
+  useEffect(() => {
+    if (isListening) setCurrentTab('DETAIL')
+  }, [isListening])
+
+  return (
+    <RunSession
+      key={JSON.stringify([runDetailUrl, tracingListUrl])}
+      hideResult={hideResult}
+      getResultCallback={getResultCallback}
+      runDetailUrl={runDetailUrl}
+      tracingListUrl={tracingListUrl}
+      currentTab={currentTab}
+      onTabChange={setCurrentTab}
+      isListening={isListening}
+    />
+  )
+}
+
+type RunSessionProps = Omit<RunProps, 'activeTab'> & {
+  currentTab: RunTab
+  onTabChange: (tab: RunTab) => void
+  isListening: boolean
+}
+
+function RunSession({
+  hideResult,
+  getResultCallback,
+  runDetailUrl,
+  tracingListUrl,
+  currentTab,
+  onTabChange,
+  isListening,
+}: RunSessionProps) {
   const { t } = useTranslation(['runLog'])
-  const [currentTab, setCurrentTab] = useState<string>(activeTab)
-  const [loading, setLoading] = useState<boolean>(true)
+  const [loading, setLoading] = useState(true)
   const [runDetail, setRunDetail] = useState<WorkflowRunDetailResponse>()
   const [list, setList] = useState<NodeTracing[]>([])
-  const isListening = useStore((s) => s.isListening)
+  const requestLifetimeRef = useRef<RequestLifetime | null>(null)
 
   const executor = useMemo(() => {
     if (runDetail?.created_by_role === 'account') return runDetail.created_by_account?.name || ''
@@ -44,49 +88,72 @@ const RunPanel: FC<RunProps> = ({
     return 'N/A'
   }, [runDetail])
 
-  const getResult = useCallback(async () => {
-    try {
-      const res = await fetchRunDetail(runDetailUrl)
-      setRunDetail(res)
-      if (getResultCallback) getResultCallback(res)
-    } catch (err) {
-      toast.error(`${err}`)
-    }
-  }, [getResultCallback, runDetailUrl])
+  const getResult = useCallback(
+    async (lifetime: RequestLifetime) => {
+      const request = ++lifetime.detailRequest
+      try {
+        const res = await fetchRunDetail(runDetailUrl)
+        if (!lifetime.active || request !== lifetime.detailRequest) return
+        setRunDetail(res)
+        if (getResultCallback) getResultCallback(res)
+      } catch (err) {
+        if (lifetime.active && request === lifetime.detailRequest) toast.error(`${err}`)
+      } finally {
+        if (lifetime.active && request === lifetime.detailRequest) {
+          lifetime.detailSettled = true
+          if (lifetime.tracingSettled) setLoading(false)
+        }
+      }
+    },
+    [getResultCallback, runDetailUrl],
+  )
 
-  const getTracingList = useCallback(async () => {
-    try {
-      const { data: nodeList } = await fetchTracingList({
-        url: tracingListUrl,
-      })
-      setList(nodeList)
-    } catch (err) {
-      toast.error(`${err}`)
-    }
-  }, [tracingListUrl])
+  const getTracingList = useCallback(
+    async (lifetime: RequestLifetime) => {
+      const request = ++lifetime.tracingRequest
+      try {
+        const { data: nodeList } = await fetchTracingList({
+          url: tracingListUrl,
+        })
+        if (lifetime.active && request === lifetime.tracingRequest) setList(nodeList)
+      } catch (err) {
+        if (lifetime.active && request === lifetime.tracingRequest) toast.error(`${err}`)
+      } finally {
+        if (lifetime.active && request === lifetime.tracingRequest) {
+          lifetime.tracingSettled = true
+          if (lifetime.detailSettled) setLoading(false)
+        }
+      }
+    },
+    [tracingListUrl],
+  )
 
-  const getData = useCallback(async () => {
-    setLoading(true)
-    await getResult()
-    await getTracingList()
-    setLoading(false)
-  }, [getResult, getTracingList])
-
-  const switchTab = async (tab: string) => {
-    setCurrentTab(tab)
-    if (tab === 'RESULT') {
-      if (runDetailUrl) await getResult()
-    }
-    if (tracingListUrl) await getTracingList()
+  const switchTab = (tab: RunTab) => {
+    onTabChange(tab)
+    const lifetime = requestLifetimeRef.current
+    if (!lifetime?.active) return
+    if (tab === 'RESULT' && runDetailUrl) void getResult(lifetime)
+    if (tracingListUrl) void getTracingList(lifetime)
   }
 
-  useEffect(() => {
-    if (isListening) setCurrentTab('DETAIL')
-  }, [isListening])
+  const loadRecord = useEffectEvent((lifetime: RequestLifetime) => {
+    void getResult(lifetime)
+    void getTracingList(lifetime)
+  })
 
   useEffect(() => {
-    // fetch data
-    if (runDetailUrl && tracingListUrl) getData()
+    const lifetime: RequestLifetime = {
+      active: true,
+      detailRequest: 0,
+      tracingRequest: 0,
+      detailSettled: false,
+      tracingSettled: false,
+    }
+    requestLifetimeRef.current = lifetime
+    if (runDetailUrl && tracingListUrl) loadRecord(lifetime)
+    return () => {
+      lifetime.active = false
+    }
   }, [runDetailUrl, tracingListUrl])
 
   const [height, setHeight] = useState(0)
@@ -104,7 +171,7 @@ const RunPanel: FC<RunProps> = ({
     <Tabs
       className="relative flex grow flex-col"
       value={currentTab}
-      onValueChange={(value) => switchTab(value as string)}
+      onValueChange={(value) => switchTab(value as RunTab)}
     >
       {/* tab */}
       <TabsList className="shrink-0 items-center gap-6 border-b-[0.5px] border-divider-subtle px-4">

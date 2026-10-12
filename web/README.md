@@ -45,6 +45,24 @@ Open <http://localhost:3000> with your browser to see the result.
 You can start editing the files under `web/app`.
 The page auto-updates as you edit the file.
 
+### Vinext toolchain
+
+The workspace catalog pins vinext to `1.0.0-beta.13`. Following the
+[versioned vinext guide], `dev:vinext` and `build:vinext` use the project-local
+Vite+ CLI (`vp dev` / `vp build`); the vinext plugin owns the development and multi-environment build
+lifecycle. Keep the Next.js scripts available for compatibility comparisons.
+
+When upgrading, run the installed compatibility scanner and verify the application:
+
+```bash
+pnpm -C web exec vinext check
+pnpm -C web run build:vinext
+pnpm -C web run start:vinext
+```
+
+The scanner is a starting point; also check sign-in, redirects, and the workflows
+affected by the upgrade. See the [vinext migration guide] for validation guidance.
+
 ## Deploy
 
 ### Deploy on server
@@ -70,8 +88,20 @@ docker build -f web/Dockerfile -t dify-web .
 If you want to customize the host and port:
 
 ```bash
-pnpm -C web run start --port=3001 --host=0.0.0.0
+PORT=3001 HOSTNAME=0.0.0.0 pnpm -C web run start
 ```
+
+### Vinext standalone Node server
+
+`pnpm -C web run build:vinext` honors `output: 'standalone'` in `next.config.ts`
+and emits `web/dist/standalone`. To run the self-contained production server:
+
+```bash
+HOST=0.0.0.0 PORT=3000 node web/dist/standalone/server.js
+```
+
+Vinext uses `HOST` for the bind address; Next.js standalone uses `HOSTNAME`.
+Use `start:vinext` for local production testing. See [vinext Node deployment].
 
 ## Storybook
 
@@ -87,7 +117,7 @@ Open <http://localhost:6006> with your browser to see the result.
 
 ## Lint Code
 
-If your IDE is VSCode, rename `.vscode/settings.example.json` to `.vscode/settings.json` for lint code setting.
+For VS Code, copy `.vscode/settings.example.json` to `.vscode/settings.json`, or merge it into your existing settings.
 
 Then follow the [Lint Documentation] to lint the code.
 
@@ -120,4 +150,7 @@ The Dify community can be found on [Discord community], where you can ask questi
 [Vite+]: https://viteplus.dev
 [Vitest]: https://vitest.dev
 [pnpm]: https://pnpm.io
+[versioned vinext guide]: https://github.com/cloudflare/vinext/blob/vinext%401.0.0-beta.13/README.md
+[vinext Node deployment]: https://vinext.dev/docs/deploying/other-platforms
+[vinext migration guide]: https://vinext.dev/docs/getting-started/migrating
 [vinext]: https://github.com/cloudflare/vinext

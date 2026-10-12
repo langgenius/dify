@@ -105,7 +105,7 @@ export const AppTypeIcon = React.memo(
         </div>
       )
     }
-    if (type === AppModeEnum.AGENT_CHAT) {
+    if (type === AppModeEnum.AGENT_CHAT || type === AppModeEnum.AGENT) {
       return (
         <div style={style} className={cn(wrapperClassNames, 'bg-components-icon-bg-violet-solid')}>
           <span
@@ -231,7 +231,8 @@ function AppTypeSelectorItem({ checked, type, onClick }: AppTypeSelectorItemProp
 
 function getAppTypeLabel(type: string, t: ReturnType<typeof useTranslation>['t']) {
   if (type === AppModeEnum.CHAT) return t(($) => $['typeSelector.chatbot'], { ns: 'app' })
-  if (type === AppModeEnum.AGENT_CHAT) return t(($) => $['typeSelector.agent'], { ns: 'app' })
+  if (type === AppModeEnum.AGENT_CHAT || type === AppModeEnum.AGENT)
+    return t(($) => $['typeSelector.agent'], { ns: 'app' })
   if (type === AppModeEnum.COMPLETION) return t(($) => $['typeSelector.completion'], { ns: 'app' })
   if (type === AppModeEnum.ADVANCED_CHAT) return t(($) => $['typeSelector.advanced'], { ns: 'app' })
   if (type === AppModeEnum.WORKFLOW) return t(($) => $['typeSelector.workflow'], { ns: 'app' })

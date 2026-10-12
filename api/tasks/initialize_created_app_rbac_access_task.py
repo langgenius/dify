@@ -10,8 +10,8 @@ from sqlalchemy import select
 from configs import dify_config
 from extensions.ext_database import db
 from models import Agent, App, Dataset, TenantAccountJoin, TenantAccountRole
-from services.account_service import TenantService
 from services.enterprise import rbac_service as enterprise_rbac_service
+from services.rbac import contracts as rbac_contracts
 
 logger = logging.getLogger(__name__)
 
@@ -33,13 +33,13 @@ def _owner_account_id(tenant_id: str) -> str | None:
 
 @dataclass(frozen=True)
 class _WhitelistResourceKind[ItemT]:
-    resource_type: enterprise_rbac_service.RBACResourceType
+    resource_type: rbac_contracts.RBACResourceType
     model: type[App] | type[Dataset] | type[Agent]
     build_item: Callable[[str, str], ItemT]
     append_members: Callable[[str, str | None, Sequence[ItemT]], None]
     replace_user_access_policies: Callable[
-        [str, str, str, enterprise_rbac_service.ReplaceUserAccessPolicies],
-        enterprise_rbac_service.ReplaceUserAccessPoliciesResponse,
+        [str, str, str, rbac_contracts.ReplaceUserAccessPolicies],
+        rbac_contracts.ReplaceUserAccessPoliciesResponse,
     ]
 
     def iter_id_batches(self, tenant_id: str, batch_size: int) -> Iterator[list[str]]:
@@ -53,7 +53,7 @@ class _WhitelistResourceKind[ItemT]:
             )
             if last_id:
                 stmt = stmt.where(self.model.id > last_id)
-            ids = [str(resource_id) for resource_id in db.session().scalars(stmt).all()]
+            ids = list(db.session().scalars(stmt).all())
             if not ids:
                 return
             yield ids
@@ -69,9 +69,9 @@ class _WhitelistResourceKind[ItemT]:
 
 _WHITELIST_RESOURCE_KINDS = (
     _WhitelistResourceKind(
-        resource_type=enterprise_rbac_service.RBACResourceType.APP,
+        resource_type=rbac_contracts.RBACResourceType.APP,
         model=App,
-        build_item=lambda app_id, member: enterprise_rbac_service.AppendAppWhitelistMembersBatchItem(
+        build_item=lambda app_id, member: rbac_contracts.AppendAppWhitelistMembersBatchItem(
             app_id=app_id, account_ids=[member], policy_id=APP_RBAC_DEFAULT_ACCESS_POLICY_ID
         ),
         append_members=lambda tenant_id, account_id, data: (
@@ -90,9 +90,9 @@ _WHITELIST_RESOURCE_KINDS = (
         ),
     ),
     _WhitelistResourceKind(
-        resource_type=enterprise_rbac_service.RBACResourceType.DATASET,
+        resource_type=rbac_contracts.RBACResourceType.DATASET,
         model=Dataset,
-        build_item=lambda dataset_id, member: enterprise_rbac_service.AppendDatasetWhitelistMembersBatchItem(
+        build_item=lambda dataset_id, member: rbac_contracts.AppendDatasetWhitelistMembersBatchItem(
             dataset_id=dataset_id, account_ids=[member], policy_id=APP_RBAC_DEFAULT_ACCESS_POLICY_ID
         ),
         append_members=lambda tenant_id, account_id, data: (
@@ -111,9 +111,9 @@ _WHITELIST_RESOURCE_KINDS = (
         ),
     ),
     _WhitelistResourceKind(
-        resource_type=enterprise_rbac_service.RBACResourceType.AGENT,
+        resource_type=rbac_contracts.RBACResourceType.AGENT,
         model=Agent,
-        build_item=lambda agent_id, member: enterprise_rbac_service.AppendAgentWhitelistMembersBatchItem(
+        build_item=lambda agent_id, member: rbac_contracts.AppendAgentWhitelistMembersBatchItem(
             agent_id=agent_id, account_ids=[member], policy_id=APP_RBAC_DEFAULT_ACCESS_POLICY_ID
         ),
         append_members=lambda tenant_id, account_id, data: (
@@ -138,11 +138,11 @@ _WHITELIST_RESOURCE_KIND_BY_TYPE = {kind.resource_type: kind for kind in _WHITEL
 def _iter_resource_config_batches(
     tenant_id: str,
     batch_size: int,
-) -> Iterator[list[enterprise_rbac_service.ResourceWhitelistConfigResource]]:
+) -> Iterator[list[rbac_contracts.ResourceWhitelistConfigResource]]:
     for kind in _WHITELIST_RESOURCE_KINDS:
         for ids in kind.iter_id_batches(tenant_id, batch_size):
             yield [
-                enterprise_rbac_service.ResourceWhitelistConfigResource(
+                rbac_contracts.ResourceWhitelistConfigResource(
                     resource_type=kind.resource_type, resource_id=resource_id
                 )
                 for resource_id in ids
@@ -155,7 +155,7 @@ def _chunks[T](items: list[T], chunk_size: int) -> Iterator[list[T]]:
 
 
 def _resolve_target_resource(
-    resource_ids: dict[enterprise_rbac_service.RBACResourceType, str | None],
+    resource_ids: dict[rbac_contracts.RBACResourceType, str | None],
 ) -> tuple[_WhitelistResourceKind, str]:
     provided = [(resource_type, rid) for resource_type, rid in resource_ids.items() if rid is not None]
     if len(provided) != 1:
@@ -185,25 +185,26 @@ def initialize_created_app_rbac_access_task(
 
     kind, resource_id = _resolve_target_resource(
         {
-            enterprise_rbac_service.RBACResourceType.APP: app_id,
-            enterprise_rbac_service.RBACResourceType.DATASET: dataset_id,
-            enterprise_rbac_service.RBACResourceType.AGENT: agent_id,
+            rbac_contracts.RBACResourceType.APP: app_id,
+            rbac_contracts.RBACResourceType.DATASET: dataset_id,
+            rbac_contracts.RBACResourceType.AGENT: agent_id,
         }
     )
 
+    from extensions.ext_application_services import application_services
+
     try:
-        for account_ids in TenantService.iter_member_account_id_batches(
+        for account_ids in application_services().workspaces.management.iter_member_account_id_batches(
             tenant_id,
             APP_RBAC_ACCOUNT_POLICY_BATCH_SIZE,
-            session=db.session(),
         ):
             kind.replace_user_access_policies(
                 tenant_id,
                 account_id,
                 resource_id,
-                enterprise_rbac_service.ReplaceUserAccessPolicies(
+                rbac_contracts.ReplaceUserAccessPolicies(
                     access_policy_ids=[APP_RBAC_DEFAULT_ACCESS_POLICY_ID],
-                    account_ids=account_ids,
+                    account_ids=list(account_ids),
                 ),
             )
     except Exception as exc:
@@ -238,7 +239,7 @@ def sync_joined_workspace_member_rbac_access_task(
             )
             return
 
-        auto_included: dict[enterprise_rbac_service.RBACResourceType, list[str]] = {
+        auto_included: dict[rbac_contracts.RBACResourceType, list[str]] = {
             kind.resource_type: [] for kind in _WHITELIST_RESOURCE_KINDS
         }
         for resources in _iter_resource_config_batches(tenant_id, APP_RBAC_RESOURCE_CONFIG_BATCH_SIZE):

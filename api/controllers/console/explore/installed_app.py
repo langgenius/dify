@@ -1,6 +1,7 @@
 import base64
 import binascii
 import logging
+from http import HTTPStatus
 
 from flask_restx import Resource
 from pydantic import BaseModel, Field, computed_field
@@ -139,13 +140,13 @@ register_response_schema_models(
 @console_ns.route("/installed-apps")
 class InstalledAppsListApi(Resource):
     @console_ns.doc(params=query_params_from_model(InstalledAppsListQuery))
-    @console_ns.response(200, "Success", console_ns.models[InstalledAppListResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[InstalledAppListResponse.__name__])
     @console_account_admission()
     @model_validate(InstalledAppsListQuery)
     def get(self, query: InstalledAppsListQuery, request_context: RequestContext) -> dict[str, object]:
         cursor = _decode_installed_app_cursor(query.cursor)
         try:
-            page = application_services().installed_apps.get_visible_page(
+            page = application_services().installed_apps.management.get_visible_page(
                 tenant_id=request_context.active_workspace_id,
                 user_id=request_context.account_id,
                 cursor=cursor,
@@ -184,7 +185,7 @@ class InstalledAppsListApi(Resource):
 class InstalledAppApi(Resource):
     """Read or update an admitted workspace installation."""
 
-    @console_ns.response(200, "Success", console_ns.models[InstalledAppResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[InstalledAppResponse.__name__])
     @console_account_admission()
     @get_installed_app
     def get(
@@ -193,7 +194,7 @@ class InstalledAppApi(Resource):
         installed_app: InstalledAppRef,
     ) -> dict[str, object]:
         try:
-            detail = application_services().installed_apps.get_detail(
+            detail = application_services().installed_apps.management.get_detail(
                 installed_app=installed_app, account_id=request_context.account_id
             )
         except InstalledAppUnavailableError as error:
@@ -208,7 +209,7 @@ class InstalledAppApi(Resource):
             ),
         )
 
-    @console_ns.response(200, "Success", console_ns.models[SimpleResultMessageResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultMessageResponse.__name__])
     @console_ns.expect(console_ns.models[InstalledAppUpdatePayload.__name__])
     @console_account_admission()
     @get_installed_app
@@ -217,7 +218,9 @@ class InstalledAppApi(Resource):
         self, req_data: InstalledAppUpdatePayload, request_context: RequestContext, installed_app: InstalledAppRef
     ) -> dict[str, str]:
         try:
-            application_services().installed_apps.set_pinned(installed_app=installed_app, is_pinned=req_data.is_pinned)
+            application_services().installed_apps.management.set_pinned(
+                installed_app=installed_app, is_pinned=req_data.is_pinned
+            )
         except InstalledAppNotFoundError as error:
             raise InstalledAppNotFoundHTTPError() from error
 

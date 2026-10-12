@@ -3,6 +3,8 @@ import userEvent from '@testing-library/user-event'
 import { checkEmailExisted, resetEmail, sendVerifyCode, verifyEmail } from '@/service/common'
 import EmailChangeModal from '../email-change-modal'
 
+const mockLogout = vi.fn()
+
 vi.mock('@/service/common', () => ({
   checkEmailExisted: vi.fn(),
   resetEmail: vi.fn(),
@@ -11,10 +13,8 @@ vi.mock('@/service/common', () => ({
 }))
 
 vi.mock('@/service/use-common', () => ({
-  useLogout: () => ({ mutateAsync: vi.fn() }),
+  useLogout: () => ({ mutateAsync: mockLogout }),
 }))
-
-vi.mock('@/next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }))
 
 describe('EmailChangeModal', () => {
   beforeEach(() => {
@@ -73,6 +73,7 @@ describe('EmailChangeModal', () => {
         token: 'verified-token',
       }),
     )
+    expect(mockLogout).toHaveBeenCalledOnce()
   })
 
   it('associates an unavailable-email error and clears it when the user edits the address', async () => {

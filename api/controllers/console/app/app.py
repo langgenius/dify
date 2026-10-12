@@ -1,4 +1,5 @@
 import uuid
+from dataclasses import asdict
 from http import HTTPStatus
 from typing import Literal, Self, override
 
@@ -78,7 +79,8 @@ from services.entities.app_entities import (
     UpdateAppParams,
 )
 from services.entities.dsl_entities import ImportStatus
-from services.entities.knowledge_entities.knowledge_entities import (
+from services.errors.base import NoPermissionError
+from services.knowledge.entities.knowledge_entities import (
     DataSource,
     InfoList,
     NotionIcon,
@@ -90,7 +92,6 @@ from services.entities.knowledge_entities.knowledge_entities import (
     WeightModel,
     WeightVectorSetting,
 )
-from services.errors.account import NoPermissionError
 
 register_enum_models(console_ns, IconType)
 
@@ -108,6 +109,7 @@ class AppListBaseQuery(BaseModel):
         description="Sort apps by last modified, recently created, or earliest created",
     )
     name: str | None = Field(default=None, description="Filter by app name")
+    openapi_visible: bool = Field(default=False, description="Only return apps with API access enabled")
     tag_ids: list[str] | None = Field(default=None, description="Filter by tag IDs")
     creator_ids: list[str] | None = Field(default=None, description="Filter by creator account IDs")
     is_created_by_me: bool | None = Field(default=None, description="Filter by creator")
@@ -303,11 +305,12 @@ _ADMIN_ROLES = frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN})
 
 def _app_detail_response(app: AppRecord) -> AppDetailWithSite:
     """Resolve transport URLs here so repositories work without a Flask request."""
-    response = AppDetailWithSite.model_validate(app, from_attributes=True)
-    response.api_base_url = normalize_api_base_url(dify_config.SERVICE_API_URL or request.host_url.rstrip("/"))
-    if response.site is not None:
-        response.site.app_base_url = dify_config.APP_WEB_URL or request.url_root.rstrip("/")
-    return response
+    data = asdict(app)
+    data["api_base_url"] = normalize_api_base_url(dify_config.SERVICE_API_URL or request.host_url.rstrip("/"))
+    data["app_id"] = None
+    if data["site"] is not None:
+        data["site"]["app_base_url"] = dify_config.APP_WEB_URL or request.url_root.rstrip("/")
+    return AppDetailWithSite.model_validate(data)
 
 
 class AppResource(Resource):

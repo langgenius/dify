@@ -20,7 +20,7 @@ import {
   AgentOrchestrateReadOnlyContext,
   AgentOrchestrateViewingVersionContext,
 } from '../../read-only-context'
-import { AgentTools } from '../index'
+import { AgentTemplateTools, AgentTools } from '../index'
 
 const toolProviderState = vi.hoisted(() => ({
   builtInTools: [] as ToolWithProvider[] | undefined,
@@ -490,9 +490,11 @@ function renderAgentToolsWithStore(initialDraft: AgentSoulConfigFormState = agen
 
 function renderReadonlyAgentTools({
   initialDraft = agentToolsDraft,
+  template = false,
   viewingVersion = false,
 }: {
   initialDraft?: AgentSoulConfigFormState
+  template?: boolean
   viewingVersion?: boolean
 } = {}) {
   const queryClient = new QueryClient({
@@ -509,7 +511,7 @@ function renderReadonlyAgentTools({
       <AgentComposerProvider initialDraft={initialDraft}>
         <AgentOrchestrateViewingVersionContext value={viewingVersion}>
           <AgentOrchestrateReadOnlyContext value>
-            <AgentTools />
+            {template ? <AgentTemplateTools /> : <AgentTools />}
           </AgentOrchestrateReadOnlyContext>
         </AgentOrchestrateViewingVersionContext>
       </AgentComposerProvider>
@@ -674,6 +676,23 @@ describe('AgentTools', () => {
   })
 
   describe('Display Metadata', () => {
+    it('shows a template tool icon from its published provider reference without marketplace metadata', () => {
+      const draft = {
+        ...reflectedUninstalledPluginDraft,
+        tools: reflectedUninstalledPluginDraft.tools.map((tool) => ({
+          ...tool,
+          pluginId: undefined,
+          providerType: CollectionType.builtIn,
+        })),
+      } satisfies AgentSoulConfigFormState
+
+      renderReadonlyAgentTools({ initialDraft: draft, template: true })
+
+      expect(
+        screen.getByText('https://marketplace.example.com/langgenius/google/icon'),
+      ).toBeInTheDocument()
+    })
+
     it('should enrich reflected provider tools with provider icon and localized names', async () => {
       const user = userEvent.setup()
       toolProviderState.builtInTools = [

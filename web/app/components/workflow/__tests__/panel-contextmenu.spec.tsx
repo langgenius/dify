@@ -1,5 +1,7 @@
 import { ContextMenu } from '@langgenius/dify-ui/context-menu'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { detectPlatform } from '@tanstack/react-hotkeys'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { withSelectorKey } from '@/test/i18n-mock'
 import { FlowType } from '@/types/common'
 import { fullWorkflowAccessControl } from '../hooks-store'
@@ -181,6 +183,26 @@ describe('PanelContextmenu', () => {
     expect(mockHandleNodesPaste).not.toHaveBeenCalled()
     expect(mockClose).not.toHaveBeenCalled()
   })
+
+  it.each([false, true])(
+    'handles menu paste only when clipboard is available: %s',
+    async (hasClipboard) => {
+      const user = userEvent.setup()
+      renderPanelContextmenu({
+        initialStoreState: {
+          contextMenuTarget: { type: 'panel' },
+          clipboardElements: hasClipboard ? [createNode({ id: 'copied-node' })] : [],
+        },
+        hooksStoreProps: {},
+      })
+      const item = await screen.findByRole('menuitem', { name: /common.run/ })
+      act(() => item.focus())
+      const mod = detectPlatform() === 'mac' ? 'Meta' : 'Control'
+      await user.keyboard(`{${mod}>}v{/${mod}}`)
+      expect(mockHandleNodesPaste).toHaveBeenCalledTimes(hasClipboard ? 1 : 0)
+      expect(mockClose).toHaveBeenCalledTimes(hasClipboard ? 1 : 0)
+    },
+  )
 
   it('should render actions and execute enabled actions', async () => {
     const { store } = renderPanelContextmenu({

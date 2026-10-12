@@ -737,7 +737,7 @@ export function FileEditor({
     event: KeyboardEvent<HTMLDivElement | HTMLTextAreaElement>,
     bodyMode = false,
   ) => {
-    if (!isMarkdown || readonly) return
+    if (!isMarkdown || readonly || event.nativeEvent.isComposing) return
 
     if (
       bodyMode &&
@@ -1209,7 +1209,8 @@ export function FileEditor({
                               setMetadataKey(event.target.value)
                             }}
                             onKeyDown={(event) => {
-                              if (event.key === 'Escape') handleCancelAddMetadata()
+                              if (!event.nativeEvent.isComposing && event.key === 'Escape')
+                                handleCancelAddMetadata()
                             }}
                           />
                           <button
@@ -1230,6 +1231,7 @@ export function FileEditor({
                             setMetadataValue(event.target.value)
                           }}
                           onKeyDown={(event) => {
+                            if (event.nativeEvent.isComposing) return
                             if (event.key === 'Escape') {
                               handleCancelAddMetadata()
                               return
@@ -1244,7 +1246,7 @@ export function FileEditor({
                             }
                           }}
                           onKeyUp={(event) => {
-                            if (event.key !== 'Enter') return
+                            if (event.nativeEvent.isComposing || event.key !== 'Enter') return
 
                             event.preventDefault()
                             event.stopPropagation()

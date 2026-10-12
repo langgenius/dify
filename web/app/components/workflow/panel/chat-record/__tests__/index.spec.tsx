@@ -1,10 +1,10 @@
 import type { HistoryWorkflowData } from '@/app/components/workflow/types'
-import type { App, AppSSO } from '@/types/app'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { fetchConversationMessages } from '@/service/debug'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import ChatRecord from '../index'
 
 vi.mock('@/service/debug', () => ({
@@ -24,7 +24,7 @@ describe('ChatRecord', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     useAppStore.setState({
-      appDetail: { id: 'app-1' } as App & Partial<AppSSO>,
+      appDetail: createAppDetailFixture(),
     })
   })
 
@@ -75,6 +75,7 @@ describe('ChatRecord', () => {
     expect(screen.getByText('Question 3')).toBeInTheDocument()
     expect(screen.getByText('Answer 3')).toBeInTheDocument()
     expect(screen.queryByText('Question 2')).not.toBeInTheDocument()
+    expect(screen.queryAllByRole('button', { name: 'common.operation.log' })).toHaveLength(0)
 
     await user.click(screen.getByRole('button', { name: 'Previous' }))
 
@@ -91,7 +92,14 @@ describe('ChatRecord', () => {
 
     mockFetchConversationMessages.mockResolvedValue({
       data: [
-        { id: 'msg-1', query: 'Question 1', answer: 'Answer 1', metadata: {}, message_files: [] },
+        {
+          id: 'msg-1',
+          query: 'Question 1',
+          answer: 'Answer 1',
+          metadata: {},
+          message_files: [],
+          workflow_run_id: 'run-1',
+        },
       ],
     } as never)
 
@@ -101,11 +109,14 @@ describe('ChatRecord', () => {
     })
 
     await screen.findByText('Question 1')
+    await user.click(screen.getByRole('button', { name: 'common.operation.log' }))
+    expect(store.getState().messageLogItem?.workflow_run_id).toBe('run-1')
 
     await user.click(container.querySelector('.size-6.cursor-pointer') as HTMLElement)
 
     expect(handleLoadBackupDraft).toHaveBeenCalledTimes(1)
     expect(store.getState().historyWorkflowData).toBeUndefined()
+    expect(store.getState().messageLogItem).toBeUndefined()
   })
 
   it('stops loading when conversation fetching fails', async () => {

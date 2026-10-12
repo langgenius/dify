@@ -1,6 +1,7 @@
 'use client'
-import type { FC } from 'react'
-import { buttonVariants } from '@langgenius/dify-ui/button'
+import type { AppMode } from '@dify/contracts/api/console/apps/types.gen'
+import type { ReactNode } from 'react'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
@@ -8,23 +9,23 @@ import {
   DialogContent,
   DialogDescription,
   DialogTitle,
+  DialogTrigger,
 } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
 import { AppModeEnum } from '@/types/app'
 
-type IShareLinkProps = {
-  isShow: boolean
-  onClose: () => void
+type CustomizeDialogProps = {
+  disabled?: boolean
+  triggerLabel?: string
   api_base_url: string
   appId: string
-  mode?: AppModeEnum
+  mode?: AppMode
   sourceCodeRepository?: 'webapp-conversation' | 'webapp-text-generator'
 }
 
-const StepNum: FC<{ children: React.ReactNode }> = ({ children }) => (
+const StepNum = ({ children }: { children: ReactNode }) => (
   <div className="mr-3 flex size-7 shrink-0 items-center justify-center rounded-2xl bg-util-colors-blue-blue-50 text-text-accent">
     {children}
   </div>
@@ -51,14 +52,14 @@ const GithubIcon = ({ className }: { className: string }) => {
 
 const prefixCustomize = 'overview.appInfo.customize'
 
-const CustomizeModal: FC<IShareLinkProps> = ({
-  isShow,
-  onClose,
+export function CustomizeDialog({
+  disabled,
+  triggerLabel,
   appId,
   api_base_url,
   mode,
   sourceCodeRepository,
-}) => {
+}: CustomizeDialogProps) {
   const { t } = useTranslation(['appOverview', 'common'])
   const docLink = useDocLink()
   const isChatApp = mode === AppModeEnum.CHAT || mode === AppModeEnum.ADVANCED_CHAT
@@ -67,7 +68,14 @@ const CustomizeModal: FC<IShareLinkProps> = ({
   const apiDocLink = docLink('/api-reference/guides/get-started')
 
   return (
-    <Dialog open={isShow} onOpenChange={(open) => !open && onClose()}>
+    <Dialog>
+      <DialogTrigger
+        disabled={disabled}
+        render={<Button variant="secondary" className="flex items-center gap-1 px-3" />}
+      >
+        <span aria-hidden className="i-custom-vender-deploy-code-block size-4" />
+        {triggerLabel ?? t(($) => $['overview.appInfo.customize.entry'], { ns: 'appOverview' })}
+      </DialogTrigger>
       <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-160 flex-col overflow-hidden!">
         <DialogTitle className="shrink-0 title-2xl-semi-bold text-text-primary">
           {t(($) => $[`${prefixCustomize}.title`], { ns: 'appOverview' })}
@@ -183,5 +191,3 @@ const CustomizeModal: FC<IShareLinkProps> = ({
     </Dialog>
   )
 }
-
-export default CustomizeModal

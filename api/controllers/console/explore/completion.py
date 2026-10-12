@@ -1,13 +1,14 @@
 import logging
+from http import HTTPStatus
 from typing import Any, Literal
 from uuid import UUID
 
 from flask import Response
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
-from werkzeug.exceptions import InternalServerError, NotFound, Unauthorized
 
 import services
+from controllers.common.errors import InternalServerError, NotFoundError, UnauthorizedError
 from controllers.common.fields import SimpleResultResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console.app.error import (
@@ -87,7 +88,7 @@ register_response_schema_models(console_ns, SimpleResultResponse)
 )
 class CompletionApi(Resource):
     @console_ns.expect(console_ns.models[CompletionMessageExplorePayload.__name__])
-    @console_ns.response(200, "Success")
+    @console_ns.response(HTTPStatus.OK, "Success")
     @console_account_admission()
     @get_installed_app
     @model_validate(CompletionMessageExplorePayload)
@@ -98,7 +99,7 @@ class CompletionApi(Resource):
         installed_app: InstalledAppRef,
     ) -> Response:
         try:
-            response = application_services().installed_app_generation.generate_completion(
+            response = application_services().installed_apps.generation.generate_completion(
                 installed_app=installed_app,
                 account_id=request_context.account_id,
                 args=req_data.model_dump(exclude_none=True),
@@ -111,11 +112,11 @@ class CompletionApi(Resource):
         except InstalledAppNotCompletionError:
             raise NotCompletionAppError() from None
         except InstalledAppNotFoundError:
-            raise NotFound("Installed app not found") from None
+            raise NotFoundError("Installed app not found") from None
         except AccountNotFoundError:
-            raise Unauthorized("Account no longer exists.") from None
+            raise UnauthorizedError("Account no longer exists.") from None
         except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+            raise NotFoundError("Conversation Not Exists.")
         except services.errors.conversation.ConversationCompletedError:
             raise ConversationCompletedError()
         except services.errors.app_model_config.AppModelConfigBrokenError:
@@ -141,7 +142,7 @@ class CompletionApi(Resource):
     endpoint="installed_app_stop_completion",
 )
 class CompletionStopApi(Resource):
-    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultResponse.__name__])
     @console_account_admission()
     @get_installed_app
     def post(
@@ -158,7 +159,7 @@ class CompletionStopApi(Resource):
             app_mode=AppMode.value_of(app_mode),
         )
 
-        return SimpleResultResponse(result="success").model_dump(mode="json"), 200
+        return SimpleResultResponse(result="success").model_dump(mode="json"), HTTPStatus.OK
 
 
 @console_ns.route(
@@ -167,7 +168,7 @@ class CompletionStopApi(Resource):
 )
 class ChatApi(Resource):
     @console_ns.expect(console_ns.models[ChatMessagePayload.__name__])
-    @console_ns.response(200, "Success")
+    @console_ns.response(HTTPStatus.OK, "Success")
     @console_account_admission()
     @get_installed_app
     @model_validate(ChatMessagePayload)
@@ -178,7 +179,7 @@ class ChatApi(Resource):
         installed_app: InstalledAppRef,
     ) -> Response:
         try:
-            response = application_services().installed_app_generation.generate_chat(
+            response = application_services().installed_apps.generation.generate_chat(
                 installed_app=installed_app,
                 account_id=request_context.account_id,
                 args=req_data.model_dump(exclude_none=True),
@@ -191,11 +192,11 @@ class ChatApi(Resource):
         except InstalledAppNotChatError:
             raise NotChatAppError() from None
         except InstalledAppNotFoundError:
-            raise NotFound("Installed app not found") from None
+            raise NotFoundError("Installed app not found") from None
         except AccountNotFoundError:
-            raise Unauthorized("Account no longer exists.") from None
+            raise UnauthorizedError("Account no longer exists.") from None
         except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+            raise NotFoundError("Conversation Not Exists.")
         except services.errors.conversation.ConversationCompletedError:
             raise ConversationCompletedError()
         except services.errors.app_model_config.AppModelConfigBrokenError:
@@ -223,7 +224,7 @@ class ChatApi(Resource):
     endpoint="installed_app_stop_chat_completion",
 )
 class ChatStopApi(Resource):
-    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultResponse.__name__])
     @console_account_admission()
     @get_installed_app
     def post(
@@ -240,4 +241,4 @@ class ChatStopApi(Resource):
             app_mode=app_mode,
         )
 
-        return SimpleResultResponse(result="success").model_dump(mode="json"), 200
+        return SimpleResultResponse(result="success").model_dump(mode="json"), HTTPStatus.OK

@@ -55,7 +55,6 @@ type Props = Readonly<{
   schema: FormInputSchema
   value: ResourceVarInputs
   onChange: (value: ResourceVarInputs) => void
-  inPanel?: boolean
   currentTool?: Tool
   currentProvider?: ToolWithProvider
   showManageInputField?: boolean
@@ -71,7 +70,6 @@ const ToolFormItem: FC<Props> = ({
   schema,
   value,
   onChange,
-  inPanel,
   currentTool,
   currentProvider,
   showManageInputField,
@@ -140,7 +138,6 @@ const ToolFormItem: FC<Props> = ({
         schema={schema}
         value={value}
         onChange={onChange}
-        inPanel={inPanel}
         currentTool={currentTool}
         currentProvider={currentProvider}
         showManageInputField={showManageInputField}

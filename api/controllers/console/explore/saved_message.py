@@ -1,9 +1,10 @@
+from http import HTTPStatus
 from uuid import UUID
 
 from flask_restx import Resource
-from werkzeug.exceptions import NotFound
 
 from controllers.common.controller_schemas import SavedMessageCreatePayload, SavedMessageListQuery
+from controllers.common.errors import NotFoundError
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.explore.error import NotCompletionAppError
@@ -32,7 +33,7 @@ def _require_completion_app(installed_app: InstalledAppRef) -> str:
 @console_ns.route("/installed-apps/<uuid:installed_app_id>/saved-messages", endpoint="installed_app_saved_messages")
 class SavedMessageListApi(Resource):
     @console_ns.doc(params=query_params_from_model(SavedMessageListQuery))
-    @console_ns.response(200, "Success", console_ns.models[SavedMessageInfiniteScrollPagination.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SavedMessageInfiniteScrollPagination.__name__])
     @console_account_admission()
     @get_installed_app
     @model_validate(SavedMessageListQuery)
@@ -52,7 +53,7 @@ class SavedMessageListApi(Resource):
         return dump_response(SavedMessageInfiniteScrollPagination, pagination)
 
     @console_ns.expect(console_ns.models[SavedMessageCreatePayload.__name__])
-    @console_ns.response(200, "Success", console_ns.models[ResultResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[ResultResponse.__name__])
     @console_account_admission()
     @get_installed_app
     @model_validate(SavedMessageCreatePayload)
@@ -71,7 +72,7 @@ class SavedMessageListApi(Resource):
                 message_id=str(req_data.message_id),
             )
         except MessageNotExistsError:
-            raise NotFound("Message Not Exists.")
+            raise NotFoundError("Message Not Exists.")
 
         return ResultResponse(result="success").model_dump(mode="json")
 
@@ -80,7 +81,7 @@ class SavedMessageListApi(Resource):
     "/installed-apps/<uuid:installed_app_id>/saved-messages/<uuid:message_id>", endpoint="installed_app_saved_message"
 )
 class SavedMessageApi(Resource):
-    @console_ns.response(204, "Saved message deleted successfully")
+    @console_ns.response(HTTPStatus.NO_CONTENT, "Saved message deleted successfully")
     @console_account_admission()
     @get_installed_app
     def delete(
@@ -96,4 +97,4 @@ class SavedMessageApi(Resource):
             message_id=str(message_id),
         )
 
-        return "", 204
+        return "", HTTPStatus.NO_CONTENT

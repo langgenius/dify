@@ -1,7 +1,6 @@
 import type { ReactElement } from 'react'
 import type { Mock } from 'vite-plus/test'
 import type { AnnotationItem } from '../type'
-import type { App } from '@/types/app'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { toast } from '@/app/notifications'
@@ -17,6 +16,7 @@ import {
   updateAnnotationStatus,
 } from '@/service/annotation'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import { AppModeEnum } from '@/types/app'
 import Annotation from '../index'
 import { AnnotationEnableStatus, JobStatus } from '../type'
@@ -80,7 +80,7 @@ vi.mock('../list', () => ({
         <button data-testid="list-view" onClick={() => props.onView(props.list[0])}>
           view
         </button>
-        <button data-testid="list-remove" onClick={() => props.onRemove(props.list[0].id)}>
+        <button data-testid="list-remove" onClick={() => props.onRemoved()}>
           remove
         </button>
         <button data-testid="list-batch-delete" onClick={() => props.onBatchDelete()}>
@@ -179,10 +179,10 @@ const queryAnnotationJobStatusMock = queryAnnotationJobStatus as Mock
 const updateAnnotationScoreMock = updateAnnotationScore as Mock
 const updateAnnotationStatusMock = updateAnnotationStatus as Mock
 
-const appDetail = {
+const appDetail = createAppDetailFixture({
   id: 'app-id',
   mode: AppModeEnum.CHAT,
-} as App
+})
 
 const createAnnotation = (overrides: Partial<AnnotationItem> = {}): AnnotationItem => ({
   id: overrides.id ?? 'annotation-1',
@@ -266,6 +266,20 @@ describe('Annotation', () => {
     expect(fetchAnnotationListMock).toHaveBeenCalledTimes(2)
   })
 
+  it('should refetch the list after a row is removed', async () => {
+    fetchAnnotationListMock.mockResolvedValue({ data: [createAnnotation()], total: 1 })
+
+    renderComponent()
+    await screen.findByTestId('list')
+    const fetchCount = fetchAnnotationListMock.mock.calls.length
+
+    fireEvent.click(screen.getByTestId('list-remove'))
+
+    await waitFor(() => {
+      expect(fetchAnnotationListMock.mock.calls.length).toBeGreaterThan(fetchCount)
+    })
+  })
+
   it('should support viewing items and running batch deletion success flow', async () => {
     const annotation = createAnnotation()
     fetchAnnotationListMock.mockResolvedValue({ data: [annotation], total: 1 })
@@ -323,7 +337,7 @@ describe('Annotation', () => {
     })
 
     await act(async () => {
-      await latestListProps.onBatchDelete()
+      await expect(latestListProps.onBatchDelete()).rejects.toThrow(error.message)
     })
 
     await waitFor(() => {
@@ -393,12 +407,7 @@ describe('Annotation', () => {
         AnnotationEnableStatus.disable,
         'job-1',
       )
-      expect(mockNotify).toHaveBeenCalledWith(
-        expect.objectContaining({
-          message: 'common.api.actionSuccess',
-          type: 'success',
-        }),
-      )
+      expect(screen.getByRole('switch')).toHaveAttribute('aria-checked', 'false')
     })
   })
 

@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite'
 import * as React from 'react'
 import { expect } from 'storybook/test'
 import { Switch, SwitchSkeleton } from '.'
+import { DirectionProvider } from '../direction-provider'
 import { Field, FieldDescription, FieldLabel } from '../field'
 
 const meta = {
@@ -12,7 +13,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'Toggle switch primitive with controlled and uncontrolled state support, loading state, and skeleton placeholder.',
+          'Toggle switch primitive with controlled and uncontrolled state support, loading state, and skeleton placeholder. Label it with a visible `FieldLabel` or `<label>`; use `aria-label` only when there is no visible label, because a non-blank `aria-label` takes precedence over any associated label.',
       },
     },
   },
@@ -50,7 +51,7 @@ type SwitchDemoProps = Partial<
   checked?: boolean
 }
 
-const SwitchDemo = (args: SwitchDemoProps) => {
+function SwitchDemo(args: SwitchDemoProps) {
   const [enabled, setEnabled] = React.useState(args.checked ?? false)
 
   return (
@@ -113,7 +114,7 @@ export const DisabledOn: Story = {
   },
 }
 
-const AllStatesDemo = () => {
+function AllStatesDemo() {
   const sizes = ['xs', 'sm', 'md', 'lg'] as const
 
   return (
@@ -202,7 +203,7 @@ export const AllStates: Story = {
   },
 }
 
-const SizeComparisonDemo = () => {
+function SizeComparisonDemo() {
   const [states, setStates] = React.useState({
     xs: false,
     sm: false,
@@ -260,7 +261,101 @@ export const SizeComparison: Story = {
   render: () => <SizeComparisonDemo />,
 }
 
-const LoadingDemo = () => {
+function RTLDemo() {
+  return (
+    <DirectionProvider direction="rtl">
+      <div lang="ar" dir="rtl" className="grid w-80 gap-6">
+        <div className="grid gap-3">
+          {(['xs', 'sm', 'md', 'lg'] as const).map((size) => (
+            <Field key={size} name={`rtl-${size}`}>
+              <FieldLabel className="flex items-center justify-between gap-3">
+                <span>{`تبديل (${size})`}</span>
+                <Switch size={size} defaultChecked={false} />
+              </FieldLabel>
+            </Field>
+          ))}
+        </div>
+        <div className="grid gap-3">
+          {(['md', 'lg'] as const).flatMap((size) =>
+            [false, true].map((checked) => (
+              <Field key={`${size}-${checked}`} name={`rtl-loading-${size}-${checked}`}>
+                <FieldLabel className="flex items-center justify-between gap-3">
+                  <span>{`جارٍ التحميل — ${checked ? 'مفعّل' : 'متوقف'} (${size})`}</span>
+                  <Switch size={size} checked={checked} loading />
+                </FieldLabel>
+              </Field>
+            )),
+          )}
+        </div>
+      </div>
+    </DirectionProvider>
+  )
+}
+
+export const RTL: Story = {
+  render: () => <RTLDemo />,
+  parameters: {
+    docs: {
+      story: { autoplay: false },
+      description: {
+        story:
+          'Set both DirectionProvider and HTML dir to rtl. Checked thumbs move left and stay inside the track in every size. Loading indicators remain opposite the thumb in md and lg sizes.',
+      },
+    },
+  },
+  play: async ({ canvas, userEvent }) => {
+    for (const size of ['xs', 'sm', 'md', 'lg']) {
+      const control = canvas.getByRole('switch', { name: `تبديل (${size})` })
+      const thumb = control.querySelector('span')!
+      const trackBounds = control.getBoundingClientRect()
+      const uncheckedBounds = thumb.getBoundingClientRect()
+
+      await expect(control).not.toBeChecked()
+      await expect(uncheckedBounds.right).toBeLessThanOrEqual(trackBounds.right)
+      await userEvent.click(control)
+      await expect(control).toBeChecked()
+      await Promise.all(
+        control.getAnimations({ subtree: true }).map((animation) => animation.finished),
+      )
+      const checkedBounds = thumb.getBoundingClientRect()
+      await expect(checkedBounds.left).toBeLessThan(uncheckedBounds.left)
+      await expect(checkedBounds.left).toBeGreaterThanOrEqual(trackBounds.left)
+      await expect(checkedBounds.right).toBeLessThanOrEqual(trackBounds.right)
+
+      await userEvent.keyboard(' ')
+      await expect(control).not.toBeChecked()
+      await Promise.all(
+        control.getAnimations({ subtree: true }).map((animation) => animation.finished),
+      )
+      await expect(thumb.getBoundingClientRect().left).toBeCloseTo(uncheckedBounds.left)
+    }
+
+    for (const size of ['md', 'lg']) {
+      for (const state of ['off', 'on']) {
+        const control = canvas.getByRole('switch', {
+          name: `جارٍ التحميل — ${state === 'on' ? 'مفعّل' : 'متوقف'} (${size})`,
+        })
+        await expect(control).toHaveAttribute('aria-disabled', 'true')
+        await expect(control).toHaveAttribute('aria-checked', String(state === 'on'))
+        const [thumb, spinner] = control.querySelectorAll('span')
+        const trackBounds = control.getBoundingClientRect()
+        const thumbBounds = thumb!.getBoundingClientRect()
+        const spinnerBounds = spinner!.getBoundingClientRect()
+        for (const bounds of [thumbBounds, spinnerBounds]) {
+          await expect(bounds.left).toBeGreaterThanOrEqual(trackBounds.left)
+          await expect(bounds.right).toBeLessThanOrEqual(trackBounds.right)
+        }
+        await expect(
+          state === 'on'
+            ? thumbBounds.right <= spinnerBounds.left
+            : spinnerBounds.right <= thumbBounds.left,
+        ).toBe(true)
+      }
+    }
+  },
+}
+
+function LoadingDemo() {
   const [loading, setLoading] = React.useState(true)
 
   return (
@@ -362,7 +457,7 @@ function useMockUpdateAutoRetrySettingMutation({
   }
 }
 
-const MutationLoadingDemo = () => {
+function MutationLoadingDemo() {
   const autoRetrySetting = useMockAutoRetrySettingQuery()
   const updateAutoRetrySetting = useMockUpdateAutoRetrySettingMutation({
     onSuccess: autoRetrySetting.setData,
@@ -406,26 +501,28 @@ export const MutationLoadingGuard: Story = {
   },
 }
 
-const SkeletonDemo = () => (
-  <div className="flex flex-col items-center space-y-4">
-    <div className="flex items-center gap-3">
-      <SwitchSkeleton size="xs" aria-hidden="true" />
-      <span className="text-sm text-gray-700">Extra Small skeleton</span>
+function SkeletonDemo() {
+  return (
+    <div className="flex flex-col items-center space-y-4">
+      <div className="flex items-center gap-3">
+        <SwitchSkeleton size="xs" aria-hidden="true" />
+        <span className="text-sm text-gray-700">Extra Small skeleton</span>
+      </div>
+      <div className="flex items-center gap-3">
+        <SwitchSkeleton size="sm" aria-hidden="true" />
+        <span className="text-sm text-gray-700">Small skeleton</span>
+      </div>
+      <div className="flex items-center gap-3">
+        <SwitchSkeleton size="md" aria-hidden="true" />
+        <span className="text-sm text-gray-700">Regular skeleton</span>
+      </div>
+      <div className="flex items-center gap-3">
+        <SwitchSkeleton size="lg" aria-hidden="true" />
+        <span className="text-sm text-gray-700">Large skeleton</span>
+      </div>
     </div>
-    <div className="flex items-center gap-3">
-      <SwitchSkeleton size="sm" aria-hidden="true" />
-      <span className="text-sm text-gray-700">Small skeleton</span>
-    </div>
-    <div className="flex items-center gap-3">
-      <SwitchSkeleton size="md" aria-hidden="true" />
-      <span className="text-sm text-gray-700">Regular skeleton</span>
-    </div>
-    <div className="flex items-center gap-3">
-      <SwitchSkeleton size="lg" aria-hidden="true" />
-      <span className="text-sm text-gray-700">Large skeleton</span>
-    </div>
-  </div>
-)
+  )
+}
 
 export const Skeleton: Story = {
   render: () => <SkeletonDemo />,

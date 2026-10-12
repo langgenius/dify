@@ -14,7 +14,7 @@ from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter
 from graphon.file import FileType
 from graphon.file.file_manager import download
 from graphon.model_runtime.entities.model_entities import ModelType
-from services.model_provider_service import ModelProviderService
+from services.model_provider.service import ModelProviderService
 
 
 class ASRTool(BuiltinTool):
@@ -28,7 +28,7 @@ class ASRTool(BuiltinTool):
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
-    ) -> Generator[ToolInvokeMessage, None, None]:
+    ) -> Generator[ToolInvokeMessage]:
         if not self.runtime:
             raise ValueError("Runtime is required")
         runtime = self.runtime

@@ -17,7 +17,6 @@ from core.plugin.impl.plugin import PluginInstaller
 from core.tools.entities.tool_entities import ApiProviderSchemaType
 from core.tools.tool_manager import ToolManager
 from events.app_event import app_was_updated
-from fields.app_fields import AppDetailWithSite
 from graphon.model_runtime.entities.model_entities import ModelType
 from machinery.context import RequestContext
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
@@ -63,7 +62,7 @@ from services.entities.dsl_entities import (
     Import,
     ImportStatus,
 )
-from services.model_provider_service import ModelProviderService
+from services.model_provider.service import ModelProviderService
 
 CONTEXT = RequestContext("request", "trace", "actor", "workspace")
 RECORD = AppRecord(id="app", name="Example", mode_compatible_with_agent="chat")
@@ -183,6 +182,14 @@ class Transfers:
         del context, source
         pytest.fail("Unexpected Agent package import")
 
+    def import_agent_template(self, context: RequestContext, params: AppImportParams) -> ImportedAppPackage:
+        del context, params
+        pytest.fail("Unexpected Agent template import")
+
+    def import_agent_package_url(self, context: RequestContext, params: AppImportParams) -> ImportedAppPackage:
+        del context, params
+        pytest.fail("Unexpected Agent package URL import")
+
     def check_dependencies(self, context: RequestContext, app_id: str) -> CheckDependenciesResult:
         del context, app_id
         pytest.fail("Unexpected dependency check")
@@ -289,10 +296,14 @@ def test_empty_list_skips_external_enrichment(ports: Ports) -> None:
 
 
 def test_starred_list_preserves_existing_visibility_contract(ports: Ports) -> None:
-    service, _, access, _, _ = ports
-    page = service.list_apps(CONTEXT, StarredAppListParams())
-    assert page.data[0].permission_keys == []
-    assert access.calls == [("modes", ["app"])]
+    service, apps, access, _, _ = ports
+    params = StarredAppListParams()
+    page = service.list_apps(CONTEXT, params)
+    assert page.data[0].permission_keys == ["app.preview"]
+    assert access.calls == [("permissions", CONTEXT, None), ("modes", ["app"])]
+    # visibility filtering is still skipped for starred lists
+    _, _, listed_params = apps.calls[0]
+    assert listed_params is params
 
 
 def test_recent_uses_list_visibility_and_permission_keys(ports: Ports) -> None:
@@ -333,7 +344,7 @@ def test_copy_success_requires_materialized_app_and_enriches_permissions(ports: 
     assert access.calls == [("inherit", "app", "app"), ("created_permissions", CONTEXT, "app")]
     assert apps.calls == [("get", CONTEXT, "app")]
     assert transfers.calls == [
-        ("dsl", CONTEXT, "app", AppExportOptions(include_secret=True)),
+        ("dsl", CONTEXT, "app", AppExportOptions(include_secret=True, preserve_agent_bindings=True)),
         (
             "import",
             CONTEXT,
@@ -839,13 +850,11 @@ def test_detail_tool_enrichment_releases_database_before_plugin_io(
                     assert read.scalar(select(App.id).where(App.name == "Created")) is not None
         else:
             result = read_result()
-            data = AppDetailWithSite.model_validate(result, from_attributes=True).model_dump(mode="json")
-            assert data["deleted_tools"] == [
+            assert result.deleted_tools == [
                 {"type": "api", "provider_id": missing_api, "tool_name": "tool"},
                 {"type": "api", "provider_id": providers[1].id, "tool_name": "tool"},
                 {"type": "builtin", "provider_id": "vendor/missing/tool", "tool_name": "tool"},
             ]
-            assert "tool_references" not in data
         assert remote_calls == [["vendor/missing/tool", "vendor/installed/tool"]]
         assert not checked_out
     finally:

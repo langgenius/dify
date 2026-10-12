@@ -1,5 +1,5 @@
 import { pinyin } from 'pinyin-pro'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { compareProviderLetters, getProviderLetter } from '../utils'
 
 describe('provider letter grouping', () => {

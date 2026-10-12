@@ -18,6 +18,7 @@ from extensions.ext_database import db
 from libs.login import current_account_with_tenant
 from models import App, AppMode
 from models.agent import AgentScope
+from models.enums import AppStatus
 
 __all__ = [
     "get_app_model",
@@ -25,31 +26,28 @@ __all__ = [
 ]
 
 
-def _is_hidden_backing_app(app_model: App, session: Session | scoped_session) -> bool:
-    binding = app_model.agent_app_binding_with_session(session=session, include_archived=True)
-    return binding is not None and binding.scope == AgentScope.WORKFLOW_ONLY
-
-
-def _load_app_model(session: Session, app_id: str) -> App | None:
-    """Load the tenant-scoped app row with the request session owned by `with_session`."""
+def _load_app_model(session: Session | scoped_session, app_id: str) -> App | None:
+    """Load the tenant-scoped Console app row through the given session."""
     _, current_tenant_id = current_account_with_tenant()
     app_model = session.scalar(
-        select(App).where(App.id == app_id, App.tenant_id == current_tenant_id, App.status == "normal").limit(1)
+        select(App)
+        .where(
+            App.id == app_id,
+            App.tenant_id == current_tenant_id,
+            App.status == AppStatus.NORMAL,
+        )
+        .limit(1)
     )
-    if app_model is not None and _is_hidden_backing_app(app_model, session):
-        return None
+    if app_model is not None:
+        binding = app_model.agent_app_binding_with_session(session=session, include_archived=True)
+        if binding is not None and binding.scope == AgentScope.WORKFLOW_ONLY:
+            return None
     return app_model
 
 
 def _load_app_model_from_scoped_session(app_id: str) -> App | None:
     """Load the app row for legacy handlers that have not adopted request session injection yet."""
-    _, current_tenant_id = current_account_with_tenant()
-    app_model = db.session.scalar(
-        select(App).where(App.id == app_id, App.tenant_id == current_tenant_id, App.status == "normal").limit(1)
-    )
-    if app_model is not None and _is_hidden_backing_app(app_model, db.session):
-        return None
-    return app_model
+    return _load_app_model(db.session, app_id)
 
 
 def _get_injected_session(args: tuple[object, ...]) -> Session | None:

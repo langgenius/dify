@@ -9,7 +9,6 @@ import { useDebounceFn } from 'ahooks'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
-import { useRouter } from '@/next/navigation'
 import { checkEmailExisted, resetEmail, sendVerifyCode, verifyEmail } from '@/service/common'
 import { useLogout } from '@/service/use-common'
 import { asyncRunSafe } from '@/utils'
@@ -53,7 +52,6 @@ function isFetchResponseError(error: unknown): error is FetchResponseError {
 
 const EmailChangeModal = ({ onClose, email }: Props) => {
   const { t } = useTranslation(['common', 'accountSettings'])
-  const router = useRouter()
   const [step, setStep] = useState<Step>(STEP.start)
   const [code, setCode] = useState<string>('')
   const [mail, setMail] = useState<string>('')
@@ -194,21 +192,13 @@ const EmailChangeModal = ({ onClose, email }: Props) => {
   }
 
   const { mutateAsync: logout } = useLogout()
-  const handleLogout = async () => {
-    await logout()
-
-    // Tokens are now stored in cookies and cleared by backend
-
-    router.push('/signin')
-  }
-
   const updateEmail = async (lastToken: string) => {
     try {
       await resetEmail({
         new_email: mail.trim(),
         token: lastToken,
       })
-      handleLogout()
+      await logout()
     } catch (error) {
       toast.error(`Error changing email: ${getErrorMessage(error)}`)
     }

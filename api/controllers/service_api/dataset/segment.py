@@ -27,26 +27,26 @@ from controllers.service_api.wraps import (
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
+from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from fields.segment_fields import (
     ChildChunkDetailResponse,
     ChildChunkListResponse,
     SegmentDetailResponse,
     SegmentResponse,
-    segment_response_with_summary,
-    segment_responses_with_summaries,
 )
 from graphon.model_runtime.entities.model_entities import ModelType
 from libs.helper import dump_response
 from libs.login import current_account_with_tenant
 from models.dataset import Dataset, Document, DocumentSegment
-from services.dataset_ref_service import DatasetRefService, SegmentRef
-from services.dataset_service import DatasetService, DocumentService, SegmentService
-from services.entities.knowledge_entities.knowledge_entities import SegmentUpdateArgs
 from services.errors.chunk import ChildChunkDeleteIndexError, ChildChunkIndexingError
 from services.errors.chunk import ChildChunkDeleteIndexError as ChildChunkDeleteIndexServiceError
 from services.errors.chunk import ChildChunkIndexingError as ChildChunkIndexingServiceError
-from services.summary_index_service import SummaryIndexService
+from services.knowledge.dataset_read_service import load_segment_detail, load_segment_details
+from services.knowledge.dataset_service import DatasetService, DocumentService, SegmentService
+from services.knowledge.entities.segments import SegmentUpdateArgs
+from services.knowledge.resource_scope import DatasetRef, SegmentRef
+from services.knowledge.summaries.adapters import SummaryIndexAdapter
 
 
 class SegmentCreateItemPayload(BaseModel):
@@ -133,12 +133,11 @@ register_response_schema_models(
 def _get_segment_for_document(
     session: Session, dataset: Dataset, document: Document, segment_id: str
 ) -> tuple[SegmentRef, DocumentSegment]:
-    dataset_ref = DatasetRefService.create_dataset_ref(dataset)
-    document_ref = DatasetRefService.create_document_ref(dataset_ref, document)
-    if document_ref is None:
+    if document.tenant_id != dataset.tenant_id or document.dataset_id != dataset.id:
         raise NotFound("Document not found.")
 
-    segment_ref = DatasetRefService.create_segment_ref(document_ref, segment_id)
+    dataset_ref = DatasetRef(tenant_id=dataset.tenant_id, dataset_id=dataset.id)
+    segment_ref = dataset_ref.document(document.id).segment(segment_id)
     segment = SegmentService.get_segment_by_ref(segment_ref, session=session)
     if not segment:
         raise NotFound("Segment not found.")
@@ -230,17 +229,24 @@ class SegmentApi(DatasetApiResource):
         for args_item in segment_items:
             SegmentService.segment_create_args_validate(args_item, document)
         segments = cast(
-            list[DocumentSegment], SegmentService.multi_create_segment(segment_items, document, dataset, session)
+            list[DocumentSegment],
+            SegmentService.multi_create_segment(
+                segment_items,
+                document,
+                dataset,
+                session,
+                mutations=application_services().knowledge.segments.mutations,
+            ),
         )
         segment_ids = [segment.id for segment in segments]
         summaries: dict[str, str | None] = {}
         if segment_ids:
-            summary_records = SummaryIndexService.get_segments_summaries(
+            summary_records = SummaryIndexAdapter.get_segments_summaries(
                 segment_ids=segment_ids, dataset_id=dataset_id_str, session=session
             )
             summaries = {chunk_id: record.summary_content for chunk_id, record in summary_records.items()}
         response = {
-            "data": segment_responses_with_summaries(segments, summaries, session=session),
+            "data": load_segment_details(segments, summaries, session=session),
             "doc_form": document.doc_form,
         }
         return dump_response(SegmentCreateListResponse, response), 200
@@ -322,13 +328,13 @@ class SegmentApi(DatasetApiResource):
         segment_ids = [segment.id for segment in segments]
         summaries: dict[str, str | None] = {}
         if segment_ids:
-            summary_records = SummaryIndexService.get_segments_summaries(
+            summary_records = SummaryIndexAdapter.get_segments_summaries(
                 segment_ids=segment_ids, dataset_id=dataset_id_str, session=session
             )
             summaries = {chunk_id: record.summary_content for chunk_id, record in summary_records.items()}
 
         response = {
-            "data": segment_responses_with_summaries(segments, summaries, session=session),
+            "data": load_segment_details(segments, summaries, session=session),
             "doc_form": document.doc_form,
             "total": total,
             "has_more": page * limit < total,
@@ -380,7 +386,9 @@ class DatasetSegmentApi(DatasetApiResource):
             raise NotFound("Document not found.")
         segment_id_str = str(segment_id)
         _, segment = _get_segment_for_document(session, dataset, document, segment_id_str)
-        SegmentService.delete_segment(segment, document, dataset, session)
+        SegmentService.delete_segment(
+            segment, document, dataset, session, mutations=application_services().knowledge.segments.mutations
+        )
         return "", 204
 
     @service_api_ns.doc(
@@ -417,7 +425,7 @@ class DatasetSegmentApi(DatasetApiResource):
         document_id: UUID,
         segment_id: UUID,
     ):
-        _, current_tenant_id = current_account_with_tenant()
+        current_account, current_tenant_id = current_account_with_tenant()
         dataset_id_str = str(dataset_id)
         # check dataset
         dataset = session.scalar(
@@ -451,14 +459,20 @@ class DatasetSegmentApi(DatasetApiResource):
         segment_id_str = str(segment_id)
         _, segment = _get_segment_for_document(session, dataset, document, segment_id_str)
 
-        updated_segment = SegmentService.update_segment(payload.segment, segment, document, dataset, session)
-        summary = SummaryIndexService.get_segment_summary(
+        updated_segment = SegmentService.update_segment(
+            payload.segment,
+            segment,
+            document,
+            dataset,
+            session,
+            actor_id=current_account.id,
+            mutations=application_services().knowledge.segments.mutations,
+        )
+        summary = SummaryIndexAdapter.get_segment_summary(
             segment_id=updated_segment.id, dataset_id=dataset_id_str, session=session
         )
         response = {
-            "data": segment_response_with_summary(
-                updated_segment, summary.summary_content if summary else None, session=session
-            ),
+            "data": load_segment_detail(updated_segment, summary.summary_content if summary else None, session=session),
             "doc_form": document.doc_form,
         }
         return dump_response(SegmentDetailResponse, response), 200
@@ -510,13 +524,11 @@ class DatasetSegmentApi(DatasetApiResource):
         segment_id_str = str(segment_id)
         _, segment = _get_segment_for_document(session, dataset, document, segment_id_str)
 
-        summary = SummaryIndexService.get_segment_summary(
+        summary = SummaryIndexAdapter.get_segment_summary(
             segment_id=segment.id, dataset_id=dataset_id_str, session=session
         )
         response = {
-            "data": segment_response_with_summary(
-                segment, summary.summary_content if summary else None, session=session
-            ),
+            "data": load_segment_detail(segment, summary.summary_content if summary else None, session=session),
             "doc_form": document.doc_form,
         }
         return dump_response(SegmentDetailResponse, response), 200
@@ -567,7 +579,7 @@ class ChildChunkApi(DatasetApiResource):
         document_id: UUID,
         segment_id: UUID,
     ):
-        _, current_tenant_id = current_account_with_tenant()
+        current_account, current_tenant_id = current_account_with_tenant()
         """Create child chunk."""
         dataset_id_str = str(dataset_id)
         # check dataset
@@ -604,7 +616,15 @@ class ChildChunkApi(DatasetApiResource):
                 raise ProviderNotInitializeError(ex.description)
 
         try:
-            child_chunk = SegmentService.create_child_chunk(payload.content, segment, document, dataset, session)
+            child_chunk = SegmentService.create_child_chunk(
+                payload.content,
+                segment,
+                document,
+                dataset,
+                session,
+                actor_id=current_account.id,
+                mutations=application_services().knowledge.segments.mutations,
+            )
         except ChildChunkIndexingServiceError as e:
             raise ChildChunkIndexingError(str(e))
 
@@ -744,7 +764,9 @@ class DatasetChildChunkApi(DatasetApiResource):
             raise NotFound("Child chunk not found.")
 
         try:
-            SegmentService.delete_child_chunk(child_chunk, dataset, session)
+            SegmentService.delete_child_chunk(
+                child_chunk, dataset, session, mutations=application_services().knowledge.segments.mutations
+            )
         except ChildChunkDeleteIndexServiceError as e:
             raise ChildChunkDeleteIndexError(str(e))
 
@@ -790,7 +812,7 @@ class DatasetChildChunkApi(DatasetApiResource):
         segment_id: UUID,
         child_chunk_id: UUID,
     ):
-        current_account_with_tenant()
+        current_account, _ = current_account_with_tenant()
         """Update child chunk."""
         dataset_id_str = str(dataset_id)
         # check dataset
@@ -817,7 +839,14 @@ class DatasetChildChunkApi(DatasetApiResource):
 
         try:
             child_chunk = SegmentService.update_child_chunk(
-                payload.content, child_chunk, segment, document, dataset, session
+                payload.content,
+                child_chunk,
+                segment,
+                document,
+                dataset,
+                session,
+                actor_id=current_account.id,
+                mutations=application_services().knowledge.segments.mutations,
             )
         except ChildChunkIndexingServiceError as e:
             raise ChildChunkIndexingError(str(e))

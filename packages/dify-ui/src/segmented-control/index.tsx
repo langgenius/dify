@@ -1,7 +1,5 @@
 'use client'
 
-import type { Radio as BaseRadioNS } from '@base-ui/react/radio'
-import type { RadioGroup as BaseRadioGroupNS } from '@base-ui/react/radio-group'
 import type * as React from 'react'
 import { Radio as BaseRadio } from '@base-ui/react/radio'
 import { RadioGroup as BaseRadioGroup } from '@base-ui/react/radio-group'
@@ -19,7 +17,7 @@ type SegmentedControlSelectionProps<Value> =
     }
 
 type SegmentedControlProps<Value = string> = Omit<
-  BaseRadioGroupNS.Props<Value>,
+  BaseRadioGroup.Props<Value>,
   'defaultValue' | 'value'
 > &
   SegmentedControlSelectionProps<Value>
@@ -38,7 +36,7 @@ function SegmentedControl<Value = string>({ className, ...props }: SegmentedCont
   )
 }
 
-type SegmentedControlItemProps<Value = string> = BaseRadioNS.Root.Props<Value>
+type SegmentedControlItemProps<Value = string> = BaseRadio.Root.Props<Value>
 
 function SegmentedControlItem<Value = string>({
   className,

@@ -1,4 +1,4 @@
-import type { TryAppInfo } from '@/service/try-app'
+import type { TrialAppDetailResponse } from '@dify/contracts/api/console/trial-apps/types.gen'
 import { renderHook } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 import useGetRequirements from '../use-get-requirements'
@@ -14,7 +14,10 @@ vi.mock('@/config', () => ({
   MARKETPLACE_API_PREFIX: 'https://marketplace.api',
 }))
 
-const createMockAppDetail = (mode: string, overrides: Partial<TryAppInfo> = {}): TryAppInfo =>
+const createMockAppDetail = (
+  mode: string,
+  overrides: Partial<TrialAppDetailResponse> = {},
+): TrialAppDetailResponse =>
   ({
     id: 'test-app-id',
     name: 'Test App',
@@ -44,7 +47,7 @@ const createMockAppDetail = (mode: string, overrides: Partial<TryAppInfo> = {}):
       user_input_form: [],
     },
     ...overrides,
-  }) as unknown as TryAppInfo
+  }) as unknown as TrialAppDetailResponse
 
 describe('useGetRequirements', () => {
   afterEach(() => {
@@ -79,7 +82,7 @@ describe('useGetRequirements', () => {
           agent_mode: { tools: [] },
           user_input_form: [],
         },
-      } as unknown as Partial<TryAppInfo>)
+      } as unknown as Partial<TrialAppDetailResponse>)
 
       const { result } = renderHook(() => useGetRequirements({ appDetail, appId: 'test-app-id' }))
 
@@ -119,7 +122,7 @@ describe('useGetRequirements', () => {
           },
           user_input_form: [],
         },
-      } as unknown as Partial<TryAppInfo>)
+      } as unknown as Partial<TrialAppDetailResponse>)
 
       const { result } = renderHook(() => useGetRequirements({ appDetail, appId: 'test-app-id' }))
 
@@ -157,7 +160,7 @@ describe('useGetRequirements', () => {
           },
           user_input_form: [],
         },
-      } as unknown as Partial<TryAppInfo>)
+      } as unknown as Partial<TrialAppDetailResponse>)
 
       const { result } = renderHook(() => useGetRequirements({ appDetail, appId: 'test-app-id' }))
 
@@ -374,7 +377,7 @@ describe('useGetRequirements', () => {
           agent_mode: { tools: [] },
           user_input_form: [],
         },
-      } as unknown as Partial<TryAppInfo>)
+      } as unknown as Partial<TrialAppDetailResponse>)
 
       const { result } = renderHook(() => useGetRequirements({ appDetail, appId: 'test-app-id' }))
 
@@ -397,7 +400,7 @@ describe('useGetRequirements', () => {
           agent_mode: { tools: [] },
           user_input_form: [],
         },
-      } as unknown as Partial<TryAppInfo>)
+      } as unknown as Partial<TrialAppDetailResponse>)
 
       const { result } = renderHook(() => useGetRequirements({ appDetail, appId: 'test-app-id' }))
 
@@ -428,7 +431,7 @@ describe('useGetRequirements', () => {
           },
           user_input_form: [],
         },
-      } as unknown as Partial<TryAppInfo>)
+      } as unknown as Partial<TrialAppDetailResponse>)
 
       const { result } = renderHook(() => useGetRequirements({ appDetail, appId: 'test-app-id' }))
 

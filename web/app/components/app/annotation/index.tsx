@@ -1,9 +1,10 @@
 'use client'
+
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC } from 'react'
 import type { QueryParam } from './filter'
 import type { AnnotationItem, AnnotationItemBasic } from './type'
 import type { AnnotationReplyConfig } from '@/models/debug'
-import type { App } from '@/types/app'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Pagination } from '@langgenius/dify-ui/pagination'
@@ -45,7 +46,7 @@ import { AnnotationEnableStatus, JobStatus } from './type'
 import ViewAnnotationModal from './view-annotation-modal'
 
 type Props = Readonly<{
-  appDetail: App
+  appDetail: AppDetailWithSite
 }>
 
 const Annotation: FC<Props> = (props) => {
@@ -145,6 +146,7 @@ const Annotation: FC<Props> = (props) => {
       setSelectedIds([])
     } catch (e: any) {
       toast.error(e.message || t(($) => $['api.actionFailed'], { ns: 'common' }))
+      throw e
     }
   }
 
@@ -214,7 +216,6 @@ const Annotation: FC<Props> = (props) => {
                         )
                         await ensureJobCompleted(jobId, AnnotationEnableStatus.disable)
                         await fetchAnnotationConfig()
-                        toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
                       }
                     }}
                   ></Switch>
@@ -253,8 +254,12 @@ const Annotation: FC<Props> = (props) => {
           <LoadingPlaceholder className="h-full" />
         ) : total > 0 ? (
           <List
+            appId={appDetail.id}
             list={list}
-            onRemove={handleRemove}
+            onRemoved={() => {
+              fetchList()
+              setControlUpdateList(Date.now())
+            }}
             onView={handleView}
             selectedIds={selectedIds}
             onSelectedIdsChange={setSelectedIds}

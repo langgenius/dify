@@ -115,6 +115,7 @@ export const zPublishWorkflowPayload = z.object({
 export const zWorkflowPublishResponse = z.object({
   created_at: z.int(),
   result: z.string(),
+  warning: z.string().nullish(),
 })
 
 /**
@@ -760,7 +761,7 @@ export const zAgentFeatureToggleConfig = z.object({
  * AgentTextToSpeechFeatureConfig
  */
 export const zAgentTextToSpeechFeatureConfig = z.object({
-  autoPlay: z.string().nullish(),
+  autoPlay: z.enum(['disabled', 'enabled']).nullish(),
   enabled: z.boolean().optional().default(false),
   language: z.string().nullish(),
   voice: z.string().nullish(),

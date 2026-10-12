@@ -176,11 +176,12 @@ def init_app(app: DifyApp) -> Celery:
         "tasks.trigger_processing_tasks",  # async trigger processing
         "tasks.generate_summary_index_task",  # summary index generation
         "tasks.regenerate_summary_index_task",  # summary index regeneration
+        "tasks.rag_pipeline.rag_pipeline_run_task",  # regular RAG pipeline execution
+        "tasks.rag_pipeline.priority_rag_pipeline_run_task",  # priority RAG pipeline execution
         "tasks.initialize_created_app_rbac_access_task",  # app access initialization
         "tasks.install_default_plugins_task",  # tenant default plugin installation
         "tasks.new_agent_beta_task",  # New Agent Beta eligibility checks
         "tasks.refresh_billing_vector_space_task",  # billing vector-space cache refresh
-        "tasks.app_generate.resume_agent_app_task",  # ENG-635: Agent v2 chat ask_human resume
         "tasks.workflow_run_archive_download_tasks",  # workflow-run archive download preparation
     ]
     day = dify_config.CELERY_BEAT_SCHEDULER_TIME

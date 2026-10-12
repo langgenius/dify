@@ -31,6 +31,7 @@
   "error.passwordEmpty": "Passwort wird benötigt",
   "error.passwordInvalid": "Das Passwort muss Buchstaben und Zahlen enthalten und länger als 8 Zeichen sein",
   "error.registrationNotAllowed": "Konto nicht gefunden. Bitte wenden Sie sich an den Systemadministrator, um sich zu registrieren.",
+  "error.ssoFailed": "SSO-Anmeldung fehlgeschlagen. Bitte versuchen Sie es erneut oder wenden Sie sich an Ihren Administrator.",
   "explore": "Dify erkunden",
   "forget": "Passwort vergessen?",
   "forgotPassword": "Passwort vergessen?",

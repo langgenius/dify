@@ -6,14 +6,14 @@ answer nodes downstream of a pre-pause branch never unlock for streaming on
 resume, even though the graph executes correctly.
 """
 
-from datetime import timedelta
-from unittest.mock import MagicMock
+from pytest_mock import MockerFixture
+from sqlalchemy import select
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.repositories.human_input_repository import (
-    HumanInputFormEntity,
-    HumanInputFormRecipientEntity,
     HumanInputFormRepository,
+    HumanInputFormRepositoryImpl,
 )
 from core.workflow.nodes.human_input.callback import DifyHITLCallback
 from core.workflow.nodes.human_input.entities import HumanInputNodeData, UserActionConfig
@@ -36,38 +36,10 @@ from graphon.nodes.start.start_node import StartNode
 from graphon.runtime import GraphRuntimeState, VariablePool
 from graphon.utils.condition.entities import Condition
 from libs.datetime_utils import naive_utc_now
+from models.human_input import HumanInputForm
 from tests.workflow_test_utils import build_test_graph_init_params
 
 WORKFLOW_EXECUTION_ID = "wf-exec-38525"
-
-
-def _mock_repo_paused() -> HumanInputFormRepository:
-    repo = MagicMock(spec=HumanInputFormRepository)
-    form = MagicMock(spec=HumanInputFormEntity)
-    form.id = "form-1"
-    form.submission_token = "token-1"
-    form.recipients = list[HumanInputFormRecipientEntity]()
-    form.rendered_content = "rendered"
-    form.submitted = False
-    repo.create_form.return_value = form
-    repo.get_form.return_value = None
-    return repo
-
-
-def _mock_repo_resumed(action_id: str = "continue") -> HumanInputFormRepository:
-    repo = MagicMock(spec=HumanInputFormRepository)
-    form = MagicMock(spec=HumanInputFormEntity)
-    form.id = "form-1"
-    form.submission_token = "token-1"
-    form.recipients = list[HumanInputFormRecipientEntity]()
-    form.rendered_content = "rendered"
-    form.submitted = True
-    form.selected_action_id = action_id
-    form.submitted_data = dict[str, object]()
-    form.status = HumanInputFormStatus.WAITING
-    form.expiration_time = naive_utc_now() + timedelta(hours=1)
-    repo.get_form.return_value = form
-    return repo
 
 
 def _build_graph(runtime_state: GraphRuntimeState, form_repository: HumanInputFormRepository) -> Graph:
@@ -169,10 +141,19 @@ def _build_runtime_state() -> GraphRuntimeState:
     return GraphRuntimeState(variable_pool=variable_pool, start_at=0.0)
 
 
-def test_if_else_human_input_pause_resume_answer_chunks_survive_resume() -> None:
+def test_if_else_human_input_pause_resume_answer_chunks_survive_resume(
+    sqlite_session_factory: sessionmaker[Session],
+    mocker: MockerFixture,
+) -> None:
+    mocker.patch(
+        "core.repositories.human_input_repository.session_factory.create_session", side_effect=sqlite_session_factory
+    )
+    repository = HumanInputFormRepositoryImpl(
+        tenant_id="tenant", app_id="app", workflow_execution_id=WORKFLOW_EXECUTION_ID
+    )
     # ---- Phase 1: run to GraphRunPausedEvent ----
     runtime_state_1 = _build_runtime_state()
-    graph_1 = _build_graph(runtime_state_1, _mock_repo_paused())
+    graph_1 = _build_graph(runtime_state_1, repository)
     engine_1 = GraphEngine(
         workflow_id="wf",
         graph=graph_1,
@@ -196,9 +177,18 @@ def test_if_else_human_input_pause_resume_answer_chunks_survive_resume() -> None
     response_filter_snapshot = filter_1.dumps()
     runtime_snapshot = runtime_state_1.dumps()
 
+    with sqlite_session_factory.begin() as session:
+        form = session.scalar(select(HumanInputForm).where(HumanInputForm.workflow_run_id == WORKFLOW_EXECUTION_ID))
+        assert form is not None
+        assert form.status == HumanInputFormStatus.WAITING
+        form.selected_action_id = "continue"
+        form.submitted_data = "{}"
+        form.submitted_at = naive_utc_now()
+        form.status = HumanInputFormStatus.SUBMITTED
+
     # ---- Phase 2: rebuild engine + filter from snapshots, resume to completion ----
     runtime_state_2 = GraphRuntimeState.from_snapshot(runtime_snapshot)
-    graph_2 = _build_graph(runtime_state_2, _mock_repo_resumed(action_id="continue"))
+    graph_2 = _build_graph(runtime_state_2, repository)
     engine_2 = GraphEngine(
         workflow_id="wf",
         graph=graph_2,

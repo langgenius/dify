@@ -54,21 +54,6 @@ export const CommentInput: FC<CommentInputProps> = memo(
       endHandler: undefined,
     })
 
-    useEffect(() => {
-      const handleGlobalKeyDown = (e: KeyboardEvent) => {
-        if (e.key === 'Escape') {
-          e.preventDefault()
-          e.stopPropagation()
-          onCancel()
-        }
-      }
-
-      document.addEventListener('keydown', handleGlobalKeyDown, true)
-      return () => {
-        document.removeEventListener('keydown', handleGlobalKeyDown, true)
-      }
-    }, [onCancel])
-
     const handleMentionSubmit = useCallback(
       (content: string, mentionedUserIds: string[]) => {
         onSubmit(content, mentionedUserIds)
@@ -146,13 +131,22 @@ export const CommentInput: FC<CommentInputProps> = memo(
     )
 
     return (
+      // oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- The comment surface handles bubbling Escape after its child editor handles mentions.
       <div
         className={cn('absolute z-40 w-96', disabled && 'pointer-events-none opacity-80')}
         style={{
           left: position.x,
           top: position.y,
         }}
+        role="group"
         data-comment-input
+        onKeyDown={(event) => {
+          if (event.defaultPrevented || event.nativeEvent.isComposing || event.key !== 'Escape')
+            return
+          event.preventDefault()
+          event.stopPropagation()
+          onCancel()
+        }}
       >
         <div className="flex items-center gap-3">
           <IconButton

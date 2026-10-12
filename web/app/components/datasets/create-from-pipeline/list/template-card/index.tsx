@@ -1,11 +1,11 @@
 import type { PipelineTemplate } from '@/models/pipeline'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
@@ -41,7 +41,6 @@ const TemplateCard = ({ pipeline, showMoreOperations = true, type }: TemplateCar
   const { push } = useRouter()
   const [showEditModal, setShowEditModal] = useState(false)
   const [showDeleteConfirm, setShowConfirmDelete] = useState(false)
-  const [showDetailModal, setShowDetailModal] = useState(false)
 
   const { refetch: getPipelineTemplateInfo } = usePipelineTemplateById(
     {
@@ -100,10 +99,6 @@ const TemplateCard = ({ pipeline, showMoreOperations = true, type }: TemplateCar
     setShowEditModal(false)
   }, [])
 
-  const closeDetailsModal = useCallback(() => {
-    setShowDetailModal(false)
-  }, [])
-
   const { mutateAsync: exportPipelineDSL, isPending: isExporting } = useExportTemplateDSL()
 
   const handleExportDSL = useCallback(async () => {
@@ -148,7 +143,7 @@ const TemplateCard = ({ pipeline, showMoreOperations = true, type }: TemplateCar
         iconInfo={pipeline.icon}
         chunkStructure={pipeline.chunk_structure}
       />
-      <Dialog open={showDetailModal} onOpenChange={setShowDetailModal}>
+      <Dialog>
         <Actions
           onApplyTemplate={handleUseTemplate}
           showMoreOperations={showMoreOperations}
@@ -160,7 +155,7 @@ const TemplateCard = ({ pipeline, showMoreOperations = true, type }: TemplateCar
           <Details
             id={pipeline.id}
             type={type}
-            onClose={closeDetailsModal}
+            name={pipeline.name}
             onApplyTemplate={handleUseTemplate}
           />
         </DialogContent>
@@ -187,14 +182,14 @@ const TemplateCard = ({ pipeline, showMoreOperations = true, type }: TemplateCar
               {t(($) => $['deletePipeline.content'], { ns: 'datasetPipeline' })}
             </AlertDialogDescription>
           </div>
-          <AlertDialogActions>
+          <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton onClick={onConfirmDelete}>
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </div>

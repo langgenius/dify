@@ -312,7 +312,7 @@ export const AgentProviderToolItem = memo(
         className="overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-1 shadow-xs shadow-shadow-shadow-3"
       >
         <div className="flex min-h-7 items-center gap-1 rounded-lg py-0.5 pr-0.5 pl-1">
-          <CollapsibleTrigger className="group/collapsible flex min-h-0 w-full min-w-0 flex-1 touch-manipulation items-center justify-start gap-2 rounded-md pr-1 text-left system-sm-medium text-text-secondary outline-hidden select-none focus-visible:ring-2 focus-visible:ring-state-accent-solid">
+          <CollapsibleTrigger className="group/collapsible flex min-h-0 w-full min-w-0 flex-1 touch-manipulation items-center justify-start gap-2 rounded-md pr-1 text-left system-sm-medium text-text-secondary select-none">
             <ProviderIcon icon={icon} iconClassName={tool.iconClassName} />
             <span className="flex min-w-0 items-center">
               <span className="min-w-0 truncate system-sm-medium text-text-primary">
@@ -328,7 +328,7 @@ export const AgentProviderToolItem = memo(
           </CollapsibleTrigger>
           {!readOnly && (
             <DropdownMenu modal={false}>
-              <DropdownMenuTrigger className="flex size-6 shrink-0 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-popup-open:bg-state-base-hover">
+              <DropdownMenuTrigger className="flex size-6 shrink-0 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary data-popup-open:bg-state-base-hover">
                 <span className="sr-only">
                   {t(($) => $['agentDetail.configure.tools.moreActions'], { name: tool.name })}
                 </span>

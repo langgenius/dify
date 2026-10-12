@@ -12,7 +12,7 @@ from services.app_scoped_end_user_service import AppScopedEndUserService
 API_ROOT = Path(__file__).resolve().parents[3]
 
 
-def test_end_user_type_covers_persisted_creation_values():
+def test_end_user_type_covers_persisted_creation_values() -> None:
     assert {member.value for member in EndUserType} == {
         "app-deploy",
         "browser",
@@ -23,29 +23,29 @@ def test_end_user_type_covers_persisted_creation_values():
     }
 
 
-def test_end_user_type_is_plain_persisted_value_enum():
+def test_end_user_type_is_plain_persisted_value_enum() -> None:
     assert not hasattr(EndUserType, "from_invoke_from")
 
 
-def test_end_user_type_rejects_legacy_service_api_value():
+def test_end_user_type_rejects_legacy_service_api_value() -> None:
     with pytest.raises(ValueError):
         EndUserType("service_api")
 
     assert EndUserType("service-api") is EndUserType.SERVICE_API
 
 
-def test_end_user_type_still_rejects_unknown_values():
+def test_end_user_type_still_rejects_unknown_values() -> None:
     with pytest.raises(ValueError):
         EndUserType("not-a-real-end-user-type")
 
 
-def test_end_user_service_creation_methods_accept_end_user_type():
+def test_end_user_service_creation_methods_accept_end_user_type() -> None:
     get_or_create_type = inspect.signature(AppScopedEndUserService.get_or_create_end_user_by_type).parameters["type"]
     assert get_or_create_type.annotation is EndUserType
     assert inspect.signature(AppScopedEndUserService.create_end_user_batch).parameters["type"].annotation is EndUserType
 
 
-def test_end_user_service_callers_pass_end_user_type():
+def test_end_user_service_callers_pass_end_user_type() -> None:
     violations: list[str] = []
     method_names = {"get_or_create_end_user_by_type", "create_end_user_batch"}
     checked_calls = 0
@@ -77,14 +77,14 @@ def test_end_user_service_callers_pass_end_user_type():
     assert violations == []
 
 
-def test_end_user_type_column_uses_enum_text():
+def test_end_user_type_column_uses_enum_text() -> None:
     column_type = EndUser.__table__.c.type.type
 
     assert isinstance(column_type, EnumText)
     assert column_type._enum_class is EndUserType
 
 
-def test_production_end_user_constructors_use_end_user_type_enum():
+def test_production_end_user_constructors_use_end_user_type_enum() -> None:
     violations: list[str] = []
 
     for source_path in API_ROOT.rglob("*.py"):

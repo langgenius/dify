@@ -78,7 +78,7 @@ class ArchiveStorage:
             aws_secret_access_key=dify_config.ARCHIVE_STORAGE_SECRET_KEY,
             region_name=dify_config.ARCHIVE_STORAGE_REGION,
             config=Config(
-                s3={"addressing_style": "path"},
+                s3={"addressing_style": dify_config.ARCHIVE_STORAGE_ADDRESS_STYLE},
                 max_pool_connections=64,
             ),
         )
@@ -157,7 +157,7 @@ class ArchiveStorage:
         except BotoCoreError as e:
             raise ArchiveStorageError(f"Failed to download object '{key}': {e}") from e
 
-    def get_object_stream(self, key: str) -> Generator[bytes, None, None]:
+    def get_object_stream(self, key: str) -> Generator[bytes]:
         """
         Stream an object from the archive storage.
         The response body is closed when iteration ends or the generator is closed.

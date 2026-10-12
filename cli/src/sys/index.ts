@@ -10,6 +10,10 @@ export function env(): NodeJS.ProcessEnv {
   return process.env
 }
 
+export function argv(): readonly string[] {
+  return process.argv.slice(2)
+}
+
 export function processExit(code: number): never {
   return process.exit(code) as never
 }

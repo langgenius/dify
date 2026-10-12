@@ -4,6 +4,7 @@ import { Avatar } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Combobox,
+  ComboboxEmpty,
   ComboboxInput,
   ComboboxInputGroup,
   ComboboxItem,
@@ -19,7 +20,7 @@ import {
 } from '@langgenius/dify-ui/combobox'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useMembers } from '@/service/use-common'
@@ -37,7 +38,7 @@ type CreatorOption = {
 }
 
 const baseChipClassName =
-  'flex h-8 items-center whitespace-nowrap rounded-lg border-[0.5px] px-2 text-[13px] leading-4 outline-hidden transition-colors focus-visible:ring-2 focus-visible:ring-state-accent-solid'
+  'flex h-8 items-center whitespace-nowrap rounded-lg border-[0.5px] px-2 text-[13px] leading-4 transition-colors motion-reduce:transition-none'
 
 const CreatorsFilter = ({ value, onChange }: CreatorsFilterProps) => {
   const { t } = useTranslation(['app', 'common'])
@@ -46,9 +47,7 @@ const CreatorsFilter = ({ value, onChange }: CreatorsFilterProps) => {
     select: (data) => data.profile.id,
   })
   const { data: membersData } = useMembers()
-  const [keywords, setKeywords] = useState('')
   const triggerRef = useRef<HTMLButtonElement>(null)
-  const searchInputRef = useRef<HTMLInputElement>(null)
 
   const creatorOptions = useMemo<CreatorOption[]>(() => {
     const members = membersData?.accounts ?? []
@@ -86,14 +85,8 @@ const CreatorsFilter = ({ value, onChange }: CreatorsFilterProps) => {
       .filter((creator): creator is CreatorOption => Boolean(creator))
   }, [creatorMap, value])
 
-  const clearCreatorQuery = useCallback(() => {
-    setKeywords('')
-    searchInputRef.current?.focus()
-  }, [])
-
   const handleSelectionClear = useCallback(() => {
     onChange([])
-    setKeywords('')
     triggerRef.current?.focus()
   }, [onChange])
 
@@ -115,23 +108,20 @@ const CreatorsFilter = ({ value, onChange }: CreatorsFilterProps) => {
       autoHighlight
       items={creatorItems}
       value={value}
-      inputValue={keywords}
-      onInputValueChange={setKeywords}
       onValueChange={(nextValue) => onChange(nextValue)}
     >
       <div className="relative inline-flex h-8 items-stretch">
         <ComboboxTrigger
           ref={triggerRef}
-          icon={false}
           aria-label={creatorFilterLabel}
           className={cn(
             baseChipClassName,
-            'peer/creators-trigger w-auto min-w-0 border-components-button-secondary-border bg-components-button-secondary-bg pr-8 shadow-xs hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-placeholder:border-transparent data-placeholder:bg-components-input-bg-normal data-placeholder:pr-2 data-placeholder:text-text-tertiary data-placeholder:shadow-none data-placeholder:hover:bg-components-input-bg-hover data-popup-open:bg-state-base-hover-alt',
+            'group/creators-trigger peer/creators-trigger w-auto min-w-0 gap-0.5 border-components-button-secondary-border bg-components-button-secondary-bg py-2 pr-8 text-start system-sm-regular shadow-xs hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-placeholder:border-transparent data-placeholder:bg-components-input-bg-normal data-placeholder:pr-2 data-placeholder:text-text-tertiary data-placeholder:shadow-none data-placeholder:hover:bg-components-input-bg-hover data-popup-open:bg-state-base-hover-alt',
           )}
         >
           <ComboboxValue<string, true>>
             <span aria-hidden className="flex min-w-0 items-center">
-              <span className="px-1 text-text-tertiary group-data-popup-open/combobox-trigger:text-text-secondary">
+              <span className="px-1 text-text-tertiary group-data-popup-open/creators-trigger:text-text-secondary">
                 {creatorFilterLabel}
               </span>
               {selectedCount > 0 ? (
@@ -147,10 +137,10 @@ const CreatorsFilter = ({ value, onChange }: CreatorsFilterProps) => {
                       />
                     ))}
                   </span>
-                  <span className="text-xs leading-4 font-medium text-text-tertiary group-data-popup-open/combobox-trigger:text-text-secondary">{`+${selectedCount}`}</span>
+                  <span className="text-xs leading-4 font-medium text-text-tertiary group-data-popup-open/creators-trigger:text-text-secondary">{`+${selectedCount}`}</span>
                 </>
               ) : (
-                <span className="i-ri-arrow-down-s-line h-4 w-4 shrink-0 text-text-tertiary group-data-popup-open/combobox-trigger:text-text-secondary" />
+                <span className="i-ri-arrow-down-s-line h-4 w-4 shrink-0 text-text-tertiary group-data-popup-open/creators-trigger:text-text-secondary" />
               )}
             </span>
             <span className="sr-only">{selectedCountLabel}</span>
@@ -173,34 +163,20 @@ const CreatorsFilter = ({ value, onChange }: CreatorsFilterProps) => {
             aria-label={t(($) => $['studio.filters.creators'], { ns: 'app' })}
             className="w-[min(280px,var(--available-width))] min-w-[min(var(--anchor-width),var(--available-width))] bg-components-panel-bg-blur text-sm text-text-secondary backdrop-blur-[5px]"
           >
-            <div className="p-2 pb-1">
-              <ComboboxInputGroup className="h-8 min-h-8 px-2">
-                <ComboboxInput
-                  ref={searchInputRef}
-                  type="search"
-                  name="creator-query"
-                  enterKeyHint="search"
-                  aria-label={t(($) => $['studio.filters.searchCreators'], { ns: 'app' })}
-                  className="block h-4.5 grow px-1 py-0 [&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none"
-                  placeholder={t(($) => $['studio.filters.searchCreators'], { ns: 'app' })}
-                />
-                <span
-                  aria-hidden
-                  className="order-first me-0.5 i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder"
-                />
-                {!!keywords && (
-                  <IconButton
-                    size="sm"
-                    aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
-                    className="me-0 shrink-0 text-text-quaternary hover:bg-transparent hover:text-text-tertiary focus-visible:bg-components-input-bg-hover focus-visible:ring-inset"
-                    onClick={clearCreatorQuery}
-                  >
-                    <span aria-hidden className="i-ri-close-circle-fill size-4" />
-                  </IconButton>
-                )}
-              </ComboboxInputGroup>
-            </div>
-            <ComboboxList<CreatorOption> className="max-h-60 px-1 pt-0 pb-1">
+            <ComboboxInputGroup>
+              <span
+                aria-hidden
+                className="i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder"
+              />
+              <ComboboxInput
+                name="creator-query"
+                enterKeyHint="search"
+                aria-label={t(($) => $['studio.filters.searchCreators'], { ns: 'app' })}
+                placeholder={t(($) => $['studio.filters.searchCreators'], { ns: 'app' })}
+              />
+            </ComboboxInputGroup>
+            <ComboboxEmpty>{t(($) => $.noData, { ns: 'common' })}</ComboboxEmpty>
+            <ComboboxList<CreatorOption> className="max-h-60">
               {(creator) => (
                 <ComboboxItem<string>
                   key={creator.id}

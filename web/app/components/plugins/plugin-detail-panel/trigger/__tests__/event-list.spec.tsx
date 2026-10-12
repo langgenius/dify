@@ -1,5 +1,6 @@
 import type { TriggerEvent } from '@/app/components/plugins/types'
 import { fireEvent, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { TriggerEventsList } from '../event-list'
 
@@ -100,6 +101,20 @@ describe('TriggerEventsList', () => {
       render(<TriggerEventsList />)
 
       fireEvent.click(screen.getByText('Event One'))
+
+      expect(screen.getByTestId('event-detail-drawer')).toBeInTheDocument()
+    })
+
+    it('opens an event through its named keyboard-focusable button', async () => {
+      const user = userEvent.setup()
+      render(<TriggerEventsList />)
+
+      const eventButton = screen.getByRole('button', { name: 'Event One' })
+      expect(eventButton).toHaveAccessibleDescription('Event one description')
+
+      await user.tab()
+      expect(eventButton).toHaveFocus()
+      await user.keyboard('{Enter}')
 
       expect(screen.getByTestId('event-detail-drawer')).toBeInTheDocument()
     })

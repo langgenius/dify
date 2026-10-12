@@ -1664,12 +1664,18 @@ export const zPipelineUploadFileResponse = z.object({
   size: z.int(),
 })
 
+export const zPreProcessingRuleKey = z.enum([
+  'remove_extra_spaces',
+  'remove_stopwords',
+  'remove_urls_emails',
+])
+
 /**
  * PreProcessingRule
  */
 export const zPreProcessingRule = z.object({
   enabled: z.boolean(),
-  id: z.enum(['remove_extra_spaces', 'remove_stopwords', 'remove_urls_emails']),
+  id: zPreProcessingRuleKey,
 })
 
 /**
@@ -1762,17 +1768,22 @@ export const zRetrieverResource = z.object({
   data_source_type: z.string().nullish(),
   dataset_id: z.uuid().nullish(),
   dataset_name: z.string().nullish(),
+  doc_metadata: z.record(z.string(), zJsonValueType).nullish(),
   document_id: z.uuid().nullish(),
   document_name: z.string().nullish(),
+  files: z.array(z.record(z.string(), zJsonValueType)).nullish(),
   hit_count: z.int().nullish(),
   id: z.uuid().optional(),
   index_node_hash: z.string().nullish(),
   message_id: z.uuid().optional(),
+  page: z.int().nullish(),
   position: z.int(),
+  retriever_from: z.string().nullish(),
   score: z.number().nullish(),
   segment_id: z.uuid().nullish(),
   segment_position: z.int().nullish(),
   summary: z.string().nullish(),
+  title: z.string().nullish(),
   word_count: z.int().nullish(),
 })
 

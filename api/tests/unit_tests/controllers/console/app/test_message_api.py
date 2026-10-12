@@ -101,11 +101,9 @@ def test_app_message_routes_pass_injected_session(
     message_id = "550e8400-e29b-41d4-a716-446655440000"
     list_messages = MagicMock(return_value={"data": []})
     update_feedback = MagicMock(return_value={"result": "success"})
-    get_suggested_questions = MagicMock(return_value={"data": ["next"]})
     get_message_detail = MagicMock(return_value={"id": message_id})
     monkeypatch.setattr(message_module, "_list_chat_messages", list_messages)
     monkeypatch.setattr(message_module, "_update_message_feedback", update_feedback)
-    monkeypatch.setattr(message_module, "_get_message_suggested_questions", get_suggested_questions)
     monkeypatch.setattr(message_module, "_get_message_detail", get_message_detail)
 
     assert unwrap(message_module.ChatMessageListApi.get)(
@@ -122,16 +120,12 @@ def test_app_message_routes_pass_injected_session(
         current_user,
         app_model,
     ) == {"result": "success"}
-    assert unwrap(message_module.MessageSuggestedQuestionApi.get)(
-        message_module.MessageSuggestedQuestionApi(), session, current_user, app_model, message_id
-    ) == {"data": ["next"]}
     assert unwrap(message_module.MessageApi.get)(message_module.MessageApi(), session, app_model, message_id) == {
         "id": message_id
     }
 
     assert list_messages.call_args.kwargs["session"] is session
     assert update_feedback.call_args.kwargs["session"] is session
-    assert get_suggested_questions.call_args.kwargs["session"] is session
     assert get_message_detail.call_args.kwargs["session"] is session
 
 
@@ -302,49 +296,6 @@ def test_message_feedback_payload_no_rating(app: Flask, monkeypatch: pytest.Monk
     """Test MessageFeedbackPayload without rating."""
     payload = message_module.MessageFeedbackPayload(message_id="550e8400-e29b-41d4-a716-446655440000")
     assert payload.rating is None
-
-
-def test_feedback_export_query_defaults(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Test FeedbackExportQuery with default format."""
-    query = message_module.FeedbackExportQuery()
-    assert query.format == "csv"
-    assert query.from_source is None
-
-
-def test_feedback_export_query_json_format(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Test FeedbackExportQuery with JSON format."""
-    query = message_module.FeedbackExportQuery(format="json")
-    assert query.format == "json"
-
-
-def test_feedback_export_query_has_comment_true(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Test FeedbackExportQuery with has_comment as true string."""
-    query = message_module.FeedbackExportQuery(has_comment="true")
-    assert query.has_comment is True
-
-
-def test_feedback_export_query_has_comment_false(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Test FeedbackExportQuery with has_comment as false string."""
-    query = message_module.FeedbackExportQuery(has_comment="false")
-    assert query.has_comment is False
-
-
-def test_feedback_export_query_has_comment_1(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Test FeedbackExportQuery with has_comment as 1."""
-    query = message_module.FeedbackExportQuery(has_comment="1")
-    assert query.has_comment is True
-
-
-def test_feedback_export_query_has_comment_0(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Test FeedbackExportQuery with has_comment as 0."""
-    query = message_module.FeedbackExportQuery(has_comment="0")
-    assert query.has_comment is False
-
-
-def test_feedback_export_query_rating_filter(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Test FeedbackExportQuery with rating filter."""
-    query = message_module.FeedbackExportQuery(rating="like")
-    assert query.rating == "like"
 
 
 def test_annotation_count_response(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:

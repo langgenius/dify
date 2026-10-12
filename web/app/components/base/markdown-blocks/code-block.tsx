@@ -18,13 +18,13 @@ import CopyIcon from '@/app/components/base/copy-icon'
 import ErrorBoundary from '@/app/components/base/markdown/error-boundary'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
-import SVGRenderer from '../svg-gallery' // Assumes svg-gallery.tsx is in /base directory
 import { highlightCode } from './shiki-highlight'
 
 const Flowchart = dynamic(() => import('@/app/components/base/mermaid'), { ssr: false })
 // React.lazy preserves the chart adapter's ref and loads each runtime only when rendered.
 const ReactEcharts = lazy(() => import('echarts-for-react'))
 const MarkdownMusic = lazy(() => import('./music'))
+const SVGRenderer = lazy(() => import('../svg-gallery'))
 
 const capitalizationLanguageNameMap: Record<string, string> = {
   sql: 'SQL',

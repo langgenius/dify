@@ -5,12 +5,10 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiInformation2Line } from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { useCallback } from 'react'
+import { useCallback, useId } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContextSelector } from 'use-context-selector'
 import { trackEvent } from '@/app/components/base/amplitude'
 import AppIcon from '@/app/components/base/app-icon'
-import AppListContext from '@/context/app-list-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AppTypeIcon, AppTypeLabel } from '../../type-selector'
 
@@ -18,9 +16,11 @@ type AppCardProps = {
   app: RecommendedAppResponse
   canCreate: boolean
   onCreate: () => void
+  onPreview: () => void
 }
 
-const AppCard = ({ app, canCreate, onCreate }: AppCardProps) => {
+const AppCard = ({ app, canCreate, onCreate, onPreview }: AppCardProps) => {
+  const id = useId()
   const { t } = useTranslation(['app', 'explore'])
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
@@ -36,7 +36,6 @@ const AppCard = ({ app, canCreate, onCreate }: AppCardProps) => {
       ? appBasicInfo.icon_type
       : null
   const canViewApp = deploymentEdition === 'CLOUD'
-  const openTryAppPanel = useContextSelector(AppListContext, (ctx) => ctx.openTryAppPanel)
   const handleShowTryAppPanel = useCallback(() => {
     trackEvent('preview_template', {
       template_id: app.app_id,
@@ -45,12 +44,12 @@ const AppCard = ({ app, canCreate, onCreate }: AppCardProps) => {
       template_categories: app.categories ?? [],
       page: 'studio',
     })
-    openTryAppPanel(app)
-  }, [openTryAppPanel, app, appName, appMode])
+    onPreview()
+  }, [onPreview, app, appName, appMode])
   return (
     <div
       className={cn(
-        'group relative flex h-33 cursor-pointer flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-4 shadow-xs hover:shadow-lg',
+        'group relative flex h-33 flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-4 shadow-xs hover:shadow-lg',
       )}
     >
       <div className="flex shrink-0 grow-0 items-center gap-3 pb-2">
@@ -70,7 +69,11 @@ const AppCard = ({ app, canCreate, onCreate }: AppCardProps) => {
         </div>
         <div className="flex grow flex-col gap-1">
           <div className="line-clamp-1">
-            <span className="system-md-semibold text-text-secondary" title={appName}>
+            <span
+              id={`${id}-name`}
+              className="system-md-semibold text-text-secondary"
+              title={appName}
+            >
               {appName}
             </span>
           </div>
@@ -83,7 +86,7 @@ const AppCard = ({ app, canCreate, onCreate }: AppCardProps) => {
       {(canCreate || canViewApp) && (
         <div
           className={cn(
-            'absolute right-0 bottom-0 left-0 hidden bg-linear-to-t from-components-panel-gradient-2 from-[60.27%] to-transparent p-4 pt-8 group-hover:flex',
+            'pointer-events-none absolute right-0 bottom-0 left-0 flex bg-linear-to-t from-components-panel-gradient-2 from-[60.27%] to-transparent p-4 pt-8 opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100',
           )}
         >
           <div
@@ -93,15 +96,17 @@ const AppCard = ({ app, canCreate, onCreate }: AppCardProps) => {
             )}
           >
             {canCreate && (
-              <Button variant="primary" onClick={() => onCreate()}>
-                <PlusIcon className="size-4" />
-                <span className="text-xs">{t(($) => $['newApp.useTemplate'], { ns: 'app' })}</span>
+              <Button variant="primary" aria-labelledby={`${id}-use ${id}-name`} onClick={onCreate}>
+                <PlusIcon aria-hidden="true" className="size-4" />
+                <span id={`${id}-use`} className="text-xs">
+                  {t(($) => $['newApp.useTemplate'], { ns: 'app' })}
+                </span>
               </Button>
             )}
             {canViewApp && (
-              <Button onClick={handleShowTryAppPanel}>
-                <RiInformation2Line className="size-4" />
-                <span>{t(($) => $['appCard.try'], { ns: 'explore' })}</span>
+              <Button aria-labelledby={`${id}-details ${id}-name`} onClick={handleShowTryAppPanel}>
+                <RiInformation2Line aria-hidden="true" className="size-4" />
+                <span id={`${id}-details`}>{t(($) => $['appCard.try'], { ns: 'explore' })}</span>
               </Button>
             )}
           </div>

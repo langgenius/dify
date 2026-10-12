@@ -16,6 +16,7 @@ import {
 import { memo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ACCESS_RULE_TABLE_GRID, DEFAULT_ACCESS_POLICY_ID } from './constants'
+import { isWorkspaceAdminRole } from './is-workspace-admin-role'
 
 type PolicyOption = {
   id: string
@@ -63,6 +64,7 @@ function UserAccessPolicyRow({
   const defaultAccessPolicyName = t(($) => $['accessRule.defaultPermission'], { ns: 'permission' })
   const accountEmail = setting.account.email || accountName
   const isWorkspaceOwner = setting.roles?.some((role) => role.role_tag === 'owner')
+  const isWorkspaceAdmin = setting.roles?.some(isWorkspaceAdminRole)
 
   const handlePolicyChange = useCallback(
     (nextPolicyId: string | null) => {
@@ -105,6 +107,11 @@ function UserAccessPolicyRow({
             {isWorkspaceOwner && (
               <span className="max-w-32 shrink-0 truncate rounded-[5px] border border-text-accent-secondary px-1 py-0.5 system-2xs-medium-uppercase text-text-accent-secondary">
                 {t(($) => $['accessRule.workspaceOwner'], { ns: 'permission' })}
+              </span>
+            )}
+            {isWorkspaceAdmin && (
+              <span className="max-w-32 shrink-0 truncate rounded-[5px] border border-text-accent-secondary px-1 py-0.5 system-2xs-medium-uppercase text-text-accent-secondary">
+                {t(($) => $['accessRule.workspaceAdmin'], { ns: 'permission' })}
               </span>
             )}
           </div>

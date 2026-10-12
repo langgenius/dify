@@ -2,12 +2,13 @@ import type { Connection } from 'reactflow'
 import type { IterationNodeType } from '../nodes/iteration/types'
 import type { LoopNodeType } from '../nodes/loop/types'
 import type { BlockEnum, Edge, Node, ValueSelector } from '../types'
+import { skipToken, useQuery } from '@tanstack/react-query'
 import { uniqBy } from 'es-toolkit/compat'
 import { useCallback } from 'react'
 import { getIncomers, getOutgoers } from 'reactflow'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { CUSTOM_ITERATION_START_NODE } from '@/app/components/workflow/nodes/iteration-start/constants'
 import { CUSTOM_LOOP_START_NODE } from '@/app/components/workflow/nodes/loop-start/constants'
+import { consoleQuery } from '@/service/console'
 import { AppModeEnum } from '@/types/app'
 import { SUPPORT_OUTPUT_VARS_NODE } from '../constants'
 import { useHooksStore } from '../hooks-store'
@@ -26,9 +27,15 @@ import { useCollaborativeWorkflow } from './use-collaborative-workflow'
 import { useNodesMetaData } from './use-nodes-meta-data'
 
 export const useIsChatMode = () => {
-  const appDetail = useAppStore((s) => s.appDetail)
+  const appId = useStore((state) => state.appId)
+  const { data: isChatMode } = useQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({
+      input: appId ? { params: { app_id: appId } } : skipToken,
+      select: (app) => app.mode === AppModeEnum.ADVANCED_CHAT,
+    }),
+  )
 
-  return appDetail?.mode === AppModeEnum.ADVANCED_CHAT
+  return isChatMode ?? false
 }
 
 export const useWorkflow = () => {

@@ -207,6 +207,28 @@ it('keeps marketplace search and its category link alongside the installed catal
   expect(screen.getByText('Marketplace strategy')).toBeInTheDocument()
 })
 
+it('shows installed strategies once and keeps other marketplace results available', async () => {
+  const user = userEvent.setup()
+  const provider = createProvider()
+  marketplaceResults.mockReturnValue([
+    createPlugin({ plugin_id: provider.plugin_id, label: { en_US: 'Installed Marketplace' } }),
+    createPlugin({ plugin_id: 'org/available', label: { en_US: 'Available Marketplace' } }),
+  ])
+  request.mockImplementation(() => Promise.resolve(Response.json([provider])))
+  render(<AgentStrategySelector onChange={vi.fn()} />, {
+    systemFeatures: { enable_marketplace: true },
+  })
+
+  await user.click(screen.getByText('workflowAgent.nodes.agent.strategy.selectTip'))
+  expect(await screen.findByRole('button', { name: 'Agent provider' })).toBeInTheDocument()
+  await user.type(
+    screen.getByPlaceholderText('workflowAgent.nodes.agent.strategy.searchPlaceholder'),
+    'agent',
+  )
+  expect(screen.queryByText('Installed Marketplace')).not.toBeInTheDocument()
+  expect(await screen.findByText('Available Marketplace')).toBeInTheDocument()
+})
+
 it('preserves an older saved selection with no plugin identifier until the user chooses a replacement', async () => {
   const user = userEvent.setup()
   const onChange = vi.fn()

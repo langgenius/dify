@@ -6,11 +6,11 @@ import type { GenRes } from '@/service/debug'
 import type { AppModeEnum, CompletionParams, Model, ModelModeType } from '@/types/app'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -416,7 +416,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
                   {t(($) => $['generate.overwriteMessage'], { ns: 'appGeneration' })}
                 </AlertDialogDescription>
               </div>
-              <AlertDialogActions>
+              <AlertDialogFooter>
                 <AlertDialogCancelButton>
                   {t(($) => $['operation.cancel'], { ns: 'common' })}
                 </AlertDialogCancelButton>
@@ -428,7 +428,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
                 >
                   {t(($) => $['operation.confirm'], { ns: 'common' })}
                 </AlertDialogConfirmButton>
-              </AlertDialogActions>
+              </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
         </div>

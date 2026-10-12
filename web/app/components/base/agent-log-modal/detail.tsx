@@ -1,14 +1,12 @@
 'use client'
 import type { FC } from 'react'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
-import type { AgentIteration, AgentLogDetailResponse } from '@/models/log'
+import type { AgentLogDetailResponse } from '@/models/log'
 import { cn } from '@langgenius/dify-ui/cn'
 import { uniq } from 'es-toolkit/array'
-import { flatten } from 'es-toolkit/compat'
 import * as React from 'react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { toast } from '@/app/notifications'
 import { fetchAgentLogDetail } from '@/service/log'
@@ -16,63 +14,21 @@ import ResultPanel from './result'
 import TracingPanel from './tracing'
 
 type AgentLogDetailProps = Readonly<{
+  appId: string
   activeTab?: 'DETAIL' | 'TRACING'
   conversationID: string
   log: IChatItem
   messageID: string
 }>
 const AgentLogDetail: FC<AgentLogDetailProps> = ({
+  appId,
   activeTab = 'DETAIL',
   conversationID,
   messageID,
   log,
 }) => {
   const { t } = useTranslation(['runLog'])
-  const [currentTab, setCurrentTab] = useState<string>(activeTab)
-  const appDetail = useAppStore((s) => s.appDetail)
-  const [loading, setLoading] = useState<boolean>(true)
-  const [runDetail, setRunDetail] = useState<AgentLogDetailResponse>()
-  const [list, setList] = useState<AgentIteration[]>([])
-  const tools = useMemo(() => {
-    const res = uniq(
-      flatten(
-        runDetail?.iterations.map((iteration) => {
-          return iteration.tool_calls.map((tool: any) => tool.tool_name).filter(Boolean)
-        }),
-      ).filter(Boolean),
-    )
-    return res
-  }, [runDetail])
-  const getLogDetail = useCallback(
-    async (appID: string, conversationID: string, messageID: string) => {
-      try {
-        const res = await fetchAgentLogDetail({
-          appID,
-          params: {
-            conversation_id: conversationID,
-            message_id: messageID,
-          },
-        })
-        setRunDetail(res)
-        setList(res.iterations)
-      } catch (err) {
-        toast.error(`${err}`)
-      }
-    },
-    [],
-  )
-  const getData = async (appID: string, conversationID: string, messageID: string) => {
-    setLoading(true)
-    await getLogDetail(appID, conversationID, messageID)
-    setLoading(false)
-  }
-  const switchTab = async (tab: string) => {
-    setCurrentTab(tab)
-  }
-  useEffect(() => {
-    // fetch data
-    if (appDetail) getData(appDetail.id, conversationID, messageID)
-  }, [appDetail, conversationID, messageID])
+  const [currentTab, setCurrentTab] = useState<'DETAIL' | 'TRACING'>(activeTab)
   return (
     <div className="relative flex grow flex-col">
       {/* tab */}
@@ -84,7 +40,7 @@ const AgentLogDetail: FC<AgentLogDetailProps> = ({
             currentTab === 'DETAIL' && 'border-[rgb(21,94,239)]! text-text-secondary',
           )}
           data-active={currentTab === 'DETAIL'}
-          onClick={() => switchTab('DETAIL')}
+          onClick={() => setCurrentTab('DETAIL')}
         >
           {t(($) => $.detail, { ns: 'runLog' })}
         </button>
@@ -95,41 +51,99 @@ const AgentLogDetail: FC<AgentLogDetailProps> = ({
             currentTab === 'TRACING' && 'border-[rgb(21,94,239)]! text-text-secondary',
           )}
           data-active={currentTab === 'TRACING'}
-          onClick={() => switchTab('TRACING')}
+          onClick={() => setCurrentTab('TRACING')}
         >
           {t(($) => $.tracing, { ns: 'runLog' })}
         </button>
       </div>
-      {/* panel detail */}
-      <div
-        className={cn(
-          'h-0 grow overflow-y-auto rounded-b-2xl bg-components-panel-bg',
-          currentTab !== 'DETAIL' && 'bg-background-section!',
-        )}
-      >
-        {loading && (
-          <div className="flex h-full items-center justify-center bg-components-panel-bg">
-            <LoadingPlaceholder />
-          </div>
-        )}
-        {!loading && currentTab === 'DETAIL' && runDetail && (
-          <ResultPanel
-            inputs={log.input}
-            outputs={log.content}
-            status={runDetail.meta.status}
-            error={runDetail.meta.error}
-            elapsed_time={runDetail.meta.elapsed_time}
-            total_tokens={runDetail.meta.total_tokens}
-            created_at={runDetail.meta.start_time}
-            created_by={runDetail.meta.executor}
-            agentMode={runDetail.meta.agent_mode}
-            tools={tools}
-            iterations={runDetail.iterations.length}
-          />
-        )}
-        {!loading && currentTab === 'TRACING' && <TracingPanel list={list} />}
-      </div>
+      <AgentLogContent
+        key={JSON.stringify([appId, conversationID, messageID])}
+        appId={appId}
+        conversationID={conversationID}
+        messageID={messageID}
+        log={log}
+        currentTab={currentTab}
+      />
     </div>
   )
 }
+type AgentLogContentProps = Omit<AgentLogDetailProps, 'activeTab'> & {
+  currentTab: 'DETAIL' | 'TRACING'
+}
+
+function AgentLogContent({
+  appId,
+  conversationID,
+  messageID,
+  log,
+  currentTab,
+}: AgentLogContentProps) {
+  const [loading, setLoading] = useState(true)
+  const [runDetail, setRunDetail] = useState<AgentLogDetailResponse>()
+  const tools = useMemo(
+    () =>
+      uniq(
+        (runDetail?.iterations ?? []).flatMap((iteration) =>
+          iteration.tool_calls
+            .map((tool) => tool.tool_name)
+            .filter((name): name is string => !!name),
+        ),
+      ),
+    [runDetail],
+  )
+
+  useEffect(() => {
+    let active = true
+    fetchAgentLogDetail({
+      appID: appId,
+      params: { conversation_id: conversationID, message_id: messageID },
+    }).then(
+      (data) => {
+        if (!active) return
+        setRunDetail(data)
+        setLoading(false)
+      },
+      (error) => {
+        if (!active) return
+        toast.error(`${error}`)
+        setLoading(false)
+      },
+    )
+    return () => {
+      active = false
+    }
+  }, [appId, conversationID, messageID])
+
+  return (
+    <div
+      className={cn(
+        'h-0 grow overflow-y-auto rounded-b-2xl bg-components-panel-bg',
+        currentTab !== 'DETAIL' && 'bg-background-section!',
+      )}
+    >
+      {loading && (
+        <div className="flex h-full items-center justify-center bg-components-panel-bg">
+          <LoadingPlaceholder />
+        </div>
+      )}
+      {!loading && currentTab === 'DETAIL' && runDetail && (
+        <ResultPanel
+          inputs={log.input}
+          outputs={log.content}
+          status={runDetail.meta.status}
+          error={runDetail.meta.error}
+          elapsed_time={runDetail.meta.elapsed_time}
+          total_tokens={runDetail.meta.total_tokens}
+          created_at={runDetail.meta.start_time}
+          created_by={runDetail.meta.executor}
+          agentMode={runDetail.meta.agent_mode}
+          tools={tools}
+          iterations={runDetail.iterations.length}
+        />
+      )}
+      {!loading && currentTab === 'TRACING' && <TracingPanel list={runDetail?.iterations ?? []} />}
+    </div>
+  )
+}
+
 export default AgentLogDetail

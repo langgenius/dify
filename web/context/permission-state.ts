@@ -4,10 +4,8 @@ import { atom } from 'jotai'
 import { atomWithQuery } from 'jotai-tanstack-query'
 import { consoleQuery } from '@/service/console'
 import { emptyWorkspacePermissionKeys } from './app-context-normalizers'
-import { authSessionRevisionAtom } from './auth-session-state'
 
-const workspacePermissionKeysQueryAtom = atomWithQuery((get) => {
-  get(authSessionRevisionAtom)
+const workspacePermissionKeysQueryAtom = atomWithQuery(() => {
   return consoleQuery.workspaces.current.rbac.myPermissions.get.queryOptions()
 })
 

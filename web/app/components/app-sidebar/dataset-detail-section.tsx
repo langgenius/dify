@@ -146,7 +146,10 @@ const DatasetDetailSection = ({ expand = true }: DatasetDetailSectionProps) => {
         <div className="py-2">
           <DatasetInfo expand={expand} />
         </div>
-        <nav className={cn('mt-3 flex flex-col gap-y-0.5 pb-2', expand ? 'px-1' : 'px-3')}>
+        <nav
+          aria-label={datasetRes.name}
+          className={cn('mt-3 flex flex-col gap-y-0.5 pb-2', expand ? 'px-1' : 'px-3')}
+        >
           {navigation.map((item) => (
             <NavLink
               key={item.href}

@@ -1,6 +1,6 @@
 import type { AgentWorkingDirectorySource } from '../working-directory-panel'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { toast } from '@/app/notifications'
@@ -347,6 +347,46 @@ describe('AgentWorkingDirectoryPanel', () => {
           truncated: false,
         }),
       }),
+    )
+  })
+
+  it('lets keyboard users expand and enter a folder with separate controls', async () => {
+    const user = userEvent.setup()
+    mocks.sandboxFilesQueryOptions.mockImplementation(({ input }: QueryOptionsInput) => {
+      const path = input.query?.path ?? '~'
+      return {
+        queryKey: ['sandbox-files-by-folder', path],
+        queryFn: async () => ({
+          path,
+          entries:
+            path === '~'
+              ? [{ name: 'reports', type: 'dir' }]
+              : [{ name: 'summary.txt', type: 'file' }],
+        }),
+      }
+    })
+    renderWorkingDirectoryPanel()
+
+    const folderTrigger = await screen.findByRole('button', { name: 'reports' })
+    expect(folderTrigger).toHaveAttribute('aria-expanded', 'false')
+
+    folderTrigger.focus()
+    await user.keyboard('{Enter}')
+    expect(folderTrigger).toHaveAttribute('aria-expanded', 'true')
+    expect(await screen.findByRole('button', { name: 'summary.txt' })).toBeInTheDocument()
+
+    const enterFolder = screen.getByRole('button', {
+      name: 'common.operation.view reports',
+    })
+    enterFolder.focus()
+    await user.keyboard('{Enter}')
+
+    const breadcrumb = screen.getByRole('navigation', {
+      name: 'agentV2.agentDetail.configure.workingDirectory.breadcrumbLabel',
+    })
+    expect(within(breadcrumb).getByRole('button', { name: 'reports' })).toHaveAttribute(
+      'aria-current',
+      'location',
     )
   })
 

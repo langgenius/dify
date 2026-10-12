@@ -1,6 +1,7 @@
-import type { App } from '@/types/app'
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import { screen } from '@testing-library/react'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { createAppDetailFixture, createAppSiteFixture } from '@/test/fixtures/app'
 import { AppModeEnum } from '@/types/app'
 import EmptyElement from '../empty-element'
 
@@ -29,7 +30,8 @@ vi.mock('react-i18next', async () => {
 })
 
 vi.mock('@/utils/app-redirection', () => ({
-  getRedirectionPath: (isTest: boolean, _app: App) => (isTest ? '/test-path' : '/prod-path'),
+  getRedirectionPath: (isTest: boolean, _app: AppDetailWithSite) =>
+    isTest ? '/test-path' : '/prod-path',
 }))
 
 vi.mock('@/utils/var', () => ({
@@ -38,7 +40,7 @@ vi.mock('@/utils/var', () => ({
 
 describe('EmptyElement', () => {
   const createMockAppDetail = (mode: AppModeEnum) =>
-    ({
+    createAppDetailFixture({
       id: 'test-app-id',
       name: 'Test App',
       description: 'Test description',
@@ -49,11 +51,11 @@ describe('EmptyElement', () => {
       enable_site: true,
       enable_api: true,
       created_at: Date.now(),
-      site: {
+      site: createAppSiteFixture({
         access_token: 'test-token',
         app_base_url: 'https://app.example.com',
-      },
-    }) as unknown as App
+      }),
+    })
 
   describe('Rendering', () => {
     it('should render empty element with title', () => {
@@ -112,6 +114,17 @@ describe('EmptyElement', () => {
       expect(link).toHaveAttribute('href', 'https://app.example.com/base/chat/test-token')
     })
   })
+
+  it.each([null, createAppSiteFixture({ access_token: null })])(
+    'keeps the editor link without offering an unavailable site link',
+    (site) => {
+      render(<EmptyElement appDetail={createAppDetailFixture({ site })} />)
+
+      const links = screen.getAllByRole('link')
+      expect(links).toHaveLength(1)
+      expect(links[0]).toHaveAttribute('href', '/test-path')
+    },
+  )
 
   describe('Links', () => {
     it('should render share link with correct attributes', () => {

@@ -2,6 +2,7 @@
 
 from collections.abc import Callable
 from functools import wraps
+from http import HTTPStatus
 from uuid import UUID
 
 from flask_restx import Resource
@@ -84,7 +85,7 @@ def _conversation_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
 @console_ns.route("/installed-apps/<uuid:installed_app_id>/conversations", endpoint="installed_app_conversations")
 class ConversationListApi(Resource):
     @console_ns.doc(params=query_params_from_model(ConversationListQuery))
-    @console_ns.response(200, "Success", console_ns.models[ConversationInfiniteScrollPagination.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[ConversationInfiniteScrollPagination.__name__])
     @console_account_admission()
     @get_installed_app
     @model_validate(ConversationListQuery)
@@ -92,7 +93,7 @@ class ConversationListApi(Resource):
     def get(
         self, query: ConversationListQuery, request_context: RequestContext, installed_app: InstalledAppRef
     ) -> dict[str, object]:
-        page = application_services().installed_app_conversations.get_page(
+        page = application_services().installed_apps.conversations.get_page(
             installed_app=installed_app,
             account_id=request_context.account_id,
             last_id=query.last_id or None,
@@ -106,15 +107,15 @@ class ConversationListApi(Resource):
     "/installed-apps/<uuid:installed_app_id>/conversations/<uuid:c_id>", endpoint="installed_app_conversation"
 )
 class ConversationApi(Resource):
-    @console_ns.response(204, "Conversation deleted successfully")
+    @console_ns.response(HTTPStatus.NO_CONTENT, "Conversation deleted successfully")
     @console_account_admission()
     @get_installed_app
     @_conversation_errors
     def delete(self, request_context: RequestContext, installed_app: InstalledAppRef, c_id: UUID) -> tuple[str, int]:
-        application_services().installed_app_conversations.delete(
+        application_services().installed_apps.conversations.delete(
             installed_app=installed_app, account_id=request_context.account_id, conversation_id=str(c_id)
         )
-        return "", 204
+        return "", HTTPStatus.NO_CONTENT
 
 
 @console_ns.route(
@@ -123,7 +124,9 @@ class ConversationApi(Resource):
 )
 class ConversationRenameApi(Resource):
     @console_ns.expect(console_ns.models[ConversationRenamePayload.__name__])
-    @console_ns.response(200, "Conversation renamed successfully", console_ns.models[SimpleConversation.__name__])
+    @console_ns.response(
+        HTTPStatus.OK, "Conversation renamed successfully", console_ns.models[SimpleConversation.__name__]
+    )
     @console_account_admission()
     @get_installed_app
     @model_validate(ConversationRenamePayload)
@@ -135,7 +138,7 @@ class ConversationRenameApi(Resource):
         installed_app: InstalledAppRef,
         c_id: UUID,
     ) -> dict[str, object]:
-        conversation = application_services().installed_app_conversations.rename(
+        conversation = application_services().installed_apps.conversations.rename(
             installed_app=installed_app,
             account_id=request_context.account_id,
             conversation_id=str(c_id),
@@ -149,12 +152,12 @@ class ConversationRenameApi(Resource):
     "/installed-apps/<uuid:installed_app_id>/conversations/<uuid:c_id>/pin", endpoint="installed_app_conversation_pin"
 )
 class ConversationPinApi(Resource):
-    @console_ns.response(200, "Success", console_ns.models[ResultResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[ResultResponse.__name__])
     @console_account_admission()
     @get_installed_app
     @_conversation_errors
     def patch(self, request_context: RequestContext, installed_app: InstalledAppRef, c_id: UUID) -> dict[str, object]:
-        application_services().installed_app_conversations.set_pinned(
+        application_services().installed_apps.conversations.set_pinned(
             installed_app=installed_app,
             account_id=request_context.account_id,
             conversation_id=str(c_id),
@@ -168,12 +171,12 @@ class ConversationPinApi(Resource):
     endpoint="installed_app_conversation_unpin",
 )
 class ConversationUnPinApi(Resource):
-    @console_ns.response(200, "Success", console_ns.models[ResultResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[ResultResponse.__name__])
     @console_account_admission()
     @get_installed_app
     @_conversation_errors
     def patch(self, request_context: RequestContext, installed_app: InstalledAppRef, c_id: UUID) -> dict[str, object]:
-        application_services().installed_app_conversations.set_pinned(
+        application_services().installed_apps.conversations.set_pinned(
             installed_app=installed_app,
             account_id=request_context.account_id,
             conversation_id=str(c_id),

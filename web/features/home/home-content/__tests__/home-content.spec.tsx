@@ -13,7 +13,7 @@ import type { DeploymentEdition } from '@dify/contracts/api/console/system-featu
 import type { ReactNode } from 'react'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import type { StepByStepTourSessionState } from '@/app/components/step-by-step-tour/types'
-import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider as JotaiProvider, useSetAtom } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
@@ -52,6 +52,11 @@ const mockConsoleState = vi.hoisted(() => ({
   userProfile: { id: 'user-1', name: 'Evan' },
   currentWorkspace: { id: 'workspace-1' },
   workspacePermissionKeys: [] as string[],
+}))
+const mockAgentPermissions = vi.hoisted(() => ({ canImport: false }))
+
+vi.mock('@/features/agent-v2/permissions', () => ({
+  useCanImportAgents: () => mockAgentPermissions.canImport,
 }))
 
 let mockExploreData: { categories: string[]; allList: RecommendedAppResponse[] } | undefined = {
@@ -620,6 +625,7 @@ describe('HomeContent', () => {
     mockLearnDifyLoading = false
     mockWorkspaceApps = []
     mockBanners = []
+    mockAgentPermissions.canImport = false
     mockStepByStepTour.reset()
   })
 
@@ -693,6 +699,30 @@ describe('HomeContent', () => {
       expect(screen.getByText('Alpha')).toBeInTheDocument()
       expect(screen.getByText('Beta')).toBeInTheDocument()
       expect(screen.getByRole('region', { name: 'explore.apps.title' })).toBeInTheDocument()
+    })
+
+    it('requires Agent import permission for an Agent template even with app creation permission', () => {
+      mockExploreData = {
+        categories: ['Writing'],
+        allList: [createApp({ app: { ...createApp().app, mode: 'agent' } })],
+      }
+
+      renderHomeContent({ hasEditPermission: true })
+
+      expect(screen.getByText('Alpha')).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Alpha' })).not.toBeInTheDocument()
+    })
+
+    it('allows Agent template creation with Agent import permission', () => {
+      mockExploreData = {
+        categories: ['Writing'],
+        allList: [createApp({ app: { ...createApp().app, mode: 'agent' } })],
+      }
+      mockAgentPermissions.canImport = true
+
+      renderHomeContent()
+
+      expect(screen.getByRole('button', { name: 'Alpha' })).toBeInTheDocument()
     })
 
     it('should render continue work with the first eight workspace apps', () => {
@@ -808,7 +838,8 @@ describe('HomeContent', () => {
       ).not.toBeInTheDocument()
     })
 
-    it('should render learn dify templates without badges or template metadata', () => {
+    it('should render learn dify templates without badges or template metadata', async () => {
+      vi.useRealTimers()
       mockExploreData = {
         categories: ['Writing'],
         allList: [createApp()],
@@ -816,7 +847,9 @@ describe('HomeContent', () => {
 
       renderHomeContent()
 
-      const learnDifyHeading = screen.getByRole('heading', { name: 'explore.learnDify.title' })
+      const learnDifyHeading = await screen.findByRole('heading', {
+        name: 'explore.learnDify.title',
+      })
       expect(learnDifyHeading).toBeInTheDocument()
       expect(learnDifyHeading.closest('section')).toHaveAttribute(
         'data-step-by-step-tour-target',
@@ -848,6 +881,7 @@ describe('HomeContent', () => {
     })
 
     it('should collapse learn dify and persist hidden state when hide is clicked', async () => {
+      vi.useRealTimers()
       mockExploreData = {
         categories: ['Writing'],
         allList: [createApp()],
@@ -855,21 +889,16 @@ describe('HomeContent', () => {
 
       renderHomeContent()
 
-      fireEvent.click(screen.getByRole('button', { name: 'explore.learnDify.hide' }))
+      const hideButton = await screen.findByRole('button', { name: 'explore.learnDify.hide' })
+      const user = userEvent.setup()
+      await user.click(hideButton)
 
-      const learnDifySection = screen
-        .getByRole('heading', { name: 'explore.learnDify.title' })
-        .closest('section')
-      expect(learnDifySection).toHaveClass('z-50', 'opacity-20')
-      expect(learnDifySection).toHaveStyle({ transform: 'scale(0.08)' })
-
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(800)
+      await waitFor(() => {
+        expect(
+          screen.queryByRole('heading', { name: 'explore.learnDify.title' }),
+        ).not.toBeInTheDocument()
       })
 
-      expect(
-        screen.queryByRole('heading', { name: 'explore.learnDify.title' }),
-      ).not.toBeInTheDocument()
       expect(localStorage.getItem(LEARN_DIFY_HIDDEN_STORAGE_KEY)).toBe('true')
     })
   })
@@ -1033,13 +1062,19 @@ describe('HomeContent', () => {
       })
     })
 
-    it('should reuse an invalidated cached template snapshot when creating an app', async () => {
+    it('should fetch the current template detail when creating an app', async () => {
       vi.useRealTimers()
       mockExploreData = {
         categories: ['Writing'],
         allList: [createApp()],
       }
-      mockGetRecommendedApp.mockRejectedValue(new Error('should not fetch'))
+      mockGetRecommendedApp.mockResolvedValue({
+        id: 'app-1',
+        name: 'Alpha',
+        can_trial: true,
+        export_data: 'latest-yaml',
+        mode: AppModeEnum.CHAT,
+      })
       mockHandleImportDSL.mockResolvedValue(undefined)
       const { queryClient } = renderHomeContent({ hasEditPermission: true })
       queryClient.setQueryData(recommendedAppQueryKey('app-1'), {
@@ -1059,11 +1094,29 @@ describe('HomeContent', () => {
       fireEvent.click(await screen.findByTestId('confirm-create'))
 
       await waitFor(() => expect(mockHandleImportDSL).toHaveBeenCalledTimes(1))
-      expect(mockGetRecommendedApp).not.toHaveBeenCalled()
+      expect(mockGetRecommendedApp).toHaveBeenCalledWith({ params: { app_id: 'app-1' } })
       expect(mockHandleImportDSL).toHaveBeenCalledWith(
-        expect.objectContaining({ yaml_content: 'cached-yaml' }),
+        expect.objectContaining({ yaml_content: 'latest-yaml' }),
         expect.any(Object),
       )
+    })
+
+    it('reports a template detail failure without starting an import', async () => {
+      vi.useRealTimers()
+      mockExploreData = {
+        categories: ['Writing'],
+        allList: [createApp()],
+      }
+      mockGetRecommendedApp.mockRejectedValue(new Error('Unavailable'))
+      renderHomeContent({ hasEditPermission: true })
+
+      fireEvent.click(screen.getByRole('button', { name: 'Alpha' }))
+      fireEvent.click(await screen.findByTestId('confirm-create'))
+
+      await waitFor(() =>
+        expect(toastMocks.api.error).toHaveBeenCalledWith('app.newApp.appCreateFailed'),
+      )
+      expect(mockHandleImportDSL).not.toHaveBeenCalled()
     })
 
     it('should open create flow from learn dify item card click', async () => {

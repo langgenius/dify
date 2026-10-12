@@ -13,6 +13,8 @@ export const zRecommendedAppDetailResponse = z.object({
   id: z.string(),
   mode: z.string(),
   name: z.string(),
+  package_url: z.string().nullish(),
+  version_id: z.string().nullish(),
 })
 
 /**

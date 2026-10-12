@@ -1,4 +1,6 @@
 import type { GeneratedGraph } from '../types'
+import { BlockEnum } from '@/app/components/workflow/types'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import { AppModeEnum } from '@/types/app'
 import {
   applyToCurrentApp,
@@ -7,16 +9,21 @@ import {
   WorkflowApplyOrphanError,
 } from '../apply'
 
-// Stub the service calls so each test can assert what was POSTed without
-// touching real fetch / next router state.
 const mockCreateApp = vi.fn()
 const mockSyncWorkflowDraft = vi.fn()
 const mockFetchWorkflowDraft = vi.fn()
 const mockDeleteApp = vi.fn()
 
-vi.mock('@/service/apps', () => ({
-  createApp: (params: unknown) => mockCreateApp(params),
-  deleteApp: (appId: string) => mockDeleteApp(appId),
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  request: async (_url: string, _init: RequestInit, { request }: { request: Request }) => {
+    if (request.method === 'POST') return Response.json(await mockCreateApp(await request.json()))
+    if (request.method === 'DELETE') {
+      await mockDeleteApp(new URL(request.url).pathname.split('/').at(-1))
+      return new Response(null, { status: 204 })
+    }
+    throw new Error(`Unexpected request: ${request.method} ${request.url}`)
+  },
 }))
 
 vi.mock('@/service/workflow', () => ({
@@ -37,10 +44,32 @@ const makeGraph = (): GeneratedGraph => ({
   viewport: { x: 0, y: 0, zoom: 0.7 },
 })
 
+const makeGraphWithMemory = (): GeneratedGraph => {
+  const graph = makeGraph()
+  const llmNode = {
+    id: 'llm-1',
+    type: 'custom',
+    position: { x: 300, y: 0 },
+    data: {
+      type: BlockEnum.LLM,
+      title: 'LLM',
+      desc: '',
+      memory: {
+        role_prefix: { user: '', assistant: '' },
+        window: { enabled: false, size: 10 },
+      },
+    },
+  }
+  graph.nodes.push(llmNode)
+  return graph
+}
+
 describe('applyToNewApp', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockCreateApp.mockResolvedValue({ id: 'new-app-1', mode: AppModeEnum.WORKFLOW })
+    mockCreateApp.mockResolvedValue(
+      createAppDetailFixture({ id: 'new-app-1', mode: AppModeEnum.WORKFLOW }),
+    )
     mockSyncWorkflowDraft.mockResolvedValue({})
   })
 
@@ -64,13 +93,19 @@ describe('applyToNewApp', () => {
         conversation_variables: [],
       },
     })
-    expect(result).toEqual({ appId: 'new-app-1', appMode: AppModeEnum.WORKFLOW })
+    expect(result).toEqual({
+      appId: 'new-app-1',
+      appMode: AppModeEnum.WORKFLOW,
+      permissionKeys: [],
+    })
   })
 
   // Mode → AppModeEnum must round-trip for chatflow; the type-level guarantee
   // is verified at runtime so a regression here is caught before users hit it.
   it('should map advanced-chat mode to AppModeEnum.ADVANCED_CHAT', async () => {
-    mockCreateApp.mockResolvedValueOnce({ id: 'cf-1', mode: AppModeEnum.ADVANCED_CHAT })
+    mockCreateApp.mockResolvedValueOnce(
+      createAppDetailFixture({ id: 'cf-1', mode: AppModeEnum.ADVANCED_CHAT }),
+    )
 
     const result = await applyToNewApp({
       mode: 'advanced-chat',
@@ -82,6 +117,31 @@ describe('applyToNewApp', () => {
       expect.objectContaining({ mode: AppModeEnum.ADVANCED_CHAT }),
     )
     expect(result.appMode).toBe(AppModeEnum.ADVANCED_CHAT)
+  })
+
+  it('should remove LLM memory before saving a generated Workflow draft', async () => {
+    await applyToNewApp({
+      mode: 'workflow',
+      graph: makeGraphWithMemory(),
+      instruction: 'Summarize a URL',
+    })
+
+    const savedGraph = mockSyncWorkflowDraft.mock.calls[0]![0].params.graph
+    expect(savedGraph.nodes[1].data).not.toHaveProperty('memory')
+  })
+
+  it('should preserve LLM memory when saving a generated Chatflow draft', async () => {
+    const graph = makeGraphWithMemory()
+
+    await applyToNewApp({
+      mode: 'advanced-chat',
+      graph,
+      instruction: 'Answer questions in a conversation',
+    })
+
+    const savedGraph = mockSyncWorkflowDraft.mock.calls[0]![0].params.graph
+    expect(savedGraph.nodes[1].data).toHaveProperty('memory')
+    expect(savedGraph).toEqual(graph)
   })
 
   // The derived name keeps the user instruction recognisable in the apps list
@@ -152,7 +212,9 @@ describe('applyToNewApp', () => {
   // empty app in their /apps list. deleteApp is called with the new app id,
   // and the original sync error is re-thrown so the caller can toast it.
   it('should delete the new app when syncWorkflowDraft fails', async () => {
-    mockCreateApp.mockResolvedValueOnce({ id: 'doomed', mode: AppModeEnum.WORKFLOW })
+    mockCreateApp.mockResolvedValueOnce(
+      createAppDetailFixture({ id: 'doomed', mode: AppModeEnum.WORKFLOW }),
+    )
     const syncErr = new Error('sync exploded')
     mockSyncWorkflowDraft.mockRejectedValueOnce(syncErr)
     mockDeleteApp.mockResolvedValueOnce(undefined)
@@ -173,7 +235,9 @@ describe('applyToNewApp', () => {
   // the orphan is at least discoverable for manual cleanup. The error
   // carries the orphan app id so the toast can name it.
   it('should throw WorkflowApplyOrphanError when both sync and rollback fail', async () => {
-    mockCreateApp.mockResolvedValueOnce({ id: 'orphan-7', mode: AppModeEnum.WORKFLOW })
+    mockCreateApp.mockResolvedValueOnce(
+      createAppDetailFixture({ id: 'orphan-7', mode: AppModeEnum.WORKFLOW }),
+    )
     mockSyncWorkflowDraft.mockRejectedValueOnce(new Error('sync exploded'))
     mockDeleteApp.mockRejectedValueOnce(new Error('delete also exploded'))
 
@@ -193,6 +257,30 @@ describe('applyToCurrentApp', () => {
     vi.clearAllMocks()
     mockSyncWorkflowDraft.mockResolvedValue({})
   })
+
+  it('should remove LLM memory before replacing the current Workflow draft', async () => {
+    await applyToCurrentApp({
+      appId: 'app-42',
+      appMode: AppModeEnum.WORKFLOW,
+      graph: makeGraphWithMemory(),
+    })
+
+    const savedGraph = mockSyncWorkflowDraft.mock.calls[0]![0].params.graph
+    expect(savedGraph.nodes[1].data).not.toHaveProperty('memory')
+  })
+
+  it.each([AppModeEnum.ADVANCED_CHAT, undefined])(
+    'should preserve LLM memory when the current app mode is %s',
+    async (appMode) => {
+      const graph = makeGraphWithMemory()
+
+      await applyToCurrentApp({ appId: 'app-42', appMode, graph })
+
+      const savedGraph = mockSyncWorkflowDraft.mock.calls[0]![0].params.graph
+      expect(savedGraph.nodes[1].data).toHaveProperty('memory')
+      expect(savedGraph).toEqual(graph)
+    },
+  )
 
   // Happy path: the fetch yields an existing draft so the sync MUST include
   // its hash. Without this, the backend rejects the write with

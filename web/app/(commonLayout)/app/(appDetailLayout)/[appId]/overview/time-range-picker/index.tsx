@@ -10,11 +10,9 @@ import dayjs from 'dayjs'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useLocale } from '#i18n'
+import { MonitoringDateRangePicker } from '@/app/components/app/monitoring/date-range-picker'
 import { formatToLocalTime } from '@/utils/format'
-import DatePicker from './date-picker'
 import RangeSelector from './range-selector'
-
-const today = dayjs()
 
 type TimePeriodName = I18nKeysByPrefix<'appLog', 'filter.period.'>
 
@@ -28,8 +26,8 @@ const TimeRangePicker: FC<Props> = ({ ranges, onSelect, queryDateFormat }) => {
   const locale = useLocale()
 
   const [isCustomRange, setIsCustomRange] = useState(false)
-  const [start, setStart] = useState<Dayjs>(today)
-  const [end, setEnd] = useState<Dayjs>(today)
+  const [start, setStart] = useState<Dayjs>(() => dayjs())
+  const [end, setEnd] = useState<Dayjs>(() => dayjs())
 
   const handleRangeChange = useCallback(
     (payload: PeriodParamsWithTimeRange) => {
@@ -79,7 +77,7 @@ const TimeRangePicker: FC<Props> = ({ ranges, onSelect, queryDateFormat }) => {
         aria-hidden
         className="i-custom-vender-other-hourglass-shape h-3.5 w-2 text-components-input-bg-normal"
       />
-      <DatePicker
+      <MonitoringDateRangePicker
         start={start}
         end={end}
         onStartChange={handleDateChange('start')}

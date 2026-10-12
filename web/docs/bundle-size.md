@@ -3,7 +3,7 @@
 The main CI calls **Web Bundle Analysis** when its Web style checks are required,
 for both pull requests and merge queue entries. It builds the event's exact base
 commit and the tested merge commit from `github.sha` in parallel. Both run the
-complete existing `vinext build` pipeline, including the unused translations check.
+complete `build:vinext` pipeline, including the unused translations check.
 No SSR, reference-analysis, or standalone stage is skipped.
 
 This replaces the separate Vinext build in Web Style. Static checks run alongside
@@ -64,7 +64,7 @@ Use it only in a disposable checkout, as CI does:
 
 ```sh
 node web/scripts/bundle-analysis.ts instrument web
-pnpm --dir web exec vinext build
+pnpm --dir web run build:vinext
 node web/scripts/bundle-analysis.ts collect web "$(git rev-parse HEAD)" /tmp/current.json
 node web/scripts/bundle-analysis.ts compare /tmp/base.json /tmp/current.json /tmp/report.md
 ```

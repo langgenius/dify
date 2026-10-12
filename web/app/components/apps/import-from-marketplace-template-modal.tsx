@@ -2,6 +2,7 @@
 
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { RiCloseLine } from '@remixicon/react'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -79,13 +80,13 @@ const ImportFromMarketplaceTemplateModal = ({
           </DialogTitle>
           <DialogClose
             render={
-              <button
-                type="button"
+              <IconButton
+                size="lg"
                 aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                className="flex size-8 cursor-pointer items-center border-none bg-transparent p-0 outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                className="mr-1.5"
               >
-                <RiCloseLine aria-hidden className="size-5 text-text-tertiary" />
-              </button>
+                <RiCloseLine aria-hidden className="size-5" />
+              </IconButton>
             }
           />
         </div>

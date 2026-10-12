@@ -61,15 +61,18 @@ from services.entities.dsl_entities import (
     Import,
     ImportStatus,
 )
-from services.errors.account import NoPermissionError
+from services.errors.base import NoPermissionError
 from services.feature_service import FeatureService
+from services.rbac import contracts as rbac_contracts
+from services.rbac.members import MemberService
+from services.recommended_app_package_service import RecommendedAppPackageService
 from services.system_feature_service import SystemFeatureService
 from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
 
 
 @dataclass(frozen=True)
 class ConsoleAppPermissions(AppPermissions):
-    snapshot: rbac_service.MyPermissionsResponse
+    snapshot: rbac_contracts.MyPermissionsResponse
     access_filter: AppAccessFilter
 
     @override
@@ -129,37 +132,24 @@ class EnterpriseConsoleAppAccess(ConsoleAppAccess):
             access_mode = "public"
         EnterpriseService.WebAppAuth.update_app_access_mode(app_id, access_mode)
 
-    def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
-        self._session_factory = session_factory
+    def __init__(self, *, members: MemberService) -> None:
+        self._members = members
 
     @override
     def permissions(self, context: RequestContext, *, app_id: str | None = None) -> ConsoleAppPermissions:
-        with self._session_factory() as session:
-            permissions = rbac_service.RBACService.MyPermissions.get(
-                context.active_workspace_id,
-                context.account_id,
-                app_id=app_id,
-                session=session,
+        permissions = self._members.permissions(context.active_workspace_id, context.account_id, app_id=app_id)
+        access_filter = AppAccessFilter.unrestricted()
+        if dify_config.RBAC_ENABLED and app_id is None:
+            access_filter = resolve_app_access_filter(
+                context.active_workspace_id, context.account_id, permissions=permissions
             )
-            access_filter = AppAccessFilter.unrestricted()
-            if dify_config.RBAC_ENABLED and app_id is None:
-                access_filter = resolve_app_access_filter(
-                    context.active_workspace_id,
-                    context.account_id,
-                    session=session,
-                    permissions=permissions,
-                )
         return ConsoleAppPermissions(permissions, access_filter)
 
     @override
     def created_permissions(self, context: RequestContext, app_id: str) -> list[str]:
-        with self._session_factory() as session:
-            keys = rbac_service.RBACService.AppPermissions.batch_get(
-                context.active_workspace_id,
-                context.account_id,
-                [app_id],
-                session=session,
-            )
+        keys = self._members.resource_permissions(
+            context.active_workspace_id, context.account_id, rbac_contracts.RBACResourceType.APP, [app_id]
+        )
         return keys.get(app_id, [])
 
     @override
@@ -169,7 +159,7 @@ class EnterpriseConsoleAppAccess(ConsoleAppAccess):
                 context.active_workspace_id,
                 context.account_id,
                 app_id,
-                rbac_service.ReplaceMemberBindings(automatic_include_workspace_members=True),
+                rbac_contracts.ReplaceMemberBindings(automatic_include_workspace_members=True),
             )
             initialize_created_app_rbac_access_task.delay(
                 context.active_workspace_id, context.account_id, app_id=app_id
@@ -207,12 +197,14 @@ class AppTransferGateway(AppTransfers, AppDefinitionImports):
         packages: AppPackageService,
         agent_packages: RosterAgentPackageExporter,
         agent_importer: RosterAgentPackageImporter,
+        recommended_packages: RecommendedAppPackageService,
     ) -> None:
         self._session_factory = session_factory
         self._dsl_factory = dsl_factory
         self._packages = packages
         self._agent_packages = agent_packages
         self._agent_importer = agent_importer
+        self._recommended_packages = recommended_packages
 
     @override
     def download_import(self, url: str) -> AbstractContextManager[BinaryIO]:
@@ -253,6 +245,7 @@ class AppTransferGateway(AppTransfers, AppDefinitionImports):
                 icon_background=params.icon_background,
                 app_id=params.app_id,
                 package=package,
+                preserve_agent_bindings=as_copy,
             )
             if result.status == ImportStatus.FAILED or (as_copy and result.status == ImportStatus.PENDING):
                 session.rollback()
@@ -291,6 +284,38 @@ class AppTransferGateway(AppTransfers, AppDefinitionImports):
         return ImportedAppPackage(result.app_id, result.agent_id, result.warnings)
 
     @override
+    def import_agent_template(self, context: RequestContext, params: AppImportParams) -> ImportedAppPackage:
+        assert params.template_id is not None
+        assert params.version_id is not None
+        source = self._recommended_packages.get_source(app_id=str(params.template_id), version_id=params.version_id)
+        result = self._agent_importer.import_template(
+            source=source,
+            tenant_id=context.active_workspace_id,
+            account=self._import_actor(context),
+            name=params.name,
+            description=params.description,
+            icon_type=params.icon_type,
+            icon=params.icon,
+            icon_background=params.icon_background,
+        )
+        return ImportedAppPackage(result.app_id, result.agent_id, result.warnings)
+
+    @override
+    def import_agent_package_url(self, context: RequestContext, params: AppImportParams) -> ImportedAppPackage:
+        assert params.package_url is not None
+        result = self._agent_importer.import_package_url(
+            url=params.package_url,
+            tenant_id=context.active_workspace_id,
+            account=self._import_actor(context),
+            name=params.name,
+            description=params.description,
+            icon_type=params.icon_type,
+            icon=params.icon,
+            icon_background=params.icon_background,
+        )
+        return ImportedAppPackage(result.app_id, result.agent_id, result.warnings)
+
+    @override
     def check_dependencies(self, context: RequestContext, app_id: str) -> CheckDependenciesResult:
         return AppDslService.check_app_dependencies(tenant_id=context.active_workspace_id, app_id=app_id)
 
@@ -305,6 +330,7 @@ class AppTransferGateway(AppTransfers, AppDefinitionImports):
                 include_secret=options.include_secret,
                 workflow_id=options.workflow_id,
                 version_id=options.version_id,
+                preserve_agent_bindings=options.preserve_agent_bindings,
             )
         return dsl.serialize_export_data(prepared)
 

@@ -1,8 +1,8 @@
 'use client'
 
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { ComponentProps } from 'react'
 import type { AccessPointStatus } from '@/app/components/base/access-point/status'
-import type { AppModeEnum } from '@/types/app'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
@@ -17,7 +17,7 @@ import { getAppApiReferencePath } from './utils'
 type ServiceApiCardViewProps = {
   apiKeyButtonProps: ComponentProps<typeof ApiSecretKeyButton>
   apiUrl: string
-  appMode?: AppModeEnum
+  appMode?: AppDetailWithSite['mode']
   available: boolean
   status: AccessPointStatus
   switchDisabled: boolean

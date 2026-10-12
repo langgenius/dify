@@ -5,9 +5,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
-from agenton.compositor import CompositorSessionSnapshot
-from agenton.compositor.schemas import LayerSessionSnapshot
-from agenton.layers.base import LifecycleState
+from dify_agent.protocol.snapshot import SessionSnapshot
 from sqlalchemy import Engine, event, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -197,15 +195,7 @@ def test_conversation_scope_reuses_existing_binding_on_later_turn(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
 ) -> None:
-    prior_snapshot = CompositorSessionSnapshot(
-        layers=[
-            LayerSessionSnapshot(
-                name="history",
-                lifecycle_state=LifecycleState.SUSPENDED,
-                runtime_state={"turn": 1},
-            )
-        ]
-    )
+    prior_snapshot = SessionSnapshot(layers={"history": {"turn": 1}})
     workspace = AgentWorkspace(
         id="workspace-conversation",
         tenant_id="tenant-1",
@@ -437,7 +427,7 @@ def test_save_snapshot_targets_binding(sqlite_session: Session) -> None:
     binding = _binding_row()
     sqlite_session.add_all([_workspace_row(), binding])
     sqlite_session.commit()
-    snapshot = CompositorSessionSnapshot(layers=[])
+    snapshot = SessionSnapshot(layers={})
 
     WorkflowAgentWorkspaceStore().save_active_snapshot(
         scope=_scope(),

@@ -15,8 +15,6 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import AppIconPicker from '@/app/components/base/app-icon-picker'
-import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import { createAgentIconSelection } from './agent-form'
 import { AgentFormFields } from './agent-form-fields'
@@ -59,7 +57,6 @@ function DuplicateAgentFormSession({
     sourceName: agent.name,
   }))
   const [agentIcon, setAgentIcon] = useState(initialValues.icon)
-  const [iconPickerOpen, setIconPickerOpen] = useState(false)
 
   return (
     <>
@@ -86,7 +83,7 @@ function DuplicateAgentFormSession({
             ns: 'agentRoster',
             name: initialValues.sourceName,
           })}
-          onIconClick={() => setIconPickerOpen(true)}
+          onIconChange={setAgentIcon}
         />
         <div className="flex shrink-0 justify-end gap-2 px-6 pt-5 pb-6">
           <Button type="button" className="min-w-18" onClick={onCancel} disabled={pending}>
@@ -97,16 +94,6 @@ function DuplicateAgentFormSession({
           </Button>
         </div>
       </Form>
-      <AppIconPicker
-        open={iconPickerOpen}
-        initialEmoji={
-          agentIcon.type === 'emoji'
-            ? { icon: agentIcon.icon, background: agentIcon.background }
-            : undefined
-        }
-        onOpenChange={setIconPickerOpen}
-        onSelect={setAgentIcon}
-      />
     </>
   )
 }
@@ -154,7 +141,6 @@ export function DuplicateAgentDialog({ agent, open, onOpenChange }: DuplicateAge
       },
       {
         onSuccess: () => {
-          toast.success(t(($) => $['roster.duplicateSuccess'], { ns: 'agentRoster' }))
           onOpenChange(false)
         },
       },

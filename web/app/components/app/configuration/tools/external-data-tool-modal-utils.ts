@@ -1,3 +1,4 @@
+import type { AppConfigJsonValue } from '@dify/contracts/api/console/apps/types.gen'
 import type { TFunction } from 'i18next'
 import type { CodeBasedExtensionItem, ExternalDataTool } from '@/models/common'
 import { LanguagesSupported } from '@/i18n/language'
@@ -51,7 +52,7 @@ export const getProviderDefaultConfig = (type: string, providers: Provider[]) =>
     return undefined
 
   return currentProvider.form_schema.reduce<Record<string, string>>((prev, next) => {
-    prev[next.variable] = next.default
+    if (next.default !== undefined) prev[next.variable] = next.default
     return prev
   }, {})
 }
@@ -62,13 +63,15 @@ export const formatExternalDataTool = (
   isEdit: boolean,
 ) => {
   const { type, config } = originData
-  const params: Record<string, string | undefined> = {}
+  const params: Record<string, AppConfigJsonValue> = {}
 
-  if (type === 'api') params.api_based_extension_id = config?.api_based_extension_id
+  if (type === 'api' && config?.api_based_extension_id !== undefined)
+    params.api_based_extension_id = config.api_based_extension_id
 
   if (!systemTypes.includes(type as (typeof systemTypes)[number]) && currentProvider?.form_schema) {
     currentProvider.form_schema.forEach((form) => {
-      params[form.variable] = config?.[form.variable]
+      const value = config?.[form.variable]
+      if (value !== undefined) params[form.variable] = value
     })
   }
 

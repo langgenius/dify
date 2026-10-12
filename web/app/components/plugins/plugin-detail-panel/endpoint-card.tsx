@@ -2,10 +2,10 @@ import type { EndpointListItemResponse } from '@dify/contracts/api/console/works
 import type { PluginDetail } from '../types'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
@@ -29,6 +29,7 @@ type Props = Readonly<{
 
 const EndpointCard = ({ pluginDetail, data }: Props) => {
   const { t } = useTranslation(['common', 'plugin'])
+  const endpointNameId = React.useId()
   const endpointID = data.id
   const [isShowDisableConfirm, { setTrue: showDisableConfirm, setFalse: hideDisableConfirm }] =
     useBoolean(false)
@@ -94,17 +95,17 @@ const EndpointCard = ({ pluginDetail, data }: Props) => {
         <div className="flex items-center">
           <div className="mb-1 flex h-6 grow items-center gap-1 system-md-semibold text-text-secondary">
             <span aria-hidden className="i-ri-login-circle-line size-4" />
-            <div>{data.name}</div>
+            <div id={endpointNameId}>{data.name}</div>
           </div>
           <div className="flex w-0 items-center overflow-hidden opacity-0 group-hover:w-auto group-hover:overflow-visible group-hover:opacity-100 focus-within:w-auto focus-within:overflow-visible focus-within:opacity-100">
             <IconButton
-              aria-label={t(($) => $['operation.edit'], { ns: 'common' })}
+              aria-label={`${t(($) => $['operation.edit'], { ns: 'common' })} ${data.name}`}
               onClick={showEndpointModalConfirm}
             >
               <span aria-hidden className="i-ri-edit-line size-4" />
             </IconButton>
             <IconButton
-              aria-label={t(($) => $['operation.delete'], { ns: 'common' })}
+              aria-label={`${t(($) => $['operation.delete'], { ns: 'common' })} ${data.name}`}
               tone="destructive"
               onClick={showDeleteConfirm}
             >
@@ -125,8 +126,8 @@ const EndpointCard = ({ pluginDetail, data }: Props) => {
                   <TooltipTrigger
                     render={
                       <IconButton
-                        aria-label={copyLabel}
-                        className="ml-2 hidden shrink-0 group-hover/item:flex"
+                        aria-label={`${copyLabel} ${data.url}${endpoint.path}`}
+                        className="ml-2 shrink-0 opacity-0 group-focus-within/item:opacity-100 group-hover/item:opacity-100"
                         onClick={() => handleCopy(`${data.url}${endpoint.path}`)}
                       >
                         {isCopied ? (
@@ -163,6 +164,7 @@ const EndpointCard = ({ pluginDetail, data }: Props) => {
           </div>
         )}
         <Switch
+          aria-labelledby={endpointNameId}
           className="ml-3"
           checked={data.enabled}
           onCheckedChange={handleSwitch}
@@ -183,7 +185,7 @@ const EndpointCard = ({ pluginDetail, data }: Props) => {
               {t(($) => $['detailPanel.endpointDisableContent'], { ns: 'plugin', name: data.name })}
             </div>
           </div>
-          <AlertDialogActions>
+          <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
@@ -193,7 +195,7 @@ const EndpointCard = ({ pluginDetail, data }: Props) => {
             >
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
       <AlertDialog open={isShowDeleteConfirm} onOpenChange={(open) => !open && hideDeleteConfirm()}>
@@ -206,7 +208,7 @@ const EndpointCard = ({ pluginDetail, data }: Props) => {
               {t(($) => $['detailPanel.endpointDeleteContent'], { ns: 'plugin', name: data.name })}
             </div>
           </div>
-          <AlertDialogActions>
+          <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
@@ -216,7 +218,7 @@ const EndpointCard = ({ pluginDetail, data }: Props) => {
             >
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
       {isShowEndpointModal && (

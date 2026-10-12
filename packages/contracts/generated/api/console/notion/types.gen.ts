@@ -25,7 +25,7 @@ export type NotionIntegratePageResponse = {
   page_id: string
   page_name: string
   parent_id: string | null
-  type: string
+  type: NotionPageType
 }
 
 export type DataSourceIntegrateIconResponse = {
@@ -33,6 +33,8 @@ export type DataSourceIntegrateIconResponse = {
   type?: string | null
   url?: string | null
 }
+
+export type NotionPageType = 'database' | 'page'
 
 export type GetNotionPagesByPageIdByPageTypePreviewData = {
   body?: never

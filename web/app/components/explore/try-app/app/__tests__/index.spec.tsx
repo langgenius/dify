@@ -1,4 +1,4 @@
-import type { TryAppInfo } from '@/service/try-app'
+import type { TrialAppDetailResponse } from '@dify/contracts/api/console/trial-apps/types.gen'
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vite-plus/test'
 import TryApp from '../index'
@@ -12,12 +12,12 @@ vi.mock('../text-generation', () => ({
   ),
 }))
 
-const createApp = (mode: string): TryAppInfo =>
+const createApp = (mode: string): TrialAppDetailResponse =>
   ({
     id: 'app-id',
     mode,
     site: { title: 'Try App' },
-  }) as TryAppInfo
+  }) as TrialAppDetailResponse
 
 describe('TryApp', () => {
   it.each(['chat', 'advanced-chat', 'agent-chat'])(

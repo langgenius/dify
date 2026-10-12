@@ -38,7 +38,7 @@ from services.agent.package_resource_importer import AgentPackageResourceImporte
 from services.app_dsl_service import AppDslService, Import
 from services.app_package_service import AppPackageManifest, AppPackageService
 from services.entities.dsl_entities import ImportStatus
-from services.errors.account import NoPermissionError
+from services.errors.base import NoPermissionError
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
 from tests.unit_tests.model_factories import make_account, make_app, make_tenant, make_upload_file, make_workflow
 
@@ -48,7 +48,7 @@ class _MemoryStorage:
         self.files: dict[str, bytes] = {}
         self.saved: list[str] = []
 
-    def load_stream(self, filename: str) -> Generator[bytes, None, None]:
+    def load_stream(self, filename: str) -> Generator[bytes]:
         yield self.files[filename]
 
     def save(self, filename: str, data: bytes) -> None:
@@ -499,7 +499,7 @@ def test_resource_io_runs_without_database_transactions(
     load_stream = storage.load_stream
     save = storage.save
 
-    def checked_load(filename: str) -> Generator[bytes, None, None]:
+    def checked_load(filename: str) -> Generator[bytes]:
         before_io()
         yield from load_stream(filename)
 

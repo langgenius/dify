@@ -34,6 +34,7 @@ const ChildSegmentDetail: FC<IChildSegmentDetailProps> = ({
   onCancel,
   docForm,
 }) => {
+  const editorRef = React.useRef<HTMLDivElement>(null)
   const { t } = useTranslation(['common', 'datasetDocuments'])
   const canEdit = useDocumentContext((s) => s.canEdit)
   const [content, setContent] = useState(childChunkInfo?.content || '')
@@ -69,7 +70,7 @@ const ChildSegmentDetail: FC<IChildSegmentDetailProps> = ({
   }, [childChunkInfo?.updated_at])
 
   return (
-    <div className="flex h-full flex-col">
+    <div ref={editorRef} className="flex h-full flex-col">
       <div
         className={cn(
           'flex items-center justify-between',
@@ -97,6 +98,7 @@ const ChildSegmentDetail: FC<IChildSegmentDetailProps> = ({
           {canEdit && fullScreen && (
             <>
               <ActionButtons
+                target={editorRef}
                 handleCancel={handleCancel}
                 handleSave={handleSave}
                 loading={loading}
@@ -153,6 +155,7 @@ const ChildSegmentDetail: FC<IChildSegmentDetailProps> = ({
       {canEdit && !fullScreen && (
         <div className="flex items-center justify-end border-t border-t-divider-subtle p-4 pt-3">
           <ActionButtons
+            target={editorRef}
             handleCancel={handleCancel}
             handleSave={handleSave}
             loading={loading}

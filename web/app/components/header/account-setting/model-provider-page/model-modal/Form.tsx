@@ -24,7 +24,7 @@ import {
   SelectLabel,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
-import { useCallback, useState } from 'react'
+import { useCallback, useId, useState } from 'react'
 import { AppSelector } from '@/app/components/plugins/plugin-detail-panel/app-selector'
 import ModelParameterModal from '@/app/components/plugins/plugin-detail-panel/model-selector'
 import MultipleToolSelector from '@/app/components/plugins/plugin-detail-panel/multiple-tool-selector'
@@ -110,6 +110,7 @@ function Form<
   availableNodes,
 }: FormProps<CustomFormSchema>) {
   const language = useLanguage()
+  const formId = useId()
   const [changeKey, setChangeKey] = useState('')
   const filteredProps: Omit<FormProps<CustomFormSchema>, 'override' | 'customRenderField'> = {
     className,
@@ -196,6 +197,7 @@ function Form<
 
       const disabled =
         readonly || (isEditMode && (variable === '__model_type' || variable === '__model_name'))
+      const inputId = `${formId}-${variable}`
       return (
         <div key={variable} className={cn(itemClassName, 'py-3')}>
           <div
@@ -204,11 +206,18 @@ function Form<
               'flex items-center py-2 system-sm-semibold text-text-secondary',
             )}
           >
-            {label[language] || label.en_US}
-            {required && <span className="ml-1 text-red-500">*</span>}
+            <label htmlFor={inputId}>
+              {label[language] || label.en_US}
+              {required && (
+                <span aria-hidden className="ml-1 text-red-500">
+                  *
+                </span>
+              )}
+            </label>
             {infotipContent}
           </div>
           <Input
+            id={inputId}
             className={cn(inputClassName, `${disabled && 'cursor-not-allowed opacity-60'}`)}
             value={
               isShowDefaultValue &&

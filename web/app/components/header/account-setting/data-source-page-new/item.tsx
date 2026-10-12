@@ -2,7 +2,7 @@ import type { DataSourceCredential } from './types'
 import { Button } from '@langgenius/dify-ui/button'
 import { Input } from '@langgenius/dify-ui/input'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
-import { memo, useState } from 'react'
+import { memo, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Operator from './operator'
 
@@ -25,12 +25,30 @@ const Item = ({
   const { t } = useTranslation(['common', 'plugin'])
   const [renaming, setRenaming] = useState(false)
   const [renameValue, setRenameValue] = useState(credentialItem.name)
+  const renameInputRef = useRef<HTMLInputElement>(null)
+  const operatorTriggerRef = useRef<HTMLButtonElement>(null)
+  const restoreFocusOnExitRef = useRef(false)
+
+  useEffect(() => {
+    if (renaming) {
+      renameInputRef.current?.focus()
+    } else if (restoreFocusOnExitRef.current) {
+      operatorTriggerRef.current?.focus()
+      restoreFocusOnExitRef.current = false
+    }
+  }, [renaming])
+
+  const exitRename = () => {
+    restoreFocusOnExitRef.current = true
+    setRenaming(false)
+  }
 
   return (
     <div className="flex h-10 items-center gap-3 overflow-hidden rounded-lg bg-components-panel-on-panel-item-bg py-1 pr-1 pl-3 shadow-xs">
       {renaming && (
         <div className="flex w-full items-center space-x-1">
           <Input
+            ref={renameInputRef}
             aria-label={`${t(($) => $['operation.rename'], { ns: 'common' })} ${credentialItem.name}`}
             className="h-6 min-w-0 grow"
             value={renameValue}
@@ -47,7 +65,7 @@ const Item = ({
                 credential_id: credentialItem.id,
                 name: renameValue,
               })
-              setRenaming(false)
+              exitRename()
             }}
           >
             {t(($) => $['operation.save'], { ns: 'common' })}
@@ -56,7 +74,7 @@ const Item = ({
             size="small"
             onClick={(e) => {
               e.stopPropagation()
-              setRenaming(false)
+              exitRename()
             }}
           >
             {t(($) => $['operation.cancel'], { ns: 'common' })}
@@ -87,6 +105,7 @@ const Item = ({
           </div>
           <div className="mr-1 ml-2 h-3 w-px bg-divider-regular"></div>
           <Operator
+            triggerRef={operatorTriggerRef}
             credentialItem={credentialItem}
             onAction={onAction}
             onRename={() => setRenaming(true)}

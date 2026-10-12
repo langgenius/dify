@@ -10,13 +10,8 @@ Read this document when a change involves application hotkeys, focus, dialogs, m
 
 ## Keyboard Commands
 
-- Distinguish application commands from widget-local keyboard semantics. Use `@tanstack/react-hotkeys` for application commands; keep menu navigation, dialog Escape handling, editor behavior, and ARIA widget keys in their local primitive or owner.
-- Use `useHotkey` or `useHotkeys` for registered commands. When an existing `onKeyDown` intentionally owns the command, use `matchesKeyboardEvent` rather than duplicating modifier parsing or adding another global listener.
-- Keep registration and keycap or menu display derived from one canonical command. Distinguish registered commands, held keys, and display-only accelerators.
-- Keep a single-owner command beside its component. Create a feature-local hotkey module only when several production files share it; tests alone do not justify extraction.
-- Make availability and scope explicit with `enabled`, `ignoreInputs`, and `target`. Put a target ref on the actual behavior owner rather than creating wrapper DOM solely for hotkey scope.
-- Preserve existing `preventDefault` and propagation behavior when migrating command APIs.
-- Test observable command behavior, disabled and input scope, target scope, and the registration/display contract at the owning feature boundary.
+- Keep widget navigation, dialog dismissal, and editor commands in their local primitive or owner.
+- For Web application commands, follow [Keyboard commands] for TanStack registration, typed bindings, targets, event consumption, display, and verification. Do not recreate that policy in a wrapper or a second command framework.
 
 ## Secondary Surfaces
 
@@ -28,4 +23,5 @@ Read this document when a change involves application hotkeys, focus, dialogs, m
 - Prefer primitive-owned open state unless another owner must observe or coordinate it. Analytics callbacks and local cleanup alone do not require a controlled root.
 
 [overlay contract]: ../../../../packages/dify-ui/docs/overlays.md
+[Keyboard commands]: ../../../../web/docs/hotkeys.md
 [state ownership]: state.md

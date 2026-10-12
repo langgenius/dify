@@ -5,7 +5,6 @@ import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { useClickAway } from 'ahooks'
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStore } from '@/app/components/app/store'
 import Run from '@/app/components/workflow/run'
 
 type RunActiveTab = 'RESULT' | 'DETAIL' | 'TRACING'
@@ -14,6 +13,7 @@ const isRunActiveTab = (tab: string): tab is RunActiveTab =>
   tab === 'RESULT' || tab === 'DETAIL' || tab === 'TRACING'
 
 type MessageLogModalProps = {
+  appId: string
   currentLogItem?: IChatItem
   defaultTab?: string
   width: number
@@ -21,6 +21,7 @@ type MessageLogModalProps = {
   onCancel: () => void
 }
 const MessageLogModal: FC<MessageLogModalProps> = ({
+  appId,
   currentLogItem,
   defaultTab = 'DETAIL',
   width,
@@ -29,7 +30,6 @@ const MessageLogModal: FC<MessageLogModalProps> = ({
 }) => {
   const { t } = useTranslation(['appLog', 'common'])
   const ref = useRef(null)
-  const appDetail = useStore((state) => state.appDetail)
 
   useClickAway(() => {
     if (fixedWidth) onCancel()
@@ -54,8 +54,8 @@ const MessageLogModal: FC<MessageLogModalProps> = ({
       <Run
         hideResult
         activeTab={activeTab}
-        runDetailUrl={`/apps/${appDetail?.id}/workflow-runs/${currentLogItem.workflow_run_id}`}
-        tracingListUrl={`/apps/${appDetail?.id}/workflow-runs/${currentLogItem.workflow_run_id}/node-executions`}
+        runDetailUrl={`/apps/${appId}/workflow-runs/${currentLogItem.workflow_run_id}`}
+        tracingListUrl={`/apps/${appId}/workflow-runs/${currentLogItem.workflow_run_id}/node-executions`}
       />
     </>
   )
@@ -104,8 +104,8 @@ const MessageLogModal: FC<MessageLogModalProps> = ({
       <Run
         hideResult
         activeTab={activeTab}
-        runDetailUrl={`/apps/${appDetail?.id}/workflow-runs/${currentLogItem.workflow_run_id}`}
-        tracingListUrl={`/apps/${appDetail?.id}/workflow-runs/${currentLogItem.workflow_run_id}/node-executions`}
+        runDetailUrl={`/apps/${appId}/workflow-runs/${currentLogItem.workflow_run_id}`}
+        tracingListUrl={`/apps/${appId}/workflow-runs/${currentLogItem.workflow_run_id}/node-executions`}
       />
     </div>
   )

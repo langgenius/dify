@@ -2,7 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import FeedBack from '../feed-back'
 
-const mockPush = vi.fn()
+const mockUseLogout = vi.fn()
 const mockSendFeedback = vi.fn()
 const mockLogout = vi.fn()
 
@@ -20,16 +20,8 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   }
 })
 
-vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({ push: mockPush }),
-}))
-
 vi.mock('@/service/use-common', () => ({
-  useLogout: () => ({ mutateAsync: mockLogout }),
-}))
-
-vi.mock('@/app/notifications', () => ({
-  toast: { info: vi.fn() },
+  useLogout: (...args: unknown[]) => mockUseLogout(...args),
 }))
 
 vi.mock('../../state', () => ({
@@ -44,6 +36,7 @@ describe('FeedBack', () => {
     vi.clearAllMocks()
     mockSendFeedback.mockResolvedValue(undefined)
     mockLogout.mockResolvedValue(undefined)
+    mockUseLogout.mockReturnValue({ mutateAsync: mockLogout })
   })
 
   it('labels and submits the optional feedback field through the form', async () => {
@@ -64,6 +57,6 @@ describe('FeedBack', () => {
     })
     expect(onConfirm).toHaveBeenCalledOnce()
     expect(mockLogout).toHaveBeenCalledOnce()
-    expect(mockPush).toHaveBeenCalledWith('/signin')
+    expect(mockUseLogout).toHaveBeenCalledWith({ redirectTo: '/signin?account_deleted=true' })
   })
 })

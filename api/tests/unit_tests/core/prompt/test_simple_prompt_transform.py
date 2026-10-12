@@ -3,8 +3,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
-from core.memory.token_buffer_memory import TokenBufferMemory
 from core.prompt.prompt_templates.advanced_prompt_templates import (
     CHAT_APP_CHAT_PROMPT_CONFIG,
     CHAT_APP_COMPLETION_PROMPT_CONFIG,
@@ -19,7 +17,8 @@ from graphon.model_runtime.entities.message_entities import (
     TextPromptMessageContent,
     UserPromptMessage,
 )
-from models.model import AppMode, Conversation
+from models.model import AppMode
+from tests.unit_tests.core.model_fixtures import make_model_config, make_token_buffer_memory
 
 
 def test_get_common_chat_app_prompt_template_with_pcqm():
@@ -108,13 +107,11 @@ def test_get_common_chat_app_prompt_template_with_p():
 
 
 def test__get_chat_model_prompt_messages():
-    model_config_mock = MagicMock(spec=ModelConfigWithCredentialsEntity)
-    model_config_mock.provider = "openai"
-    model_config_mock.model = "gpt-4"
+    model_config = make_model_config(provider="openai", model="gpt-4", mode="chat")
 
-    memory_mock = MagicMock(spec=TokenBufferMemory)
+    memory = make_token_buffer_memory(model_config)
     history_prompt_messages = [UserPromptMessage(content="Hi"), AssistantPromptMessage(content="Hello")]
-    memory_mock.get_history_prompt_messages.return_value = history_prompt_messages
+    memory.get_history_prompt_messages = MagicMock(return_value=history_prompt_messages)
 
     prompt_transform = SimplePromptTransform()
     prompt_transform._calculate_rest_token = MagicMock(return_value=2000)
@@ -130,8 +127,8 @@ def test__get_chat_model_prompt_messages():
         query=query,
         files=[],
         context=context,
-        memory=memory_mock,
-        model_config=model_config_mock,
+        memory=memory,
+        model_config=model_config,
     )
 
     prompt_template = prompt_transform.get_prompt_template(
@@ -153,11 +150,9 @@ def test__get_chat_model_prompt_messages():
 
 
 def test__get_completion_model_prompt_messages():
-    model_config_mock = MagicMock(spec=ModelConfigWithCredentialsEntity)
-    model_config_mock.provider = "openai"
-    model_config_mock.model = "gpt-3.5-turbo-instruct"
+    model_config = make_model_config(provider="openai", model="gpt-3.5-turbo-instruct", mode="completion")
 
-    memory = TokenBufferMemory(conversation=Conversation(), model_instance=model_config_mock)
+    memory = make_token_buffer_memory(model_config)
 
     history_prompt_messages = [UserPromptMessage(content="Hi"), AssistantPromptMessage(content="Hello")]
     memory.get_history_prompt_messages = MagicMock(return_value=history_prompt_messages)
@@ -176,7 +171,7 @@ def test__get_completion_model_prompt_messages():
         files=[],
         context=context,
         memory=memory,
-        model_config=model_config_mock,
+        model_config=model_config,
     )
 
     prompt_template = prompt_transform.get_prompt_template(
@@ -207,10 +202,8 @@ def test__get_completion_model_prompt_messages():
 
 def test_get_prompt_dispatches_chat_and_completion():
     transform = SimplePromptTransform()
-    model_config_chat = MagicMock(spec=ModelConfigWithCredentialsEntity)
-    model_config_chat.mode = "chat"
-    model_config_completion = MagicMock(spec=ModelConfigWithCredentialsEntity)
-    model_config_completion.mode = "completion"
+    model_config_chat = make_model_config(provider="openai", model="gpt-4", mode="chat")
+    model_config_completion = make_model_config(provider="openai", model="gpt-3.5-turbo-instruct", mode="completion")
     prompt_entity = SimpleNamespace(simple_prompt_template="hello")
 
     transform._get_chat_model_prompt_messages = MagicMock(return_value=(["chat-msg"], None))
@@ -292,7 +285,7 @@ def test_get_prompt_str_and_rules_type_validation_errors():
 
 def test_chat_model_prompt_messages_uses_prompt_when_query_empty():
     transform = SimplePromptTransform()
-    model_config = MagicMock(spec=ModelConfigWithCredentialsEntity)
+    model_config = make_model_config(provider="openai", model="gpt-4", mode="chat")
     transform._get_prompt_str_and_rules = MagicMock(return_value=("prompt-text", {}))
     transform._get_last_user_message = MagicMock(return_value=UserPromptMessage(content="prompt-text"))
 
@@ -313,7 +306,7 @@ def test_chat_model_prompt_messages_uses_prompt_when_query_empty():
 
 def test_completion_model_prompt_messages_empty_stops_becomes_none():
     transform = SimplePromptTransform()
-    model_config = MagicMock(spec=ModelConfigWithCredentialsEntity)
+    model_config = make_model_config(provider="openai", model="gpt-4", mode="chat")
     transform._get_prompt_str_and_rules = MagicMock(return_value=("prompt", {"stops": []}))
 
     prompt_messages, stops = transform._get_completion_model_prompt_messages(

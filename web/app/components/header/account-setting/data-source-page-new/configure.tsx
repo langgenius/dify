@@ -10,6 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AddApiKeyButton, AddOAuthButton } from '@/app/components/plugins/plugin-auth'
+import { useRenderI18nObject } from '@/hooks/use-i18n'
 
 type ConfigureProps = {
   item: DataSourceAuth
@@ -19,6 +20,8 @@ type ConfigureProps = {
 }
 const Configure = ({ item, pluginPayload, onUpdate, disabled }: ConfigureProps) => {
   const { t } = useTranslation(['common', 'plugin'])
+  const renderI18nObject = useRenderI18nObject()
+  const providerLabel = renderI18nObject(item.label)
   const [open, setOpen] = useState(false)
   const canApiKey = item.credential_schema?.length
   const oAuthData = item.oauth_schema || {}
@@ -47,7 +50,11 @@ const Configure = ({ item, pluginPayload, onUpdate, disabled }: ConfigureProps) 
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger
           render={
-            <Button className="h-8" variant="secondary-accent">
+            <Button
+              aria-label={`${t(($) => $['dataSource.configure'], { ns: 'common' })} ${providerLabel}`}
+              className="h-8"
+              variant="secondary-accent"
+            >
               <span className="i-ri-add-line size-4" aria-hidden="true" />
               {t(($) => $['dataSource.configure'], { ns: 'common' })}
             </Button>

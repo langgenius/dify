@@ -60,7 +60,6 @@
   <a href="../hi-IN/README.md"><img alt="README in हिन्दी" src="https://img.shields.io/badge/Hindi-d9d9d9"></a>
 </p>
 
-# 
 
 <p align="center">
   <a href="https://trendshift.io/repositories/2152" target="_blank"><img src="https://trendshift.io/api/badge/repositories/2152" alt="langgenius%2Fdify | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
@@ -94,7 +93,7 @@ Todas las ofertas de Dify vienen con APIs correspondientes, por lo que podrías 
 ## Usando Dify
 
 - **Nube </br>**
-  Hospedamos un servicio [Dify Cloud](https://dify.ai) para que cualquiera lo pruebe sin configuración. Proporciona todas las capacidades de la versión autoimplementada e incluye 200 llamadas gratuitas a GPT-4 en el plan sandbox.
+  Prueba [Dify Cloud](https://cloud.dify.ai) sin administrar un servidor. Consulta los planes y límites de uso actuales en la [página de precios](https://dify.ai/pricing).
 
 - **Auto-alojamiento de Dify Community Edition</br>**
   Pon rápidamente Dify en funcionamiento en tu entorno con esta [guía de inicio rápido](#inicio-rápido).
@@ -159,11 +158,11 @@ Elige el canal que mejor se adapte a tu consulta:
 - [X](https://x.com/dify_ai): Sigue las noticias de versiones y las actualizaciones del proyecto.
 ## Historial de Estrellas
 
-[![Gráfico de Historial de Estrellas](https://api.star-history.com/svg?repos=langgenius/dify&type=Date)](https://star-history.com/#langgenius/dify&Date)
+[![Gráfico de Historial de Estrellas](https://star-history.dera.page/svg?repos=langgenius/dify&type=date&legend=top-left)](https://star-history.dera.page/langgenius/dify?type=date&legend=top-left#gh-light-mode-only) [![Gráfico de Historial de Estrellas](https://star-history.dera.page/svg?repos=langgenius/dify&type=date&theme=dark&legend=top-left)](https://star-history.dera.page/langgenius/dify?type=date&legend=top-left#gh-dark-mode-only)
 
 ## Divulgación de Seguridad
 
-Para proteger tu privacidad, evita publicar problemas de seguridad en GitHub. En su lugar, envía tus preguntas a security@dify.ai y te proporcionaremos una respuesta más detallada.
+Informa de las vulnerabilidades en privado mediante GitHub Security Advisories, siguiendo nuestra [política de seguridad](../../SECURITY.md). No las divulgues en issues, debates ni pull requests públicos.
 
 ## Licencia
 

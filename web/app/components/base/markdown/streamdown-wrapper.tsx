@@ -10,7 +10,6 @@ import {
   Img,
   Link,
   MarkdownButton,
-  MarkdownForm,
   Paragraph,
   PluginImg,
   PluginParagraph,
@@ -36,6 +35,10 @@ type SanitizeSchema = {
 }
 
 const MARKDOWN_FORM_TAG_RE = /<form(?:\s|>)/i
+
+const MarkdownForm = dynamic(() => import('@/app/components/base/markdown-blocks/form'), {
+  ssr: false,
+})
 
 const CodeBlock = dynamic(
   () =>

@@ -5,7 +5,8 @@ from collections.abc import Generator, Mapping, Sequence
 from datetime import datetime
 from enum import StrEnum
 from typing import TYPE_CHECKING, Any, Optional, TypedDict, cast
-from uuid import uuid4
+from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
+from warnings import deprecated
 
 import sqlalchemy as sa
 from sqlalchemy import (
@@ -21,7 +22,6 @@ from sqlalchemy import (
     select,
 )
 from sqlalchemy.orm import Mapped, mapped_column
-from typing_extensions import deprecated
 
 from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE
 from core.workflow.environment_variables import load_environment_variables
@@ -469,9 +469,7 @@ class Workflow(Base):  # bug
 
         return features
 
-    def walk_nodes(
-        self, specific_node_type: NodeType | None = None
-    ) -> Generator[tuple[str, Mapping[str, Any]], None, None]:
+    def walk_nodes(self, specific_node_type: NodeType | None = None) -> Generator[tuple[str, Mapping[str, Any]]]:
         """
         Walk through the workflow nodes, yield each node configuration.
 
@@ -1487,14 +1485,29 @@ class ConversationVariable(TypeBase):
     )
 
     @classmethod
+    def storage_id(cls, variable: VariableBase) -> str:
+        """UUID primary key for ``variable``.
+
+        Draft and DSL ids such as ``opt-comp-prompt-var`` are not UUIDs and cannot
+        be inserted. Those become a uuid5 of the variable name, so the same variable
+        keeps one row. An id that is already a UUID is stored unchanged. Callers
+        still see the author id on the variable payload.
+        """
+        row_id = variable.id
+        try:
+            UUID(str(row_id))
+        except (ValueError, TypeError, AttributeError):
+            return str(uuid5(NAMESPACE_URL, f"dify:conversation-variable:{variable.name}"))
+        return str(row_id)
+
+    @classmethod
     def from_variable(cls, *, app_id: str, conversation_id: str, variable: VariableBase) -> "ConversationVariable":
-        obj = cls(
-            id=variable.id,
+        return cls(
+            id=cls.storage_id(variable),
             app_id=app_id,
             conversation_id=conversation_id,
             data=variable.model_dump_json(),
         )
-        return obj
 
     def to_variable(self) -> VariableBase:
         mapping = json.loads(self.data)

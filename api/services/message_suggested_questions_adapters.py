@@ -1,7 +1,8 @@
-"""Bridge admitted apps and actors to the existing suggested-question runtime.
+"""Run suggested questions with bounded query and model-resolution sessions.
 
-TODO: Remove this bridge when message configuration, history and model lookups
-share a framework-neutral application boundary. Reuse their current policy here.
+Keep legacy configuration, history and provider policy with their existing
+owners. This bridge controls their lifetimes until those owners accept only
+framework-neutral inputs; it never closes the caller's scoped session.
 """
 
 from typing import override
@@ -10,7 +11,11 @@ from flask import current_app
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.entities.app_invoke_entities import InvokeFrom, get_credit_usage_app_type
+from core.llm_generator.llm_generator import LLMGenerator
+from core.memory.token_buffer_memory import TokenBufferMemory
+from core.model_context import use_credit_usage_metadata
+from core.ops.utils import measure_time
 from extensions.ext_database import db
 from models import Account, App
 from models.model import EndUser
@@ -65,14 +70,60 @@ class MessageSuggestedQuestionsRuntime(MessageSuggestedQuestions):
                         f"End user {actor.end_user_id} does not exist for app {app_id} in tenant {app_owner_tenant_id}"
                     )
 
-        # Legacy history/model lookups still use db.session internally. Give them
-        # one scoped session, released on success or failure without removing the
-        # caller's session. They may still hold it during provider I/O.
-        with current_app.app_context():
-            return MessageService.get_suggested_questions_after_answer(
+            context = MessageService.prepare_suggested_questions_after_answer(
                 app_model=app_model,
                 user=user,
                 message_id=message_id,
                 invoke_from=InvokeFrom(actor.invoke_from),
-                session=db.session(),
+                session=session,
             )
+        if context is None:
+            return []
+
+        # Legacy model resolution, quota and tracing use db.session and may
+        # commit. Own one isolated scope so none can commit or close the caller's
+        # session. Release its sessions explicitly between phases; teardown also
+        # handles early returns and exceptions.
+        with current_app.app_context():
+            history_model = MessageService.get_suggested_questions_history_model(tenant_id=context.tenant_id)
+            db.session.remove()
+            if history_model is None:
+                return []
+
+            # Resolve the history model first to preserve the no-model fallback
+            # even when old history contains invalid file configuration.
+            with self._session_factory(expire_on_commit=False) as session:
+                history = TokenBufferMemory.load_history(
+                    conversation=context.conversation,
+                    app_record=app_model,
+                    session=session,
+                    message_limit=3,
+                )
+
+            histories = history.get_prompt_text(model_instance=history_model, max_token_limit=3000)
+
+            with (
+                measure_time() as timer,
+                use_credit_usage_metadata({"app_type": get_credit_usage_app_type(context.app_mode)}),
+            ):
+                model = LLMGenerator.prepare_suggested_questions_model(
+                    tenant_id=context.tenant_id, model_config=context.model_config
+                )
+                db.session.remove()
+                questions = (
+                    list(
+                        LLMGenerator.invoke_suggested_questions_after_answer(
+                            prepared_model=model,
+                            histories=histories,
+                            instruction_prompt=context.instruction_prompt,
+                        )
+                    )
+                    if model is not None
+                    else []
+                )
+
+            # Generation can return [] after catching an error. Tracing must not
+            # inherit an open or failed transaction from that invocation.
+            db.session.remove()
+            MessageService.trace_suggested_questions(context=context, questions=questions, timer=timer)
+            return questions

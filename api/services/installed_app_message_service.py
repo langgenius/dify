@@ -125,10 +125,6 @@ class MessageExtraContentsQuery(Protocol):
     def __call__(self, *, message_ids: Sequence[str]) -> Mapping[str, list[dict[str, JsonValue]]]: ...
 
 
-class SuggestedQuestionGenerator(Protocol):
-    def __call__(self, *, installed_app: InstalledAppRef, account_id: str, message_id: str) -> list[str]: ...
-
-
 class MessageFeedbackEmitter(Protocol):
     def __call__(self, *, feedback: MessageFeedbackEvent) -> None: ...
 
@@ -139,12 +135,10 @@ class InstalledAppMessageService:
         *,
         messages: InstalledAppMessageStore,
         get_extra_contents: MessageExtraContentsQuery,
-        suggested_questions: SuggestedQuestionGenerator,
         emit_feedback: MessageFeedbackEmitter,
     ) -> None:
         self._messages: InstalledAppMessageStore = messages
         self._get_extra_contents: MessageExtraContentsQuery = get_extra_contents
-        self._suggested_questions: SuggestedQuestionGenerator = suggested_questions
         self._emit_feedback: MessageFeedbackEmitter = emit_feedback
 
     def get_page(
@@ -190,10 +184,6 @@ class InstalledAppMessageService:
         )
         if feedback is not None:
             self._emit_feedback(feedback=feedback)
-
-    def get_suggested_questions(self, *, installed_app: InstalledAppRef, account_id: str, message_id: str) -> list[str]:
-        self._require_chat_app(installed_app)
-        return self._suggested_questions(installed_app=installed_app, account_id=account_id, message_id=message_id)
 
     @staticmethod
     def _require_chat_app(installed_app: InstalledAppRef) -> None:

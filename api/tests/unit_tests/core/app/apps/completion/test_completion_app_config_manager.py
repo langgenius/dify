@@ -1,5 +1,6 @@
 from types import SimpleNamespace
 
+import pytest
 from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session
 
@@ -80,6 +81,14 @@ class TestCompletionAppConfigManager:
         assert result.app_model_config_from == EasyUIBasedAppModelConfigFrom.APP_LATEST_CONFIG
         assert result.app_model_config_dict == {"model": {"provider": "x"}}
         to_dict.assert_called_once_with(annotation_reply=annotation_reply)
+
+    def test_get_app_config_requires_annotation_reply_without_override(self):
+        with pytest.raises(ValueError, match="Annotation reply config is required"):
+            CompletionAppConfigManager.get_app_config(
+                app_model=_app(),
+                app_model_config=_config(),
+                annotation_reply=None,
+            )
 
     def test_config_validate_filters_related_keys(self, mocker: MockerFixture, unbound_session: Session):
         config = {

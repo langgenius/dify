@@ -18,8 +18,9 @@ import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
+import Cookies from 'js-cookie'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
-import { DETAIL_SIDEBAR_STORAGE_KEY } from '@/app/components/detail-sidebar/storage'
+import { DETAIL_SIDEBAR_COOKIE_NAME } from '@/app/components/detail-sidebar/cookie'
 import { LEARN_DIFY_HIDDEN_STORAGE_KEY } from '@/app/components/explore/learn-dify/storage'
 import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/dialog-handle'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
@@ -610,6 +611,7 @@ describe('MainNav', () => {
     vi.clearAllMocks()
     gotoAnythingDialogHandle.close()
     localStorage.clear()
+    Cookies.remove(DETAIL_SIDEBAR_COOKIE_NAME)
     mockPathname = '/apps'
     mockInstalledApps = []
     mockInstalledAppsPending = false
@@ -794,7 +796,7 @@ describe('MainNav', () => {
   })
 
   it('keeps the global navigation account section expanded on home routes', () => {
-    localStorage.setItem(DETAIL_SIDEBAR_STORAGE_KEY, 'collapse')
+    Cookies.set(DETAIL_SIDEBAR_COOKIE_NAME, 'collapse')
     mockPathname = '/'
 
     renderMainNav()

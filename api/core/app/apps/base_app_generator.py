@@ -94,9 +94,9 @@ class BaseAppGenerator:
 
     @staticmethod
     def _wrap_stream_with_worker_thread_join[ResponseT](
-        response_stream: Generator[ResponseT, None, None],
+        response_stream: Generator[ResponseT],
         worker_thread: threading.Thread,
-    ) -> Generator[ResponseT, None, None]:
+    ) -> Generator[ResponseT]:
         """Keep the producer owned by the response stream until both finish."""
         try:
             yield from response_stream
@@ -310,7 +310,7 @@ class BaseAppGenerator:
         return value
 
     @classmethod
-    def convert_to_event_stream(cls, generator: Union[Mapping, Generator[Mapping | str, None, None]]):
+    def convert_to_event_stream(cls, generator: Union[Mapping, Generator[Mapping | str]]):
         """
         Convert messages into event stream
         """

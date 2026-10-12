@@ -11,7 +11,6 @@ import type {
   TracingProvider,
   WeaveConfig,
 } from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/type'
-import type { App } from '@/types/app'
 
 export const DSLImportMode = {
   YAML_CONTENT: 'yaml-content',
@@ -26,10 +25,6 @@ export const DSLImportStatus = {
   FAILED: 'failed',
 } as const
 export type DSLImportStatus = (typeof DSLImportStatus)[keyof typeof DSLImportStatus]
-
-export type AppDetailResponse = App
-
-export type UpdateAppModelConfigResponse = { result: string }
 
 export type WorkflowOnlineUser = {
   user_id?: string

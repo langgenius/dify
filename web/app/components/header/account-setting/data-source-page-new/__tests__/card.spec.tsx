@@ -209,6 +209,7 @@ describe('Card Component', () => {
 
       // Assert
       expect(screen.getByText('Test Label'))!.toBeInTheDocument()
+      expect(screen.getByRole('heading', { level: 2, name: 'Test Label' })).toBeInTheDocument()
       expect(screen.queryByText(/Test Author/))!.not.toBeInTheDocument()
       expect(screen.queryByText(/test-name/))!.not.toBeInTheDocument()
       expect(screen.getByText('1.2.0'))!.toBeInTheDocument()
