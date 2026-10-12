@@ -35,6 +35,7 @@ const getUserTimezoneCurrentTime = (timezone?: string): Date => {
 
 // The Date objects here hold the wall time of the target timezone in local fields.
 // Turn that wall time back into the real instant so the offset label follows DST.
+// When DST ends, one wall time happens twice. Pick the first one that is not in the past.
 const getWallTimeInstant = (date: Date, timezone: string): Date => {
   const wallAsUtc = Date.UTC(
     date.getFullYear(),
@@ -44,10 +45,20 @@ const getWallTimeInstant = (date: Date, timezone: string): Date => {
     date.getMinutes(),
     date.getSeconds(),
   )
-  const guessOffset = getTimezoneOffsetMinutes(timezone, new Date(wallAsUtc)) ?? 0
-  const offset =
-    getTimezoneOffsetMinutes(timezone, new Date(wallAsUtc - guessOffset * 60_000)) ?? guessOffset
-  return new Date(wallAsUtc - offset * 60_000)
+  const offsetAt = (time: number) => getTimezoneOffsetMinutes(timezone, new Date(time)) ?? 0
+  // Offsets a day before and after cover both sides of any DST change near this wall time.
+  const offsetsNearby = [offsetAt(wallAsUtc - 24 * 3_600_000), offsetAt(wallAsUtc + 24 * 3_600_000)]
+  const candidates = [...new Set(offsetsNearby)]
+    .map((offset) => wallAsUtc - offset * 60_000)
+    .filter((time) => offsetAt(time) === (wallAsUtc - time) / 60_000)
+    .sort((a, b) => a - b)
+
+  // No candidate means the wall time falls in the DST gap. The run happens after
+  // the clocks move forward, so the label shows the new offset.
+  if (candidates.length === 0) return new Date(wallAsUtc - offsetsNearby[0]! * 60_000)
+
+  const now = Date.now()
+  return new Date(candidates.find((time) => time >= now) ?? candidates[0]!)
 }
 
 // Format date that is already in user timezone, no timezone conversion
