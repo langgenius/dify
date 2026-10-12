@@ -37,7 +37,7 @@ type UncontrolledTextareaProps = {
   onValueChange?: TextareaOnValueChange
 }
 
-type TextareaNativeProps = React.ComponentPropsWithRef<'textarea'>
+type TextareaNativeProps = React.ComponentProps<'textarea'>
 type TextareaOnlyProps = Pick<TextareaNativeProps, 'cols' | 'rows' | 'wrap'>
 type TextareaElementProps = Omit<
   TextareaNativeProps,
