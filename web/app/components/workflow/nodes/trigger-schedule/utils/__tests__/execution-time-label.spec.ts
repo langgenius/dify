@@ -47,4 +47,58 @@ describe('execution time offset label', () => {
     expect(times[2]).toMatch(/November 1, 2026, 1:30\sAM \(UTC-4\)/)
     expect(times[3]).toMatch(/November 1, 2026, 1:30\sAM \(UTC-5\)/)
   })
+  
+  it('labels the upcoming repeated hour in visual daily mode', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-11-01T06:05:00Z'))
+
+    const data = {
+      type: BlockEnum.TriggerSchedule,
+      title: 'schedule',
+      mode: 'visual',
+      frequency: 'daily',
+      timezone: 'America/New_York',
+      visual_config: { time: '1:30 AM' },
+    } as ScheduleTriggerNodeType
+
+    const times = getFormattedExecutionTimes(data, 2)
+
+    expect(times[0]).toMatch(/November 1, 2026, 1:30\sAM \(UTC-5\)/)
+  })
+
+  it('labels the upcoming repeated hour in visual hourly mode', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-11-01T06:05:00Z'))
+
+    const data = {
+      type: BlockEnum.TriggerSchedule,
+      title: 'schedule',
+      mode: 'visual',
+      frequency: 'hourly',
+      timezone: 'America/New_York',
+      visual_config: { on_minute: 30 },
+    } as ScheduleTriggerNodeType
+
+    const times = getFormattedExecutionTimes(data, 1)
+
+    expect(times[0]).toMatch(/November 1, 2026, 1:30\sAM \(UTC-5\)/)
+  })
+
+  it('labels the first repeated hour in a zone far ahead of UTC', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-04-04T08:00:00Z'))
+
+    const data = {
+      type: BlockEnum.TriggerSchedule,
+      title: 'schedule',
+      mode: 'visual',
+      frequency: 'daily',
+      timezone: 'Pacific/Auckland',
+      visual_config: { time: '2:00 AM' },
+    } as ScheduleTriggerNodeType
+
+    const times = getFormattedExecutionTimes(data, 1)
+
+    expect(times[0]).toMatch(/April 5, 2026, 2:00\sAM \(UTC\+13\)/)
+  })
 })
