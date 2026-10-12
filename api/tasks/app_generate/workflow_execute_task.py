@@ -42,8 +42,10 @@ from repositories.factory import DifyAPIRepositoryFactory
 from repositories.sqlalchemy_api_workflow_run_repository import WorkflowRunNotPausedError
 from services.app_task_service import AppTaskService
 from services.human_input_v2.submission_service import HumanInputSubmissionService
+from services.tools.draft_tool_setup import admit_draft_tool_setup
 from services.workflow_execution_identity import build_workflow_execution_identity
 from services.workflow_run_agg import WorkflowRunAgg
+
 
 logger = logging.getLogger(__name__)
 
@@ -225,6 +227,13 @@ class _AppRunner:
         session: Session,
     ):
         exec_params = self._exec_params
+        if exec_params.invoke_from == InvokeFrom.DEBUGGER and workflow.version == Workflow.VERSION_DRAFT:
+            if not isinstance(user, Account) or workflow.tenant_id != app.tenant_id or workflow.app_id != app.id:
+                raise ValueError("Draft execution requires the acting workspace member and app.")
+            # Request-time admission can go stale in a queue. Closed read
+            # sessions above supplied the current draft/user; no writes or
+            # native effects precede this fresh worker metadata check.
+            admit_draft_tool_setup(tenant_id=app.tenant_id, graph=workflow.graph_dict, actor_id=user.id)
         if exec_params.app_mode == AppMode.ADVANCED_CHAT:
             return AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run).generate(
                 app_model=app,
@@ -596,6 +605,15 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
         )
         return
 
+    if generate_entity.invoke_from == InvokeFrom.DEBUGGER and workflow.version == Workflow.VERSION_DRAFT:
+        if (
+            not isinstance(user, Account)
+            or workflow.tenant_id != app_model.tenant_id
+            or workflow.app_id != app_model.id
+        ):
+            raise ValueError("Draft execution requires the acting workspace member and app.")
+        admit_draft_tool_setup(tenant_id=app_model.tenant_id, graph=workflow.graph_dict, actor_id=user.id)
+
     # TODO: Remove legacy task recovery 30 days after the last legacy writer is retired.
     task_id = workflow_run.task_id
     if task_id is None:
@@ -618,6 +636,7 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
             return
         workflow_run.task_id = task_id
     generate_entity.task_id = task_id
+
 
     # The resumed attempt reuses the paused run's task ID, so cancellation
     # signals armed against that ID before or during the pause would abort it
