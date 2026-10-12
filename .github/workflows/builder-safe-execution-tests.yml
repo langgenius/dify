@@ -289,6 +289,7 @@ jobs:
               "api/tests/unit_tests/services/test_draft_tool_admission.py",
               "api/tests/unit_tests/repositories/credentials/test_query_repository.py",
               "api/tests/unit_tests/events/event_handlers/test_delete_tool_parameters_cache_when_sync_draft_workflow.py",
+              "api/tests/unit_tests/services/dify_builder/test_no_repair_gate.py",
           ]
           code = pytest.main([
               *FILES, "-p", "no:benchmark", "--no-cov", "-vv", "-rA", "--tb=long",
