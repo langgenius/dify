@@ -1,9 +1,9 @@
+from collections.abc import Callable
 from datetime import datetime
 
 import pytest
 from flask import request
 
-from configs import dify_config
 from dify_app import DifyApp
 from extensions import ext_proxy_fix
 from libs.helper import (
@@ -38,9 +38,9 @@ from models.model import EndUser
     ],
 )
 def test_extract_remote_ip_uses_trusted_wsgi_address(
-    monkeypatch: pytest.MonkeyPatch, trust_proxy: bool, headers: dict[str, str], expected_ip: str
+    config_overrides: Callable[..., None], trust_proxy: bool, headers: dict[str, str], expected_ip: str
 ) -> None:
-    monkeypatch.setattr(dify_config, "RESPECT_XFORWARD_HEADERS_ENABLED", trust_proxy)
+    config_overrides(RESPECT_XFORWARD_HEADERS_ENABLED=trust_proxy)
     app = DifyApp(__name__)
     ext_proxy_fix.init_app(app)
 
