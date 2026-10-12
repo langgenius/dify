@@ -20,6 +20,10 @@ Celery worker, not a Flask request. The ``FlaskTask`` base
 Once a message's user half is durable, a failed assistant half remains at
 the current waiting gate. The client can then retry with the same
 ``client_turn_id`` without duplicating the user bubble.
+
+A reserved confirmed Tool command (``CONFIRMED_TOOL_ACTION``) is reloaded from
+the consent owner before any environment or agent setup; a forged, duplicate
+or already launched delivery ends as a conflict without running anything.
 """
 
 import logging
@@ -42,10 +46,11 @@ from core.dify_builder.contract import (
     post_canvas_action_id,
 )
 from core.dify_builder.errors import ConflictError
+from core.dify_builder.execution_policy import BuilderExecutionPolicyError
 from core.dify_builder.handlers_build import build_registry
 from core.dify_builder.handlers_edit import edit_registry
 from core.dify_builder.handlers_fix import fix_registry
-from core.dify_builder.models import Action, Actor, Session, Turn
+from core.dify_builder.models import CONFIRMED_TOOL_ACTION, Action, Actor, Session, Turn
 from core.dify_builder.runner import Env, Runner
 from core.dify_builder.state import PcState, is_terminal
 from extensions.ext_database import db
@@ -55,6 +60,7 @@ from services.dify_builder.agent.localize import Localizer
 from services.dify_builder.agent_factory import build_dify_builder_agent
 from services.dify_builder.dify_port import WorkflowServiceDifyPort
 from services.dify_builder.errors import HashMismatchError
+from services.dify_builder.real_call_consent_service import BuilderRealCallConsentService
 from services.dify_builder.repository import SqlDifyBuilderRepository
 from services.dify_builder.revision import executable_graph_revision
 from services.dify_builder.service import DifyBuilderService
@@ -70,6 +76,42 @@ def _build_repo() -> SqlDifyBuilderRepository:
     # Per-task sessionmaker (never the Flask-request-scoped db.session) --
     # mirrors dify_port._session_factory().
     return SqlDifyBuilderRepository(sessionmaker(bind=db.engine, expire_on_commit=False))
+
+
+def _build_consent_service() -> BuilderRealCallConsentService:
+    return BuilderRealCallConsentService(sessionmaker(bind=db.engine, expire_on_commit=False))
+
+
+def _require_reserved_launch(repo: SqlDifyBuilderRepository, session_id: str, action: Action, actor: Actor) -> None:
+    """Reload the server-reserved confirmed command before any environment or agent setup.
+
+    The queued payload is only a pointer: its consent reference must equal the
+    session's committed pending reference, and the consent owner must still
+    hold this exact command unlaunched for this actor/session. A forged,
+    serialized, duplicate or already launched delivery never runs.
+    """
+    consent_id = action.payload.get("consent_id")
+    _session, fc = repo.get_session(session_id)
+    if (
+        set(action.payload) != {"consent_id"}
+        or not isinstance(consent_id, str)
+        or not consent_id
+        or (fc.confirmed_consent_id, fc.confirmed_command_id) != (consent_id, action.command_id)
+    ):
+        logger.warning("dify_builder confirmed command not reserved (session=%s)", session_id)
+        raise ConflictError(f"dify_builder: confirmed command is not reserved for session {session_id}")
+    try:
+        _build_consent_service().reserved_launch(
+            actor=actor, session_id=session_id, consent_id=consent_id, command_id=action.command_id
+        )
+    except BuilderExecutionPolicyError as error:
+        logger.warning(
+            "dify_builder confirmed command refused (session=%s, command=%s, reason=%s)",
+            session_id,
+            action.command_id,
+            error.reason_code,
+        )
+        raise ConflictError(f"dify_builder: confirmed command cannot launch for session {session_id}") from None
 
 
 def _persist_failed_state(
@@ -132,6 +174,9 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
         dify = WorkflowServiceDifyPort()
         actor = Actor(**actor_dict)
         action = Action(**action_dict)
+        confirmed = action.kind == CONFIRMED_TOOL_ACTION
+        if confirmed:
+            _require_reserved_launch(repo, session_id, action, actor)
         # The per-session model choice lives on the context (stable for the session).
         # Read the head so the real agent is constructed with the user's chosen model.
         loaded_session, _fc = repo.get_session(session_id)
@@ -255,9 +300,10 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
             emit_item=emit_item,
             emit_progress=emit_progress,
             emit_reasoning=emit_reasoning,
-            detect_language=localizer.detect_language,
-            localize_items=localizer.localize_items,
-            rename_app=rename_app,
+            # A confirmed outcome is deterministic status metadata: no model call.
+            detect_language=None if confirmed else localizer.detect_language,
+            localize_items=None if confirmed else localizer.localize_items,
+            rename_app=None if confirmed else rename_app,
             command_id=action.command_id,
         )
         runner = Runner(env, fix_registry() | build_registry() | edit_registry())

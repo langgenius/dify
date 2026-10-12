@@ -722,3 +722,86 @@ def test_advance_passes_full_turn_to_first_step_and_actor_only_turn_to_subsequen
     assert seen_turns[0].action is action
     assert seen_turns[1].action is None
     assert seen_turns[1].actor == actor
+
+
+def test_confirmed_action_runs_working_handler_without_waiting_transition_or_model_calls():
+    from core.dify_builder.models import CONFIRMED_TOOL_ACTION
+
+    env, repo = _new_env()
+
+    def no_model(*_args, **_kwargs):
+        raise AssertionError("confirmed outcome must not call a model")
+
+    env.detect_language = no_model
+    env.localize_items = no_model
+    s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_TEST_AND_REPAIR)
+    repo.create_session(
+        s,
+        DifyBuilderContext(
+            confirmed_consent_id="consent-1", confirmed_command_id="command-1", reply_language="fr", goal_text="g"
+        ),
+        [],
+    )
+    seen: list[Turn] = []
+
+    def working(_env: Env, turn: Turn, _s: Session, fc: DifyBuilderContext) -> StepResult:
+        seen.append(turn)
+        return StepResult(next=PcState.BUILD_REVIEW, context=fc)
+
+    action = Action(kind=CONFIRMED_TOOL_ACTION, base_version=1, command_id="command-1")
+    out = Runner(env, {PcState.BUILD_TEST_AND_REPAIR: working}).advance(s.id, Turn(action=action, actor=_actor()))
+
+    assert out.current_state == PcState.BUILD_REVIEW
+    assert out.version == 2  # one commit: no waiting->working transition here
+    assert [turn.action for turn in seen] == [action]
+
+
+@pytest.mark.parametrize(
+    ("state", "command"),
+    [
+        (PcState.BUILD_TEST_AND_REPAIR, "other-command"),
+        (PcState.BUILD_REVIEW, "command-1"),
+        (PcState.BUILD_AWAIT_TESTDATA, "command-1"),
+    ],
+)
+def test_confirmed_action_refuses_unreserved_command_or_non_working_state(state, command):
+    from core.dify_builder.models import CONFIRMED_TOOL_ACTION
+
+    env, repo = _new_env()
+    s = _session(entry_mode=EntryMode.BUILD, current_state=state)
+    repo.create_session(s, DifyBuilderContext(confirmed_consent_id="consent-1", confirmed_command_id="command-1"), [])
+    called: list[Turn] = []
+
+    def handler(_env: Env, turn: Turn, _s: Session, fc: DifyBuilderContext) -> StepResult:
+        called.append(turn)
+        return StepResult(next=PcState.BUILD_REVIEW, context=fc)
+
+    registry = {state: handler}
+    action = Action(kind=CONFIRMED_TOOL_ACTION, base_version=1, command_id=command)
+    with pytest.raises(ConflictError):
+        Runner(env, registry).advance(s.id, Turn(action=action, actor=_actor()))
+    assert called == []
+    assert repo.get_session(s.id)[0].version == 1
+
+
+def test_terminal_failure_clears_pending_confirmed_reference():
+    env, repo = _new_env()
+    s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_TEST_AND_REPAIR)
+    repo.create_session(s, DifyBuilderContext(confirmed_consent_id="consent-1", confirmed_command_id="command-1"), [])
+    Runner(env, {}).fail(s.id)
+    session_after, fc = repo.get_session(s.id)
+    assert session_after.current_state == PcState.FAILED
+    assert (fc.confirmed_consent_id, fc.confirmed_command_id) == ("", "")
+
+
+def test_recovery_clears_pending_confirmed_reference():
+    env, repo = _new_env()
+    s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_REVIEW)
+    repo.create_session(
+        s,
+        DifyBuilderContext(confirmed_consent_id="consent-1", confirmed_command_id="command-1", recovery_class="drift"),
+        [],
+    )
+    Runner(env, {}).advance(s.id, Turn(action=Action(kind="check_recovery", base_version=1), actor=_actor()))
+    _session_after, fc = repo.get_session(s.id)
+    assert (fc.confirmed_consent_id, fc.confirmed_command_id) == ("", "")

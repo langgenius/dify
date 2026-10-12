@@ -9,10 +9,11 @@ caller (P3b Task 4: the Flask controller + the Celery task's ``.delay``).
 """
 
 import json
+import logging
 from collections.abc import Callable, Iterator
 from dataclasses import asdict
 from enum import StrEnum
-from typing import Protocol
+from typing import TYPE_CHECKING, Protocol
 from uuid import uuid4
 
 from core.dify_builder import recovery
@@ -46,6 +47,7 @@ from core.dify_builder.execution_policy import (
     decode_http_fixture_submission,
 )
 from core.dify_builder.models import (
+    CONFIRMED_TOOL_ACTION,
     Action,
     Actor,
     ChecklistError,
@@ -60,6 +62,12 @@ from core.dify_builder.ports import Repository
 from core.dify_builder.state import PcState, canvas_read_only, is_terminal, is_waiting, is_working
 from core.dify_builder.verification import publication_decision
 from services.dify_builder.agent.model_resolver import validate_model_config
+
+if TYPE_CHECKING:
+    from core.dify_builder.real_call_consent import ConsentReceipt
+    from services.dify_builder.real_call_consent_service import BuilderRealCallConsentService
+
+logger = logging.getLogger(__name__)
 
 __all__ = [
     "AppAccess",
@@ -827,7 +835,10 @@ class DifyBuilderService:
         get_app_name_fn: Callable[[str, Actor], str] | None = None,
         get_verification_identity_fn: Callable[[str, Actor], tuple[str, str]] | None = None,
         stamp_http_fixtures_fn: Callable[..., HttpFixtureSetV1] | None = None,
+        real_call_consent: "BuilderRealCallConsentService | None" = None,
     ) -> None:
+        # None: this instance cannot execute confirmed Tool tests (all existing callers).
+        self._real_call_consent = real_call_consent
         self._stamp_http_fixtures_fn = stamp_http_fixtures_fn
         self._repo = repo
         self._session_lock = session_lock
@@ -1369,6 +1380,9 @@ class DifyBuilderService:
         kind = action.kind.strip() if isinstance(action.kind, str) else ""
         if not kind:
             raise BadRequestError("action kind is required")
+        if kind == CONFIRMED_TOOL_ACTION:
+            # Only the confirmed dispatch owner's reservation winner may enqueue it.
+            raise BadRequestError(f"action {kind} is not allowed")
         action.kind = kind
         if not isinstance(action.payload, dict):
             raise BadRequestError("action payload must be an object")
@@ -1581,6 +1595,77 @@ class DifyBuilderService:
                 base_version=base_version,
             ),
         )
+
+    def execute_confirmed_tool(
+        self,
+        session_id: str,
+        actor: Actor,
+        *,
+        consent_id: str,
+        scope_digest: str,
+        at_version: int,
+        idempotency_key: str,
+    ) -> "ConsentReceipt":
+        """Confirmed dispatch coordinator: one lease, one reservation, at most one enqueue.
+
+        Acquires the session's advance lease BEFORE the consent owner's atomic
+        SQL reservation and hands that same token only to the winning enqueue
+        of the already reserved command (no ``_prepare_action``, no second
+        command or state commit). A held lease answers a matching duplicate
+        from the consent owner's replay (current receipt, no reservation or
+        enqueue) and is busy otherwise. Refusal or a non-winning replay
+        releases only this call's own token. A failed enqueue keeps the lease:
+        its acknowledgement may be lost while the worker already holds the same
+        token, and the reservation can never be enqueued again; the reconcile
+        sweeper settles a launch that never starts.
+        """
+        if self._real_call_consent is None:
+            raise BadRequestError("confirmed tool execution is unavailable")
+        consent = self._real_call_consent
+        s, _fc = self._get_authorized_session(session_id, actor, AppAccess.TEST_AND_RUN)
+        token = self._session_lock.acquire(session_id)
+        if token is None:
+            replay = consent.replay_execution(
+                actor=actor,
+                session_id=session_id,
+                consent_id=consent_id,
+                scope_digest=scope_digest,
+                at_version=at_version,
+                idempotency_key=idempotency_key,
+            )
+            if replay is None:
+                raise BusyError(f"session {session_id} is busy")
+            return replay
+        try:
+            receipt, won = consent.reserve_execution(
+                actor=actor,
+                session_id=session_id,
+                consent_id=consent_id,
+                scope_digest=scope_digest,
+                at_version=at_version,
+                idempotency_key=idempotency_key,
+            )
+        except BaseException:
+            self._session_lock.release(session_id, token)
+            raise
+        if not won or receipt.command_id is None:
+            self._session_lock.release(session_id, token)
+            return receipt
+        action = Action(
+            kind=CONFIRMED_TOOL_ACTION,
+            payload={"consent_id": receipt.consent_id},
+            base_version=receipt.at_version,
+            command_id=receipt.command_id,
+        )
+        try:
+            self._enqueue_fn(session_id, action, actor, token)
+        except Exception:
+            logger.warning(
+                "dify_builder confirmed enqueue acknowledgement unavailable (session=%s, command=%s)",
+                s.id,
+                receipt.command_id,
+            )
+        return receipt
 
     def dispatch(self, session_id: str, action: Action, actor: Actor) -> str:
         """Port of Go ``dispatch``: acquire-or-busy + enqueue, release on

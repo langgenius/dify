@@ -29,6 +29,12 @@ from core.dify_builder.state import PcState
 from libs.datetime_utils import naive_utc_now
 from models.base import Base
 from services.dify_builder.repository import SqlDifyBuilderRepository
+from tests.unit_tests.services.dify_builder.test_execution_policy_service import (
+    owned as owned,  # noqa: PLC0414 - shared pytest fixture
+)
+from tests.unit_tests.services.dify_builder.test_real_call_consent_service import (
+    consent_owner as consent_owner,  # noqa: PLC0414 - shared pytest fixture
+)
 
 TENANT_ID = "11111111-1111-1111-1111-111111111111"
 APP_ID = "22222222-2222-2222-2222-222222222222"
@@ -108,3 +114,61 @@ def test_reconcile_empty_sweep_when_nothing_stale(
 
     assert count == 0
     assert published == []
+
+
+def test_reconcile_settles_stranded_confirmed_launch_without_redispatch(monkeypatch, consent_owner) -> None:
+    """A reserved confirmed command whose worker never ran is failed before any claim.
+
+    The sweeper never re-enqueues, never rewrites the session head and never
+    touches spent counters; settlement is owned by the consent service.
+    """
+    from models.dify_builder import DifyBuilderSession
+    from tests.unit_tests.services.dify_builder.test_confirmed_tool_launch import reserve_directly
+
+    owner = consent_owner
+    reserved, _action, _token = reserve_directly(owner)
+    with owner.factory() as db:
+        head = db.get(DifyBuilderSession, owner.session_id)
+        assert head is not None
+        before = (head.version, head.current_state)
+    real_now = naive_utc_now()
+    monkeypatch.setattr(mod, "_session_factory", lambda: owner.factory)
+    monkeypatch.setattr(
+        mod, "naive_utc_now", lambda: real_now + timedelta(seconds=2 * dify_config.DIFY_BUILDER_MAX_ADVANCE_SECONDS)
+    )
+    monkeypatch.setattr(mod.session_lock, "exists", lambda _sid: False)
+    published: list[tuple[str, dict]] = []
+    monkeypatch.setattr(mod.progress_bus, "publish", lambda sid, ev: published.append((sid, ev)))
+
+    assert mod.reconcile_interrupted_sessions() == 1
+
+    row = owner.consent_row(reserved.consent_id)
+    assert (row.state, row.reason_code, row.claimed_at, row.refresh_count, row.business_count) == (
+        "failed",
+        "launch_stranded",
+        None,
+        0,
+        0,
+    )
+    with owner.factory() as db:
+        head = db.get(DifyBuilderSession, owner.session_id)
+        assert head is not None
+        assert (head.version, head.current_state) == before
+    assert published == [(owner.session_id, {"kind": "error", "error": "interrupted"})]
+
+
+def test_reconcile_skips_confirmed_launch_while_its_lease_is_live(monkeypatch, consent_owner) -> None:
+    from tests.unit_tests.services.dify_builder.test_confirmed_tool_launch import reserve_directly
+
+    owner = consent_owner
+    reserved, _action, _token = reserve_directly(owner)
+    real_now = naive_utc_now()
+    monkeypatch.setattr(mod, "_session_factory", lambda: owner.factory)
+    monkeypatch.setattr(
+        mod, "naive_utc_now", lambda: real_now + timedelta(seconds=2 * dify_config.DIFY_BUILDER_MAX_ADVANCE_SECONDS)
+    )
+    monkeypatch.setattr(mod.session_lock, "exists", lambda _sid: True)
+    monkeypatch.setattr(mod.progress_bus, "publish", lambda *_args: None)
+
+    assert mod.reconcile_interrupted_sessions() == 0
+    assert owner.consent_row(reserved.consent_id).state == "confirmed"

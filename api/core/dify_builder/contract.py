@@ -626,13 +626,14 @@ class TestResultCard(_Card):
     terminal_outputs: dict[str, Any] | None = None
     executed_node_ids: list[str] = field(default_factory=list)
     review_note: str | None = None
-    execution_mode: Literal["restricted", "mock"] | None = None
+    execution_mode: Literal["restricted", "mock", "confirmed_tool"] | None = None
     safety_outcome: (
         Literal[
             "unsupported_safe_execution",
             "execution_blocked",
             "simulation_completed",
             "restricted_execution_completed",
+            "confirmed_tool_completed",
             "execution_evidence_unknown",
             "native_failed",
         ]
@@ -640,6 +641,12 @@ class TestResultCard(_Card):
     ) = None
     simulated_node_ids: list[str] = field(default_factory=list)
     blocked_node_ids: list[str] = field(default_factory=list)
+    # Confirmed Tool runs only: the policy, the spent grant and its sanitized
+    # outcome. Message content stays in the native authorized Run.
+    policy_version: Literal["builder-restricted-v1", "builder-confirmed-gmail-read-v1"] | None = None
+    consent_id: str | None = None
+    action_state: Literal["completed", "failed", "unknown"] | None = None
+    action_reason_code: str | None = None
 
 
 # ---------------------------------------------------------------------------
