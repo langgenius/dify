@@ -221,8 +221,6 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
         """
         Retrieve workflow node executions from cache after loading persisted history once.
 
-        Resume hydration reads SQL directly when include_paused is requested.
-
         Args:
             workflow_execution_id: The workflow execution identifier
             order_config: Optional configuration for ordering results
@@ -231,11 +229,9 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
             A sequence of WorkflowNodeExecution instances
         """
         if include_paused:
-            # Resume reads must not widen the ordinary runtime cache.
+            # Resume hydration must not widen the ordinary runtime cache.
             return self._sql_repository.get_by_workflow_execution(
-                workflow_execution_id,
-                order_config,
-                include_paused=include_paused,
+                workflow_execution_id, order_config, include_paused=True
             )
         try:
             if workflow_execution_id not in self._database_loaded_workflow_executions:

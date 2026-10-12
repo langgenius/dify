@@ -97,8 +97,6 @@ class WorkflowPersistenceLayer(Layer):
     def set_node_run_indices(self, indices: Mapping[str, int]) -> None:
         """Consume the upper layer's indices, allocated before engine event delivery."""
         self._node_run_indices = indices
-        for layer in self._workflow_tool_layers.values():
-            layer.set_node_run_indices(indices)
 
     def set_node_execution_history(self, executions: Sequence[WorkflowNodeExecution]) -> None:
         """Restore materialized history before execution starts or a source frame is scheduled."""
@@ -136,7 +134,7 @@ class WorkflowPersistenceLayer(Layer):
             self._workflow_tool_layers[key] = tool_layer
 
         def on_node_event(event: NodeEvent) -> None:
-            self._prepare_workflow_tool_layer(tool_layer)
+            tool_layer._workflow_execution = self._get_workflow_execution()
             # Lifecycle ownership must survive independently of the configured run-log store.
             event.node_run_result.process_data = {
                 **event.node_run_result.process_data,
@@ -152,9 +150,6 @@ class WorkflowPersistenceLayer(Layer):
                 tool_layer.on_event(event)
 
         return on_node_event
-
-    def _prepare_workflow_tool_layer(self, tool_layer: "WorkflowPersistenceLayer") -> None:
-        tool_layer._workflow_execution = self._get_workflow_execution()
 
     # ------------------------------------------------------------------
     # Layer lifecycle
@@ -500,7 +495,6 @@ class WorkflowPersistenceLayer(Layer):
 
     def _fail_running_node_executions(self, *, error_message: str) -> None:
         for tool_layer in self._workflow_tool_layers.values():
-            self._prepare_workflow_tool_layer(tool_layer)
             tool_layer._fail_running_node_executions(error_message=error_message)
         now = naive_utc_now()
         unfinished = []
@@ -511,8 +505,7 @@ class WorkflowPersistenceLayer(Layer):
                 execution.finished_at = now
                 execution.elapsed_time = max((now - execution.created_at).total_seconds(), 0.0)
                 unfinished.append(execution)
-        if unfinished:
-            self._workflow_node_execution_repository.save_many(unfinished)
+        self._workflow_node_execution_repository.save_many(unfinished)
 
     def _enqueue_trace_task(self, execution: WorkflowExecution) -> None:
         if not self._trace_manager:
