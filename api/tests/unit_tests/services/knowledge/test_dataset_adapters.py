@@ -12,7 +12,6 @@ from controllers.console.datasets.datasets import (
     RelatedAppListResponse,
 )
 from core.rag.datasource.graph.graph_base import StoredEntity, StoredRelation
-from extensions.application_services.app import AppServices
 from machinery.context import RequestContext
 from models import Account, App, Dataset, Document
 from models.account import Tenant, TenantAccountJoin, TenantAccountRole
