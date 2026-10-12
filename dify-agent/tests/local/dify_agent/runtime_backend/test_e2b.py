@@ -5,7 +5,7 @@ import posixpath
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 import logging
-from typing import cast
+from typing import Literal, cast
 
 import httpx as e2b_httpx
 import httpx2 as httpx
@@ -92,19 +92,20 @@ class _Sandbox:
     sandbox_id: str
     files: _Files = field(default_factory=_Files)
     traffic_access_token: str | None = "traffic-token"
-    pauses: list[bool] = field(default_factory=list)
+    pauses: list[str] = field(default_factory=list)
     killed: int = 0
     snapshots: int = 0
     pause_error: Exception | None = None
     pause_errors: list[BaseException] = field(default_factory=list)
     kill_errors: list[BaseException] = field(default_factory=list)
     snapshot_errors: list[BaseException] = field(default_factory=list)
+    snapshot_modes: list[str] = field(default_factory=list)
 
     def get_host(self, port: int) -> str:
         return f"{self.sandbox_id}-{port}.example.test"
 
-    async def pause(self, keep_memory: bool = True) -> bool:
-        self.pauses.append(keep_memory)
+    async def pause(self, *, mode: Literal["full"]) -> bool:
+        self.pauses.append(mode)
         if self.pause_errors:
             raise self.pause_errors.pop(0)
         if self.pause_error is not None:
@@ -117,9 +118,10 @@ class _Sandbox:
             raise self.kill_errors.pop(0)
         return True
 
-    async def create_snapshot(self, name: str | None = None) -> _Snapshot:
+    async def create_snapshot(self, name: str | None = None, *, mode: Literal["full"]) -> _Snapshot:
         del name
         self.snapshots += 1
+        self.snapshot_modes.append(mode)
         if self.snapshot_errors:
             raise self.snapshot_errors.pop(0)
         return _Snapshot(snapshot_id=f"snapshot-{self.sandbox_id}-{self.snapshots}")
@@ -258,7 +260,15 @@ def sleep_delays(monkeypatch: pytest.MonkeyPatch) -> list[float]:
 
 
 @pytest.mark.anyio
-async def test_e2b_sdk_create_disables_public_traffic(monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize(
+    ("on_timeout", "expected_timeout_action"),
+    [("pause", {"action": "pause", "mode": "full"}), ("kill", "kill")],
+)
+async def test_e2b_sdk_create_disables_public_traffic_and_preserves_lifecycle(
+    monkeypatch: pytest.MonkeyPatch,
+    on_timeout: Literal["kill", "pause"],
+    expected_timeout_action: dict[str, str] | str,
+) -> None:
     from e2b import AsyncSandbox
 
     sandbox = _Sandbox(sandbox_id="sandbox-1")
@@ -280,11 +290,12 @@ async def test_e2b_sdk_create_disables_public_traffic(monkeypatch: pytest.Monkey
         "prepared-template",
         timeout=120,
         metadata={"dify.resource": "runtime-sandbox"},
-        on_timeout="pause",
+        on_timeout=on_timeout,
     )
 
     assert created is sandbox
     assert create_options["network"] == {"allow_public_traffic": False}
+    assert create_options["lifecycle"] == {"on_timeout": expected_timeout_action, "auto_resume": False}
 
 
 @pytest.mark.anyio
@@ -362,7 +373,7 @@ async def test_e2b_initial_pause_failure_compensates_without_repeating_sdk_call(
     sandbox = next(iter(control.sandboxes.values()))
     assert exc_info.value.__cause__ is failure
     assert control.created == [("prepared-template", "pause")]
-    assert sandbox.pauses == [True]
+    assert sandbox.pauses == ["full"]
     assert sandbox.killed == 1
     assert sleep_delays == []
 
@@ -512,6 +523,7 @@ async def test_e2b_create_and_snapshot_create_are_not_retried(
 
     assert control.created == [("prepared-template", "pause")]
     assert snapshot_sandbox.snapshots == 1
+    assert snapshot_sandbox.snapshot_modes == ["full"]
 
 
 @pytest.mark.anyio
@@ -613,10 +625,9 @@ async def test_e2b_binding_uses_default_template_or_exact_snapshot_and_couples_r
     assert control.created == [("prepared-template", "pause"), ("snapshot-1", "pause")]
     assert default_allocation.binding_ref == default_allocation.workspace_ref
     assert snapshot_allocation.binding_ref == snapshot_allocation.workspace_ref
-    assert control.sandboxes[default_allocation.binding_ref].pauses == [True]
-
     for allocation in (default_allocation, snapshot_allocation):
         runtime = control.sandboxes[allocation.binding_ref]
+        assert runtime.pauses == ["full"]
         assert runtime.files.paths == {"/workspace"}
         assert "/workspace" not in runtime.files.removed
 
@@ -732,7 +743,7 @@ async def test_e2b_binding_create_fails_closed_after_sdk_pause_timeout(
 
     sandbox = next(iter(control.sandboxes.values()))
     assert exc_info.value.__cause__ is failure
-    assert sandbox.pauses == [True]
+    assert sandbox.pauses == ["full"]
     assert sandbox.killed == 1
     assert sleep_delays == []
 
@@ -782,6 +793,7 @@ async def test_e2b_checkpoint_uses_exact_source_runtime() -> None:
 
     assert snapshot_ref == "snapshot-source-1"
     assert source_sandbox.snapshots == 1
+    assert source_sandbox.snapshot_modes == ["full"]
 
 
 @pytest.mark.anyio
@@ -814,7 +826,7 @@ async def test_e2b_release_warns_without_raising_for_cleanup_failures(
         await backend.release(lease)
 
     assert data_plane.close_calls == 1
-    assert sandbox.pauses == [True]
+    assert sandbox.pauses == ["full"]
     records = [record for record in caplog.records if record.name == "dify_agent.runtime_backend.e2b"]
     assert len(records) == expected_warning_count
     for record in records:
@@ -845,7 +857,7 @@ async def test_e2b_release_closes_and_logs_failed_sdk_pause_once(
         await backend.release(lease)
 
     assert data_plane.close_calls == 1
-    assert sandbox.pauses == [True]
+    assert sandbox.pauses == ["full"]
     assert sleep_delays == []
     cleanup_record = next(
         record for record in caplog.records if record.__dict__.get("outcome") == "ignored_cleanup_failure"
@@ -880,7 +892,7 @@ async def test_e2b_release_does_not_reset_sdk_pause_timeout_budget(
         await backend.release(lease)
 
     assert data_plane.close_calls == 1
-    assert sandbox.pauses == [True]
+    assert sandbox.pauses == ["full"]
     assert len(sandbox.pause_errors) == 1
     assert sleep_delays == []
     cleanup_record = next(
@@ -913,7 +925,7 @@ async def test_e2b_release_does_not_swallow_base_exceptions(failure_stage: str) 
         await backend.release(lease)
 
     assert data_plane.close_calls == 1
-    assert sandbox.pauses == [True]
+    assert sandbox.pauses == ["full"]
 
 
 @pytest.mark.anyio
@@ -934,7 +946,7 @@ async def test_e2b_release_preserves_close_base_exception_when_pause_also_raises
     assert exc_info.value is close_error
     assert exc_info.value.__cause__ is pause_error
     assert data_plane.close_calls == 1
-    assert sandbox.pauses == [True]
+    assert sandbox.pauses == ["full"]
 
 
 @pytest.mark.anyio
@@ -988,7 +1000,7 @@ async def test_e2b_acquire_fails_closed_without_traffic_token(
         _ = await backend.acquire(sandbox.sandbox_id)
 
     assert clients == []
-    assert sandbox.pauses == [True]
+    assert sandbox.pauses == ["full"]
 
 
 @pytest.mark.anyio
@@ -1012,7 +1024,7 @@ async def test_e2b_acquire_closes_transport_and_pauses_after_readiness_retries_e
     assert attempts == 3
     assert sleep_delays == [0.5, 0.5]
     assert clients[0].is_closed
-    assert sandbox.pauses == [True]
+    assert sandbox.pauses == ["full"]
 
 
 @pytest.mark.anyio
@@ -1039,7 +1051,7 @@ async def test_e2b_acquire_does_not_retry_shellctl_4xx_and_preserves_error_when_
 
     assert attempts == 1
     assert clients[0].is_closed
-    assert sandbox.pauses == [True]
+    assert sandbox.pauses == ["full"]
 
 
 @pytest.mark.anyio
@@ -1087,7 +1099,7 @@ async def test_e2b_acquire_preserves_health_failure_when_close_and_pause_fail(
 
     assert client.calls == 3
     assert data_plane.close_calls == 1
-    assert sandbox.pauses == [True]
+    assert sandbox.pauses == ["full"]
 
 
 @pytest.mark.anyio
@@ -1144,7 +1156,7 @@ async def test_acquire_task_cancellation_during_health_closes_transport_and_paus
         with pytest.raises(asyncio.CancelledError, match="cancel acquisition"):
             await task
     assert clients[0].is_closed
-    assert sandbox.pauses == [True]
+    assert sandbox.pauses == ["full"]
 
 
 @pytest.mark.anyio
@@ -1182,7 +1194,7 @@ async def test_release_task_cancellation_attempts_pause_once_and_preserves_origi
             await task
     assert exc_info.value is data_plane.close_error
     assert data_plane.close_calls == 1
-    assert sandbox.pauses == [True]
+    assert sandbox.pauses == ["full"]
     assert len(sandbox.pause_errors) == 1
     assert sleep_delays == []
 
@@ -1195,8 +1207,8 @@ async def test_acquire_primary_health_error_survives_task_cancel_during_compensa
     # cleanup must not replace the primary acquisition error.
     entered = asyncio.Event()
 
-    async def blocked_pause(sandbox: _Sandbox, keep_memory: bool = True) -> bool:
-        sandbox.pauses.append(keep_memory)
+    async def blocked_pause(sandbox: _Sandbox, *, mode: Literal["full"]) -> bool:
+        sandbox.pauses.append(mode)
         entered.set()
         await asyncio.Event().wait()
         return True
@@ -1214,4 +1226,4 @@ async def test_acquire_primary_health_error_survives_task_cancel_during_compensa
         with pytest.raises(BindingAcquireError, match="bad token"):
             await task
     assert clients[0].is_closed
-    assert sandbox.pauses == [True]
+    assert sandbox.pauses == ["full"]

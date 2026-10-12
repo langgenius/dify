@@ -82,11 +82,11 @@ class _E2BSandbox(Protocol):
 
     def get_host(self, port: int) -> str: ...
 
-    async def pause(self, keep_memory: bool = True) -> bool: ...
+    async def pause(self, *, mode: Literal["full"]) -> bool: ...
 
     async def kill(self) -> bool: ...
 
-    async def create_snapshot(self, name: str | None = None) -> _E2BSnapshotInfo: ...
+    async def create_snapshot(self, name: str | None = None, *, mode: Literal["full"]) -> _E2BSnapshotInfo: ...
 
 
 class E2BControlPlane(Protocol):
@@ -145,7 +145,10 @@ class E2BSDKControlPlane:
                         timeout=timeout,
                         metadata=metadata,
                         network={"allow_public_traffic": False},
-                        lifecycle={"on_timeout": on_timeout, "auto_resume": False},
+                        lifecycle={
+                            "on_timeout": {"action": "pause", "mode": "full"} if on_timeout == "pause" else "kill",
+                            "auto_resume": False,
+                        },
                         **self._options(),
                     ),
                 ),
@@ -161,7 +164,10 @@ class E2BSDKControlPlane:
         try:
             return cast(
                 _E2BSandbox,
-                cast(object, await AsyncSandbox.connect(handle, timeout=timeout, **self._options())),
+                cast(
+                    object,
+                    await AsyncSandbox.connect(handle, timeout=timeout, on_resume="restore", **self._options()),
+                ),
             )
         except (SandboxNotFoundException, NotFoundException) as exc:
             raise _E2BControlPlaneNotFoundError(str(exc)) from exc
@@ -200,7 +206,7 @@ class E2BHomeSnapshotBackend:
         if not isinstance(source, E2BRuntimeLease):
             raise HomeSnapshotCreateError("E2B Home Snapshot requires an E2B RuntimeLease")
         try:
-            snapshot = await source.sandbox.create_snapshot()
+            snapshot = await source.sandbox.create_snapshot(mode="full")
             return snapshot.snapshot_id
         except BaseException as exc:
             if isinstance(exc, Exception):
@@ -257,7 +263,7 @@ class E2BExecutionBindingBackend:
             for entry in await sandbox.files.list(self.layout.workspace_dir):
                 await sandbox.files.remove(entry.path)
             sandbox_id = sandbox.sandbox_id
-            _ = await sandbox.pause(keep_memory=True)
+            _ = await sandbox.pause(mode="full")
             return ExecutionBindingAllocation(binding_ref=sandbox_id, workspace_ref=sandbox_id)
         except _E2BControlPlaneCapacityExhaustedError as exc:
             raise BindingCapacityExhaustedError(str(exc)) from exc
@@ -323,7 +329,7 @@ class E2BExecutionBindingBackend:
             close_base_error = exc
         pause_base_error: BaseException | None = None
         try:
-            _ = await lease.sandbox.pause(keep_memory=True)
+            _ = await lease.sandbox.pause(mode="full")
         except Exception as exc:
             _log_e2b_cleanup_warning(
                 "failed to pause E2B RuntimeLease",
@@ -491,7 +497,7 @@ async def _best_effort_pause(sandbox: _E2BSandbox | None) -> None:
     if sandbox is None:
         return
     try:
-        _ = await sandbox.pause(keep_memory=True)
+        _ = await sandbox.pause(mode="full")
     except BaseException as exc:
         _log_e2b_cleanup_warning(
             "failed to pause E2B Binding after acquire failure",

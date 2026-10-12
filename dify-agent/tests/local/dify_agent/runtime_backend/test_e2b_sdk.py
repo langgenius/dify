@@ -146,8 +146,8 @@ async def test_sdk_lifecycle_preserves_private_traffic_and_memory_resume(api_tra
 
     connected = await _control_plane().connect(_SANDBOX_ID, timeout=120)
     assert connected.traffic_access_token == "traffic-contract-token"
-    assert await connected.pause(keep_memory=True)
-    snapshot = await connected.create_snapshot()
+    assert await connected.pause(mode="full")
+    snapshot = await connected.create_snapshot(mode="full")
     assert snapshot.snapshot_id == "team/home:default"
     assert await _control_plane().kill(_SANDBOX_ID)
     assert await _control_plane().delete_snapshot(snapshot.snapshot_id)
@@ -166,17 +166,34 @@ async def test_sdk_lifecycle_preserves_private_traffic_and_memory_resume(api_tra
     assert create_body["metadata"] == {"dify.resource": "runtime-sandbox"}
     assert create_body["network"] == {"allowPublicTraffic": False}
     assert create_body["autoPause"] is True
-    # Bare pause keeps the API's full-memory snapshot default, as with SDK 2.46.4.
-    assert "autoPauseMemory" not in create_body
+    assert create_body["autoPauseMemory"] is True
     assert create_body["autoResume"] == {"enabled": False}
     # SDK "restore" leaves memory unset, preserving the connect API's memory-restore default.
     assert json.loads(api_transport.requests[1].content) == {"timeout": 120}
     assert json.loads(api_transport.requests[2].content) == {"memory": True}
-    # An omitted snapshot mode preserves the API's full-memory default.
-    assert json.loads(api_transport.requests[3].content) == {}
+    assert json.loads(api_transport.requests[3].content) == {"memory": True}
     assert all(request.headers["X-API-Key"] == _API_KEY for request in api_transport.requests)
     assert api_transport.retry_limits == [3] * 6
     assert api_transport.delays == []
+
+
+@pytest.mark.anyio
+async def test_sdk_kill_lifecycle_omits_pause_memory_mode(api_transport: _ApiTransport) -> None:
+    api_transport.responses = [_sandbox_response()]
+    sandbox = await _control_plane().create(
+        "prepared-template",
+        timeout=120,
+        metadata={"dify.resource": "runtime-sandbox"},
+        on_timeout="kill",
+    )
+    assert sandbox.sandbox_id == _SANDBOX_ID
+    assert len(api_transport.requests) == 1
+    create_body = json.loads(api_transport.requests[0].content)
+    assert create_body["autoPause"] is False
+    assert "autoPauseMemory" not in create_body
+    assert "mode" not in create_body
+    assert create_body["autoResume"] == {"enabled": False}
+    assert create_body["network"] == {"allowPublicTraffic": False}
 
 
 @pytest.mark.anyio
@@ -187,7 +204,7 @@ async def test_sdk_preserves_already_paused_and_absent_resource_results(api_tran
         *[httpx.Response(404, json={"code": 404, "message": "not found"}) for _ in range(3)],
     ]
     sandbox = await _create_sandbox()
-    assert await sandbox.pause(keep_memory=True) is False
+    assert await sandbox.pause(mode="full") is False
     assert await _control_plane().kill(_SANDBOX_ID) is False
     assert await _control_plane().delete_snapshot("team/home:default") is False
     with pytest.raises(_E2BControlPlaneNotFoundError, match="not found"):
@@ -251,6 +268,10 @@ async def test_resource_creates_are_not_replayed_after_bad_gateway(
     assert isinstance(raised.value.__cause__, SandboxException)
     assert raised.value.__cause__.status_code == 502
     assert [(request.method, request.url.path) for request in api_transport.requests] == [("POST", expected_path)]
+    if operation == "snapshot":
+        assert json.loads(api_transport.requests[0].content) == {"memory": True}
+    else:
+        assert json.loads(api_transport.requests[0].content)["autoPauseMemory"] is True
     assert api_transport.retry_limits == [3]
     assert api_transport.delays == []
 
@@ -269,11 +290,13 @@ async def test_sdk_replays_idempotent_lifecycle_after_bad_gateway(api_transport:
         api_transport.requests.clear()
         api_transport.retry_limits.clear()
         api_transport.responses = [error_response, httpx.Response(204)]
-        assert await sandbox.pause(keep_memory=True)
+        assert await sandbox.pause(mode="full")
         expected_path = f"/sandboxes/{_SANDBOX_ID}/pause"
 
     assert [(request.method, request.url.path) for request in api_transport.requests] == [("POST", expected_path)] * 2
     assert api_transport.requests[0].content == api_transport.requests[1].content
+    expected_body = {"timeout": 120} if operation == "connect" else {"memory": True}
+    assert json.loads(api_transport.requests[0].content) == expected_body
     assert api_transport.retry_limits == [3]
     assert api_transport.delays == [0.05]
 
