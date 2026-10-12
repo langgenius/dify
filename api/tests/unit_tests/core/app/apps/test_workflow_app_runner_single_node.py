@@ -118,10 +118,7 @@ def test_run_uses_single_node_execution_branch(
     )
     init_graph.assert_not_called()
 
-    entry_kwargs = entry_class.call_args.kwargs
-    assert entry_kwargs["invoke_from"] == InvokeFrom.DEBUGGER
-    assert entry_kwargs["variable_pool"] is variable_pool
-    assert entry_kwargs["graph_runtime_state"] is graph_runtime_state
+    assert entry_class.call_args.kwargs["graph_runtime_state"] is graph_runtime_state
 
 
 def test_single_node_run_validates_target_node_config(queue_manager: WorkflowAppQueueManager) -> None:

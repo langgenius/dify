@@ -63,7 +63,6 @@ from controllers.service_api.app.error import (
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.apps.base_app_queue_manager import AppQueueManager
-from core.app.apps.execution_coordinator import send_abort_command
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.task_entities import MessageEndStreamResponse, StreamEvent
 from core.errors.error import (
@@ -471,5 +470,4 @@ class AppRunTaskStopApi(Resource):
             if owner != f"end-user-{ctx.end_user.id}".encode():
                 raise NotFound("Task not found")
         AppQueueManager.set_stop_flag_no_user_check(task_id)
-        send_abort_command(task_id)
         return TaskStopResponse(result="success")

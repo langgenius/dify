@@ -27,7 +27,7 @@ class WorkflowAppRunnerHandler(SpanHandler):
             if not arguments:
                 return wrapped(*args, **kwargs)
 
-            runner = arguments.get("runner", arguments.get("self"))
+            runner = arguments.get("runner")
             if runner is None or not hasattr(runner, "application_generate_entity"):
                 return wrapped(*args, **kwargs)
 

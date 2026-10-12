@@ -384,9 +384,7 @@ def test_workflow_events_snapshot_can_continue_across_pauses(app: Flask, monkeyp
         def get_workflow_run_by_id_and_tenant_id(self, **_kwargs):
             return workflow_run
 
-    workflow_generator = Mock()
-    workflow_generator.convert_to_event_stream.return_value = iter(["data: snapshot\n\n"])
-    snapshot_builder = Mock(return_value=["snapshot-events"])
+    snapshot_builder = Mock(return_value=[{"event": "snapshot"}])
 
     monkeypatch.setattr(
         DifyAPIRepositoryFactory,
@@ -396,10 +394,6 @@ def test_workflow_events_snapshot_can_continue_across_pauses(app: Flask, monkeyp
     monkeypatch.setattr(
         "controllers.console.human_input_form._retrieve_app_for_workflow_run",
         lambda *_args, **_kwargs: app_model,
-    )
-    monkeypatch.setattr(
-        "controllers.console.human_input_form.WorkflowAppGenerator",
-        lambda **_kwargs: workflow_generator,
     )
     monkeypatch.setattr(
         "controllers.console.human_input_form.build_workflow_event_stream",
@@ -415,7 +409,7 @@ def test_workflow_events_snapshot_can_continue_across_pauses(app: Flask, monkeyp
     ):
         response = handler(api, "t1", _account(), workflow_run_id="run-1")
 
-    assert response.get_data(as_text=True) == "data: snapshot\n\n"
+    assert response.get_data(as_text=True) == 'data: {"event":"snapshot"}\n\n'
     snapshot_builder.assert_called_once_with(
         app_mode=AppMode.WORKFLOW,
         workflow_run=workflow_run,

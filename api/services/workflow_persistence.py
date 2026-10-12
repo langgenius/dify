@@ -104,14 +104,10 @@ class WorkflowPersistenceLayer(Layer):
     # Layer lifecycle
     # ------------------------------------------------------------------
     @override
-    def on_graph_start(self) -> None:
-        self._workflow_execution = None
-
-    @override
     def on_event(self, event: EngineEvent) -> None:
         match event:
             case GraphRunStartedEvent():
-                self._handle_graph_run_started(event)
+                self._handle_graph_run_started()
             case GraphRunSucceededEvent():
                 self._handle_graph_run_succeeded(event)
             case GraphRunPartialSucceededEvent():
@@ -136,7 +132,7 @@ class WorkflowPersistenceLayer(Layer):
     # ------------------------------------------------------------------
     # Graph-level handlers
     # ------------------------------------------------------------------
-    def _handle_graph_run_started(self, event: GraphRunStartedEvent | None = None) -> None:
+    def _handle_graph_run_started(self) -> None:
         execution_id = self._get_execution_id()
         timing = self._application_generate_entity.workflow_execution_timing
         timing.start()

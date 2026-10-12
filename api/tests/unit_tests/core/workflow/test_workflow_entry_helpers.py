@@ -48,16 +48,9 @@ def _build_minimal_workflow_entry(
     monkeypatch.setattr(workflow_entry, "InMemoryChannel", MagicMock(return_value=sentinel.command_channel))
 
     return workflow_entry.WorkflowEntry(
-        tenant_id="tenant-id",
-        app_id="app-id",
-        workflow_id="workflow-id",
         graph_config={"nodes": [], "edges": []},
         graph=sentinel.graph,
-        user_id="user-id",
-        user_from=UserFrom.ACCOUNT,
-        invoke_from=InvokeFrom.DEBUGGER,
         call_depth=0,
-        variable_pool=sentinel.variable_pool,
         graph_runtime_state=graph_runtime_state,
         response_stream_filter=response_stream_filter,
     )
@@ -69,16 +62,9 @@ class TestWorkflowEntryInit:
 
         with pytest.raises(ValueError, match="Max workflow call depth"):
             workflow_entry.WorkflowEntry(
-                tenant_id="tenant-id",
-                app_id="app-id",
-                workflow_id="workflow-id",
                 graph_config={"nodes": [], "edges": []},
                 graph=sentinel.graph,
-                user_id="user-id",
-                user_from=UserFrom.ACCOUNT,
-                invoke_from=InvokeFrom.DEBUGGER,
                 call_depth=call_depth,
-                variable_pool=sentinel.variable_pool,
                 graph_runtime_state=sentinel.graph_runtime_state,
             )
 
@@ -148,7 +134,7 @@ class TestWorkflowEntryRun:
         with patch.object(
             workflow_entry,
             "iter_dify_graph_engine_events",
-            return_value=(event for event in [sentinel.filtered_event]),
+            return_value=iter([sentinel.filtered_event]),
         ) as iter_dify_graph_engine_events:
             events = list(entry.run())
 
@@ -183,6 +169,7 @@ class TestWorkflowEntrySingleStepRun:
                 user_id="user-id",
                 user_inputs={},
                 variable_pool=sentinel.variable_pool,
+                execution_driver=None,
             )
 
     def test_preloads_constructor_variables_before_creating_memory_node(self):
@@ -247,6 +234,7 @@ class TestWorkflowEntrySingleStepRun:
                 user_inputs={},
                 variable_pool=variable_pool,
                 variable_loader=variable_loader,
+                execution_driver=None,
             )
 
         assert node.id == "node-id"
@@ -299,6 +287,7 @@ class TestWorkflowEntrySingleStepRun:
                 user_id="user-id",
                 user_inputs={"question": "hello"},
                 variable_pool=sentinel.variable_pool,
+                execution_driver=None,
             )
 
         assert node.id == "node-id"
@@ -366,6 +355,7 @@ class TestWorkflowEntrySingleStepRun:
                 user_id="user-id",
                 user_inputs={"question": "hello"},
                 variable_pool=sentinel.variable_pool,
+                execution_driver=None,
             )
 
         assert node.id == "node-id"
@@ -422,6 +412,7 @@ class TestWorkflowEntrySingleStepRun:
                     user_id="user-id",
                     user_inputs={},
                     variable_pool=sentinel.variable_pool,
+                    execution_driver=None,
                 )
 
 
@@ -703,7 +694,7 @@ class TestWorkflowEntryNodeLayers:
             patch.object(workflow_entry, "create_dify_workflow_file_runtime", return_value=sentinel.node_runtime),
             use_workflow_file_runtime(sentinel.caller_runtime),
         ):
-            events = workflow_entry.WorkflowEntry._run_node_with_layers(node, tenant_id="tenant-id")
+            events = workflow_entry.WorkflowEntry._run_node_with_layers(node)
             assert next(events) is sentinel.event
             assert peek_workflow_file_runtime() is sentinel.caller_runtime
             if completion == "throw":
@@ -748,7 +739,7 @@ class TestWorkflowEntryNodeLayers:
                 return_value=sentinel.read_only_runtime_state,
             ) as runtime_state_wrapper,
         ):
-            events = list(workflow_entry.WorkflowEntry._run_node_with_layers(node, tenant_id="tenant-id"))
+            events = list(workflow_entry.WorkflowEntry._run_node_with_layers(node))
 
         assert events == [result_event]
         runtime_state_wrapper.assert_called_once_with(sentinel.graph_runtime_state)
@@ -782,7 +773,7 @@ class TestWorkflowEntryNodeLayers:
             ),
         ):
             with pytest.raises(RuntimeError, match="boom"):
-                list(workflow_entry.WorkflowEntry._run_node_with_layers(node, tenant_id="tenant-id"))
+                list(workflow_entry.WorkflowEntry._run_node_with_layers(node))
 
         for layer in (observability_layer,):
             assert layer.on_node_run_end.call_args.args[0] is node

@@ -92,10 +92,7 @@ def test_clearing_cancellation_signals_drops_stop_flag_and_queued_commands() -> 
 
     redis_channel.assert_called_once_with(redis_client, "workflow:task:commands")
     channel.fetch_commands.assert_called_once_with()
-    assert redis_client.delete.call_args_list == [
-        (("generate_task_stopped:task",), {}),
-        (("workflow:task:commands",), {}),
-    ]
+    redis_client.delete.assert_called_once_with("generate_task_stopped:task")
 
 
 def test_clearing_cancellation_signals_ignores_empty_task_id() -> None:

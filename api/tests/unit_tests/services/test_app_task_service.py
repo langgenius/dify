@@ -123,20 +123,15 @@ def _assert_graph_command(redis: _StopRedis) -> None:
     assert redis.expirations[f"{_COMMAND_KEY}:pending"] == 3600
 
 
-@pytest.mark.parametrize("app_mode", list(AppMode))
-def test_stop_task_sends_graph_command_only_for_workflow_modes(app_mode: AppMode) -> None:
+def test_stop_task_sets_only_the_legacy_flag() -> None:
     redis = _StopRedis(values={_OWNER_KEY: f"end-user-{_USER_ID}".encode()})
 
-    AppTaskControlService(redis_client=redis).stop_task(_TASK_ID, InvokeFrom.WEB_APP, _USER_ID, app_mode)
+    AppTaskControlService(redis_client=redis).stop_task(_TASK_ID, InvokeFrom.WEB_APP, _USER_ID)
 
     assert redis.reads == [_OWNER_KEY]
     _assert_stop_flag(redis)
-    if app_mode in (AppMode.ADVANCED_CHAT, AppMode.WORKFLOW):
-        assert redis.operations == ["legacy_flag", "graph_command"]
-        _assert_graph_command(redis)
-    else:
-        assert redis.operations == ["legacy_flag"]
-        assert redis.commands == {}
+    assert redis.operations == ["legacy_flag"]
+    assert redis.commands == {}
 
 
 @pytest.mark.parametrize(
@@ -156,22 +151,21 @@ def test_stop_task_sends_graph_command_only_for_workflow_modes(app_mode: AppMode
         (InvokeFrom.WEB_APP, None, False),
     ],
 )
-def test_task_ownership_controls_only_the_legacy_flag(
+def test_task_ownership_controls_the_legacy_flag(
     invoke_from: InvokeFrom, owner: bytes | None, should_set_flag: bool
 ) -> None:
     redis = _StopRedis(values={_OWNER_KEY: owner} if owner is not None else {})
 
-    AppTaskControlService(redis_client=redis).stop_task(_TASK_ID, invoke_from, _USER_ID, AppMode.WORKFLOW)
+    AppTaskControlService(redis_client=redis).stop_task(_TASK_ID, invoke_from, _USER_ID)
 
     assert redis.reads == [_OWNER_KEY]
     if should_set_flag:
         _assert_stop_flag(redis)
-        assert redis.operations == ["legacy_flag", "graph_command"]
+        assert redis.operations == ["legacy_flag"]
     else:
         assert _STOP_KEY not in redis.values
-        assert redis.operations == ["graph_command"]
-    # Preserve the existing behavior even when the legacy ownership check does not match.
-    _assert_graph_command(redis)
+        assert redis.operations == []
+    assert redis.commands == {}
 
 
 @pytest.mark.parametrize("owner", [None, b"account-another-user"])
@@ -208,7 +202,7 @@ def test_flag_write_failure_propagates_before_graph_command(unchecked: bool) -> 
     stop = (
         partial(service.stop_workflow_task_no_user_check, task_id=_TASK_ID)
         if unchecked
-        else partial(service.stop_task, _TASK_ID, InvokeFrom.EXPLORE, _USER_ID, AppMode.WORKFLOW)
+        else partial(service.stop_task, _TASK_ID, InvokeFrom.EXPLORE, _USER_ID)
     )
 
     with pytest.raises(RedisConnectionError, match="stop flag write failed") as caught:
@@ -220,17 +214,12 @@ def test_flag_write_failure_propagates_before_graph_command(unchecked: bool) -> 
     assert redis.commands == {}
 
 
-@pytest.mark.parametrize("unchecked", [False, True])
-def test_graph_redis_failure_is_swallowed_after_legacy_flag(unchecked: bool, caplog: pytest.LogCaptureFixture) -> None:
+def test_graph_redis_failure_is_swallowed_after_legacy_flag(caplog: pytest.LogCaptureFixture) -> None:
     redis = _StopRedis(
         values={_OWNER_KEY: b"account-user-1"}, command_error=RedisConnectionError("command write failed")
     )
-    service = AppTaskControlService(redis_client=redis)
 
-    if unchecked:
-        service.stop_workflow_task_no_user_check(task_id=_TASK_ID)
-    else:
-        service.stop_task(_TASK_ID, InvokeFrom.EXPLORE, _USER_ID, AppMode.WORKFLOW)
+    AppTaskControlService(redis_client=redis).stop_workflow_task_no_user_check(task_id=_TASK_ID)
 
     _assert_stop_flag(redis)
     assert redis.operations == ["legacy_flag", "graph_command"]
@@ -243,7 +232,7 @@ def test_ownership_read_failure_propagates_without_either_stop_signal() -> None:
     redis = _StopRedis(read_error=error)
 
     with pytest.raises(RedisConnectionError, match="ownership read failed") as caught:
-        AppTaskControlService(redis_client=redis).stop_task(_TASK_ID, InvokeFrom.EXPLORE, _USER_ID, AppMode.WORKFLOW)
+        AppTaskControlService(redis_client=redis).stop_task(_TASK_ID, InvokeFrom.EXPLORE, _USER_ID)
 
     assert caught.value is error
     assert redis.reads == [_OWNER_KEY]
@@ -258,7 +247,7 @@ def test_service_instances_keep_their_redis_dependencies_separate() -> None:
     first_service = AppTaskControlService(redis_client=first)
     second_service = AppTaskControlService(redis_client=second)
 
-    first_service.stop_task(_TASK_ID, InvokeFrom.EXPLORE, _USER_ID, AppMode.CHAT)
+    first_service.stop_task(_TASK_ID, InvokeFrom.EXPLORE, _USER_ID)
     second_service.stop_workflow_task_no_user_check(task_id=_TASK_ID)
 
     assert first.reads == [_OWNER_KEY]

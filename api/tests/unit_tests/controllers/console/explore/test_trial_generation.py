@@ -109,11 +109,11 @@ class _Runtime:
 @dataclass
 class _Tasks:
     calls: list[str] = field(default_factory=list)
-    chat_calls: list[tuple[str, str, str]] = field(default_factory=list)
+    chat_calls: list[tuple[str, str]] = field(default_factory=list)
 
-    def stop_task(self, *, task_id: str, invoke_from: InvokeFrom, user_id: str, app_mode: AppMode) -> None:
+    def stop_task(self, *, task_id: str, invoke_from: InvokeFrom, user_id: str) -> None:
         assert invoke_from == InvokeFrom.EXPLORE
-        self.chat_calls.append((task_id, user_id, app_mode))
+        self.chat_calls.append((task_id, user_id))
 
     def stop_workflow_task(
         self,
@@ -129,7 +129,7 @@ class _Tasks:
         if app_mode == AppMode.ADVANCED_CHAT:
             assert owner is not None
             assert owner[0] == CreatorUserRole.ACCOUNT
-            self.chat_calls.append((task_id, owner[1], app_mode))
+            self.chat_calls.append((task_id, owner[1]))
         else:
             assert owner is None
             assert app_mode == AppMode.WORKFLOW
@@ -454,7 +454,7 @@ def test_last_trial_can_be_stopped_without_allowing_another_generation(harness: 
 
     stopped = harness.post("chat-messages/task-last/stop")
     assert stopped.status_code == 200
-    assert harness.services.app_tasks.chat_calls == [("task-last", harness.account.id, mode)]
+    assert harness.services.app_tasks.chat_calls == [("task-last", harness.account.id)]
     assert harness.usage() == 3
     unavailable = harness.app.test_client().post(harness.url("chat-messages/task-last/stop", app_id=str(uuid4())))
     _assert_error(unavailable, 403, "trial_app_not_allowed")

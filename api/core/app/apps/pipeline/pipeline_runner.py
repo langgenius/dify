@@ -209,17 +209,10 @@ class PipelineRunner(WorkflowBasedAppRunner):
 
         # RUN WORKFLOW
         workflow_entry = WorkflowEntry(
-            tenant_id=workflow.tenant_id,
-            app_id=workflow.app_id,
-            workflow_id=workflow.id,
             graph=graph,
             graph_config=workflow.graph_dict,
-            user_id=self.application_generate_entity.user_id,
-            user_from=user_from,
-            invoke_from=invoke_from,
             call_depth=self.application_generate_entity.call_depth,
             graph_runtime_state=graph_runtime_state,
-            variable_pool=variable_pool,
         )
 
         self._queue_manager.graph_runtime_state = graph_runtime_state

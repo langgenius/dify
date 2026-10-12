@@ -4,7 +4,7 @@ import contextvars
 import logging
 import threading
 import uuid
-from collections.abc import Generator, Mapping, Sequence
+from collections.abc import Generator, Mapping
 from typing import TYPE_CHECKING, Any, Literal, overload
 
 from flask import Flask, current_app
@@ -50,7 +50,6 @@ from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeE
 from extensions.ext_database import db
 from factories import file_factory
 from graphon.engine.filter import ResponseStreamFilter
-from graphon.engine.layer import Layer
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from graphon.runtime import RuntimeState
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader
@@ -525,7 +524,6 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER,
         pause_state_config: PauseStateLayerConfig | None = None,
         graph_runtime_state: RuntimeState | None = None,
-        graph_engine_layers: Sequence[Layer] = (),
         response_stream_filter: ResponseStreamFilter | None = None,
     ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any]]:
         """
@@ -593,7 +591,6 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                     "variable_loader": variable_loader,
                     "workflow_execution_repository": workflow_execution_repository,
                     "workflow_node_execution_repository": workflow_node_execution_repository,
-                    "graph_engine_layers": graph_engine_layers,
                     "pause_state_config": pause_state_config,
                     "graph_runtime_state": graph_runtime_state,
                     "response_stream_filter": response_stream_filter,
@@ -649,7 +646,6 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         variable_loader: VariableLoader,
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
-        graph_engine_layers: Sequence[Layer] = (),
         graph_runtime_state: RuntimeState | None = None,
         response_stream_filter: ResponseStreamFilter | None = None,
         pause_state_config: PauseStateLayerConfig | None = None,
@@ -715,7 +711,6 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 workflow=workflow,
                 system_user_id=system_user_id,
                 app=app,
-                graph_engine_layers=graph_engine_layers,
                 graph_runtime_state=graph_runtime_state,
                 response_stream_filter=response_stream_filter,
             )

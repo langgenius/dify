@@ -13,7 +13,7 @@ from graphon.nodes.base.node import Node
 
 
 class WorkflowRunIndex(Layer):
-    def __init__(self, root_executions: Sequence[WorkflowNodeExecution] = ()) -> None:
+    def __init__(self, root_executions: Sequence[WorkflowNodeExecution]) -> None:
         super().__init__()
         self._lock = Lock()
         self._indices: dict[str, int] = {}

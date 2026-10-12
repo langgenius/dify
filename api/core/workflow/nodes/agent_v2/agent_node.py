@@ -576,10 +576,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
 
     def _is_graph_aborted(self) -> bool:
         """Let Agent SSE consumption observe Engine's cooperative abort state."""
-        try:
-            return self.runtime_state.graph_execution.aborted
-        except (AttributeError, RuntimeError):
-            return False
+        return self.runtime_state.graph_execution.aborted
 
     def _stream_stop_reason(self) -> str:
         return "workflow_graph_aborted" if self._is_graph_aborted() else "event_stream_failed"

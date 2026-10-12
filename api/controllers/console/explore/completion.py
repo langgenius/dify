@@ -166,7 +166,6 @@ class CompletionStopApi(Resource):
             task_id=task_id,
             invoke_from=InvokeFrom.EXPLORE,
             user_id=request_context.account_id,
-            app_mode=AppMode.value_of(app_mode),
         )
 
         return SimpleResultResponse(result="success").model_dump(mode="json"), HTTPStatus.OK
@@ -267,7 +266,6 @@ class ChatStopApi(Resource):
                 task_id=task_id,
                 invoke_from=InvokeFrom.EXPLORE,
                 user_id=request_context.account_id,
-                app_mode=app_mode,
             )
 
         return SimpleResultResponse(result="success").model_dump(mode="json"), HTTPStatus.OK

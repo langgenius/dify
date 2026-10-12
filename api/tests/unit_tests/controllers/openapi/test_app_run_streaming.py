@@ -75,13 +75,11 @@ def test_chat_payload_normalizes_conversation_id():
     assert ChatRunPayload(inputs={}, query="hi", conversation_id=cid).conversation_id == cid
 
 
-def test_stop_task_calls_queue_manager_and_graph_engine(app: Flask, monkeypatch: pytest.MonkeyPatch):
+def test_stop_task_calls_queue_manager(app: Flask, monkeypatch: pytest.MonkeyPatch):
     queue_mock = Mock()
-    send_abort_command = Mock()
 
     run_module = sys.modules["controllers.openapi.app_run"]
     monkeypatch.setattr(run_module, "AppQueueManager", queue_mock)
-    monkeypatch.setattr(run_module, "send_abort_command", send_abort_command)
 
     api = AppRunTaskStopApi()
     with app.test_request_context("/openapi/v1/apps/app-1/tasks/task-1:stop", method="POST"):
@@ -96,7 +94,6 @@ def test_stop_task_calls_queue_manager_and_graph_engine(app: Flask, monkeypatch:
         )
 
     queue_mock.set_stop_flag_no_user_check.assert_called_once_with("task-1")
-    send_abort_command.assert_called_once_with("task-1")
     assert result == TaskStopResponse(result="success")
 
 

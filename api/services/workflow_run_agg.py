@@ -64,7 +64,7 @@ class WorkflowRunAgg:
         self,
         prepared: PreparedWorkflowRun,
         runner: WorkflowBasedAppRunner,
-        pause_state_config: PauseStateLayerConfig | None = None,
+        pause_state_config: PauseStateLayerConfig | None,
         *,
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,

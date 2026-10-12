@@ -190,6 +190,7 @@ class TestWorkflowEntry:
             user_id="user",
             user_inputs=inputs,
             variable_pool=variable_pool,
+            execution_driver=None,
         )
 
         variable = variable_pool.get(["source", "value"])
@@ -292,6 +293,7 @@ class TestWorkflowEntry:
             user_id="user",
             user_inputs={},
             variable_pool=variable_pool,
+            execution_driver=None,
         )
 
         # Assert

@@ -45,10 +45,6 @@ class TriggerPostLayer(Layer):
         self.cfs_plan_scheduler_entity = cfs_plan_scheduler_entity
 
     @override
-    def on_graph_start(self):
-        pass
-
-    @override
     def on_event(self, event: EngineEvent):
         """
         Update trigger log with success or failure.
@@ -94,7 +90,3 @@ class TriggerPostLayer(Layer):
                 repo.update(trigger_log)
                 session.commit()
                 self.start_time = now
-
-    @override
-    def on_graph_end(self, error: Exception | None) -> None:
-        pass

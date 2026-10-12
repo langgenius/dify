@@ -95,6 +95,7 @@ class WorkflowCase:
             user_id=self.account.id,
             user_from=UserFrom.ACCOUNT,
             invoke_from=InvokeFrom.DEBUGGER,
+            call_depth=0,
         )
         runs = SQLAlchemyWorkflowExecutionRepository(
             self.engine,
@@ -114,16 +115,9 @@ class WorkflowCase:
         if pause:
             commands.send_command(PauseCommand(reason="integration pause"))
         entry = WorkflowEntry(
-            tenant_id=self.workflow.tenant_id,
-            app_id=self.workflow.app_id,
-            workflow_id=self.workflow.id,
             graph=graph,
             graph_config=self.workflow.graph_dict,
-            user_id=self.account.id,
-            user_from=UserFrom.ACCOUNT,
-            invoke_from=InvokeFrom.DEBUGGER,
             call_depth=0,
-            variable_pool=variable_pool,
             graph_runtime_state=runtime,
             command_channel=commands,
         )

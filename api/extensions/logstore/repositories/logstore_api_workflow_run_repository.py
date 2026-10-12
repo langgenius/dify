@@ -156,19 +156,15 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
     - Proper time range filtering for LogStore queries
     """
 
-    def __init__(self, session_maker: sessionmaker | None = None):
+    def __init__(self, session_maker: sessionmaker):
         """
         Initialize the repository with LogStore client.
 
         Args:
-            session_maker: SQLAlchemy sessionmaker (unused, for compatibility with factory pattern)
+            session_maker: SQLAlchemy sessionmaker for transactional pause and task-control data
         """
         logger.debug("LogstoreAPIWorkflowRunRepository.__init__: initializing")
         self.logstore_client = AliyunLogStore()
-        if session_maker is None:
-            from extensions.ext_database import db
-
-            session_maker = sessionmaker(db.engine)
         self._control_repository = DifyAPISQLAlchemyWorkflowRunRepository(session_maker)
 
         # Control flag for dual-read (fallback to PostgreSQL when LogStore returns no results)

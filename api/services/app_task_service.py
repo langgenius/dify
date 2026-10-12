@@ -47,30 +47,18 @@ class AppTaskControlService:
         task_id: str,
         invoke_from: InvokeFrom,
         user_id: str,
-        app_mode: AppMode,
     ) -> None:
-        """Stop a running task.
+        """Stop a running non-workflow task through the Redis stop flag.
 
-        This method handles stopping tasks using both mechanisms:
-        1. Legacy Redis flag mechanism (for backward compatibility)
-        2. New Engine command channel (for workflow-based apps)
+        Workflow-based apps stop through ``stop_workflow_task``, which also
+        sends the Engine abort command.
 
         Args:
             task_id: The task ID to stop
             invoke_from: The source of the invoke (e.g., DEBUGGER, WEB_APP, SERVICE_API)
             user_id: The user ID requesting the stop
-            app_mode: The application mode (CHAT, AGENT_CHAT, ADVANCED_CHAT, WORKFLOW, etc.)
-
-        Returns:
-            None
         """
-        # Legacy mechanism: Set stop flag in Redis
         AppQueueManager.set_stop_flag(task_id, invoke_from, user_id, redis=self._redis_client)
-
-        # New mechanism: Send stop command via Engine for workflow-based apps
-        # This ensures proper workflow status recording in the persistence layer
-        if app_mode in (AppMode.ADVANCED_CHAT, AppMode.WORKFLOW):
-            send_abort_command(task_id, redis=self._redis_client)
 
     def stop_workflow_task_no_user_check(self, *, task_id: str) -> None:
         """Stop a workflow after app admission, without consulting the user ownership cache.
@@ -270,5 +258,4 @@ class AppTaskService:
             task_id=task_id,
             invoke_from=invoke_from,
             user_id=user_id,
-            app_mode=app_mode,
         )

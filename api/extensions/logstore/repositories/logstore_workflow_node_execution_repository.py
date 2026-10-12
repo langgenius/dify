@@ -160,9 +160,7 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
         # and tests share the same validated source.
         self._enable_dual_write = dify_config.LOGSTORE_DUAL_WRITE_ENABLED
 
-    def _to_logstore_model(
-        self, domain_model: WorkflowNodeExecution, *, log_version: int | None = None
-    ) -> Sequence[tuple[str, str]]:
+    def _to_logstore_model(self, domain_model: WorkflowNodeExecution, *, log_version: int) -> Sequence[tuple[str, str]]:
         logger.debug(
             "_to_logstore_model: id=%s, node_id=%s, status=%s",
             domain_model.id,
@@ -176,8 +174,7 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
         if not self._creator_user_role:
             raise ValueError("created_by_role is required in repository constructor")
 
-        # Generate log_version as nanosecond timestamp for record versioning
-        version = str(log_version if log_version is not None else time.time_ns())
+        version = str(log_version)
 
         json_converter = WorkflowRuntimeTypeConverter()
 

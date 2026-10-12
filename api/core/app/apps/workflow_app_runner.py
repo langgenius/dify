@@ -226,13 +226,13 @@ class WorkflowBasedAppRunner:
         graph_runtime_state: RuntimeState,
         user_from: UserFrom,
         invoke_from: InvokeFrom,
+        call_depth: int,
         workflow_id: str = "",
         tenant_id: str = "",
         user_id: str = "",
         root_node_id: str | None = None,
         app_type: CreditUsageAppType | None = None,
         trace_session_id: str | None = None,
-        call_depth: int = 0,
     ) -> Graph:
         """
         Init graph
@@ -376,12 +376,12 @@ class WorkflowBasedAppRunner:
         graph_config = source_graph_config.to_graph_config()
 
         # filter nodes only in the specified node type (iteration or loop)
-        all_node_configs = graph_config.get("nodes", [])
+        all_node_configs = graph_config["nodes"]
         nodes_by_id = {node["id"]: node for node in all_node_configs}
         container_ids = {node["id"]: resolve_container_id(node, nodes_by_id=nodes_by_id) for node in all_node_configs}
         node_ids = {node_id}
         while (
-            child_node_ids := {node.get("id") for node in all_node_configs if container_ids[node["id"]] in node_ids}
+            child_node_ids := {node["id"] for node in all_node_configs if container_ids[node["id"]] in node_ids}
             - node_ids
         ):
             node_ids.update(child_node_ids)
@@ -389,10 +389,10 @@ class WorkflowBasedAppRunner:
         # from the debug subtree. Nested legacy IDs can otherwise become ambiguous.
         selected_node_configs = [
             _WorkflowGraphNodeConfig.model_validate(
-                {**node, "data": {**node.get("data", {}), "container_id": container_ids[node["id"]]}}
+                {**node, "data": {**node["data"], "container_id": container_ids[node["id"]]}}
             )
             for node in all_node_configs
-            if node.get("id") in node_ids
+            if node["id"] in node_ids
         ]
 
         # filter edges only in the specified node type
@@ -405,7 +405,7 @@ class WorkflowBasedAppRunner:
         node_configs = [node.to_graph_node_config() for node in selected_node_configs]
         edge_configs = [edge.model_dump(mode="python", exclude_unset=True) for edge in selected_edge_configs]
         graph_config = {
-            **source_graph_config.to_graph_config(),
+            **graph_config,
             "nodes": node_configs,
             "edges": edge_configs,
         }
@@ -535,8 +535,6 @@ class WorkflowBasedAppRunner:
     ) -> None:
         """Publish materialized completions supplied by run orchestration."""
         for form_id, reason in pending_forms.items():
-            if form_id in published_form_ids:
-                continue
             form = forms[form_id]
             node_id = reason.node_id
             node_title = reason.node_title or form.definition.node_title or form.node_id
