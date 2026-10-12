@@ -35,7 +35,6 @@ from enums import DeploymentEdition
 from extensions.ext_login import DifyLoginManager, unauthorized_handler
 from graphon.variables import SecretVariable, StringVariable
 from libs.external_api import ExternalApi
-from libs.token import generate_csrf_token
 from machinery.errors import ActiveWorkspaceRequiredError
 from models import Account, AccountTrialAppRecord, App, AppMode, Tenant, TrialApp
 from models.account import AccountStatus
@@ -55,6 +54,7 @@ from models.tools import WorkflowToolProvider
 from models.workflow import Workflow
 from repositories.app_preview_query_repository import AppPreviewQueryRepository
 from repositories.trial_app_repository import TrialAppRepository
+from services.account.console_tokens import issue_console_csrf_token
 from services.app_preview_details_adapters import AppPreviewDetailsRuntime
 from services.app_preview_query_service import AppPreviewQueryService
 from services.app_service import AppResponseView
@@ -172,7 +172,7 @@ class _Harness:
     ) -> TestResponse:
         suffix = "" if endpoint == "detail" else "/workflows"
         statements: list[str] = []
-        token = generate_csrf_token(self.viewer.id) if csrf_token is None else csrf_token
+        token = issue_console_csrf_token(self.viewer.id) if csrf_token is None else csrf_token
         client = self.app.test_client()
         client.set_cookie(COOKIE_NAME_CSRF_TOKEN, token)
 
@@ -728,7 +728,7 @@ def test_app_detail_rejects_invalid_csrf_before_app_queries(harness: _Harness, c
 
 
 def test_app_detail_rejects_csrf_token_for_another_account(harness: _Harness) -> None:
-    response = harness.get(csrf_token=generate_csrf_token(harness.author.id))
+    response = harness.get(csrf_token=issue_console_csrf_token(harness.author.id))
     _assert_error(response, 401, "unauthorized")
     assert response.get_json()["message"] == "CSRF token is missing or invalid."
     harness.assert_app_not_queried()

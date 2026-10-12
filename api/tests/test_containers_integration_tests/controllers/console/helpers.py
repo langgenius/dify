@@ -12,10 +12,11 @@ from configs import dify_config
 from constants import HEADER_NAME_CSRF_TOKEN
 from extensions.ext_application_services import application_services
 from libs.datetime_utils import naive_utc_now
-from libs.token import _real_cookie_name, generate_csrf_token
+from libs.token import _real_cookie_name
 from models import Account, DifySetup, Tenant, TenantAccountJoin
 from models.account import AccountStatus, TenantAccountRole, TenantStatus
 from models.model import App, AppMode
+from services.account.console_tokens import issue_console_csrf_token
 
 
 def ensure_dify_setup(db_session: Session) -> None:
@@ -79,7 +80,7 @@ def create_console_app(db_session: Session, tenant_id: str, account_id: str, mod
 def authenticate_console_client(test_client: FlaskClient, account: Account) -> dict[str, str]:
     """Attach console auth cookies/headers for endpoints guarded by login_required."""
     access_token = application_services().accounts.lifecycle.login(account.id, ip_address="127.0.0.1").access_token
-    csrf_token = generate_csrf_token(account.id)
+    csrf_token = issue_console_csrf_token(account.id)
     test_client.set_cookie(_real_cookie_name("csrf_token"), csrf_token, domain="localhost")
     return {
         "Authorization": f"Bearer {access_token}",

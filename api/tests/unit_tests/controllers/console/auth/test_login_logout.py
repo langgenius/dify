@@ -43,8 +43,8 @@ from controllers.console.error import (
 )
 from enums import DeploymentEdition
 from extensions.ext_blueprints import AUTHENTICATED_HEADERS
-from libs.token import generate_csrf_token
 from services import account_errors
+from services.account.console_tokens import issue_console_csrf_token
 from services.entities.account_entities import AccountSessionTokens
 from services.entities.account_login_entities import (
     EmailCodeLoginCommand,
@@ -320,7 +320,7 @@ def test_cookie_session_mutations_reject_untrusted_origin(
     origin: str | None,
 ) -> None:
     config_overrides(SECRET_KEY="proxy-csrf-test-secret-at-least-32-bytes", CONSOLE_WEB_URL="", CONSOLE_API_URL="")
-    csrf = generate_csrf_token(TEST_TOKEN)
+    csrf = issue_console_csrf_token(TEST_TOKEN)
     refresh = f"v2.{TEST_TOKEN}.{'a' * 32}.{'b' * 64}"
     headers = {"X-CSRF-Token": csrf, "Cookie": f"csrf_token={csrf}; refresh_token={refresh}"}
     if origin is not None:
@@ -427,7 +427,7 @@ def test_same_host_proxy_origin_with_csrf_and_missing_refresh_can_log_out(
     app: Flask, service: FakeAuthenticationService, config_overrides: Callable[..., None]
 ) -> None:
     config_overrides(SECRET_KEY="proxy-csrf-test-secret-at-least-32-bytes", CONSOLE_WEB_URL="", CONSOLE_API_URL="")
-    csrf = generate_csrf_token(TEST_TOKEN)
+    csrf = issue_console_csrf_token(TEST_TOKEN)
     with app.test_request_context(
         "/",
         method="POST",

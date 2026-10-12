@@ -1,25 +1,25 @@
 import logging
-from collections.abc import Iterator
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 from socketio.exceptions import TimeoutError as SocketIOTimeoutError
-from sqlalchemy import Engine
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.rbac import RBACPermission, RBACResourceScope
 from extensions.ext_redis import RedisClientWrapper
-from models.account import Account, Tenant
-from models.base import TypeBase
+from models.account import Account, Tenant, TenantAccountRole
 from models.model import App, AppMode
-from repositories.workflow_collaboration_repository import WorkflowCollaborationRepository
+from repositories.workflow_collaboration_repository import WorkflowCollaborationRepository, WorkflowSessionInfo
+from services.account.console_tokens import issue_console_access_token
 from services.workflow_collaboration_service import SYNC_REQUEST_TIMEOUT_SECONDS, WorkflowCollaborationService
 from tests.unit_tests.config_override import config_overrides_context
-from tests.unit_tests.model_factories import make_app
+from tests.unit_tests.model_factories import make_account, make_app
 from tests.unit_tests.services.workflow_collaboration_fixtures import RedisState, seed_session, seed_sessions
 
 ServiceFixture = tuple[WorkflowCollaborationService, WorkflowCollaborationRepository, Mock]
+SOCKET_ACCOUNT_ID = "11111111-1111-4111-8111-111111111111"
 
 
 @pytest.fixture
@@ -33,20 +33,39 @@ def collaboration_redis(
 
 
 @pytest.fixture
-def real_service(collaboration_redis: RedisClientWrapper) -> ServiceFixture:
-    assert collaboration_redis._require_client() is not None
-    repository = WorkflowCollaborationRepository()
-    socketio = Mock()
-    return WorkflowCollaborationService(repository, socketio, server_id="server-1"), repository, socketio
+def socket_accounts() -> dict[str, Account]:
+    return {}
 
 
 @pytest.fixture
-def db_session(sqlite_engine: Engine) -> Iterator[Session]:
-    """Provide a real session for tenant-scoped workflow app access checks."""
+def socket_token(config_overrides: Callable[..., None]) -> str:
+    config_overrides(SECRET_KEY="socket-test-signing-key-" * 2, RBAC_ENABLED=False)
+    return issue_console_access_token(SOCKET_ACCOUNT_ID, "a" * 32)
 
-    TypeBase.metadata.create_all(sqlite_engine, tables=[App.__table__])
-    with Session(sqlite_engine, expire_on_commit=False) as session:
-        yield session
+
+@pytest.fixture
+def real_service(
+    collaboration_redis: RedisClientWrapper,
+    sqlite_session_factory: sessionmaker[Session],
+    socket_accounts: dict[str, Account],
+) -> ServiceFixture:
+    assert collaboration_redis._require_client() is not None
+    repository = WorkflowCollaborationRepository()
+    socketio = Mock()
+    service = WorkflowCollaborationService(
+        repository,
+        socketio,
+        server_id="server-1",
+        session_factory=sqlite_session_factory,
+        load_account=socket_accounts.get,
+    )
+    return service, repository, socketio
+
+
+@pytest.fixture
+def db_session(sqlite_session: Session) -> Session:
+    """Provide a real session for tenant-scoped workflow app access checks."""
+    return sqlite_session
 
 
 def _app(*, app_id: str, tenant_id: str, maintainer: str | None = None) -> App:
@@ -63,6 +82,55 @@ def _app(*, app_id: str, tenant_id: str, maintainer: str | None = None) -> App:
 
 
 class TestWorkflowCollaborationService:
+    @pytest.mark.parametrize("role", [TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR])
+    def test_authenticate_socket_saves_identity_for_an_editor(
+        self,
+        real_service: ServiceFixture,
+        socket_accounts: dict[str, Account],
+        socket_token: str,
+        role: TenantAccountRole,
+    ) -> None:
+        service, _repository, socketio = real_service
+        tenant = Tenant(name="Tenant")
+        tenant.id = "tenant-1"
+        account = make_account(account_id=SOCKET_ACCOUNT_ID, name="Jane", tenant=tenant, role=role)
+        socket_accounts[account.id] = account
+
+        assert service.authenticate_socket(socket_token, "sid-1") is True
+
+        socketio.save_session.assert_called_once_with(
+            "sid-1",
+            {"user_id": account.id, "username": "Jane", "avatar": None, "tenant_id": tenant.id},
+        )
+
+    @pytest.mark.parametrize("account_exists", [False, True])
+    def test_authenticate_socket_rejects_missing_accounts_and_non_editors(
+        self,
+        real_service: ServiceFixture,
+        socket_accounts: dict[str, Account],
+        socket_token: str,
+        account_exists: bool,
+    ) -> None:
+        service, _repository, socketio = real_service
+        if account_exists:
+            socket_accounts[SOCKET_ACCOUNT_ID] = make_account(
+                account_id=SOCKET_ACCOUNT_ID, role=TenantAccountRole.NORMAL
+            )
+
+        assert service.authenticate_socket(socket_token, "sid-1") is False
+
+        socketio.save_session.assert_not_called()
+
+    def test_authenticate_socket_rejects_invalid_tokens_before_saving_identity(
+        self, real_service: ServiceFixture, socket_token: str
+    ) -> None:
+        service, _repository, socketio = real_service
+
+        with pytest.raises(ValueError):
+            service.authenticate_socket(f"invalid.{socket_token}", "sid-1")
+
+        socketio.save_session.assert_not_called()
+
     def test_authorize_and_join_workflow_room_returns_leader_status(
         self, real_service: ServiceFixture, db_session: Session
     ) -> None:
@@ -86,7 +154,7 @@ class TestWorkflowCollaborationService:
             patch.object(collaboration_service, "broadcast_online_users") as broadcast_online_users,
         ):
             # Act
-            result = collaboration_service.authorize_and_join_workflow_room("wf-1", "sid-1", session=db_session)
+            result = collaboration_service.authorize_and_join_workflow_room("wf-1", "sid-1")
 
         # Assert
         assert result == ("u-1", True)
@@ -108,25 +176,25 @@ class TestWorkflowCollaborationService:
         socketio.emit.assert_called_once_with("status", {"isLeader": True}, room="sid-1")
 
     def test_authorize_and_join_workflow_room_returns_none_when_missing_user(
-        self, real_service: ServiceFixture, db_session: Session
+        self, real_service: ServiceFixture
     ) -> None:
         # Arrange
         collaboration_service, _repository, socketio = real_service
-        socketio.get_session.return_value = {}
+        socketio.get_session.return_value = dict[str, object]()
 
         # Act
-        result = collaboration_service.authorize_and_join_workflow_room("wf-1", "sid-1", session=db_session)
+        result = collaboration_service.authorize_and_join_workflow_room("wf-1", "sid-1")
 
         # Assert
         assert result is None
 
     def test_authorize_and_join_workflow_room_returns_none_when_missing_tenant(
-        self, real_service: ServiceFixture, db_session: Session
+        self, real_service: ServiceFixture
     ) -> None:
         collaboration_service, repository, socketio = real_service
         socketio.get_session.return_value = {"user_id": "u-1", "username": "Jane", "avatar": None}
 
-        result = collaboration_service.authorize_and_join_workflow_room("wf-1", "sid-1", session=db_session)
+        result = collaboration_service.authorize_and_join_workflow_room("wf-1", "sid-1")
 
         assert result is None
         assert repository.list_sessions("wf-1") == []
@@ -154,7 +222,7 @@ class TestWorkflowCollaborationService:
             patch.object(collaboration_service, "get_or_set_leader") as get_leader,
             patch.object(collaboration_service, "broadcast_online_users") as broadcast_online_users,
         ):
-            result = collaboration_service.authorize_and_join_workflow_room("wf-1", "sid-1", session=db_session)
+            result = collaboration_service.authorize_and_join_workflow_room("wf-1", "sid-1")
 
         assert result is None
         check_access.assert_called_once_with(
@@ -704,7 +772,7 @@ class TestWorkflowCollaborationService:
         events: list[str] = []
 
         @contextmanager
-        def graph_view_lock() -> Iterator[None]:
+        def graph_view_lock() -> Generator[None]:
             events.append("lock_enter")
             yield
             events.append("lock_exit")
@@ -1354,7 +1422,7 @@ class TestWorkflowCollaborationService:
         assert collaboration_service.is_session_active("wf-1", "sid-remote") is False
 
     @staticmethod
-    def _session(sid: str, connected_at: int, graph_active: bool) -> dict:
+    def _session(sid: str, connected_at: int, graph_active: bool) -> WorkflowSessionInfo:
         return {
             "user_id": f"u-{sid}",
             "username": sid,

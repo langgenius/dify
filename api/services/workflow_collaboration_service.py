@@ -5,18 +5,19 @@ import os
 import socket
 import time
 import uuid
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from typing import Any, override
 
 from socketio.exceptions import TimeoutError as SocketIOTimeoutError  # type: ignore[reportMissingTypeStubs]
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from core.rbac import RBACPermission, RBACResourceScope
 from models.account import Account
 from models.model import App
 from repositories.workflow_collaboration_repository import WorkflowCollaborationRepository, WorkflowSessionInfo
+from services.account.console_tokens import verify_console_access_token
 from services.enterprise.rbac_service import RBACService
 
 logger = logging.getLogger(__name__)
@@ -53,10 +54,18 @@ class WorkflowCollaborationService:
     _socketio: Any
 
     def __init__(
-        self, repository: WorkflowCollaborationRepository, socketio: Any, server_id: str | None = None
+        self,
+        repository: WorkflowCollaborationRepository,
+        socketio: Any,
+        server_id: str | None = None,
+        *,
+        session_factory: sessionmaker[Session],
+        load_account: Callable[[str], Account | None],
     ) -> None:
         self._repository = repository
         self._socketio = socketio
+        self._session_factory = session_factory
+        self._load_account = load_account
         self._server_id_override = server_id
         self._heartbeat_started = False
 
@@ -88,6 +97,18 @@ class WorkflowCollaborationService:
         self._refresh_server_heartbeat()
         self._socketio.start_background_task(self._server_heartbeat_loop)
 
+    def authenticate_socket(self, token: str, sid: str) -> bool:
+        user_id = verify_console_access_token(token)
+        user = self._load_account(user_id)
+        if not user:
+            logger.warning("Socket connect rejected: user not found (user_id=%s, sid=%s)", user_id, sid)
+            return False
+        if not user.has_edit_permission:
+            logger.warning("Socket connect rejected: no edit permission (user_id=%s, sid=%s)", user_id, sid)
+            return False
+        self.save_socket_identity(sid, user)
+        return True
+
     def save_socket_identity(self, sid: str, user: Account) -> None:
         """Persist the authenticated console user on the raw socket session."""
         self._socketio.save_session(
@@ -100,9 +121,7 @@ class WorkflowCollaborationService:
             },
         )
 
-    def authorize_and_join_workflow_room(
-        self, workflow_id: str, sid: str, *, session: Session
-    ) -> tuple[str, bool] | None:
+    def authorize_and_join_workflow_room(self, workflow_id: str, sid: str) -> tuple[str, bool] | None:
         """
         Join a collaboration room only after validating the socket session and tenant-scoped app access.
 
@@ -115,7 +134,9 @@ class WorkflowCollaborationService:
         if not user_id or not tenant_id:
             return None
 
-        if not self._can_access_workflow(workflow_id, str(tenant_id), str(user_id), session=session):
+        with self._session_factory() as session:
+            can_access = self._can_access_workflow(workflow_id, str(tenant_id), str(user_id), session=session)
+        if not can_access:
             logger.warning(
                 "Workflow collaboration join rejected: workflow_id=%s tenant_id=%s user_id=%s sid=%s",
                 workflow_id,

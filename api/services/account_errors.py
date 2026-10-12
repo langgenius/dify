@@ -328,6 +328,14 @@ class InvalidRefreshTokenError(AccountApplicationError):
     """The refresh token cannot be exchanged for a new session."""
 
 
+class InvalidConsoleAccessTokenError(AccountApplicationError, ValueError):
+    """The token does not authenticate a Console account session."""
+
+
+class UntrustedSessionOriginError(AccountApplicationError):
+    """The request origin does not authorize a Console session mutation."""
+
+
 class ResetPasswordEmailRateLimitError(AccountApplicationError):
     """Too many reset-password messages were requested for the address."""
 

@@ -42,7 +42,10 @@ def bind_console_token_verifier(app: Flask, verifier: ConsoleTokenVerifier) -> N
 
 
 def verify_console_access_token(token: str) -> str:
-    return cast(ConsoleTokenVerifier, current_app.extensions["console_token_verifier"])(token)
+    try:
+        return cast(ConsoleTokenVerifier, current_app.extensions["console_token_verifier"])(token)
+    except ValueError as error:
+        raise Unauthorized(str(error)) from error
 
 
 def load_account(account_id: str) -> Account | None:

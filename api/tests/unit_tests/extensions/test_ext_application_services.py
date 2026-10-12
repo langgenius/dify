@@ -250,6 +250,9 @@ def test_init_app_registers_services_for_the_current_app(
     with app.app_context():
         services = ext_application_services.application_services()
         assert services is app.extensions["application_services"]
+        assert services.workflow_collaboration._session_factory is sqlite_session_factory
+        assert services.workflow_collaboration._load_account == services.accounts.identity.load_user
+        assert services.workflow_collaboration._socketio is ext_application_services.sio
         assert app.extensions["console_token_verifier"] is ext_application_services.verify_console_access_token
         assert services.init_validation.is_validated(session_validated=False) is False
         assert isinstance(services.app_scoped_end_users.commands, AppScopedEndUserService)

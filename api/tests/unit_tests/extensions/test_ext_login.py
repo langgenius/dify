@@ -12,9 +12,12 @@ from core.logging.context import clear_request_context, get_identity_context
 from extensions import ext_login
 from extensions.ext_login import unauthorized_handler
 from libs.passport import PassportService
-from libs.token import generate_csrf_token
 from models.account import TenantAccountRole
-from services.account.console_tokens import issue_console_access_token, verify_console_access_token
+from services.account.console_tokens import (
+    issue_console_access_token,
+    issue_console_csrf_token,
+    verify_console_access_token,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -158,7 +161,7 @@ def test_account_routes_require_console_access_tokens(
     app.register_blueprint(blueprint)
     tokens = {
         "access": issue_console_access_token(account.id, "a" * 32),
-        "csrf": generate_csrf_token(account.id),
+        "csrf": issue_console_csrf_token(account.id),
         "legacy": PassportService().issue({"user_id": account.id, "sub": "Console API Passport"}),
     }
     client = app.test_client()
