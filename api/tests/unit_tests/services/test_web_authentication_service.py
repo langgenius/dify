@@ -22,7 +22,7 @@ from services.web_authentication_service import (
     WebPasswordResetVerificationLimitedError,
 )
 from services.webapp_access_query_service import WebAppAccessAppNotFoundError
-from tests.unit_tests.account_domain import FakeAccountSessionRevoker
+from tests.unit_tests.account_domain import FakeAccountSessions
 
 
 @dataclass
@@ -172,7 +172,7 @@ class ServiceFixture:
     security: SecurityGatewayFake
     app_access: AppAccessGatewayFake
     app_sessions: AppSessionGatewayFake
-    account_sessions: FakeAccountSessionRevoker
+    account_sessions: FakeAccountSessions
     audit: AuditGatewayFake
 
 
@@ -190,7 +190,7 @@ def service_fixture() -> ServiceFixture:
     security = SecurityGatewayFake()
     app_access = AppAccessGatewayFake()
     app_sessions = AppSessionGatewayFake()
-    account_sessions = FakeAccountSessionRevoker()
+    account_sessions = FakeAccountSessions()
     audit = AuditGatewayFake()
     service = WebAuthenticationService(
         accounts=accounts,

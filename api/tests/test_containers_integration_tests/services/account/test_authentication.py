@@ -8,12 +8,15 @@ from uuid import uuid4
 import jwt
 import pytest
 from redis.crc import key_slot
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from configs import dify_config
 from extensions.ext_application_services import application_services
 from extensions.ext_redis import redis_client
+from machinery.context import RequestContext
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
+from services.account.console_tokens import verify_console_access_token
 from services.account.login_adapters import RedisAccountSessionGateway
 from services.account_errors import (
     AccountLoginError,
@@ -596,3 +599,40 @@ def test_legacy_refresh_tokens_are_rejected_even_with_old_redis_indexes(account:
         gateway.rotate(refresh_token=legacy_token, account_id=account.id)
     gateway.revoke(legacy_token)
     assert gateway.resolve_refresh_token(current.refresh_token) == account.id
+
+
+@pytest.mark.parametrize("presented", ["caller", "unknown", "none"])
+def test_password_change_revokes_every_session_and_replaces_only_the_callers(
+    account: Account, db_session_with_containers: Session, presented: str
+) -> None:
+    services = application_services().accounts
+    caller = services.lifecycle.login(account.id, ip_address="127.0.0.1")
+    other = services.lifecycle.login(account.id, ip_address="127.0.0.2")
+    refresh_token = {
+        "caller": caller.refresh_token,
+        "unknown": f"v2.{account.id}.{'a' * 32}.{'b' * 64}",
+        "none": None,
+    }[presented]
+    workspace_id = db_session_with_containers.scalar(
+        select(TenantAccountJoin.tenant_id).where(TenantAccountJoin.account_id == account.id)
+    )
+    assert workspace_id is not None
+
+    result = services.password.change(
+        RequestContext("request", None, account.id, workspace_id),
+        current_password=PASSWORD,
+        new_password="ChangedPassword123!",
+        refresh_token=refresh_token,
+    )
+
+    for token in (caller.refresh_token, other.refresh_token):
+        with pytest.raises(InvalidRefreshTokenError):
+            services.authentication.refresh(token)
+    if presented == "caller":
+        assert result.session is not None
+        assert verify_console_access_token(result.session.access_token) == account.id
+        refreshed = services.authentication.refresh(result.session.refresh_token)
+        assert refreshed.refresh_token != result.session.refresh_token
+    else:
+        assert result.session is None
+    assert services.lifecycle.authenticate(account.email, "ChangedPassword123!").id == account.id
