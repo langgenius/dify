@@ -5,6 +5,7 @@ The package SSRF convenience stub is deliberately replaced with failing spies.
 """
 
 import json
+from dataclasses import replace
 from pathlib import Path
 from unittest.mock import Mock
 from uuid import uuid4
@@ -24,7 +25,7 @@ from core.dify_builder.execution_policy import (
     scalar_inputs_digest,
 )
 from core.dify_builder.models import Actor
-from core.dify_builder.verification import is_execution_policy_blocker
+from core.dify_builder.verification import is_execution_policy_blocker, publication_decision
 from extensions.ext_database import db
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dify_builder import DifyBuilderExecutionRequest, DifyBuilderSession, DifyBuilderTestInput
@@ -368,7 +369,16 @@ def test_composed_prelaunch_refusals_have_no_native_id(native_owner, change):
         elif change == "file":
             graph["nodes"][0]["data"]["variables"].append({"variable": "upload", "type": "file", "label": "File"})
         elif change in {"code", "template"}:
-            graph["nodes"][1]["data"]["type"] = "code" if change == "code" else "template-transform"
+            if change == "code":
+                graph["nodes"][1]["data"]["type"] = "code"
+            else:
+                # Preserve the original negative identity using a genuinely
+                # unsafe Template, rather than refusing every native Template.
+                graph["nodes"][1]["data"] = {
+                    "type": "template-transform",
+                    "template": "{{ path.__class__ }}",
+                    "variables": [{"variable": "path", "value_selector": ["start", "path"]}],
+                }
         elif change == "stale_fixture":
             graph["nodes"][1]["data"]["url"] = "https://changed.invalid"
         else:
@@ -576,3 +586,367 @@ def test_composed_canonical_seal_replay_cannot_upgrade_or_change(native_owner, m
         session.get(WorkflowRun, result.dify_run_id).outputs = '{"out":"changed after seal"}'
     with pytest.raises(BuilderExecutionPolicyError, match="conflicting_execution_completion"):
         original(service, request_id=summary.request_id, completion=captured[0])
+
+
+def configure_template(owner, *, inputs=None, graph=None, sample=None):
+    """Commit real draft/test-input rows before the ordinary port rereads them."""
+    factory, actor, app, workflow, _, tid = owner
+    graph = graph if graph is not None else yaml.safe_load((FIXTURES / "template_notification.yml").read_text())
+    inputs = inputs if inputs is not None else {"subject": "  Notice  ", "body": "First paragraph.\nSecond paragraph."}
+    with factory.begin() as session:
+        session.get(Workflow, workflow.id).graph = json.dumps(graph)
+        session.get(DifyBuilderTestInput, tid).inputs = inputs
+    if sample is not None:
+        with factory() as session:
+            revision = execution_revision(session.get(Workflow, workflow.id))
+        envelope = BuilderExecutionPolicyService(factory).stamp_http_fixtures(
+            app.id,
+            actor,
+            base_app_revision=revision,
+            fixtures=(sample,),
+        )
+        with factory.begin() as session:
+            session.get(DifyBuilderTestInput, tid).http_fixtures = envelope.model_dump(mode="json")
+    return inputs
+
+
+def assert_template_native_rows(owner, result, want, node_ids=("start", "template", "end")):
+    """Assert worker/SQL proof rather than granting success from rendered text."""
+    factory, actor, app, workflow, sid, tid = owner
+    assert result.execution_refusal is None
+    assert result.status == "succeeded"
+    assert result.dify_run_id
+    assert result.verification is not None
+    summary = result.verification.execution_evidence
+    assert summary is not None
+    assert summary.sealed
+    assert summary.safety_outcome == "restricted_execution_completed"
+    assert summary.mode == "restricted"
+    assert summary.sandbox_profile == "disabled"
+    assert summary.native_run_id == result.dify_run_id
+    assert summary.blocked_node_ids == ()
+    assert summary.simulated_node_ids == ()
+    assert result.verification.terminal_outputs == {"notification_markdown": want}
+    assert result.verification.executed_node_ids == list(node_ids)
+    with factory() as session:
+        native = session.get(WorkflowRun, result.dify_run_id)
+        request = session.get(DifyBuilderExecutionRequest, summary.request_id)
+        assert native is not None
+        assert request is not None
+        nodes = list(
+            session.scalars(
+                select(WorkflowNodeExecutionModel)
+                .where(WorkflowNodeExecutionModel.workflow_run_id == native.id)
+                .order_by(WorkflowNodeExecutionModel.index)
+            )
+        )
+        assert (native.tenant_id, native.app_id, native.workflow_id, native.created_by) == (
+            actor.tenant_id,
+            app.id,
+            workflow.id,
+            actor.account_id,
+        )
+        assert native.status == "succeeded"
+        assert native.finished_at is not None
+        assert native.total_steps == len(node_ids)
+        assert native.exceptions_count == 0
+        assert native.outputs_dict == {"notification_markdown": want}
+        assert [node.node_id for node in nodes] == list(node_ids)
+        assert [node.index for node in nodes] == list(range(1, len(node_ids) + 1))
+        assert all(node.status == "succeeded" and node.finished_at and node.node_execution_id for node in nodes)
+        assert all(
+            (node.tenant_id, node.app_id, node.workflow_id, node.created_by)
+            == (
+                actor.tenant_id,
+                app.id,
+                workflow.id,
+                actor.account_id,
+            )
+            for node in nodes
+        )
+        assert request.state == "sealed"
+        assert request.native_run_id == native.id
+        assert (request.session_id, request.test_input_id) == (sid, tid)
+        assert request.completion_fingerprint
+        assert request.observations == []
+        draft = session.get(Workflow, workflow.id)
+        # The Build handler supplies these review metadata fields around the
+        # port result; every native/proof field remains the actual port result.
+        reviewed = replace(result, kind="verify", immutable=True, session_id=sid)
+        decision = publication_decision(
+            reviewed,
+            session_id=sid,
+            current_revision=execution_revision(draft),
+            current_graph_revision=executable_graph_revision(draft.graph_dict),
+        )
+        assert decision.allowed
+        assert decision.reason == "eligible"
+        assert (
+            publication_decision(
+                reviewed,
+                session_id=sid,
+                current_revision="stale",
+                current_graph_revision=executable_graph_revision(draft.graph_dict),
+            ).reason
+            == "stale_revision"
+        )
+
+
+@pytest.mark.usefixtures("no_live")
+@pytest.mark.parametrize(
+    ("inputs", "want"),
+    [
+        pytest.param(
+            {"subject": "  Notice  ", "body": "First paragraph.\nSecond paragraph."},
+            "## Notice\n\nFirst paragraph.\nSecond paragraph.",
+            id="paragraphs",
+        ),
+        pytest.param({"subject": "", "body": ""}, "", id="empty-both"),
+        pytest.param({"subject": " \t", "body": "\n "}, "", id="whitespace-both"),
+        pytest.param({"subject": " Notice ", "body": " \n"}, "## Notice", id="subject-only"),
+        pytest.param({"subject": " \t", "body": "  First\nSecond  "}, "  First\nSecond  ", id="body-verbatim"),
+        pytest.param(
+            {"subject": "Data", "body": "{{ cycler.__init__.__globals__ }}"},
+            "## Data\n\n{{ cycler.__init__.__globals__ }}",
+            id="input-stays-data",
+        ),
+    ],
+)
+def test_composed_template_exact_outputs_are_sealed_native_sql_success(native_owner, inputs, want):
+    result = run_port(native_owner, configure_template(native_owner, inputs=inputs))
+    # Admission refusal here is the meaningful missing-feature RED.
+    assert_template_native_rows(native_owner, result, want)
+
+
+@pytest.mark.usefixtures("no_live")
+def test_composed_renamed_template_and_multi_template_chain(native_owner):
+    graph = yaml.safe_load((FIXTURES / "template_notification.yml").read_text())
+    graph["nodes"][0]["data"]["variables"] = [{"variable": "heading", "label": "Heading", "type": "text-input"}]
+    graph["nodes"][1]["data"].update(
+        template="{% if heading|trim %}[{{ heading|trim }}]{% else %}none{% endif %}",
+        variables=[{"variable": "heading", "value_selector": ["start", "heading"]}],
+    )
+    graph["nodes"].insert(
+        2,
+        {
+            "id": "format",
+            "data": {
+                "type": "template-transform",
+                "template": "Update: {{ prior }}",
+                "variables": [{"variable": "prior", "value_selector": ["template", "output"]}],
+            },
+        },
+    )
+    graph["nodes"][-1]["data"]["outputs"][0]["value_selector"] = ["format", "output"]
+    graph["edges"] = [
+        {"source": "start", "target": "template"},
+        {"source": "template", "target": "format"},
+        {"source": "format", "target": "end"},
+    ]
+    result = run_port(native_owner, configure_template(native_owner, graph=graph, inputs={"heading": " News "}))
+    assert_template_native_rows(native_owner, result, "Update: [News]", ("start", "template", "format", "end"))
+
+
+@pytest.mark.usefixtures("no_live")
+def test_composed_http_body_to_template_remains_sealed_simulation(native_owner):
+    graph = yaml.safe_load((FIXTURES / "template_notification.yml").read_text())
+    http = yaml.safe_load((FIXTURES / "http_text.yml").read_text())["nodes"][1]
+    http["data"]["url"] = "https://sample.invalid/fixed"
+    graph["nodes"].insert(1, http)
+    graph["nodes"][2]["data"].update(
+        template="Recorded: {{ body }}",
+        variables=[{"variable": "body", "value_selector": ["http", "body"]}],
+    )
+    graph["edges"] = [
+        {"source": "start", "target": "http"},
+        {"source": "http", "target": "template"},
+        {"source": "template", "target": "end"},
+    ]
+    sample = HttpResponseFixtureV1(
+        node_id="http",
+        source="user_sample",
+        status_code=200,
+        content_type="text/plain",
+        body="native fixture ✓",
+    )
+    result = run_port(native_owner, configure_template(native_owner, graph=graph, sample=sample))
+    assert result.execution_refusal is None
+    assert result.status == "succeeded"
+    assert result.verification is not None
+    summary = result.verification.execution_evidence
+    assert summary is not None
+    assert summary.sealed
+    assert (summary.mode, summary.safety_outcome, summary.simulated_node_ids) == (
+        "mock",
+        "simulation_completed",
+        ("http",),
+    )
+    with native_owner[0]() as session:
+        native = session.get(WorkflowRun, result.dify_run_id)
+        request = session.get(DifyBuilderExecutionRequest, summary.request_id)
+        assert native.status == "succeeded"
+        assert native.outputs_dict == {"notification_markdown": "Recorded: native fixture ✓"}
+        assert [o["kind"] for o in request.observations] == ["fixture_served"]
+        assert [o["node_id"] for o in request.observations] == ["http"]
+        assert request.state == "sealed"
+    assert is_execution_policy_blocker(result)
+    assert (
+        publication_decision(
+            replace(result, kind="verify", immutable=True, session_id=native_owner[4]),
+            session_id=native_owner[4],
+            current_revision=result.verification.execution_revision,
+            current_graph_revision=result.verification.executed_graph_revision,
+        ).reason
+        == "simulation_only"
+    )
+
+
+@pytest.mark.usefixtures("no_live")
+@pytest.mark.parametrize(
+    "mutation",
+    ["dead-branch", "syntax", "source-over", "downstream", "object-input"],
+)
+def test_composed_unsafe_template_refuses_without_native_allocation(native_owner, mutation):
+    graph = yaml.safe_load((FIXTURES / "template_notification.yml").read_text())
+    inputs = {"subject": "Notice", "body": "Body"}
+    data = graph["nodes"][1]["data"]
+    if mutation == "dead-branch":
+        data["template"] = "{% if false %}{{ subject.__class__ }}{% endif %}safe"
+    elif mutation == "syntax":
+        data["template"] = "{% if subject %}SECRET-TEMPLATE"
+    elif mutation == "source-over":
+        data["template"] = "é" * 8193
+    elif mutation == "downstream":
+        data["variables"][0]["value_selector"] = ["end", "notification_markdown"]
+    else:
+        inputs["body"] = {"secret": "SECRET-INPUT"}
+    result = run_port(native_owner, configure_template(native_owner, graph=graph, inputs=inputs))
+    assert result.execution_refusal is not None
+    assert result.dify_run_id == ""
+    assert result.per_node == []
+    assert is_execution_policy_blocker(result)
+    assert "SECRET-" not in result.error
+    with native_owner[0]() as session:
+        assert session.scalars(select(WorkflowRun).where(WorkflowRun.app_id == native_owner[2].id)).first() is None
+        assert (
+            session.scalars(
+                select(WorkflowNodeExecutionModel).where(
+                    WorkflowNodeExecutionModel.app_id == native_owner[2].id,
+                )
+            ).first()
+            is None
+        )
+
+
+@pytest.mark.usefixtures("no_live")
+def test_composed_template_cumulative_output_overflow_is_native_failure(native_owner):
+    graph = yaml.safe_load((FIXTURES / "template_notification.yml").read_text())
+    graph["nodes"][1]["data"]["template"] = "{{body}}{{body}}"
+    inputs = {"subject": "Notice", "body": "é" * 16385}
+    result = run_port(native_owner, configure_template(native_owner, graph=graph, inputs=inputs))
+    assert result.execution_refusal is None
+    assert result.dify_run_id
+    assert result.status == "failed"
+    assert result.verification is not None
+    summary = result.verification.execution_evidence
+    assert summary is not None
+    assert summary.sealed
+    assert summary.safety_outcome == "native_failed"
+    assert "é" * 32 not in result.error
+    with native_owner[0]() as session:
+        native = session.get(WorkflowRun, result.dify_run_id)
+        request = session.get(DifyBuilderExecutionRequest, summary.request_id)
+        nodes = list(
+            session.scalars(
+                select(WorkflowNodeExecutionModel)
+                .where(
+                    WorkflowNodeExecutionModel.workflow_run_id == native.id,
+                )
+                .order_by(WorkflowNodeExecutionModel.index)
+            )
+        )
+        assert native.status == "failed"
+        assert [(node.node_id, node.status) for node in nodes] == [("start", "succeeded"), ("template", "failed")]
+        assert request.state == "sealed"
+        assert request.observations == []
+    assert (
+        publication_decision(
+            replace(result, kind="verify", immutable=True, session_id=native_owner[4]),
+            session_id=native_owner[4],
+            current_revision=result.verification.execution_revision,
+            current_graph_revision=result.verification.executed_graph_revision,
+        ).allowed
+        is False
+    )
+
+
+@pytest.mark.usefixtures("no_live")
+@pytest.mark.parametrize("missing", ["template-row", "raw-binding", "effective-input", "worker-completion"])
+def test_composed_template_text_without_complete_sql_proof_cannot_publish(native_owner, monkeypatch, missing):
+    from sqlalchemy import delete
+
+    real_seal = BuilderExecutionPolicyService.seal
+
+    def before_seal(service, *, request_id, completion):
+        assert completion.worker_finished
+        with native_owner[0].begin() as session:
+            native = session.get(WorkflowRun, completion.native_run_id)
+            assert native.status == "succeeded"
+            assert native.outputs_dict == {"notification_markdown": "## Notice\n\nFirst paragraph.\nSecond paragraph."}
+            if missing == "template-row":
+                session.execute(
+                    delete(WorkflowNodeExecutionModel).where(
+                        WorkflowNodeExecutionModel.workflow_run_id == native.id,
+                        WorkflowNodeExecutionModel.node_id == "template",
+                    )
+                )
+            elif missing == "raw-binding":
+                graph = native.graph_dict
+                graph["nodes"][1]["data"]["template"] = "changed after native output"
+                native.graph = json.dumps(graph)
+            elif missing == "effective-input":
+                native.inputs = '{"subject":"changed","body":"Body"}'
+        if missing == "worker-completion":
+            completion = completion.model_copy(update={"worker_finished": False})
+        return real_seal(service, request_id=request_id, completion=completion)
+
+    monkeypatch.setattr(BuilderExecutionPolicyService, "seal", before_seal)
+    result = run_port(native_owner, configure_template(native_owner))
+    assert result.verification is not None
+    summary = result.verification.execution_evidence
+    assert summary is not None
+    assert summary.sealed
+    assert summary.safety_outcome == "execution_evidence_unknown"
+    assert (
+        publication_decision(
+            replace(result, kind="verify", immutable=True, session_id=native_owner[4]),
+            session_id=native_owner[4],
+            current_revision=result.verification.execution_revision,
+            current_graph_revision=result.verification.executed_graph_revision,
+        ).allowed
+        is False
+    )
+
+
+@pytest.mark.usefixtures("no_live")
+def test_composed_template_seal_replay_rejects_changed_output(native_owner, monkeypatch):
+    from core.dify_builder.execution_policy import BuilderExecutionPolicyError
+
+    real_seal = BuilderExecutionPolicyService.seal
+    captured = []
+
+    def observe(service, *, request_id, completion):
+        captured.append(completion)
+        return real_seal(service, request_id=request_id, completion=completion)
+
+    monkeypatch.setattr(BuilderExecutionPolicyService, "seal", observe)
+    result = run_port(native_owner, configure_template(native_owner))
+    assert_template_native_rows(native_owner, result, "## Notice\n\nFirst paragraph.\nSecond paragraph.")
+    summary = result.verification.execution_evidence
+    assert len(captured) == 1
+    service = BuilderExecutionPolicyService(native_owner[0])
+    assert real_seal(service, request_id=summary.request_id, completion=captured[0]) == summary
+    with native_owner[0].begin() as session:
+        session.get(WorkflowRun, result.dify_run_id).outputs = '{"notification_markdown":"changed after seal"}'
+    with pytest.raises(BuilderExecutionPolicyError, match="conflicting_execution_completion"):
+        real_seal(service, request_id=summary.request_id, completion=captured[0])
