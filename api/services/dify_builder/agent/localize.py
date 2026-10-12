@@ -16,6 +16,7 @@ from collections.abc import Callable
 from core.dify_builder import strings
 from core.dify_builder.models import ConversationItem
 from services.dify_builder.agent import llm
+from services.dify_builder.execution_messages import STATIC_COPY as EXECUTION_COPY
 from services.dify_builder.repair_gate import STATIC_COPY
 
 logger = logging.getLogger(__name__)
@@ -41,7 +42,7 @@ _LANG_CODE_RE = re.compile(r"^[A-Za-z]{2,3}(-[A-Za-z0-9]{1,8})*$")
 # concurrent duplicate translation of the same key is harmless and idempotent
 # -- no lock needed.
 _TRANSLATION_CACHE: dict[tuple[str, str], str] = {}
-_PLAIN = strings.PLAIN | STATIC_COPY
+_PLAIN = strings.PLAIN | STATIC_COPY | EXECUTION_COPY
 
 
 class Localizer:
