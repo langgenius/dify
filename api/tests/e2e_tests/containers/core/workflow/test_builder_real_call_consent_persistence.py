@@ -5,6 +5,11 @@ values exercising exact matching; they attest nothing about a deployed
 artifact, and real qualification stays unavailable outside this module. No
 provider, OAuth endpoint or credential decryption is reached: the refresh
 ciphertext below is an opaque fixture string written by the CAS owner.
+
+The shared container schema comes from ``db.create_all()``. Before this
+module's first test, ``migrated_builder_tables`` rebuilds the execution-request
+and consent tables in that same database through their actual migrations, so
+every race below runs against migration-built constraints, not model metadata.
 """
 
 import importlib.util
@@ -16,6 +21,7 @@ from multiprocessing.connection import Connection
 from pathlib import Path
 from threading import Event, Thread
 from time import monotonic, sleep
+from types import ModuleType
 from uuid import uuid4
 
 import pytest
@@ -78,6 +84,55 @@ SYNTHETIC_SCHEMA = "e" * 64
 SYNTHETIC_AUDIT = "synthetic-ci-audit-revision"
 APPROVED = GmailReadParameters(message_id="18cab_1", include_body=False, include_attachments=False)
 MIGRATION = "migrations/versions/2026_10_11_1200-d82f9a6c31e0_add_builder_real_call_consents.py"
+EXECUTION_MIGRATION = "migrations/versions/2026_10_09_1300-c84e6a217b90_add_builder_execution_requests.py"
+# Table comments written only by ``migrated_builder_tables`` after each actual migration built the table.
+MIGRATED_TABLES = {
+    "dify_builder_execution_requests": "ci-alembic:c84e6a217b90",
+    "dify_builder_real_call_consents": "ci-alembic:d82f9a6c31e0",
+}
+
+
+def _migration(relative: str, name: str) -> ModuleType:
+    path = Path(__file__).parents[4] / relative
+    spec = importlib.util.spec_from_file_location(name, path)
+    assert spec is not None
+    assert spec.loader is not None
+    migration = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(migration)
+    return migration
+
+
+@pytest.fixture(scope="module", autouse=True)
+def migrated_builder_tables(flask_app_with_containers: Flask) -> None:
+    """Rebuild the shared database's Builder sidecar tables through their actual migrations.
+
+    Drops the ``create_all`` execution-request and consent tables (no foreign key references
+    them; the per-test cleanup leaves them empty) and the request migration's added test-input
+    column, then runs the actual ``c84e6a217b90`` and ``d82f9a6c31e0`` ``upgrade()`` against the
+    same ``public`` schema every test here uses, and marks each rebuilt table with a comment.
+    """
+    from extensions.ext_database import db
+
+    execution = _migration(EXECUTION_MIGRATION, "builder_execution_migration_for_ci_tables")
+    consent = _migration(MIGRATION, "builder_real_call_consent_migration_for_ci_tables")
+    assert (execution.revision, consent.revision, consent.down_revision) == (
+        "c84e6a217b90",
+        "d82f9a6c31e0",
+        "c84e6a217b90",
+    )
+    with flask_app_with_containers.app_context():
+        db.session.remove()
+        with db.engine.begin() as connection:
+            assert connection.dialect.name == "postgresql"
+            connection.execute(text("SET LOCAL lock_timeout = '10s'"))
+            connection.execute(text("DROP TABLE IF EXISTS dify_builder_real_call_consents"))
+            connection.execute(text("DROP TABLE IF EXISTS dify_builder_execution_requests"))
+            connection.execute(text("ALTER TABLE dify_builder_test_inputs DROP COLUMN IF EXISTS http_fixtures"))
+            with Operations.context(MigrationContext.configure(connection)):
+                execution.upgrade()
+                consent.upgrade()
+            for table, marker in MIGRATED_TABLES.items():
+                connection.execute(text(f"COMMENT ON TABLE {table} IS '{marker}'"))
 
 
 def gmail_graph(credential_id: str) -> dict[str, object]:
@@ -700,6 +755,52 @@ def test_postgres_concurrent_client_change_never_admits_a_stale_business_claim(w
     else:
         assert spent == "consent_scope_changed"
         assert (row.state, row.business_count) == ("failed", 0)
+
+
+def test_race_tables_are_built_by_the_actual_migrations(world: World) -> None:
+    """The very tables every race above locks carry the actual migrations' constraints and marker."""
+    base: Engine = world.factory.kw["bind"]
+    with base.connect() as connection:
+        for table, marker in MIGRATED_TABLES.items():
+            comment = connection.execute(
+                text("SELECT obj_description(CAST(:table AS regclass), 'pg_class')"), {"table": table}
+            ).scalar()
+            assert comment == marker
+        inspector = inspect(connection)
+        consent = "dify_builder_real_call_consents"
+        assert {unique["name"] for unique in inspector.get_unique_constraints(consent)} == {
+            "dify_builder_real_call_consent_prepare_key",
+            "dify_builder_real_call_consent_request_key",
+            "dify_builder_real_call_consent_command_key",
+        }
+        assert {check["name"] for check in inspector.get_check_constraints(consent)} == {
+            "builder_real_call_consent_state",
+            "builder_real_call_consent_decision",
+            "builder_real_call_consent_outcome",
+            "builder_real_call_consent_refresh_once",
+            "builder_real_call_consent_business_once",
+            "builder_real_call_consent_phase_after_claim",
+        }
+        # PostgreSQL also reports the indexes backing the unique constraints above.
+        assert "dify_builder_real_call_consent_session_idx" in {
+            index["name"] for index in inspector.get_indexes(consent)
+        }
+        request = "dify_builder_execution_requests"
+        assert {check["name"] for check in inspector.get_check_constraints(request)} == {
+            "builder_execution_request_state"
+        }
+        assert {index["name"] for index in inspector.get_indexes(request)} == {
+            "dify_builder_execution_request_session_idx",
+            "dify_builder_execution_request_app_idx",
+        }
+        assert "http_fixtures" in {column["name"] for column in inspector.get_columns("dify_builder_test_inputs")}
+        # The migration-built table is what the ORM writes: every mapped column exists.
+        assert {column["name"] for column in inspector.get_columns(consent)} == {
+            column.name for column in DifyBuilderRealCallConsent.__table__.columns
+        }
+        assert {column["name"] for column in inspector.get_columns(request)} == {
+            column.name for column in DifyBuilderExecutionRequest.__table__.columns
+        }
 
 
 def test_real_postgres_consent_migration_upgrade_downgrade(flask_app_with_containers: Flask) -> None:
