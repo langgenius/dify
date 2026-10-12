@@ -577,6 +577,7 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
         execution_driver: WorkflowRunDriver | None = None,
         workflow_tools: Mapping[str, WorkflowTool] | None = None,
         *,
+        workflow_id: str | None = None,
         confirmed_guard: ConfirmedToolGuard | None = None,
         confirmed_guard_factory: Callable[[str, str], ConfirmedToolGuard] | None = None,
     ) -> None:
@@ -590,12 +591,15 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
         factory means confirmed mode even before it is called: nothing falls
         through to ordinary resolution or invocation. Only the guard's exact node
         resolves, and it is consumed with a session that never holds a
-        transaction (see ``invoke``).
+        transaction (see ``invoke``). Ordinary node factories supply their
+        actual workflow ID for Tool-time draft setup checks; confirmed factories
+        never use it, and published child versions retain native delegation.
         """
         if confirmed_guard is not None and confirmed_guard_factory is not None:
             raise BuilderExecutionPolicyError("invalid_confirmed_configuration")
         self._run_context = resolve_dify_run_context(run_context)
         self._file_reference_factory = DifyFileReferenceFactory(self._run_context)
+        self._workflow_id = workflow_id
         self._session_maker = session_maker
         self._execution_driver = execution_driver
         self._workflow_tools = workflow_tools if workflow_tools is not None else {}
@@ -643,6 +647,7 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
                         if self._is_workflow_tool_provider(node_data)
                         else None
                     ),
+                    **({"draft_tool_workflow_id": self._workflow_id} if self._workflow_id is not None else {}),
                 )
             else:
                 self._require_confirmed_node(

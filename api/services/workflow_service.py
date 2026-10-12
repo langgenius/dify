@@ -178,6 +178,12 @@ class _DebugHumanInputNode:
 
 
 HumanInputNode = _DebugHumanInputNode
+from services.tools.draft_tool_setup import (
+    DraftToolDeclarations,
+    admit_draft_tool_setup,
+    prepare_tool_declarations,
+    validate_tool_setup,
+)
 
 _file_access_controller = DatabaseFileAccessController()
 
@@ -233,6 +239,8 @@ class WorkflowService:
         """Initialize WorkflowService with repository dependencies."""
         if session_maker is None:
             session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
+        self._session_maker = session_maker
+        self._publish_tool_declarations: DraftToolDeclarations | None = None
         self._node_execution_service_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
             session_maker
         )
@@ -767,6 +775,21 @@ class WorkflowService:
 
         return draft_workflow
 
+    def prepare_draft_tool_publish(self, *, app_model: App) -> None:
+        """Prepare installed actions before the caller starts publication writes/locks.
+
+        Only this service instance retains the detached snapshot, for one
+        publication attempt. Credential selection is rechecked separately on
+        the exact graph selected by publish_workflow, including a locked draft.
+        """
+        self._publish_tool_declarations = None
+        with self._session_maker() as read_session:
+            draft = self.get_draft_workflow(app_model=app_model, session=read_session)
+            if draft is None:
+                raise ValueError("No valid workflow found.")
+            graph = draft.graph_dict
+        self._publish_tool_declarations = prepare_tool_declarations(tenant_id=app_model.tenant_id, graph=graph)
+
     def publish_workflow(
         self,
         *,
@@ -783,7 +806,17 @@ class WorkflowService:
         The caller supplies the app, account and session. A successful call adds
         a version with the resolved kind; Cloud evaluator publication requires a
         paid plan. Entitlement failures add no published version.
+
+        Publish only after fresh actor-scoped Tool setup admission. Normal Console,
+        Builder and migration callers prepare declarations before their write/lock
+        phase. Direct callers with a clean read session may prepare here; no metadata
+        I/O follows draft locking or version writes.
         """
+        if self._publish_tool_declarations is None:
+            self.prepare_draft_tool_publish(app_model=app_model)
+        declarations = self._publish_tool_declarations
+        assert declarations is not None
+        self._publish_tool_declarations = None  # One operation, never cached authorization.
         draft_workflow_stmt = select(Workflow).where(
             Workflow.tenant_id == app_model.tenant_id,
             Workflow.app_id == app_model.id,
@@ -812,7 +845,14 @@ class WorkflowService:
             environment_variables=draft_workflow.environment_variables,
         )
 
-        # Validate credentials before publishing, for credential policy check
+        validate_tool_setup(
+            tenant_id=app_model.tenant_id,
+            graph=draft_workflow.graph_dict,
+            actor_id=account.id,
+            declarations=declarations,
+        )
+
+        # Preserve Enterprise credential policy in addition to actor/setup admission.
         if SystemFeatureService.is_plugin_manager_enabled():
             self._validate_workflow_credentials(draft_workflow, session=session)
 
@@ -1249,8 +1289,8 @@ class WorkflowService:
 
             # Use the same fallback logic as runtime: get the first available credential
             # ordered by is_default DESC, created_at ASC (same as tool_manager.py)
-            default_provider = session.scalar(
-                select(BuiltinToolProvider)
+            default_credential_id = session.scalar(
+                select(BuiltinToolProvider.id)
                 .where(
                     BuiltinToolProvider.tenant_id == tenant_id,
                     BuiltinToolProvider.provider == provider,
@@ -1259,7 +1299,7 @@ class WorkflowService:
                 .limit(1)
             )
 
-            if not default_provider:
+            if not default_credential_id:
                 # plugin does not require credentials, skip
                 return
 
@@ -1267,7 +1307,7 @@ class WorkflowService:
             from core.helper.credential_utils import check_credential_policy_compliance
 
             check_credential_policy_compliance(
-                credential_id=default_provider.id,
+                credential_id=default_credential_id,
                 provider=provider,
                 credential_type=PluginCredentialType.TOOL,
                 check_existence=False,
@@ -1455,8 +1495,18 @@ class WorkflowService:
         files: Sequence[File] | None = None,
     ) -> WorkflowNodeExecutionModel:
         """
-        Run draft workflow node
+        Run draft workflow node after fresh Tool setup admission.
+
+        Metadata reads precede draft-variable writes and native node dispatch.
+        Descriptions/client readiness markers cannot authorize execution.
         """
+        if draft_workflow.tenant_id != app_model.tenant_id or draft_workflow.app_id != app_model.id:
+            raise ValueError("Draft workflow does not belong to this app.")
+        admit_draft_tool_setup(
+            tenant_id=app_model.tenant_id,
+            graph=draft_workflow.graph_dict,
+            actor_id=account.id,
+        )
         files = files or []
         node_config = draft_workflow.get_node_config_by_id(node_id)
         node_type = Workflow.get_node_type_from_node_config(node_config)
