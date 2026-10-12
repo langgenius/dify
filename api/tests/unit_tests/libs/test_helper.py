@@ -1,10 +1,56 @@
 from datetime import datetime
 
 import pytest
+from flask import request
 
-from libs.helper import OptionalTimestampField, alphanumeric, email, escape_like_pattern, extract_tenant_id
+from configs import dify_config
+from dify_app import DifyApp
+from extensions import ext_proxy_fix
+from libs.helper import (
+    OptionalTimestampField,
+    alphanumeric,
+    email,
+    escape_like_pattern,
+    extract_remote_ip,
+    extract_tenant_id,
+)
 from models.account import Account
 from models.model import EndUser
+
+
+@pytest.mark.parametrize(
+    ("trust_proxy", "headers", "expected_ip"),
+    [
+        (False, {}, "198.51.100.7"),
+        (False, {"CF-Connecting-IP": "203.0.113.1"}, "198.51.100.7"),
+        (False, {"X-Forwarded-For": "203.0.113.1"}, "198.51.100.7"),
+        (
+            False,
+            {"CF-Connecting-IP": "203.0.113.1", "X-Forwarded-For": "203.0.113.2, 192.0.2.42"},
+            "198.51.100.7",
+        ),
+        (
+            True,
+            {"CF-Connecting-IP": "203.0.113.1", "X-Forwarded-For": "203.0.113.2, 192.0.2.42"},
+            "192.0.2.42",
+        ),
+        (True, {"CF-Connecting-IP": "203.0.113.1"}, "198.51.100.7"),
+    ],
+)
+def test_extract_remote_ip_uses_trusted_wsgi_address(
+    monkeypatch: pytest.MonkeyPatch, trust_proxy: bool, headers: dict[str, str], expected_ip: str
+) -> None:
+    monkeypatch.setattr(dify_config, "RESPECT_XFORWARD_HEADERS_ENABLED", trust_proxy)
+    app = DifyApp(__name__)
+    ext_proxy_fix.init_app(app)
+
+    @app.get("/")
+    def remote_ip() -> str:
+        return extract_remote_ip(request)
+
+    response = app.test_client().get("/", headers=headers, environ_overrides={"REMOTE_ADDR": "198.51.100.7"})
+
+    assert response.get_data(as_text=True) == expected_ip
 
 
 class TestExtractTenantId:

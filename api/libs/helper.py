@@ -400,12 +400,8 @@ def generate_string(n):
 
 
 def extract_remote_ip(request: Request) -> str:
-    if request.headers.get("CF-Connecting-IP"):
-        return cast(str, request.headers.get("CF-Connecting-IP"))
-    elif request.headers.getlist("X-Forwarded-For"):
-        return request.headers.getlist("X-Forwarded-For")[0]
-    else:
-        return cast(str, request.remote_addr)
+    """Use the WSGI address, normalized by opt-in trusted proxy middleware."""
+    return cast(str, request.remote_addr)
 
 
 def generate_text_hash(text: str) -> str:
