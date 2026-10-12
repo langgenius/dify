@@ -83,11 +83,14 @@ export function PolicyItem({ group, canMutate, onView, onEdit }: PolicyItemProps
   }
 
   return (
-    <div className={`${policyRowClassName} border-b border-divider-subtle py-3`}>
+    <div
+      className={`${policyRowClassName} relative border-b border-divider-subtle py-3 hover:bg-state-base-hover`}
+    >
+      {/* Extend the native button's hit area across the row without nesting the actions. */}
       <Button
         variant="ghost"
         aria-label={group.name}
-        className="h-auto min-w-0 flex-1 justify-start gap-0 rounded-none p-0 text-left"
+        className="h-auto min-w-0 flex-1 justify-start gap-0 overflow-visible rounded-none p-0 text-left after:absolute after:inset-0 hover:bg-transparent"
         onClick={() => onView(group)}
       >
         <span className={`${policyNameColClassName} system-sm-medium text-text-secondary`}>
@@ -103,7 +106,7 @@ export function PolicyItem({ group, canMutate, onView, onEdit }: PolicyItemProps
           {formatTimeFromNow(Date.parse(group.updated_at))}
         </span>
       </Button>
-      <div className={policyActionsColClassName}>
+      <div className={`${policyActionsColClassName} pointer-events-none relative`}>
         {canMutate && (
           <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
             <Tooltip>
@@ -117,7 +120,7 @@ export function PolicyItem({ group, canMutate, onView, onEdit }: PolicyItemProps
                           ns: 'common',
                           name: group.name,
                         })}
-                        className="data-popup-open:bg-state-base-hover"
+                        className="pointer-events-auto data-popup-open:bg-state-base-hover"
                       >
                         <span aria-hidden className="i-ri-more-fill size-4 text-text-tertiary" />
                       </IconButton>
