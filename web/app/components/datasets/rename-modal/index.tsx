@@ -9,10 +9,14 @@ import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { IconPickerDialog } from '@/app/components/base/icon-picker'
+import {
+  IconPicker,
+  IconPickerContent,
+  IconPickerIcon,
+  IconPickerTrigger,
+} from '@/app/components/base/icon-picker'
 import { toast } from '@/app/notifications'
 import { updateDatasetSetting } from '@/service/datasets'
-import AppIcon from '../../base/app-icon'
 
 type RenameDatasetModalProps = {
   show: boolean
@@ -40,10 +44,6 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
           background: dataset.icon_info?.icon_background || '',
         },
   )
-  const [showIconPicker, setShowIconPicker] = useState(false)
-  const handleOpenAppIconPicker = useCallback(() => {
-    setShowIconPicker(true)
-  }, [])
   const handleSelectAppIcon = useCallback((icon: IconPickerValue) => {
     setAppIcon(icon)
   }, [])
@@ -75,7 +75,6 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
         datasetId: dataset.id,
         body,
       })
-      toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
       if (onSuccess) onSuccess()
       onClose()
     } catch {
@@ -120,35 +119,28 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
               <span aria-hidden="true" className="i-ri-close-line size-4" />
             </IconButton>
           </div>
-          <Field name="name" className="gap-0 py-4">
-            <FieldLabel className="w-full shrink-0 py-2 text-sm leading-5 font-medium text-text-primary">
-              {t(($) => $['form.name'], { ns: 'datasetSettings' })}
-            </FieldLabel>
-            <div className="flex items-center gap-x-2">
-              <button
-                type="button"
-                aria-label={`${t(($) => $['operation.edit'], { ns: 'common' })} ${t(($) => $['form.nameAndIcon'], { ns: 'datasetSettings' })}`}
-                className="group/edit-icon shrink-0 cursor-pointer rounded-[10px] border-0 bg-transparent p-0 focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-                onClick={handleOpenAppIconPicker}
-              >
-                <AppIcon
-                  decorative
-                  size="medium"
-                  iconType={appIcon.type}
-                  icon={appIcon.type === 'image' ? appIcon.fileId : appIcon.icon}
-                  background={appIcon.type === 'image' ? undefined : appIcon.background}
-                  imageUrl={appIcon.type === 'image' ? appIcon.url : undefined}
-                  showEditIcon
+          <IconPicker value={appIcon} onValueChange={handleSelectAppIcon}>
+            <Field name="name" className="gap-0 py-4">
+              <FieldLabel className="w-full shrink-0 py-2 text-sm leading-5 font-medium text-text-primary">
+                {t(($) => $['form.name'], { ns: 'datasetSettings' })}
+              </FieldLabel>
+              <div className="flex items-center gap-x-2">
+                <IconPickerTrigger
+                  aria-label={`${t(($) => $['operation.edit'], { ns: 'common' })} ${t(($) => $['form.nameAndIcon'], { ns: 'datasetSettings' })}`}
+                  className="group/edit-icon shrink-0 cursor-pointer rounded-[10px] border-0 bg-transparent p-0"
+                >
+                  <IconPickerIcon size="medium" showEditIcon />
+                </IconPickerTrigger>
+                <Input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="h-9 grow"
+                  placeholder={t(($) => $['form.namePlaceholder'], { ns: 'datasetSettings' }) || ''}
                 />
-              </button>
-              <Input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="h-9 grow"
-                placeholder={t(($) => $['form.namePlaceholder'], { ns: 'datasetSettings' }) || ''}
-              />
-            </div>
-          </Field>
+              </div>
+            </Field>
+            <IconPickerContent />
+          </IconPicker>
           <Field name="description" className="gap-0 py-4">
             <FieldLabel className="w-full shrink-0 py-2 text-sm leading-5 font-medium text-text-primary">
               {t(($) => $['form.desc'], { ns: 'datasetSettings' })}
@@ -169,12 +161,6 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
             </Button>
           </div>
         </form>
-        <IconPickerDialog
-          open={showIconPicker}
-          defaultValue={appIcon}
-          onOpenChange={setShowIconPicker}
-          onConfirm={handleSelectAppIcon}
-        />
       </DialogContent>
     </Dialog>
   )

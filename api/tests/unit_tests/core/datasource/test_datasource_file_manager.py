@@ -1,5 +1,6 @@
 from datetime import UTC, datetime
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
+from uuid import UUID
 
 import httpx
 import pytest
@@ -84,7 +85,7 @@ class TestDatasourceFileManager:
     @patch("core.datasource.datasource_file_manager.uuid4")
     def test_create_file_by_raw(self, mock_uuid, mock_storage, sqlite_session: Session):
         # Setup
-        mock_uuid.return_value = MagicMock(hex="unique_hex")
+        mock_uuid.return_value = UUID("0123456789abcdef0123456789abcdef")
 
         user_id = "user_123"
         tenant_id = "tenant_456"
@@ -106,7 +107,7 @@ class TestDatasourceFileManager:
         assert upload_file.name == "test.png"
         assert upload_file.size == len(file_binary)
         assert upload_file.mime_type == mimetype
-        assert upload_file.key == f"datasources/{tenant_id}/unique_hex.png"
+        assert upload_file.key == f"datasources/{tenant_id}/0123456789abcdef0123456789abcdef.png"
 
         mock_storage.save.assert_called_once_with(upload_file.key, file_binary)
         persisted_file = sqlite_session.get(UploadFile, upload_file.id)
@@ -117,7 +118,7 @@ class TestDatasourceFileManager:
     @patch("core.datasource.datasource_file_manager.uuid4")
     def test_create_file_by_raw_filename_no_extension(self, mock_uuid, mock_storage):
         # Setup
-        mock_uuid.return_value = MagicMock(hex="unique_hex")
+        mock_uuid.return_value = UUID("0123456789abcdef0123456789abcdef")
 
         user_id = "user_123"
         tenant_id = "tenant_456"
@@ -143,7 +144,7 @@ class TestDatasourceFileManager:
     def test_create_file_by_raw_unknown_extension(self, mock_guess_ext, mock_uuid, mock_storage):
         # Setup
         mock_guess_ext.return_value = None  # Cannot guess
-        mock_uuid.return_value = MagicMock(hex="unique_hex")
+        mock_uuid.return_value = UUID("0123456789abcdef0123456789abcdef")
 
         # Execute
         upload_file = DatasourceFileManager.create_file_by_raw(
@@ -156,13 +157,13 @@ class TestDatasourceFileManager:
 
         # Verify
         assert upload_file.extension == ".bin"
-        assert upload_file.name == "unique_hex.bin"
+        assert upload_file.name == "0123456789abcdef0123456789abcdef.bin"
 
     @patch("core.datasource.datasource_file_manager.storage")
     @patch("core.datasource.datasource_file_manager.uuid4")
     def test_create_file_by_raw_no_filename(self, mock_uuid, mock_storage):
         # Setup
-        mock_uuid.return_value = MagicMock(hex="unique_hex")
+        mock_uuid.return_value = UUID("0123456789abcdef0123456789abcdef")
 
         # Execute
         upload_file = DatasourceFileManager.create_file_by_raw(
@@ -174,7 +175,7 @@ class TestDatasourceFileManager:
         )
 
         # Verify
-        assert upload_file.name == "unique_hex.pdf"
+        assert upload_file.name == "0123456789abcdef0123456789abcdef.pdf"
         assert upload_file.extension == ".pdf"
 
     @patch("core.datasource.datasource_file_manager.remote_fetcher")
@@ -182,10 +183,10 @@ class TestDatasourceFileManager:
     @patch("core.datasource.datasource_file_manager.uuid4")
     def test_create_file_by_url_mimetype_from_guess(self, mock_uuid, mock_storage, mock_ssrf):
         # Setup
-        mock_uuid.return_value = MagicMock(hex="unique_hex")
-        mock_response = MagicMock()
-        mock_response.content = b"bits"
-        mock_response.headers = {}  # No content-type in headers
+        mock_uuid.return_value = UUID("0123456789abcdef0123456789abcdef")
+        mock_response = httpx.Response(
+            200, content=b"bits", request=httpx.Request("GET", "https://example.com/photo.png")
+        )
         mock_ssrf.make_request.return_value = mock_response
 
         # Execute
@@ -203,10 +204,10 @@ class TestDatasourceFileManager:
     @patch("core.datasource.datasource_file_manager.uuid4")
     def test_create_file_by_url_mimetype_default(self, mock_uuid, mock_storage, mock_ssrf):
         # Setup
-        mock_uuid.return_value = MagicMock(hex="unique_hex")
-        mock_response = MagicMock()
-        mock_response.content = b"bits"
-        mock_response.headers = {}
+        mock_uuid.return_value = UUID("0123456789abcdef0123456789abcdef")
+        mock_response = httpx.Response(
+            200, content=b"bits", request=httpx.Request("GET", "https://example.com/unknown")
+        )
         mock_ssrf.make_request.return_value = mock_response
 
         # Execute
@@ -224,10 +225,13 @@ class TestDatasourceFileManager:
     @patch("core.datasource.datasource_file_manager.uuid4")
     def test_create_file_by_url_success(self, mock_uuid, mock_storage, mock_ssrf):
         # Setup
-        mock_uuid.return_value = MagicMock(hex="unique_hex")
-        mock_response = MagicMock()
-        mock_response.content = b"downloaded bits"
-        mock_response.headers = {"Content-Type": "image/jpeg"}
+        mock_uuid.return_value = UUID("0123456789abcdef0123456789abcdef")
+        mock_response = httpx.Response(
+            200,
+            content=b"downloaded bits",
+            headers={"Content-Type": "image/jpeg"},
+            request=httpx.Request("GET", "https://example.com/photo.jpg"),
+        )
         mock_ssrf.make_request.return_value = mock_response
 
         # Execute
@@ -240,7 +244,7 @@ class TestDatasourceFileManager:
         # Verify
         assert tool_file.mimetype == "image/jpeg"
         assert tool_file.size == len(b"downloaded bits")
-        assert tool_file.file_key == "tools/tenant_456/unique_hex.jpg"
+        assert tool_file.file_key == "tools/tenant_456/0123456789abcdef0123456789abcdef.jpg"
         mock_storage.save.assert_called_once()
 
     @patch("core.datasource.datasource_file_manager.remote_fetcher")

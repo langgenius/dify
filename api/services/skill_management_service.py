@@ -588,7 +588,7 @@ class SkillManagementService:
         self._session = session
 
     @contextmanager
-    def _session_scope(self, session: Session | None = None) -> Generator[Session, None, None]:
+    def _session_scope(self, session: Session | None = None) -> Generator[Session]:
         """Reuse a caller-owned transaction when one is available.
 
         The fallback keeps direct service consumers working while callers are
@@ -846,7 +846,7 @@ class SkillManagementService:
         tenant_id: str,
         skill_id: str,
         message: str,
-    ) -> Generator[str, None, None]:
+    ) -> Generator[str]:
         """Stream read-only Skill Authoring assistance from the tenant's default LLM.
 
         The assistant receives the current text draft as untrusted reference
@@ -883,7 +883,7 @@ class SkillManagementService:
                 status_code=400,
             ) from exc
 
-        def generate() -> Generator[str, None, None]:
+        def generate() -> Generator[str]:
             try:
                 response = model_instance.invoke_llm(
                     prompt_messages=[
@@ -921,12 +921,12 @@ class SkillManagementService:
         history: list[SkillAssistHistoryMessagePayload] | None = None,
         model_payload: SkillAssistModelPayload | None = None,
         target_path: str | None = None,
-    ) -> Generator[str, None, None]:
+    ) -> Generator[str]:
         """Stream Skill Builder text and apply model-requested draft file operations."""
 
         message_id = str(uuid4())
 
-        def generate() -> Generator[str, None, None]:
+        def generate() -> Generator[str]:
             try:
                 yield self._assistant_progress_sse(message_id=message_id, stage="reading_draft")
                 yield self._assistant_progress_sse(message_id=message_id, stage="generating_plan")
@@ -1253,7 +1253,7 @@ class SkillManagementService:
         cls,
         *,
         message_id: str,
-        response: Generator[Any, None, None],
+        response: Generator[Any],
         reasoning_chunks: list[str],
     ) -> Generator[str, None, str]:
         raw_parts: list[str] = []

@@ -674,7 +674,7 @@ class RagPipelineService:
         credential_id: str | None = None,
         *,
         datasource_providers: DatasourceProviderService,
-    ) -> Generator[Mapping[str, Any], None, None]:
+    ) -> Generator[Mapping[str, Any]]:
         """
         Run published workflow datasource
         """
@@ -742,7 +742,7 @@ class RagPipelineService:
             match datasource_type:
                 case DatasourceProviderType.ONLINE_DOCUMENT:
                     datasource_runtime = cast(OnlineDocumentDatasourcePlugin, datasource_runtime)
-                    online_document_result: Generator[OnlineDocumentPagesMessage, None, None] = (
+                    online_document_result: Generator[OnlineDocumentPagesMessage] = (
                         datasource_runtime.get_online_document_pages(
                             user_id=account.id,
                             datasource_parameters=user_inputs,
@@ -767,7 +767,7 @@ class RagPipelineService:
                         yield DatasourceErrorEvent(error=str(e)).model_dump()
                 case DatasourceProviderType.ONLINE_DRIVE:
                     datasource_runtime = cast(OnlineDriveDatasourcePlugin, datasource_runtime)
-                    online_drive_result: Generator[OnlineDriveBrowseFilesResponse, None, None] = (
+                    online_drive_result: Generator[OnlineDriveBrowseFilesResponse] = (
                         datasource_runtime.online_drive_browse_files(
                             user_id=account.id,
                             request=OnlineDriveBrowseFilesRequest(
@@ -796,12 +796,10 @@ class RagPipelineService:
                         yield online_drive_event.model_dump()
                 case DatasourceProviderType.WEBSITE_CRAWL:
                     datasource_runtime = cast(WebsiteCrawlDatasourcePlugin, datasource_runtime)
-                    website_crawl_result: Generator[WebsiteCrawlMessage, None, None] = (
-                        datasource_runtime.get_website_crawl(
-                            user_id=account.id,
-                            datasource_parameters=variables_map,
-                            provider_type=datasource_runtime.datasource_provider_type(),
-                        )
+                    website_crawl_result: Generator[WebsiteCrawlMessage] = datasource_runtime.get_website_crawl(
+                        user_id=account.id,
+                        datasource_parameters=variables_map,
+                        provider_type=datasource_runtime.datasource_provider_type(),
                     )
                     start_time = time.time()
                     try:
@@ -886,7 +884,7 @@ class RagPipelineService:
             match datasource_type:
                 case DatasourceProviderType.ONLINE_DOCUMENT:
                     datasource_runtime = cast(OnlineDocumentDatasourcePlugin, datasource_runtime)
-                    online_document_result: Generator[DatasourceMessage, None, None] = (
+                    online_document_result: Generator[DatasourceMessage] = (
                         datasource_runtime.get_online_document_page_content(
                             user_id=account.id,
                             datasource_parameters=GetOnlineDocumentPageContentRequest(
@@ -951,7 +949,7 @@ class RagPipelineService:
         self,
         getter: Callable[
             [],
-            tuple[Node, Generator[GraphNodeEventBase | ContainerAwaitRequest, None, None]],
+            tuple[Node, Generator[GraphNodeEventBase | ContainerAwaitRequest]],
         ],
         start_at: float,
         tenant_id: str,

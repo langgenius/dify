@@ -1,9 +1,11 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from core.datasource.__base.datasource_runtime import DatasourceRuntime
 from core.datasource.entities.datasource_entities import (
+    DatasourceMessage,
     DatasourceProviderType,
     OnlineDriveBrowseFilesRequest,
+    OnlineDriveBrowseFilesResponse,
     OnlineDriveDownloadFileRequest,
 )
 from core.datasource.online_drive.online_drive_plugin import OnlineDriveDatasourcePlugin
@@ -59,17 +61,19 @@ class TestOnlineDriveDatasourcePlugin:
         request = OnlineDriveBrowseFilesRequest(prefix="folder-1")
         provider_type = "test_type"
 
-        mock_generator = MagicMock()
+        messages = [OnlineDriveBrowseFilesResponse(result=[])]
+        response_stream = (message for message in messages)
 
         with patch("core.datasource.online_drive.online_drive_plugin.PluginDatasourceManager") as MockManager:
             mock_manager_instance = MockManager.return_value
-            mock_manager_instance.online_drive_browse_files.return_value = mock_generator
+            mock_manager_instance.online_drive_browse_files.return_value = response_stream
 
             # Act
             result = plugin.online_drive_browse_files(user_id=user_id, request=request, provider_type=provider_type)
 
             # Assert
-            assert result == mock_generator
+            assert result is response_stream
+            assert list(result) == messages
             mock_manager_instance.online_drive_browse_files.assert_called_once_with(
                 tenant_id=tenant_id,
                 user_id=user_id,
@@ -104,17 +108,19 @@ class TestOnlineDriveDatasourcePlugin:
         request = OnlineDriveDownloadFileRequest(id="file-1")
         provider_type = "test_type"
 
-        mock_generator = MagicMock()
+        messages = [DatasourceMessage(type="text", message=DatasourceMessage.TextMessage(text="document content"))]
+        response_stream = (message for message in messages)
 
         with patch("core.datasource.online_drive.online_drive_plugin.PluginDatasourceManager") as MockManager:
             mock_manager_instance = MockManager.return_value
-            mock_manager_instance.online_drive_download_file.return_value = mock_generator
+            mock_manager_instance.online_drive_download_file.return_value = response_stream
 
             # Act
             result = plugin.online_drive_download_file(user_id=user_id, request=request, provider_type=provider_type)
 
             # Assert
-            assert result == mock_generator
+            assert result is response_stream
+            assert list(result) == messages
             mock_manager_instance.online_drive_download_file.assert_called_once_with(
                 tenant_id=tenant_id,
                 user_id=user_id,

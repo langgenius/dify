@@ -3,7 +3,6 @@
   "action.delete": "ลบปลั๊กอิน",
   "action.deleteContentLeft": "คุณต้องการลบ",
   "action.deleteContentRight": "ปลั๊กอิน?",
-  "action.deleteSuccess": "ลบปลั๊กอินสำเร็จแล้ว",
   "action.pluginInfo": "ข้อมูลปลั๊กอิน",
   "allCategories": "หมวดหมู่ทั้งหมด",
   "auth.addApi": "เพิ่มคีย์ API",

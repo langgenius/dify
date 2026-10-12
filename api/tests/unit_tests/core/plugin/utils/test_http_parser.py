@@ -10,7 +10,7 @@ from core.plugin.utils.http_parser import (
 
 
 class TestSerializeRequest:
-    def test_serialize_simple_get_request(self):
+    def test_serialize_simple_get_request(self) -> None:
         # Create a simple GET request
         environ = {
             "REQUEST_METHOD": "GET",
@@ -28,7 +28,7 @@ class TestSerializeRequest:
         assert raw_data.startswith(b"GET /api/test HTTP/1.1\r\n")
         assert b"\r\n\r\n" in raw_data  # Empty line between headers and body
 
-    def test_serialize_request_with_query_params(self):
+    def test_serialize_request_with_query_params(self) -> None:
         # Create a GET request with query parameters
         environ = {
             "REQUEST_METHOD": "GET",
@@ -45,7 +45,7 @@ class TestSerializeRequest:
 
         assert raw_data.startswith(b"GET /api/search?q=test&limit=10 HTTP/1.1\r\n")
 
-    def test_serialize_post_request_with_body(self):
+    def test_serialize_post_request_with_body(self) -> None:
         # Create a POST request with body
         from io import BytesIO
 
@@ -70,7 +70,7 @@ class TestSerializeRequest:
         assert b"Content-Type: application/json" in raw_data
         assert raw_data.endswith(body)
 
-    def test_serialize_request_with_custom_headers(self):
+    def test_serialize_request_with_custom_headers(self) -> None:
         # Create a request with custom headers
         environ = {
             "REQUEST_METHOD": "GET",
@@ -92,7 +92,7 @@ class TestSerializeRequest:
 
 
 class TestDeserializeRequest:
-    def test_deserialize_simple_get_request(self):
+    def test_deserialize_simple_get_request(self) -> None:
         raw_data = b"GET /api/test HTTP/1.1\r\nHost: localhost:8000\r\n\r\n"
 
         request = deserialize_request(raw_data)
@@ -101,7 +101,7 @@ class TestDeserializeRequest:
         assert request.path == "/api/test"
         assert request.headers.get("Host") == "localhost:8000"
 
-    def test_deserialize_request_with_query_params(self):
+    def test_deserialize_request_with_query_params(self) -> None:
         raw_data = b"GET /api/search?q=test&limit=10 HTTP/1.1\r\nHost: example.com\r\n\r\n"
 
         request = deserialize_request(raw_data)
@@ -112,7 +112,7 @@ class TestDeserializeRequest:
         assert request.args.get("q") == "test"
         assert request.args.get("limit") == "10"
 
-    def test_deserialize_post_request_with_body(self):
+    def test_deserialize_post_request_with_body(self) -> None:
         body = b'{"name": "test", "value": 123}'
         raw_data = (
             b"POST /api/data HTTP/1.1\r\n"
@@ -129,7 +129,7 @@ class TestDeserializeRequest:
         assert request.content_type == "application/json"
         assert request.get_data() == body
 
-    def test_deserialize_request_with_custom_headers(self):
+    def test_deserialize_request_with_custom_headers(self) -> None:
         raw_data = (
             b"GET /api/protected HTTP/1.1\r\n"
             b"Host: api.example.com\r\n"
@@ -146,7 +146,7 @@ class TestDeserializeRequest:
         assert request.headers.get("X-Custom-Header") == "custom-value"
         assert request.headers.get("User-Agent") == "TestClient/1.0"
 
-    def test_deserialize_request_with_multiline_body(self):
+    def test_deserialize_request_with_multiline_body(self) -> None:
         body = b"line1\r\nline2\r\nline3"
         raw_data = b"PUT /api/text HTTP/1.1\r\nHost: localhost\r\nContent-Type: text/plain\r\n\r\n" + body
 
@@ -155,13 +155,13 @@ class TestDeserializeRequest:
         assert request.method == "PUT"
         assert request.get_data() == body
 
-    def test_deserialize_invalid_request_line(self):
+    def test_deserialize_invalid_request_line(self) -> None:
         raw_data = b"INVALID\r\n\r\n"  # Only one part, should fail
 
         with pytest.raises(ValueError, match="Invalid request line"):
             deserialize_request(raw_data)
 
-    def test_roundtrip_request(self):
+    def test_roundtrip_request(self) -> None:
         # Test that serialize -> deserialize produces equivalent request
         from io import BytesIO
 
@@ -194,7 +194,7 @@ class TestDeserializeRequest:
 
 
 class TestSerializeResponse:
-    def test_serialize_simple_response(self):
+    def test_serialize_simple_response(self) -> None:
         response = Response("Hello, World!", status=200)
 
         raw_data = serialize_response(response)
@@ -203,7 +203,7 @@ class TestSerializeResponse:
         assert b"\r\n\r\n" in raw_data
         assert raw_data.endswith(b"Hello, World!")
 
-    def test_serialize_response_with_headers(self):
+    def test_serialize_response_with_headers(self) -> None:
         response = Response(
             '{"status": "success"}',
             status=201,
@@ -220,7 +220,7 @@ class TestSerializeResponse:
         assert b"X-Request-Id: req-456" in raw_data
         assert raw_data.endswith(b'{"status": "success"}')
 
-    def test_serialize_error_response(self):
+    def test_serialize_error_response(self) -> None:
         response = Response(
             "Not Found",
             status=404,
@@ -233,7 +233,7 @@ class TestSerializeResponse:
         assert b"Content-Type: text/plain" in raw_data
         assert raw_data.endswith(b"Not Found")
 
-    def test_serialize_response_without_body(self):
+    def test_serialize_response_without_body(self) -> None:
         response = Response(status=204)  # No Content
 
         raw_data = serialize_response(response)
@@ -241,7 +241,7 @@ class TestSerializeResponse:
         assert b"HTTP/1.1 204 NO CONTENT\r\n" in raw_data
         assert raw_data.endswith(b"\r\n\r\n")  # Should end with empty line
 
-    def test_serialize_response_with_binary_body(self):
+    def test_serialize_response_with_binary_body(self) -> None:
         binary_data = b"\x00\x01\x02\x03\x04\x05"
         response = Response(
             binary_data,
@@ -257,7 +257,7 @@ class TestSerializeResponse:
 
 
 class TestDeserializeResponse:
-    def test_deserialize_simple_response(self):
+    def test_deserialize_simple_response(self) -> None:
         raw_data = b"HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\nHello, World!"
 
         response = deserialize_response(raw_data)
@@ -266,7 +266,7 @@ class TestDeserializeResponse:
         assert response.get_data() == b"Hello, World!"
         assert response.headers.get("Content-Type") == "text/plain"
 
-    def test_deserialize_response_with_json(self):
+    def test_deserialize_response_with_json(self) -> None:
         body = b'{"result": "success", "data": [1, 2, 3]}'
         raw_data = (
             b"HTTP/1.1 201 Created\r\n"
@@ -283,7 +283,7 @@ class TestDeserializeResponse:
         assert response.headers.get("Content-Type") == "application/json"
         assert response.headers.get("X-Custom-Header") == "test-value"
 
-    def test_deserialize_error_response(self):
+    def test_deserialize_error_response(self) -> None:
         raw_data = b"HTTP/1.1 404 Not Found\r\nContent-Type: text/html\r\n\r\n<html><body>Page not found</body></html>"
 
         response = deserialize_response(raw_data)
@@ -291,7 +291,7 @@ class TestDeserializeResponse:
         assert response.status_code == 404
         assert response.get_data() == b"<html><body>Page not found</body></html>"
 
-    def test_deserialize_response_without_body(self):
+    def test_deserialize_response_without_body(self) -> None:
         raw_data = b"HTTP/1.1 204 No Content\r\n\r\n"
 
         response = deserialize_response(raw_data)
@@ -299,7 +299,7 @@ class TestDeserializeResponse:
         assert response.status_code == 204
         assert response.get_data() == b""
 
-    def test_deserialize_response_with_multiline_body(self):
+    def test_deserialize_response_with_multiline_body(self) -> None:
         body = b"Line 1\r\nLine 2\r\nLine 3"
         raw_data = b"HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\n" + body
 
@@ -308,7 +308,7 @@ class TestDeserializeResponse:
         assert response.status_code == 200
         assert response.get_data() == body
 
-    def test_deserialize_response_minimal_status_line(self):
+    def test_deserialize_response_minimal_status_line(self) -> None:
         # Test with minimal status line (no status text)
         raw_data = b"HTTP/1.1 200\r\n\r\nOK"
 
@@ -317,13 +317,13 @@ class TestDeserializeResponse:
         assert response.status_code == 200
         assert response.get_data() == b"OK"
 
-    def test_deserialize_invalid_status_line(self):
+    def test_deserialize_invalid_status_line(self) -> None:
         raw_data = b"INVALID\r\n\r\n"
 
         with pytest.raises(ValueError, match="Invalid status line"):
             deserialize_response(raw_data)
 
-    def test_deserialize_response_preserves_duplicate_set_cookie_headers(self):
+    def test_deserialize_response_preserves_duplicate_set_cookie_headers(self) -> None:
         # Regression test for https://github.com/langgenius/dify/issues/35722
         # Multiple Set-Cookie headers must be preserved per RFC 9110, not collapsed
         # into a single value by dict-style assignment.
@@ -346,7 +346,7 @@ class TestDeserializeResponse:
         # Single-valued headers should still be readable normally.
         assert response.headers.get("Content-Type") == "text/plain"
 
-    def test_deserialize_response_preserves_duplicate_generic_headers(self):
+    def test_deserialize_response_preserves_duplicate_generic_headers(self) -> None:
         # Any header name (not just Set-Cookie) may legitimately repeat; verify the
         # parser preserves all values rather than overwriting earlier ones.
         raw_data = b"HTTP/1.1 200 OK\r\nX-Custom: first\r\nX-Custom: second\r\n\r\n"
@@ -355,7 +355,7 @@ class TestDeserializeResponse:
 
         assert response.headers.getlist("X-Custom") == ["first", "second"]
 
-    def test_deserialize_response_does_not_inject_default_content_type(self):
+    def test_deserialize_response_does_not_inject_default_content_type(self) -> None:
         # Flask's Response constructor adds a default Content-Type header. When the
         # raw response has no Content-Type, the parsed response should not silently
         # gain one from the framework default.
@@ -367,7 +367,7 @@ class TestDeserializeResponse:
         assert "Content-Type" not in header_names
         assert response.headers.get("X-Trace-Id") == "abc"
 
-    def test_roundtrip_response(self):
+    def test_roundtrip_response(self) -> None:
         # Test that serialize -> deserialize produces equivalent response
         original_response = Response(
             '{"message": "test"}',
@@ -392,7 +392,7 @@ class TestDeserializeResponse:
 
 
 class TestEdgeCases:
-    def test_request_with_empty_headers(self):
+    def test_request_with_empty_headers(self) -> None:
         raw_data = b"GET / HTTP/1.1\r\n\r\n"
 
         request = deserialize_request(raw_data)
@@ -400,7 +400,7 @@ class TestEdgeCases:
         assert request.method == "GET"
         assert request.path == "/"
 
-    def test_response_with_empty_headers(self):
+    def test_response_with_empty_headers(self) -> None:
         raw_data = b"HTTP/1.1 200 OK\r\n\r\nSuccess"
 
         response = deserialize_response(raw_data)
@@ -408,7 +408,7 @@ class TestEdgeCases:
         assert response.status_code == 200
         assert response.get_data() == b"Success"
 
-    def test_request_with_special_characters_in_path(self):
+    def test_request_with_special_characters_in_path(self) -> None:
         raw_data = b"GET /api/test%20path?key=%26value HTTP/1.1\r\n\r\n"
 
         request = deserialize_request(raw_data)
@@ -416,7 +416,7 @@ class TestEdgeCases:
         assert request.method == "GET"
         assert "/api/test%20path" in request.full_path
 
-    def test_response_with_binary_content(self):
+    def test_response_with_binary_content(self) -> None:
         binary_body = bytes(range(256))  # All possible byte values
         raw_data = b"HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\n\r\n" + binary_body
 
@@ -425,7 +425,7 @@ class TestEdgeCases:
         assert response.status_code == 200
         assert response.get_data() == binary_body
 
-    def test_deserialize_request_with_lf_only_newlines(self):
+    def test_deserialize_request_with_lf_only_newlines(self) -> None:
         raw_data = b"POST /lf-only?x=1 HTTP/1.1\nHost: localhost\nX-Test: yes\n\npayload"
 
         request = deserialize_request(raw_data)
@@ -436,7 +436,7 @@ class TestEdgeCases:
         assert request.headers.get("X-Test") == "yes"
         assert request.get_data() == b"payload"
 
-    def test_deserialize_request_without_header_separator_uses_full_input_as_headers(self):
+    def test_deserialize_request_without_header_separator_uses_full_input_as_headers(self) -> None:
         raw_data = b"GET /no-separator HTTP/1.1\nHost: localhost\nInvalidHeader\n"
 
         request = deserialize_request(raw_data)
@@ -446,11 +446,11 @@ class TestEdgeCases:
         assert request.headers.get("Host") == "localhost"
         assert request.headers.get("InvalidHeader") is None
 
-    def test_deserialize_request_empty_payload_raises(self):
+    def test_deserialize_request_empty_payload_raises(self) -> None:
         with pytest.raises(ValueError, match="Empty HTTP request"):
             deserialize_request(b"")
 
-    def test_deserialize_response_with_lf_only_newlines(self):
+    def test_deserialize_response_with_lf_only_newlines(self) -> None:
         raw_data = b"HTTP/1.1 202 Accepted\nX-Test: yes\n\nbody"
 
         response = deserialize_response(raw_data)
@@ -459,7 +459,7 @@ class TestEdgeCases:
         assert response.headers.get("X-Test") == "yes"
         assert response.get_data() == b"body"
 
-    def test_deserialize_response_without_header_separator_uses_full_input_as_headers(self):
+    def test_deserialize_response_without_header_separator_uses_full_input_as_headers(self) -> None:
         raw_data = b"HTTP/1.1 204 No Content\nX-Test: yes\nInvalidHeader\n"
 
         response = deserialize_response(raw_data)
@@ -469,13 +469,13 @@ class TestEdgeCases:
         assert response.headers.get("InvalidHeader") is None
         assert response.get_data() == b""
 
-    def test_deserialize_response_empty_payload_raises(self):
+    def test_deserialize_response_empty_payload_raises(self) -> None:
         with pytest.raises(ValueError, match="Empty HTTP response"):
             deserialize_response(b"")
 
 
 class TestFileUploads:
-    def test_serialize_request_with_text_file_upload(self):
+    def test_serialize_request_with_text_file_upload(self) -> None:
         # Test multipart/form-data request with text file
         from io import BytesIO
 
@@ -515,7 +515,7 @@ class TestFileUploads:
         assert b'Content-Disposition: form-data; name="file"; filename="test.txt"' in raw_data
         assert text_content.encode() in raw_data
 
-    def test_deserialize_request_with_text_file_upload(self):
+    def test_deserialize_request_with_text_file_upload(self) -> None:
         # Test deserializing multipart/form-data request with text file
         boundary = "----WebKitFormBoundary7MA4YWxkTrZu0gW"
         text_content = "Sample text file content\nLine 2\nLine 3"
@@ -550,7 +550,7 @@ class TestFileUploads:
         assert b"document.txt" in request_body
         assert text_content.encode() in request_body
 
-    def test_serialize_request_with_binary_file_upload(self):
+    def test_serialize_request_with_binary_file_upload(self) -> None:
         # Test multipart/form-data request with binary file (e.g., image)
         from io import BytesIO
 
@@ -595,7 +595,7 @@ class TestFileUploads:
         assert b"Content-Type: image/png" in raw_data
         assert binary_content in raw_data
 
-    def test_deserialize_request_with_binary_file_upload(self):
+    def test_deserialize_request_with_binary_file_upload(self) -> None:
         # Test deserializing multipart/form-data request with binary file
         boundary = "----BoundaryABC123"
         # Simulate a small JPEG file header
@@ -638,7 +638,7 @@ class TestFileUploads:
         assert binary_content in request_body
         assert b"Vacation 2024" in request_body
 
-    def test_serialize_request_with_multiple_files(self):
+    def test_serialize_request_with_multiple_files(self) -> None:
         # Test request with multiple file uploads
         from io import BytesIO
 
@@ -692,7 +692,7 @@ class TestFileUploads:
         assert binary_file in raw_data
         assert b"uploads/2024" in raw_data
 
-    def test_roundtrip_file_upload_request(self):
+    def test_roundtrip_file_upload_request(self) -> None:
         # Test that file upload request survives serialize -> deserialize
         from io import BytesIO
 

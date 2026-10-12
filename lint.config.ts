@@ -205,14 +205,9 @@ export const lintConfig = {
     '@tanstack/eslint-plugin-query',
     'eslint-plugin-antfu',
     ...(enableTailwindCanonicalClasses ? ['eslint-plugin-better-tailwindcss'] : []),
-    'eslint-plugin-command',
     {
       name: 'dify',
       specifier: './web/plugins/eslint/index.js',
-    },
-    {
-      name: 'eslint-comments',
-      specifier: '@eslint-community/eslint-plugin-eslint-comments',
     },
     {
       name: 'eslint-react',
@@ -486,15 +481,11 @@ export const lintConfig = {
     'vars-on-top': 'error',
     yoda: ['error', 'never'],
     'unicorn/no-abusive-eslint-disable': 'error',
+    'dify/no-app-store-imports': 'error',
     'dify/no-file-wide-disable': 'error',
     'dify/require-disable-directive-description': 'error',
     'dify/require-i18n-namespace': 'error',
     'dify/require-t-function-namespace': 'error',
-    'eslint-comments/no-aggregating-enable': 'error',
-    'eslint-comments/no-duplicate-disable': 'error',
-    'eslint-comments/no-unlimited-disable': 'error',
-    'eslint-comments/no-unused-enable': 'error',
-    'command/command': 'error',
     'perfectionist/sort-exports': [
       'error',
       {
@@ -781,7 +772,6 @@ export const lintConfig = {
     {
       files: ['**/*.d.{ts,cts,mts}'],
       rules: {
-        'eslint-comments/no-unlimited-disable': 'off',
         'no-unused-vars': 'off',
       },
     },
@@ -1383,11 +1373,6 @@ export const lintConfig = {
         'valid-typeof': 'error',
         'vars-on-top': 'off',
         yoda: 'off',
-        'eslint-comments/no-aggregating-enable': 'off',
-        'eslint-comments/no-duplicate-disable': 'off',
-        'eslint-comments/no-unlimited-disable': 'off',
-        'eslint-comments/no-unused-enable': 'off',
-        'command/command': 'off',
         'perfectionist/sort-exports': 'off',
         'perfectionist/sort-named-exports': 'off',
         'perfectionist/sort-named-imports': 'off',

@@ -1,11 +1,12 @@
 'use client'
 
 import { Collapsible as BaseCollapsible } from '@base-ui/react/collapsible'
-import { mergeProps } from '@base-ui/react/merge-props'
-import { useRender } from '@base-ui/react/use-render'
 import * as React from 'react'
 import { cn } from '../cn'
-import { resolveClassName } from '../internals/resolve-class-name'
+import { insetFocusRingClassName } from '../internal/focus'
+import { resolveClassName } from '../internal/resolve-class-name'
+import { mergeProps } from '../merge-props'
+import { useRender } from '../use-render'
 
 const FileTreeLevelContext = React.createContext(1)
 
@@ -25,11 +26,11 @@ type FileTreeFileState = {
 
 function fileTreeRowClassName({ className }: { className?: string }) {
   return cn(
-    'group/file-tree-row relative flex h-6 w-full min-w-0 cursor-pointer items-center rounded-md ps-2 pe-1.5 text-start outline-hidden select-none',
-    'hover:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid',
+    'group/file-tree-row relative flex h-6 w-full min-w-0 cursor-pointer items-center rounded-md ps-2 pe-1.5 text-start select-none',
+    'hover:bg-state-base-hover',
+    insetFocusRingClassName,
     'data-selected:bg-state-base-active',
     'data-disabled:cursor-not-allowed data-disabled:opacity-50 data-disabled:hover:bg-transparent',
-    'aria-disabled:cursor-not-allowed aria-disabled:opacity-50 aria-disabled:hover:bg-transparent',
     className,
   )
 }
@@ -63,9 +64,7 @@ function FileTreeList({ render, className, ...props }: FileTreeListProps) {
   })
 }
 
-type FileTreeFolderProps = Omit<BaseCollapsible.Root.Props, 'render'> & {
-  render?: BaseCollapsible.Root.Props['render']
-}
+type FileTreeFolderProps = BaseCollapsible.Root.Props
 
 function FileTreeFolder({ render = <li />, className, ...props }: FileTreeFolderProps) {
   return (
@@ -104,9 +103,7 @@ function FileTreeFolderTrigger({
   )
 }
 
-type FileTreeFolderPanelProps = Omit<BaseCollapsible.Panel.Props, 'render'> & {
-  render?: BaseCollapsible.Panel.Props['render']
-}
+type FileTreeFolderPanelProps = BaseCollapsible.Panel.Props
 
 function FileTreeFolderPanel({
   render = <ul />,

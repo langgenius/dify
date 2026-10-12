@@ -2,6 +2,7 @@
 
 import sys
 from dataclasses import dataclass
+from functools import cache
 from types import SimpleNamespace
 from unittest.mock import create_autospec
 
@@ -15,11 +16,11 @@ from extensions.ext_application_services import (
     _batch_get_enterprise_webapp_access_modes,
     _batch_get_enterprise_webapp_user_permissions,
 )
-from repositories.app.console_repository import ConsoleAppRepository
 from repositories.webapp_access_query_repository import WebAppAccessQueryRepository
 from services.app.console_service import ConsoleAppService
+from services.app.export_service import AppExportService
 from services.app.import_service import AppImportService
-from services.app.query_service import AppQueryService
+from services.app.query_service import AppDiscoveryService
 from services.credentials.query import CredentialQuery
 from services.data_source.provider_service import DatasourceProviderService
 from services.enterprise.enterprise_service import EnterpriseService
@@ -30,9 +31,16 @@ from services.webapp_access_query_service import WebAppAccessQueryService
 
 @pytest.fixture(autouse=True)
 def datasource_application_dependencies(monkeypatch: pytest.MonkeyPatch) -> None:
-    registry = SimpleNamespace(
-        data_sources=SimpleNamespace(providers=create_autospec(DatasourceProviderService, instance=True, spec_set=True))
-    )
+    # Most controller tests never use these services. Build the mock on demand,
+    # with a fresh cache for each test to preserve mock isolation.
+    @cache
+    def application_services() -> SimpleNamespace:
+        return SimpleNamespace(
+            data_sources=SimpleNamespace(
+                providers=create_autospec(DatasourceProviderService, instance=True, spec_set=True)
+            )
+        )
+
     for name in (
         "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow",
         "controllers.console.datasets.rag_pipeline.datasource_content_preview",
@@ -40,7 +48,7 @@ def datasource_application_dependencies(monkeypatch: pytest.MonkeyPatch) -> None
     ):
         module = sys.modules.get(name)
         if module is not None:
-            monkeypatch.setattr(module, "application_services", lambda: registry)
+            monkeypatch.setattr(module, "application_services", application_services)
 
 
 @dataclass(frozen=True)
@@ -82,7 +90,8 @@ def pipeline_application(monkeypatch: pytest.MonkeyPatch) -> PipelineGenerator:
 class AppQueryTestServices:
     console: ConsoleAppService
     imports: AppImportService
-    queries: AppQueryService
+    exports: AppExportService
+    discovery: AppDiscoveryService
 
 
 @dataclass(frozen=True)
@@ -100,13 +109,13 @@ def app_query_services(
     sqlite_session_factory: sessionmaker[Session],
     monkeypatch: pytest.MonkeyPatch,
 ) -> ControllerTestServices:
-    repository = ConsoleAppRepository(session_factory=sqlite_session_factory)
     services = ControllerTestServices(
         tags=application_tags,
         apps=AppQueryTestServices(
             console=app_services.console,
             imports=app_services.imports,
-            queries=AppQueryService(apps=repository),
+            exports=app_services.exports,
+            discovery=app_services.discovery,
         ),
         webapp_access=WebAppAccessQueryService(
             access=WebAppAccessQueryRepository(session_factory=sqlite_session_factory),

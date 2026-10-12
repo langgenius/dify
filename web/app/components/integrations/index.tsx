@@ -1,5 +1,6 @@
 'use client'
 
+import type { DrawerActions } from '@langgenius/dify-ui/drawer'
 import type { CSSProperties, ReactNode } from 'react'
 import type { IntegrationSection } from './routes'
 import type { DocPathWithoutLang } from '@/types/doc-paths'
@@ -25,9 +26,9 @@ import {
   ScrollAreaThumb,
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
-import { useEffect, useId, useState, useSyncExternalStore } from 'react'
+import { useEffect, useId, useRef, useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
-import UpdateSettingDialog from '@/app/components/header/account-setting/update-setting-dialog'
+import { UpdateSettingDialog } from '@/app/components/header/account-setting/update-setting-dialog'
 import {
   buildIntegrationPath,
   buildMarketplaceUrlPathByIntegrationSection,
@@ -170,7 +171,7 @@ export default function IntegrationsPage({
     showPluginCategorySetting,
   } = useIntegrationPermissions(section)
   const [providerSearchText, setProviderSearchText] = useState('')
-  const [isNavigationOpen, setIsNavigationOpen] = useState(false)
+  const navigationDrawerActionsRef = useRef<DrawerActions>(null)
   const showInstallAction = canInstallPlugin
   const reserveInstallActionSlot = showInstallAction || isReferenceSettingLoading
   const showUtilityActions = canDebugger || showPermissionQuickPanel
@@ -249,7 +250,7 @@ export default function IntegrationsPage({
   }
   const handleSelectSection = (nextSection: IntegrationSection) => {
     if (onSectionChange) {
-      setIsNavigationOpen(false)
+      navigationDrawerActionsRef.current?.close()
       onSectionChange(nextSection)
       return
     }
@@ -385,7 +386,7 @@ export default function IntegrationsPage({
       )}
       {isCompact ? (
         <div className="shrink-0 border-b border-divider-burn px-2 pb-2">
-          <Drawer swipeDirection="left" open={isNavigationOpen} onOpenChange={setIsNavigationOpen}>
+          <Drawer swipeDirection="left" actionsRef={navigationDrawerActionsRef}>
             <DrawerTrigger render={<Button variant="secondary" className="max-w-full" />}>
               <span aria-hidden="true" className="i-ri-menu-line size-4 shrink-0" />
               <span className="truncate">

@@ -3,6 +3,7 @@ import type {
   AgentAppPagination,
 } from '@dify/contracts/api/console/agent/types.gen'
 import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import type { RouterUtils } from '@orpc/tanstack-query'
 import type { InfiniteData, QueryClient, QueryKey } from '@tanstack/react-query'
@@ -134,6 +135,39 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           },
           skills: {
             bySkillId: {
+              restore: {
+                post: {
+                  mutationOptions: {
+                    onSettled: (_data, error, variables, _result, context) => {
+                      if (error) return
+                      void invalidateSkillVersionQueries(
+                        consoleQuery,
+                        context.client,
+                        variables.params.skill_id,
+                      )
+                      void context.client.invalidateQueries({
+                        queryKey: consoleQuery.workspaces.current.skills.get.key(),
+                      })
+                    },
+                  },
+                },
+              },
+              versions: {
+                byVersionId: {
+                  delete: {
+                    mutationOptions: {
+                      onSettled: (_data, error, variables, _result, context) => {
+                        if (error) return
+                        void invalidateSkillVersionQueries(
+                          consoleQuery,
+                          context.client,
+                          variables.params.skill_id,
+                        )
+                      },
+                    },
+                  },
+                },
+              },
               delete: {
                 mutationOptions: {
                   onSettled: (_data, error, _variables, _result, context) => {
@@ -342,8 +376,16 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           apiEnable: {
             post: {
               mutationOptions: {
-                onSettled: (_data, error, variables, _onMutateResult, context) => {
-                  if (error) return
+                onSettled: (data, error, variables, _onMutateResult, context) => {
+                  if (error || !data) return
+
+                  context.client.setQueryData<AppDetailWithSite>(
+                    consoleQuery.apps.byAppId.get.queryKey({ input: { params: variables.params } }),
+                    (detail) =>
+                      detail
+                        ? { ...detail, enable_api: data.enable_api, updated_at: data.updated_at }
+                        : undefined,
+                  )
 
                   void context.client.invalidateQueries({
                     queryKey: consoleQuery.apps.byAppId.get.queryKey({
@@ -392,8 +434,16 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           siteEnable: {
             post: {
               mutationOptions: {
-                onSettled: (_data, error, variables, _onMutateResult, context) => {
-                  if (error) return
+                onSettled: (data, error, variables, _onMutateResult, context) => {
+                  if (error || !data) return
+
+                  context.client.setQueryData<AppDetailWithSite>(
+                    consoleQuery.apps.byAppId.get.queryKey({ input: { params: variables.params } }),
+                    (detail) =>
+                      detail
+                        ? { ...detail, enable_site: data.enable_site, updated_at: data.updated_at }
+                        : undefined,
+                  )
 
                   void context.client.invalidateQueries({
                     queryKey: consoleQuery.apps.byAppId.get.queryKey({
@@ -405,11 +455,46 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
             },
           },
           site: {
+            post: {
+              mutationOptions: {
+                onSettled: (_data, error, variables, _onMutateResult, context) => {
+                  if (error) return
+                  void context.client.invalidateQueries({
+                    queryKey: consoleQuery.apps.byAppId.get.queryKey({
+                      input: { params: variables.params },
+                    }),
+                  })
+                  void context.client.invalidateQueries({ queryKey: consoleQuery.apps.get.key() })
+                  void context.client.invalidateQueries({
+                    queryKey: consoleQuery.apps.starred.get.key(),
+                  })
+                  void context.client.invalidateQueries({
+                    queryKey: consoleQuery.apps.recent.get.key(),
+                  })
+                },
+              },
+            },
             accessTokenReset: {
               post: {
                 mutationOptions: {
-                  onSettled: (_data, error, variables, _onMutateResult, context) => {
-                    if (error) return
+                  onSettled: (data, error, variables, _onMutateResult, context) => {
+                    if (error || !data) return
+
+                    const { code } = data
+                    if (code !== undefined) {
+                      context.client.setQueryData<AppDetailWithSite>(
+                        consoleQuery.apps.byAppId.get.queryKey({
+                          input: { params: variables.params },
+                        }),
+                        (detail) =>
+                          detail?.site
+                            ? {
+                                ...detail,
+                                site: { ...detail.site, code, access_token: code },
+                              }
+                            : detail,
+                      )
+                    }
 
                     void context.client.invalidateQueries({
                       queryKey: consoleQuery.apps.byAppId.get.queryKey({
@@ -1015,6 +1100,44 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           },
         },
       },
+      resourceAccessTokens: {
+        post: {
+          mutationOptions: {
+            onSettled: (_data, error, _variables, _result, context) => {
+              if (error) return
+              void context.client.invalidateQueries({
+                queryKey: consoleQuery.resourceAccessTokens.get.key(),
+              })
+            },
+          },
+        },
+        byTokenId: {
+          patch: {
+            mutationOptions: {
+              onSettled: (_data, error, _variables, _result, context) => {
+                if (error) return
+                void context.client.invalidateQueries({
+                  queryKey: consoleQuery.resourceAccessTokens.get.key(),
+                })
+              },
+            },
+          },
+          relations: {
+            byRelationId: {
+              delete: {
+                mutationOptions: {
+                  onSettled: (_data, error, _variables, _result, context) => {
+                    if (error) return
+                    void context.client.invalidateQueries({
+                      queryKey: consoleQuery.resourceAccessTokens.get.key(),
+                    })
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
       tags: {
         post: {
           mutationOptions: {
@@ -1380,5 +1503,18 @@ function invalidateAgentAccessQueries(
     query.agent.get.key(),
     query.agent.inviteOptions.get.key(),
     query.agent.byAgentId.get.queryKey({ input: { params: { agent_id: agentId } } }),
+  ])
+}
+
+function invalidateSkillVersionQueries(
+  query: RouterUtils<ConsoleClient>,
+  client: QueryClient,
+  skillId: string,
+) {
+  const input = { params: { skill_id: skillId } }
+  return invalidateQueryKeys(client, [
+    query.workspaces.current.skills.bySkillId.get.key({ input }),
+    query.workspaces.current.skills.bySkillId.versions.get.key({ input }),
+    query.workspaces.current.agents.byAgentId.skills.get.key(),
   ])
 }

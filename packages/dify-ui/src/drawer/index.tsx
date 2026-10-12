@@ -2,13 +2,13 @@
 
 import { Drawer as BaseDrawer } from '@base-ui/react/drawer'
 import { cn } from '../cn'
-import { resolveClassName } from '../internals/resolve-class-name'
+import { focusRingClassName } from '../internal/focus'
+import { resolveClassName } from '../internal/resolve-class-name'
 
 const Drawer = BaseDrawer.Root
 const DrawerProvider = BaseDrawer.Provider
 const DrawerIndent = BaseDrawer.Indent
 const DrawerIndentBackground = BaseDrawer.IndentBackground
-const DrawerTrigger = BaseDrawer.Trigger
 const DrawerSwipeArea = BaseDrawer.SwipeArea
 const DrawerPortal = BaseDrawer.Portal
 const DrawerTitle = BaseDrawer.Title
@@ -16,12 +16,28 @@ const DrawerDescription = BaseDrawer.Description
 const DrawerClose = BaseDrawer.Close
 const createDrawerHandle = BaseDrawer.createHandle
 
+type DrawerActions = BaseDrawer.Root.Actions
+type DrawerSnapPoint = BaseDrawer.Root.SnapPoint
+type DrawerChangeEventReason = BaseDrawer.Root.ChangeEventReason
+type DrawerChangeEventDetails = BaseDrawer.Root.ChangeEventDetails
+type DrawerSnapPointChangeEventReason = BaseDrawer.Root.SnapPointChangeEventReason
+type DrawerSnapPointChangeEventDetails = BaseDrawer.Root.SnapPointChangeEventDetails
+
 type DrawerProps<Payload = unknown> = BaseDrawer.Root.Props<Payload>
 type DrawerHandle<Payload = unknown> = BaseDrawer.Handle<Payload>
 type DrawerProviderProps = BaseDrawer.Provider.Props
 type DrawerIndentProps = BaseDrawer.Indent.Props
 type DrawerIndentBackgroundProps = BaseDrawer.IndentBackground.Props
 type DrawerTriggerProps<Payload = unknown> = BaseDrawer.Trigger.Props<Payload>
+
+function DrawerTrigger<Payload = unknown>({ className, ...props }: DrawerTriggerProps<Payload>) {
+  return (
+    <BaseDrawer.Trigger
+      className={(state) => cn(focusRingClassName, resolveClassName(className, state))}
+      {...props}
+    />
+  )
+}
 type DrawerSwipeAreaProps = BaseDrawer.SwipeArea.Props
 type DrawerPortalProps = BaseDrawer.Portal.Props
 type DrawerTitleProps = BaseDrawer.Title.Props
@@ -121,7 +137,10 @@ export {
 }
 
 export type {
+  DrawerActions,
   DrawerBackdropProps,
+  DrawerChangeEventDetails,
+  DrawerChangeEventReason,
   DrawerCloseProps,
   DrawerContentProps,
   DrawerDescriptionProps,
@@ -132,6 +151,9 @@ export type {
   DrawerPortalProps,
   DrawerProps,
   DrawerProviderProps,
+  DrawerSnapPoint,
+  DrawerSnapPointChangeEventDetails,
+  DrawerSnapPointChangeEventReason,
   DrawerSwipeAreaProps,
   DrawerTitleProps,
   DrawerTriggerProps,
