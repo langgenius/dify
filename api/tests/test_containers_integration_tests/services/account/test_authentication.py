@@ -1,5 +1,8 @@
 """Account authentication against PostgreSQL and real Redis session indexes."""
 
+from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
+from threading import Barrier
 from uuid import uuid4
 
 import pytest
@@ -10,6 +13,7 @@ from extensions.ext_application_services import application_services
 from extensions.ext_redis import redis_client
 from libs.passport import PassportService
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
+from services.account.login_adapters import RedisAccountSessionGateway
 from services.account_errors import (
     AccountLoginError,
     AccountNotFoundError,
@@ -17,6 +21,7 @@ from services.account_errors import (
     InvalidRefreshTokenError,
 )
 from services.account_password_hasher import DefaultAccountPasswordHasher
+from services.entities.account_entities import AccountSessionTokens
 
 PASSWORD = "ValidPassword123!"
 
@@ -163,3 +168,99 @@ def test_refresh_rejects_invalid_persisted_sessions(
 
     with pytest.raises(InvalidRefreshTokenError):
         services.authentication.refresh(refresh_token)
+
+
+def test_new_login_supersedes_old_lookup_and_login_after_logout_still_works(account: Account) -> None:
+    services = application_services().accounts
+    old = services.lifecycle.login(account.id, ip_address="127.0.0.1")
+    current = services.lifecycle.login(account.id, ip_address="127.0.0.1")
+    assert redis_client.get(f"refresh_token:{old.refresh_token}") == account.id.encode()
+
+    with pytest.raises(InvalidRefreshTokenError):
+        services.authentication.refresh(old.refresh_token)
+    assert redis_client.get(f"account_refresh_token:{account.id}") == current.refresh_token.encode()
+
+    services.authentication.logout(account.id)
+    for token in (old.refresh_token, current.refresh_token):
+        with pytest.raises(InvalidRefreshTokenError):
+            services.authentication.refresh(token)
+    new = services.lifecycle.login(account.id, ip_address="127.0.0.1")
+    assert services.authentication.refresh(new.refresh_token).refresh_token != new.refresh_token
+
+
+def test_parallel_refresh_allows_only_one_rotation(account: Account) -> None:
+    account_id = account.id
+    gateway = RedisAccountSessionGateway(redis=redis_client)
+    initial = gateway.issue(account_id)
+    ready = Barrier(8)
+
+    def rotate(_index: int) -> AccountSessionTokens | None:
+        assert gateway.resolve_refresh_token(initial.refresh_token) == account_id
+        ready.wait(timeout=10)
+        try:
+            return gateway.rotate(refresh_token=initial.refresh_token, account_id=account_id)
+        except InvalidRefreshTokenError:
+            return None
+
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        results = list(executor.map(rotate, range(8)))
+    successful = [tokens for tokens in results if tokens is not None]
+    assert len(successful) == 1
+    assert gateway.resolve_refresh_token(initial.refresh_token) is None
+    assert gateway.resolve_refresh_token(successful[0].refresh_token) == account_id
+    gateway.revoke(account_id)
+    assert gateway.resolve_refresh_token(successful[0].refresh_token) is None
+
+
+def test_logout_between_refresh_resolution_and_rotation_prevents_resurrection(account: Account) -> None:
+    gateway = RedisAccountSessionGateway(redis=redis_client)
+    initial = gateway.issue(account.id)
+    assert gateway.resolve_refresh_token(initial.refresh_token) == account.id
+
+    gateway.revoke(account.id)
+    with pytest.raises(InvalidRefreshTokenError):
+        gateway.rotate(refresh_token=initial.refresh_token, account_id=account.id)
+
+    assert redis_client.get(f"account_refresh_token:{account.id}") is None
+    assert gateway.resolve_refresh_token(initial.refresh_token) is None
+
+
+def test_logout_lookup_cleanup_preserves_concurrent_new_login(
+    account: Account, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    gateway = RedisAccountSessionGateway(redis=redis_client)
+    initial = gateway.issue(account.id)
+    cleanup = gateway._delete_refresh_token
+    new_sessions: list[AccountSessionTokens] = []
+
+    def login_before_cleanup(refresh_token: str) -> None:
+        new_sessions.append(gateway.issue(account.id))
+        cleanup(refresh_token)
+
+    monkeypatch.setattr(gateway, "_delete_refresh_token", login_before_cleanup)
+    gateway.revoke(account.id)
+
+    assert gateway.resolve_refresh_token(initial.refresh_token) is None
+    assert gateway.resolve_refresh_token(new_sessions[0].refresh_token) == account.id
+
+
+def test_retried_rotation_command_preserves_the_new_session(account: Account, monkeypatch: pytest.MonkeyPatch) -> None:
+    gateway = RedisAccountSessionGateway(redis=redis_client)
+    initial = gateway.issue(account.id)
+    register_script = redis_client.register_script
+
+    def replay_registration(script: str) -> Callable[..., object]:
+        execute = register_script(script)
+
+        def execute_twice(*, keys: list[str], args: list[object]) -> object:
+            execute(keys=keys, args=args)
+            return execute(keys=keys, args=args)
+
+        return execute_twice
+
+    monkeypatch.setattr(redis_client, "register_script", replay_registration)
+    rotated = gateway.rotate(refresh_token=initial.refresh_token, account_id=account.id)
+
+    assert gateway.resolve_refresh_token(rotated.refresh_token) == account.id
+    assert gateway.resolve_refresh_token(initial.refresh_token) is None
+    assert redis_client.get(f"refresh_token:{rotated.refresh_token}") == account.id.encode()

@@ -9,6 +9,7 @@ from typing import override
 from unittest.mock import MagicMock, call
 
 import pytest
+from redis import RedisError
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -276,32 +277,94 @@ def test_session_gateway_owns_refresh_token_storage(
     ]
 
 
-def test_session_gateway_resolves_rotates_and_revokes_refresh_tokens(
+@pytest.fixture
+def session_gateway(
     redis_transport: tuple[RedisClientWrapper, MagicMock], monkeypatch: pytest.MonkeyPatch
-) -> None:
-    redis, commands = redis_transport
-    commands.side_effect = [b"account-1", 1, 1, b"stored-refresh", 1, 1]
-    gateway = adapters.RedisAccountSessionGateway(redis=redis)
-    monkeypatch.setattr(
-        gateway,
-        "_issue",
-        lambda _account_id: AccountSessionTokens(
-            access_token="new-access", refresh_token="new-refresh", csrf_token="csrf"
-        ),
-    )
+) -> adapters.RedisAccountSessionGateway:
+    class FixedPassportService:
+        def issue(self, _payload: dict[str, object]) -> str:
+            return "access"
 
-    assert gateway.resolve_refresh_token("refresh") == "account-1"
-    assert gateway.rotate(refresh_token="refresh", account_id="account-1").refresh_token == "new-refresh"
-    gateway.revoke("account-1")
+    monkeypatch.setattr(adapters, "PassportService", FixedPassportService)
+    monkeypatch.setattr(adapters.secrets, "token_hex", lambda _length: "new-refresh")
+    monkeypatch.setattr(adapters, "generate_csrf_token", lambda _account_id: "csrf")
+    return adapters.RedisAccountSessionGateway(redis=redis_transport[0])
+
+
+def test_session_gateway_resolves_rotates_and_revokes_refresh_tokens(
+    session_gateway: adapters.RedisAccountSessionGateway,
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+) -> None:
+    _, commands = redis_transport
+    commands.side_effect = [b"account-1", b"refresh", True, 1, 1, b"new-refresh", 1]
+
+    assert session_gateway.resolve_refresh_token("refresh") == "account-1"
+    assert session_gateway.rotate(refresh_token="refresh", account_id="account-1").refresh_token == "new-refresh"
+    session_gateway.revoke("account-1")
 
     deleted_keys = [call.args[1] for call in commands.call_args_list if call.args[0] == "DEL"]
-    assert deleted_keys == [
-        "refresh_token:refresh",
+    assert deleted_keys == ["refresh_token:refresh", "refresh_token:new-refresh"]
+    assert commands.call_args_list[-2].args == ("GETDEL", "account_refresh_token:account-1")
+    compare_and_set = commands.call_args_list[3].args
+    assert compare_and_set[0] == "EVALSHA"
+    assert compare_and_set[2:] == (
+        1,
         "account_refresh_token:account-1",
-        "refresh_token:stored-refresh",
-        "account_refresh_token:account-1",
-    ]
-    assert commands.call_count == 6
+        "refresh",
+        "new-refresh",
+        int(timedelta(days=adapters.dify_config.REFRESH_TOKEN_EXPIRE_DAYS).total_seconds()),
+    )
+
+
+@pytest.mark.parametrize("current_token", [None, b"other-refresh"])
+def test_session_gateway_rejects_lookup_without_the_current_account_token(
+    session_gateway: adapters.RedisAccountSessionGateway,
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+    current_token: bytes | None,
+) -> None:
+    _, commands = redis_transport
+    commands.side_effect = [b"account-1", current_token]
+
+    assert session_gateway.resolve_refresh_token("old-refresh") is None
+    assert all(command.args[0] == "GET" for command in commands.call_args_list)
+
+
+def test_session_gateway_rejects_lost_rotation_without_deleting_current_session(
+    session_gateway: adapters.RedisAccountSessionGateway,
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+) -> None:
+    _, commands = redis_transport
+    commands.side_effect = [True, 0, 1]
+
+    with pytest.raises(account_errors.InvalidRefreshTokenError):
+        session_gateway.rotate(refresh_token="old-refresh", account_id="account-1")
+
+    assert commands.call_args_list[-1].args == ("DEL", "refresh_token:new-refresh")
+    assert commands.call_count == 3
+
+
+def test_session_gateway_preserves_successful_rotation_when_inactive_lookup_cleanup_fails(
+    session_gateway: adapters.RedisAccountSessionGateway,
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+) -> None:
+    _, commands = redis_transport
+    commands.side_effect = [True, 1, RedisError("cleanup unavailable")]
+
+    tokens = session_gateway.rotate(refresh_token="old-refresh", account_id="account-1")
+
+    assert tokens.refresh_token == "new-refresh"
+
+
+def test_session_gateway_revocation_is_idempotent(
+    session_gateway: adapters.RedisAccountSessionGateway,
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+) -> None:
+    _, commands = redis_transport
+    commands.return_value = None
+
+    session_gateway.revoke("account-1")
+
+    assert commands.call_args_list == [call("GETDEL", "account_refresh_token:account-1")]
 
 
 def test_session_gateway_returns_none_for_unknown_refresh_token(
