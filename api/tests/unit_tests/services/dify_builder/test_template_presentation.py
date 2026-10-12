@@ -1,0 +1,144 @@
+"""Policy refusals explain safe Template edits without leaking native content.
+
+The catalog contract is exercised by actual Localizer output; the only double
+is its external translation boundary. Refusal routing must never propose repair.
+"""
+
+import json
+from dataclasses import asdict
+
+import pytest
+
+from core.dify_builder.execution_policy import BuilderExecutionRefusal
+from core.dify_builder.models import (
+    Diagnosis,
+    DifyBuilderContext,
+    MutationIntent,
+    Run,
+    RunVerification,
+    TestInput,
+    Turn,
+)
+from core.dify_builder.state import PcState
+from core.dify_builder.verification import is_execution_policy_blocker, publication_decision, result_card
+from services.dify_builder.agent import localize as localize_module
+from services.dify_builder.agent.localize import Localizer
+from tests.unit_tests.core.dify_builder.test_handlers_build import _actor, _new_env, _session
+
+
+def refused_run(reason):
+    return Run(
+        id="refused",
+        session_id="s",
+        kind="verify",
+        immutable=True,
+        status="failed",
+        dify_run_id="",
+        execution_refusal=BuilderExecutionRefusal(reason_code=reason),
+        error="SECRET-EXCEPTION: {{ SECRET-TEMPLATE }} SECRET-INPUT",
+        verification=RunVerification(
+            execution_revision="rev",
+            executed_graph_revision="graph",
+            terminal_outputs={"notification_markdown": "SECRET-OUTPUT"},
+            output_findings=[],
+            executed_node_ids=[],
+            no_output_dead_branch=False,
+        ),
+    )
+
+
+@pytest.mark.parametrize(
+    ("reason", "scope_terms"),
+    [
+        pytest.param("unsupported_node_implementation", ("node", "support"), id="implementation"),
+        pytest.param("unsupported_template_syntax", ("template", "if", "trim"), id="syntax"),
+        pytest.param("unsupported_template_configuration", ("template", "variable"), id="configuration"),
+        pytest.param("unsupported_template_selector", ("template", "input"), id="selector"),
+        pytest.param("template_execution_limit", ("template", "size"), id="limit"),
+    ],
+)
+def test_known_template_refusal_is_actionable_and_localizes_only_presentation(monkeypatch, reason, scope_terms):
+    run = refused_run(reason)
+    card = result_card(run)
+    assert card.failure_reason is not None
+    message = card.failure_reason.lower()
+    assert all(term in message for term in scope_terms)
+    assert any(action in message for action in ("edit", "reduce", "use", "change"))
+    assert any(phrase in message for phrase in ("not run", "did not run", "not executed"))
+    assert card.safety_outcome == "unsupported_safe_execution"
+    assert card.dify_run_id == ""
+    assert card.executed_node_ids == []
+    assert card.terminal_outputs is None
+    assert "SECRET-" not in json.dumps(asdict(card))
+
+    original_reason = card.failure_reason
+    original_note = card.review_note
+    translations = {original_reason: "测试未运行。请修改模板后重试。", original_note: "其他路径尚未验证。"}
+    localize_module._TRANSLATION_CACHE.clear()
+
+    def translate(_model, *, system, user):
+        assert "BCP-47 code zh-Hans" in system
+        request = json.loads(user)
+        assert "SECRET-" not in user
+        return {index: translations.get(source, source) for index, source in request.items()}
+
+    monkeypatch.setattr(localize_module.llm, "invoke_json", translate)
+    try:
+        item = card.to_item(seq=1, at_version=1)
+        localized = Localizer(lambda: object()).localize_items([item], "zh-Hans")[0]
+        assert localized.payload["failure_reason"] == "测试未运行。请修改模板后重试。"
+        assert localized.payload["safety_outcome"] == "unsupported_safe_execution"
+        assert localized.payload["dify_run_id"] == ""
+        assert localized.payload["executed_node_ids"] == []
+        assert localized.payload["terminal_outputs"] is None
+    finally:
+        localize_module._TRANSLATION_CACHE.clear()
+
+
+def test_unknown_policy_reason_uses_fixed_sanitized_fallback():
+    first = result_card(refused_run("unknown_secret_template_reason"))
+    second = result_card(refused_run("another_unknown_reason"))
+    assert first.failure_reason == second.failure_reason
+    assert first.failure_reason
+    assert "unknown_secret_template_reason" not in json.dumps(asdict(first))
+    assert "SECRET-" not in json.dumps(asdict(first))
+    assert first.terminal_outputs is None
+
+
+def test_template_refusal_clears_staged_repairs_and_cannot_publish():
+    from core.dify_builder.handlers_build import handle_test_and_repair
+    from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort, StubAgent
+
+    run = refused_run("unsupported_template_syntax")
+    dify = FakeBuildDifyPort()
+    dify.run_draft = lambda *_args, **_kwargs: run
+    agent = StubAgent()
+
+    def forbidden(*_args, **_kwargs):
+        pytest.fail("policy refusal entered automatic diagnosis or repair")
+
+    agent.diagnose = forbidden
+    agent.propose_repair = forbidden
+    env, repo = _new_env(dify=dify, agent=agent)
+    session = _session(current_state=PcState.BUILD_TEST_AND_REPAIR)
+    repo.save_test_input(TestInput(id="ti", session_id=session.id, source="user", inputs={"body": "SECRET-INPUT"}))
+    context = DifyBuilderContext(
+        test_input_ref="ti",
+        diagnosis=Diagnosis(root_cause="old"),
+        staged_repair=[
+            MutationIntent(op="set_node_config", args={"node_id": "template", "path": "template", "value": "x"})
+        ],
+    )
+    result = handle_test_and_repair(env, Turn(actor=_actor()), session, context)
+    assert result.next == PcState.BUILD_AWAIT_REPAIR
+    assert result.context.diagnosis is None
+    assert result.context.staged_repair == []
+    assert dify.applied == []
+    assert dify.published is False
+    assert is_execution_policy_blocker(run)
+    assert (
+        publication_decision(run, session_id="s", current_revision="rev", current_graph_revision="graph").allowed
+        is False
+    )
+    presentation = [item.payload for item in result.items if item.kind in {"test_result", "assistant_turn"}]
+    assert "SECRET-" not in json.dumps(presentation)
