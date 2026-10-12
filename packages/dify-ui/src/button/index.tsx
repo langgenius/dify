@@ -18,6 +18,9 @@ const buttonVariants = cva(
         primary: [
           'bg-components-button-primary-bg text-components-button-primary-text shadow-primary-button inset-ring-[0.5px] inset-ring-components-button-primary-border',
           'hover:bg-components-button-primary-bg-hover hover:shadow-xs hover:shadow-shadow-shadow-3 hover:inset-ring-components-button-primary-border-hover',
+          // The fill is the focus ring's color, so a band of the text color separates the two.
+          // It sits inside the ring so the indicator does not grow and get clipped by a container.
+          'focus-visible:inset-ring-1 focus-visible:inset-ring-components-button-primary-text',
           'data-disabled:bg-components-button-primary-bg-disabled data-disabled:text-components-button-primary-text-disabled data-disabled:shadow-none data-disabled:inset-ring-components-button-primary-border-disabled',
         ],
         secondary: [
@@ -68,6 +71,7 @@ const buttonVariants = cva(
         class: [
           'bg-components-button-destructive-primary-bg text-components-button-destructive-primary-text inset-ring-components-button-destructive-primary-border',
           'hover:bg-components-button-destructive-primary-bg-hover hover:inset-ring-components-button-destructive-primary-border-hover',
+          'focus-visible:inset-ring-components-button-destructive-primary-text',
           'data-disabled:bg-components-button-destructive-primary-bg-disabled data-disabled:text-components-button-destructive-primary-text-disabled data-disabled:shadow-none data-disabled:inset-ring-components-button-destructive-primary-bg-disabled',
         ],
       },
