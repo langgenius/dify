@@ -18,6 +18,8 @@ import {
 } from '@langgenius/dify-ui/scroll-area'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
+import { VarType } from '@/app/components/workflow/types'
 import { ENABLE_AGENT_KNOWLEDGE_RETRIEVAL } from '@/features/agent-v2/agent-detail/configure/feature-flags'
 import { AgentOrchestrateAddActionsProvider } from './add-actions'
 import { AgentAdvancedSettings } from './advanced'
@@ -38,6 +40,32 @@ import { AgentSkills, AgentTemplateSkills } from './skills'
 import { AgentTemplateTools, AgentTools } from './tools'
 
 const EMPTY_BUILD_DRAFT_CHANGED_KEYS: readonly AgentBuildDraftChangedKey[] = []
+
+function WorkflowAgentKnowledgeRetrieval({ nodeId }: { nodeId: string }) {
+  const {
+    availableVars: availableStringVars,
+    availableNodesWithParent: availableStringNodesWithParent,
+  } = useAvailableVarList(nodeId, {
+    onlyLeafNodeVar: false,
+    filterVar: (variable) => variable.type === VarType.string,
+  })
+  const {
+    availableVars: availableNumberVars,
+    availableNodesWithParent: availableNumberNodesWithParent,
+  } = useAvailableVarList(nodeId, {
+    onlyLeafNodeVar: false,
+    filterVar: (variable) => variable.type === VarType.number,
+  })
+
+  return (
+    <AgentKnowledgeRetrieval
+      availableStringVars={availableStringVars}
+      availableStringNodesWithParent={availableStringNodesWithParent}
+      availableNumberVars={availableNumberVars}
+      availableNumberNodesWithParent={availableNumberNodesWithParent}
+    />
+  )
+}
 
 type AgentOrchestratePanelProps = {
   agentId: string
@@ -186,7 +214,12 @@ export function AgentOrchestratePanel({
                             <AgentTools />
                           </>
                         )}
-                        {ENABLE_AGENT_KNOWLEDGE_RETRIEVAL && <AgentKnowledgeRetrieval />}
+                        {ENABLE_AGENT_KNOWLEDGE_RETRIEVAL &&
+                          (nodeId ? (
+                            <WorkflowAgentKnowledgeRetrieval nodeId={nodeId} />
+                          ) : (
+                            <AgentKnowledgeRetrieval />
+                          ))}
                         {!isTemplatePreview && <AgentAdvancedSettings />}
                       </AgentBuildDraftChangedKeysProvider>
                     </AgentOrchestrateAddActionsProvider>

@@ -4,6 +4,7 @@ import type { ReactNode } from 'react'
 import type {
   MetadataFilteringCondition,
   MetadataFilteringModeEnum,
+  MetadataShape,
   MultipleRetrievalConfig,
   SingleRetrievalConfig,
 } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
@@ -74,7 +75,13 @@ type AgentKnowledgeRetrievalDialogProps = {
   onItemChange?: (item: AgentKnowledgeRetrievalItem) => void
   open: boolean
   onOpenChange: (open: boolean) => void
-}
+} & Pick<
+  MetadataShape,
+  | 'availableStringVars'
+  | 'availableStringNodesWithParent'
+  | 'availableNumberVars'
+  | 'availableNumberNodesWithParent'
+>
 
 const queryModeOptions: KnowledgeRetrievalQueryMode[] = ['agent', 'custom']
 
@@ -327,6 +334,10 @@ function AgentKnowledgeRetrievalDialogContent({
   initialName,
   onItemCreate,
   onItemChange,
+  availableStringVars,
+  availableStringNodesWithParent,
+  availableNumberVars,
+  availableNumberNodesWithParent,
 }: Omit<AgentKnowledgeRetrievalDialogProps, 'open' | 'onOpenChange'>) {
   const { t } = useTranslation(['agentV2', 'common', 'datasetSettings'])
   const docLink = useDocLink()
@@ -634,6 +645,10 @@ function AgentKnowledgeRetrievalDialogContent({
         <div className="py-2">
           <MetadataFilter
             metadataList={metadataList}
+            availableStringVars={availableStringVars}
+            availableStringNodesWithParent={availableStringNodesWithParent}
+            availableNumberVars={availableNumberVars}
+            availableNumberNodesWithParent={availableNumberNodesWithParent}
             selectedDatasetsLoaded
             metadataFilterMode={metadataFilterMode}
             metadataFilteringConditions={metadataFilteringConditions}
@@ -735,6 +750,10 @@ export function AgentKnowledgeRetrievalDialog({
   initialName,
   onItemCreate,
   onItemChange,
+  availableStringVars,
+  availableStringNodesWithParent,
+  availableNumberVars,
+  availableNumberNodesWithParent,
   open,
   onOpenChange,
 }: AgentKnowledgeRetrievalDialogProps) {
@@ -749,6 +768,10 @@ export function AgentKnowledgeRetrievalDialog({
           initialName={initialName}
           onItemCreate={onItemCreate}
           onItemChange={onItemChange}
+          availableStringVars={availableStringVars}
+          availableStringNodesWithParent={availableStringNodesWithParent}
+          availableNumberVars={availableNumberVars}
+          availableNumberNodesWithParent={availableNumberNodesWithParent}
         />
       </DialogContent>
     </Dialog>
