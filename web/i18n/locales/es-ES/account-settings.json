@@ -55,6 +55,8 @@
   "account.sendVerificationButton": "Enviar código de verificación",
   "account.setPassword": "Establecer una contraseña",
   "account.showAppLength": "Mostrar {{length}} apps",
+  "account.timezoneNoResults": "No se encontraron zonas horarias coincidentes",
+  "account.timezoneSearchPlaceholder": "Buscar ciudades o zonas horarias...",
   "account.verificationLabel": "Código de verificación",
   "account.verificationPlaceholder": "Pega el código de 6 dígitos",
   "account.workspaceName": "Nombre del espacio de trabajo",
