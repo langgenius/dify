@@ -210,16 +210,17 @@ function Session() {
     setDisplayMonth(getInitialMonth(next.date, minDate, maxDate))
   }
   const errorId = React.useId()
-  React.useEffect(() => {
-    const frame = requestAnimationFrame(() => {
-      const target =
-        ref.current?.querySelector<HTMLElement>(
-          '[role="grid"] button[tabindex="0"], [role="option"][aria-selected="true"]',
-        ) ?? ref.current?.querySelector<HTMLElement>('button:not(:disabled)')
-      target?.focus({ preventScroll: true })
-      target?.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'instant' })
-    })
-    return () => cancelAnimationFrame(frame)
+  const previousViewRef = React.useRef(view)
+  React.useLayoutEffect(() => {
+    // PickerContent owns initial focus; this effect handles only internal view changes.
+    if (previousViewRef.current === view) return
+    previousViewRef.current = view
+    const target =
+      ref.current?.querySelector<HTMLElement>(
+        '[role="grid"] button[tabindex="0"], [role="option"][aria-selected="true"]',
+      ) ?? ref.current?.querySelector<HTMLElement>('button:not(:disabled)')
+    target?.focus({ preventScroll: true })
+    target?.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'instant' })
   }, [view])
   function changeView(next: 'date' | 'time') {
     ref.current?.closest<HTMLElement>('[role="dialog"]')?.focus({ preventScroll: true })
