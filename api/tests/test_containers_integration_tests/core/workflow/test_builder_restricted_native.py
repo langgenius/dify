@@ -145,6 +145,26 @@ def no_live(monkeypatch):
         spy.assert_not_called()
 
 
+@pytest.fixture
+def no_jinja_compilation(monkeypatch):
+    """Guard restricted Template execution without replacing Jinja lex/parse."""
+    from jinja2 import Environment, Template
+
+    spies = []
+    for owner, names in (
+        (Environment, ("from_string", "compile", "compile_expression", "compile_templates", "_generate", "_compile")),
+        (Template, ("render", "generate", "render_async", "generate_async")),
+    ):
+        for name in names:
+            spy = Mock(side_effect=AssertionError(f"Jinja compilation/rendering reached: {name}"))
+            monkeypatch.setattr(owner, name, spy)
+            spies.append(spy)
+    yield
+    # A swallowed compiler/renderer error cannot satisfy the overflow control.
+    for spy in spies:
+        spy.assert_not_called()
+
+
 def configure(owner, name, *, fixture=False):
     factory, actor, app, workflow, sid, tid = owner
     graph = yaml.safe_load((FIXTURES / name).read_text())
@@ -692,7 +712,7 @@ def assert_template_native_rows(owner, result, want, node_ids=("start", "templat
         )
 
 
-@pytest.mark.usefixtures("no_live")
+@pytest.mark.usefixtures("no_live", "no_jinja_compilation")
 @pytest.mark.parametrize(
     ("inputs", "want"),
     [
@@ -718,7 +738,7 @@ def test_composed_template_exact_outputs_are_sealed_native_sql_success(native_ow
     assert_template_native_rows(native_owner, result, want)
 
 
-@pytest.mark.usefixtures("no_live")
+@pytest.mark.usefixtures("no_live", "no_jinja_compilation")
 def test_composed_renamed_template_and_multi_template_chain(native_owner):
     graph = yaml.safe_load((FIXTURES / "template_notification.yml").read_text())
     graph["nodes"][0]["data"]["variables"] = [{"variable": "heading", "label": "Heading", "type": "text-input"}]
@@ -747,7 +767,7 @@ def test_composed_renamed_template_and_multi_template_chain(native_owner):
     assert_template_native_rows(native_owner, result, "Update: [News]", ("start", "template", "format", "end"))
 
 
-@pytest.mark.usefixtures("no_live")
+@pytest.mark.usefixtures("no_live", "no_jinja_compilation")
 def test_composed_http_body_to_template_remains_sealed_simulation(native_owner):
     graph = yaml.safe_load((FIXTURES / "template_notification.yml").read_text())
     http = yaml.safe_load((FIXTURES / "http_text.yml").read_text())["nodes"][1]
@@ -801,7 +821,7 @@ def test_composed_http_body_to_template_remains_sealed_simulation(native_owner):
     )
 
 
-@pytest.mark.usefixtures("no_live")
+@pytest.mark.usefixtures("no_live", "no_jinja_compilation")
 @pytest.mark.parametrize(
     "mutation",
     ["dead-branch", "syntax", "source-over", "downstream", "object-input"],
@@ -838,7 +858,7 @@ def test_composed_unsafe_template_refuses_without_native_allocation(native_owner
         )
 
 
-@pytest.mark.usefixtures("no_live")
+@pytest.mark.usefixtures("no_live", "no_jinja_compilation")
 def test_composed_template_cumulative_output_overflow_is_native_failure(native_owner):
     graph = yaml.safe_load((FIXTURES / "template_notification.yml").read_text())
     graph["nodes"][1]["data"]["template"] = "{{body}}{{body}}"
@@ -880,7 +900,7 @@ def test_composed_template_cumulative_output_overflow_is_native_failure(native_o
     )
 
 
-@pytest.mark.usefixtures("no_live")
+@pytest.mark.usefixtures("no_live", "no_jinja_compilation")
 @pytest.mark.parametrize("missing", ["template-row", "raw-binding", "effective-input", "worker-completion"])
 def test_composed_template_text_without_complete_sql_proof_cannot_publish(native_owner, monkeypatch, missing):
     from sqlalchemy import delete
@@ -928,7 +948,7 @@ def test_composed_template_text_without_complete_sql_proof_cannot_publish(native
     )
 
 
-@pytest.mark.usefixtures("no_live")
+@pytest.mark.usefixtures("no_live", "no_jinja_compilation")
 def test_composed_template_seal_replay_rejects_changed_output(native_owner, monkeypatch):
     from core.dify_builder.execution_policy import BuilderExecutionPolicyError
 
