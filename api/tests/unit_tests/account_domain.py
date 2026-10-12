@@ -1,6 +1,6 @@
 """Account test composition with real persistence and explicit external ports."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from unittest.mock import Mock, create_autospec
 
@@ -19,6 +19,17 @@ from services.workspace.member_service import (
     WorkspaceMemberService,
 )
 from services.workspace.provisioning_service import WorkspaceProvisioningService
+
+
+@dataclass
+class FakeAccountSessionRevoker:
+    account_ids: list[str] = field(default_factory=list)
+    fail_on_call: int | None = None
+
+    def revoke_all(self, account_id: str) -> None:
+        self.account_ids.append(account_id)
+        if len(self.account_ids) == self.fail_on_call:
+            raise RuntimeError("Session storage unavailable")
 
 
 @dataclass

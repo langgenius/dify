@@ -17,6 +17,10 @@ export const zSimpleResultMessageResponse = z.object({
   result: z.string(),
 })
 
+export const zPostRefreshTokenHeaders = z.object({
+  'X-Refresh-Request-ID': z.uuid().optional(),
+})
+
 /**
  * ErrorResponse
  *

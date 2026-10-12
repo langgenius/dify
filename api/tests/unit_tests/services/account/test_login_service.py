@@ -153,22 +153,26 @@ class FakeHumanVerification:
 class FakeSessions:
     issued: list[str] = field(default_factory=list)
     revoked: list[str] = field(default_factory=list)
+    revoked_accounts: list[str] = field(default_factory=list)
     refresh_account_id: str | None = "account-1"
-    rotations: list[tuple[str, str]] = field(default_factory=list)
+    rotations: list[tuple[str, str, str | None]] = field(default_factory=list)
 
     def issue(self, account_id: str) -> AccountSessionTokens:
         self.issued.append(account_id)
         return TOKENS
 
-    def revoke(self, account_id: str) -> None:
-        self.revoked.append(account_id)
+    def revoke(self, refresh_token: str) -> None:
+        self.revoked.append(refresh_token)
+
+    def revoke_all(self, account_id: str) -> None:
+        self.revoked_accounts.append(account_id)
 
     def resolve_refresh_token(self, refresh_token: str) -> str | None:
         assert refresh_token == "old-refresh"
         return self.refresh_account_id
 
-    def rotate(self, *, refresh_token: str, account_id: str) -> AccountSessionTokens:
-        self.rotations.append((refresh_token, account_id))
+    def rotate(self, *, refresh_token: str, account_id: str, request_id: str | None = None) -> AccountSessionTokens:
+        self.rotations.append((refresh_token, account_id, request_id))
         return TOKENS
 
 
@@ -914,12 +918,14 @@ def test_logout_and_refresh_delegate_to_session_gateway() -> None:
     dependencies = Dependencies()
     service = dependencies.service()
 
-    service.logout("account-1")
+    service.logout("old-refresh")
+    service.logout(None)
 
-    assert dependencies.sessions.revoked == ["account-1"]
+    assert dependencies.sessions.revoked == ["old-refresh"]
+    assert dependencies.sessions.revoked_accounts == []
     assert service.refresh("old-refresh") == TOKENS
     assert dependencies.refresh_preparation.account_ids == ["account-1"]
-    assert dependencies.sessions.rotations == [("old-refresh", "account-1")]
+    assert dependencies.sessions.rotations == [("old-refresh", "account-1", None)]
 
 
 @pytest.mark.parametrize(
@@ -943,3 +949,20 @@ def test_refresh_rejects_invalid_account_state(
         dependencies.service().refresh("old-refresh")
 
     assert dependencies.sessions.rotations == []
+
+
+def test_logout_all_revokes_account_sessions() -> None:
+    dependencies = Dependencies()
+
+    dependencies.service().logout_all("account-1")
+
+    assert dependencies.sessions.revoked_accounts == ["account-1"]
+    assert dependencies.sessions.revoked == []
+
+
+def test_refresh_forwards_retry_request_id() -> None:
+    dependencies = Dependencies()
+
+    assert dependencies.service().refresh("old-refresh", request_id="retry-id") == TOKENS
+
+    assert dependencies.sessions.rotations == [("old-refresh", "account-1", "retry-id")]

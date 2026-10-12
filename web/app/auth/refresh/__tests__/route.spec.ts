@@ -4,6 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 const mocks = vi.hoisted(() => ({
   basePath: '',
+  requestHeaders: new Headers(),
+  csrfToken: undefined as string | undefined,
 }))
 
 vi.mock('@/config', () => ({
@@ -13,6 +15,14 @@ vi.mock('@/config', () => ({
 }))
 
 vi.mock('server-only', () => ({}))
+
+vi.mock('@/next/headers', () => ({
+  headers: async () => mocks.requestHeaders,
+  cookies: async () => ({
+    get: (name: string) =>
+      name === 'csrf_token' && mocks.csrfToken ? { name, value: mocks.csrfToken } : undefined,
+  }),
+}))
 
 vi.mock('@/config/server', () => ({
   SERVER_CONSOLE_API_PREFIX: undefined,
@@ -24,8 +34,11 @@ vi.mock('@/utils/var', () => ({
   },
 }))
 
-const createRequest = (url: string, cookie?: string) =>
-  new Request(url, { headers: cookie ? { cookie } : undefined })
+const createRequest = (url: string, cookie?: string) => {
+  const request = new Request(url, { headers: cookie ? { cookie } : undefined })
+  mocks.requestHeaders = request.headers
+  return request
+}
 
 describe('auth refresh route', () => {
   beforeEach(() => {
@@ -33,6 +46,8 @@ describe('auth refresh route', () => {
     vi.resetModules()
     vi.unstubAllGlobals()
     mocks.basePath = ''
+    mocks.csrfToken = undefined
+    mocks.requestHeaders = new Headers()
   })
   afterEach(() => vi.unstubAllGlobals())
 
@@ -67,6 +82,67 @@ describe('auth refresh route', () => {
       'access_token=new-access; Path=/; HttpOnly',
       'refresh_token=new-refresh; Path=/; HttpOnly',
     ])
+  })
+
+  it('uses the browser generation ID, current CSRF cookie, and configured backend origin', async () => {
+    mocks.csrfToken = 'same-csrf-generation'
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 200 }))
+    vi.stubGlobal('fetch', fetchMock)
+    const { GET } = await import('../route')
+    const request = createRequest(
+      'http://internal-service:3000/auth/refresh?redirect_url=%2Fapps',
+      'refresh_token=old-refresh; csrf_token=same-csrf-generation',
+    )
+    request.headers.set('Origin', 'https://untrusted.example')
+
+    const response = await GET(request)
+
+    const headers = fetchMock.mock.calls[0]?.[1]?.headers as Headers
+    expect(headers.get('X-CSRF-Token')).toBe('same-csrf-generation')
+    expect(headers.get('X-Refresh-Request-ID')).toBe('cee5f373-19dd-5d8c-9b86-4aee5a478e36')
+    expect(headers.get('Origin')).toBe('http://localhost:5001')
+    expect(headers.get('cookie')).toBe('refresh_token=old-refresh; csrf_token=same-csrf-generation')
+    expect(response.headers.get('location')).toBe('/apps')
+  })
+
+  it('retries a lost response with the same request ID and cookie', async () => {
+    mocks.csrfToken = 'same-csrf-generation'
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(new TypeError('network interrupted'))
+      .mockResolvedValueOnce(new Response(null, { status: 200 }))
+    vi.stubGlobal('fetch', fetchMock)
+    const { GET } = await import('../route')
+
+    const response = await GET(
+      createRequest(
+        'http://localhost:3000/auth/refresh?redirect_url=%2Fapps',
+        'refresh_token=old-refresh; csrf_token=same-csrf-generation',
+      ),
+    )
+
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    const firstHeaders = fetchMock.mock.calls[0]?.[1]?.headers as Headers
+    const secondHeaders = fetchMock.mock.calls[1]?.[1]?.headers as Headers
+    expect(secondHeaders.get('X-Refresh-Request-ID')).toBe(firstHeaders.get('X-Refresh-Request-ID'))
+    expect(secondHeaders.get('cookie')).toBe(firstHeaders.get('cookie'))
+    expect(response.headers.get('location')).toBe('/apps')
+  })
+
+  it('redirects to signin after both network attempts fail', async () => {
+    const fetchMock = vi.fn().mockRejectedValue(new TypeError('network interrupted'))
+    vi.stubGlobal('fetch', fetchMock)
+    const { GET } = await import('../route')
+
+    const response = await GET(
+      createRequest(
+        'http://localhost:3000/auth/refresh?redirect_url=%2Fapps',
+        'refresh_token=old-refresh',
+      ),
+    )
+
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(response.headers.get('location')).toBe('/signin?redirect_url=%2Fapps')
   })
 
   it('should redirect to signin when refresh token is rejected', async () => {

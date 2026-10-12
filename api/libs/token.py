@@ -1,6 +1,7 @@
 import hmac
 import logging
 import re
+import secrets
 from datetime import UTC, datetime, timedelta
 
 from flask import Request
@@ -142,7 +143,8 @@ def set_csrf_token_to_cookie(request: Request, response: Response, token: str):
         domain=_cookie_domain(),
         secure=is_secure(),
         samesite="Lax",
-        max_age=int(60 * dify_config.ACCESS_TOKEN_EXPIRE_MINUTES),
+        # Keep the signed generation available to coordinate refresh after its JWT expires.
+        max_age=int(60 * 60 * 24 * dify_config.REFRESH_TOKEN_EXPIRE_DAYS),
         path="/",
     )
 
@@ -234,5 +236,6 @@ def generate_csrf_token(user_id: str) -> str:
     payload = {
         "exp": int(exp_dt.timestamp()),
         "sub": user_id,
+        "jti": secrets.token_hex(16),
     }
     return PassportService().issue(payload)

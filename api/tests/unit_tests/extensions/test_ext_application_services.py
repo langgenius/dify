@@ -81,7 +81,7 @@ from services.account.forgot_password_adapters import (
     RedisForgotPasswordSecurityGateway,
     RedisForgotPasswordTokenGateway,
 )
-from services.account.login_adapters import RedisConsoleAuthSecurityGateway
+from services.account.login_adapters import RedisAccountSessionGateway, RedisConsoleAuthSecurityGateway
 from services.account.oauth_adapters import (
     AccountActivationOAuthInvitationGateway,
     AccountLifecycleOAuthRegistrationGateway,
@@ -250,6 +250,7 @@ def test_init_app_registers_services_for_the_current_app(
     with app.app_context():
         services = ext_application_services.application_services()
         assert services is app.extensions["application_services"]
+        assert app.extensions["console_token_verifier"] is ext_application_services.verify_console_access_token
         assert services.init_validation.is_validated(session_validated=False) is False
         assert isinstance(services.app_scoped_end_users.commands, AppScopedEndUserService)
         assert isinstance(services.app_scoped_end_users.queries, AppScopedEndUserQueryService)
@@ -550,6 +551,9 @@ def test_build_application_services_wires_web_authentication_boundary(
     )
 
     assert isinstance(services.web_authentication, WebAuthenticationService)
+    assert isinstance(services.web_authentication._account_sessions, RedisAccountSessionGateway)
+    assert isinstance(services.accounts.authentication._sessions, RedisAccountSessionGateway)
+    assert services.web_authentication._account_sessions._redis is services.accounts.authentication._sessions._redis
     assert services.web_authentication._accounts is services.accounts.profile._accounts
     assert isinstance(services.web_authentication._tokens, TokenManagerWebAuthenticationGateway)
     assert (

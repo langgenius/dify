@@ -95,6 +95,10 @@ class AccountSessionRepository(Protocol):
     ) -> AccountSessionRevocation: ...
 
 
+class AccountSessionRevoker(Protocol):
+    def revoke_all(self, account_id: str) -> None: ...
+
+
 class AccountTokenCacheInvalidator(Protocol):
     def __call__(self, token_hash: str) -> None: ...
 

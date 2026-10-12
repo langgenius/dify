@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import cast
 from unittest.mock import MagicMock
@@ -9,7 +10,29 @@ from werkzeug.wrappers import Response
 
 from constants import COOKIE_NAME_ACCESS_TOKEN, COOKIE_NAME_WEBAPP_ACCESS_TOKEN
 from libs import token
+from libs.passport import PassportService
 from libs.token import extract_access_token, extract_webapp_access_token, set_csrf_token_to_cookie
+
+
+def test_each_csrf_token_has_a_distinct_signed_generation(config_overrides: Callable[..., None]) -> None:
+    config_overrides(SECRET_KEY="csrf-generation-test-signing-key-at-least-32-bytes")
+    first = PassportService().verify(token.generate_csrf_token("account-1"))
+    second = PassportService().verify(token.generate_csrf_token("account-1"))
+
+    assert first["sub"] == second["sub"] == "account-1"
+    assert len(first["jti"]) == len(second["jti"]) == 32
+    assert first["jti"] != second["jti"]
+
+
+def test_csrf_cookie_retains_its_generation_beyond_the_access_token_lifetime(
+    config_overrides: Callable[..., None],
+) -> None:
+    config_overrides(ACCESS_TOKEN_EXPIRE_MINUTES=15, REFRESH_TOKEN_EXPIRE_DAYS=30)
+    response = Response()
+
+    set_csrf_token_to_cookie(Request({}), response, "generation")
+
+    assert "Max-Age=2592000" in response.headers["Set-Cookie"]
 
 
 @dataclass(eq=False, repr=False)

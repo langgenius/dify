@@ -115,8 +115,14 @@ class AccountService:
         self._security.reset_login_failures(email)
 
     def reset_password(self, account_id: str, password: str, *, email: str) -> None:
-        if self._accounts.update_password(account_id, self._passwords.hash(password)) is None:
+        if self._accounts.get(account_id) is None:
             raise AccountNotFoundError()
+        digest = self._passwords.hash(password)
+        # Revoke before persistence for outages and afterward for sessions issued during the write.
+        self._sessions.revoke_all(account_id)
+        if self._accounts.update_password(account_id, digest) is None:
+            raise AccountNotFoundError()
+        self._sessions.revoke_all(account_id)
         self.reset_login_failures(email)
 
     def set_email(self, account_id: str, email: str) -> None:

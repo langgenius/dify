@@ -966,3 +966,22 @@ def test_console_model_provider_summary_exported_schema_is_lightweight(exported_
         "source",
         "version",
     }
+
+
+def test_console_session_endpoints_document_origin_and_retry_header(openapi_json: OpenAPIJSONLoader) -> None:
+    from controllers.console import bp as console_bp
+
+    payload = json.loads(openapi_json(console_bp, "/console/api/openapi.json", True))
+    for path in ("/logout", "/logout-all", "/refresh-token"):
+        operation = payload["paths"][path]["post"]
+        assert "requestBody" not in operation
+        response_schema = operation["responses"]["200"]["content"]["application/json"]["schema"]
+        assert response_schema == {"$ref": "#/components/schemas/SimpleResultResponse"}
+        assert "Origin" in operation["description"]
+        assert "X-CSRF-Token" in operation["description"]
+        assert "403" in operation["responses"]
+    refresh = payload["paths"]["/refresh-token"]["post"]
+    retry_header = _parameters_by_name(refresh)["X-Refresh-Request-ID"]
+    assert retry_header["in"] == "header"
+    assert retry_header["schema"]["format"] == "uuid"
+    assert "400" in refresh["responses"]

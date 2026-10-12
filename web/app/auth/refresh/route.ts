@@ -1,5 +1,10 @@
 import type { LoginRedirectTarget } from '@/utils/login-redirect'
-import { resolveServerConsoleApiUrl } from '@/service/console/server'
+import { v4 as uuidV4, v5 as uuidV5 } from 'uuid'
+import { CSRF_HEADER_NAME } from '@/config'
+import {
+  getServerConsoleRequestHeaders,
+  resolveServerConsoleApiUrl,
+} from '@/service/console/server'
 import { getServerLoginFallback, resolveLoginRedirectTarget } from '@/utils/login-redirect'
 import { basePath } from '@/utils/var'
 
@@ -95,14 +100,27 @@ export async function GET(request: Request) {
   if (!refreshUrl || !cookie) return createSigninRedirectResponse(redirectTarget)
 
   try {
-    const response = await fetch(refreshUrl, {
-      method: 'POST',
-      headers: new Headers({
-        'Content-Type': 'application/json',
-        cookie,
-      }),
-      cache: 'no-store',
-    })
+    const headers = await getServerConsoleRequestHeaders()
+    const csrfToken = headers.get(CSRF_HEADER_NAME)
+    // Match browser refreshes so an SSR request cannot invalidate their session.
+    headers.set('X-Refresh-Request-ID', csrfToken ? uuidV5(csrfToken, uuidV5.URL) : uuidV4())
+    headers.set('Origin', new URL(refreshUrl).origin)
+    const refresh = (timeout: number) =>
+      fetch(refreshUrl, {
+        method: 'POST',
+        headers,
+        cache: 'no-store',
+        signal: AbortSignal.timeout(timeout),
+      })
+    const retryDeadline = Date.now() + 8000
+    let response: Response
+    try {
+      response = await refresh(4000)
+    } catch (error) {
+      const remaining = retryDeadline - Date.now()
+      if (remaining <= 0) throw error
+      response = await refresh(Math.min(4000, remaining))
+    }
 
     if (!response.ok) return createSigninRedirectResponse(redirectTarget)
 

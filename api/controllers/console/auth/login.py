@@ -1,12 +1,17 @@
+import hmac
+import re
 from http import HTTPStatus
 from typing import Never
+from urllib.parse import urlsplit
 from uuid import UUID
 
-import flask_login
+import jwt
 from flask import make_response, request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
+from werkzeug.exceptions import BadRequest, Forbidden, Unauthorized
 
+from configs import dify_config
 from controllers.common.fields import (
     SimpleResultDataResponse,
     SimpleResultMessageResponse,
@@ -50,11 +55,13 @@ from extensions.ext_application_services import application_services
 from libs.external_api import error_responses
 from libs.helper import EmailStr, dump_response, extract_remote_ip
 from libs.helper import timezone as validate_timezone_string
-from libs.login import current_account_with_tenant_optional
+from libs.login import current_account_with_tenant_optional, login_required
 from libs.token import (
     clear_access_token_from_cookie,
     clear_csrf_token_from_cookie,
     clear_refresh_token_from_cookie,
+    extract_csrf_token,
+    extract_csrf_token_from_cookie,
     extract_refresh_token,
     set_access_token_to_cookie,
     set_csrf_token_to_cookie,
@@ -64,6 +71,11 @@ from services import account_errors
 from services.entities.account_entities import AccountSessionTokens
 from services.entities.account_login_entities import EmailCodeLoginCommand, EmailCodeSendCommand, PasswordLoginCommand
 from services.entities.auth_entities import LoginPayloadBase
+
+_REFRESH_ORIGIN_DESCRIPTION = (
+    "Requires an Origin matching the Console web URL or API origin. "
+    "Same-host proxy scheme/port changes additionally require a signed X-CSRF-Token matching the CSRF cookie."
+)
 
 
 class LoginPayload(LoginPayloadBase):
@@ -164,17 +176,30 @@ class LoginApi(Resource):
 class LogoutApi(Resource):
     @setup_required
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
+    @console_ns.doc(description=_REFRESH_ORIGIN_DESCRIPTION)
+    @console_ns.response(403, "Missing or untrusted Origin")
     def post(self):
-        account, _ = current_account_with_tenant_optional()
-        if account is not None:
-            application_services().accounts.authentication.logout(account.id)
-            flask_login.logout_user()
+        _check_refresh_origin()
+        application_services().accounts.authentication.logout(extract_refresh_token(request))
+        return _logout_response()
 
-        response = make_response(dump_response(SimpleResultResponse, {"result": "success"}))
-        clear_access_token_from_cookie(response)
-        clear_refresh_token_from_cookie(response)
-        clear_csrf_token_from_cookie(response)
-        return response
+
+@console_ns.route("/logout-all")
+class LogoutAllApi(Resource):
+    @setup_required
+    @login_required
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
+    @console_ns.response(401, "Unauthorized")
+    @console_ns.doc(description=_REFRESH_ORIGIN_DESCRIPTION)
+    @console_ns.response(403, "Missing or untrusted Origin")
+    def post(self):
+        """Revoke refresh sessions on every device for the authenticated account."""
+        _check_refresh_origin()
+        account, _ = current_account_with_tenant_optional()
+        if account is None:
+            raise Unauthorized()
+        application_services().accounts.authentication.logout_all(account.id)
+        return _logout_response()
 
 
 @console_ns.route("/reset-password")
@@ -275,7 +300,27 @@ class EmailCodeLoginApi(Resource):
 class RefreshTokenApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @console_ns.response(401, "Unauthorized", console_ns.models[SimpleResultMessageResponse.__name__])
+    @console_ns.response(400, "Invalid refresh request UUID")
+    @console_ns.doc(description=_REFRESH_ORIGIN_DESCRIPTION)
+    @console_ns.response(403, "Missing or untrusted Origin")
+    @console_ns.doc(
+        params={
+            "X-Refresh-Request-ID": {
+                "in": "header",
+                "type": "string",
+                "format": "uuid",
+                "description": "Reuse this UUID when retrying one refresh request after a lost response.",
+            },
+        }
+    )
     def post(self):
+        _check_refresh_origin()
+        request_id = request.headers.get("X-Refresh-Request-ID")
+        if request_id is not None:
+            try:
+                request_id = str(UUID(request_id))
+            except ValueError as error:
+                raise BadRequest("X-Refresh-Request-ID must be a UUID.") from error
         refresh_token = extract_refresh_token(request)
         if not refresh_token:
             return dump_response(
@@ -284,13 +329,90 @@ class RefreshTokenApi(Resource):
             ), HTTPStatus.UNAUTHORIZED
 
         try:
-            tokens = application_services().accounts.authentication.refresh(refresh_token)
+            tokens = application_services().accounts.authentication.refresh(refresh_token, request_id=request_id)
         except account_errors.InvalidRefreshTokenError as error:
             return dump_response(
                 SimpleResultMessageResponse,
                 {"result": "fail", "message": str(error)},
             ), HTTPStatus.UNAUTHORIZED
         return _token_response(tokens, SimpleResultResponse, {"result": "success"})
+
+
+def _origin(url: str) -> tuple[str, str, int] | None:
+    try:
+        parsed = urlsplit(url)
+        if (
+            parsed.scheme not in {"http", "https"}
+            or not parsed.hostname
+            or parsed.username is not None
+            or parsed.password is not None
+            or any(character.isspace() for character in url)
+        ):
+            return None
+        port = parsed.port if parsed.port is not None else (443 if parsed.scheme == "https" else 80)
+        if port == 0:
+            return None
+        return parsed.scheme, parsed.hostname, port
+    except ValueError:
+        return None
+
+
+def _check_refresh_origin() -> None:
+    # Refresh and logout must still work after the access and CSRF JWTs expire.
+    value = request.headers.get("Origin", "")
+    origin = _origin(value)
+    if origin is None:
+        raise Forbidden("A trusted Origin header is required.")
+    parsed = urlsplit(value)
+    if parsed.path or parsed.query or parsed.fragment:
+        raise Forbidden("A trusted Origin header is required.")
+    api_origin = _origin(request.host_url)
+    if origin in {api_origin, _origin(dify_config.CONSOLE_WEB_URL)}:
+        return
+    # Proxies can hide the browser's scheme/port; a signed cookie echo proves same-host access without trusting headers.
+    if api_origin is not None and origin[1] == api_origin[1] and _has_refresh_csrf_proof():
+        return
+    raise Forbidden("A trusted Origin header is required.")
+
+
+def _has_refresh_csrf_proof() -> bool:
+    csrf_token = extract_csrf_token(request)
+    csrf_cookie = extract_csrf_token_from_cookie(request)
+    if not csrf_token or not csrf_cookie or not hmac.compare_digest(csrf_token.encode(), csrf_cookie.encode()):
+        return False
+    try:
+        claims = jwt.decode(
+            csrf_token,
+            dify_config.SECRET_KEY,
+            algorithms=["HS256"],
+            options={"verify_exp": False, "require": ["sub", "exp", "jti"]},
+        )
+        account_id = claims["sub"]
+        if not isinstance(account_id, str) or str(UUID(account_id)) != account_id:
+            return False
+    except (jwt.PyJWTError, ValueError):
+        return False
+    if (
+        type(claims["exp"]) is not int
+        or not isinstance(claims["jti"], str)
+        or re.fullmatch(r"[0-9a-f]{32}", claims["jti"]) is None
+        or any(claim in claims for claim in ("aud", "token_type", "token_source"))
+    ):
+        return False
+    refresh_token = extract_refresh_token(request)
+    return (
+        refresh_token is None
+        or re.fullmatch(rf"v2\.{re.escape(account_id)}\.[0-9a-f]{{32}}\.[0-9a-f]{{64}}", refresh_token) is not None
+    )
+
+
+def _logout_response():
+    # response-contract:ignore cookie-bearing Flask response
+    response = make_response(dump_response(SimpleResultResponse, {"result": "success"}))
+    clear_access_token_from_cookie(response)
+    clear_refresh_token_from_cookie(response)
+    clear_csrf_token_from_cookie(response)
+    return response
 
 
 def _token_response(tokens: AccountSessionTokens, response_model: type[BaseModel], data: object):

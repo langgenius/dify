@@ -1066,11 +1066,11 @@ class AuthConfig(BaseSettings):
 
     ACCESS_TOKEN_EXPIRE_MINUTES: PositiveInt = Field(
         description="Expiration time for access tokens in minutes",
-        default=60,
+        default=15,
     )
 
     REFRESH_TOKEN_EXPIRE_DAYS: PositiveFloat = Field(
-        description="Expiration time for refresh tokens in days",
+        description="Maximum Console refresh-session lifetime in days, measured from login without sliding renewal",
         default=30,
     )
 
