@@ -13,10 +13,15 @@ Installed metadata, qualification constants, tokens and message values are SYNTH
 fixtures; they attest nothing about any installed or deployed artifact, daemon or mailbox, and
 real qualification stays unavailable outside this module.
 
-Concurrency is contained in this module: every case's connections carry server-side SQL deadlines,
-worker threads are joined under one shared deadline with liveness asserted in ``finally``, and a
-worker that still outlives it fails that case and every later case here at setup. Crash cases run
-in a killable forked child.
+Test-created concurrency never runs in the pytest process. Each concurrent scenario (the held claim
+race, duplicate launches, concurrent worker deliveries) and each crash runs in a forked, killable
+test host (``run_in_host`` / ``_crash_in_child``): the real port, task bodies, native pipeline,
+PostgreSQL and Redis run there on host-owned connections, every host ends with ``os._exit`` (which
+ends all of its threads), and the parent, holding no SQL, supervises a pipe with a deadline, then
+joins, terminates and kills, and asserts the host is dead before the test returns — that is, before
+any fixture restores its patches and before the shared database/Redis cleanup. Boundary
+observations of a host are the host's own records, reported over the pipe. Every case's
+connections also carry server-side SQL deadlines.
 
 ``test_stale_recovery_sweep_never_settles_a_fresh_reservation`` is a regression for a known,
 root-owned defect in ``reconcile_stranded`` and is expected to fail until that owner is fixed.
@@ -155,14 +160,17 @@ _SQL_DEADLINES = (
     "SET lock_timeout = 20000",
     "SET idle_in_transaction_session_timeout = 90000",
 )
-# One shared join deadline per supervised group: above every SQL deadline and the 60 s holds,
-# below pytest's 360 s per-case timeout so cleanup still runs inside the case.
-_WORK_SECONDS = 150
+# Inside a test host: one shared join deadline per thread group (above every SQL deadline and the
+# 60 s holds). Threads still alive after it are reported, then ended by the host's ``os._exit``.
+_WORK_SECONDS = 120
 _RACE_START_SECONDS = 10
-# Names of worker threads that outlived their deadline. Python threads cannot be killed, so any
-# entry fails this case in its ``finally`` and every later case of this module at setup, instead
-# of letting a live worker silently share the per-test database and Redis cleanup.
-_LEAKED: list[str] = []
+# The parent's deadline for a host's report; with join/terminate/kill (3 x 10 s) it stays below
+# pytest's 360 s per-case timeout, so the host is always dead before the test returns.
+_HOST_RESULT_SECONDS = 200
+_HOST_JOIN_SECONDS = 10
+# Bounded text a host may report for one exception, and for one Builder Run representation.
+_HOST_TEXT_LIMIT = 20_000
+_RUN_TEXT_LIMIT = 200_000
 
 
 # -- external boundary --------------------------------------------------------------------------
@@ -202,6 +210,11 @@ class TxWitness:
     def _end(self, connection: object) -> None:
         with self._lock:
             self._open.pop(id(connection), None)
+
+    def forget_inherited(self) -> None:
+        """In a forked test host: drop the parent's records; those connections are not this process's."""
+        with self._lock:
+            self._open.clear()
 
     def open_here(self) -> tuple[str, ...]:
         """Origins of transactions the calling thread still holds open."""
@@ -355,6 +368,23 @@ class Boundary:
         with self.lock:
             return [name for name, _ in self.events]
 
+    def checkpoint(self) -> tuple[int, int, int, int]:
+        """Record lengths at a test host's start; a forked host inherits the parent's earlier records."""
+        with self.lock:
+            return len(self.events), len(self.refresh_calls), len(self.invoke_calls), len(self.model_calls)
+
+    def facts_since(self, point: tuple[int, int, int, int]) -> dict[str, object]:
+        """Only what THIS process recorded after ``point``, as plain data for the host's pipe."""
+        events, refreshes, invokes, models = point
+        with self.lock:
+            return {
+                "pid": os.getpid(),
+                "events": [[name, list(origins)] for name, origins in self.events[events:]],
+                "refresh_calls": [_call_facts(call) for call in self.refresh_calls[refreshes:]],
+                "invoke_calls": [_call_facts(call) for call in self.invoke_calls[invokes:]],
+                "model_calls": len(self.model_calls) - models,
+            }
+
     def crash(self, phase: Literal["refresh", "invoke"]) -> None:
         """Kill this forked child at ``phase`` without unwinding: no ``finally`` or outcome callback runs."""
         if self.crash_at != phase:
@@ -367,7 +397,89 @@ class Boundary:
         os._exit(_CRASH_EXIT)
 
 
-def assert_outside_sql(boundary: Boundary, *names: str) -> None:
+def _call_facts(call: Call) -> dict[str, object]:
+    return {"path": call.path, "headers": dict(call.headers), "payload": dict(call.payload)}
+
+
+class Observed:
+    """Boundary crossings a test host recorded in its own process, rebuilt from its pipe report.
+
+    Never the parent's pre-fork copy: ``Boundary.facts_since`` slices off everything inherited.
+    """
+
+    def __init__(self, facts: object) -> None:
+        assert isinstance(facts, dict)
+        self.pid = int(facts["pid"])
+        self.events: list[tuple[str, tuple[str, ...]]] = [
+            (str(name), tuple(str(origin) for origin in origins)) for name, origins in facts["events"]
+        ]
+        self.refresh_calls = [_rebuilt_call(item) for item in facts["refresh_calls"]]
+        self.invoke_calls = [_rebuilt_call(item) for item in facts["invoke_calls"]]
+        self.model_calls = int(facts["model_calls"])
+
+    def count(self, name: str) -> int:
+        return sum(1 for event_name, _ in self.events if event_name == name)
+
+    def order(self) -> list[str]:
+        return [name for name, _ in self.events]
+
+
+def _rebuilt_call(item: object) -> Call:
+    assert isinstance(item, dict)
+    headers, payload = item["headers"], item["payload"]
+    assert isinstance(headers, dict)
+    assert isinstance(payload, dict)
+    return Call(path=str(item["path"]), headers={str(k): str(v) for k, v in headers.items()}, payload=dict(payload))
+
+
+@dataclass(frozen=True)
+class RunFacts:
+    """The Builder-visible facts of one port result, in-process or reported by a test host."""
+
+    dify_run_id: str
+    refusal: str | None
+    safety_outcome: str | None
+    terminal_outputs: bool
+    text: str
+
+    @classmethod
+    def of(cls, run: Run) -> "RunFacts":
+        evidence = run.verification.execution_evidence if run.verification is not None else None
+        return cls(
+            dify_run_id=run.dify_run_id,
+            refusal=run.execution_refusal.reason_code if run.execution_refusal is not None else None,
+            safety_outcome=evidence.safety_outcome if evidence is not None else None,
+            terminal_outputs=run.verification is not None and run.verification.terminal_outputs is not None,
+            text=repr(run),
+        )
+
+    def report(self) -> dict[str, object]:
+        """Plain data for a host's pipe; a representation too large to send whole is marked, not cut silently."""
+        return {
+            "dify_run_id": self.dify_run_id,
+            "refusal": self.refusal,
+            "safety_outcome": self.safety_outcome,
+            "terminal_outputs": self.terminal_outputs,
+            "text": self.text[:_RUN_TEXT_LIMIT],
+            "text_truncated": len(self.text) > _RUN_TEXT_LIMIT,
+        }
+
+    @classmethod
+    def reported(cls, item: object) -> "RunFacts":
+        assert isinstance(item, dict), item
+        # Secret/content absence is checked on the whole representation only.
+        assert item["text_truncated"] is False, "a host Run representation exceeded the report bound"
+        refusal, outcome = item["refusal"], item["safety_outcome"]
+        return cls(
+            dify_run_id=str(item["dify_run_id"]),
+            refusal=None if refusal is None else str(refusal),
+            safety_outcome=None if outcome is None else str(outcome),
+            terminal_outputs=item["terminal_outputs"] is True,
+            text=str(item["text"]),
+        )
+
+
+def assert_outside_sql(boundary: Boundary | Observed, *names: str) -> None:
     for name in names:
         observed = [open_here for event_name, open_here in boundary.events if event_name == name]
         assert observed, f"{name} never happened"
@@ -429,25 +541,114 @@ class SqlDeadlines:
         self.engine.dispose()
 
 
+# The pytest process. Test-created threads may only start in a forked test host (another pid).
+_PYTEST_PID = os.getpid()
+
+
+def _require_host(what: str) -> None:
+    assert os.getpid() != _PYTEST_PID, f"{what} must run inside a killable test host, never in pytest"
+
+
 def _supervise(threads: list[Thread], *, seconds: float = _WORK_SECONDS) -> list[str]:
-    """Join every started thread within one shared deadline; record and return the ones still alive."""
+    """Join every started thread within one shared deadline; return the ones still alive.
+
+    Host-only: a thread still alive here is reported and then ended with its host's ``os._exit``.
+    """
+    _require_host("thread supervision")
     deadline = monotonic() + seconds
     for thread in threads:
         if thread.ident is not None:
             thread.join(timeout=max(0.0, deadline - monotonic()))
-    alive = [thread.name for thread in threads if thread.is_alive()]
-    _LEAKED.extend(alive)
-    return alive
+    return [thread.name for thread in threads if thread.is_alive()]
+
+
+def run_in_host(gmail: "Gmail", scenario: Callable[[], dict[str, object]], *, name: str) -> dict[str, object]:
+    """Run ``scenario`` in a forked, killable test host and return its bounded, truthful report.
+
+    The host drops the inherited SQL pool without closing the parent's sockets, uses a fresh
+    request context (its own scoped session and connections), runs the real scenario, reports
+    plain data plus only its own boundary records over a pipe, then ``os._exit``s, which ends
+    every thread it started. The parent closes its scoped session before forking, holds no SQL
+    while it supervises the pipe with a deadline, then joins, terminates and kills (each
+    bounded) and asserts the host is dead before returning, so before any fixture restores its
+    patches and before the shared database/Redis cleanup. Host exceptions come back as bounded
+    text and fail the case here.
+    """
+    assert os.getpid() == _PYTEST_PID, "test hosts are started by pytest only"
+    assert "fork" in multiprocessing.get_all_start_methods(), "test-host containment needs fork (Linux CI)"
+    db.session.close()  # the parent holds no transaction or connection across the fork or supervision
+    ctx = multiprocessing.get_context("fork")
+    receiver, sender = ctx.Pipe(duplex=False)
+    point = gmail.boundary.checkpoint()
+
+    def host_main(channel: Connection) -> None:
+        report: dict[str, object] = {}
+        try:
+            with gmail.app.test_request_context():
+                db.engine.dispose(close=False)
+                gmail.boundary.witness.forget_inherited()
+                reset_provider_cache()
+                report["result"] = scenario()
+        except BaseException as error:
+            report["host_error"] = f"{type(error).__name__}: {error}"[:_HOST_TEXT_LIMIT]
+            report["host_traceback"] = traceback.format_exc()[-_HOST_TEXT_LIMIT:]
+        finally:
+            try:
+                report["observed"] = gmail.boundary.facts_since(point)
+                channel.send(report)
+                channel.close()
+            finally:
+                os._exit(0)  # ends this host and every thread it started, finished or not
+
+    host = ctx.Process(target=host_main, args=(sender,), name=f"test-host-{name}", daemon=True)
+    report: dict[str, object] | None = None
+    host_alive = False
+    exitcode: int | None = None
+    try:
+        host.start()
+        sender.close()
+        if receiver.poll(_HOST_RESULT_SECONDS):
+            try:
+                received = receiver.recv()
+            except EOFError:
+                received = None
+            report = received if isinstance(received, dict) else None
+    finally:
+        sender.close()
+        if host.pid is not None:
+            host.join(timeout=_HOST_JOIN_SECONDS)
+            if host.is_alive():
+                host.terminate()
+                host.join(timeout=_HOST_JOIN_SECONDS)
+            if host.is_alive():
+                host.kill()
+                host.join(timeout=_HOST_JOIN_SECONDS)
+            host_alive = host.is_alive()
+            exitcode = host.exitcode
+            if not host_alive:
+                host.close()
+        receiver.close()
+    assert not host_alive, f"test host {name} survived terminate() and kill()"
+    assert report is not None, f"test host {name} reported nothing within {_HOST_RESULT_SECONDS} s (exit {exitcode})"
+    assert "host_error" not in report, f"{report['host_error']}\n{report.get('host_traceback', '')}"
+    assert exitcode == 0, exitcode
+    observed = Observed(report["observed"])
+    assert observed.pid != _PYTEST_PID
+    assert observed.model_calls == 0, "a Builder model was resolved in the test host"
+    result = report["result"]
+    assert isinstance(result, dict)
+    return {**result, "observed": observed}
 
 
 def contained_race(*calls: Callable[[], object]) -> list[object]:
-    """The inherited ``race`` semantics with failure-safe bounds (supersedes it in this module).
+    """The inherited ``race`` semantics, host-only and bounded (supersedes it in this module).
 
     All calls start together behind a bounded barrier; a ``BuilderExecutionPolicyError`` becomes
     its reason code, any other exception is re-raised after every worker was joined. The join and
-    the liveness assertion run in ``finally`` under one shared deadline, and blocking SQL inside
-    the calls is bounded by ``SqlDeadlines``.
+    the liveness assertion run in ``finally`` under one shared deadline; blocking SQL inside the
+    calls is bounded by ``SqlDeadlines``, and the host's exit ends anything left.
     """
+    _require_host("a concurrent race")
     barrier = Barrier(len(calls))
     results: list[object] = [None] * len(calls)
     errors: list[BaseException] = []
@@ -741,7 +942,6 @@ def deliveries(monkeypatch: pytest.MonkeyPatch) -> list[Delivery]:
 @pytest.fixture
 def sql_deadlines(flask_app_with_containers: Flask) -> Iterator[SqlDeadlines]:
     """Bounded SQL for the whole case: set up before the native owner, removed after it, also on failure."""
-    assert not _LEAKED, f"an earlier case left worker threads alive against the shared fixture: {_LEAKED}"
     with flask_app_with_containers.app_context():
         deadlines = SqlDeadlines(db.engine)
     try:
@@ -929,20 +1129,46 @@ def gmail(
         reset_provider_cache()
 
 
-@pytest.fixture
-def native_claim_candidate(
-    gmail: Gmail, monkeypatch: pytest.MonkeyPatch
-) -> Iterator[tuple[BuilderRealCallConsentService, ConfirmedToolExecutionContext, str, str]]:
-    """A real prepared/confirmed/reserved grant whose native worker is held at its Tool ``get_runtime``.
+ClaimBody = Callable[[BuilderRealCallConsentService, ConfirmedToolExecutionContext, str, str], dict[str, object]]
 
-    The real port runs in a test thread. At entry to the native Tool runtime's ``get_runtime``
-    callback (before the original method claims anything) the actual allocated native Run ID and
-    node execution ID are captured and the worker waits on a bounded event. The fixture yields
-    while that worker is held; teardown always releases and joins it. The test spends the grant
-    with those actual IDs, so the held worker's later claim is refused and it reaches no transport.
+
+@dataclass(frozen=True)
+class HeldNativeClaim:
+    """A real prepared/confirmed/reserved grant whose native worker can be held at its Tool ``get_runtime``."""
+
+    gmail: "Gmail"
+    reserved: ConsentReceipt
+
+    def spend_while_held(self, body: ClaimBody) -> dict[str, object]:
+        """Run ``body`` with (service, context, actual Run ID, actual node execution ID) while held.
+
+        The held native worker and ``body`` run in one killable test host (``run_in_host``); the
+        host is dead before this returns, whatever happened inside it.
+        """
+        return run_in_host(
+            self.gmail, lambda: _held_claim_host(self.gmail, self.reserved, body), name="held-native-claim"
+        )
+
+
+@pytest.fixture
+def native_claim_candidate(gmail: Gmail) -> HeldNativeClaim:
+    """The brief's held-claim candidate, as a host-contained scenario.
+
+    In the test host the real port runs in a thread. At entry to the native Tool runtime's
+    ``get_runtime`` callback (before the original method claims anything) the actual allocated
+    native Run ID and node execution ID are captured and the worker waits on a bounded event; the
+    sidecar context is reloaded by request ID through ``TypeAdapter(BuilderExecutionContextValue)``
+    and handed to the test's body with the service and those IDs. The host then always releases
+    and joins the worker. The body spends the grant with those actual IDs, so the held worker's
+    later claim is refused and it reaches no transport.
     """
-    reserved = gmail.reserved()
+    return HeldNativeClaim(gmail=gmail, reserved=gmail.reserved())
+
+
+def _held_claim_host(gmail: "Gmail", reserved: ConsentReceipt, body: ClaimBody) -> dict[str, object]:
+    _require_host("the held native claim")
     assert reserved.execution_request_id is not None
+    request_id = reserved.execution_request_id
     reached, release = Event(), Event()
     captured: dict[str, str] = {}
     original = DifyToolNodeRuntime.get_runtime
@@ -971,50 +1197,51 @@ def native_claim_candidate(
             node_execution_id=node_execution_id,
         )
 
-    monkeypatch.setattr(DifyToolNodeRuntime, "get_runtime", held)
     outcome: dict[str, object] = {}
 
     def launch() -> None:
         try:
-            outcome["run"] = in_request(gmail.app, lambda: gmail.run(reserved))()
+            outcome["run"] = RunFacts.of(in_request(gmail.app, lambda: gmail.run(reserved))()).report()
         except BaseException as error:
-            outcome["error"] = type(error).__name__
+            outcome["error"] = f"{type(error).__name__}: {error}"[:_HOST_TEXT_LIMIT]
 
+    facts: dict[str, object] = {}
     worker = Thread(target=launch, name="held-native-confirmed-run", daemon=True)
-    try:
-        worker.start()
-        assert reached.wait(timeout=_HOLD_SECONDS), "native worker never reached the Tool get_runtime callback"
-        run_id, node_execution_id = captured["run"], captured["node"]
-        assert run_id
-        assert node_execution_id
-        # The captured Run ID is the one the native launch claim already bound to this sidecar.
-        request = gmail.request(reserved.execution_request_id)
-        assert (request.state, request.native_run_id) == ("running", run_id)
-        context = gmail.context(reserved.execution_request_id)
-        assert (context.consent_id, context.command_id) == (reserved.consent_id, reserved.command_id)
-        yield gmail.service(), context, run_id, node_execution_id
-    finally:
-        # Runs on every exit (setup failure, test failure or success): release, bounded join, liveness.
-        release.set()
-        alive = _supervise([worker])
-        assert not alive, f"held native worker outlived its {_WORK_SECONDS} s deadline"
-    assert captured.get("released") == "yes"
-    assert "error" not in outcome, outcome
-    # The held worker's own claim was refused: nothing was decrypted, refreshed or sent.
-    assert [gmail.boundary.count(name) for name in ("decrypt", "refresh", "invoke")] == [0, 0, 0]
-    assert {run.id for run in gmail.native_runs()} == {captured["run"]}
+    # Patched in this host's memory only; the host exits instead of restoring anything.
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(DifyToolNodeRuntime, "get_runtime", held)
+        try:
+            worker.start()
+            facts["reached"] = reached.wait(timeout=_HOLD_SECONDS)
+            if facts["reached"]:
+                run_id, node_execution_id = captured["run"], captured["node"]
+                facts["captured"] = [run_id, node_execution_id]
+                # The Run ID the native launch claim already bound to this sidecar, while held.
+                request = gmail.request(request_id)
+                facts["held_request"] = [request.state, request.native_run_id]
+                context = gmail.context(request_id)
+                facts["context"] = [context.consent_id, context.command_id]
+                facts["body"] = body(gmail.service(), context, run_id, node_execution_id)
+        finally:
+            # Every exit of the scenario: release, bounded join; the host's exit ends anything left.
+            release.set()
+            facts["alive"] = _supervise([worker])
+    facts["released"] = captured.get("released")
+    facts["held_outcome"] = outcome
+    return facts
 
 
 # -- one confirmed native Run --------------------------------------------------------------------
 
 
-def _assert_completed_native_run(gmail: Gmail, reserved: ConsentReceipt, result: Run) -> None:
+def _assert_completed_native_run(gmail: Gmail, reserved: ConsentReceipt, run: Run | RunFacts) -> None:
     """One native Run with ordered Start → Tool → End rows bound to the consent and sealed completed."""
     assert reserved.execution_request_id is not None
+    result = run if isinstance(run, RunFacts) else RunFacts.of(run)
     row = gmail.consent(reserved.consent_id)
     request = gmail.request(reserved.execution_request_id)
     runs = gmail.native_runs()
-    assert [run.id for run in runs] == [result.dify_run_id]
+    assert [native_run.id for native_run in runs] == [result.dify_run_id]
     native = runs[0]
     assert native.status == "succeeded"
     assert (native.tenant_id, native.app_id, native.workflow_id, native.created_by) == (
@@ -1042,14 +1269,12 @@ def _assert_completed_native_run(gmail: Gmail, reserved: ConsentReceipt, result:
         "message_returned",
         1,
     )
-    assert result.verification is not None
-    assert result.verification.execution_evidence is not None
-    assert result.verification.execution_evidence.safety_outcome == "confirmed_tool_completed"
-    assert result.verification.terminal_outputs is None
+    assert result.safety_outcome == "confirmed_tool_completed"
+    assert result.terminal_outputs is False
     # Content stays in the authorized native Run/node rows only.
     assert BODY in (native.outputs or "")
     assert BODY in (tool.outputs or "")
-    assert_no_secret(repr(result), gmail.builder_state_text())
+    assert_no_secret(result.text, gmail.builder_state_text())
 
 
 def _confirmed_headers(gmail: Gmail) -> dict[str, str]:
@@ -1483,48 +1708,95 @@ def test_changes_after_reservation_are_denied_without_effects(
     assert_no_secret(repr(result), gmail.builder_state_text())
 
 
-def test_postgres_tool_claim_has_one_winner(
-    native_claim_candidate: tuple[BuilderRealCallConsentService, ConfirmedToolExecutionContext, str, str],
-    gmail: Gmail,
-) -> None:
-    service, context, run_id, node_execution_id = native_claim_candidate
+def test_postgres_tool_claim_has_one_winner(native_claim_candidate: HeldNativeClaim, gmail: Gmail) -> None:
+    def spend(
+        service: BuilderRealCallConsentService,
+        context: ConfirmedToolExecutionContext,
+        run_id: str,
+        node_execution_id: str,
+    ) -> dict[str, object]:
+        # Runs in the test host while the actual native worker is held at get_runtime.
+        def claim() -> str:
+            service.claim_tool(
+                context=context, node_id=TOOL_NODE, native_run_id=run_id, native_node_execution_id=node_execution_id
+            )
+            return "claimed"
 
-    def claim() -> str:
-        service.claim_tool(
-            context=context, node_id=TOOL_NODE, native_run_id=run_id, native_node_execution_id=node_execution_id
-        )
-        return "claimed"
+        def fresh_claim() -> str:
+            BuilderRealCallConsentService(gmail.factory).claim_tool(
+                context=context, node_id=TOOL_NODE, native_run_id=run_id, native_node_execution_id=node_execution_id
+            )
+            return "claimed"
 
-    assert sorted(str(result) for result in contained_race(claim, claim)) == ["claimed", "consent_already_claimed"]
-    row = gmail.consent(context.consent_id)
-    assert (row.state, row.native_run_id, row.native_node_execution_id) == ("claimed", run_id, node_execution_id)
+        race = sorted(str(result) for result in contained_race(claim, claim))
+        row = gmail.consent(context.consent_id)
+        bound = [row.state, row.native_run_id, row.native_node_execution_id]
+        # A newly constructed service instance on another thread (same host process; process-restart
+        # coverage stays with the Task 4 module) cannot reopen the committed claim.
+        fresh = [str(result) for result in contained_race(fresh_claim)]
+        return {"race": race, "bound": bound, "fresh": fresh}
 
-    def fresh_claim() -> str:
-        BuilderRealCallConsentService(gmail.factory).claim_tool(
-            context=context, node_id=TOOL_NODE, native_run_id=run_id, native_node_execution_id=node_execution_id
-        )
-        return "claimed"
-
-    # A newly constructed service instance on another thread (same process; process-restart
-    # coverage stays with the Task 4 module) cannot reopen the committed claim.
-    assert contained_race(fresh_claim) == ["consent_already_claimed"]
+    reserved = native_claim_candidate.reserved
+    facts = native_claim_candidate.spend_while_held(spend)
+    assert facts["reached"] is True, "native worker never reached the Tool get_runtime callback"
+    captured = facts["captured"]
+    assert isinstance(captured, list)
+    run_id, node_execution_id = str(captured[0]), str(captured[1])
+    assert run_id
+    assert node_execution_id
+    assert facts["held_request"] == ["running", run_id]
+    assert facts["context"] == [reserved.consent_id, reserved.command_id]
+    assert facts["body"] == {
+        "race": ["claimed", "consent_already_claimed"],
+        "bound": ["claimed", run_id, node_execution_id],
+        "fresh": ["consent_already_claimed"],
+    }
+    assert facts["alive"] == []
+    assert facts["released"] == "yes"
+    held_outcome = facts["held_outcome"]
+    assert isinstance(held_outcome, dict)
+    assert "error" not in held_outcome, held_outcome
+    assert "run" in held_outcome
+    # The held worker's own claim was refused: the host recorded no decrypt, refresh or dispatch.
+    observed = facts["observed"]
+    assert isinstance(observed, Observed)
+    assert [observed.count(name) for name in ("decrypt", "refresh", "invoke")] == [0, 0, 0]
+    # After the host's death: exactly the one native Run whose actual IDs were spent.
+    assert {native.id for native in gmail.native_runs()} == {run_id}
+    row = gmail.consent(reserved.consent_id)
+    assert (row.native_run_id, row.native_node_execution_id, row.refresh_count, row.business_count) == (
+        run_id,
+        node_execution_id,
+        0,
+        0,
+    )
 
 
 def test_duplicate_native_launches_create_one_run(gmail: Gmail) -> None:
     reserved = gmail.reserved()
-    results = contained_race(
-        in_request(gmail.app, lambda: gmail.run(reserved)), in_request(gmail.app, lambda: gmail.run(reserved))
-    )
-    runs = [result for result in results if isinstance(result, Run)]
+
+    def launches() -> dict[str, object]:
+        results = contained_race(
+            in_request(gmail.app, lambda: gmail.run(reserved)), in_request(gmail.app, lambda: gmail.run(reserved))
+        )
+        return {
+            "results": [RunFacts.of(result).report() if isinstance(result, Run) else str(result) for result in results]
+        }
+
+    facts = run_in_host(gmail, launches, name="duplicate-native-launches")
+    results = facts["results"]
+    assert isinstance(results, list)
+    runs = [RunFacts.reported(item) for item in results if isinstance(item, dict)]
     assert len(runs) == 2, results
-    winners = [run for run in runs if run.execution_refusal is None]
-    losers = [run for run in runs if run.execution_refusal is not None]
+    winners = [run for run in runs if run.refusal is None]
+    losers = [run for run in runs if run.refusal is not None]
     assert len(winners) == 1
     assert len(losers) == 1
-    assert losers[0].execution_refusal is not None
-    assert losers[0].execution_refusal.reason_code in DUPLICATE_LAUNCH
+    assert losers[0].refusal in DUPLICATE_LAUNCH
     _assert_completed_native_run(gmail, reserved, winners[0])
-    assert len(gmail.boundary.invoke_calls) == 1
+    observed = facts["observed"]
+    assert isinstance(observed, Observed)
+    assert len(observed.invoke_calls) == 1
 
 
 def test_refresh_cas_conflict_keeps_the_rotation_and_blocks_business(gmail: Gmail) -> None:
@@ -1665,6 +1937,7 @@ def _crash_in_child(gmail: Gmail, reserved: ConsentReceipt, phase: Literal["refr
     finally kills the child, each bounded.
     """
     assert "fork" in multiprocessing.get_all_start_methods(), "crash containment needs fork (Linux CI)"
+    db.session.close()  # the parent holds no transaction or connection across the fork or supervision
     ctx = multiprocessing.get_context("fork")
     receiver, sender = ctx.Pipe(duplex=False)
     gmail.boundary.crash_at, gmail.boundary.crash_channel = phase, sender
@@ -1819,67 +2092,90 @@ def test_same_token_worker_deliveries_activate_once(gmail: Gmail, deliveries: li
     assert len(deliveries) == 1
     token = deliveries[0][3]
     assert gmail.lease() == token
+    request_id = receipt.execution_request_id
     _state, reserved_version, _fc = gmail.head()
     drafts_before = gmail.draft_variables()
-    in_transport, release = Event(), Event()
-    held: dict[str, bool] = {}
 
-    def hold_winner() -> None:
-        in_transport.set()
-        held["released"] = release.wait(timeout=_HOLD_SECONDS)
+    def concurrent_deliveries() -> dict[str, object]:
+        # The test host: both real task bodies run here, concurrently, on host-owned connections.
+        _require_host("concurrent worker deliveries")
+        in_transport, release = Event(), Event()
+        held: dict[str, bool] = {}
 
-    gmail.boundary.on_invoke = hold_winner
-    barrier = Barrier(2)
-    outcomes: dict[str, str] = {}
+        def hold_winner() -> None:
+            in_transport.set()
+            held["released"] = release.wait(timeout=_HOLD_SECONDS)
 
-    def delivery(name: str) -> None:
+        gmail.boundary.on_invoke = hold_winner
+        barrier = Barrier(2)
+        outcomes: dict[str, str] = {}
+
+        def delivery(name: str) -> None:
+            try:
+                barrier.wait(timeout=_RACE_START_SECONDS)
+                _deliver(gmail, deliveries[0])()
+                outcomes[name] = "returned"
+            except BaseException as error:
+                outcomes[name] = f"error:{type(error).__name__}: {error}"[:_HOST_TEXT_LIMIT]
+
+        threads = [Thread(target=delivery, args=(name,), name=f"delivery-{name}", daemon=True) for name in ("a", "b")]
+        facts: dict[str, object] = {}
         try:
-            barrier.wait(timeout=_RACE_START_SECONDS)
-            _deliver(gmail, deliveries[0])()
-            outcomes[name] = "returned"
-        except BaseException as error:
-            outcomes[name] = f"error:{type(error).__name__}"
+            for thread in threads:
+                thread.start()
+            facts["in_transport"] = in_transport.wait(timeout=_HOLD_SECONDS)
+            if facts["in_transport"]:
+                deadline = monotonic() + 30
+                while all(thread.is_alive() for thread in threads) and monotonic() < deadline:
+                    sleep(0.05)
+                facts["returned_while_held"] = sum(1 for thread in threads if not thread.is_alive())
+                owner = gmail.lease()
+                facts["owner"] = owner
+                # The bare dispatch token (web-process release) must not delete the active lease.
+                session_lock.release(gmail.session_id, token)
+                facts["owner_after_bare_release"] = gmail.lease()
+                # The sweeper must leave a live lease alone: nothing flagged, settled or committed.
+                gmail.make_stale()
+                facts["sweep_flagged"] = reconcile_interrupted_sessions()
+                row = gmail.consent(receipt.consent_id)
+                facts["held_consent"] = [row.state, row.business_count, row.outcome_state]
+                facts["held_request_state"] = gmail.request(request_id).state
+                facts["held_version"] = gmail.head()[1]
+                facts["held_native_runs"] = len(gmail.native_runs())
+        finally:
+            # Every exit of the scenario: release the held winner, one bounded join for both.
+            release.set()
+            facts["alive"] = _supervise(threads)
+        facts["released"] = held.get("released")
+        facts["outcomes"] = dict(outcomes)
+        return facts
 
-    threads = [Thread(target=delivery, args=(name,), name=f"delivery-{name}", daemon=True) for name in ("a", "b")]
-    try:
-        for thread in threads:
-            thread.start()
-        assert in_transport.wait(timeout=_HOLD_SECONDS), "no delivery reached the native transport"
-        deadline = monotonic() + 30
-        while all(thread.is_alive() for thread in threads) and monotonic() < deadline:
-            sleep(0.05)
-        finished = [thread for thread in threads if not thread.is_alive()]
-        assert len(finished) == 1, "the losing delivery did not return while the winner was held"
-        owner = gmail.lease()
-        assert owner is not None
-        assert owner.startswith(f"{token}:")
-        # The bare dispatch token (web-process release) can no longer delete the active lease.
-        session_lock.release(gmail.session_id, token)
-        assert gmail.lease() == owner
-        # The sweeper leaves a live lease alone: nothing is flagged, settled or committed.
-        gmail.make_stale()
-        assert reconcile_interrupted_sessions() == 0
-        row = gmail.consent(receipt.consent_id)
-        assert (row.state, row.business_count, row.outcome_state) == ("claimed", 1, None)
-        assert gmail.request(receipt.execution_request_id).state == "running"
-        assert gmail.head()[1] == reserved_version
-        assert len(gmail.native_runs()) == 1
-    finally:
-        # Runs on every exit: release the held winner, one bounded join for both, liveness.
-        release.set()
-        alive = _supervise(threads)
-        assert not alive, f"worker deliveries outlived their {_WORK_SECONDS} s deadline: {alive}"
-    assert held.get("released") is True
-    assert outcomes == {"a": "returned", "b": "returned"}
-    # Only the winner released its own lease after its terminal commit.
+    facts = run_in_host(gmail, concurrent_deliveries, name="same-token-deliveries")
+    assert facts["in_transport"] is True, "no delivery reached the native transport"
+    assert facts["returned_while_held"] == 1, "the losing delivery did not return while the winner was held"
+    owner = facts["owner"]
+    assert isinstance(owner, str)
+    assert owner.startswith(f"{token}:")
+    assert facts["owner_after_bare_release"] == owner
+    assert facts["sweep_flagged"] == 0
+    assert facts["held_consent"] == ["claimed", 1, None]
+    assert facts["held_request_state"] == "running"
+    assert facts["held_version"] == reserved_version
+    assert facts["held_native_runs"] == 1
+    assert facts["alive"] == []
+    assert facts["released"] is True
+    assert facts["outcomes"] == {"a": "returned", "b": "returned"}
+    # After the host's death: only the winner released its own lease after its terminal commit.
     assert gmail.lease() is None
     state, version, fc = gmail.head()
     assert (state, version) == (str(PcState.BUILD_REVIEW), reserved_version + 1)
     assert (fc.confirmed_consent_id, fc.confirmed_command_id) == ("", "")
     assert len(gmail.native_runs()) == 1
-    assert len(gmail.boundary.invoke_calls) == 1
     assert gmail.consent(receipt.consent_id).state == "completed"
-    assert_outside_sql(gmail.boundary, "decrypt", "invoke")
+    observed = facts["observed"]
+    assert isinstance(observed, Observed)
+    assert len(observed.invoke_calls) == 1
+    assert_outside_sql(observed, "decrypt", "invoke")
     assert gmail.draft_variables() == drafts_before
     assert_no_secret(gmail.builder_state_text())
 
