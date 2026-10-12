@@ -15,7 +15,10 @@ state) and must NOT re-enqueue (non-idempotent steps like publish/verify
 require explicit user retry -- this matches the P3b idempotency deferral).
 The one durable write it triggers is the consent owner's conservative
 settlement of a stranded reserved confirmed grant (failed before any claim,
-unknown after one); a recovered step then needs a new prepare + confirm.
+unknown after one); a recovered step then needs a new prepare + confirm. The
+same owner also repairs, in a bounded pass, a reserved grant whose command
+already reached review/FAILED but whose settlement write failed; a session
+whose advance lease is live is never touched.
 No schema change, no migration.
 
 Runs on the default worker (no ``queue=``), like the other lightweight
@@ -45,6 +48,10 @@ logger = logging.getLogger(__name__)
 __all__ = ["reconcile_interrupted_sessions"]
 
 _WORKING_STATES = [str(s) for s in PcState if is_working(s)]
+
+
+# Upper bound of reserved grants examined per sweep by the terminal-settlement repair.
+_TERMINAL_REPAIR_LIMIT = 100
 
 
 def _session_factory() -> sessionmaker:
@@ -85,4 +92,12 @@ def reconcile_interrupted_sessions() -> int:
         progress_bus.publish(sid, {"kind": "error", "error": "interrupted"})
         logger.warning("Dify Builder session %s interrupted (state=%s, no live lock)", sid, state)
         flagged += 1
+    try:
+        # Repair settlements that failed after a command's terminal (review/FAILED)
+        # commit: only reserved unfinished grants, never while a lease is live.
+        repaired = consent.reconcile_terminal_grants(limit=_TERMINAL_REPAIR_LIMIT, lease_held=session_lock.exists)
+        if repaired:
+            logger.warning("Dify Builder settled %s confirmed grant(s) left by terminal commands", repaired)
+    except Exception:
+        logger.exception("Dify Builder terminal confirmed grant repair failed")
     return flagged
