@@ -2,6 +2,7 @@ import copy
 import json
 from collections.abc import Mapping
 from types import SimpleNamespace
+from typing import NoReturn, cast, override
 from unittest.mock import MagicMock, Mock, patch, sentinel
 from uuid import uuid4
 
@@ -11,6 +12,9 @@ from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext, InvokeFrom, UserFrom
+from core.dify_builder.execution_policy import BuilderExecutionObservation, BuilderExecutionRecorder
+from core.dify_builder.models import Graph
+from core.dify_builder.real_call_consent import ConsentReceipt
 from core.plugin.impl.model import PluginModelClient
 from core.plugin.impl.model_runtime import PluginModelRuntime
 from core.plugin.plugin_service import PluginService
@@ -29,11 +33,15 @@ from graphon.nodes.llm.entities import LLMNodeData
 from graphon.nodes.llm.node import LLMNode
 from graphon.nodes.llm.runtime_protocols import LLMPollingCapableProtocol
 from graphon.nodes.parameter_extractor.entities import ParameterExtractorNodeData
+from graphon.nodes.tool.tool_node import ToolNode
 from graphon.variables.segments import ArrayObjectSegment, ObjectSegment, StringSegment
 from models.base import TypeBase
 from models.model import AppMode, Conversation, ConversationFromSource
 from tests.unit_tests.services.dify_builder.test_execution_policy_service import (
     owned as owned,  # noqa: PLC0414 - shared pytest fixture
+)
+from tests.unit_tests.services.dify_builder.test_real_call_consent_service import (
+    Owner,
 )
 from tests.unit_tests.services.dify_builder.test_real_call_consent_service import (
     consent_owner as consent_owner,  # noqa: PLC0414 - shared pytest fixture
@@ -1364,14 +1372,42 @@ _EAGER_EFFECTS = (
 
 
 def _forbid_eager_effects(monkeypatch: pytest.MonkeyPatch) -> None:
-    def forbidden(*_args, **_kwargs):
+    def forbidden(*_args: object, **_kwargs: object) -> NoReturn:
         raise AssertionError("unrelated effect collaborator constructed for a confirmed run")
 
     for name in _EAGER_EFFECTS:
         monkeypatch.setattr(node_factory, name, forbidden)
 
 
-def _confirmed_factory(owner, *, state_run_id: str | None = None, recorder=None, **ctx):
+class _PlainRecorder:
+    """A healthy restricted-style recorder that cannot issue a confirmed guard."""
+
+    @property
+    def healthy(self) -> bool:
+        return True
+
+    def record(self, observation: BuilderExecutionObservation) -> None:
+        raise AssertionError(f"unexpected observation {observation.kind}")
+
+
+class _UnhealthyIssuer(_PlainRecorder):
+    @property
+    @override
+    def healthy(self) -> bool:
+        return False
+
+    def confirmed_guard(self, *, node_id: str, native_run_id: str, native_node_execution_id: str) -> NoReturn:
+        raise AssertionError(f"guard requested for {node_id}/{native_run_id}/{native_node_execution_id}")
+
+
+def _confirmed_factory(
+    owner: Owner,
+    *,
+    state_run_id: str | None = None,
+    recorder: BuilderExecutionRecorder | None = None,
+    user_id: str | None = None,
+    workflow_id: str | None = None,
+) -> tuple[node_factory.DifyNodeFactory, Graph, ConsentReceipt, str]:
     """Real SQLite reservation + existing launch fixture, then the native factory boundary.
 
     The run context is handed to the factory as an already-built ``DifyRunContext``
@@ -1400,7 +1436,7 @@ def _confirmed_factory(owner, *, state_run_id: str | None = None, recorder=None,
         builder_execution=context,
         tenant_id=owner.actor.tenant_id,
         app_id=owner.app_id,
-        user_id=ctx.get("user_id", owner.actor.account_id),
+        user_id=user_id or owner.actor.account_id,
         user_from=UserFrom.ACCOUNT,
         invoke_from=InvokeFrom.DEBUGGER,
         app_type=None,
@@ -1408,7 +1444,7 @@ def _confirmed_factory(owner, *, state_run_id: str | None = None, recorder=None,
         trace_session_id=None,
     )
     params = GraphInitParams(
-        workflow_id=ctx.get("workflow_id", owner.workflow_id),
+        workflow_id=workflow_id or owner.workflow_id,
         graph_config=graph,
         call_depth=0,
         run_context={DIFY_RUN_CONTEXT_KEY: run_context},
@@ -1432,12 +1468,19 @@ def _confirmed_factory(owner, *, state_run_id: str | None = None, recorder=None,
     return factory, graph, reserved, run_id
 
 
-def _tool_config(graph):
+def _tool_config(graph: Graph) -> dict[str, object]:
     return next(node for node in graph["nodes"] if node["id"] == "tool")
 
 
+def _tool_node(node: object) -> ToolNode:
+    assert isinstance(node, ToolNode)
+    return node
+
+
 class TestConfirmedToolFactory:
-    def test_admitted_factory_claims_at_bound_native_id_before_tool_manager(self, consent_owner, monkeypatch):
+    def test_admitted_factory_claims_at_bound_native_id_before_tool_manager(
+        self, consent_owner: Owner, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         from core.tools.tool_manager import ToolManager
         from services.dify_builder.real_call_consent_service import ServiceConfirmedToolGuard
 
@@ -1445,14 +1488,14 @@ class TestConfirmedToolFactory:
         factory, graph, reserved, run_id = _confirmed_factory(consent_owner)
         resolved: list[tuple[object, ...]] = []
 
-        def resolve(*_args, confirmed_guard=None, **_kwargs):
+        def resolve(*_args: object, confirmed_guard: object = None, **_kwargs: object) -> SimpleNamespace:
             row = consent_owner.consent_row(reserved.consent_id)
             resolved.append((row.state, row.native_run_id, row.native_node_execution_id, confirmed_guard))
             return SimpleNamespace(confirmed_guard=confirmed_guard)
 
         monkeypatch.setattr(ToolManager, "get_workflow_tool_runtime", resolve)
         nodes = [factory.create_node(copy.deepcopy(node)) for node in graph["nodes"]]
-        tool = nodes[1]
+        tool = _tool_node(nodes[1])
         # Graphon has not bound an execution ID during construction: nothing is claimed yet.
         assert consent_owner.consent_row(reserved.consent_id).claimed_at is None
 
@@ -1471,7 +1514,9 @@ class TestConfirmedToolFactory:
         assert len(resolved) == 1
 
     @pytest.mark.parametrize("grant", ["wrong_run", "unlaunched"])
-    def test_missing_or_wrong_grant_fails_before_tool_manager(self, consent_owner, monkeypatch, grant):
+    def test_missing_or_wrong_grant_fails_before_tool_manager(
+        self, consent_owner: Owner, monkeypatch: pytest.MonkeyPatch, grant: str
+    ) -> None:
         from core.tools.tool_manager import ToolManager
         from graphon.nodes.tool.exc import ToolRuntimeResolutionError
         from models.dify_builder import DifyBuilderExecutionRequest
@@ -1485,8 +1530,9 @@ class TestConfirmedToolFactory:
         if grant == "unlaunched":
             with consent_owner.factory.begin() as db:
                 request = db.get(DifyBuilderExecutionRequest, reserved.execution_request_id)
+                assert request is not None
                 request.state, request.native_run_id, request.task_id = "prepared", None, None
-        tool = factory.create_node(copy.deepcopy(_tool_config(graph)))
+        tool = _tool_node(factory.create_node(copy.deepcopy(_tool_config(graph))))
 
         with pytest.raises(ToolRuntimeResolutionError):
             tool._runtime.get_runtime(
@@ -1495,32 +1541,37 @@ class TestConfirmedToolFactory:
         assert calls == []
         assert consent_owner.consent_row(reserved.consent_id).claimed_at is None
 
-    def test_recorder_without_service_guard_issuer_refuses_construction(self, consent_owner, monkeypatch):
+    def test_recorder_without_service_guard_issuer_refuses_construction(
+        self, consent_owner: Owner, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         from core.dify_builder.execution_policy import BuilderExecutionPolicyError
 
         _forbid_eager_effects(monkeypatch)
-        plain = SimpleNamespace(healthy=True, record=lambda _observation: None)
         with pytest.raises(BuilderExecutionPolicyError, match="missing_confirmed_tool_guard"):
-            _confirmed_factory(consent_owner, recorder=plain)
+            _confirmed_factory(consent_owner, recorder=_PlainRecorder())
 
     @pytest.mark.parametrize("forgery", ["actor", "workflow"])
-    def test_forged_actor_or_scope_refuses_before_any_effect(self, consent_owner, monkeypatch, forgery):
+    def test_forged_actor_or_scope_refuses_before_any_effect(
+        self, consent_owner: Owner, monkeypatch: pytest.MonkeyPatch, forgery: str
+    ) -> None:
         from core.dify_builder.execution_policy import BuilderExecutionPolicyError
 
         _forbid_eager_effects(monkeypatch)
-        change = {"user_id": str(uuid4())} if forgery == "actor" else {"workflow_id": str(uuid4())}
+        forged_user = str(uuid4()) if forgery == "actor" else None
+        forged_workflow = str(uuid4()) if forgery == "workflow" else None
         with pytest.raises(BuilderExecutionPolicyError, match="execution_owner_mismatch"):
-            _confirmed_factory(consent_owner, **change)
+            _confirmed_factory(consent_owner, user_id=forged_user, workflow_id=forged_workflow)
 
-    def test_unhealthy_recorder_refuses_construction(self, consent_owner, monkeypatch):
+    def test_unhealthy_recorder_refuses_construction(
+        self, consent_owner: Owner, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         from core.dify_builder.execution_policy import BuilderExecutionPolicyError
 
         _forbid_eager_effects(monkeypatch)
-        sick = SimpleNamespace(healthy=False, record=lambda _o: None, confirmed_guard=lambda **_k: None)
         with pytest.raises(BuilderExecutionPolicyError, match="missing_execution_recorder"):
-            _confirmed_factory(consent_owner, recorder=sick)
+            _confirmed_factory(consent_owner, recorder=_UnhealthyIssuer())
 
-    def test_reserved_confirmed_context_crosses_the_run_context_entity(self, consent_owner):
+    def test_reserved_confirmed_context_crosses_the_run_context_entity(self, consent_owner: Owner) -> None:
         from core.app.entities.app_invoke_entities import build_dify_run_context
         from tests.unit_tests.services.dify_builder.test_confirmed_tool_launch import launched_with_existing_apis
 
@@ -1536,7 +1587,7 @@ class TestConfirmedToolFactory:
         decoded = DifyRunContext.model_validate(run_context[DIFY_RUN_CONTEXT_KEY].model_dump(mode="json"))
         assert decoded.builder_execution == context
 
-    def test_unknown_policy_version_cannot_build_run_context(self, consent_owner):
+    def test_unknown_policy_version_cannot_build_run_context(self, consent_owner: Owner) -> None:
         from tests.unit_tests.services.dify_builder.test_confirmed_tool_launch import launched_with_existing_apis
 
         _reserved, context, _run_id = launched_with_existing_apis(consent_owner)
@@ -1554,19 +1605,26 @@ class TestConfirmedToolFactory:
                 }
             )
 
-    def test_only_the_exact_admitted_nodes_are_constructed(self, consent_owner, monkeypatch):
+    def test_only_the_exact_admitted_nodes_are_constructed(
+        self, consent_owner: Owner, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         from core.dify_builder.execution_policy import BuilderExecutionPolicyError
 
         _forbid_eager_effects(monkeypatch)
         factory, graph, _reserved, _run_id = _confirmed_factory(consent_owner)
-        changed = copy.deepcopy(_tool_config(graph))
-        changed["data"]["tool_parameters"]["message_id"]["value"] = "other_1"
+        tool = copy.deepcopy(_tool_config(graph))
+        data = cast(dict[str, object], tool["data"])
+        parameters = cast(dict[str, object], data["tool_parameters"])
+        changed_data = {
+            **data,
+            "tool_parameters": {**parameters, "message_id": {"type": "constant", "value": "other_1"}},
+        }
         with pytest.raises(BuilderExecutionPolicyError):
-            factory.create_node(changed)
+            factory.create_node({"id": "tool", "data": changed_data})
         with pytest.raises(BuilderExecutionPolicyError):
             factory.create_node({"id": "tool", "data": {"type": "llm", "title": "LLM"}})
 
-    def test_ordinary_published_tool_keeps_native_runtime_without_consent(self):
+    def test_ordinary_published_tool_keeps_native_runtime_without_consent(self) -> None:
         from core.workflow.node_runtime import DifyToolNodeRuntime
 
         runtime = DifyToolNodeRuntime(

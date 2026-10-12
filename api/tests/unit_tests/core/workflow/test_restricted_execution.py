@@ -3,7 +3,7 @@
 import json
 import math
 from copy import deepcopy
-from typing import TypedDict, cast
+from typing import TYPE_CHECKING, TypedDict, cast
 from unittest.mock import MagicMock
 
 import pytest
@@ -22,6 +22,16 @@ from tests.unit_tests.core.workflow.graph_engine.test_builder_restricted_native 
     receipts,
 )
 from tests.unit_tests.services.dify_builder.test_execution_policy_service import owned as owned  # noqa: PLC0414
+
+if TYPE_CHECKING:
+    from sqlalchemy.orm import Session, sessionmaker
+
+    from core.dify_builder.models import Actor
+    from models.model import App
+    from models.workflow import Workflow
+
+    # Shape yielded by the shared ``owned`` fixture.
+    OwnedFixture = tuple[sessionmaker[Session], Actor, App, Workflow, str, str]
 
 
 class RawNode(TypedDict):
@@ -340,7 +350,9 @@ def test_typed_capability_recheck_requires_same_exact_binding_and_version(owned,
         validate_restricted_node(context=context, node_id="start", node_class=StartNode, resolved_node_data=data)
 
 
-def test_default_restricted_branch_still_denies_tool_nodes_after_confirmed_branch(owned, monkeypatch):
+def test_default_restricted_branch_still_denies_tool_nodes_after_confirmed_branch(
+    owned: "OwnedFixture", monkeypatch: pytest.MonkeyPatch
+) -> None:
     """The confirmed Tool branch never widens the default restricted factory."""
     from core.tools.tool_manager import ToolManager
     from tests.unit_tests.core.dify_builder.test_gmail_read_policy import gmail_graph, tool_data

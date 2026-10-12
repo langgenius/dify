@@ -17,7 +17,7 @@ from configs import dify_config
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
-from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
+from core.app.apps.draft_variable_saver import DraftVariableSaver, DraftVariableSaverFactory, NoopDraftVariableSaver
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.workflow.active_workflow_tasks import active_workflow_task
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
@@ -52,6 +52,7 @@ from core.trigger.constants import is_trigger_node_type
 from core.workflow.node_factory import get_default_root_node_id
 from extensions.ext_database import db
 from factories import file_factory
+from graphon.enums import NodeType
 from graphon.filters import ResponseStreamFilter
 from graphon.graph_engine.layers import GraphEngineLayer
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
@@ -74,6 +75,18 @@ def _extract_trace_session_id_from_debug_args(args: Mapping[str, Any] | Any) -> 
     if isinstance(args, Mapping):
         return extract_trace_session_id_from_args(args)
     return extract_trace_session_id_from_args({"trace_session_id": getattr(args, "trace_session_id", None)})
+
+
+def _no_draft_variable_saver(
+    app_id: str,
+    node_id: str,
+    node_type: NodeType,
+    node_execution_id: str,
+    enclosing_node_id: str | None = None,
+) -> DraftVariableSaver:
+    """``DraftVariableSaverFactory`` that never persists draft variables (existing no-op saver)."""
+    _ = app_id, node_id, node_type, node_execution_id, enclosing_node_id
+    return NoopDraftVariableSaver()
 
 
 class BuilderExecutionAdmission(Protocol):
@@ -492,11 +505,17 @@ class WorkflowAppGenerator(BaseAppGenerator):
 
             worker_thread.start()
 
-            draft_var_saver_factory = self._get_draft_var_saver_factory(
-                invoke_from,
-                user,
-                tenant_id=app_model.tenant_id,
-            )
+            draft_var_saver_factory: DraftVariableSaverFactory
+            if isinstance(application_generate_entity.builder_execution, ConfirmedToolExecutionContext):
+                # The authorized native Run/node rows are the only retained copy of a
+                # confirmed Tool's content: no mutable workspace draft-variable copy.
+                draft_var_saver_factory = _no_draft_variable_saver
+            else:
+                draft_var_saver_factory = self._get_draft_var_saver_factory(
+                    invoke_from,
+                    user,
+                    tenant_id=app_model.tenant_id,
+                )
 
             try:
                 response = self._handle_response(

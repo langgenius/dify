@@ -323,7 +323,7 @@ def test_context_roundtrip_cannot_replace_repository_owned_execution_evidence(ha
     assert decision.reason == ("simulation_only" if has_run_evidence else "execution_provenance_unbound")
 
 
-def test_confirmed_command_survives_session_commit_round_trip():
+def test_confirmed_command_survives_session_commit_round_trip() -> None:
     from core.dify_builder.models import DifyBuilderContext
 
     original = DifyBuilderContext(confirmed_consent_id="consent-1", confirmed_command_id="command-1")
@@ -334,7 +334,7 @@ def test_confirmed_command_survives_session_commit_round_trip():
     assert context_from_dict({}).confirmed_command_id == ""
 
 
-def test_confirmed_evidence_summary_round_trips_through_persisted_run_json():
+def test_confirmed_evidence_summary_round_trips_through_persisted_run_json() -> None:
     summary = ExecutionEvidenceSummary(
         request_id="request-1",
         policy_version="builder-confirmed-gmail-read-v1",

@@ -1548,9 +1548,11 @@ def test_publish_verification_locked_guard(mock_session, stale):
 
 
 @pytest.mark.parametrize(
-    "pair", [{"confirmed_consent_id": "consent-1"}, {"command_id": "command-1"}, {"confirmed_consent_id": ""}]
+    ("consent_id", "command_id"), [("consent-1", None), (None, "command-1"), ("", None), ("consent-1", "")]
 )
-def test_confirmed_run_requires_both_server_reserved_identifiers_together(mock_session: MagicMock, pair):
+def test_confirmed_run_requires_both_server_reserved_identifiers_together(
+    mock_session: MagicMock, consent_id: str | None, command_id: str | None
+) -> None:
     with patch("services.dify_builder.dify_port.AppGenerateService.generate") as generate:
         run = WorkflowServiceDifyPort().run_draft(
             "app-1",
@@ -1559,7 +1561,8 @@ def test_confirmed_run_requires_both_server_reserved_identifiers_together(mock_s
             lambda _event: None,
             session_id="session-1",
             test_input_id="input-1",
-            **pair,
+            confirmed_consent_id=consent_id,
+            command_id=command_id,
         )
     generate.assert_not_called()
     mock_session.get.assert_not_called()
@@ -1569,7 +1572,7 @@ def test_confirmed_run_requires_both_server_reserved_identifiers_together(mock_s
     assert run.dify_run_id == ""
 
 
-def test_port_protocol_declares_the_optional_confirmed_pair():
+def test_port_protocol_declares_the_optional_confirmed_pair() -> None:
     import inspect
 
     for owner in (DifyPort, WorkflowServiceDifyPort):

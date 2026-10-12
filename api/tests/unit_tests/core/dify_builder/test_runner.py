@@ -14,7 +14,7 @@ import pytest
 from core.dify_builder.contract import AgentMessageEventData, ConversationItemAppendedEventData, ExecutionProgress
 from core.dify_builder.errors import ConflictError
 from core.dify_builder.models import Action, Actor, ConversationItem, DifyBuilderContext, EntryMode, Session, Turn
-from core.dify_builder.runner import Env, Runner, StepResult
+from core.dify_builder.runner import Env, Handler, Runner, StepResult
 from core.dify_builder.state import PcState
 from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, InMemoryRepository, StubAgent
 
@@ -724,16 +724,21 @@ def test_advance_passes_full_turn_to_first_step_and_actor_only_turn_to_subsequen
     assert seen_turns[1].actor == actor
 
 
-def test_confirmed_action_runs_working_handler_without_waiting_transition_or_model_calls():
+def test_confirmed_action_runs_working_handler_without_waiting_transition_or_model_calls() -> None:
+    from typing import NoReturn
+
     from core.dify_builder.models import CONFIRMED_TOOL_ACTION
 
     env, repo = _new_env()
 
-    def no_model(*_args, **_kwargs):
-        raise AssertionError("confirmed outcome must not call a model")
+    def no_detection(_text: str) -> NoReturn:
+        raise AssertionError("confirmed outcome must not detect a language with a model")
 
-    env.detect_language = no_model
-    env.localize_items = no_model
+    def no_localization(_items: list[ConversationItem], _language: str) -> NoReturn:
+        raise AssertionError("confirmed outcome must not localize with a model")
+
+    env.detect_language = no_detection
+    env.localize_items = no_localization
     s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_TEST_AND_REPAIR)
     repo.create_session(
         s,
@@ -764,7 +769,7 @@ def test_confirmed_action_runs_working_handler_without_waiting_transition_or_mod
         (PcState.BUILD_AWAIT_TESTDATA, "command-1"),
     ],
 )
-def test_confirmed_action_refuses_unreserved_command_or_non_working_state(state, command):
+def test_confirmed_action_refuses_unreserved_command_or_non_working_state(state: PcState, command: str) -> None:
     from core.dify_builder.models import CONFIRMED_TOOL_ACTION
 
     env, repo = _new_env()
@@ -776,7 +781,7 @@ def test_confirmed_action_refuses_unreserved_command_or_non_working_state(state,
         called.append(turn)
         return StepResult(next=PcState.BUILD_REVIEW, context=fc)
 
-    registry = {state: handler}
+    registry: dict[PcState, Handler] = {state: handler}
     action = Action(kind=CONFIRMED_TOOL_ACTION, base_version=1, command_id=command)
     with pytest.raises(ConflictError):
         Runner(env, registry).advance(s.id, Turn(action=action, actor=_actor()))
@@ -784,7 +789,7 @@ def test_confirmed_action_refuses_unreserved_command_or_non_working_state(state,
     assert repo.get_session(s.id)[0].version == 1
 
 
-def test_terminal_failure_clears_pending_confirmed_reference():
+def test_terminal_failure_clears_pending_confirmed_reference() -> None:
     env, repo = _new_env()
     s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_TEST_AND_REPAIR)
     repo.create_session(s, DifyBuilderContext(confirmed_consent_id="consent-1", confirmed_command_id="command-1"), [])
@@ -794,7 +799,7 @@ def test_terminal_failure_clears_pending_confirmed_reference():
     assert (fc.confirmed_consent_id, fc.confirmed_command_id) == ("", "")
 
 
-def test_recovery_clears_pending_confirmed_reference():
+def test_recovery_clears_pending_confirmed_reference() -> None:
     env, repo = _new_env()
     s = _session(entry_mode=EntryMode.BUILD, current_state=PcState.BUILD_REVIEW)
     repo.create_session(

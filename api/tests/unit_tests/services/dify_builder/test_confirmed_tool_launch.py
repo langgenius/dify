@@ -14,7 +14,8 @@ import logging
 from collections.abc import Callable, Mapping
 from dataclasses import asdict
 from datetime import datetime, timedelta
-from typing import TYPE_CHECKING
+from types import ModuleType
+from typing import TYPE_CHECKING, Literal, NoReturn, cast, override
 from uuid import uuid4
 
 import pytest
@@ -23,7 +24,9 @@ from sqlalchemy import func, select
 from core.dify_builder.contract import TestResultCard
 from core.dify_builder.errors import BadRequestError, BusyError
 from core.dify_builder.execution_policy import (
+    BuilderExecutionObservation,
     BuilderExecutionPolicyError,
+    BuilderExecutionRefusal,
     ConfirmedToolExecutionContext,
     ExecutionEvidenceSummary,
     TrustedExecutionCompletion,
@@ -32,13 +35,19 @@ from core.dify_builder.execution_policy import (
 from core.dify_builder.models import (
     Action,
     Actor,
+    Diagnosis,
+    Graph,
+    Inputs,
     NodeEvent,
     NodeOutput,
+    PublicationDecision,
     Run,
     RunVerification,
+    StartSchema,
 )
+from core.dify_builder.ports import DifyBuilderAgent, DifyPort, Repository
 from core.dify_builder.real_call_consent import ConfirmedToolBinding, ConsentReceipt
-from core.dify_builder.runner import Env, Runner
+from core.dify_builder.runner import Env, Handler, Runner
 from core.dify_builder.state import PcState
 from core.dify_builder.verification import publication_decision, result_card
 from libs.datetime_utils import naive_utc_now
@@ -67,7 +76,24 @@ from tests.unit_tests.services.dify_builder.test_real_call_consent_service impor
 )
 
 if TYPE_CHECKING:
+    from core.dify_builder.execution_policy import BuilderExecutionContext
+    from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
     from services.dify_builder.dify_port import ConfirmedLaunchRecorder
+    from services.dify_builder.real_call_consent_service import (
+        BuilderRealCallConsentService,
+        ServiceConfirmedToolGuard,
+    )
+    from tests.unit_tests.core.dify_builder.fakes import InMemoryRepository
+
+
+def as_env_collaborators(
+    port: FakeDifyPort, agent: StubAgent, repo: "Repository | InMemoryRepository"
+) -> tuple[DifyPort, DifyBuilderAgent, Repository]:
+    """The shared fakes (``fakes.py``, not a Task 6 owner) name parameters with a leading
+    underscore, so they are not structurally assignable to the Protocols; they implement
+    every member the engine calls. One explicit, local conversion instead of Any."""
+    return cast(DifyPort, port), cast(DifyBuilderAgent, agent), cast(Repository, repo)
+
 
 # The internal reserved-command action kind; a literal here so this module never
 # depends on a product constant at collection time (pinned to the product constant below).
@@ -142,16 +168,21 @@ def confirmed(owner: Owner) -> ConsentReceipt:
 
 
 def execute(
-    service: DifyBuilderService, owner: Owner, receipt: ConsentReceipt, *, key: str = "execute-1", **changes: object
+    service: DifyBuilderService,
+    owner: Owner,
+    receipt: ConsentReceipt,
+    *,
+    key: str = "execute-1",
+    scope_digest: str | None = None,
 ) -> ConsentReceipt:
-    values: dict[str, object] = {
-        "consent_id": receipt.consent_id,
-        "scope_digest": receipt.scope_digest,
-        "at_version": receipt.at_version,
-        "idempotency_key": key,
-        **changes,
-    }
-    return service.execute_confirmed_tool(owner.session_id, owner.actor, **values)  # type: ignore[arg-type]
+    return service.execute_confirmed_tool(
+        owner.session_id,
+        owner.actor,
+        consent_id=receipt.consent_id,
+        scope_digest=receipt.scope_digest if scope_digest is None else scope_digest,
+        at_version=receipt.at_version,
+        idempotency_key=key,
+    )
 
 
 def reserve_directly(owner: Owner) -> tuple[ConsentReceipt, Action, str]:
@@ -179,17 +210,24 @@ class ServiceGuardRecorder:
     actual bound node execution ID, then ``ServiceConfirmedToolGuard``.
     """
 
-    def __init__(self, consent, context: ConfirmedToolExecutionContext, native_run_id: str) -> None:
+    def __init__(
+        self, consent: "BuilderRealCallConsentService", context: ConfirmedToolExecutionContext, native_run_id: str
+    ) -> None:
         self.consent = consent
         self.context = context
         self.native_run_id = native_run_id
-        self.healthy = True
         self.bindings: list[ConfirmedToolBinding] = []
 
-    def record(self, _observation) -> None:
-        raise AssertionError("a confirmed run records no restricted observations")
+    @property
+    def healthy(self) -> bool:
+        return True
 
-    def confirmed_guard(self, *, node_id: str, native_run_id: str, native_node_execution_id: str):
+    def record(self, observation: BuilderExecutionObservation) -> None:
+        raise AssertionError(f"a confirmed run records no restricted observations: {observation.kind}")
+
+    def confirmed_guard(
+        self, *, node_id: str, native_run_id: str, native_node_execution_id: str
+    ) -> "ServiceConfirmedToolGuard":
         from services.dify_builder.real_call_consent_service import ServiceConfirmedToolGuard
 
         binding = self.consent.claim_tool(
@@ -357,19 +395,27 @@ def test_generic_actions_cannot_carry_the_internal_confirmed_action(consent_owne
 # --- worker reload, duplicate delivery and recovery ------------------------------------------
 
 
+SafetyOutcome = Literal["confirmed_tool_completed", "execution_evidence_unknown"]
+
+
 class ConfirmedSpyPort(FakeDifyPort):
     """Records the shared port call; returns a sealed confirmed Run shape."""
 
-    def __init__(self, outcome: str = "confirmed_tool_completed") -> None:
+    def __init__(
+        self, outcome: SafetyOutcome = "confirmed_tool_completed", *, refusal: "BuilderExecutionRefusal | None" = None
+    ) -> None:
         super().__init__()
         self.confirmed_calls: list[dict[str, object]] = []
-        self.outcome = outcome
+        self.outcome: SafetyOutcome = outcome
+        # Set: answer like a delivery whose launch was refused (e.g. lost to another delivery).
+        self.refusal = refusal
 
-    def run_draft(  # type: ignore[override]
+    @override
+    def run_draft(
         self,
-        app_id: str,
-        actor: Actor,
-        inputs: dict,
+        _app_id: str,
+        _actor: Actor,
+        inputs: Inputs,
         on_event: Callable[[NodeEvent], None],
         *,
         session_id: str,
@@ -378,7 +424,7 @@ class ConfirmedSpyPort(FakeDifyPort):
         confirmed_consent_id: str | None = None,
         command_id: str | None = None,
     ) -> Run:
-        _ = (app_id, actor, session_id, on_workflow_event)  # the shared port signature; not inspected here
+        _ = (session_id, on_workflow_event)  # the shared port signature; not inspected here
         self.confirmed_calls.append(
             {
                 "inputs": dict(inputs),
@@ -387,13 +433,15 @@ class ConfirmedSpyPort(FakeDifyPort):
                 "command_id": command_id,
             }
         )
+        if self.refusal is not None:
+            return Run(status="failed", execution_refusal=self.refusal)
         on_event(NodeEvent(node_id="tool", status="succeeded"))
         summary = ExecutionEvidenceSummary(
             request_id="request-1",
             policy_version="builder-confirmed-gmail-read-v1",
             mode="confirmed_tool",
             sealed=True,
-            safety_outcome=self.outcome,  # type: ignore[arg-type]
+            safety_outcome=self.outcome,
             sandbox_profile="disabled",
             native_run_id="native-run-1",
             consent_id=confirmed_consent_id or "consent-1",
@@ -421,41 +469,44 @@ class ConfirmedSpyPort(FakeDifyPort):
 class NoModelAgent(StubAgent):
     """Every cognition/localization entry point fails the test if reached."""
 
-    def diagnose(self, *_args, **_kwargs):  # type: ignore[override]
+    @override
+    def diagnose(self, _failed_run: Run, _graph: Graph, _node_outputs: list[NodeOutput]) -> NoReturn:
         raise AssertionError("confirmed outcome must not be diagnosed")
 
-    def propose_repair(self, *_args, **_kwargs):  # type: ignore[override]
-        raise AssertionError("confirmed outcome must not be repaired")
+    @override
+    def propose_repair(self, diagnosis: Diagnosis, _graph: Graph) -> NoReturn:
+        raise AssertionError(f"confirmed outcome must not be repaired: {diagnosis.root_cause}")
 
-    def generate_mock_inputs(self, *_args, **_kwargs):  # type: ignore[override]
+    @override
+    def generate_mock_inputs(self, _schema: StartSchema, _prior_failed: Inputs) -> NoReturn:
         raise AssertionError("confirmed test must use the saved input")
 
 
-def wire_worker(monkeypatch: pytest.MonkeyPatch, owner: Owner, port: ConfirmedSpyPort, order: list[str]):
+def wire_worker(
+    monkeypatch: pytest.MonkeyPatch, owner: Owner, port: ConfirmedSpyPort, order: list[str]
+) -> tuple[ModuleType, SqlDifyBuilderRepository, list[dict[str, object]], list[str]]:
     import tasks.dify_builder_advance_task as mod
 
     repo = SqlDifyBuilderRepository(owner.factory)
     monkeypatch.setattr(mod, "_build_repo", lambda: repo)
     service = owner.service()
-    real_reload = getattr(service, "reserved_launch", None)
+    real_reload = service.reserved_launch
 
-    def reload(**kwargs):
+    def reload(*, actor: Actor, session_id: str, consent_id: str, command_id: str) -> ConfirmedToolExecutionContext:
         order.append("reload")
-        if real_reload is None:
-            raise AssertionError("no reserved-command reload owner")
-        return real_reload(**kwargs)
+        return real_reload(actor=actor, session_id=session_id, consent_id=consent_id, command_id=command_id)
 
-    # Non-raising seams: the worker's consent-owner seam is a Task 6 addition.
+    # Non-raising seams: the worker's consent-owner seam is a Task 6 addition (RED ran before it existed).
     monkeypatch.setattr(service, "reserved_launch", reload, raising=False)
     monkeypatch.setattr(mod, "_build_consent_service", lambda: service, raising=False)
     monkeypatch.setattr(mod, "WorkflowServiceDifyPort", lambda: port)
 
-    def agent(**_kwargs):
+    def agent(**_kwargs: object) -> NoModelAgent:
         order.append("agent")
         return NoModelAgent()
 
     monkeypatch.setattr(mod, "build_dify_builder_agent", agent)
-    events: list[dict] = []
+    events: list[dict[str, object]] = []
     released: list[str] = []
     monkeypatch.setattr(mod.progress_bus, "publish", lambda _sid, ev: events.append(ev))
     monkeypatch.setattr(mod.session_lock, "release", lambda _sid, tok: released.append(tok))
@@ -476,7 +527,7 @@ def test_worker_reloads_reserved_command_then_runs_saved_input_once_and_reviews(
 ) -> None:
     owner = consent_owner
     reserved, action, token = reserve_directly(owner)
-    port, order = ConfirmedSpyPort(), []
+    port, order = ConfirmedSpyPort(), list[str]()
     mod, repo, events, released = wire_worker(monkeypatch, owner, port, order)
 
     mod.advance_session(owner.session_id, asdict(action), asdict(owner.actor), token)
@@ -508,7 +559,7 @@ def test_worker_refuses_forged_or_serialized_confirmed_context_before_agent_setu
 ) -> None:
     owner = consent_owner
     reserved, action, token = reserve_directly(owner)
-    port, order = ConfirmedSpyPort(), []
+    port, order = ConfirmedSpyPort(), list[str]()
     mod, repo, events, released = wire_worker(monkeypatch, owner, port, order)
     forged = asdict(action)
     if forgery == "command":
@@ -535,7 +586,7 @@ def test_duplicate_celery_delivery_cannot_launch_the_old_grant_again(
     reserved, action, token = reserve_directly(owner)
     # The first delivery already claimed the launch identity (existing fixture stand-in).
     simulate_task6_launch(owner, reserved)
-    port, order = ConfirmedSpyPort(), []
+    port, order = ConfirmedSpyPort(), list[str]()
     mod, repo, events, _released = wire_worker(monkeypatch, owner, port, order)
 
     mod.advance_session(owner.session_id, asdict(action), asdict(owner.actor), token)
@@ -551,7 +602,8 @@ def test_recovery_clears_pending_reference_and_never_reuses_the_grant(consent_ow
     reserved, _action, _token = reserve_directly(owner)
     repo = SqlDifyBuilderRepository(owner.factory)
     port = ConfirmedSpyPort()
-    runner = Runner(Env(dify=port, agent=StubAgent(), repo=repo, now=naive_utc_now), _registries())
+    dify, agent, typed_repo = as_env_collaborators(port, StubAgent(), repo)
+    runner = Runner(Env(dify=dify, agent=agent, repo=typed_repo, now=naive_utc_now), _registries())
     session, _fc = repo.get_session(owner.session_id)
     turn_action = Action(kind=kind, base_version=session.version)
     from core.dify_builder.models import Turn
@@ -571,27 +623,31 @@ def test_recovery_clears_pending_reference_and_never_reuses_the_grant(consent_ow
 
 def run_confirmed_handler(
     entry_mode: str, state: PcState, *, command: str = "command-1", port: "ConfirmedSpyPort | None" = None
-):
+) -> tuple["InMemoryRepository", ConfirmedSpyPort, str, str]:
     """Drive the real working handler through ``Runner`` for one reserved confirmed command.
 
     Uses the in-memory repository with a saved approved test input; detection
     and localization raise so any model call fails the caller's test.
     """
-    from core.dify_builder.models import DifyBuilderContext, EntryMode, Session, TestInput, Turn
+    from core.dify_builder.models import ConversationItem, DifyBuilderContext, EntryMode, Session, TestInput, Turn
     from tests.unit_tests.core.dify_builder.fakes import InMemoryRepository
 
-    def no_model(*_args, **_kwargs):
-        raise AssertionError("confirmed outcome must not call a model")
+    def no_detection(_text: str) -> NoReturn:
+        raise AssertionError("confirmed outcome must not detect a language with a model")
+
+    def no_localization(_items: list[ConversationItem], _language: str) -> NoReturn:
+        raise AssertionError("confirmed outcome must not localize with a model")
 
     repo = InMemoryRepository()
     port = port if port is not None else ConfirmedSpyPort()
+    dify, agent, typed_repo = as_env_collaborators(port, NoModelAgent(), repo)
     env = Env(
-        dify=port,
-        agent=NoModelAgent(),
-        repo=repo,
+        dify=dify,
+        agent=agent,
+        repo=typed_repo,
         now=lambda: datetime.min,
-        detect_language=no_model,
-        localize_items=no_model,
+        detect_language=no_detection,
+        localize_items=no_localization,
     )
     session = Session(
         app_id="app-1",
@@ -644,7 +700,7 @@ def assert_confirmed_handler_outcome(entry_mode: str, state: PcState, review: Pc
     assert cards[0].payload["terminal_outputs"] is None
 
 
-def _registries():
+def _registries() -> dict[PcState, Handler]:
     from core.dify_builder.handlers_build import build_registry
     from core.dify_builder.handlers_edit import edit_registry
     from core.dify_builder.handlers_fix import fix_registry
@@ -735,10 +791,19 @@ def done(context: ConfirmedToolExecutionContext, run_id: str, **changes: object)
     return TrustedExecutionCompletion.model_validate(values)
 
 
-SUCCESS_JSON = {"message": {"id": APPROVED.message_id, "snippet": BODY_SENTINEL}, "message_id": APPROVED.message_id}
+SUCCESS_JSON: dict[str, object] = {
+    "message": {"id": APPROVED.message_id, "snippet": BODY_SENTINEL},
+    "message_id": APPROVED.message_id,
+}
 
 
-def dispatched(recorder, *, messages=(SUCCESS_JSON,), complete=True, node_execution_id="node-exec-1"):
+def dispatched(
+    recorder: "ConfirmedLaunchRecorder",
+    *,
+    messages: tuple[Mapping[str, object], ...] = (SUCCESS_JSON,),
+    complete: bool = True,
+    node_execution_id: str = "node-exec-1",
+) -> "ServiceConfirmedToolGuard":
     guard = recorder.confirmed_guard(
         node_id="tool", native_run_id=recorder.native_run_id, native_node_execution_id=node_execution_id
     )
@@ -749,7 +814,9 @@ def dispatched(recorder, *, messages=(SUCCESS_JSON,), complete=True, node_execut
     return guard
 
 
-def seal_and_settle(owner: Owner, context, completion):
+def seal_and_settle(
+    owner: Owner, context: ConfirmedToolExecutionContext, completion: TrustedExecutionCompletion
+) -> tuple[ExecutionEvidenceSummary, ConsentReceipt]:
     summary = BuilderExecutionPolicyService(owner.factory).seal(request_id=context.request_id, completion=completion)
     receipt = owner.service().settle_launch(context=context)
     return summary, receipt
@@ -814,7 +881,7 @@ def test_mismatched_or_incomplete_proof_never_seals_completed(consent_owner: Own
     [((SUCCESS_JSON,), False, "stream_incomplete"), ((), True, "result_missing")],
 )
 def test_native_success_with_unknown_action_outcome_stays_unknown(
-    consent_owner: Owner, messages, complete: bool, reason: str
+    consent_owner: Owner, messages: tuple[Mapping[str, object], ...], complete: bool, reason: str
 ) -> None:
     owner = consent_owner
     reserved, context, run_id, recorder = launched(owner)
@@ -871,7 +938,7 @@ def test_outcome_recording_db_failure_stays_unknown_without_resetting_counters(
     reserved, context, run_id, recorder = launched(owner)
     service = recorder.consent
 
-    def failing_finish(**_kwargs):
+    def failing_finish(**_kwargs: object) -> NoReturn:
         raise RuntimeError("database unavailable")
 
     monkeypatch.setattr(service, "finish", failing_finish)
@@ -914,17 +981,23 @@ def test_reconcile_after_spent_phase_is_unknown_and_final(consent_owner: Owner) 
 
 
 def test_publication_accepts_only_sealed_exact_revision_confirmed_success() -> None:
-    def run(outcome: str, *, sealed: bool = True, action: str = "completed", revision: str = "r1") -> Run:
+    def run(
+        outcome: SafetyOutcome,
+        *,
+        sealed: bool = True,
+        action: Literal["completed", "unknown"] = "completed",
+        revision: str = "r1",
+    ) -> Run:
         summary = ExecutionEvidenceSummary(
             request_id="request-1",
             policy_version="builder-confirmed-gmail-read-v1",
             mode="confirmed_tool",
             sealed=True,
-            safety_outcome=outcome,  # type: ignore[arg-type]
+            safety_outcome=outcome,
             sandbox_profile="disabled",
             native_run_id="native-1",
             consent_id="consent-1",
-            action_state=action,  # type: ignore[arg-type]
+            action_state=action,
             action_reason_code="message_returned",
         )
         if not sealed:
@@ -948,7 +1021,7 @@ def test_publication_accepts_only_sealed_exact_revision_confirmed_success() -> N
             ),
         )
 
-    def decide(candidate: Run):
+    def decide(candidate: Run) -> PublicationDecision:
         return publication_decision(candidate, session_id="s-1", current_revision="r1", current_graph_revision="g1")
 
     assert decide(run("confirmed_tool_completed")).allowed is True
@@ -1095,22 +1168,37 @@ def test_port_launches_reserved_command_natively_and_projects_sanitized_builder_
 ) -> None:
     """The actual port/admission/recorder/seal/settle chain on real rows; only native generation is faked."""
     import threading
+    from collections.abc import Iterator
     from types import SimpleNamespace
 
+    from sqlalchemy.orm import Session
+
     import services.dify_builder.dify_port as port_module
-    from core.app.entities.app_invoke_entities import InvokeFrom
+    from core.app.apps.workflow.app_generator import BuilderExecutionAdmission
+    from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
+    from models.account import Account
+    from models.model import App
+    from services.dify_builder.dify_port import ConfirmedLaunchRecorder
 
     caplog.set_level(logging.DEBUG)
     owner = consent_owner
     reserved, _action, _token = reserve_through_dispatch(owner)
     bind_fixture_engine(monkeypatch, owner)
     open_sessions: list[bool] = []
-    generated: list[dict] = []
+    generated: list[dict[str, Mapping[str, object]]] = []
     users: list[str] = []
 
     def native_generate(
-        *, app_model, user, args, invoke_from, session, builder_execution, builder_execution_admit, **kw
-    ):
+        *,
+        app_model: App,
+        user: Account,
+        args: Mapping[str, Mapping[str, object]],
+        invoke_from: InvokeFrom,
+        session: Session,
+        builder_execution: ConfirmedToolExecutionContext,
+        builder_execution_admit: BuilderExecutionAdmission,
+        **kw: object,
+    ) -> Iterator[str]:
         users.append(user.id)
         assert kw["workflow_execution_mode"] == "in_process"
         assert kw["streaming"] is True
@@ -1120,6 +1208,8 @@ def test_port_launches_reserved_command_natively_and_projects_sanitized_builder_
         launch, context, run_id = builder_execution_admit, builder_execution, str(uuid4())
         with owner.factory() as db:
             workflow = db.get(Workflow, owner.workflow_id)
+        assert workflow is not None
+        # Duck-typed generate entity carrying exactly the attributes the admission reads.
         entity = SimpleNamespace(
             builder_execution=context,
             files=[],
@@ -1138,7 +1228,8 @@ def test_port_launches_reserved_command_natively_and_projects_sanitized_builder_
 
         def worker() -> None:
             launch.admit_raw(workflow, app_model)
-            recorder = launch(workflow, app_model, entity, "start", False)
+            recorder = launch(workflow, app_model, cast(WorkflowAppGenerateEntity, entity), "start", False)
+            assert isinstance(recorder, ConfirmedLaunchRecorder)
             dispatched(recorder)
             native_rows(owner, run_id, "node-exec-1")
             launch.on_worker_finished(
@@ -1248,18 +1339,183 @@ def test_duplicate_port_launch_never_settles_the_winning_launch(
 
 def test_handler_commits_nothing_for_a_delivery_that_lost_the_launch() -> None:
     from core.dify_builder.errors import ConflictError
-    from core.dify_builder.execution_policy import BuilderExecutionRefusal
 
-    class LostLaunchPort(ConfirmedSpyPort):
-        def run_draft(self, *args, **kwargs):  # type: ignore[override]
-            super().run_draft(*args, **kwargs)
-            return Run(
-                status="failed",
-                execution_refusal=BuilderExecutionRefusal(reason_code="execution_already_claimed"),
+    lost = BuilderExecutionRefusal(reason_code="execution_already_claimed")
+    with pytest.raises(ConflictError):
+        run_confirmed_handler("build", PcState.BUILD_TEST_AND_REPAIR, port=ConfirmedSpyPort(refusal=lost))
+
+
+class _DraftWrites:
+    """Stand-in for the mutable workspace draft-variable writer (``DraftVariableSaverImpl``)."""
+
+    def __init__(self) -> None:
+        self.saved: list[dict[str, object]] = []
+
+    def writer(self, **kwargs: object) -> "_DraftWrites._Writer":
+        return _DraftWrites._Writer(self, kwargs)
+
+    class _Writer:
+        def __init__(self, owner: "_DraftWrites", binding: dict[str, object]) -> None:
+            self._owner = owner
+            self._binding = binding
+
+        def save(self, process_data: Mapping[str, object] | None, outputs: Mapping[str, object] | None) -> None:
+            self._owner.saved.append(
+                {"node_id": self._binding.get("node_id"), "process_data": process_data, "outputs": outputs}
             )
 
-    with pytest.raises(ConflictError):
-        run_confirmed_handler("build", PcState.BUILD_TEST_AND_REPAIR, port=LostLaunchPort())
+
+def _drive_generator_draft_saving(
+    owner: Owner,
+    monkeypatch: pytest.MonkeyPatch,
+    builder_execution: "ConfirmedToolExecutionContext | BuilderExecutionContext | None",
+) -> tuple[_DraftWrites, dict[str, object], list[object]]:
+    """Run the real ``WorkflowAppGenerator._generate`` selection/response plumbing for a DEBUGGER run.
+
+    Replaced only: the worker thread (captured, never started work), the queue manager, the Flask
+    app proxy, the response converter, and the task pipeline, whose stand-in calls the selected
+    draft-variable factory exactly as the real pipeline does when a node succeeds, with body and
+    token sentinels. The mutable draft-variable writer is a recorder bound to the fixture SQLite engine.
+    """
+    import contextlib
+    from collections.abc import Iterator
+    from types import SimpleNamespace
+    from unittest.mock import Mock
+
+    import core.app.apps.base_app_generator as base_generator_module
+    from core.app.app_config.entities import AppAdditionalFeatures, WorkflowUIBasedAppConfig
+    from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
+    from core.app.apps.workflow import app_generator as app_generator_module
+    from core.app.apps.workflow.app_generator import WorkflowAppGenerator
+    from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
+    from graphon.enums import BuiltinNodeTypes
+    from models.account import Account
+    from models.model import App, AppMode
+
+    engine = owner.factory.kw["bind"]
+    writes = _DraftWrites()
+    monkeypatch.setattr(base_generator_module, "DraftVariableSaverImpl", writes.writer)
+    monkeypatch.setattr(base_generator_module, "db", SimpleNamespace(engine=engine))
+    with owner.factory() as db:
+        account = db.get(Account, owner.actor.account_id)
+        app = db.get(App, owner.app_id)
+        workflow = db.get(Workflow, owner.workflow_id)
+        assert account is not None
+        assert app is not None
+        assert workflow is not None
+    monkeypatch.setattr(app_generator_module, "db", SimpleNamespace(engine=engine, session=Mock()))
+    generator = WorkflowAppGenerator()
+    monkeypatch.setattr(generator, "_bind_file_access_scope", lambda **_kwargs: contextlib.nullcontext())
+    monkeypatch.setattr(app_generator_module, "WorkflowAppQueueManager", lambda **kwargs: SimpleNamespace(**kwargs))
+    monkeypatch.setattr(
+        app_generator_module, "current_app", SimpleNamespace(_get_current_object=lambda: SimpleNamespace(name="flask"))
+    )
+    worker = Mock()
+    worker.is_alive.return_value = False
+    worker_kwargs: dict[str, object] = {}
+
+    def thread(**kwargs: object) -> Mock:
+        worker_kwargs.update(cast(dict[str, object], kwargs["kwargs"]))
+        return worker
+
+    monkeypatch.setattr(app_generator_module.threading, "Thread", thread)
+    seen_pipeline: list[object] = []
+
+    class PipelineStandIn:
+        def __init__(
+            self,
+            *,
+            application_generate_entity: WorkflowAppGenerateEntity,
+            draft_var_saver_factory: DraftVariableSaverFactory,
+            **_kwargs: object,
+        ) -> None:
+            seen_pipeline.append(application_generate_entity.invoke_from)
+            self._factory = draft_var_saver_factory
+
+        def process(self) -> Iterator[dict[str, object]]:
+            saver = self._factory(owner.app_id, "tool", BuiltinNodeTypes.TOOL, "node-exec-1")
+            saver.save({"request": {"token": TOKEN_SENTINEL}}, {"text": BODY_SENTINEL})
+            yield {"event": "workflow_finished"}
+
+    monkeypatch.setattr(app_generator_module, "WorkflowAppGenerateTaskPipeline", PipelineStandIn)
+
+    def convert(response: Iterator[dict[str, object]], invoke_from: InvokeFrom) -> Iterator[dict[str, object]]:
+        seen_pipeline.append(invoke_from)
+        return response
+
+    monkeypatch.setattr(app_generator_module.WorkflowAppGenerateResponseConverter, "convert", convert)
+    entity = WorkflowAppGenerateEntity.model_construct(
+        builder_execution=builder_execution,
+        task_id="task",
+        app_config=WorkflowUIBasedAppConfig(
+            tenant_id=owner.actor.tenant_id,
+            app_id=owner.app_id,
+            app_mode=AppMode.WORKFLOW,
+            additional_features=AppAdditionalFeatures(),
+            variables=[],
+            workflow_id=owner.workflow_id,
+        ),
+        inputs={"note": "hello"},
+        files=[],
+        user_id=owner.actor.account_id,
+        stream=True,
+        invoke_from=InvokeFrom.DEBUGGER,
+        extras={},
+        call_depth=0,
+        workflow_execution_id=str(uuid4()),
+    )
+    native_execution_repository, native_node_repository = object(), object()
+    stream = generator._generate(
+        app_model=app,
+        workflow=workflow,
+        user=account,
+        application_generate_entity=entity,
+        invoke_from=InvokeFrom.DEBUGGER,
+        workflow_execution_repository=cast("WorkflowExecutionRepository", native_execution_repository),
+        workflow_node_execution_repository=cast("WorkflowNodeExecutionRepository", native_node_repository),
+        streaming=True,
+    )
+    assert isinstance(stream, Iterator)
+    assert list(stream) == [{"event": "workflow_finished"}]
+    assert worker_kwargs["workflow_execution_repository"] is native_execution_repository
+    assert worker_kwargs["workflow_node_execution_repository"] is native_node_repository
+    return writes, worker_kwargs, seen_pipeline
+
+
+def test_confirmed_generator_selects_no_mutable_draft_variable_copy(
+    consent_owner: Owner, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    owner = consent_owner
+    _reserved, context, _run_id = launched_with_existing_apis(owner)
+
+    writes, worker_kwargs, seen_pipeline = _drive_generator_draft_saving(owner, monkeypatch, context)
+
+    # Still the actual DEBUGGER transport with the native Run/node persistence repositories.
+    from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
+
+    # Pipeline and response converter both still see the actual DEBUGGER transport.
+    assert seen_pipeline == [InvokeFrom.DEBUGGER, InvokeFrom.DEBUGGER]
+    application_generate_entity = worker_kwargs["application_generate_entity"]
+    assert isinstance(application_generate_entity, WorkflowAppGenerateEntity)
+    assert application_generate_entity.builder_execution == context
+    # No mutable workspace draft-variable copy of tool content.
+    assert writes.saved == []
+    assert not any(sentinel in json.dumps(writes.saved) for sentinel in SENTINELS)
+
+
+@pytest.mark.parametrize("variant", ["ordinary", "restricted"])
+def test_ordinary_and_restricted_debugger_generator_keep_the_native_draft_variable_saver(
+    consent_owner: Owner, monkeypatch: pytest.MonkeyPatch, variant: str
+) -> None:
+    from tests.unit_tests.core.app.apps.test_builder_execution_admission import context as restricted_context
+
+    owner = consent_owner
+    builder_execution = restricted_context() if variant == "restricted" else None
+
+    writes, _worker_kwargs, _seen = _drive_generator_draft_saving(owner, monkeypatch, builder_execution)
+
+    assert [entry["node_id"] for entry in writes.saved] == ["tool"]
+    assert writes.saved[0]["outputs"] == {"text": BODY_SENTINEL}
 
 
 def test_settle_before_launch_marks_expired_unclaimed_grant_without_spend(

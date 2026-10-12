@@ -1,10 +1,13 @@
 """Pure restricted admission controls: no runtime transport is exercised here."""
 
 import importlib
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 import pytest
 from pydantic import ValidationError
+
+if TYPE_CHECKING:
+    from core.dify_builder.execution_policy import ExecutionEvidenceSummary
 
 
 def policy():
@@ -286,8 +289,8 @@ def test_malformed_graph_identifiers_are_sanitized_refusals(field):
         policy().admitted_node_bindings(snapshot(value))
 
 
-def _confirmed_summary(**changes):
-    values = {
+def _confirmed_summary(**changes: object) -> "ExecutionEvidenceSummary":
+    values: dict[str, object] = {
         "request_id": "request-1",
         "policy_version": "builder-confirmed-gmail-read-v1",
         "mode": "confirmed_tool",
@@ -303,7 +306,7 @@ def _confirmed_summary(**changes):
     return policy().ExecutionEvidenceSummary.model_validate(values)
 
 
-def test_confirmed_evidence_literals_and_sanitized_action_metadata():
+def test_confirmed_evidence_literals_and_sanitized_action_metadata() -> None:
     summary = _confirmed_summary()
     assert (summary.mode, summary.safety_outcome, summary.fixture_digest) == (
         "confirmed_tool",
@@ -328,7 +331,9 @@ def test_confirmed_evidence_literals_and_sanitized_action_metadata():
         {"safety_outcome": "restricted_execution_completed"},
     ],
 )
-def test_confirmed_completion_cannot_be_constructed_without_complete_confirmed_shape(changes):
+def test_confirmed_completion_cannot_be_constructed_without_complete_confirmed_shape(
+    changes: dict[str, object],
+) -> None:
     with pytest.raises(ValidationError):
         _confirmed_summary(**changes)
 
@@ -343,8 +348,8 @@ def test_confirmed_completion_cannot_be_constructed_without_complete_confirmed_s
         {"mode": "confirmed_tool"},
     ],
 )
-def test_restricted_summary_cannot_carry_confirmed_metadata(changes):
-    values = {
+def test_restricted_summary_cannot_carry_confirmed_metadata(changes: dict[str, object]) -> None:
+    values: dict[str, object] = {
         "request_id": "request-1",
         "mode": "restricted",
         "sealed": True,
@@ -357,9 +362,9 @@ def test_restricted_summary_cannot_carry_confirmed_metadata(changes):
         policy().ExecutionEvidenceSummary.model_validate(values)
 
 
-def test_trusted_completion_accepts_either_context_variant_and_rejects_unknown_tags():
+def test_trusted_completion_accepts_either_context_variant_and_rejects_unknown_tags() -> None:
     p = policy()
-    values = {
+    values: dict[str, object] = {
         "request_id": "request-1",
         "tenant_id": "tenant-1",
         "app_id": "app-1",
