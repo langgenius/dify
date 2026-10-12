@@ -290,7 +290,9 @@ def test_status_preserves_worker_error_and_handles_expired_error_key(
 
 @pytest.mark.parametrize("action", ["enable", "disable"])
 def test_publish_failure_cleans_job_and_allows_retry(harness: _Harness, action: AnnotationReplyAction) -> None:
-    harness.tasks[0 if action == "enable" else 1].serializer = "not-installed"
+    task = harness.tasks[0 if action == "enable" else 1]
+    task.serializer = "not-installed"
+    vars(task).pop("_exec_options", None)
 
     if action == "enable":
         with pytest.raises(SerializerNotInstalled):
@@ -314,7 +316,9 @@ def test_publish_failure_cleans_job_and_allows_retry(harness: _Harness, action: 
         with pytest.raises(Empty):
             messages.get(block=False)
 
-    harness.tasks[0 if action == "enable" else 1].serializer = "json"
+    task.serializer = "json"
+    # Celery caches publication options on the first delay(), including a failed attempt.
+    vars(task).pop("_exec_options", None)
     response = harness.request(action)
     assert response.status_code == 200
     assert response.get_json()["job_status"] == "waiting"

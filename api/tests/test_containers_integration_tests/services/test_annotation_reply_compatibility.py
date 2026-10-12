@@ -126,6 +126,7 @@ def test_legacy_producer_cancels_reservation_when_publication_fails(
     task = memory_celery.tasks[task_name]
     previous_serializer = task.serializer
     task.serializer = "annotation-test-unregistered-serializer"
+    vars(task).pop("_exec_options", None)
     try:
         with flask_app_with_containers.test_request_context():
             g._login_user = account
@@ -133,6 +134,8 @@ def test_legacy_producer_cancels_reservation_when_publication_fails(
                 _start_job(action, app_id)
     finally:
         task.serializer = previous_serializer
+        # Celery caches publication options even when serialization fails.
+        vars(task).pop("_exec_options", None)
 
     assert set(redis_client.scan_iter(match=f"{action}_app_annotation_*")) == previous_keys
     assert redis_client.get(f"{action}_app_annotation_{app_id}") is None
