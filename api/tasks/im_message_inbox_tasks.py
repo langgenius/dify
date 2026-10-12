@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass
+from traceback import extract_tb
 from typing import Protocol
 
 from celery import shared_task
@@ -74,6 +75,17 @@ def process_im_message_inbox_record(record_id: str) -> None:
     try:
         processor = runtime.processor_factory()
         processor.process(IMInboxRecordId(record_id))
-    except Exception:
-        logger.warning("IM callback processing will be retried record_id=%s", record_id)
+    except Exception as error:
+        # Exception messages and chained SQL parameters may contain callback
+        # tokens. Source frames still identify the failure without those values.
+        logger.exception(
+            "IM callback processing will be retried record_id=%s error_type=%s\n%s",
+            record_id,
+            type(error).__name__,
+            "".join(
+                f'  File "{frame.filename}", line {frame.lineno}, in {frame.name}\n'
+                for frame in extract_tb(error.__traceback__)
+            ),
+            exc_info=False,
+        )
         raise IMInboxTaskRetryError(f"failed to process IM callback record {record_id}") from None

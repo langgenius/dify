@@ -11,8 +11,8 @@ from core.human_input_v2.im_integration.adapters import AuthenticatedIMEvent, IM
 from core.human_input_v2.im_message_inbox import IMInboxRecord, IMInboxRecordId
 from core.human_input_v2.shared import IntegrationId
 from models.human_input_v2 import IMMessageInbox
-from repositories.human_input_v2.im_message_inbox.repository import SQLAlchemyIMMessageInboxRepository
 from services.human_input_v2.im_message_inbox.processor import IMInboxProcessor
+from services.human_input_v2.im_message_inbox.storage import IMInboxStorage
 
 _NOW = datetime(2026, 8, 2, 8, tzinfo=UTC)
 
@@ -45,10 +45,10 @@ def _event() -> AuthenticatedIMEvent:
 
 def _context(
     sqlite_engine: Engine, *, failure: Exception | None = None
-) -> tuple[IMInboxProcessor, SQLAlchemyIMMessageInboxRepository, _Consumer]:
+) -> tuple[IMInboxProcessor, IMInboxStorage, _Consumer]:
     inbox_table = IMMessageInbox.metadata.tables[IMMessageInbox.__tablename__]
     IMMessageInbox.metadata.create_all(sqlite_engine, tables=[inbox_table])
-    repository = SQLAlchemyIMMessageInboxRepository(sessionmaker(bind=sqlite_engine, expire_on_commit=False))
+    repository = IMInboxStorage(sessionmaker(bind=sqlite_engine, expire_on_commit=False))
     consumer = _Consumer(failure=failure)
     processor = IMInboxProcessor(repository=repository, consumer=consumer, clock=lambda: _NOW)
     return processor, repository, consumer

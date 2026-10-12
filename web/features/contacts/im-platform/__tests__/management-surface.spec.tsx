@@ -185,7 +185,7 @@ describe('Contacts IM platform management surface', () => {
   ])('presents the %s connection state', async (scenario, status) => {
     renderSurface({ scenario })
 
-    expect(await screen.findByText(`contacts.imPlatform.status.${status}`)).toBeInTheDocument()
+    expect(await screen.findAllByText(`contacts.imPlatform.status.${status}`)).not.toHaveLength(0)
   })
 
   it('shows configured channels before the remaining connect options', async () => {
@@ -200,6 +200,47 @@ describe('Contacts IM platform management surface', () => {
         name: /Feishu.*replace/i,
       }),
     ).toBeEnabled()
+  })
+
+  it('shows the sender email without including the sender name in the channel summary', async () => {
+    const repository = createContactImMockRepository({
+      organization,
+      scenario: ContactImMockScenario.ChannelsConfigured,
+    })
+    const integrations = await repository.getIntegrations(organization.organizationId)
+    vi.spyOn(repository, 'getIntegrations').mockResolvedValue(
+      integrations.map((integration) =>
+        integration.provider === ContactImProvider.Email
+          ? { ...integration, displayIdentifier: 'Acme approvals@acme.com' }
+          : integration,
+      ),
+    )
+    renderSurface({ repository })
+
+    const channel = await screen.findByRole('group', { name: 'Email' })
+    expect(
+      within(channel).getByText('contacts.imPlatform.email.summary:{"email":"approvals@acme.com"}'),
+    ).toBeInTheDocument()
+    expect(channel).not.toHaveTextContent('Acme')
+  })
+
+  it('shows Slack connection status instead of presenting a client ID as a token', async () => {
+    const repository = createContactImMockRepository({
+      organization,
+      scenario: ContactImMockScenario.Connected,
+    })
+    const integrations = await repository.getIntegrations(organization.organizationId)
+    vi.spyOn(repository, 'getIntegrations').mockResolvedValue(
+      integrations.map((integration) => ({
+        ...integration,
+        displayIdentifier: '11264416750647.11695819675697',
+      })),
+    )
+    renderSurface({ repository })
+
+    const channel = await screen.findByRole('group', { name: 'Slack' })
+    expect(within(channel).getByText('contacts.imPlatform.status.connected')).toBeInTheDocument()
+    expect(channel).not.toHaveTextContent('11264416750647.11695819675697')
   })
 
   it('collapses only the remaining connect options and restores them when expanded', async () => {
@@ -292,7 +333,11 @@ describe('Contacts IM platform binding flows', () => {
     secret.focus()
     await user.keyboard('{Enter}')
 
-    expect(await screen.findByText('contacts.imPlatform.status.configured')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByRole('group', { name: 'Slack' })).toHaveTextContent(
+        'contacts.imPlatform.status.configured',
+      )
+    })
   })
 
   it('saves credentials, clears the secret, and advances to configured', async () => {
@@ -310,7 +355,11 @@ describe('Contacts IM platform binding flows', () => {
     )
     await user.click(screen.getByRole('button', { name: 'contacts.imPlatform.action.connect' }))
 
-    expect(await screen.findByText('contacts.imPlatform.status.configured')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByRole('group', { name: 'Slack' })).toHaveTextContent(
+        'contacts.imPlatform.status.configured',
+      )
+    })
     expect(screen.queryByDisplayValue(submittedSecret)).not.toBeInTheDocument()
     expect(container.innerHTML).not.toContain(submittedSecret)
   })

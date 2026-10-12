@@ -17,7 +17,7 @@ from core.human_input_v2.im_integration.adapters import AuthenticatedIMEvent, IM
 from core.human_input_v2.im_message_inbox import AcceptanceKind, InboxEventValidationError
 from core.human_input_v2.shared import IntegrationId
 from models.human_input_v2 import IMMessageInbox
-from repositories.human_input_v2.im_message_inbox.repository import SQLAlchemyIMMessageInboxRepository
+from services.human_input_v2.im_message_inbox.storage import IMInboxStorage
 
 _NOW = datetime(2026, 8, 2, 8, tzinfo=UTC)
 _RECEIVED_AT = datetime(2026, 8, 2, 8)
@@ -45,17 +45,17 @@ def _event(
 @pytest.fixture
 def postgres_context(
     db_session_with_containers: Session,
-) -> tuple[Engine, SQLAlchemyIMMessageInboxRepository, sessionmaker[Session]]:
+) -> tuple[Engine, IMInboxStorage, sessionmaker[Session]]:
     engine = db_session_with_containers.get_bind()
     assert isinstance(engine, Engine)
     assert engine.dialect.name == "postgresql"
     session_maker = sessionmaker(bind=engine, expire_on_commit=False)
-    return engine, SQLAlchemyIMMessageInboxRepository(session_maker), session_maker
+    return engine, IMInboxStorage(session_maker), session_maker
 
 
 @pytest.mark.parametrize("absent_event_id", [None, "", " \t\n"])
 def test_postgres_unidentified_callbacks_remain_independent(
-    postgres_context: tuple[Engine, SQLAlchemyIMMessageInboxRepository, sessionmaker[Session]],
+    postgres_context: tuple[Engine, IMInboxStorage, sessionmaker[Session]],
     absent_event_id: str | None,
 ) -> None:
     _, repository, session_maker = postgres_context
@@ -71,7 +71,7 @@ def test_postgres_unidentified_callbacks_remain_independent(
 
 
 def test_postgres_preserves_max_length_provider_metadata(
-    postgres_context: tuple[Engine, SQLAlchemyIMMessageInboxRepository, sessionmaker[Session]],
+    postgres_context: tuple[Engine, IMInboxStorage, sessionmaker[Session]],
 ) -> None:
     _, repository, session_maker = postgres_context
     tenant_id = "t" * 128
@@ -92,7 +92,7 @@ def test_postgres_preserves_max_length_provider_metadata(
 
 
 def test_postgres_repository_rejects_oversized_provider_metadata_before_insert(
-    postgres_context: tuple[Engine, SQLAlchemyIMMessageInboxRepository, sessionmaker[Session]],
+    postgres_context: tuple[Engine, IMInboxStorage, sessionmaker[Session]],
 ) -> None:
     _, repository, session_maker = postgres_context
 
@@ -108,7 +108,7 @@ def test_postgres_repository_rejects_oversized_provider_metadata_before_insert(
 
 
 def test_postgres_schema_rejects_oversized_provider_metadata(
-    postgres_context: tuple[Engine, SQLAlchemyIMMessageInboxRepository, sessionmaker[Session]],
+    postgres_context: tuple[Engine, IMInboxStorage, sessionmaker[Session]],
 ) -> None:
     _, _, session_maker = postgres_context
 
@@ -132,7 +132,7 @@ def test_postgres_schema_rejects_oversized_provider_metadata(
 
 
 def test_postgres_concurrent_identified_insert_resolves_one_record(
-    postgres_context: tuple[Engine, SQLAlchemyIMMessageInboxRepository, sessionmaker[Session]],
+    postgres_context: tuple[Engine, IMInboxStorage, sessionmaker[Session]],
 ) -> None:
     _, repository, session_maker = postgres_context
     barrier = Barrier(2)
@@ -152,7 +152,7 @@ def test_postgres_concurrent_identified_insert_resolves_one_record(
 
 
 def test_postgres_mark_processed_is_idempotent(
-    postgres_context: tuple[Engine, SQLAlchemyIMMessageInboxRepository, sessionmaker[Session]],
+    postgres_context: tuple[Engine, IMInboxStorage, sessionmaker[Session]],
 ) -> None:
     _, repository, _ = postgres_context
     accepted = repository.insert_or_resolve(_INTEGRATION_ID, _event("event-1"), now=_NOW)
