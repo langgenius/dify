@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable
+from collections.abc import Callable, Generator
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import timedelta
 from typing import override
@@ -41,6 +42,13 @@ class FakeRateLimiter(RateLimiter):
     @override
     def increment_rate_limit(self, email: str) -> None:
         self.recorded.append(email)
+
+    @override
+    @contextmanager
+    def reserve(self, email: str) -> Generator[bool]:
+        yield not self.limited
+        if not self.limited:
+            self.recorded.append(email)
 
 
 @dataclass
@@ -452,3 +460,35 @@ def test_email_gateways_raise_framework_neutral_rate_limit_errors() -> None:
 
     assert email_code_error.value.retry_after_minutes == 5
     assert reset_error.value.retry_after_minutes == 1
+
+
+@pytest.mark.parametrize("account_id", [None, "account-1"])
+@pytest.mark.parametrize("failure_stage", ["token", "notification"])
+def test_reset_password_gateway_releases_reservation_after_failure(
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+    monkeypatch: pytest.MonkeyPatch,
+    account_id: str | None,
+    failure_stage: str,
+) -> None:
+    redis, commands = redis_transport
+    commands.return_value = 1
+    limiter = RateLimiter(prefix="reset", max_attempts=1, time_window=60, redis_client=redis)
+    gateway = adapters.RedisResetPasswordEmailGateway(rate_limiter=limiter)
+
+    def generate_token(**_kwargs: object) -> str:
+        if failure_stage == "token":
+            raise RuntimeError("temporary failure")
+        return "token"
+
+    def queue_mail(**_kwargs: object) -> None:
+        raise RuntimeError("temporary failure")
+
+    monkeypatch.setattr(adapters.TokenManager, "generate_token", generate_token)
+    monkeypatch.setattr(adapters.send_reset_password_mail_task, "delay", queue_mail)
+    monkeypatch.setattr(adapters.send_reset_password_mail_task_when_account_not_exist, "delay", queue_mail)
+
+    with pytest.raises(RuntimeError, match="temporary failure"):
+        gateway.send(account_id=account_id, email="user@example.com", language="en-US", registration_allowed=True)
+
+    assert commands.call_args_list[0].args[0] == "EVALSHA"
+    assert commands.call_args_list[-1].args[:2] == ("ZREM", "reset:user@example.com")

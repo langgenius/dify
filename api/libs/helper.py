@@ -8,6 +8,7 @@ import subprocess
 import time
 import uuid
 from collections.abc import Callable, Generator, Iterable, Mapping
+from contextlib import contextmanager
 from datetime import datetime
 from hashlib import sha256
 from typing import TYPE_CHECKING, Annotated, Any, Protocol, cast, overload, override
@@ -571,7 +572,11 @@ class TokenManager:
 
 
 class _RateLimiterRedisClient(Protocol):
+    def register_script(self, script: str) -> Callable[..., Any]: ...
+
     def zadd(self, name: str | bytes, mapping: dict[str | bytes | int | float, float | int | str | bytes]) -> int: ...
+
+    def zrem(self, name: str | bytes, *values: str | bytes) -> int: ...
 
     def zremrangebyscore(self, name: str | bytes, min: str | float, max: str | float) -> int: ...
 
@@ -602,6 +607,30 @@ class RateLimiter:
 
     def _get_key(self, email: str) -> str:
         return f"{self.prefix}:{email}"
+
+    @contextmanager
+    def reserve(self, email: str) -> Generator[bool]:
+        """Reserve a slot atomically, releasing only this slot if the operation fails."""
+        key = self._get_key(email)
+        member = self._member_factory()
+        script = self._redis_client.register_script("""
+            redis.call('ZREMRANGEBYSCORE', KEYS[1], '-inf', ARGV[1] - ARGV[2])
+            if redis.call('ZSCORE', KEYS[1], ARGV[4]) then return 1 end
+            if redis.call('ZCARD', KEYS[1]) >= tonumber(ARGV[3]) then return 0 end
+            redis.call('ZADD', KEYS[1], ARGV[1], ARGV[4])
+            redis.call('EXPIRE', KEYS[1], ARGV[2] * 2)
+            return 1
+        """)
+        acquired = bool(script(keys=[key], args=[int(time.time()), self.time_window, self.max_attempts, member]))
+        try:
+            yield acquired
+        except BaseException:
+            if acquired:
+                try:
+                    self._redis_client.zrem(key, member)
+                except Exception:
+                    logger.exception("Failed to release rate limit reservation")
+            raise
 
     def is_rate_limited(self, email: str) -> bool:
         key = self._get_key(email)
