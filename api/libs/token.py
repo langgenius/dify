@@ -1,8 +1,7 @@
 import hmac
 import logging
 import re
-import secrets
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 
 from flask import Request
 from werkzeug.exceptions import Unauthorized
@@ -229,13 +228,3 @@ def check_csrf_token(request: Request, user_id: str):
     exp: int | None = verified.get("exp")
     if not exp or exp < int(datetime.now(UTC).timestamp()):
         _unauthorized()
-
-
-def generate_csrf_token(user_id: str) -> str:
-    exp_dt = datetime.now(UTC) + timedelta(minutes=dify_config.ACCESS_TOKEN_EXPIRE_MINUTES)
-    payload = {
-        "exp": int(exp_dt.timestamp()),
-        "sub": user_id,
-        "jti": secrets.token_hex(16),
-    }
-    return PassportService().issue(payload)

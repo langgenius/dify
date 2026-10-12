@@ -1,17 +1,12 @@
-import hmac
-import re
 from http import HTTPStatus
 from typing import Never
-from urllib.parse import urlsplit
 from uuid import UUID
 
-import jwt
 from flask import make_response, request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 from werkzeug.exceptions import BadRequest, Forbidden
 
-from configs import dify_config
 from controllers.common.fields import (
     SimpleResultDataResponse,
     SimpleResultMessageResponse,
@@ -67,6 +62,7 @@ from libs.token import (
     set_refresh_token_to_cookie,
 )
 from services import account_errors
+from services.account.session_security import validate_session_request_origin
 from services.entities.account_entities import AccountSessionTokens
 from services.entities.account_login_entities import EmailCodeLoginCommand, EmailCodeSendCommand, PasswordLoginCommand
 from services.entities.auth_entities import LoginPayloadBase
@@ -324,72 +320,17 @@ class RefreshTokenApi(Resource):
         return _token_response(tokens, SimpleResultResponse, {"result": "success"})
 
 
-def _origin(url: str) -> tuple[str, str, int] | None:
-    try:
-        parsed = urlsplit(url)
-        if (
-            parsed.scheme not in {"http", "https"}
-            or not parsed.hostname
-            or parsed.username is not None
-            or parsed.password is not None
-            or any(character.isspace() for character in url)
-        ):
-            return None
-        port = parsed.port if parsed.port is not None else (443 if parsed.scheme == "https" else 80)
-        if port == 0:
-            return None
-        return parsed.scheme, parsed.hostname, port
-    except ValueError:
-        return None
-
-
 def _check_refresh_origin() -> None:
-    # Refresh and logout must still work after the access and CSRF JWTs expire.
-    value = request.headers.get("Origin", "")
-    origin = _origin(value)
-    if origin is None:
-        raise Forbidden("A trusted Origin header is required.")
-    parsed = urlsplit(value)
-    if parsed.path or parsed.query or parsed.fragment:
-        raise Forbidden("A trusted Origin header is required.")
-    api_origin = _origin(request.host_url)
-    if origin in {api_origin, _origin(dify_config.CONSOLE_WEB_URL)}:
-        return
-    # Proxies can hide the browser's scheme/port; a signed cookie echo proves same-host access without trusting headers.
-    if api_origin is not None and origin[1] == api_origin[1] and _has_refresh_csrf_proof():
-        return
-    raise Forbidden("A trusted Origin header is required.")
-
-
-def _has_refresh_csrf_proof() -> bool:
-    csrf_token = extract_csrf_token(request)
-    csrf_cookie = extract_csrf_token_from_cookie(request)
-    if not csrf_token or not csrf_cookie or not hmac.compare_digest(csrf_token.encode(), csrf_cookie.encode()):
-        return False
     try:
-        claims = jwt.decode(
-            csrf_token,
-            dify_config.SECRET_KEY,
-            algorithms=["HS256"],
-            options={"verify_exp": False, "require": ["sub", "exp", "jti"]},
+        validate_session_request_origin(
+            origin_header=request.headers.get("Origin", ""),
+            api_url=request.host_url,
+            csrf_header=extract_csrf_token(request),
+            csrf_cookie=extract_csrf_token_from_cookie(request),
+            refresh_token=extract_refresh_token(request),
         )
-        account_id = claims["sub"]
-        if not isinstance(account_id, str) or str(UUID(account_id)) != account_id:
-            return False
-    except (jwt.PyJWTError, ValueError):
-        return False
-    if (
-        type(claims["exp"]) is not int
-        or not isinstance(claims["jti"], str)
-        or re.fullmatch(r"[0-9a-f]{32}", claims["jti"]) is None
-        or any(claim in claims for claim in ("aud", "token_type", "token_source"))
-    ):
-        return False
-    refresh_token = extract_refresh_token(request)
-    return (
-        refresh_token is None
-        or re.fullmatch(rf"v2\.{re.escape(account_id)}\.[0-9a-f]{{32}}\.[0-9a-f]{{64}}", refresh_token) is not None
-    )
+    except account_errors.UntrustedSessionOriginError as error:
+        raise Forbidden(str(error)) from error
 
 
 def _token_response(tokens: AccountSessionTokens, response_model: type[BaseModel], data: object):

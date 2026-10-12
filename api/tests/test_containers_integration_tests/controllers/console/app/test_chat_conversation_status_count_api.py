@@ -10,12 +10,13 @@ from constants import HEADER_NAME_CSRF_TOKEN
 from extensions.ext_application_services import application_services
 from graphon.enums import WorkflowExecutionStatus
 from libs.datetime_utils import naive_utc_now
-from libs.token import _real_cookie_name, generate_csrf_token
+from libs.token import _real_cookie_name
 from models import Account, Tenant, TenantAccountJoin
 from models.account import AccountStatus, TenantAccountRole, TenantStatus
 from models.enums import ConversationFromSource, CreatorUserRole
 from models.model import App, AppMode, Conversation, Message
 from models.workflow import WorkflowRun
+from services.account.console_tokens import issue_console_csrf_token
 from tests.test_containers_integration_tests.controllers.console.helpers import ensure_dify_setup
 
 
@@ -135,7 +136,7 @@ def _create_message(
 def test_chat_conversation_status_count_includes_paused(
     db_session_with_containers: Session,
     test_client_with_containers: FlaskClient,
-):
+) -> None:
     account, tenant = _create_account_and_tenant(db_session_with_containers)
     app = _create_app(db_session_with_containers, tenant.id, account.id)
     conversation = _create_conversation(db_session_with_containers, app.id, account.id)
@@ -144,7 +145,7 @@ def test_chat_conversation_status_count_includes_paused(
     _create_message(db_session_with_containers, app.id, conversation.id, workflow_run.id, account.id)
 
     access_token = application_services().accounts.lifecycle.login(account.id, ip_address="127.0.0.1").access_token
-    csrf_token = generate_csrf_token(account.id)
+    csrf_token = issue_console_csrf_token(account.id)
     cookie_name = _real_cookie_name("csrf_token")
 
     test_client_with_containers.set_cookie(cookie_name, csrf_token, domain="localhost")

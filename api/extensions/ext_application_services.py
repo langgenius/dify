@@ -44,6 +44,7 @@ from extensions.application_services.workspace import (
     build_workspace_services,
 )
 from extensions.ext_redis import RedisClientWrapper, redis_client
+from extensions.ext_socketio import sio
 from extensions.ext_storage import storage
 from libs.helper import RateLimiter
 from libs.passport import PassportService
@@ -82,6 +83,7 @@ from repositories.upload_file_delivery_repository import UploadFileDeliveryQuery
 from repositories.web_passport_repository import WebPassportRepository
 from repositories.webapp_access_query_repository import WebAppAccessQueryRepository
 from repositories.workflow_app_log_query_repository import WorkflowAppLogQueryRepository
+from repositories.workflow_collaboration_repository import WorkflowCollaborationRepository
 from repositories.workflow_run_archive_repository import WorkflowRunArchiveBundleQueryRepository
 from repositories.workspace.workspace_repository import WorkspaceRepository
 from services.account.adapters import (
@@ -199,6 +201,7 @@ from services.web_passport_service import WebPassportService
 from services.webapp_access_adapters import EnterpriseWebAppAccessPolicyGateway
 from services.webapp_access_query_service import WebAppAccessQueryService, WebAppAccessUnavailableError
 from services.workflow_app_log_query_service import WorkflowAppLogQueryService
+from services.workflow_collaboration_service import WorkflowCollaborationService
 from services.workflow_run_service import WorkflowRunService
 from services.workflow_statistic_query_service import WorkflowStatisticQueryService
 from tasks.mail_inner_task import enqueue_inner_mail
@@ -306,6 +309,7 @@ class ApplicationServices:
     workflow_runs: WorkflowRunService
     workspaces: WorkspaceServices
     workflow_app_logs: WorkflowAppLogQueryService
+    workflow_collaboration: WorkflowCollaborationService
     workflow_comments: WorkflowCommentService
     inner_mail: InnerMailService
     web_passport: WebPassportService
@@ -690,6 +694,12 @@ def build_application_services(
         workspaces=workspace_services,
         workflow_app_logs=WorkflowAppLogQueryService(
             logs=WorkflowAppLogQueryRepository(session_factory=database_client),
+        ),
+        workflow_collaboration=WorkflowCollaborationService(
+            repository=WorkflowCollaborationRepository(),
+            socketio=sio,
+            session_factory=database_client,
+            load_account=account_services.identity.load_user,
         ),
         workflow_comments=WorkflowCommentService(
             comments=WorkflowCommentRepository(session_factory=database_client),

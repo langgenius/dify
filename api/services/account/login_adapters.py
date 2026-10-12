@@ -4,7 +4,6 @@ import base64
 import hashlib
 import hmac
 import logging
-import re
 import secrets
 from datetime import timedelta
 from typing import override
@@ -14,16 +13,16 @@ from cryptography.fernet import Fernet, InvalidToken
 from pydantic import TypeAdapter, ValidationError
 
 from configs import dify_config
+from core.auth.console_session import build_refresh_token, parse_refresh_token
 from extensions.ext_redis import RedisClientWrapper
 from libs.datetime_utils import naive_utc_now
 from libs.helper import RateLimiter, TokenManager
-from libs.token import generate_csrf_token
 from models.account import (
     AccountStatus,
 )
 from repositories.account.repository import SQLAlchemyAccountRepository
 from services import account_errors
-from services.account.console_tokens import issue_console_access_token
+from services.account.console_tokens import issue_console_access_token, issue_console_csrf_token
 from services.account.login_service import (
     AccountRefreshPreparationGateway,
     AccountSessionGateway,
@@ -184,10 +183,6 @@ class RedisAccountSessionGateway(AccountSessionGateway):
     The account hash tag keeps every script within one Redis Cluster slot.
     """
 
-    _TOKEN_PATTERN = re.compile(
-        r"v2\.([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})"
-        r"\.([0-9a-f]{32})\.[0-9a-f]{64}"
-    )
     _TOKENS = TypeAdapter(AccountSessionTokens)
     _ISSUE_SCRIPT = """
         local epoch = redis.call('GET', KEYS[2])
@@ -277,7 +272,7 @@ class RedisAccountSessionGateway(AccountSessionGateway):
 
     @override
     def revoke(self, refresh_token: str) -> None:
-        identity = self._parse(refresh_token)
+        identity = parse_refresh_token(refresh_token)
         if identity is not None:
             self._redis.register_script(self._SESSION_SCRIPT)(
                 keys=self._session_keys(*identity), args=["revoke", self._digest(refresh_token)]
@@ -291,7 +286,7 @@ class RedisAccountSessionGateway(AccountSessionGateway):
 
     @override
     def resolve_refresh_token(self, refresh_token: str) -> str | None:
-        identity = self._parse(refresh_token)
+        identity = parse_refresh_token(refresh_token)
         if identity is None:
             return None
         known = self._redis.register_script(self._SESSION_SCRIPT)(
@@ -301,7 +296,7 @@ class RedisAccountSessionGateway(AccountSessionGateway):
 
     @override
     def rotate(self, *, refresh_token: str, account_id: str, request_id: str | None = None) -> AccountSessionTokens:
-        identity = self._parse(refresh_token)
+        identity = parse_refresh_token(refresh_token)
         if identity is None or identity[0] != account_id:
             raise account_errors.InvalidRefreshTokenError("Invalid refresh token")
         tokens = self._new_tokens(*identity)
@@ -327,8 +322,8 @@ class RedisAccountSessionGateway(AccountSessionGateway):
     def _new_tokens(account_id: str, session_id: str) -> AccountSessionTokens:
         return AccountSessionTokens(
             access_token=issue_console_access_token(account_id, session_id),
-            refresh_token=f"v2.{account_id}.{session_id}.{secrets.token_hex(32)}",
-            csrf_token=generate_csrf_token(account_id),
+            refresh_token=build_refresh_token(account_id, session_id, secrets.token_hex(32)),
+            csrf_token=issue_console_csrf_token(account_id),
         )
 
     @staticmethod
@@ -338,11 +333,6 @@ class RedisAccountSessionGateway(AccountSessionGateway):
     @staticmethod
     def _expires_in() -> int:
         return max(1, int(timedelta(days=dify_config.REFRESH_TOKEN_EXPIRE_DAYS).total_seconds()))
-
-    @classmethod
-    def _parse(cls, refresh_token: str) -> tuple[str, str] | None:
-        match = cls._TOKEN_PATTERN.fullmatch(refresh_token)
-        return (match[1], match[2]) if match else None
 
     @staticmethod
     def _epoch_key(account_id: str) -> str:
