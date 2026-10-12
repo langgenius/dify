@@ -87,6 +87,12 @@ class NoFileUploadedError(BaseHTTPException):
     code = 400
 
 
+class ForbiddenError(BaseHTTPException):
+    error_code = "forbidden"
+    code = 403
+    description = "Forbidden"
+
+
 class NotFoundError(BaseHTTPException):
     error_code = "not_found"
     code = 404
