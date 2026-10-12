@@ -27,6 +27,7 @@ from services.workspace.member_service import (
     WorkspaceOwnerTransferService,
 )
 from services.workspace.provisioning_service import WorkspaceProvisioningService
+from services.workspace.resource_cleanup_service import WorkspaceResourceCleanupService
 from services.workspace.service import WorkspaceQueryService, WorkspaceService
 
 
@@ -40,6 +41,7 @@ class WorkspaceServices:
     owner_transfer: WorkspaceOwnerTransferService
     invitations: WorkspaceInvitationService
     identity: WorkspaceIdentityGateway
+    resource_cleanup: WorkspaceResourceCleanupService
 
 
 def build_workspace_membership_services(
@@ -101,4 +103,5 @@ def build_workspace_services(
             invitations=WorkspaceInvitationGateway(tokens=invitation_tokens, redis=redis),
         ),
         identity=WorkspaceIdentityGateway(workspaces=workspaces),
+        resource_cleanup=WorkspaceResourceCleanupService(),
     )

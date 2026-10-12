@@ -17,7 +17,6 @@ from services.errors.workspace import (
     WorkspaceOwnerNotFoundError,
     WorkspacesLimitExceededError,
 )
-from services.workspace.resource_cleanup_service import WorkspaceResourceCleanupService
 
 
 class WorkspaceCreatePayload(BaseModel):
@@ -157,5 +156,5 @@ class EnterpriseWorkspaceResourceDeletion(Resource):
     @inner_api_ns.doc(description="Schedule App, Dataset and Agent cleanup; retain the workspace and memberships")
     @inner_api_ns.doc(responses={202: "Cleanup accepted", 401: "Invalid API key"})
     def delete(self, workspace_id: UUID):
-        WorkspaceResourceCleanupService.cleanup(str(workspace_id))
+        application_services().workspaces.resource_cleanup.cleanup(str(workspace_id))
         return {"message": "workspace resource cleanup accepted."}, 202

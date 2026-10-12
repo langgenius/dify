@@ -6,25 +6,14 @@ that publishing child tasks means their physical cleanup has completed.
 
 import logging
 
-from sqlalchemy import delete, select
-
 from constants.resource_access_token import ResourceAccessTokenResourceType
 from core.db.session_factory import session_factory
 from extensions.application_services.resource_access_token import build_resource_access_token_cleanup_service
 from libs.datetime_utils import naive_utc_now
-from models import App, Dataset
-from models.agent import (
-    Agent,
-    AgentHomeSnapshot,
-    AgentStatus,
-    AgentWorkingResourceStatus,
-    AgentWorkspace,
-    AgentWorkspaceBinding,
-    WorkflowAgentNodeBinding,
-)
-from models.skill import AgentSkillBinding, AgentSkillBindingSnapshot
+from models.agent import AgentStatus, AgentWorkingResourceStatus
 from repositories.knowledge import dataset_api_key_bindings
 from repositories.knowledge.dataset_read_repository import get_dataset_doc_form
+from repositories.workspace.resource_cleanup_repository import WorkspaceResourceCleanupRepository
 from services.agent.home_snapshot_service import AgentHomeSnapshotService
 from services.agent.workspace_service import AgentWorkspaceService
 from services.app_service import AppService
@@ -41,13 +30,14 @@ class WorkspaceResourceCleanupService:
         """Attempt all resource groups; propagate failures to the caller."""
         failures: list[str] = []
         with session_factory.create_session() as session:
-            app_ids = session.scalars(select(App.id).where(App.tenant_id == workspace_id)).all()
-            dataset_ids = session.scalars(select(Dataset.id).where(Dataset.tenant_id == workspace_id)).all()
+            repository = WorkspaceResourceCleanupRepository(session=session)
+            app_ids = repository.list_app_ids(workspace_id)
+            dataset_ids = repository.list_dataset_ids(workspace_id)
 
         for app_id in app_ids:
             try:
                 with session_factory.create_session() as session:
-                    app = session.scalar(select(App).where(App.tenant_id == workspace_id, App.id == app_id))
+                    app = WorkspaceResourceCleanupRepository(session=session).get_app(workspace_id, app_id)
                     if app is not None:
                         AppService().delete_app(app, session=session, account_id=None)
             except Exception:
@@ -74,7 +64,8 @@ class WorkspaceResourceCleanupService:
         # Inner-API authentication authorizes the whole tenant. No member actor
         # is available here; preserve the normal deletion effects without RBAC.
         with session_factory.create_session() as session:
-            dataset = session.scalar(select(Dataset).where(Dataset.tenant_id == workspace_id, Dataset.id == dataset_id))
+            repository = WorkspaceResourceCleanupRepository(session=session)
+            dataset = repository.get_dataset(workspace_id, dataset_id)
             if dataset is None:
                 return
             # Unlike the member deletion signal, also schedule incomplete or
@@ -95,7 +86,7 @@ class WorkspaceResourceCleanupService:
                 resource_type=ResourceAccessTokenResourceType.KNOWLEDGE,
                 resource_id=dataset.id,
             )
-            session.delete(dataset)
+            repository.delete_dataset(dataset)
             session.commit()
 
     @staticmethod
@@ -103,11 +94,10 @@ class WorkspaceResourceCleanupService:
         # Sweep independently of App records: archived, workflow-only and
         # backing-App-less Agents must also be collected on repeated requests.
         with session_factory.create_session() as session:
-            agents = session.scalars(select(Agent).where(Agent.tenant_id == workspace_id)).all()
-            bindings = session.scalars(
-                select(AgentWorkspaceBinding).where(AgentWorkspaceBinding.tenant_id == workspace_id)
-            ).all()
-            workspaces = session.scalars(select(AgentWorkspace).where(AgentWorkspace.tenant_id == workspace_id)).all()
+            repository = WorkspaceResourceCleanupRepository(session=session)
+            agents = repository.list_agents(workspace_id)
+            bindings = repository.list_workspace_bindings(workspace_id)
+            workspaces = repository.list_workspaces(workspace_id)
             now = naive_utc_now()
             snapshot_ids: list[str] = []
             for agent in agents:
@@ -121,9 +111,7 @@ class WorkspaceResourceCleanupService:
                     )
                 )
             # Include orphan Home snapshots whose Agent row is already gone.
-            snapshots = session.scalars(
-                select(AgentHomeSnapshot).where(AgentHomeSnapshot.tenant_id == workspace_id)
-            ).all()
+            snapshots = repository.list_home_snapshots(workspace_id)
             for snapshot in snapshots:
                 if snapshot.status == AgentWorkingResourceStatus.ACTIVE:
                     snapshot.status = AgentWorkingResourceStatus.RETIRED
@@ -137,11 +125,7 @@ class WorkspaceResourceCleanupService:
             for binding in bindings:
                 if binding.status == AgentWorkingResourceStatus.ACTIVE:
                     AgentWorkspaceService.retire_binding(session=session, tenant_id=workspace_id, binding_id=binding.id)
-            session.execute(delete(WorkflowAgentNodeBinding).where(WorkflowAgentNodeBinding.tenant_id == workspace_id))
-            session.execute(delete(AgentSkillBinding).where(AgentSkillBinding.tenant_id == workspace_id))
-            session.execute(
-                delete(AgentSkillBindingSnapshot).where(AgentSkillBindingSnapshot.tenant_id == workspace_id)
-            )
+            repository.delete_agent_bindings(workspace_id)
             agent_ids = [agent.id for agent in agents]
             backing_app_ids = sorted({agent.backing_app_id for agent in agents if agent.backing_app_id})
             binding_ids = [binding.id for binding in bindings]

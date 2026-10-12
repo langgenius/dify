@@ -3,6 +3,22 @@ from unittest.mock import MagicMock
 from extensions.storage.aws_s3_storage import AwsS3Storage
 
 
+def test_scan_reads_all_pages_and_filters_directory_markers() -> None:
+    storage = AwsS3Storage.__new__(AwsS3Storage)
+    storage.bucket_name = "test-bucket"
+    storage.client = MagicMock()
+    storage.client.get_paginator.return_value.paginate.return_value = [
+        {"Contents": [{"Key": "ops_trace/app/"}, {"Key": "ops_trace/app/one.json"}]},
+        {"Contents": [{"Key": "ops_trace/app/two.json"}]},
+        {},
+    ]
+    assert storage.scan("ops_trace/app/") == ["ops_trace/app/one.json", "ops_trace/app/two.json"]
+    storage.client.get_paginator.assert_called_once_with("list_objects_v2")
+    storage.client.get_paginator.return_value.paginate.assert_called_once_with(
+        Bucket="test-bucket", Prefix="ops_trace/app/"
+    )
+
+
 def test_generate_presigned_url() -> None:
     storage = AwsS3Storage.__new__(AwsS3Storage)
     storage.bucket_name = "test-bucket"
