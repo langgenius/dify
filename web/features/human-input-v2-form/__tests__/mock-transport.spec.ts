@@ -12,11 +12,11 @@ import {
 
 describe('Human Input v2 transports', () => {
   afterEach(() => vi.unstubAllGlobals())
-  it('uses canonical hyphenated endpoint paths without exposing the raw token', () => {
+  it('uses explicit v2 public endpoint paths without exposing the raw token', () => {
     expect(getHumanInputV2Paths('token/with space')).toEqual({
-      form: '/form/human-input/token%2Fwith%20space',
-      accessRequest: '/form/human-input/token%2Fwith%20space/access-request',
-      uploadToken: '/form/human-input/token%2Fwith%20space/upload-token',
+      form: '/form/human-input/v2/public/token%2Fwith%20space',
+      accessRequest: '/form/human-input/v2/public/token%2Fwith%20space/access-request',
+      uploadToken: '/form/human-input/v2/public/token%2Fwith%20space/upload-token',
     })
   })
 
@@ -108,7 +108,9 @@ describe('Human Input v2 transports', () => {
     const definition = await realHumanInputV2FormTransport.getForm('token/with space', {
       signal: controller.signal,
     })
-    expect(fetch.mock.calls[0]![0].url).toContain('/form/human-input/token%2Fwith%20space')
+    expect(fetch.mock.calls[0]![0].url).toContain(
+      '/form/human-input/v2/public/token%2Fwith%20space',
+    )
     expect(fetch.mock.calls[0]![1]).toMatchObject({ credentials: 'omit', cache: 'no-store' })
     expect(definition).toMatchObject({
       expirationTime: 1_900_000_000,
@@ -155,14 +157,18 @@ describe('Human Input v2 transports', () => {
       challenge_token: 'proof',
     }
     await realHumanInputV2FormTransport.submit('form-token', payload)
-    expect(fetch.mock.calls[1]![0].url).toContain('/form/human-input/form-token')
+    expect(fetch.mock.calls[1]![0].url).toContain('/form/human-input/v2/public/form-token')
     expect(await fetch.mock.calls[1]![0].json()).toEqual(payload)
     await expect(realHumanInputV2FormTransport.requestUploadToken('form-token')).resolves.toEqual({
       uploadToken: 'upload-proof',
       expiresAt: 1900000000000,
     })
-    expect(fetch.mock.calls[0]![0].url).toContain('/form/human-input/form-token/access-request')
-    expect(fetch.mock.calls[2]![0].url).toContain('/form/human-input/form-token/upload-token')
+    expect(fetch.mock.calls[0]![0].url).toContain(
+      '/form/human-input/v2/public/form-token/access-request',
+    )
+    expect(fetch.mock.calls[2]![0].url).toContain(
+      '/form/human-input/v2/public/form-token/upload-token',
+    )
     await expect(
       realHumanInputV2FormTransport.uploadLocalFile('form-token', new File(['test'], 'test.txt')),
     ).rejects.toMatchObject({ category: 'unavailable' })

@@ -6,7 +6,7 @@ import { createHumanInputV2Error } from './errors'
 
 export const getHumanInputV2Paths = (token: string) => {
   const encodedToken = encodeURIComponent(token)
-  const formPath = `/form/human-input/${encodedToken}`
+  const formPath = `/form/human-input/v2/public/${encodedToken}`
 
   return {
     form: formPath,

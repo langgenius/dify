@@ -217,6 +217,19 @@ export const zFileTransferMethod = z.enum([
 export const zFileType = z.enum(['audio', 'custom', 'document', 'image', 'video'])
 
 /**
+ * FileInput
+ *
+ * Resolved single-file input constraints.
+ */
+export const zFileInput = z.object({
+  allowed_file_extensions: z.array(z.string()),
+  allowed_file_types: z.array(zFileType),
+  allowed_file_upload_methods: z.array(zFileTransferMethod),
+  output_variable_name: z.string(),
+  type: z.literal('file_input').optional().default('file_input'),
+})
+
+/**
  * FileInputConfig
  */
 export const zFileInputConfig = z.object({
@@ -225,6 +238,20 @@ export const zFileInputConfig = z.object({
   allowed_file_upload_methods: z.array(zFileTransferMethod).optional(),
   output_variable_name: z.string(),
   type: z.literal('file').optional().default('file'),
+})
+
+/**
+ * FileListInput
+ *
+ * Resolved multi-file input constraints and effective number limit.
+ */
+export const zFileListInput = z.object({
+  allowed_file_extensions: z.array(z.string()),
+  allowed_file_types: z.array(zFileType),
+  allowed_file_upload_methods: z.array(zFileTransferMethod),
+  number_limits: z.int(),
+  output_variable_name: z.string(),
+  type: z.literal('file_list_input').optional().default('file_list_input'),
 })
 
 /**
@@ -438,6 +465,16 @@ export const zLoginStatusResponse = z.object({
 })
 
 /**
+ * MarkdownFragment
+ *
+ * One source-ordered Markdown fragment in a resolved form.
+ */
+export const zMarkdownFragment = z.object({
+  text: z.string(),
+  type: z.literal('markdown_fragment').optional().default('markdown_fragment'),
+})
+
+/**
  * MessageFeedbackPayload
  */
 export const zMessageFeedbackPayload = z.object({
@@ -474,6 +511,17 @@ export const zMessageListQuery = z.object({
  */
 export const zMessageMoreLikeThisQuery = z.object({
   response_mode: z.enum(['blocking', 'streaming']),
+})
+
+/**
+ * ParagraphInput
+ *
+ * Resolved multiline text input.
+ */
+export const zParagraphInput = z.object({
+  default_value: z.string().nullable(),
+  output_variable_name: z.string(),
+  type: z.literal('paragraph_input').optional().default('paragraph_input'),
 })
 
 /**
@@ -577,6 +625,26 @@ export const zSavedMessageListQuery = z.object({
   last_id: z.string().nullish(),
   limit: z.int().gte(1).lte(100).optional().default(20),
 })
+
+/**
+ * SelectInput
+ *
+ * Resolved single-choice input with immutable concrete options.
+ */
+export const zSelectInput = z.object({
+  default_value: z.string().nullable(),
+  options: z.array(z.string()),
+  output_variable_name: z.string(),
+  type: z.literal('select_input').optional().default('select_input'),
+})
+
+export const zFormPart = z.discriminatedUnion('type', [
+  zMarkdownFragment.extend({ type: z.literal('markdown_fragment') }),
+  zParagraphInput.extend({ type: z.literal('paragraph_input') }),
+  zSelectInput.extend({ type: z.literal('select_input') }),
+  zFileInput.extend({ type: z.literal('file_input') }),
+  zFileListInput.extend({ type: z.literal('file_list_input') }),
+])
 
 /**
  * SimpleConversation
@@ -1015,6 +1083,29 @@ export const zTextToAudioPayload = z.object({
 })
 
 /**
+ * UserAction
+ *
+ * Resolved action values required for presentation and submission validation.
+ */
+export const zUserAction = z.object({
+  button_style: zButtonStyle,
+  id: z.string(),
+  title: z.string(),
+})
+
+/**
+ * ResolvedForm
+ *
+ * Immutable authoritative presentation snapshot for one v2 form.
+ */
+export const zResolvedForm = z.object({
+  actions: z.array(zUserAction),
+  legacy_form_content: z.string(),
+  parts: z.array(zFormPart),
+  title: z.string(),
+})
+
+/**
  * UserActionConfig
  *
  * User action configuration.
@@ -1199,6 +1290,27 @@ export const zWebAppCustomConfigResponse = z.object({
 })
 
 /**
+ * WebAppHumanInputV2FormDefinitionResponse
+ */
+export const zWebAppHumanInputV2FormDefinitionResponse = z.object({
+  expiration_time: z.int(),
+  resolved_form: zResolvedForm,
+})
+
+/**
+ * WebAppHumanInputV2SubmitPayload
+ */
+export const zWebAppHumanInputV2SubmitPayload = z.object({
+  action: z.string(),
+  inputs: z.record(z.string(), zJsonValue2),
+})
+
+/**
+ * WebAppHumanInputV2SubmitResponse
+ */
+export const zWebAppHumanInputV2SubmitResponse = z.record(z.string(), z.unknown())
+
+/**
  * WebMessageListItem
  */
 export const zWebMessageListItem = z.object({
@@ -1356,6 +1468,11 @@ export const zGeneratedAppResponseWritable = zJsonValue
  * HumanInputFormSubmitResponse
  */
 export const zHumanInputFormSubmitResponseWritable = z.record(z.string(), z.unknown())
+
+/**
+ * WebAppHumanInputV2SubmitResponse
+ */
+export const zWebAppHumanInputV2SubmitResponseWritable = z.record(z.string(), z.unknown())
 
 /**
  * WebMessageListItem
@@ -1530,72 +1647,93 @@ export const zPostForgotPasswordValidityBody = zForgotPasswordCheckPayload
  */
 export const zPostForgotPasswordValidityResponse = zVerificationTokenResponse
 
+export const zGetFormHumanInputV2PublicByFormTokenPath = z.object({
+  form_token: z.string(),
+})
+
+/**
+ * Success
+ */
+export const zGetFormHumanInputV2PublicByFormTokenResponse = zFormDefinitionResponse
+
+export const zPostFormHumanInputV2PublicByFormTokenBody = zHumanInputV2FormSubmitRequest
+
+export const zPostFormHumanInputV2PublicByFormTokenPath = z.object({
+  form_token: z.string(),
+})
+
+/**
+ * Success
+ */
+export const zPostFormHumanInputV2PublicByFormTokenResponse = zFormSubmitResponse
+
+export const zPostFormHumanInputV2PublicByFormTokenAccessRequestPath = z.object({
+  form_token: z.string(),
+})
+
+/**
+ * Success
+ */
+export const zPostFormHumanInputV2PublicByFormTokenAccessRequestResponse =
+  zFormAccessRequestResponse
+
+export const zPostFormHumanInputV2PublicByFormTokenUploadTokenPath = z.object({
+  form_token: z.string(),
+})
+
+/**
+ * Success
+ */
+export const zPostFormHumanInputV2PublicByFormTokenUploadTokenResponse = zFormUploadTokenResponse
+
+export const zGetFormHumanInputV2ByFormTokenPath = z.object({
+  form_token: z.string(),
+})
+
+/**
+ * Form retrieved
+ */
+export const zGetFormHumanInputV2ByFormTokenResponse = zWebAppHumanInputV2FormDefinitionResponse
+
+export const zPostFormHumanInputV2ByFormTokenBody = zWebAppHumanInputV2SubmitPayload
+
+export const zPostFormHumanInputV2ByFormTokenPath = z.object({
+  form_token: z.string(),
+})
+
+/**
+ * Approval accepted
+ */
+export const zPostFormHumanInputV2ByFormTokenResponse = zWebAppHumanInputV2SubmitResponse
+
 export const zGetFormHumanInputByFormTokenPath = z.object({
-  form_token: z.string(),
-})
-
-/**
- * Success
- */
-export const zGetFormHumanInputByFormTokenResponse = zFormDefinitionResponse
-
-export const zPostFormHumanInputByFormTokenBody = zHumanInputV2FormSubmitRequest
-
-export const zPostFormHumanInputByFormTokenPath = z.object({
-  form_token: z.string(),
-})
-
-/**
- * Success
- */
-export const zPostFormHumanInputByFormTokenResponse = zFormSubmitResponse
-
-export const zPostFormHumanInputByFormTokenAccessRequestPath = z.object({
-  form_token: z.string(),
-})
-
-/**
- * Success
- */
-export const zPostFormHumanInputByFormTokenAccessRequestResponse = zFormAccessRequestResponse
-
-export const zPostFormHumanInputByFormTokenUploadTokenPath = z.object({
-  form_token: z.string(),
-})
-
-/**
- * Success
- */
-export const zPostFormHumanInputByFormTokenUploadTokenResponse = zFormUploadTokenResponse
-
-export const zGetFormHumanInputByFormToken2Path = z.object({
   form_token: z.string(),
 })
 
 /**
  * Form retrieved successfully
  */
-export const zGetFormHumanInputByFormToken2Response = zHumanInputFormDefinitionResponse
+export const zGetFormHumanInputByFormTokenResponse = zHumanInputFormDefinitionResponse
 
-export const zPostFormHumanInputByFormToken2Body = zHumanInputFormSubmitPayload
+export const zPostFormHumanInputByFormTokenBody = zHumanInputFormSubmitPayload
 
-export const zPostFormHumanInputByFormToken2Path = z.object({
+export const zPostFormHumanInputByFormTokenPath = z.object({
   form_token: z.string(),
 })
 
 /**
  * Form submitted successfully
  */
-export const zPostFormHumanInputByFormToken2Response = zHumanInputFormSubmitResponse
+export const zPostFormHumanInputByFormTokenResponse = zHumanInputFormSubmitResponse
 
-export const zPostFormHumanInputByFormTokenUploadToken2Path = z.object({
+export const zPostFormHumanInputByFormTokenUploadTokenPath = z.object({
   form_token: z.string(),
 })
 
 /**
  * Upload token issued successfully
  */
-export const zPostFormHumanInputByFormTokenUploadToken2Response = zHumanInputUploadTokenResponse
+export const zPostFormHumanInputByFormTokenUploadTokenResponse = zHumanInputUploadTokenResponse
 
 /**
  * File uploaded successfully

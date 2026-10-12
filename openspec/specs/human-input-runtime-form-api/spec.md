@@ -4,7 +4,7 @@
 TBD - created by archiving change human-input-v2-api-contracts. Update Purpose after archive.
 ## Requirements
 ### Requirement: Public Email form page MUST be isolated from authenticated Contact approval
-系统 MUST 将 Email proof approver 与 Dify 登录 Contact 的审批页面、API namespace、controller、request DTO 和提交鉴权拆开。`/api/form/human-input/<form_token>` MUST 只服务 `External contact`、one-time Email 和 resolved as task-scoped EmailAddress 的 Dynamic Email grant 等 Email proof approver；该 public Email form API MAY 直接基于有效 `form_token` 返回完整 form definition，但读取 MUST NOT 授予 submit authority。`workspace contact` 与 `Platform contact` MUST 使用独立的登录页面，并 MUST 通过 `/console/api/form/human-input/<form_token>` 提交，MUST NOT 通过 public Email endpoint 完成审批。
+系统 MUST 将 Email proof approver 与 Dify 登录 Contact 的审批页面、API namespace、controller、request DTO 和提交鉴权拆开。`/api/form/human-input/v2/public/<form_token>` MUST 只服务 `External contact`、one-time Email 和 resolved as task-scoped EmailAddress 的 Dynamic Email grant 等 Email proof approver；该 public Email form API MAY 直接基于有效 `form_token` 返回完整 form definition，但读取 MUST NOT 授予 submit authority。`workspace contact` 与 `Platform contact` MUST 使用独立的登录页面，并 MUST 通过 `/console/api/form/human-input/<form_token>` 提交，MUST NOT 通过 public Email endpoint 完成审批。
 
 #### Scenario: Dify 登录 Contact 使用独立页面
 - **WHEN** a `workspace contact` or `Platform contact` opens an approval task
@@ -15,15 +15,15 @@ TBD - created by archiving change human-input-v2-api-contracts. Update Purpose a
 - **THEN** the client MUST call `POST /console/api/form/human-input/<form_token>`，the handler MUST validate the Dify session and current Contact-backed approver grant，并 MUST reject `otp_code` or `challenge_token`
 
 #### Scenario: Email approver 读取 public form
-- **WHEN** an `External contact` or one-time email recipient opens `GET /api/form/human-input/<form_token>`
+- **WHEN** an `External contact` or one-time email recipient opens `GET /api/form/human-input/v2/public/<form_token>`
 - **THEN** 系统 MAY 直接返回完整 form definition, but MUST NOT treat that read as submit authorization
 
 #### Scenario: Dynamic Email approver opens the public form
 - **WHEN** one approver grant originated from Dynamic Email resolution
-- **THEN** `GET /api/form/human-input/<form_token>` MUST serve that approver through the public email-proof surface
+- **THEN** `GET /api/form/human-input/v2/public/<form_token>` MUST serve that approver through the public email-proof surface
 
 #### Scenario: Authenticated Contact token 不能用于 public Email page
-- **WHEN** a token or grant issued for a `workspace contact` or `Platform contact` is presented to `/api/form/human-input/<form_token>`
+- **WHEN** a token or grant issued for a `workspace contact` or `Platform contact` is presented to `/api/form/human-input/v2/public/<form_token>`
 - **THEN** the public Email form handler MUST reject it without falling back to Dify session approval logic
 
 #### Scenario: Email proof token 不能用于 authenticated Contact page
@@ -35,29 +35,29 @@ TBD - created by archiving change human-input-v2-api-contracts. Update Purpose a
 - **THEN** the public runtime MUST continue treating that grant as email-proof only and MUST NOT accept Dify session approval as a substitute
 
 ### Requirement: Public Email page MUST support OTP request and submit-time OTP verification
-对于 public Email page 服务的每个 approver，系统 MUST 提供 `access-request` API 用于获取提交使用的 OTP。系统 MUST 在 `POST /api/form/human-input/<form_token>` 时校验同一请求携带的 `otp_code + challenge_token`；public submit MUST NOT 接受 Dify session 作为该 Email grant 的替代 proof，系统 MUST NOT 再要求单独的 `access-confirm` API。
+对于 public Email page 服务的每个 approver，系统 MUST 提供 `access-request` API 用于获取提交使用的 OTP。系统 MUST 在 `POST /api/form/human-input/v2/public/<form_token>` 时校验同一请求携带的 `otp_code + challenge_token`；public submit MUST NOT 接受 Dify session 作为该 Email grant 的替代 proof，系统 MUST NOT 再要求单独的 `access-confirm` API。
 
 #### Scenario: 请求 OTP challenge
-- **WHEN** an email-based approver calls `POST /api/form/human-input/<form_token>/access-request`
+- **WHEN** an email-based approver calls `POST /api/form/human-input/v2/public/<form_token>/access-request`
 - **THEN** 系统 MUST 发送 OTP 到 token 绑定的 email recipient，并返回 `challenge_token`、`resend_after_seconds` 与 `expires_in_seconds`
 
 #### Scenario: 同一请求内完成 OTP 与 submit
-- **WHEN** an email-based approver submits the form payload together with a valid OTP and current Challenge Token in `POST /api/form/human-input/<form_token>`
+- **WHEN** an email-based approver submits the form payload together with a valid OTP and current Challenge Token in `POST /api/form/human-input/v2/public/<form_token>`
 - **THEN** 系统 MUST 允许在同一请求中完成 OTP 验证与 submit，但 MUST 继续执行完整的 task / approver / state 校验
 
 #### Scenario: Dynamic Email approver submits with OTP
-- **WHEN** the same approver submits `POST /api/form/human-input/<form_token>` with a valid `otp_code` and `challenge_token`
+- **WHEN** the same approver submits `POST /api/form/human-input/v2/public/<form_token>` with a valid `otp_code` and `challenge_token`
 - **THEN** the runtime MUST authorize it as an EmailAddress-backed proof path rather than a Contact-authenticated path
 
 #### Scenario: 缺少 OTP 的 email recipient 不能提交
-- **WHEN** an email-based approver submits `POST /api/form/human-input/<form_token>` without a valid `otp_code`
+- **WHEN** an email-based approver submits `POST /api/form/human-input/v2/public/<form_token>` without a valid `otp_code`
 - **THEN** 系统 MUST 拒绝该提交
 
 ### Requirement: Public Email upload token MAY rely on form token, but submit MUST revalidate Email proof
 系统 MAY 继续允许 public Email page 的 `upload-token` 仅凭 `form_token` 工作，以支持“先填写 / 上传，后审批提交”的交互。系统 MUST 在 public `submit` API 中重新校验当前 task 状态、当前 Email grant / contact 状态，以及提交时提供的 OTP Challenge。`form_token` 本身 MUST NOT 单独充当 submit 权限；authenticated Contact page 的 upload and submit flow MUST 由其独立 surface 定义。
 
 #### Scenario: 未验证 OTP 也可以申请 upload token
-- **WHEN** an email-based approver calls `POST /api/form/human-input/<form_token>/upload-token` before completing OTP verification
+- **WHEN** an email-based approver calls `POST /api/form/human-input/v2/public/<form_token>/upload-token` before completing OTP verification
 - **THEN** 系统 MAY 允许该请求，只要 form token 和当前 task 状态仍然有效
 
 #### Scenario: contact email 变更后旧 OTP 失效
@@ -65,7 +65,7 @@ TBD - created by archiving change human-input-v2-api-contracts. Update Purpose a
 - **THEN** 系统 MUST 拒绝继续使用旧 OTP 完成 submit
 
 #### Scenario: task 已完成后再次 submit
-- **WHEN** a second caller submits `POST /api/form/human-input/<form_token>` after the task is already `SUBMITTED`
+- **WHEN** a second caller submits `POST /api/form/human-input/v2/public/<form_token>` after the task is already `SUBMITTED`
 - **THEN** 系统 MUST 返回 task 已完成类错误，而 MUST NOT 覆盖首个成功提交结果
 
 ### Requirement: Runtime approval persistence MUST separate approver grant, submission actor, endpoint, and proof audit
@@ -117,19 +117,19 @@ TBD - created by archiving change human-input-v2-api-contracts. Update Purpose a
 - **THEN** the request MUST contain `user`, `inputs`, and `action`, and MUST reject public-web-only `otp_code` or `challenge_token` fields
 
 ### Requirement: Runtime form contracts MUST keep v1 and v2 paths and submission logic independent
-本期 v1 runtime MUST 保留现有 `form/human_input` 下划线路径、完整 v1 node model、request DTO 与提交行为。v2 runtime MUST 使用 `form/human-input` 连字符路径和独立 controller / DTO / token owner lookup。v1 token MUST 只从 legacy recipient token 记录解析，v2 token MUST 只从 delivery endpoint token hash 解析。两套路径 MUST NOT 互为 alias，也 MUST NOT 接受另一版本的 form token；除 suspension 等不携带版本业务语义的基础设施外，v1 与 v2 提交逻辑 MUST 独立。
+本期 v1 runtime MUST 保留现有 `form/human_input` 下划线路径、完整 v1 node model、request DTO 与提交行为。v2 runtime MUST 使用 `form/human-input` 连字符路径和独立 controller / DTO / token owner lookup。v1 token MUST 只从 legacy recipient token 记录解析，v2 token MUST 只从 delivery endpoint token hash 解析。public v2 API MUST 使用 `form/human-input/v2/public`，并 MUST NOT 保留旧 `form/human-input/<form_token>` public route 的 alias。两套路径 MUST NOT 互为 alias，也 MUST NOT 接受另一版本的 form token；除 suspension 等不携带版本业务语义的基础设施外，v1 与 v2 提交逻辑 MUST 独立。
 
 #### Scenario: v1 runtime path 与 payload 保持不变
 - **WHEN** a legacy client reads or submits a v1 form
 - **THEN** it MUST continue using `/api/form/human_input/...` or `/v1/form/human_input/...` with the legacy non-OTP payload and v1 node model
 
-#### Scenario: public web runtime path 使用 `form/human-input`
+#### Scenario: public web runtime path 使用 `form/human-input/v2/public`
 - **WHEN** the public runtime API paths are reviewed
-- **THEN** Email form retrieval, access, upload, and submit paths MUST all be rooted at `/api/form/human-input/...`，并 MUST NOT 被 authenticated Contact page 复用
+- **THEN** Email form retrieval, access, upload, and submit paths MUST all be rooted at `/api/form/human-input/v2/public/...`，并 MUST NOT 被 authenticated Contact page 复用
 
 #### Scenario: authenticated Contact submit 使用 console namespace
 - **WHEN** the authenticated Contact runtime API paths are reviewed
-- **THEN** Contact submit MUST be rooted at `/console/api/form/human-input/...`，并 MUST NOT share its controller、request DTO or auth guard with `/api/form/human-input/...`
+- **THEN** Contact submit MUST be rooted at `/console/api/form/human-input/...`，并 MUST NOT share its controller、request DTO or auth guard with `/api/form/human-input/v2/public/...`
 
 #### Scenario: service runtime path 使用 `form/human-input`
 - **WHEN** the service runtime API paths are reviewed

@@ -1,7 +1,7 @@
 """Public web Human Input v2 form stubs.
 
-The hyphenated v2 routes are intentionally separate from the legacy underscored
-Human Input form routes. Each runtime path must reject tokens owned by the other
+The versioned public routes are separate from legacy v1 forms and Web App
+passport-authenticated forms. Each runtime path must reject tokens owned by the other
 version when the service implementation is added.
 """
 
@@ -63,7 +63,7 @@ def _raise_stub_not_implemented() -> None:
     abort(HTTPStatus.NOT_IMPLEMENTED, "Human Input v2 form stub endpoint is not implemented yet.")
 
 
-@web_ns.route("/form/human-input/<string:form_token>")
+@web_ns.route("/form/human-input/v2/public/<string:form_token>")
 class HumanInputV2FormApi(Resource):
     """Read or submit a Human Input v2 form without sharing v1 submission logic."""
 
@@ -78,7 +78,7 @@ class HumanInputV2FormApi(Resource):
         _raise_stub_not_implemented()
 
 
-@web_ns.route("/form/human-input/<string:form_token>/upload-token")
+@web_ns.route("/form/human-input/v2/public/<string:form_token>/upload-token")
 class HumanInputV2FormUploadTokenApi(Resource):
     """Issue an upload token for an active Human Input v2 form."""
 
@@ -87,7 +87,7 @@ class HumanInputV2FormUploadTokenApi(Resource):
         _raise_stub_not_implemented()
 
 
-@web_ns.route("/form/human-input/<string:form_token>/access-request")
+@web_ns.route("/form/human-input/v2/public/<string:form_token>/access-request")
 class FormAccessRequestApi(Resource):
     @web_ns.response(200, "Success", web_ns.models[FormAccessRequestResponse.__name__])
     def post(self, form_token: str):

@@ -9,10 +9,12 @@ import {
   zDeleteSavedMessagesByMessageIdResponse,
   zGetConversationsQuery,
   zGetConversationsResponse,
-  zGetFormHumanInputByFormToken2Path,
-  zGetFormHumanInputByFormToken2Response,
   zGetFormHumanInputByFormTokenPath,
   zGetFormHumanInputByFormTokenResponse,
+  zGetFormHumanInputV2ByFormTokenPath,
+  zGetFormHumanInputV2ByFormTokenResponse,
+  zGetFormHumanInputV2PublicByFormTokenPath,
+  zGetFormHumanInputV2PublicByFormTokenResponse,
   zGetLoginStatusQuery,
   zGetLoginStatusResponse,
   zGetMessagesByMessageIdMoreLikeThisPath,
@@ -66,18 +68,21 @@ import {
   zPostForgotPasswordResponse,
   zPostForgotPasswordValidityBody,
   zPostForgotPasswordValidityResponse,
-  zPostFormHumanInputByFormToken2Body,
-  zPostFormHumanInputByFormToken2Path,
-  zPostFormHumanInputByFormToken2Response,
-  zPostFormHumanInputByFormTokenAccessRequestPath,
-  zPostFormHumanInputByFormTokenAccessRequestResponse,
   zPostFormHumanInputByFormTokenBody,
   zPostFormHumanInputByFormTokenPath,
   zPostFormHumanInputByFormTokenResponse,
-  zPostFormHumanInputByFormTokenUploadToken2Path,
-  zPostFormHumanInputByFormTokenUploadToken2Response,
   zPostFormHumanInputByFormTokenUploadTokenPath,
   zPostFormHumanInputByFormTokenUploadTokenResponse,
+  zPostFormHumanInputV2ByFormTokenBody,
+  zPostFormHumanInputV2ByFormTokenPath,
+  zPostFormHumanInputV2ByFormTokenResponse,
+  zPostFormHumanInputV2PublicByFormTokenAccessRequestPath,
+  zPostFormHumanInputV2PublicByFormTokenAccessRequestResponse,
+  zPostFormHumanInputV2PublicByFormTokenBody,
+  zPostFormHumanInputV2PublicByFormTokenPath,
+  zPostFormHumanInputV2PublicByFormTokenResponse,
+  zPostFormHumanInputV2PublicByFormTokenUploadTokenPath,
+  zPostFormHumanInputV2PublicByFormTokenUploadTokenResponse,
   zPostHumanInputFormsFilesResponse,
   zPostLoginBody,
   zPostLoginResponse,
@@ -463,12 +468,12 @@ export const post13 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
-    operationId: 'postFormHumanInputByFormTokenAccessRequest',
-    path: '/form/human-input/{form_token}/access-request',
+    operationId: 'postFormHumanInputV2PublicByFormTokenAccessRequest',
+    path: '/form/human-input/v2/public/{form_token}/access-request',
     tags: ['web'],
   })
-  .input(z.object({ params: zPostFormHumanInputByFormTokenAccessRequestPath }))
-  .output(zPostFormHumanInputByFormTokenAccessRequestResponse)
+  .input(z.object({ params: zPostFormHumanInputV2PublicByFormTokenAccessRequestPath }))
+  .output(zPostFormHumanInputV2PublicByFormTokenAccessRequestResponse)
 
 export const accessRequest = {
   post: post13,
@@ -478,12 +483,99 @@ export const post14 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
-    operationId: 'postFormHumanInputByFormTokenUploadToken',
-    path: '/form/human-input/{form_token}/upload-token',
+    operationId: 'postFormHumanInputV2PublicByFormTokenUploadToken',
+    path: '/form/human-input/v2/public/{form_token}/upload-token',
     tags: ['web'],
   })
-  .input(z.object({ params: zPostFormHumanInputByFormTokenUploadTokenPath }))
-  .output(zPostFormHumanInputByFormTokenUploadTokenResponse)
+  .input(z.object({ params: zPostFormHumanInputV2PublicByFormTokenUploadTokenPath }))
+  .output(zPostFormHumanInputV2PublicByFormTokenUploadTokenResponse)
+
+export const uploadToken = {
+  post: post14,
+}
+
+export const get2 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getFormHumanInputV2PublicByFormToken',
+    path: '/form/human-input/v2/public/{form_token}',
+    tags: ['web'],
+  })
+  .input(z.object({ params: zGetFormHumanInputV2PublicByFormTokenPath }))
+  .output(zGetFormHumanInputV2PublicByFormTokenResponse)
+
+export const post15 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postFormHumanInputV2PublicByFormToken',
+    path: '/form/human-input/v2/public/{form_token}',
+    tags: ['web'],
+  })
+  .input(
+    z.object({
+      body: zPostFormHumanInputV2PublicByFormTokenBody,
+      params: zPostFormHumanInputV2PublicByFormTokenPath,
+    }),
+  )
+  .output(zPostFormHumanInputV2PublicByFormTokenResponse)
+
+export const byFormToken = {
+  get: get2,
+  post: post15,
+  accessRequest,
+  uploadToken,
+}
+
+export const public_ = {
+  byFormToken,
+}
+
+/**
+ * Read a v2 form using the original EndUser's Web App passport.
+ */
+export const get3 = oc
+  .route({
+    description: "Read a v2 form using the original EndUser's Web App passport.",
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getFormHumanInputV2ByFormToken',
+    path: '/form/human-input/v2/{form_token}',
+    tags: ['web'],
+  })
+  .input(z.object({ params: zGetFormHumanInputV2ByFormTokenPath }))
+  .output(zGetFormHumanInputV2ByFormTokenResponse)
+
+/**
+ * Submit a v2 form using the original EndUser's Web App passport.
+ */
+export const post16 = oc
+  .route({
+    description: "Submit a v2 form using the original EndUser's Web App passport.",
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postFormHumanInputV2ByFormToken',
+    path: '/form/human-input/v2/{form_token}',
+    tags: ['web'],
+  })
+  .input(
+    z.object({
+      body: zPostFormHumanInputV2ByFormTokenBody,
+      params: zPostFormHumanInputV2ByFormTokenPath,
+    }),
+  )
+  .output(zPostFormHumanInputV2ByFormTokenResponse)
+
+export const byFormToken2 = {
+  get: get3,
+  post: post16,
+}
+
+export const v2 = {
+  public: public_,
+  byFormToken: byFormToken2,
+}
 
 /**
  * Issue an upload token for a human input form
@@ -491,7 +583,7 @@ export const post14 = oc
  * Issue an upload token for an active human input form
  * POST /api/form/human_input/<form_token>/upload-token
  */
-export const post15 = oc
+export const post17 = oc
   .route({
     description:
       'Issue an upload token for an active human input form\nPOST /api/form/human_input/<form_token>/upload-token',
@@ -502,39 +594,12 @@ export const post15 = oc
     summary: 'Issue an upload token for a human input form',
     tags: ['web'],
   })
-  .input(z.object({ params: zPostFormHumanInputByFormTokenUploadToken2Path }))
-  .output(zPostFormHumanInputByFormTokenUploadToken2Response)
+  .input(z.object({ params: zPostFormHumanInputByFormTokenUploadTokenPath }))
+  .output(zPostFormHumanInputByFormTokenUploadTokenResponse)
 
-export const uploadToken = {
-  post: post15,
+export const uploadToken2 = {
+  post: post17,
 }
-
-export const get2 = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'GET',
-    operationId: 'getFormHumanInputByFormToken',
-    path: '/form/human-input/{form_token}',
-    tags: ['web'],
-  })
-  .input(z.object({ params: zGetFormHumanInputByFormTokenPath }))
-  .output(zGetFormHumanInputByFormTokenResponse)
-
-export const post16 = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'POST',
-    operationId: 'postFormHumanInputByFormToken',
-    path: '/form/human-input/{form_token}',
-    tags: ['web'],
-  })
-  .input(
-    z.object({
-      body: zPostFormHumanInputByFormTokenBody,
-      params: zPostFormHumanInputByFormTokenPath,
-    }),
-  )
-  .output(zPostFormHumanInputByFormTokenResponse)
 
 /**
  * Get human input form definition by token
@@ -542,7 +607,7 @@ export const post16 = oc
  * Get a human input form definition by token
  * GET /api/form/human_input/<form_token>
  */
-export const get3 = oc
+export const get4 = oc
   .route({
     description:
       'Get a human input form definition by token\nGET /api/form/human_input/<form_token>',
@@ -553,8 +618,8 @@ export const get3 = oc
     summary: 'Get human input form definition by token',
     tags: ['web'],
   })
-  .input(z.object({ params: zGetFormHumanInputByFormToken2Path }))
-  .output(zGetFormHumanInputByFormToken2Response)
+  .input(z.object({ params: zGetFormHumanInputByFormTokenPath }))
+  .output(zGetFormHumanInputByFormTokenResponse)
 
 /**
  * Submit human input form by token
@@ -570,7 +635,7 @@ export const get3 = oc
  * "action": "Approve"
  * }
  */
-export const post17 = oc
+export const post18 = oc
   .route({
     description:
       'Submit a human input form by token\nPOST /api/form/human_input/<form_token>\n\nRequest body:\n{\n    "inputs": {\n        "content": "User input content"\n    },\n    "action": "Approve"\n}',
@@ -583,21 +648,21 @@ export const post17 = oc
   })
   .input(
     z.object({
-      body: zPostFormHumanInputByFormToken2Body,
-      params: zPostFormHumanInputByFormToken2Path,
+      body: zPostFormHumanInputByFormTokenBody,
+      params: zPostFormHumanInputByFormTokenPath,
     }),
   )
-  .output(zPostFormHumanInputByFormToken2Response)
+  .output(zPostFormHumanInputByFormTokenResponse)
 
-export const byFormToken = {
-  get: get3,
-  post: post17,
-  accessRequest,
-  uploadToken,
+export const byFormToken3 = {
+  get: get4,
+  post: post18,
+  uploadToken: uploadToken2,
 }
 
 export const humanInput = {
-  byFormToken,
+  v2,
+  byFormToken: byFormToken3,
 }
 
 export const form = {
@@ -607,7 +672,7 @@ export const form = {
 /**
  * Upload one local file or remote URL file for a HITL human input form
  */
-export const post18 = oc
+export const post19 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -620,7 +685,7 @@ export const post18 = oc
   .output(zPostHumanInputFormsFilesResponse)
 
 export const files2 = {
-  post: post18,
+  post: post19,
 }
 
 export const humanInputForms = {
@@ -630,7 +695,7 @@ export const humanInputForms = {
 /**
  * Check login status
  */
-export const get4 = oc
+export const get5 = oc
   .route({
     description: 'Check login status',
     inputStructure: 'detailed',
@@ -643,7 +708,7 @@ export const get4 = oc
   .output(zGetLoginStatusResponse)
 
 export const status = {
-  get: get4,
+  get: get5,
 }
 
 /**
@@ -651,7 +716,7 @@ export const status = {
  *
  * Authenticate user for web application access
  */
-export const post19 = oc
+export const post20 = oc
   .route({
     description: 'Authenticate user for web application access',
     inputStructure: 'detailed',
@@ -665,14 +730,14 @@ export const post19 = oc
   .output(zPostLoginResponse)
 
 export const login = {
-  post: post19,
+  post: post20,
   status,
 }
 
 /**
  * Logout user from web application
  */
-export const post20 = oc
+export const post21 = oc
   .route({
     description: 'Logout user from web application',
     inputStructure: 'detailed',
@@ -684,13 +749,13 @@ export const post20 = oc
   .output(zPostLogoutResponse)
 
 export const logout = {
-  post: post20,
+  post: post21,
 }
 
 /**
  * Submit feedback (like/dislike) for a specific message.
  */
-export const post21 = oc
+export const post22 = oc
   .route({
     description: 'Submit feedback (like/dislike) for a specific message.',
     inputStructure: 'detailed',
@@ -709,13 +774,13 @@ export const post21 = oc
   .output(zPostMessagesByMessageIdFeedbacksResponse)
 
 export const feedbacks = {
-  post: post21,
+  post: post22,
 }
 
 /**
  * Generate a new completion similar to an existing message (completion apps only).
  */
-export const get5 = oc
+export const get6 = oc
   .route({
     description: 'Generate a new completion similar to an existing message (completion apps only).',
     inputStructure: 'detailed',
@@ -733,13 +798,13 @@ export const get5 = oc
   .output(zGetMessagesByMessageIdMoreLikeThisResponse)
 
 export const moreLikeThis = {
-  get: get5,
+  get: get6,
 }
 
 /**
  * Get suggested follow-up questions after a message (chat apps only).
  */
-export const get6 = oc
+export const get7 = oc
   .route({
     description: 'Get suggested follow-up questions after a message (chat apps only).',
     inputStructure: 'detailed',
@@ -752,7 +817,7 @@ export const get6 = oc
   .output(zGetMessagesByMessageIdSuggestedQuestionsResponse)
 
 export const suggestedQuestions = {
-  get: get6,
+  get: get7,
 }
 
 export const byMessageId = {
@@ -764,7 +829,7 @@ export const byMessageId = {
 /**
  * Retrieve paginated list of messages from a conversation in a chat application.
  */
-export const get7 = oc
+export const get8 = oc
   .route({
     description: 'Retrieve paginated list of messages from a conversation in a chat application.',
     inputStructure: 'detailed',
@@ -777,7 +842,7 @@ export const get7 = oc
   .output(zGetMessagesResponse)
 
 export const messages = {
-  get: get7,
+  get: get8,
   byMessageId,
 }
 
@@ -786,7 +851,7 @@ export const messages = {
  *
  * Retrieve the metadata for a specific app.
  */
-export const get8 = oc
+export const get9 = oc
   .route({
     description: 'Retrieve the metadata for a specific app.',
     inputStructure: 'detailed',
@@ -799,7 +864,7 @@ export const get8 = oc
   .output(zGetMetaResponse)
 
 export const meta = {
-  get: get8,
+  get: get9,
 }
 
 /**
@@ -807,7 +872,7 @@ export const meta = {
  *
  * Retrieve the parameters for a specific app.
  */
-export const get9 = oc
+export const get10 = oc
   .route({
     description: 'Retrieve the parameters for a specific app.',
     inputStructure: 'detailed',
@@ -820,13 +885,13 @@ export const get9 = oc
   .output(zGetParametersResponse)
 
 export const parameters = {
-  get: get9,
+  get: get10,
 }
 
 /**
  * Get authentication passport for web application access
  */
-export const get10 = oc
+export const get11 = oc
   .route({
     description: 'Get authentication passport for web application access',
     inputStructure: 'detailed',
@@ -839,7 +904,7 @@ export const get10 = oc
   .output(zGetPassportResponse)
 
 export const passport = {
-  get: get10,
+  get: get11,
 }
 
 /**
@@ -870,7 +935,7 @@ export const passport = {
  * FileTooLargeError: File exceeds size limit
  * UnsupportedFileTypeError: File type not supported
  */
-export const post22 = oc
+export const post23 = oc
   .route({
     description:
       'Upload a file from a remote URL\nDownloads a file from the provided remote URL and uploads it\nto the platform storage for use in web applications.\n\nArgs:\n    app_model: The associated application model\n    end_user: The end user making the request\n\nJSON Parameters:\n    url: The remote URL to download the file from (required)\n\nReturns:\n    dict: File information including ID, signed URL, and metadata\n    int: HTTP status code 201 for success\n\nRaises:\n    RemoteFileInvalidUrlError: Remote file URL is invalid\n    RemoteFileUrlBlockedError: Remote file URL is blocked\n    RemoteFileNotFoundError: Remote file does not exist\n    RemoteFileAccessDeniedError: Remote file requires authorization\n    RemoteFileUnavailableError: Remote file is unavailable\n    RemoteFileInvalidResponseError: Remote file response is invalid\n    FileTooLargeError: File exceeds size limit\n    UnsupportedFileTypeError: File type not supported',
@@ -886,7 +951,7 @@ export const post22 = oc
   .output(zPostRemoteFilesUploadResponse)
 
 export const upload2 = {
-  post: post22,
+  post: post23,
 }
 
 /**
@@ -907,7 +972,7 @@ export const upload2 = {
  * Raises:
  * HTTPException: If the remote file cannot be accessed
  */
-export const get11 = oc
+export const get12 = oc
   .route({
     description:
       'Get information about a remote file\nRetrieves basic information about a file located at a remote URL,\nincluding content type and content length.\n\nArgs:\n    app_model: The associated application model\n    end_user: The end user making the request\n    url: URL-encoded path to the remote file\n\nReturns:\n    dict: Remote file information including type and length\n\nRaises:\n    HTTPException: If the remote file cannot be accessed',
@@ -922,7 +987,7 @@ export const get11 = oc
   .output(zGetRemoteFilesByUrlResponse)
 
 export const byUrl = {
-  get: get11,
+  get: get12,
 }
 
 export const remoteFiles = {
@@ -953,7 +1018,7 @@ export const byMessageId2 = {
 /**
  * Retrieve paginated list of saved messages for a completion application.
  */
-export const get12 = oc
+export const get13 = oc
   .route({
     description: 'Retrieve paginated list of saved messages for a completion application.',
     inputStructure: 'detailed',
@@ -968,7 +1033,7 @@ export const get12 = oc
 /**
  * Save a specific message for later reference.
  */
-export const post23 = oc
+export const post24 = oc
   .route({
     description: 'Save a specific message for later reference.',
     inputStructure: 'detailed',
@@ -981,8 +1046,8 @@ export const post23 = oc
   .output(zPostSavedMessagesResponse)
 
 export const savedMessages = {
-  get: get12,
-  post: post23,
+  get: get13,
+  post: post24,
   byMessageId: byMessageId2,
 }
 
@@ -991,7 +1056,7 @@ export const savedMessages = {
  *
  * Retrieve app site information and configuration.
  */
-export const get13 = oc
+export const get14 = oc
   .route({
     description: 'Retrieve app site information and configuration.',
     inputStructure: 'detailed',
@@ -1004,7 +1069,7 @@ export const get13 = oc
   .output(zGetSiteResponse)
 
 export const site = {
-  get: get13,
+  get: get14,
 }
 
 /**
@@ -1016,7 +1081,7 @@ export const site = {
  *
  * Authentication configuration must be available before the authentication flow can be selected.
  */
-export const get14 = oc
+export const get15 = oc
   .route({
     description:
       'Get the non-sensitive bootstrap snapshot exposed before Console or Web authentication. This is not a general feature registry.\nThis endpoint is akin to the `SystemFeatureApi` endpoint in api/controllers/console/feature.py,\nexcept it is intended for use by the web app, instead of the console dashboard.\n\nAuthentication configuration must be available before the authentication flow can be selected.',
@@ -1030,7 +1095,7 @@ export const get14 = oc
   .output(zGetSystemFeaturesResponse)
 
 export const systemFeatures = {
-  get: get14,
+  get: get15,
 }
 
 /**
@@ -1038,7 +1103,7 @@ export const systemFeatures = {
  *
  * Convert text to audio using text-to-speech service.
  */
-export const post24 = oc
+export const post25 = oc
   .route({
     description: 'Convert text to audio using text-to-speech service.',
     inputStructure: 'detailed',
@@ -1052,13 +1117,13 @@ export const post24 = oc
   .output(zPostTextToAudioResponse)
 
 export const textToAudio = {
-  post: post24,
+  post: post25,
 }
 
 /**
  * Retrieve the access mode for a web application (public or restricted).
  */
-export const get15 = oc
+export const get16 = oc
   .route({
     description: 'Retrieve the access mode for a web application (public or restricted).',
     inputStructure: 'detailed',
@@ -1071,13 +1136,13 @@ export const get15 = oc
   .output(zGetWebappAccessModeResponse)
 
 export const accessMode = {
-  get: get15,
+  get: get16,
 }
 
 /**
  * Check if user has permission to access a web application.
  */
-export const get16 = oc
+export const get17 = oc
   .route({
     description: 'Check if user has permission to access a web application.',
     inputStructure: 'detailed',
@@ -1090,7 +1155,7 @@ export const get16 = oc
   .output(zGetWebappPermissionResponse)
 
 export const permission = {
-  get: get16,
+  get: get17,
 }
 
 export const webapp = {
@@ -1105,7 +1170,7 @@ export const webapp = {
  *
  * Returns Server-Sent Events stream.
  */
-export const get17 = oc
+export const get18 = oc
   .route({
     description: 'GET /api/workflow/<task_id>/events\n\nReturns Server-Sent Events stream.',
     inputStructure: 'detailed',
@@ -1119,7 +1184,7 @@ export const get17 = oc
   .output(zGetWorkflowByTaskIdEventsResponse)
 
 export const events = {
-  get: get17,
+  get: get18,
 }
 
 export const byTaskId3 = {
@@ -1135,7 +1200,7 @@ export const workflow = {
  *
  * Execute a workflow with provided inputs and files.
  */
-export const post25 = oc
+export const post26 = oc
   .route({
     description: 'Execute a workflow with provided inputs and files.',
     inputStructure: 'detailed',
@@ -1149,7 +1214,7 @@ export const post25 = oc
   .output(zPostWorkflowsRunResponse)
 
 export const run = {
-  post: post25,
+  post: post26,
 }
 
 /**
@@ -1157,7 +1222,7 @@ export const run = {
  *
  * Stop a running workflow task.
  */
-export const post26 = oc
+export const post27 = oc
   .route({
     description: 'Stop a running workflow task.',
     inputStructure: 'detailed',
@@ -1171,7 +1236,7 @@ export const post26 = oc
   .output(zPostWorkflowsTasksByTaskIdStopResponse)
 
 export const stop3 = {
-  post: post26,
+  post: post27,
 }
 
 export const byTaskId4 = {

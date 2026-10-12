@@ -14,7 +14,7 @@ def test_access_returns_challenge_without_changing_public_contract(app: Flask, m
         challenge_token="opaque-challenge", expires_in_seconds=600, resend_after_seconds=60
     )
     monkeypatch.setattr(controller, "build_email_otp_service", lambda: service, raising=False)
-    with app.test_request_context("/api/form/human-input/form-token/access-request", method="POST"):
+    with app.test_request_context("/api/form/human-input/v2/public/form-token/access-request", method="POST"):
         response = controller.FormAccessRequestApi().post("form-token")
     assert response == {
         "challenge_token": "opaque-challenge",
@@ -30,7 +30,7 @@ def test_access_rate_limit_preserves_error_code_and_retry_after(app: Flask, monk
     service = Mock()
     service.request_access.side_effect = EmailOtpError(OtpFailure.RATE_LIMIT, 45)
     monkeypatch.setattr(controller, "build_email_otp_service", lambda: service)
-    with app.test_request_context("/api/form/human-input/form-token/access-request", method="POST"):
+    with app.test_request_context("/api/form/human-input/v2/public/form-token/access-request", method="POST"):
         with pytest.raises(BaseHTTPException) as error:
             controller.FormAccessRequestApi().post("form-token")
     assert error.value.code == 429

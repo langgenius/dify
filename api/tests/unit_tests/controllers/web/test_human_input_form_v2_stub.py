@@ -6,42 +6,37 @@ import pytest
 from flask import Flask
 from werkzeug.exceptions import NotImplemented
 
-from controllers.web import human_input_form as human_input_form_v1
 from controllers.web import human_input_form_access_request as human_input_form_v2
+from libs.external_api import ExternalApi
 
 
-def _registered_urls(module) -> set[str]:
-    return {url for _resource, resource_urls, _route_doc, _kwargs in module.web_ns.resources for url in resource_urls}
-
-
-def test_v1_and_v2_public_form_routes_are_distinct() -> None:
-    urls = _registered_urls(human_input_form_v2)
-    v2_form_api = getattr(human_input_form_v2, "HumanInputV2FormApi", None)
-
-    assert "/form/human_input/<string:form_token>" in urls
-    assert "/form/human_input/<string:form_token>/upload-token" in urls
-    assert "/form/human-input/<string:form_token>" in urls
-    assert "/form/human-input/<string:form_token>/access-request" in urls
-    assert "/form/human-input/<string:form_token>/upload-token" in urls
-
-    assert v2_form_api is not None
-    assert human_input_form_v1.HumanInputFormApi is not v2_form_api
+@pytest.mark.parametrize(
+    ("method", "suffix", "json_body"),
+    [("GET", "", None), ("POST", "", {"inputs": {}, "action": "approve"}), ("POST", "/upload-token", None)],
+)
+def test_v2_public_form_uses_explicit_public_path(app: Flask, method, suffix, json_body) -> None:
+    ExternalApi(app).add_namespace(human_input_form_v2.web_ns)
+    client = app.test_client()
+    response = client.open(f"/form/human-input/v2/public/token{suffix}", method=method, json=json_body)
+    assert response.status_code == 501
+    old_route = client.open(f"/form/human-input/token{suffix}", method=method, json=json_body)
+    assert old_route.status_code == 404
 
 
 @pytest.mark.parametrize(
     ("resource_name", "method_name", "path", "json_body"),
     [
-        ("HumanInputV2FormApi", "get", "/api/form/human-input/token", None),
+        ("HumanInputV2FormApi", "get", "/api/form/human-input/v2/public/token", None),
         (
             "HumanInputV2FormApi",
             "post",
-            "/api/form/human-input/token",
+            "/api/form/human-input/v2/public/token",
             {"inputs": {}, "action": "approve"},
         ),
         (
             "HumanInputV2FormUploadTokenApi",
             "post",
-            "/api/form/human-input/token/upload-token",
+            "/api/form/human-input/v2/public/token/upload-token",
             None,
         ),
     ],

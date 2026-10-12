@@ -344,6 +344,110 @@ Verify password reset token validity
 | 400 | Bad request - invalid token format |  |
 | 401 | Invalid or expired token |  |
 
+### [GET] /form/human-input/v2/public/{form_token}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| form_token | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [FormDefinitionResponse](#formdefinitionresponse)<br> |
+
+### [POST] /form/human-input/v2/public/{form_token}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| form_token | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [HumanInputV2FormSubmitRequest](#humaninputv2formsubmitrequest)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [FormSubmitResponse](#formsubmitresponse)<br> |
+
+### [POST] /form/human-input/v2/public/{form_token}/access-request
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| form_token | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [FormAccessRequestResponse](#formaccessrequestresponse)<br> |
+
+### [POST] /form/human-input/v2/public/{form_token}/upload-token
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| form_token | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [FormUploadTokenResponse](#formuploadtokenresponse)<br> |
+
+### [GET] /form/human-input/v2/{form_token}
+Read a v2 form using the original EndUser's Web App passport.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| form_token | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Form retrieved | **application/json**: [WebAppHumanInputV2FormDefinitionResponse](#webapphumaninputv2formdefinitionresponse)<br> |
+| 401 | Invalid passport |  |
+| 404 | Form not found |  |
+| 409 | Already submitted |  |
+| 410 | Expired |  |
+
+### [POST] /form/human-input/v2/{form_token}
+Submit a v2 form using the original EndUser's Web App passport.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| form_token | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [WebAppHumanInputV2SubmitPayload](#webapphumaninputv2submitpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Approval accepted | **application/json**: [WebAppHumanInputV2SubmitResponse](#webapphumaninputv2submitresponse)<br> |
+| 400 | Invalid inputs |  |
+| 401 | Invalid passport |  |
+| 404 | Form not found |  |
+| 409 | Already submitted or workflow not active |  |
+| 410 | Expired |  |
+| 422 | Invalid request body |  |
+
 ### [GET] /form/human_input/{form_token}
 **Get human input form definition by token**
 
@@ -1101,6 +1205,18 @@ Enum representing the deployment edition of the platform.
 | ---- | ---- | ----------- | -------- |
 | ExecutionContentType | string |  |  |
 
+#### FileInput
+
+Resolved single-file input constraints.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allowed_file_extensions | [ string ] |  | Yes |
+| allowed_file_types | [ [FileType](#filetype) ] |  | Yes |
+| allowed_file_upload_methods | [ [FileTransferMethod](#filetransfermethod) ] |  | Yes |
+| output_variable_name | string |  | Yes |
+| type | string |  | No |
+
 #### FileInputConfig
 
 | Name | Type | Description | Required |
@@ -1108,6 +1224,19 @@ Enum representing the deployment edition of the platform.
 | allowed_file_extensions | [ string ] |  | No |
 | allowed_file_types | [ [FileType](#filetype) ] |  | No |
 | allowed_file_upload_methods | [ [FileTransferMethod](#filetransfermethod) ] |  | No |
+| output_variable_name | string |  | Yes |
+| type | string |  | No |
+
+#### FileListInput
+
+Resolved multi-file input constraints and effective number limit.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allowed_file_extensions | [ string ] |  | Yes |
+| allowed_file_types | [ [FileType](#filetype) ] |  | Yes |
+| allowed_file_upload_methods | [ [FileTransferMethod](#filetransfermethod) ] |  | Yes |
+| number_limits | integer |  | Yes |
 | output_variable_name | string |  | Yes |
 | type | string |  | No |
 
@@ -1190,11 +1319,55 @@ Enum representing the deployment edition of the platform.
 | email | string |  | Yes |
 | language | string |  | No |
 
+#### FormAccessRequestResponse
+
+Response body returned after creating one OTP challenge.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| challenge_token | string | The token used to complete the OTP challenge. | Yes |
+| expires_in_seconds | integer | Seconds until the current OTP challenge expires. | Yes |
+| resend_after_seconds | integer | Seconds until another OTP challenge may be requested. | Yes |
+
+#### FormDefinitionResponse
+
+Response body containing a resolved human-input form definition.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expiration_time | integer | Unix timestamp when the current form expires. | Yes |
+| form_content | string | Rendered form body shown to the approver. | No |
+| inputs | [ [FormInputConfig](#forminputconfig) ] | Resolved form input definitions. | No |
+| resolved_default_values | object | Default values after variable resolution and stringification. | No |
+| user_actions | [ [UserActionConfig](#useractionconfig) ] | Action buttons that can complete the form. | No |
+
 #### FormInputConfig
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | FormInputConfig | [ParagraphInputConfig](#paragraphinputconfig)<br>[SelectInputConfig](#selectinputconfig)<br>[FileInputConfig](#fileinputconfig)<br>[FileListInputConfig](#filelistinputconfig) |  |  |
+
+#### FormPart
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| FormPart | [MarkdownFragment](#markdownfragment)<br>[ParagraphInput](#paragraphinput)<br>[SelectInput](#selectinput)<br>[FileInput](#fileinput)<br>[FileListInput](#filelistinput) |  |  |
+
+#### FormSubmitResponse
+
+Empty response body returned after a Human Input v2 form submission.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+
+#### FormUploadTokenResponse
+
+Response body returned when issuing a Human Input v2 upload token.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expires_at | integer |  | Yes |
+| upload_token | string |  | Yes |
 
 #### GeneratedAppResponse
 
@@ -1259,6 +1432,8 @@ Parsed multipart form fields for HITL uploads.
 
 #### HumanInputFormSubmitPayload
 
+Legacy Human Input v1 submit payload shared by existing runtime surfaces.
+
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | action | string | ID of the action button the recipient selected. Must match one of the `id` values from the form's `user_actions` list. | Yes |
@@ -1275,6 +1450,17 @@ Parsed multipart form fields for HITL uploads.
 | ---- | ---- | ----------- | -------- |
 | expires_at | integer |  | Yes |
 | upload_token | string |  | Yes |
+
+#### HumanInputV2FormSubmitRequest
+
+Public Human Input v2 submit payload, independent from the v1 form contract.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| action | string | Identifier of the selected Human Input v2 action. | Yes |
+| challenge_token | string | OTP challenge token returned by the Human Input v2 access-request endpoint. | No |
+| inputs | object | Submitted form values keyed by output variable name. | Yes |
+| otp_code | string | OTP code required when the current Human Input v2 approver uses email proof. | No |
 
 #### JSONValue
 
@@ -1327,6 +1513,15 @@ Parsed multipart form fields for HITL uploads.
 | app_logged_in | boolean |  | Yes |
 | logged_in | boolean |  | Yes |
 
+#### MarkdownFragment
+
+One source-ordered Markdown fragment in a resolved form.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| text | string |  | Yes |
+| type | string |  | No |
+
 #### MessageFeedbackPayload
 
 | Name | Type | Description | Required |
@@ -1361,6 +1556,16 @@ Parsed multipart form fields for HITL uploads.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | response_mode | string, <br>**Available values:** "blocking", "streaming" | Response mode<br>*Enum:* `"blocking"`, `"streaming"` | Yes |
+
+#### ParagraphInput
+
+Resolved multiline text input.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| default_value | string |  | Yes |
+| output_variable_name | string |  | Yes |
+| type | string |  | No |
 
 #### ParagraphInputConfig
 
@@ -1426,6 +1631,17 @@ Form input definition.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | url | string (uri) | Remote file URL | Yes |
+
+#### ResolvedForm
+
+Immutable authoritative presentation snapshot for one v2 form.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| actions | [ [UserAction](#useraction) ] |  | Yes |
+| legacy_form_content | string |  | Yes |
+| parts | [ [FormPart](#formpart) ] |  | Yes |
+| title | string |  | Yes |
 
 #### ResultResponse
 
@@ -1498,6 +1714,17 @@ Form input definition.
 | ---- | ---- | ----------- | -------- |
 | last_id | string |  | No |
 | limit | integer, <br>**Default:** 20 |  | No |
+
+#### SelectInput
+
+Resolved single-choice input with immutable concrete options.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| default_value | string |  | Yes |
+| options | [ string ] |  | Yes |
+| output_variable_name | string |  | Yes |
+| type | string |  | No |
 
 #### SelectInputConfig
 
@@ -1610,6 +1837,16 @@ Non-sensitive bootstrap snapshot exposed before Console or Web authentication.
 | text | string | Speech content to convert. | No |
 | voice | string | Voice to use for text-to-speech. Available voices depend on the TTS provider configured for this app. Omit to use the app's configured voice when available; that value is exposed by [Get App Parameters](/api-reference/applications/get-app-parameters) as `text_to_speech.voice`. | No |
 
+#### UserAction
+
+Resolved action values required for presentation and submission validation.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| button_style | [ButtonStyle](#buttonstyle) |  | Yes |
+| id | string |  | Yes |
+| title | string |  | Yes |
+
 #### UserActionConfig
 
 User action configuration.
@@ -1660,6 +1897,25 @@ in form definition, or a variable while the workflow is running.
 | ---- | ---- | ----------- | -------- |
 | remove_webapp_brand | boolean |  | Yes |
 | replace_webapp_logo | string |  | No |
+
+#### WebAppHumanInputV2FormDefinitionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expiration_time | integer |  | Yes |
+| resolved_form | [ResolvedForm](#resolvedform) |  | Yes |
+
+#### WebAppHumanInputV2SubmitPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| action | string |  | Yes |
+| inputs | object |  | Yes |
+
+#### WebAppHumanInputV2SubmitResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
 
 #### WebAppSiteResponse
 
