@@ -20,6 +20,7 @@ on:
       - '.github/workflows/builder-safe-execution-tests.yml'
       # Confirmed Tool owners: controllers, Tool/OAuth/plugin, config, credentials, worker and sweeper.
       - 'api/controllers/console/dify_builder*.py'
+      - 'api/controllers/console/wraps.py'
       - 'api/core/tools/**'
       - 'api/core/plugin/**'
       - 'api/core/helper/credential_utils.py'
@@ -138,6 +139,15 @@ jobs:
                   "test_held_lease_replay_refuses_another_actor_and_a_changed_scope": 1,
                   "test_dispatch_coordinator_metadata_read_runs_outside_sql": 1,
                   "test_stale_recovery_sweep_never_settles_a_fresh_reservation": 1,
+                  "test_dispatched_recovery_survives_a_paused_old_sweep": 1,
+                  "test_non_oauth_prepare_has_no_grant_or_sensitive_effect": 2,
+                  "test_non_oauth_change_after_reservation_is_refused_before_claim": 2,
+                  "test_legacy_non_oauth_native_selection_refuses_before_sensitive_effects": 2,
+                  "test_authenticated_request_wrappers_reserve_replay_and_refuse_outside_sql": 2,
+                  "test_authenticated_enabled_rbac_denial_has_no_reservation": 2,
+                  "test_actual_authentication_refusal_precedes_real_call_work": 2,
+                  "test_authenticated_enabled_rbac_maintainer_bypass_keeps_bounded_sql": 1,
+                  "test_authenticated_enabled_rbac_bound_agent_app_is_not_plain_app": 2,
               },
           }
 
