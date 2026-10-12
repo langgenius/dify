@@ -1,15 +1,16 @@
 'use client'
 
 import { Button as BaseButton } from '@base-ui/react/button'
-import { mergeProps } from '@base-ui/react/merge-props'
-import { useRender } from '@base-ui/react/use-render'
-import { useMergedRefs } from '@base-ui/utils/useMergedRefs'
+import { useIsoLayoutEffect } from '@base-ui/utils/useIsoLayoutEffect'
 import * as React from 'react'
 import { cn } from '../cn'
-import { resolveClassName } from '../internals/resolve-class-name'
-import { useIsoLayoutEffect } from '../internals/use-iso-layout-effect'
+import { focusRingClassName } from '../internal/focus'
+import { resolveClassName } from '../internal/resolve-class-name'
+import { mergeProps } from '../merge-props'
 import { NumberField, NumberFieldGroup, NumberFieldInput } from '../number-field'
 import { SegmentedControl, SegmentedControlItem } from '../segmented-control'
+import { useMergedRefs } from '../use-merged-refs'
+import { useRender } from '../use-render'
 
 type PageItem = number | 'ellipsis-start' | 'ellipsis-end'
 
@@ -218,9 +219,9 @@ type PaginationNextProps = Omit<BaseButton.Props, 'children'> & {
 }
 
 const paginationArrowButtonClassName = [
-  'inline-flex size-7 shrink-0 touch-manipulation items-center justify-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg text-components-button-secondary-text shadow-xs outline-hidden backdrop-blur-[10px] transition-[background-color,border-color,color,box-shadow]',
+  'inline-flex size-7 shrink-0 touch-manipulation items-center justify-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg text-components-button-secondary-text shadow-xs backdrop-blur-[10px] transition-[background-color,border-color,color,box-shadow]',
   'hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover',
-  'focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+  focusRingClassName,
   'disabled:cursor-not-allowed disabled:border-components-button-secondary-border-disabled disabled:bg-components-button-secondary-bg-disabled disabled:text-components-button-secondary-text-disabled disabled:shadow-none',
   'motion-reduce:transition-none',
 ]
@@ -390,7 +391,8 @@ function PaginationPageJump({
       }
       className={(state) =>
         cn(
-          'inline-flex h-7 touch-manipulation items-center justify-center gap-0.5 rounded-lg px-2 py-1.5 system-xs-medium text-text-secondary tabular-nums outline-hidden transition-colors hover:cursor-text hover:bg-state-base-hover-alt focus-visible:ring-2 focus-visible:ring-state-accent-solid motion-reduce:transition-none',
+          'inline-flex h-7 touch-manipulation items-center justify-center gap-0.5 rounded-lg px-2 py-1.5 system-xs-medium text-text-secondary tabular-nums transition-colors hover:cursor-text hover:bg-state-base-hover-alt motion-reduce:transition-none',
+          focusRingClassName,
           resolveClassName(className, state),
         )
       }
@@ -459,7 +461,8 @@ function PaginationPage({
       aria-label={ariaLabel ?? (current ? `Page ${page}, current page` : `Go to page ${page}`)}
       className={(state) =>
         cn(
-          'inline-flex h-8 min-w-8 touch-manipulation items-center justify-center rounded-lg px-1 py-2 system-sm-medium text-text-tertiary tabular-nums outline-hidden hover:bg-components-button-ghost-bg-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+          'inline-flex h-8 min-w-8 touch-manipulation items-center justify-center rounded-lg px-1 py-2 system-sm-medium text-text-tertiary tabular-nums hover:bg-components-button-ghost-bg-hover hover:text-text-secondary',
+          focusRingClassName,
           current &&
             'bg-components-button-tertiary-bg text-components-button-tertiary-text hover:bg-components-button-ghost-bg-hover',
           resolveClassName(className, state),

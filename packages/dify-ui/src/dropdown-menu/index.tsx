@@ -2,25 +2,27 @@
 
 import type * as React from 'react'
 import type { InputGroupProps } from '../input-group'
-import type { MenuItemVariant } from '../overlay-shared'
-import type { Placement } from '../placement'
+import type { MenuItemVariant } from '../internal/menu'
+import type { Placement } from '../internal/placement'
 import { Menu } from '@base-ui/react/menu'
 import { cn } from '../cn'
-import { textControlGroupInputClassName } from '../form-control-shared'
 import { InputGroup } from '../input-group'
-import { resolveClassName } from '../internals/resolve-class-name'
+import { focusRingClassName } from '../internal/focus'
+import { textControlGroupInputClassName } from '../internal/form-control'
+import {
+  menuItemClassName,
+  menuItemDestructiveClassName,
+  menuPopupBaseClassName,
+  menuPopupSurfaceClassName,
+} from '../internal/menu'
 import {
   floatingGroupLabelClassName,
   floatingItemIndicatorClassName,
   floatingPopupAnimationClassName,
   floatingSeparatorClassName,
-  menuItemClassName,
-  menuItemDestructiveClassName,
-  menuPopupBaseClassName,
-  menuPopupSurfaceClassName,
-  triggerFocusClassName,
-} from '../overlay-shared'
-import { parsePlacement } from '../placement'
+} from '../internal/overlay'
+import { parsePlacement } from '../internal/placement'
+import { resolveClassName } from '../internal/resolve-class-name'
 
 const DropdownMenu = Menu.Root
 const DropdownMenuPortal = Menu.Portal
@@ -50,7 +52,7 @@ function DropdownMenuTrigger<Payload = unknown>({
 }: DropdownMenuTriggerProps<Payload>) {
   return (
     <Menu.Trigger
-      className={(state) => cn(triggerFocusClassName, resolveClassName(className, state))}
+      className={(state) => cn(focusRingClassName, resolveClassName(className, state))}
       {...props}
     />
   )
