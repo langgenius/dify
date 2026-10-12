@@ -1064,6 +1064,36 @@ forbidden_modules =
 # so only direct imports are checked here.
 allow_indirect_imports = True
 
+[importlinter:contract:workflow-comment-service-boundary]
+name = Workflow comment application service is framework and persistence neutral
+type = forbidden
+source_modules =
+    services.app.workflow_comment_service
+forbidden_modules =
+    configs
+    controllers
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    tasks
+    werkzeug
+
+[importlinter:contract:console-workflow-comment-controller-boundary]
+name = Console workflow comment controller reaches persistence only through the composition root
+type = forbidden
+source_modules =
+    controllers.console.app.workflow_comment
+forbidden_modules =
+    extensions.ext_database
+    models
+    repositories
+    sqlalchemy
+# The composition root (extensions.ext_application_services) wires repositories,
+# so only direct imports are checked here.
+allow_indirect_imports = True
+
 [importlinter:contract:console-app-wraps-boundary]
 name = Console app decorators load App rows without reaching into repositories
 type = forbidden

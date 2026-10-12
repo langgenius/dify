@@ -56,6 +56,7 @@ from repositories.app.console_repository import ConsoleAppRepository
 from repositories.app.mcp_server_repository import AppMCPServerRepository
 from repositories.app.site_command_repository import AppSiteCommandRepository
 from repositories.app.tracing_config_repository import SQLAlchemyAppTracingConfigRepository
+from repositories.app.workflow_comment_repository import WorkflowCommentRepository
 from repositories.app_definition_query_repository import AppDefinitionQueryRepository
 from repositories.app_preview_query_repository import AppPreviewQueryRepository
 from repositories.app_scoped_end_user_repository import AppScopedEndUserRepo
@@ -101,6 +102,8 @@ from services.api_based_extension_application_service import APIBasedExtensionAp
 from services.app.advanced_prompt_template_service import AdvancedPromptTemplateService
 from services.app.api_key_service import AppApiKeyService
 from services.app.mcp_server_service import AppMCPServerService
+from services.app.workflow_comment_mention_gateway import CeleryWorkflowCommentMentionNotifier
+from services.app.workflow_comment_service import WorkflowCommentService
 from services.app_audio_adapters import AppAudioRuntime
 from services.app_audio_service import AppAudio
 from services.app_definition_query_service import AppDefinitionQueryService
@@ -298,6 +301,7 @@ class ApplicationServices:
     workflow_runs: WorkflowRunService
     workspaces: WorkspaceServices
     workflow_app_logs: WorkflowAppLogQueryService
+    workflow_comments: WorkflowCommentService
     inner_mail: InnerMailService
     web_passport: WebPassportService
     tags: TagApplicationService
@@ -678,6 +682,11 @@ def build_application_services(
         workspaces=workspace_services,
         workflow_app_logs=WorkflowAppLogQueryService(
             logs=WorkflowAppLogQueryRepository(session_factory=database_client),
+        ),
+        workflow_comments=WorkflowCommentService(
+            comments=WorkflowCommentRepository(session_factory=database_client),
+            notifier=CeleryWorkflowCommentMentionNotifier(),
+            console_web_url=dify_config.CONSOLE_WEB_URL,
         ),
         inner_mail=InnerMailService(dispatch=enqueue_inner_mail),
         web_passport=WebPassportService(
