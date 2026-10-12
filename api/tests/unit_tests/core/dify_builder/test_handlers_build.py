@@ -2882,22 +2882,48 @@ def test_a_determinate_outcome_resets_the_unknown_outcome_count():
     assert res.context.unknown_outcome_count == 0
 
 
-def test_confirmed_build_test_uses_saved_input_without_repair_and_returns_to_review():
+def test_confirmed_build_test_uses_saved_input_without_repair_and_returns_to_review() -> None:
     from tests.unit_tests.services.dify_builder.test_confirmed_tool_launch import assert_confirmed_handler_outcome
 
     assert_confirmed_handler_outcome("build", PcState.BUILD_TEST_AND_REPAIR, PcState.BUILD_REVIEW)
 
 
-def test_default_build_test_never_passes_consent_even_with_a_pending_reference():
+def test_default_build_test_never_passes_consent_even_with_a_pending_reference() -> None:
+    from collections.abc import Callable, Mapping
+
     from core.dify_builder.handlers_build import handle_test_and_repair
+    from core.dify_builder.models import Inputs, NodeEvent, Run
     from tests.unit_tests.core.dify_builder.fakes import saved_test_context
 
     env, repo = _new_env()
     s = _session(current_state=PcState.BUILD_TEST_AND_REPAIR)
     fc = saved_test_context(repo, s.id, confirmed_consent_id="consent-1", confirmed_command_id="command-1")
-    seen: list[dict] = []
+    seen: list[tuple[str | None, str | None]] = []
     native = env.dify.run_draft
-    env.dify.run_draft = lambda *args, **kwargs: (seen.append(kwargs), native(*args, **kwargs))[1]
+
+    def recording_run_draft(
+        app_id: str,
+        actor: Actor,
+        inputs: Inputs,
+        on_event: Callable[[NodeEvent], None],
+        *,
+        session_id: str,
+        test_input_id: str,
+        on_workflow_event: Callable[[Mapping[str, object]], None] | None = None,
+        confirmed_consent_id: str | None = None,
+        command_id: str | None = None,
+    ) -> Run:
+        seen.append((confirmed_consent_id, command_id))
+        return native(
+            app_id,
+            actor,
+            inputs,
+            on_event,
+            session_id=session_id,
+            test_input_id=test_input_id,
+            on_workflow_event=on_workflow_event,
+        )
+
+    env.dify.run_draft = recording_run_draft
     handle_test_and_repair(env, Turn(actor=_actor()), s, fc)
-    assert seen
-    assert all("confirmed_consent_id" not in call and "command_id" not in call for call in seen)
+    assert seen == [(None, None)]

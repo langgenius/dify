@@ -1,4 +1,5 @@
 from dataclasses import replace
+from typing import Literal
 
 import pytest
 
@@ -98,7 +99,17 @@ def test_verification_present_null_and_unknown_are_reviewable(state, allowed):
     assert "not verified" in card.review_note
 
 
-def confirmed_run(outcome="confirmed_tool_completed", *, action="completed", status="succeeded", **changes):
+ConfirmedOutcome = Literal["confirmed_tool_completed", "execution_evidence_unknown", "native_failed"]
+ActionState = Literal["completed", "failed", "unknown"]
+
+
+def confirmed_run(
+    outcome: ConfirmedOutcome = "confirmed_tool_completed",
+    *,
+    action: ActionState = "completed",
+    status: str = "succeeded",
+    execution_revision: str | None = None,
+) -> models.Run:
     summary = ExecutionEvidenceSummary(
         request_id="request",
         policy_version="builder-confirmed-gmail-read-v1",
@@ -117,15 +128,15 @@ def confirmed_run(outcome="confirmed_tool_completed", *, action="completed", sta
     assert run.verification is not None
     run.verification.execution_evidence = summary
     run.verification.terminal_outputs = {"result": "BODY-SENTINEL"}
-    for name, value in changes.items():
-        setattr(run.verification, name, value)
+    if execution_revision is not None:
+        run.verification.execution_revision = execution_revision
     return run
 
 
-def test_confirmed_success_is_publishable_only_when_sealed_and_revision_exact():
+def test_confirmed_success_is_publishable_only_when_sealed_and_revision_exact() -> None:
     from core.dify_builder.verification import publication_decision
 
-    def decide(run):
+    def decide(run: models.Run) -> models.PublicationDecision:
         return publication_decision(run, session_id="s", current_revision="rev", current_graph_revision="graph")
 
     assert decide(confirmed_run()).allowed is True
@@ -142,7 +153,9 @@ def test_confirmed_success_is_publishable_only_when_sealed_and_revision_exact():
         ("native_failed", "failed", "failed", "execution_failed"),
     ],
 )
-def test_confirmed_card_has_ids_status_and_reasons_but_no_native_content(outcome, action, status, card_outcome):
+def test_confirmed_card_has_ids_status_and_reasons_but_no_native_content(
+    outcome: ConfirmedOutcome, action: ActionState, status: str, card_outcome: str
+) -> None:
     import json
     from dataclasses import asdict
 

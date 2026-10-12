@@ -33,6 +33,9 @@ from tests.unit_tests.services.dify_builder.test_execution_policy_service import
     owned as owned,  # noqa: PLC0414 - shared pytest fixture
 )
 from tests.unit_tests.services.dify_builder.test_real_call_consent_service import (
+    Owner,
+)
+from tests.unit_tests.services.dify_builder.test_real_call_consent_service import (
     consent_owner as consent_owner,  # noqa: PLC0414 - shared pytest fixture
 )
 
@@ -116,7 +119,9 @@ def test_reconcile_empty_sweep_when_nothing_stale(
     assert published == []
 
 
-def test_reconcile_settles_stranded_confirmed_launch_without_redispatch(monkeypatch, consent_owner) -> None:
+def test_reconcile_settles_stranded_confirmed_launch_without_redispatch(
+    monkeypatch: pytest.MonkeyPatch, consent_owner: "Owner"
+) -> None:
     """A reserved confirmed command whose worker never ran is failed before any claim.
 
     The sweeper never re-enqueues, never rewrites the session head and never
@@ -137,7 +142,7 @@ def test_reconcile_settles_stranded_confirmed_launch_without_redispatch(monkeypa
         mod, "naive_utc_now", lambda: real_now + timedelta(seconds=2 * dify_config.DIFY_BUILDER_MAX_ADVANCE_SECONDS)
     )
     monkeypatch.setattr(mod.session_lock, "exists", lambda _sid: False)
-    published: list[tuple[str, dict]] = []
+    published: list[tuple[str, dict[str, object]]] = []
     monkeypatch.setattr(mod.progress_bus, "publish", lambda sid, ev: published.append((sid, ev)))
 
     assert mod.reconcile_interrupted_sessions() == 1
@@ -157,7 +162,9 @@ def test_reconcile_settles_stranded_confirmed_launch_without_redispatch(monkeypa
     assert published == [(owner.session_id, {"kind": "error", "error": "interrupted"})]
 
 
-def test_reconcile_skips_confirmed_launch_while_its_lease_is_live(monkeypatch, consent_owner) -> None:
+def test_reconcile_skips_confirmed_launch_while_its_lease_is_live(
+    monkeypatch: pytest.MonkeyPatch, consent_owner: "Owner"
+) -> None:
     from tests.unit_tests.services.dify_builder.test_confirmed_tool_launch import reserve_directly
 
     owner = consent_owner
