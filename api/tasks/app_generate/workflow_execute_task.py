@@ -37,7 +37,7 @@ from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, Conversation, EndUser, Message
 from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
 from repositories.factory import DifyAPIRepositoryFactory
-from services.tools.draft_tool_setup import admit_draft_tool_setup
+from services.tools.draft_tool_setup import admit_draft_tool_setup, admit_resumed_draft_tool_setup
 
 logger = logging.getLogger(__name__)
 
@@ -576,14 +576,14 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
         )
         return
 
-    if generate_entity.invoke_from == InvokeFrom.DEBUGGER and workflow.version == Workflow.VERSION_DRAFT:
-        if (
-            not isinstance(user, Account)
-            or workflow.tenant_id != app_model.tenant_id
-            or workflow.app_id != app_model.id
-        ):
-            raise ValueError("Draft execution requires the acting workspace member and app.")
-        admit_draft_tool_setup(tenant_id=app_model.tenant_id, graph=workflow.graph_dict, actor_id=user.id)
+    admit_resumed_draft_tool_setup(
+        workflow_run_id=workflow_run_id,
+        workflow_run=workflow_run,
+        workflow=workflow,
+        app=app_model,
+        user=user,
+        generate_entity=generate_entity,
+    )
 
     # The resumed attempt reuses the paused run's task ID, so cancellation
     # signals armed against that ID before or during the pause would abort it
