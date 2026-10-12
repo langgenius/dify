@@ -190,7 +190,9 @@ export default function IpPoliciesPage() {
               {t(($) => $['settings.ipPolicyEmptyTitle'], { ns: 'common' })}
             </h3>
             <p className="system-sm-regular leading-5 whitespace-pre-line text-text-tertiary">
-              {t(($) => $['settings.ipPolicyEmptyDescription'], { ns: 'common' })}
+              {canManagePolicies
+                ? t(($) => $['settings.ipPolicyEmptyDescription'], { ns: 'common' })
+                : t(($) => $['studio.accessControl.emptyPoliciesReadOnly'], { ns: 'deployments' })}
             </p>
           </div>
           {canManagePolicies && (

@@ -718,6 +718,10 @@ describe('IpPoliciesPage', () => {
     expect(
       screen.getByRole('heading', { name: 'No IP policies in this workspace yet' }),
     ).toBeInTheDocument()
+    expect(screen.getByText('Ask a workspace owner or admin to create one.')).toBeInTheDocument()
+    expect(
+      screen.queryByText('A policy is the list of IP addresses allowed in.'),
+    ).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Create an IP policy' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Add' })).not.toBeInTheDocument()
     expect(trackEvent).toHaveBeenCalledExactlyOnceWith('ip_policy_interaction', {

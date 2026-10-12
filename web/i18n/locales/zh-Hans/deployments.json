@@ -45,7 +45,7 @@
   "studio.accessControl.description": "通过应用 IP 策略来控制对当前应用的访问。",
   "studio.accessControl.downgradeDescription": "访问控制功能适用于 Professional 和 Team 套餐。",
   "studio.accessControl.downgradeTitle": "此应用已不再受保护",
-  "studio.accessControl.emptyPoliciesReadOnly": "请联系工作空间所有者或管理员创建 IP 策略。",
+  "studio.accessControl.emptyPoliciesReadOnly": "请联系工作空间的 Owner 或 Admin 创建。",
   "studio.accessControl.emptyPoliciesTitle": "当前工作空间还没有 IP 策略",
   "studio.accessControl.entryLabel": "访问控制",
   "studio.accessControl.ipPolicy": "IP 策略",

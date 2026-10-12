@@ -97,6 +97,18 @@ function PanelHarness({
 }
 
 describe('AccessControlConfigPanel', () => {
+  it('keeps the empty-state title and explains how editors can get a policy created', () => {
+    render(<PanelHarness availablePolicies={[]} canManagePolicies={false} />)
+
+    expect(screen.getByText('No IP policies in this workspace yet')).toAppearBefore(
+      screen.getByText('Ask a workspace owner or admin to create one.'),
+    )
+    expect(
+      screen.queryByText('A policy is the list of IP addresses allowed in.'),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Create an IP policy' })).not.toBeInTheDocument()
+  })
+
   it('opens the policy select when policies exist and none is selected', async () => {
     render(<PanelHarness />)
 
