@@ -484,6 +484,45 @@ def test_unqualified_profile_or_disabled_flag_refuses_before_any_row(
     assert owner.consents() == 0
 
 
+@pytest.mark.parametrize("credential_type", [CredentialType.API_KEY, CredentialType.UNAUTHORIZED])
+def test_non_oauth_credential_of_the_provider_is_never_granted(
+    consent_owner: Owner, credential_type: CredentialType
+) -> None:
+    """A visible API-key/unauthorized row of the same provider (bound with a "missing" client by the
+    generic reference) is refused at prepare and at confirm: no grant, claim, phase or spend."""
+    owner = consent_owner
+    oauth_receipt = prepare(owner)
+    update_credential(owner, credential_type=credential_type)
+    with owner.factory() as db:
+        reference = select_builder_credential(
+            db,
+            actor=owner.actor,
+            provider_id=PROVIDER,
+            credential_id=owner.credential_id,
+            verified_plugin=False,
+            revision_key=SECRET.encode(),
+        ).reference
+    # The generic credential owner still describes it (ordinary native support unchanged).
+    assert reference.credential_type == str(credential_type)
+
+    with pytest.raises(BuilderExecutionPolicyError) as raised:
+        prepare(owner, idempotency_key="prepare-non-oauth")
+    assert raised.value.reason_code == "credential_required"
+    assert owner.consents() == 1
+    # The grant prepared while the row was OAuth cannot be confirmed for the non-OAuth row.
+    with pytest.raises(BuilderExecutionPolicyError):
+        confirm(owner, oauth_receipt)
+    row = owner.consent_row(oauth_receipt.consent_id)
+    assert (row.state, row.command_id, row.claimed_at, row.refresh_count, row.business_count) == (
+        "invalidated",
+        None,
+        None,
+        0,
+        0,
+    )
+    assert row.reason_code == "credential_required"
+
+
 def test_prepare_binds_full_owner_chain_and_freezes_complete_disclosure(consent_owner: Owner) -> None:
     owner = consent_owner
     before = datetime.now(UTC)

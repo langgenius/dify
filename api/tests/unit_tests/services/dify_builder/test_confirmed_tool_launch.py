@@ -1175,17 +1175,29 @@ def test_outcome_recording_db_failure_stays_unknown_without_resetting_counters(
     assert owner.consent_row(reserved.consent_id).business_count == 1
 
 
+def _head_version(owner: Owner) -> int:
+    return SqlDifyBuilderRepository(owner.factory).get_session(owner.session_id)[0].version
+
+
+def _reconcile_observed(owner: Owner) -> int:
+    """Observe the stale session's reserved grants, then settle exactly those (the sweeper's order)."""
+    service = owner.service()
+    observation = service.observe_stranded(session_id=owner.session_id, session_version=_head_version(owner))
+    assert observation is not None
+    return service.reconcile_stranded(observation=observation)
+
+
 def test_reserved_but_never_launched_settles_failed_before_any_claim(consent_owner: Owner) -> None:
     owner = consent_owner
     reserved, _action, _token = reserve_through_dispatch(owner)
 
-    assert owner.service().reconcile_stranded(session_id=owner.session_id) == 1
+    assert _reconcile_observed(owner) == 1
 
     row = owner.consent_row(reserved.consent_id)
     assert (row.state, row.claimed_at, row.refresh_count, row.business_count) == ("failed", None, 0, 0)
     assert row.reason_code == "launch_stranded"
     # Idempotent and never redispatched.
-    assert owner.service().reconcile_stranded(session_id=owner.session_id) == 0
+    assert _reconcile_observed(owner) == 0
 
 
 def test_reconcile_after_spent_phase_is_unknown_and_final(consent_owner: Owner) -> None:
@@ -1194,12 +1206,238 @@ def test_reconcile_after_spent_phase_is_unknown_and_final(consent_owner: Owner) 
     guard = recorder.confirmed_guard(node_id="tool", native_run_id=run_id, native_node_execution_id="node-exec-1")
     guard.before_invoke(APPROVED.model_dump())
 
-    assert owner.service().reconcile_stranded(session_id=owner.session_id) == 1
+    assert _reconcile_observed(owner) == 1
 
     row = owner.consent_row(reserved.consent_id)
     assert (row.state, row.business_count) == ("unknown", 1)
-    assert owner.service().reconcile_stranded(session_id=owner.session_id) == 0
+    assert _reconcile_observed(owner) == 0
     assert owner.consent_row(reserved.consent_id).state == "unknown"
+
+
+def _recover_to_waiting_gate(owner: Owner) -> None:
+    """Deterministic repository-CAS race fixture; actual dispatched recovery is CI-owned."""
+    repo = SqlDifyBuilderRepository(owner.factory)
+    session, fc = repo.get_session(owner.session_id)
+    fc.confirmed_consent_id, fc.confirmed_command_id = "", ""
+    repo.compare_and_advance(owner.session_id, session.version, PcState.BUILD_AWAIT_TESTDATA, fc, [])
+
+
+def test_stale_sweep_settles_only_the_grant_it_observed_never_a_fresh_reservation(
+    consent_owner: Owner, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Between the sweep's observation and its settlement, recovery and a fresh coordinator
+    reservation commit with a new live lease. Only the observed stranded grant settles, once."""
+    import schedule.dify_builder_reconcile_task as sweeper
+
+    owner = consent_owner
+    lease, enqueue = SpyLease(), SpyEnqueue()
+    dispatcher = builder(owner, lease, enqueue)
+    stranded = execute(dispatcher, owner, confirmed(owner))
+    lease.release(owner.session_id, enqueue.calls[0][3])  # its dispatch lease expired; the delivery never ran
+    fresh: list[ConsentReceipt] = []
+    fresh_head: list[tuple[int, PcState, str, str]] = []
+
+    def lease_check_then_interleave(session_id: str) -> bool:
+        held = lease.exists(session_id)
+        if session_id == owner.session_id and not fresh:
+            _recover_to_waiting_gate(owner)
+            fresh_grant = confirm(
+                owner,
+                prepare(owner, idempotency_key="prepare-fresh", at_version=_head_version(owner)),
+                idempotency_key="confirm-fresh",
+            )
+            fresh.append(execute(dispatcher, owner, fresh_grant, key="execute-fresh"))
+            session, fc = SqlDifyBuilderRepository(owner.factory).get_session(owner.session_id)
+            fresh_head.append(
+                (session.version, session.current_state, fc.confirmed_consent_id, fc.confirmed_command_id)
+            )
+        return held
+
+    monkeypatch.setattr(sweeper, "_session_factory", lambda: owner.factory)
+    stale_now = naive_utc_now() + timedelta(days=1)
+    monkeypatch.setattr(sweeper, "naive_utc_now", lambda: stale_now)
+    monkeypatch.setattr(sweeper.session_lock, "exists", lease_check_then_interleave)
+    monkeypatch.setattr(sweeper.progress_bus, "publish", lambda *_args: None)
+
+    sweeper.reconcile_interrupted_sessions()
+
+    assert len(fresh) == 1
+    live = owner.consent_row(fresh[0].consent_id)
+    assert (live.state, live.command_id, live.reason_code, live.claimed_at) == (
+        "confirmed",
+        fresh[0].command_id,
+        None,
+        None,
+    )
+    assert lease.holder[owner.session_id] == enqueue.calls[1][3]
+    session, fc = SqlDifyBuilderRepository(owner.factory).get_session(owner.session_id)
+    assert [(session.version, session.current_state, fc.confirmed_consent_id, fc.confirmed_command_id)] == fresh_head
+    with owner.factory() as db:
+        request = db.get(DifyBuilderExecutionRequest, fresh[0].execution_request_id)
+        assert request is not None
+        assert (request.state, request.native_run_id, request.task_id) == ("prepared", None, None)
+    assert (live.refresh_count, live.business_count) == (0, 0)
+    old = owner.consent_row(stranded.consent_id)
+    assert (old.state, old.reason_code, old.claimed_at, old.refresh_count, old.business_count) == (
+        "failed",
+        "launch_stranded",
+        None,
+        0,
+        0,
+    )
+    # A later sweep while the fresh lease is live changes nothing; nothing was redispatched.
+    sweeper.reconcile_interrupted_sessions()
+    assert owner.consent_row(fresh[0].consent_id).state == "confirmed"
+    assert owner.consent_row(stranded.consent_id).updated_at == old.updated_at
+    assert len(enqueue.calls) == 2
+
+
+def test_observation_excludes_reservations_after_its_session_version(consent_owner: Owner) -> None:
+    owner = consent_owner
+    observed_version = _head_version(owner)
+    reserved, _action, _token = reserve_through_dispatch(owner)
+
+    observation = owner.service().observe_stranded(session_id=owner.session_id, session_version=observed_version)
+
+    # The session moved past the observed version: nothing of it is this sweep's to settle.
+    assert observation is None
+    assert owner.consent_row(reserved.consent_id).state == "confirmed"
+
+
+def test_grant_progressed_after_observation_is_not_settled(consent_owner: Owner) -> None:
+    """A worker that launched and claimed after the sweep's observation keeps its grant."""
+    owner = consent_owner
+    reserved, _action, _token = reserve_through_dispatch(owner)
+    service = owner.service()
+    observation = service.observe_stranded(session_id=owner.session_id, session_version=_head_version(owner))
+    assert observation is not None
+    assert [grant.consent_id for grant in observation.grants] == [reserved.consent_id]
+    context, run_id = simulate_task6_launch(owner, reserved)
+    service.claim_tool(context=context, node_id="tool", native_run_id=run_id, native_node_execution_id="node-exec-1")
+
+    assert service.reconcile_stranded(observation=observation) == 0
+
+    row = owner.consent_row(reserved.consent_id)
+    assert (row.state, row.reason_code, row.native_run_id) == ("claimed", None, run_id)
+
+
+@pytest.mark.parametrize("progress", ["launch", "refresh_claim", "refresh_finish", "business_claim", "outcome"])
+def test_stale_observation_never_settles_a_progressing_worker(consent_owner: Owner, progress: str) -> None:
+    """Real launch/phase/CAS/outcome writes after observation invalidate that sweep's snapshot."""
+    from core.dify_builder.real_call_consent import ActionOutcome
+
+    owner = consent_owner
+    reserved, _action, _token = reserve_through_dispatch(owner)
+    service = owner.service()
+    binding = None
+    if progress != "launch":
+        context, run_id = simulate_task6_launch(owner, reserved)
+        binding = service.claim_tool(
+            context=context, node_id="tool", native_run_id=run_id, native_node_execution_id="node-exec-1"
+        )
+        if progress == "refresh_finish":
+            service.claim_phase(binding=binding, phase="refresh", final_parameters=None)
+        elif progress == "outcome":
+            service.claim_phase(binding=binding, phase="business", final_parameters=APPROVED)
+    observation = service.observe_stranded(session_id=owner.session_id, session_version=_head_version(owner))
+    assert observation is not None
+
+    if progress == "launch":
+        simulate_task6_launch(owner, reserved)
+    else:
+        assert binding is not None
+        if progress == "refresh_finish":
+            service.finish_refresh(
+                binding=binding,
+                old_revision=owner.consent_row(reserved.consent_id).initial_credential_revision,
+                encrypted_credentials='{"access_token":"new-encrypted-token"}',
+                expires_at=1_900_000_001,
+            )
+        elif progress == "outcome":
+            service.finish(binding=binding, outcome=ActionOutcome(state="completed", reason_code="message_returned"))
+        else:
+            phase = "refresh" if progress == "refresh_claim" else "business"
+            service.claim_phase(binding=binding, phase=phase, final_parameters=None if phase == "refresh" else APPROVED)
+
+    before = owner.consent_row(reserved.consent_id)
+    assert service.reconcile_stranded(observation=observation) == 0
+    after = owner.consent_row(reserved.consent_id)
+    assert (after.state, after.reason_code, after.refresh_count, after.business_count, after.updated_at) == (
+        before.state,
+        before.reason_code,
+        before.refresh_count,
+        before.business_count,
+        before.updated_at,
+    )
+
+
+def test_stale_observation_cannot_downgrade_a_newly_sealed_native_completion(consent_owner: Owner) -> None:
+    owner = consent_owner
+    reserved, context, run_id, recorder = launched(owner)
+    dispatched(recorder)
+    service = owner.service()
+    observation = service.observe_stranded(session_id=owner.session_id, session_version=_head_version(owner))
+    assert observation is not None
+    native_rows(owner, run_id, "node-exec-1")
+
+    summary = BuilderExecutionPolicyService(owner.factory).seal(
+        request_id=context.request_id, completion=done(context, run_id)
+    )
+    assert summary.safety_outcome == "confirmed_tool_completed"
+    assert service.reconcile_stranded(observation=observation) == 0
+    assert owner.consent_row(reserved.consent_id).state == "claimed"
+
+    # The worker's own terminal settlement still records the sealed success exactly once.
+    assert service.settle_launch(context=context).state == "completed"
+    final = owner.consent_row(reserved.consent_id)
+    assert service.reconcile_stranded(observation=observation) == 0
+    after = owner.consent_row(reserved.consent_id)
+    assert (after.state, after.refresh_count, after.business_count, after.updated_at) == (
+        "completed",
+        0,
+        1,
+        final.updated_at,
+    )
+
+
+@pytest.mark.parametrize("phase", [None, "refresh", "business"])
+def test_same_stranded_observation_settles_a_claimed_grant_once_without_reopening(
+    consent_owner: Owner, phase: Literal["refresh", "business"] | None
+) -> None:
+    """Unchanged old claims settle unknown; repeating the original observation cannot reset a spend."""
+    owner = consent_owner
+    reserved, _action, _token = reserve_through_dispatch(owner)
+    context, run_id = simulate_task6_launch(owner, reserved)
+    service = owner.service()
+    binding = service.claim_tool(
+        context=context, node_id="tool", native_run_id=run_id, native_node_execution_id="node-exec-1"
+    )
+    if phase is not None:
+        service.claim_phase(binding=binding, phase=phase, final_parameters=APPROVED if phase == "business" else None)
+    observation = service.observe_stranded(session_id=owner.session_id, session_version=_head_version(owner))
+    assert observation is not None
+    before = owner.consent_row(reserved.consent_id)
+
+    assert service.reconcile_stranded(observation=observation) == 1
+    assert service.reconcile_stranded(observation=observation) == 0
+
+    after = owner.consent_row(reserved.consent_id)
+    assert (after.state, after.reason_code) == ("unknown", "launch_stranded")
+    assert (
+        after.claimed_at,
+        after.refresh_claimed_at,
+        after.business_claimed_at,
+        after.refresh_count,
+        after.business_count,
+    ) == (
+        before.claimed_at,
+        before.refresh_claimed_at,
+        before.business_claimed_at,
+        int(phase == "refresh"),
+        int(phase == "business"),
+    )
+    with pytest.raises(BuilderExecutionPolicyError):
+        service.claim_phase(binding=binding, phase="business", final_parameters=APPROVED)
 
 
 def test_publication_accepts_only_sealed_exact_revision_confirmed_success() -> None:

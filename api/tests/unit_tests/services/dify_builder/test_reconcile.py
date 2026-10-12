@@ -18,7 +18,7 @@ from collections.abc import Iterator
 from datetime import timedelta
 
 import pytest
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
@@ -179,3 +179,52 @@ def test_reconcile_skips_confirmed_launch_while_its_lease_is_live(
 
     assert mod.reconcile_interrupted_sessions() == 0
     assert owner.consent_row(reserved.consent_id).state == "confirmed"
+
+
+def test_stranded_observation_and_settlement_close_sql_before_redis(
+    monkeypatch: pytest.MonkeyPatch, consent_owner: "Owner"
+) -> None:
+    """The snapshot read and each settlement transaction end before lease/bus I/O."""
+    from sqlalchemy.engine import Connection
+
+    from tests.unit_tests.services.dify_builder.test_confirmed_tool_launch import reserve_directly
+
+    owner = consent_owner
+    reserved, _action, _token = reserve_directly(owner)
+    engine = owner.factory.kw["bind"]
+    active: set[Connection] = set()
+    boundaries: list[str] = []
+
+    def begin(connection: Connection) -> None:
+        active.add(connection)
+
+    def end(connection: Connection) -> None:
+        active.discard(connection)
+
+    def lease_held(_session_id: str) -> bool:
+        assert not active, "a lease read happened while the sweeper still held SQL"
+        boundaries.append("lease")
+        return False
+
+    def publish(_session_id: str, _event: dict[str, object]) -> None:
+        assert not active, "the progress bus ran while settlement still held SQL"
+        boundaries.append("publish")
+
+    event.listen(engine, "begin", begin)
+    event.listen(engine, "commit", end)
+    event.listen(engine, "rollback", end)
+    try:
+        stale_now = naive_utc_now() + timedelta(days=1)
+        monkeypatch.setattr(mod, "_session_factory", lambda: owner.factory)
+        monkeypatch.setattr(mod, "naive_utc_now", lambda: stale_now)
+        monkeypatch.setattr(mod.session_lock, "exists", lease_held)
+        monkeypatch.setattr(mod.progress_bus, "publish", publish)
+
+        assert mod.reconcile_interrupted_sessions() == 1
+        assert boundaries[:2] == ["lease", "publish"]
+        assert not active
+        assert owner.consent_row(reserved.consent_id).state == "failed"
+    finally:
+        event.remove(engine, "begin", begin)
+        event.remove(engine, "commit", end)
+        event.remove(engine, "rollback", end)

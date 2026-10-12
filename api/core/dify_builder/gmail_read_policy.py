@@ -50,6 +50,8 @@ DAEMON_CONTRACT_REVISION = "confirmed-tenant-dispatch-v1"
 GMAIL_PLUGIN_ID = "langgenius/dify-gmail"
 GMAIL_PROVIDER_ID = "langgenius/dify-gmail/dify-gmail"
 GET_MESSAGE_TOOL = "get_message"
+# Canonical native ``CredentialType.OAUTH2`` value; this domain module does not import plugin entities.
+_OAUTH2_CREDENTIAL_TYPE = "oauth2"
 _PARAMETER_NAMES = frozenset({"message_id", "include_body", "include_attachments"})
 _START_INPUT_TYPES = frozenset({"text-input", "paragraph", "number", "checkbox", "select"})
 _TOOL_OUTPUTS = frozenset({"text", "json"})
@@ -142,12 +144,24 @@ def qualify_installed_action(installed: InstalledToolBinding) -> None:
         raise BuilderExecutionPolicyError("unsupported_action")
 
 
+def require_oauth_credential(credential: CredentialReference) -> None:
+    """The approved slice uses an explicit existing OAuth credential only (canonical ``oauth2``).
+
+    API-key and unauthorized rows of the same provider stay valid for ordinary
+    native workflows; they are never admitted here. The OAuth client snapshot
+    the reference bound (including a missing client) is not judged here.
+    """
+    if credential.credential_type != _OAUTH2_CREDENTIAL_TYPE:
+        raise BuilderExecutionPolicyError("credential_required")
+
+
 def get_message_envelope(
     *, installed: InstalledToolBinding, credential: CredentialReference, parameters: GmailReadParameters
 ) -> GmailGetMessageEnvelope:
     qualify_installed_action(installed)
     if credential.provider_id != installed.provider_id:
         raise BuilderExecutionPolicyError("credential_provider_mismatch")
+    require_oauth_credential(credential)
     return GmailGetMessageEnvelope(
         path=GMAIL_MESSAGE_PATH.format(message_id=parameters.message_id),
         installed=installed,

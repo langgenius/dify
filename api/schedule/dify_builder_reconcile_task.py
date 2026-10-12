@@ -16,9 +16,11 @@ require explicit user retry -- this matches the P3b idempotency deferral).
 The one durable write it triggers is the consent owner's conservative
 settlement of a stranded reserved confirmed grant (failed before any claim,
 unknown after one); a recovered step then needs a new prepare + confirm. The
-same owner also repairs, in a bounded pass, a reserved grant whose command
-already reached review/FAILED but whose settlement write failed; a session
-whose advance lease is live is never touched.
+grants are observed (identity and generation) before the lease check and only
+those settle, so a recovery and fresh reservation that commit in between are
+never touched. The same owner also repairs, in a bounded pass, a reserved
+grant whose command already reached review/FAILED but whose settlement write
+failed; a session whose advance lease is live is never touched.
 No schema change, no migration.
 
 Runs on the default worker (no ``queue=``), like the other lightweight
@@ -70,21 +72,29 @@ def reconcile_interrupted_sessions() -> int:
     factory = _session_factory()
     with factory() as db_session:
         rows = db_session.execute(
-            select(DifyBuilderSession.id, DifyBuilderSession.current_state)
+            select(DifyBuilderSession.id, DifyBuilderSession.current_state, DifyBuilderSession.version)
             .where(DifyBuilderSession.current_state.in_(_WORKING_STATES))
             .where(DifyBuilderSession.updated_at < stale_before)
         ).all()
 
     flagged = 0
     consent = BuilderRealCallConsentService(factory)
-    for sid, state in rows:
+    for sid, state, version in rows:
+        # Materialize the exact reserved grants of the stale version BEFORE the
+        # lease check (SQL closed again before Redis): a recovery and a fresh
+        # reservation committed after this point are never this sweep's to settle.
+        observation = None
+        try:
+            observation = consent.observe_stranded(session_id=sid, session_version=version)
+        except Exception:
+            logger.exception("Dify Builder session %s stranded confirmed grants could not be observed", sid)
         if session_lock.exists(sid):
             continue  # a live advance holds the lock -- leave it alone
         try:
-            # No worker can still record into this session: a reserved confirmed
-            # grant settles failed before any claim, unknown after one. Owned by
-            # the consent service; never redispatched, counters never reset.
-            settled = consent.reconcile_stranded(session_id=sid)
+            # Only the observed grants settle, each only while still at its
+            # observed generation: failed before any claim, unknown after one.
+            # Owned by the consent service; never redispatched, counters never reset.
+            settled = consent.reconcile_stranded(observation=observation) if observation is not None else 0
             if settled:
                 logger.warning("Dify Builder session %s settled %s stranded confirmed grant(s)", sid, settled)
         except Exception:

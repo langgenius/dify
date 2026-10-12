@@ -27,8 +27,9 @@ Launch linkage for that dispatch owner and the worker (in-process only):
 ``replay_execution`` answers a matching duplicate while the lease is held
 (no lock or write), ``reserved_launch`` reloads the unlaunched reserved
 command from its sidecar and lineage, ``settle_launch`` closes a grant from
-the launch's own sealed proof and ``reconcile_stranded`` closes the grants of
-a stranded session; none of them reserves, claims or resets a counter.
+the launch's own sealed proof and ``observe_stranded``/``reconcile_stranded``
+close exactly the grants a stale-session sweep observed before its lease
+check; none of them reserves, claims or resets a counter.
 
 Lifecycle
 ---------
@@ -49,6 +50,7 @@ import re
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
+from itertools import starmap
 from typing import Any, Literal, cast
 from uuid import UUID, uuid4
 
@@ -117,7 +119,7 @@ from services.dify_builder.revision import executable_graph_revision, execution_
 from services.dify_builder.serde import context_from_dict
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
 
-__all__ = ["CONSENT_LIFETIME", "BuilderRealCallConsentService", "ServiceConfirmedToolGuard"]
+__all__ = ["CONSENT_LIFETIME", "BuilderRealCallConsentService", "ServiceConfirmedToolGuard", "StrandedObservation"]
 
 CONSENT_LIFETIME = timedelta(minutes=10)
 POLICY_VERSION: Literal["builder-confirmed-gmail-read-v1"] = "builder-confirmed-gmail-read-v1"
@@ -268,6 +270,68 @@ class _Owned:
     credential_id: str
     confirm_key: str | None
     execute_key: str | None
+
+
+@dataclass(frozen=True)
+class _StrandedGrant:
+    """One reserved grant's identity and full spend/launch generation, detached from its rows."""
+
+    consent_id: str
+    command_id: str | None
+    execution_request_id: str | None
+    state: str
+    reserved_version: int | None
+    reserved_commit_id: str | None
+    claimed_at: datetime | None
+    refresh_claimed_at: datetime | None
+    business_claimed_at: datetime | None
+    refresh_count: int
+    business_count: int
+    derived_credential_revision: str | None
+    consent_native_run_id: str | None
+    native_node_execution_id: str | None
+    outcome_state: str | None
+    reason_code: str | None
+    request_state: str | None
+    native_run_id: str | None
+    task_id: str | None
+    completion_fingerprint: str | None
+    sealed_at: datetime | None
+
+    @classmethod
+    def of(cls, row: DifyBuilderRealCallConsent, request: DifyBuilderExecutionRequest | None) -> "_StrandedGrant":
+        return cls(
+            consent_id=row.id,
+            command_id=row.command_id,
+            execution_request_id=row.execution_request_id,
+            state=row.state,
+            reserved_version=row.reserved_version,
+            reserved_commit_id=row.reserved_commit_id,
+            claimed_at=row.claimed_at,
+            refresh_claimed_at=row.refresh_claimed_at,
+            business_claimed_at=row.business_claimed_at,
+            refresh_count=row.refresh_count,
+            business_count=row.business_count,
+            derived_credential_revision=row.derived_credential_revision,
+            consent_native_run_id=row.native_run_id,
+            native_node_execution_id=row.native_node_execution_id,
+            outcome_state=row.outcome_state,
+            reason_code=row.reason_code,
+            request_state=request.state if request is not None else None,
+            native_run_id=request.native_run_id if request is not None else None,
+            task_id=request.task_id if request is not None else None,
+            completion_fingerprint=request.completion_fingerprint if request is not None else None,
+            sealed_at=request.sealed_at if request is not None else None,
+        )
+
+
+@dataclass(frozen=True)
+class StrandedObservation:
+    """A stale session's reserved grants as the sweeper saw them before its lease check."""
+
+    session_id: str
+    session_version: int
+    grants: tuple[_StrandedGrant, ...]
 
 
 def _state(row: DifyBuilderRealCallConsent) -> ConsentState:
@@ -1157,29 +1221,56 @@ class BuilderRealCallConsentService:
             self._settle(row, request, now, reason=None)
             return _receipt(row, now)
 
-    def reconcile_stranded(self, *, session_id: str) -> int:
-        """Settle every reserved grant of a session the sweeper found stranded (no live lease).
+    def observe_stranded(self, *, session_id: str, session_version: int) -> "StrandedObservation | None":
+        """Materialize a stale session's reserved grants exactly as they stand now.
 
-        Called only for a stale working session without a live advance lease,
-        so no worker can still record into it. Never redispatches; a grant
-        already final is left untouched. Returns the number of grants settled.
+        The sweeper calls this BEFORE its Redis lease check. Only grants
+        reserved at or before ``session_version`` (the version the sweeper
+        found stale) are candidates, each with its full spend/launch
+        generation; ``None`` when the session moved past that version. One
+        short read session; nothing is locked or written.
+        """
+        with self._session_factory() as db:
+            session_row = db.get(DifyBuilderSession, session_id)
+            if session_row is None or session_row.version != session_version:
+                return None
+            rows = db.execute(
+                select(DifyBuilderRealCallConsent, DifyBuilderExecutionRequest)
+                .outerjoin(
+                    DifyBuilderExecutionRequest,
+                    DifyBuilderExecutionRequest.id == DifyBuilderRealCallConsent.execution_request_id,
+                )
+                .where(
+                    DifyBuilderRealCallConsent.session_id == session_id,
+                    DifyBuilderRealCallConsent.command_id.is_not(None),
+                    DifyBuilderRealCallConsent.state.in_(("confirmed", "claimed")),
+                    DifyBuilderRealCallConsent.reserved_version <= session_version,
+                )
+                .order_by(DifyBuilderRealCallConsent.id)
+            ).tuples()
+            grants = tuple(starmap(_StrandedGrant.of, rows))
+            return StrandedObservation(session_id=session_id, session_version=session_version, grants=grants)
+
+    def reconcile_stranded(self, *, observation: "StrandedObservation") -> int:
+        """Settle exactly the grants a stale-working sweep observed before its lease check.
+
+        Each observed identity settles only if, under its consent → request
+        row locks, it is still the same grant at the same generation (state,
+        claim, phase counters/times, outcome, native IDs and request launch/seal).
+        Anything that progressed after the observation belongs to a live
+        worker and is left alone; a grant
+        reserved after it was never a candidate. A later session head does not
+        prevent settling the unchanged old grant, so explicit recovery can keep
+        its new command. Never redispatches, rewrites the session head or touches
+        counters. Returns the number settled.
         """
         settled = 0
-        with self._session_factory.begin() as db:
-            ids = list(
-                db.scalars(
-                    select(DifyBuilderRealCallConsent.id)
-                    .where(
-                        DifyBuilderRealCallConsent.session_id == session_id,
-                        DifyBuilderRealCallConsent.command_id.is_not(None),
-                        DifyBuilderRealCallConsent.state.in_(("confirmed", "claimed")),
-                    )
-                    .order_by(DifyBuilderRealCallConsent.id)
-                )
-            )
-            for consent_id in ids:
-                row = _lock_consent(db, consent_id)
+        for grant in observation.grants:
+            with self._session_factory.begin() as db:
+                row = _lock_consent(db, grant.consent_id)
                 request = _lock_request(db, row.execution_request_id)
+                if row.session_id != observation.session_id or _StrandedGrant.of(row, request) != grant:
+                    continue
                 if self._settle(row, request, _utcnow(), reason="launch_stranded"):
                     settled += 1
         return settled
@@ -1873,7 +1964,8 @@ class BuilderRealCallConsentService:
         Called after native selection and before any compliance, decryption,
         refresh or dispatch. Compares the supplied full reference (row
         primitive, acting member's effective access and selected OAuth client)
-        with the reference this grant stored at preparation; phase claims later
+        with the reference this grant stored at preparation, and requires both
+        to be the approved OAuth credential type; phase claims later
         recheck current state, but only this check binds the bytes the native
         owner will actually use. SQL-local: no external read, reselection,
         decryption or transport. A proven mismatch on an unspent claimed grant is
@@ -1908,9 +2000,17 @@ class BuilderRealCallConsentService:
                 stored.credential.oauth_client_revision, row.oauth_client_revision
             ):
                 raise _refuse("consent_record_invalid")
-            if reference.model_dump(mode="json") != stored.credential.model_dump(mode="json"):
-                row.state, row.reason_code = _post_claim_failure(row), "credential_snapshot_mismatch"
-                pending = _refuse("credential_snapshot_mismatch")
+            try:
+                # OAuth-only admission also binds the native selection, including a grant stored before it.
+                gmail_read_policy.require_oauth_credential(stored.credential)
+                gmail_read_policy.require_oauth_credential(reference)
+            except BuilderExecutionPolicyError as error:
+                row.state, row.reason_code = _post_claim_failure(row), error.reason_code
+                pending = _refuse(error.reason_code)
+            else:
+                if reference.model_dump(mode="json") != stored.credential.model_dump(mode="json"):
+                    row.state, row.reason_code = _post_claim_failure(row), "credential_snapshot_mismatch"
+                    pending = _refuse("credential_snapshot_mismatch")
         if pending is not None:
             raise pending
 

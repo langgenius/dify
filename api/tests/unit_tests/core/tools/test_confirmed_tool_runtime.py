@@ -30,12 +30,14 @@ import contexts
 import core.db.session_factory as session_factory_module
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
+from core.dify_builder import gmail_read_policy
 from core.dify_builder.execution_policy import BuilderExecutionPolicyError
 from core.dify_builder.models import Actor
 from core.dify_builder.real_call_consent import (
     ConfirmedToolBinding,
     ConfirmedToolGuard,
     CredentialReference,
+    GmailReadParameters,
     InstalledToolBinding,
 )
 from core.entities import PluginCredentialType
@@ -43,7 +45,11 @@ from core.entities.provider_entities import ProviderConfig, ProviderConfigType
 from core.helper import credential_utils, encrypter
 from core.helper.provider_cache import ToolProviderCredentialsCache
 from core.plugin.entities.oauth import OAuthSchema
-from core.plugin.entities.plugin_daemon import PluginOAuthCredentialsResponse, PluginToolProviderEntity
+from core.plugin.entities.plugin_daemon import (
+    CredentialType,
+    PluginOAuthCredentialsResponse,
+    PluginToolProviderEntity,
+)
 from core.plugin.impl.oauth import OAuthHandler
 from core.plugin.impl.tool import PluginToolManager
 from core.tools import tool_manager as tool_manager_module
@@ -830,6 +836,52 @@ def test_transient_unapproved_snapshot_is_refused_before_any_credential_work(
         build(world, guard_for(world.owner, binding))
     assert world.decrypted == []
     assert world.invoke_calls == []
+
+
+@pytest.mark.parametrize("credential_type", [CredentialType.API_KEY, CredentialType.UNAUTHORIZED])
+def test_non_oauth_snapshot_is_refused_before_compliance_or_decryption(
+    world: World, credential_type: CredentialType, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A grant bound to a non-OAuth row (as the pre-fix admission persisted it) never reaches credential work.
+
+    The admission policy is replaced only while the grant is prepared, confirmed, reserved and
+    claimed, so the stored binding carries the API-key/unauthorized reference exactly as a grant
+    persisted before OAuth-only admission would. The real native selection then refuses it.
+    """
+    update_credential(world.owner, credential_type=credential_type)
+    original = gmail_read_policy.get_message_envelope
+
+    def pre_fix_admission(
+        *, installed: InstalledToolBinding, credential: CredentialReference, parameters: GmailReadParameters
+    ) -> object:
+        return original(
+            installed=installed,
+            credential=credential.model_copy(update={"credential_type": "oauth2"}),
+            parameters=parameters,
+        )
+
+    world.monkeypatch.setattr(gmail_read_policy, "get_message_envelope", pre_fix_admission)
+    reserved, binding = claimed(world.owner)
+    world.monkeypatch.setattr(gmail_read_policy, "get_message_envelope", original)
+    stored = json.loads(json.dumps(world.consent(reserved.consent_id).binding))
+    assert stored["credential"]["credential_type"] == str(credential_type)
+
+    with pytest.raises(BuilderExecutionPolicyError) as raised:
+        build(world, guard_for(world.owner, binding))
+
+    assert raised.value.reason_code == "credential_required"
+    assert [name for name, _ in world.events if name in {"compliance", "decrypt", "refresh_transport"}] == []
+    assert world.decrypted == []
+    assert world.refresh_calls == []
+    assert world.invoke_calls == []
+    consent = world.consent(reserved.consent_id)
+    assert (consent.state, consent.reason_code, consent.refresh_count, consent.business_count) == (
+        "failed",
+        "credential_required",
+        0,
+        0,
+    )
+    assert_no_secret_text(caplog.text)
 
 
 def _approved_reference(world: World) -> CredentialReference:

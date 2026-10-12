@@ -36,6 +36,7 @@ from collections.abc import Callable, Iterator
 from flask import Response, request
 from flask_restx import Resource
 from pydantic import ValidationError
+from sqlalchemy.orm import scoped_session
 from werkzeug.exceptions import BadRequest
 
 from controllers.common.schema import (
@@ -53,6 +54,7 @@ from controllers.console.wraps import (
 )
 from core.dify_builder.models import Action, Actor
 from core.dify_builder.real_call_consent import ConsentReceipt
+from extensions.ext_database import db
 from libs.helper import dump_response
 from libs.login import login_required
 from services.dify_builder import progress_bus
@@ -119,6 +121,31 @@ def dify_builder_required(func: Callable) -> Callable:
         if not FeatureService.get_features(current_tenant_id).dify_builder_enabled:
             return {"code": "feature_unavailable"}, 403
         return func(self, current_tenant_id, *args, **kwargs)
+
+    return wrapper
+
+
+def _require_no_request_sql() -> None:
+    """Refuse a real-call request whose request-scoped session holds a transaction.
+
+    The feature check's billing/enterprise calls and, inside the consent owner
+    and dispatch coordinator, external metadata reads, the Redis lease and the
+    enqueue must not run under an open request transaction. This guard never
+    ends one: a transaction it did not begin may hold another owner's flushed
+    or Core writes, which neither a rollback nor a commit may decide here.
+    """
+    session = db.session() if isinstance(db.session, scoped_session) else db.session
+    if session.in_transaction() or session.new or session.dirty or session.deleted:
+        raise RuntimeError("real-call request holds an open request-scoped transaction")
+
+
+def real_call_without_request_sql[**P, R](func: Callable[P, R]) -> Callable[P, R]:
+    """Require that the authenticated wrappers left no request-scoped SQL before any real-call work."""
+
+    @functools.wraps(func)
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
+        _require_no_request_sql()
+        return func(*args, **kwargs)
 
     return wrapper
 
@@ -550,6 +577,7 @@ class DifyBuilderRealCallConsentsApi(Resource):
     @edit_permission_required
     @with_current_user
     @with_current_tenant_id
+    @real_call_without_request_sql
     @dify_builder_required
     def post(self, current_tenant_id, current_user, session_id):
         return _prepare_real_call(session_id, _real_call_body(), _actor(current_user, current_tenant_id))
@@ -571,6 +599,7 @@ class DifyBuilderRealCallConsentApi(Resource):
     @edit_permission_required
     @with_current_user
     @with_current_tenant_id
+    @real_call_without_request_sql
     @dify_builder_required
     def get(self, current_tenant_id, current_user, session_id, consent_id):
         return _get_real_call(session_id, consent_id, _actor(current_user, current_tenant_id))
@@ -594,6 +623,7 @@ class DifyBuilderRealCallConsentConfirmApi(Resource):
     @edit_permission_required
     @with_current_user
     @with_current_tenant_id
+    @real_call_without_request_sql
     @dify_builder_required
     def post(self, current_tenant_id, current_user, session_id, consent_id):
         return _confirm_real_call(session_id, consent_id, _real_call_body(), _actor(current_user, current_tenant_id))
@@ -617,6 +647,7 @@ class DifyBuilderRealCallConsentExecuteApi(Resource):
     @edit_permission_required
     @with_current_user
     @with_current_tenant_id
+    @real_call_without_request_sql
     @dify_builder_required
     def post(self, current_tenant_id, current_user, session_id, consent_id):
         return _execute_real_call(session_id, consent_id, _real_call_body(), _actor(current_user, current_tenant_id))

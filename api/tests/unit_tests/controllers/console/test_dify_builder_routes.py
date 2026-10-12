@@ -6,11 +6,12 @@ without requiring a logged-in Flask request context.
 """
 
 import json
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from datetime import UTC, datetime
 from inspect import unwrap
-from types import FunctionType
-from typing import Annotated, NamedTuple, TypedDict, cast, get_args
+from pathlib import Path
+from types import FunctionType, SimpleNamespace
+from typing import Annotated, NamedTuple, TypedDict, cast, get_args, override
 from unittest.mock import MagicMock, call
 
 import pytest
@@ -18,9 +19,15 @@ from flask import Flask, Response, g
 from flask.testing import FlaskClient
 from flask_restx.model import SchemaModel
 from pydantic import Field, TypeAdapter, ValidationError
+from sqlalchemy import Engine, create_engine, event, insert, select
+from sqlalchemy.orm import Session as OrmSession
+from sqlalchemy.orm import scoped_session, sessionmaker
 from werkzeug.exceptions import Forbidden
 
 import controllers.console.dify_builder as mod
+import core.db.session_factory as session_factory_module
+from controllers.common.rbac import RBACPermission
+from controllers.common.rbac import locators as rbac_locators
 from controllers.console import bp as console_bp
 from controllers.console import wraps as wraps_mod
 from controllers.console.dify_builder_fields import (
@@ -47,10 +54,13 @@ from core.dify_builder.models import Session as DomainSession
 from core.dify_builder.ports import Repository
 from core.dify_builder.real_call_consent import ConsentReceipt, gmail_message_url
 from core.dify_builder.state import PcState
-from models.account import Account, AccountStatus, TenantAccountRole
+from models.account import Account, AccountStatus, TenantAccountJoin, TenantAccountRole
+from models.base import Base, TypeBase
+from models.model import App, DifySetup
 from services.dify_builder import wiring
 from services.dify_builder.real_call_consent_service import BuilderRealCallConsentService
 from services.dify_builder.service import DifyBuilderService, SessionView
+from services.enterprise.rbac_service import RBACService
 from tests.unit_tests.config_override import apply_config_overrides
 from tests.unit_tests.model_factories import make_tenant
 
@@ -1498,6 +1508,7 @@ def test_consent_routes_use_the_authenticated_builder_decorator_stack(method: Ca
         "edit_permission_required",
         "with_current_user",
         "with_current_tenant_id",
+        "real_call_without_request_sql",
         "dify_builder_required",
     ]
 
@@ -1756,3 +1767,356 @@ def test_documented_403_union_accepts_exactly_the_real_403_bodies() -> None:
             DifyBuilderRealCallForbiddenResponse.model_validate(loose)
     schema = DifyBuilderRealCallForbiddenResponse.model_json_schema(mode="serialization")
     assert set(schema["discriminator"]["mapping"]) == {"forbidden", "feature_unavailable", "needs_permission"}
+
+
+# -- request SQL lifetime at the dispatch coordinator's external boundaries --
+
+
+class _OpenTransactions:
+    """Connection-level transactions currently open on an engine (any session, any owner)."""
+
+    def __init__(self, engine: Engine) -> None:
+        self.count = 0
+        self._engine = engine
+        event.listen(engine, "begin", self._begin)
+        event.listen(engine, "commit", self._end)
+        event.listen(engine, "rollback", self._end)
+
+    def _begin(self, _conn: object) -> None:
+        self.count += 1
+
+    def _end(self, _conn: object) -> None:
+        self.count = max(0, self.count - 1)
+
+    def close(self) -> None:
+        event.remove(self._engine, "begin", self._begin)
+        event.remove(self._engine, "commit", self._end)
+        event.remove(self._engine, "rollback", self._end)
+
+
+class _RequestSqlWorld(NamedTuple):
+    client: FlaskClient
+    registry: scoped_session[OrmSession]
+    witness: _OpenTransactions
+    consent: MagicMock
+    boundaries: list[tuple[str, bool, int]]
+    enqueued: list[tuple[str, Action, Actor, str]]
+    # Per request, just before teardown removes the session: (scoped transaction open,
+    # staged write visible to it, staged write visible to any other session).
+    teardown: list[tuple[bool, bool, bool]]
+
+
+_STAGED = select(DifySetup.version).where(DifySetup.version == "staged-by-another-owner")
+
+
+@pytest.fixture
+def request_sql_world(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterator[_RequestSqlWorld]:
+    """The real consent routes, decorator stack, uncached setup read and production authorizer on real SQL.
+
+    ``db`` of the console wraps, the controller and the wiring is one real ``scoped_session`` over
+    SQLite (the unit app does not initialize Flask-SQLAlchemy); request teardown removes it, as the
+    extension does. Identity is injected the same way as ``_consent_http``. The Redis advance lease
+    and the consent owner are boundary spies that record, at each external call, whether the
+    request-scoped session is in a transaction and how many connection transactions are open.
+    """
+    engine = create_engine(f"sqlite:///{tmp_path / 'request-sql.sqlite3'}")
+    Base.metadata.create_all(engine)
+    TypeBase.metadata.create_all(engine)
+    factory = sessionmaker(bind=engine, expire_on_commit=False)
+    registry = scoped_session(factory)
+    database = SimpleNamespace(session=registry, engine=engine)
+    monkeypatch.setattr(session_factory_module, "_session_maker", factory)
+    monkeypatch.setattr(wraps_mod, "db", database)
+    monkeypatch.setattr(wiring, "db", database)
+    monkeypatch.setattr(rbac_locators, "db", database)
+    monkeypatch.setattr(mod, "db", database, raising=False)
+    apply_config_overrides(monkeypatch, RBAC_ENABLED=False, LOGIN_DISABLED=False)
+    monkeypatch.setattr("libs.login.check_csrf_token", lambda _request, _user_id: None)
+    with factory.begin() as session:
+        account = Account(name="tester", email="tester@example.com")
+        session.add(account)
+        session.flush()
+        session.add(DifySetup(version="unit"))
+        session.add(
+            App(
+                id="app-1",
+                tenant_id="ten-1",
+                mode="workflow",
+                name="Builder app",
+                tracing=None,
+                enable_site=False,
+                enable_api=False,
+            )
+        )
+        session.add(TenantAccountJoin(tenant_id="ten-1", account_id=account.id, role=TenantAccountRole.EDITOR))
+    account.role = TenantAccountRole.EDITOR
+    account.status = AccountStatus.ACTIVE
+    account._current_tenant = make_tenant(tenant_id="ten-1")
+    witness = _OpenTransactions(engine)
+    boundaries: list[tuple[str, bool, int]] = []
+
+    def observe(name: str) -> None:
+        boundaries.append((name, registry().in_transaction(), witness.count))
+
+    def features(_tenant_id: str) -> MagicMock:
+        # The feature gate's billing/enterprise read: the first external boundary after the auth wrappers.
+        observe("feature")
+        return MagicMock(dify_builder_enabled=True)
+
+    monkeypatch.setattr(mod.FeatureService, "get_features", features)
+
+    class _ObservedLease(_HeldLease):
+        @override
+        def acquire(self, session_id: str) -> str | None:
+            observe("lease_acquire")
+            return super().acquire(session_id)
+
+        @override
+        def release(self, session_id: str, token: str) -> None:
+            observe("lease_release")
+            super().release(session_id, token)
+
+    consent = MagicMock(spec=BuilderRealCallConsentService)
+    repo = MagicMock(spec=Repository)
+    repo.get_session.return_value = (
+        DomainSession(
+            id=_SESSION_ID,
+            app_id="app-1",
+            tenant_id="ten-1",
+            owner_account_id=account.id,
+            entry_mode=EntryMode.BUILD,
+            current_state=PcState.BUILD_REVIEW,
+            version=3,
+        ),
+        DifyBuilderContext(),
+    )
+    enqueued: list[tuple[str, Action, Actor, str]] = []
+
+    def enqueue(session_id: str, action: Action, actor: Actor, token: str) -> None:
+        observe("enqueue")
+        enqueued.append((session_id, action, actor, token))
+
+    service = DifyBuilderService(
+        cast(Repository, repo),
+        _ObservedLease(),
+        enqueue,
+        authorize_app_fn=wiring._authorize_app,
+        real_call_consent=cast(BuilderRealCallConsentService, consent),
+    )
+    monkeypatch.setattr(mod, "build_service", lambda: service)
+    monkeypatch.setattr(mod, "build_real_call_consent_service", lambda: consent)
+    app = Flask("dify-builder-request-sql")
+    app.config["TESTING"] = True
+    app.register_blueprint(console_bp)
+
+    def login() -> None:
+        g._login_user = account
+
+    app.before_request(login)
+    teardown: list[tuple[bool, bool, bool]] = []
+
+    def capture(_error: BaseException | None) -> None:
+        scoped = registry()
+        open_transaction = scoped.in_transaction()
+        if open_transaction:
+            with factory() as other:
+                teardown.append((True, scoped.scalar(_STAGED) is not None, other.scalar(_STAGED) is not None))
+        else:
+            teardown.append((False, False, False))
+
+    # Teardown functions run in reverse registration order: capture, then remove (as the extension does).
+    app.teardown_request(lambda _error: registry.remove())
+    app.teardown_request(capture)
+    # Uncached: the real first ``_is_setup_completed`` must close its owned DifySetup read.
+    setup_check = wraps_mod._is_setup_completed
+    setup_check.reset_success()
+    try:
+        yield _RequestSqlWorld(app.test_client(), registry, witness, consent, boundaries, enqueued, teardown)
+    finally:
+        setup_check.reset_success()
+        witness.close()
+        registry.remove()
+        engine.dispose()
+
+
+def _observed_consent(world: _RequestSqlWorld, name: str, result: object) -> Callable[..., object]:
+    def call(**_kwargs: object) -> object:
+        world.boundaries.append((name, world.registry().in_transaction(), world.witness.count))
+        if isinstance(result, BaseException):
+            raise result
+        return result
+
+    return call
+
+
+@pytest.fixture
+def enabled_rbac(
+    request: pytest.FixtureRequest, request_sql_world: _RequestSqlWorld, monkeypatch: pytest.MonkeyPatch
+) -> dict[RBACPermission, bool]:
+    """Keep the real locator/evaluator; replace only the external access RPC with a witness."""
+    world = request_sql_world
+    enabled = getattr(request, "param", True)
+    apply_config_overrides(monkeypatch, RBAC_ENABLED=enabled)
+    permissions = {RBACPermission.APP_EDIT: True, RBACPermission.APP_TEST_AND_RUN: True} if enabled else {}
+
+    def check(
+        tenant_id: str, account_id: str, *, scene: RBACPermission, resource_type: str | None, resource_id: str | None
+    ) -> bool:
+        assert tenant_id == "ten-1"
+        assert account_id
+        assert (resource_type, resource_id) == ("app", "app-1")
+        world.boundaries.append((f"rbac:{scene.value}", world.registry().in_transaction(), world.witness.count))
+        return permissions[scene]
+
+    monkeypatch.setattr(RBACService.CheckAccess, "check", check)
+    return permissions
+
+
+@pytest.mark.parametrize("enabled_rbac", [False, True], ids=["legacy", "rbac"], indirect=True)
+def test_execute_request_holds_no_sql_at_the_lease_reservation_or_enqueue(
+    request_sql_world: _RequestSqlWorld, enabled_rbac: dict[RBACPermission, bool]
+) -> None:
+    world = request_sql_world
+    world.consent.reserve_execution.side_effect = _observed_consent(world, "reserve", (_reserved_receipt(), True))
+    world.consent.replay_execution.side_effect = _observed_consent(world, "replay", _claimed_receipt())
+
+    first = world.client.post(f"{_CONSENT_URL}/execute", json=_EXECUTE_BODY)
+    # The lease is still held: a matching duplicate is answered by the replay owner.
+    replay = world.client.post(f"{_CONSENT_URL}/execute", json=_EXECUTE_BODY)
+
+    assert (first.status_code, replay.status_code) == (202, 202)
+    assert len(world.enqueued) == 1
+    rbac: list[str] = ["rbac:app_edit", "rbac:app_test_and_run"] if enabled_rbac else []
+    assert [name for name, _scoped, _open in world.boundaries] == [
+        "feature",
+        *rbac,
+        "lease_acquire",
+        "reserve",
+        "enqueue",
+        "feature",
+        *rbac,
+        "lease_acquire",
+        "replay",
+    ]
+    # No request-scoped (wrapper/authorizer) or other SQL transaction at any external boundary.
+    assert [(name, scoped, count) for name, scoped, count in world.boundaries if scoped or count] == []
+
+
+@pytest.mark.parametrize("enabled_rbac", [False, True], ids=["legacy", "rbac"], indirect=True)
+def test_execute_refusal_holds_no_sql_at_the_lease_or_reservation(
+    request_sql_world: _RequestSqlWorld, enabled_rbac: dict[RBACPermission, bool]
+) -> None:
+    world = request_sql_world
+    world.consent.reserve_execution.side_effect = _observed_consent(
+        world, "reserve", BuilderExecutionPolicyError("consent_scope_mismatch")
+    )
+
+    refused = world.client.post(f"{_CONSENT_URL}/execute", json=_EXECUTE_BODY)
+
+    assert refused.status_code == 409
+    assert refused.get_json()["reason_code"] == "consent_scope_mismatch"
+    assert world.enqueued == []
+    assert [name for name, _scoped, _open in world.boundaries] == [
+        "feature",
+        *(["rbac:app_edit", "rbac:app_test_and_run"] if enabled_rbac else []),
+        "lease_acquire",
+        "reserve",
+        "lease_release",
+    ]
+    assert [(name, scoped, count) for name, scoped, count in world.boundaries if scoped or count] == []
+
+
+@pytest.mark.parametrize("denied", [RBACPermission.APP_EDIT, RBACPermission.APP_TEST_AND_RUN])
+def test_execute_rbac_denial_holds_no_sql_and_stops_before_the_lease(
+    request_sql_world: _RequestSqlWorld, enabled_rbac: dict[RBACPermission, bool], denied: RBACPermission
+) -> None:
+    world = request_sql_world
+    enabled_rbac[denied] = False
+
+    response = world.client.post(f"{_CONSENT_URL}/execute", json=_EXECUTE_BODY)
+
+    assert response.status_code == 403
+    assert world.enqueued == []
+    scenes = ["rbac:app_edit"] if denied is RBACPermission.APP_EDIT else ["rbac:app_edit", "rbac:app_test_and_run"]
+    assert world.boundaries == [(name, False, 0) for name in ["feature", *scenes]]
+
+
+def test_execute_rbac_maintainer_shortcut_preserves_permission_semantics(
+    request_sql_world: _RequestSqlWorld, enabled_rbac: dict[RBACPermission, bool]
+) -> None:
+    world = request_sql_world
+    enabled_rbac.update(dict.fromkeys(enabled_rbac, False))
+    with sessionmaker(bind=world.registry.get_bind()).begin() as session:
+        app = session.get(App, "app-1")
+        assert app is not None
+        app.maintainer = session.scalar(
+            select(TenantAccountJoin.account_id).where(TenantAccountJoin.tenant_id == "ten-1")
+        )
+    world.consent.reserve_execution.side_effect = _observed_consent(world, "reserve", (_reserved_receipt(), True))
+
+    response = world.client.post(f"{_CONSENT_URL}/execute", json=_EXECUTE_BODY)
+
+    assert response.status_code == 202
+    assert len(world.enqueued) == 1
+    assert world.boundaries == [(name, False, 0) for name in ["feature", "lease_acquire", "reserve", "enqueue"]]
+
+
+@pytest.mark.parametrize(
+    ("method", "url", "body", "owner_call"),
+    [
+        ("POST", _CONSENTS_URL, _PREPARE_BODY, "prepare"),
+        ("POST", f"{_CONSENT_URL}/confirm", _CONFIRM_BODY, "confirm"),
+        ("GET", _CONSENT_URL, None, "get"),
+    ],
+)
+def test_consent_owner_calls_start_without_request_sql(
+    request_sql_world: _RequestSqlWorld, method: str, url: str, body: dict[str, object] | None, owner_call: str
+) -> None:
+    """The consent owner reads external metadata first; the wrappers' request reads must be over."""
+    world = request_sql_world
+    getattr(world.consent, owner_call).side_effect = _observed_consent(world, owner_call, _receipt())
+
+    response = world.client.open(url, method=method, json=body)
+
+    assert response.status_code in (200, 201)
+    assert world.boundaries == [("feature", False, 0), (owner_call, False, 0)]
+
+
+@pytest.mark.parametrize("write", ["orm_flushed", "core_dml", "orm_pending"])
+@pytest.mark.parametrize("enabled_rbac", [False, True], ids=["legacy", "rbac"], indirect=True)
+@pytest.mark.usefixtures("enabled_rbac")
+def test_another_owners_request_write_is_preserved_and_refused(
+    request_sql_world: _RequestSqlWorld,
+    monkeypatch: pytest.MonkeyPatch,
+    write: str,
+) -> None:
+    """A real-call request never commits or rolls back a request transaction holding another owner's write.
+
+    The write is staged before the guard (already flushed, Core DML, or still pending); the request
+    is refused before any external boundary and the write is still exactly in the open request
+    transaction at request teardown, invisible to any other session.
+    """
+    world = request_sql_world
+    original = wraps_mod._is_setup_completed
+
+    def stage_then_check_setup() -> bool:
+        if write == "orm_flushed":
+            world.registry.add(DifySetup(version="staged-by-another-owner"))
+            world.registry.flush()
+        elif write == "core_dml":
+            world.registry.execute(insert(DifySetup).values(version="staged-by-another-owner"))
+        else:
+            world.registry.add(DifySetup(version="staged-by-another-owner"))
+        return original()
+
+    monkeypatch.setattr(wraps_mod, "_is_setup_completed", stage_then_check_setup)
+    world.consent.reserve_execution.side_effect = _observed_consent(world, "reserve", (_reserved_receipt(), True))
+
+    refused = world.client.post(f"{_CONSENT_URL}/execute", json=_EXECUTE_BODY)
+
+    # The guard's RuntimeError is the framework's generic 500; nothing external ran.
+    assert refused.status_code == 500
+    assert world.boundaries == []
+    assert world.enqueued == []
+    # Captured at request teardown, before the extension's own removal: neither ended nor committed.
+    assert world.teardown == [(True, True, False)]
