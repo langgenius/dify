@@ -1043,10 +1043,15 @@ describe('supported access points and binding permission', () => {
           expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument(),
         )
         expect(screen.getByRole('switch', { name: 'Restrict by IP address' })).not.toBeChecked()
-        expect(screen.getByText('Configured but paused')).toBeInTheDocument()
+        expect(
+          screen.getByText('Paused — Internal Network is configured but not enforcing'),
+        ).toBeInTheDocument()
         expect(within(getChip()).getByText('Pause')).toBeInTheDocument()
         expect(screen.queryByText(/Protecting/)).not.toBeInTheDocument()
         expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument()
+        await waitFor(() =>
+          expect(screen.getByRole('switch', { name: 'Restrict by IP address' })).toBeEnabled(),
+        )
         await user.click(screen.getByRole('switch', { name: 'Restrict by IP address' }))
         await waitFor(() => expect(payloads).toHaveLength(2))
         expect(payloads[1]).toEqual({

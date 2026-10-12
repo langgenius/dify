@@ -105,8 +105,9 @@ export function AccessControlStatusPanel({
             </FieldLabel>
             <p className="system-xs-regular text-text-tertiary">
               {!enabled
-                ? t(($) => $['studio.accessControl.tooltipPaused'], {
+                ? t(($) => $['studio.accessControl.pausedDescription'], {
                     ns: 'deployments',
+                    name: policyName ?? '',
                   })
                 : coverage.inServiceCount > 0 && coverage.coveredCount === coverage.inServiceCount
                   ? t(($) => $['studio.accessControl.protectingAll'], {
@@ -153,7 +154,8 @@ export function AccessControlStatusPanel({
                   : summary.moreCount > 0
                     ? t(($) => $['studio.accessControl.policySummaryMany'], {
                         ns: 'deployments',
-                        listed: summary.listed.join(', '),
+                        first: summary.listed[0] ?? '',
+                        second: summary.listed[1] ?? '',
                         count: summary.moreCount,
                       })
                     : t(($) => $['studio.accessControl.policySummaryTwo'], {

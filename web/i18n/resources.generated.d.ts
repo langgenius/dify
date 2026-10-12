@@ -3011,12 +3011,13 @@ export default interface Resources {
     'studio.accessControl.lockoutWarning': "Your IP ({{ip}}) isn't in this policy. You may lose access."
     'studio.accessControl.manageIpPolicies': 'Manage IP policies'
     'studio.accessControl.notEnabled': 'Not protected'
+    'studio.accessControl.pausedDescription': 'Paused — {{name}} is configured but not enforcing'
     'studio.accessControl.paywallDescription': 'Restrict this app to IP addresses you trust.'
     'studio.accessControl.paywallTitle': 'Access Control'
     'studio.accessControl.policyChanged': 'This policy changed. Review the warning before saving again.'
     'studio.accessControl.policySummaryMany':
-      | 'Allows {{listed}} and {{count}} more address'
-      | 'Allows {{listed}} and {{count}} more addresses'
+      | 'Allows {{first}}, {{second}} and {{count}} more address'
+      | 'Allows {{first}}, {{second}} and {{count}} more addresses'
     'studio.accessControl.policySummaryNone': 'Allows no addresses'
     'studio.accessControl.policySummaryOne': 'Allows {{address}}'
     'studio.accessControl.policySummaryTwo': 'Allows {{first}} and {{second}}'

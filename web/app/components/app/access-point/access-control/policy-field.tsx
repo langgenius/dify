@@ -230,7 +230,8 @@ export function AccessControlPolicyField({
               : summary.moreCount > 0
                 ? t(($) => $['studio.accessControl.policySummaryMany'], {
                     ns: 'deployments',
-                    listed: summary.listed.join(', '),
+                    first: summary.listed[0] ?? '',
+                    second: summary.listed[1] ?? '',
                     count: summary.moreCount,
                   })
                 : t(($) => $['studio.accessControl.policySummaryTwo'], {
