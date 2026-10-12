@@ -5,6 +5,8 @@ import secrets
 from datetime import UTC, datetime, timedelta
 from typing import override
 
+from redis import RedisError
+
 from configs import dify_config
 from extensions.ext_redis import RedisClientWrapper
 from libs.datetime_utils import naive_utc_now
@@ -176,25 +178,31 @@ class RedisAccountSessionGateway(AccountSessionGateway):
 
     @override
     def issue(self, account_id: str) -> AccountSessionTokens:
-        return self._issue(account_id)
+        return self._issue(account_id, previous_refresh_token=None)
 
     @override
     def revoke(self, account_id: str) -> None:
-        refresh_token = self._redis.get(self._account_refresh_token_key(account_id))
+        refresh_token = self._redis.getdel(self._account_refresh_token_key(account_id))
         if refresh_token:
-            self._delete_refresh_token(refresh_token.decode("utf-8"), account_id)
+            self._delete_refresh_token(refresh_token.decode("utf-8"))
 
     @override
     def resolve_refresh_token(self, refresh_token: str) -> str | None:
         account_id = self._redis.get(self._refresh_token_key(refresh_token))
-        return account_id.decode("utf-8") if account_id else None
+        if not account_id:
+            return None
+        account_id = account_id.decode("utf-8")
+        current = self._redis.get(self._account_refresh_token_key(account_id))
+        return account_id if current == refresh_token.encode("utf-8") else None
 
     @override
     def rotate(self, *, refresh_token: str, account_id: str) -> AccountSessionTokens:
-        self._delete_refresh_token(refresh_token, account_id)
-        return self._issue(account_id)
+        tokens = self._issue(account_id, previous_refresh_token=refresh_token)
+        self._delete_refresh_token(refresh_token)
+        return tokens
 
-    def _issue(self, account_id: str) -> AccountSessionTokens:
+    def _issue(self, account_id: str, *, previous_refresh_token: str | None) -> AccountSessionTokens:
+        """A missing previous token starts a new authenticated session."""
         expires_at = datetime.now(UTC) + timedelta(minutes=dify_config.ACCESS_TOKEN_EXPIRE_MINUTES)
         access_token = PassportService().issue(
             {
@@ -205,21 +213,40 @@ class RedisAccountSessionGateway(AccountSessionGateway):
             }
         )
         refresh_token = secrets.token_hex(64)
-        self._store_refresh_token(refresh_token, account_id)
-        return AccountSessionTokens(
+        tokens = AccountSessionTokens(
             access_token=access_token,
             refresh_token=refresh_token,
             csrf_token=generate_csrf_token(account_id),
         )
+        self._store_refresh_token(refresh_token, account_id, previous_refresh_token=previous_refresh_token)
+        return tokens
 
-    def _store_refresh_token(self, refresh_token: str, account_id: str) -> None:
+    def _store_refresh_token(self, refresh_token: str, account_id: str, *, previous_refresh_token: str | None) -> None:
         expires_in = timedelta(days=dify_config.REFRESH_TOKEN_EXPIRE_DAYS)
         self._redis.setex(self._refresh_token_key(refresh_token), expires_in, account_id)
-        self._redis.setex(self._account_refresh_token_key(account_id), expires_in, refresh_token)
+        if previous_refresh_token is None:
+            self._redis.setex(self._account_refresh_token_key(account_id), expires_in, refresh_token)
+            return
+        # The account pointer is authoritative; a single-key CAS also supports Redis Cluster.
+        rotate = self._redis.register_script("""
+            local current = redis.call('GET', KEYS[1])
+            if current == ARGV[2] then return 1 end
+            if current ~= ARGV[1] then return 0 end
+            redis.call('SET', KEYS[1], ARGV[2], 'EX', ARGV[3])
+            return 1
+        """)
+        if not rotate(
+            keys=[self._account_refresh_token_key(account_id)],
+            args=[previous_refresh_token, refresh_token, int(expires_in.total_seconds())],
+        ):
+            self._delete_refresh_token(refresh_token)
+            raise account_errors.InvalidRefreshTokenError("Invalid refresh token")
 
-    def _delete_refresh_token(self, refresh_token: str, account_id: str) -> None:
-        self._redis.delete(self._refresh_token_key(refresh_token))
-        self._redis.delete(self._account_refresh_token_key(account_id))
+    def _delete_refresh_token(self, refresh_token: str) -> None:
+        try:
+            self._redis.delete(self._refresh_token_key(refresh_token))
+        except RedisError:
+            logger.warning("Unable to remove inactive refresh token", exc_info=True)
 
     @staticmethod
     def _refresh_token_key(refresh_token: str) -> str:
