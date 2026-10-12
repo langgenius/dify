@@ -42,7 +42,7 @@ from repositories.factory import DifyAPIRepositoryFactory
 from repositories.sqlalchemy_api_workflow_run_repository import WorkflowRunNotPausedError
 from services.app_task_service import AppTaskService
 from services.human_input_v2.submission_service import HumanInputSubmissionService
-from services.tools.draft_tool_setup import admit_draft_tool_setup
+from services.tools.draft_tool_setup import admit_draft_tool_setup, admit_resumed_draft_tool_setup
 from services.workflow_execution_identity import build_workflow_execution_identity
 from services.workflow_run_agg import WorkflowRunAgg
 
@@ -605,14 +605,14 @@ def _resume_app_execution(payload: dict[str, Any]) -> None:
         )
         return
 
-    if generate_entity.invoke_from == InvokeFrom.DEBUGGER and workflow.version == Workflow.VERSION_DRAFT:
-        if (
-            not isinstance(user, Account)
-            or workflow.tenant_id != app_model.tenant_id
-            or workflow.app_id != app_model.id
-        ):
-            raise ValueError("Draft execution requires the acting workspace member and app.")
-        admit_draft_tool_setup(tenant_id=app_model.tenant_id, graph=workflow.graph_dict, actor_id=user.id)
+    admit_resumed_draft_tool_setup(
+        workflow_run_id=workflow_run_id,
+        workflow_run=workflow_run,
+        workflow=workflow,
+        app=app_model,
+        user=user,
+        generate_entity=generate_entity,
+    )
 
     # TODO: Remove legacy task recovery 30 days after the last legacy writer is retired.
     task_id = workflow_run.task_id
