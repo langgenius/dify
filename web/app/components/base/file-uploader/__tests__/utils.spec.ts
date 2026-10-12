@@ -700,7 +700,7 @@ describe('file-uploader utils', () => {
       expect(result).toEqual([])
     })
 
-    it('should prioritize custom types over standard types', () => {
+    it('should union custom extensions with standard types', () => {
       const mockFileExts = {
         image: ['JPG', 'PNG'],
       }
@@ -713,10 +713,29 @@ describe('file-uploader utils', () => {
         [SupportUploadFileTypes.custom, 'image'],
         ['.csv', '.xml'],
       )
-      expect(result).toEqual(['CSV', 'XML'])
+      expect(result).toEqual(['JPG', 'PNG', 'CSV', 'XML'])
 
       // Restore original FILE_EXTS
       Object.assign(FILE_EXTS, originalFileExts)
+    })
+
+    it('should keep undotted custom extensions that overlap built-in image types', () => {
+      const result = getSupportFileExtensionList(
+        [SupportUploadFileTypes.custom],
+        ['JPG', 'JPEG', 'PNG', 'GIF', 'WEBP', 'SVG', '.pdf', '.json', '.wps', '.ofd'],
+      )
+      expect(result).toEqual([
+        'JPG',
+        'JPEG',
+        'PNG',
+        'GIF',
+        'WEBP',
+        'SVG',
+        'PDF',
+        'JSON',
+        'WPS',
+        'OFD',
+      ])
     })
   })
 
