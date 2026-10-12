@@ -284,3 +284,115 @@ def test_malformed_graph_identifiers_are_sanitized_refusals(field):
         ]
     with pytest.raises(policy().BuilderExecutionPolicyError):
         policy().admitted_node_bindings(snapshot(value))
+
+
+def _confirmed_summary(**changes):
+    values = {
+        "request_id": "request-1",
+        "policy_version": "builder-confirmed-gmail-read-v1",
+        "mode": "confirmed_tool",
+        "sealed": True,
+        "safety_outcome": "confirmed_tool_completed",
+        "sandbox_profile": "disabled",
+        "native_run_id": "native-1",
+        "consent_id": "consent-1",
+        "action_state": "completed",
+        "action_reason_code": "message_returned",
+        **changes,
+    }
+    return policy().ExecutionEvidenceSummary.model_validate(values)
+
+
+def test_confirmed_evidence_literals_and_sanitized_action_metadata():
+    summary = _confirmed_summary()
+    assert (summary.mode, summary.safety_outcome, summary.fixture_digest) == (
+        "confirmed_tool",
+        "confirmed_tool_completed",
+        None,
+    )
+    unknown = _confirmed_summary(safety_outcome="execution_evidence_unknown", action_state=None, native_run_id=None)
+    assert unknown.consent_id == "consent-1"
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"policy_version": "builder-restricted-v1"},
+        {"mode": "restricted"},
+        {"consent_id": None},
+        {"action_state": "unknown"},
+        {"native_run_id": None},
+        {"sealed": False},
+        {"fixture_digest": "a" * 64},
+        {"action_reason_code": "Provider said: invalid_grant"},
+        {"safety_outcome": "restricted_execution_completed"},
+    ],
+)
+def test_confirmed_completion_cannot_be_constructed_without_complete_confirmed_shape(changes):
+    with pytest.raises(ValidationError):
+        _confirmed_summary(**changes)
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"consent_id": "consent-1"},
+        {"action_state": "completed"},
+        {"safety_outcome": "confirmed_tool_completed"},
+        {"fixture_digest": None},
+        {"mode": "confirmed_tool"},
+    ],
+)
+def test_restricted_summary_cannot_carry_confirmed_metadata(changes):
+    values = {
+        "request_id": "request-1",
+        "mode": "restricted",
+        "sealed": True,
+        "safety_outcome": "restricted_execution_completed",
+        "sandbox_profile": "disabled",
+        "fixture_digest": "a" * 64,
+        **changes,
+    }
+    with pytest.raises(ValidationError):
+        policy().ExecutionEvidenceSummary.model_validate(values)
+
+
+def test_trusted_completion_accepts_either_context_variant_and_rejects_unknown_tags():
+    p = policy()
+    values = {
+        "request_id": "request-1",
+        "tenant_id": "tenant-1",
+        "app_id": "app-1",
+        "workflow_id": "workflow-1",
+        "actor_id": "actor-1",
+        "session_id": "session-1",
+        "test_input_id": "input-1",
+        "execution_revision": "a" * 64,
+        "graph_revision": "b" * 64,
+        "submitted_inputs_digest": "c" * 64,
+        "effective_inputs_digest": "d" * 64,
+        "mode": "confirmed_tool",
+        "sandbox_profile": "disabled",
+        "admitted_nodes": (),
+        "consent_id": "consent-1",
+        "scope_digest": "e" * 64,
+        "command_id": "command-1",
+        "policy_version": "builder-confirmed-gmail-read-v1",
+    }
+    initial = p.ConfirmedToolExecutionContext.model_validate({**values, "context_digest": "0" * 64})
+    context = initial.model_copy(update={"context_digest": p.context_digest(initial)})
+    completion = p.TrustedExecutionCompletion(
+        context=context,
+        native_run_id="native-1",
+        task_id="task-1",
+        worker_finished=True,
+        worker_exit="returned",
+        recorder_healthy=True,
+        response_completed=True,
+    )
+    decoded = p.TrustedExecutionCompletion.model_validate(completion.model_dump(mode="json"))
+    assert isinstance(decoded.context, p.ConfirmedToolExecutionContext)
+    raw = completion.model_dump(mode="json")
+    raw["context"]["policy_version"] = "builder-unknown-v9"
+    with pytest.raises(ValidationError):
+        p.TrustedExecutionCompletion.model_validate(raw)

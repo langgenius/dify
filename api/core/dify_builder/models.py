@@ -390,7 +390,9 @@ class DifyBuilderContext:
     # -- Confirmed real-call reservation (additive) --
     # Set only by the consent service's atomic launch reservation, in the same
     # commit as ``last_command_id``; public payloads never set them. Empty means
-    # no reserved confirmed command (all older rows).
+    # no reserved confirmed command (all older rows). A pending reference, not
+    # authority: the worker reloads the reserved command and sidecar, and the
+    # terminal or recovery commit clears both.
     confirmed_consent_id: str = ""
     confirmed_command_id: str = ""
 
@@ -402,6 +404,11 @@ class DifyBuilderContext:
     # {provider, name, mode, completion_params}. Empty == use the tenant default LLM.
     # Kept a plain dict so core imports no services/model-runtime type.
     model_config: dict[str, Any] = field(default_factory=dict)
+
+
+# Internal kind of a reserved confirmed Tool command. Only the dispatch owner's
+# reservation winner enqueues it; the public action route refuses it.
+CONFIRMED_TOOL_ACTION = "run_confirmed_tool"
 
 
 @dataclass(kw_only=True)

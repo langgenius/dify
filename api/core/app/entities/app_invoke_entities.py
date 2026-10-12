@@ -15,7 +15,11 @@ from core.credit_usage import (
     normalize_credit_usage_app_type,
     normalize_credit_usage_created_by,
 )
-from core.dify_builder.execution_policy import BuilderExecutionContext
+from core.dify_builder.execution_policy import (
+    BuilderExecutionContext,
+    BuilderExecutionContextValue,
+    ConfirmedToolExecutionContext,
+)
 from core.entities.provider_configuration import ProviderModelBundle
 from graphon.file import File, FileUploadConfig
 from graphon.model_runtime.entities.model_entities import AIModelEntity
@@ -26,6 +30,13 @@ if TYPE_CHECKING:
 
 
 DIFY_RUN_CONTEXT_KEY = "_dify"
+
+
+def _tag_legacy_builder_execution(value: object) -> object:
+    """Older serialized restricted contexts may lack the tag; never infer the confirmed variant."""
+    if isinstance(value, dict) and "policy_version" not in value:
+        return {**value, "policy_version": "builder-restricted-v1"}
+    return value
 
 
 class UserFrom(StrEnum):
@@ -96,7 +107,7 @@ def get_credit_usage_created_by(app_mode: AppMode | str | None) -> CreditUsageCr
 
 
 class DifyRunContext(BaseModel):
-    builder_execution: BuilderExecutionContext | None = None
+    builder_execution: BuilderExecutionContextValue | None = None
 
     tenant_id: str
     app_id: str
@@ -106,6 +117,11 @@ class DifyRunContext(BaseModel):
     app_type: CreditUsageAppType | None = None
     created_by: CreditUsageCreatedBy | None = None
     trace_session_id: str | None = None
+
+    @field_validator("builder_execution", mode="before")
+    @classmethod
+    def tag_builder_execution(cls, value: object) -> object:
+        return _tag_legacy_builder_execution(value)
 
     @field_validator("created_by", mode="before")
     @classmethod
@@ -133,7 +149,7 @@ def build_dify_run_context(
     created_by: CreditUsageCreatedByInput = None,
     trace_session_id: str | None = None,
     extra_context: Mapping[str, Any] | None = None,
-    builder_execution: BuilderExecutionContext | None = None,
+    builder_execution: BuilderExecutionContext | ConfirmedToolExecutionContext | None = None,
 ) -> dict[str, Any]:
     """
     Build graph run_context with the reserved Dify runtime payload.
@@ -181,7 +197,14 @@ class AppGenerateEntity(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    builder_execution: BuilderExecutionContext | None = None
+    # Either Builder policy variant; persisted pause/resume JSON keeps its tag and
+    # every Builder transport refuses resume, so it is only ever decoded to refuse.
+    builder_execution: BuilderExecutionContextValue | None = None
+
+    @field_validator("builder_execution", mode="before")
+    @classmethod
+    def tag_builder_execution(cls, value: object) -> object:
+        return _tag_legacy_builder_execution(value)
 
     task_id: str
 

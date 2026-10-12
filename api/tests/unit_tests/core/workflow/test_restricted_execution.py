@@ -338,3 +338,20 @@ def test_typed_capability_recheck_requires_same_exact_binding_and_version(owned,
         monkeypatch.setattr(StartNode, "version", classmethod(lambda _cls: "2"))
     with pytest.raises(BuilderExecutionPolicyError):
         validate_restricted_node(context=context, node_id="start", node_class=StartNode, resolved_node_data=data)
+
+
+def test_default_restricted_branch_still_denies_tool_nodes_after_confirmed_branch(owned, monkeypatch):
+    """The confirmed Tool branch never widens the default restricted factory."""
+    from core.tools.tool_manager import ToolManager
+    from tests.unit_tests.core.dify_builder.test_gmail_read_policy import gmail_graph, tool_data
+
+    resolved = MagicMock()
+    monkeypatch.setattr(ToolManager, "get_workflow_tool_runtime", resolved)
+    with pytest.raises(BuilderExecutionPolicyError, match="unsupported_node_implementation"):
+        admitted_node_bindings(snapshot(gmail_graph()))
+    factory, context, _ = prepare_native(owned, "http_text.yml", samples=(fixture(),))
+    assert context.policy_version == "builder-restricted-v1"
+    with pytest.raises(BuilderExecutionPolicyError, match="unsupported_node_implementation"):
+        factory.create_node({"id": "tool", "data": tool_data()})
+    assert not hasattr(factory, "_confirmed_tool_runtime")
+    resolved.assert_not_called()

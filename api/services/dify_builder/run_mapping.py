@@ -276,6 +276,50 @@ def map_run_result(data: Mapping[str, Any], node_execs: Sequence[Any]) -> Run:
     )
 
 
+# Confirmed Builder projections: the native authorized Run keeps message content;
+# Builder SSE, cards, per-node rows and terminal outputs carry identities and
+# statuses only. Node titles are dropped too: a provider error or body is never
+# re-labelled as a title.
+_CONFIRMED_FRAME_DATA_KEYS = ("id", "node_id", "node_type", "status")
+
+
+def sanitize_confirmed_stream_event(payload: Mapping[str, Any]) -> dict[str, Any]:
+    """One native stream frame reduced to event, run link, node identity and status."""
+    sanitized: dict[str, Any] = {"event": str(payload.get("event") or "")}
+    run_id = run_id_from_stream_chunk(payload)
+    if run_id:
+        sanitized["workflow_run_id"] = run_id
+    data = payload.get("data")
+    if isinstance(data, Mapping):
+        kept = {
+            key: str(_status_value(data[key]))
+            for key in _CONFIRMED_FRAME_DATA_KEYS
+            if isinstance(data.get(key), str) and data.get(key)
+        }
+        if kept:
+            sanitized["data"] = kept
+    return sanitized
+
+
+def sanitize_confirmed_node_event(event: NodeEvent) -> NodeEvent:
+    return NodeEvent(node_id=event.node_id, status=event.status, run_id=event.run_id)
+
+
+def sanitize_confirmed_run(run: Run) -> Run:
+    """Keep IDs, statuses and evidence; drop inputs, outputs, titles and error text.
+
+    Output findings were already derived internally from the native rows and
+    are kept; terminal outputs are never copied into Builder state.
+    """
+    verification = replace(run.verification, terminal_outputs=None) if run.verification is not None else None
+    return replace(
+        run,
+        verification=verification,
+        error="",
+        per_node=[NodeOutput(node_id=node.node_id, status=node.status) for node in run.per_node],
+    )
+
+
 def to_node_event(node_exec: Any) -> NodeEvent:
     """Map one node-execution row into a per-node progress ``NodeEvent``."""
     return NodeEvent(

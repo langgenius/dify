@@ -279,37 +279,80 @@ class BuilderExecutionRecorder(Protocol):
     def record(self, observation: BuilderExecutionObservation) -> None: ...
 
 
+ReasonCode = Annotated[str, Field(strict=True, pattern=r"^[a-z][a-z0-9_]{0,127}$")]
+
+
 class ExecutionEvidenceSummary(_TrustedModel):
+    """Sealed Builder evidence for one launch; IDs, statuses and reason codes only.
+
+    Confirmed summaries carry the consent reference and the sanitized action
+    outcome (state/reason code) as metadata; the consent owner stays the only
+    outcome authority and native Run storage the only content owner.
+    """
+
     request_id: BoundedID
-    policy_version: Literal["builder-restricted-v1"] = "builder-restricted-v1"
-    mode: Literal["restricted", "mock"]
+    policy_version: Literal["builder-restricted-v1", "builder-confirmed-gmail-read-v1"] = "builder-restricted-v1"
+    mode: Literal["restricted", "mock", "confirmed_tool"]
     sealed: bool
     safety_outcome: Literal[
         "unsupported_safe_execution",
         "execution_blocked",
         "simulation_completed",
         "restricted_execution_completed",
+        "confirmed_tool_completed",
         "execution_evidence_unknown",
         "native_failed",
     ]
     simulated_node_ids: tuple[BoundedID, ...] = ()
     blocked_node_ids: tuple[BoundedID, ...] = ()
     sandbox_profile: Literal["disabled", "network-disabled-v1"]
-    fixture_digest: Digest
+    # ``None`` only for a confirmed run, which serves no fixtures.
+    fixture_digest: Digest | None = None
     native_run_id: BoundedID | None = None
+    # Confirmed only: the grant this launch spent and its sanitized outcome, if recorded.
+    consent_id: BoundedID | None = None
+    action_state: Literal["completed", "failed", "unknown"] | None = None
+    action_reason_code: ReasonCode | None = None
+
+    @model_validator(mode="after")
+    def validate_variant(self) -> "ExecutionEvidenceSummary":
+        if self.policy_version == "builder-restricted-v1":
+            if (
+                self.mode == "confirmed_tool"
+                or self.fixture_digest is None
+                or self.safety_outcome == "confirmed_tool_completed"
+                or (self.consent_id, self.action_state, self.action_reason_code) != (None, None, None)
+            ):
+                raise ValueError("restricted evidence cannot carry confirmed metadata")
+            return self
+        if (
+            self.mode != "confirmed_tool"
+            or self.sandbox_profile != "disabled"
+            or self.fixture_digest is not None
+            or self.consent_id is None
+            or self.simulated_node_ids
+            or self.blocked_node_ids
+            or self.safety_outcome in {"execution_blocked", "simulation_completed", "restricted_execution_completed"}
+        ):
+            raise ValueError("invalid confirmed evidence")
+        if self.safety_outcome == "confirmed_tool_completed" and (
+            not self.sealed or self.native_run_id is None or self.action_state != "completed"
+        ):
+            raise ValueError("confirmed completion requires sealed native proof and a completed action")
+        return self
 
 
 class BuilderExecutionRefusal(_TrustedModel):
     """Typed prelaunch refusal; no request/run identity is fabricated."""
 
     safety_outcome: Literal["unsupported_safe_execution"] = "unsupported_safe_execution"
-    reason_code: Annotated[str, Field(strict=True, pattern=r"^[a-z][a-z0-9_]{0,127}$")]
+    reason_code: ReasonCode
 
 
 class TrustedExecutionCompletion(_TrustedModel):
     """Transient finish facts captured by the native worker/port owner, never posted."""
 
-    context: BuilderExecutionContext
+    context: BuilderExecutionContextValue
     native_run_id: BoundedID | None
     task_id: BoundedID | None
     worker_finished: StrictBool

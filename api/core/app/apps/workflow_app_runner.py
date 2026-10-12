@@ -39,6 +39,7 @@ from core.dify_builder.execution_policy import (
     BuilderExecutionContext,
     BuilderExecutionPolicyError,
     BuilderExecutionRecorder,
+    ConfirmedToolExecutionContext,
 )
 from core.rag.entities import RetrievalSourceMetadata
 from core.repositories.human_input_repository import HumanInputFormSubmissionRepository
@@ -195,7 +196,7 @@ class WorkflowBasedAppRunner:
         root_node_id: str | None = None,
         app_type: CreditUsageAppType | None = None,
         trace_session_id: str | None = None,
-        builder_execution: BuilderExecutionContext | None = None,
+        builder_execution: BuilderExecutionContext | ConfirmedToolExecutionContext | None = None,
         execution_recorder: BuilderExecutionRecorder | None = None,
     ) -> Graph:
         """

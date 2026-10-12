@@ -35,12 +35,14 @@ from core.dify_builder.handlers_fix import (
     append_card,
     build_change_set,
     build_form_fields,
+    confirmed_tool_test,
     dead_end_branch_node_id,
     drop_unapplied_repair,
     emit_canvas,
     failure_signature,
     first_failed_node,
     input_gate_result,
+    is_confirmed_tool_turn,
     is_input_failure,
     launch_error_text,
     merge_known_keys,
@@ -760,6 +762,8 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
     """(working, auto) Live test: run the built draft with mock inputs. Success
     -> build.review. Failure -> real diagnose + propose_repair, staged for the
     build.await_repair approval gate. No auto-apply (human-gated)."""
+    if is_confirmed_tool_turn(turn, fc):
+        return confirmed_tool_test(env, turn, s, fc, review_state=PcState.BUILD_REVIEW, step_prefix="build")
     progress = ProgressReporter.for_session(
         emit=env.emit_progress,
         operation_id=env.operation_id,

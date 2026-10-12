@@ -2880,3 +2880,24 @@ def test_a_determinate_outcome_resets_the_unknown_outcome_count():
 
     assert res.next == PcState.BUILD_REVIEW
     assert res.context.unknown_outcome_count == 0
+
+
+def test_confirmed_build_test_uses_saved_input_without_repair_and_returns_to_review():
+    from tests.unit_tests.services.dify_builder.test_confirmed_tool_launch import assert_confirmed_handler_outcome
+
+    assert_confirmed_handler_outcome("build", PcState.BUILD_TEST_AND_REPAIR, PcState.BUILD_REVIEW)
+
+
+def test_default_build_test_never_passes_consent_even_with_a_pending_reference():
+    from core.dify_builder.handlers_build import handle_test_and_repair
+    from tests.unit_tests.core.dify_builder.fakes import saved_test_context
+
+    env, repo = _new_env()
+    s = _session(current_state=PcState.BUILD_TEST_AND_REPAIR)
+    fc = saved_test_context(repo, s.id, confirmed_consent_id="consent-1", confirmed_command_id="command-1")
+    seen: list[dict] = []
+    native = env.dify.run_draft
+    env.dify.run_draft = lambda *args, **kwargs: (seen.append(kwargs), native(*args, **kwargs))[1]
+    handle_test_and_repair(env, Turn(actor=_actor()), s, fc)
+    assert seen
+    assert all("confirmed_consent_id" not in call and "command_id" not in call for call in seen)

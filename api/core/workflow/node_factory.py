@@ -4,7 +4,7 @@ import secrets
 from collections.abc import Callable, Iterator, Mapping, MutableMapping, Sequence
 from dataclasses import dataclass
 from functools import lru_cache
-from typing import TYPE_CHECKING, Any, cast, final, override
+from typing import TYPE_CHECKING, Any, Protocol, cast, final, override, runtime_checkable
 
 from sqlalchemy import select
 
@@ -13,13 +13,19 @@ from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunC
 from core.app.llm.model_access import build_dify_model_access, fetch_model_config
 from core.credit_usage import created_by_from_app_type
 from core.db.session_factory import session_factory
+from core.dify_builder import gmail_read_policy
 from core.dify_builder.execution_policy import (
+    BuilderExecutionContext,
     BuilderExecutionPolicyError,
     BuilderExecutionRecorder,
+    ConfirmedToolExecutionContext,
     RestrictedAdmissionSnapshot,
     admit_restricted_workflow,
+    canonical_digest,
+    validate_execution_context,
 )
 from core.dify_builder.input_schema import start_schema
+from core.dify_builder.real_call_consent import ConfirmedToolGuard
 from core.file import remote_fetcher
 from core.helper.code_executor.code_executor import (
     CodeExecutionError,
@@ -82,10 +88,13 @@ from graphon.nodes.code.code_node import CodeExecutorProtocol
 from graphon.nodes.code.entities import CodeLanguage
 from graphon.nodes.code.limits import CodeNodeLimits
 from graphon.nodes.document_extractor import UnstructuredApiConfig
+from graphon.nodes.end.end_node import EndNode
 from graphon.nodes.http_request import build_http_request_config
 from graphon.nodes.llm.entities import LLMNodeData
 from graphon.nodes.parameter_extractor.entities import ParameterExtractorNodeData
 from graphon.nodes.question_classifier.entities import QuestionClassifierNodeData
+from graphon.nodes.start.start_node import StartNode
+from graphon.nodes.tool.tool_node import ToolNode
 from graphon.variables.segments import ArrayObjectSegment, ObjectSegment
 from models.model import Conversation
 
@@ -295,6 +304,34 @@ def fetch_memory(
     return TokenBufferMemory(conversation=conversation, model_instance=model_instance)
 
 
+# The exact classes a confirmed Builder Tool run may construct.
+_CONFIRMED_CLASSES: Mapping[str, type[Node]] = {"start": StartNode, "tool": ToolNode, "end": EndNode}
+
+
+@runtime_checkable
+class ConfirmedToolGuardIssuer(BuilderExecutionRecorder, Protocol):
+    """A launch recorder that can also issue the service-owned guard for this Run.
+
+    Implemented by the Builder service for one claimed launch identity: it
+    claims the grant at the given actual native IDs and returns the service's
+    guard, or refuses. The factory never builds or reconstructs a guard itself.
+    """
+
+    def confirmed_guard(
+        self, *, node_id: str, native_run_id: str, native_node_execution_id: str
+    ) -> ConfirmedToolGuard: ...
+
+
+class _DeniedConfirmedToolFiles:
+    """Tool file owner for a confirmed run: file messages are refused, never stored."""
+
+    def create_file_by_raw(self, *, file_binary: bytes, mimetype: str, filename: str | None = None) -> Any:
+        raise BuilderExecutionPolicyError("unsupported_tool_file")
+
+    def get_file_generator_by_tool_file_id(self, tool_file_id: str) -> Any:
+        raise BuilderExecutionPolicyError("unsupported_tool_file")
+
+
 class DefaultWorkflowCodeExecutor:
     def execute(
         self,
@@ -348,34 +385,19 @@ class DifyNodeFactory(NodeFactory):
         self._dify_context = self._resolve_dify_context(graph_init_params.run_context)
         self.execution_recorder = execution_recorder
         context = self._dify_context.builder_execution
-        if context is not None:
-            if execution_recorder is None or not execution_recorder.healthy:
-                raise BuilderExecutionPolicyError("missing_execution_recorder")
-            if (
-                self._dify_context.tenant_id,
-                self._dify_context.app_id,
-                self._dify_context.user_id,
-                graph_init_params.workflow_id,
-                graph_init_params.call_depth,
-            ) != (context.tenant_id, context.app_id, context.actor_id, context.workflow_id, 0):
-                raise BuilderExecutionPolicyError("execution_owner_mismatch")
-            graph = dict(graph_init_params.graph_config)
-            snapshot = RestrictedAdmissionSnapshot(
-                app_mode="workflow",
-                workflow_kind="standard",
-                graph=graph,
-                input_schema=start_schema(graph),
-                features={},
-                has_environment_variables=False,
-                has_conversation_variables=False,
-                has_external_tracing=False,
-            )
-            # Check every raw class/config binding before concrete validation.
-            for node_config in graph.get("nodes", []):
-                self._validate_restricted_raw_config(node_config)
-            admit_restricted_workflow(context, snapshot)
-            self._request_hmac_key = _request_hmac_key if _request_hmac_key is not None else secrets.token_bytes(32)
-            return
+        # Exhaustive context dispatch, before ordinary eager setup. A Builder
+        # context never falls through to native unrestricted construction.
+        match context:
+            case ConfirmedToolExecutionContext():
+                self._initialize_confirmed_tool_runtime(context)
+                return
+            case BuilderExecutionContext():
+                self._initialize_restricted_runtime(context, _request_hmac_key)
+                return
+            case None:
+                pass
+            case _:
+                raise BuilderExecutionPolicyError("unsupported_execution_policy")
         self._code_executor: CodeExecutorProtocol = DefaultWorkflowCodeExecutor()
         self._code_limits = CodeNodeLimits(
             max_string_length=dify_config.CODE_MAX_STRING_LENGTH,
@@ -435,6 +457,76 @@ class DifyNodeFactory(NodeFactory):
         self._agent_runtime_support = AgentRuntimeSupport()
         self._agent_message_transformer = AgentMessageTransformer()
 
+    def _require_builder_owner(self, context: BuilderExecutionContext | ConfirmedToolExecutionContext) -> None:
+        recorder = self.execution_recorder
+        if recorder is None or not recorder.healthy:
+            raise BuilderExecutionPolicyError("missing_execution_recorder")
+        if (
+            self._dify_context.tenant_id,
+            self._dify_context.app_id,
+            self._dify_context.user_id,
+            self.graph_init_params.workflow_id,
+            self.graph_init_params.call_depth,
+        ) != (context.tenant_id, context.app_id, context.actor_id, context.workflow_id, 0):
+            raise BuilderExecutionPolicyError("execution_owner_mismatch")
+
+    def _admission_snapshot(self) -> RestrictedAdmissionSnapshot:
+        graph = dict(self.graph_init_params.graph_config)
+        return RestrictedAdmissionSnapshot(
+            app_mode="workflow",
+            workflow_kind="standard",
+            graph=graph,
+            input_schema=start_schema(graph),
+            features={},
+            has_environment_variables=False,
+            has_conversation_variables=False,
+            has_external_tracing=False,
+        )
+
+    def _initialize_restricted_runtime(self, context: BuilderExecutionContext, request_hmac_key: bytes | None) -> None:
+        self._require_builder_owner(context)
+        snapshot = self._admission_snapshot()
+        # Check every raw class/config binding before concrete validation.
+        for node_config in snapshot.graph.get("nodes", []):
+            self._validate_restricted_raw_config(node_config)
+        admit_restricted_workflow(context, snapshot)
+        self._request_hmac_key = request_hmac_key if request_hmac_key is not None else secrets.token_bytes(32)
+
+    def _initialize_confirmed_tool_runtime(self, context: ConfirmedToolExecutionContext) -> None:
+        """Admit exactly the reserved Start → Tool → End graph and one request-scoped Tool runtime.
+
+        Only ``DifyToolNodeRuntime`` is constructed, with the service-owned guard
+        issuer from the launch recorder. Graphon binds a node execution ID only
+        at ``get_runtime``; the closure then reads this run's actual native Run
+        ID from the graph runtime state and asks the service to claim the grant
+        and build its guard, before any ToolManager resolution.
+        """
+        checked = validate_execution_context(context.model_dump(mode="json"))
+        if not isinstance(checked, ConfirmedToolExecutionContext) or checked != context:
+            raise BuilderExecutionPolicyError("invalid_execution_context")
+        self._require_builder_owner(context)
+        recorder = self.execution_recorder
+        if not isinstance(recorder, ConfirmedToolGuardIssuer):
+            raise BuilderExecutionPolicyError("missing_confirmed_tool_guard")
+        snapshot = self._admission_snapshot()
+        for node_config in snapshot.graph.get("nodes", []):
+            self._validate_confirmed_raw_config(node_config)
+        admission = gmail_read_policy.admit_get_message_workflow(snapshot)
+        if admission.nodes != context.admitted_nodes:
+            raise BuilderExecutionPolicyError("node_binding_mismatch")
+
+        def issue_guard(node_id: str, node_execution_id: str) -> ConfirmedToolGuard:
+            native_run_id = get_system_text(
+                self.graph_runtime_state.variable_pool, SystemVariableKey.WORKFLOW_EXECUTION_ID
+            )
+            if not native_run_id:
+                raise BuilderExecutionPolicyError("execution_launch_mismatch")
+            return recorder.confirmed_guard(
+                node_id=node_id, native_run_id=native_run_id, native_node_execution_id=node_execution_id
+            )
+
+        self._confirmed_tool_runtime = DifyToolNodeRuntime(self._dify_context, confirmed_guard_factory=issue_guard)
+
     def with_runtime_state(self, graph_runtime_state: "GraphRuntimeState") -> "DifyNodeFactory":
         return DifyNodeFactory(
             execution_recorder=self.execution_recorder,
@@ -475,6 +567,9 @@ class DifyNodeFactory(NodeFactory):
                     **node_config,
                     "data": node_config["data"].model_dump(mode="json", by_alias=True, exclude_unset=True),
                 }
+        if isinstance(context, ConfirmedToolExecutionContext):
+            return self._create_confirmed_node(node_config)
+        if context is not None:
             self._validate_restricted_raw_config(node_config)
         adapted_node_config = adapt_node_config_for_graph(node_config)
         node_id, node_data, node_class, resolved_node_data = _validated_node_config(
@@ -483,7 +578,7 @@ class DifyNodeFactory(NodeFactory):
             validate_resolved_node_data=self._validate_resolved_node_data,
             pre_validate_node_data=self._validate_restricted_raw_config if context is not None else None,
         )
-        if context is not None:
+        if isinstance(context, BuilderExecutionContext):
             validate_restricted_node(
                 context=context, node_id=node_id, node_class=node_class, resolved_node_data=resolved_node_data
             )
@@ -588,11 +683,59 @@ class DifyNodeFactory(NodeFactory):
         )
         return node
 
+    def _create_confirmed_node(self, node_config: Mapping[str, Any]) -> Node:
+        """Only the exact admitted Start/Tool v1/End classes; the Tool gets the confirmed runtime only."""
+        self._validate_confirmed_raw_config(node_config)
+        adapted_node_config = adapt_node_config_for_graph(node_config)
+        node_id, _node_data, node_class, resolved_node_data = _validated_node_config(
+            adapted_node_config,
+            resolve_node_class=self._resolve_node_class,
+            validate_resolved_node_data=self._validate_resolved_node_data,
+            pre_validate_node_data=self._validate_confirmed_raw_config,
+        )
+        if node_class is not _CONFIRMED_CLASSES.get(resolved_node_data.type) or resolved_node_data.version != "1":
+            raise BuilderExecutionPolicyError("unsupported_node_implementation")
+        kwargs: dict[str, object] = {}
+        if node_class is ToolNode:
+            kwargs = {"tool_file_manager": _DeniedConfirmedToolFiles(), "runtime": self._confirmed_tool_runtime}
+        return node_class(
+            node_id=node_id,
+            data=resolved_node_data.model_dump(mode="python", by_alias=True),
+            graph_init_params=self.graph_init_params,
+            graph_runtime_state=self.graph_runtime_state,
+            **kwargs,
+        )
+
+    def _validate_confirmed_raw_config(
+        self, node_config: Mapping[str, Any], node_class: type[Node] | None = None
+    ) -> None:
+        context = self._dify_context.builder_execution
+        if not isinstance(context, ConfirmedToolExecutionContext):
+            raise BuilderExecutionPolicyError("unsupported_execution_policy")
+        data, node_id = node_config.get("data"), node_config.get("id")
+        if not isinstance(data, Mapping) or not isinstance(node_id, str):
+            raise BuilderExecutionPolicyError("invalid_node_configuration")
+        node_type, version = data.get("type"), data.get("version", "1")
+        if not isinstance(node_type, str) or node_type not in _CONFIRMED_CLASSES or version != "1":
+            raise BuilderExecutionPolicyError("unsupported_node_implementation")
+        if node_class is None:
+            node_class = self._resolve_node_class(node_type=node_type, node_version=version, node_data=data)
+        if node_class is not _CONFIRMED_CLASSES[node_type] or node_class.version() != "1":
+            raise BuilderExecutionPolicyError("unsupported_node_implementation")
+        binding = next((b for b in context.admitted_nodes if b.node_id == node_id), None)
+        if (
+            binding is None
+            or binding.implementation != f"{node_class.__module__}.{node_class.__qualname__}"
+            or binding.node_version != "1"
+            or binding.normalized_config_digest != canonical_digest({**data, "version": "1"})
+        ):
+            raise BuilderExecutionPolicyError("execution_binding_mismatch")
+
     def _validate_restricted_raw_config(
         self, node_config: Mapping[str, Any], node_class: type[Node] | None = None
     ) -> None:
         context = self._dify_context.builder_execution
-        assert context is not None
+        assert isinstance(context, BuilderExecutionContext)
         data, node_id = node_config.get("data"), node_config.get("id")
         if not isinstance(data, Mapping) or not isinstance(node_id, str):
             raise BuilderExecutionPolicyError("invalid_node_configuration")
