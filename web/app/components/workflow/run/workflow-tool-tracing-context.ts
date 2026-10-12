@@ -4,7 +4,7 @@ import { createContext } from 'react'
 export type WorkflowRunInfo = {
   appId: string
   runId: string
-  status?: string
+  status: string
 }
 
 export const WorkflowToolTracingContext = createContext<{

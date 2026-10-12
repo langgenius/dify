@@ -2,18 +2,16 @@ import type { LoopDurationMap, LoopVariableMap, NodeTracing } from '@/types/work
 import { Button } from '@langgenius/dify-ui/button'
 import { RiArrowRightSLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
-import { getLoopResultList } from '../utils/format-log/loop'
 
 type LoopLogTriggerProps = {
   nodeInfo: NodeTracing
-  allExecutions?: NodeTracing[]
   onShowLoopResultList: (
     loopResultList: NodeTracing[][],
     loopResultDurationMap: LoopDurationMap,
     loopVariableMap: LoopVariableMap,
   ) => void
 }
-const LoopLogTrigger = ({ nodeInfo, allExecutions, onShowLoopResultList }: LoopLogTriggerProps) => {
+const LoopLogTrigger = ({ nodeInfo, onShowLoopResultList }: LoopLogTriggerProps) => {
   const { t } = useTranslation(['workflow', 'workflowLogic'])
 
   const handleOnShowLoopDetail = (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -23,7 +21,7 @@ const LoopLogTrigger = ({ nodeInfo, allExecutions, onShowLoopResultList }: LoopL
     const loopDurMap = nodeInfo?.loopDurationMap || loopNodeMeta?.loop_duration_map || {}
     const loopVarMap = loopNodeMeta?.loop_variable_map || {}
 
-    onShowLoopResultList(getLoopResultList(nodeInfo, allExecutions), loopDurMap, loopVarMap)
+    onShowLoopResultList(nodeInfo.details ?? [], loopDurMap, loopVarMap)
   }
 
   let displayLoopCount = 0
