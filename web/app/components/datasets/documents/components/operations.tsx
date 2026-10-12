@@ -3,11 +3,11 @@ import type { CommonResponse } from '@/models/common'
 import type { DocumentDownloadResponse } from '@/service/datasets'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -184,7 +184,9 @@ const Operations = ({
         opApi({ datasetId, documentId: id }) as Promise<CommonResponse>,
       )
       if (!e) {
-        toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
+        // The switch already shows the result of enable and disable.
+        if (operationName !== 'enable' && operationName !== 'disable')
+          toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
         // If it is a delete operation, need to update the selectedIds state
         if (selectedIds && onSelectedIdChange && operationName === DocumentActionType.delete)
           onSelectedIdChange(selectedIds.filter((selectedId) => selectedId !== id))
@@ -541,14 +543,14 @@ const Operations = ({
               {t(($) => $['list.delete.content'], { ns: 'datasetDocuments' })}
             </AlertDialogDescription>
           </div>
-          <AlertDialogActions>
+          <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton loading={deleting} onClick={() => onOperate('delete')}>
               {t(($) => $['operation.sure'], { ns: 'common' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 

@@ -18,12 +18,13 @@ type TemplateCardProps = {
 }
 
 export function TemplateCard({ app, canCreate, onCreate, onTry }: TemplateCardProps) {
-  const { t } = useTranslation(['app'])
+  const { t } = useTranslation(['app', 'explore'])
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,
   })
   const nameId = useId()
+  const actionDescriptionId = useId()
   const descriptionId = useId()
   const appBasicInfo = app.app
   const appName = appBasicInfo?.name ?? ''
@@ -67,9 +68,17 @@ export function TemplateCard({ app, canCreate, onCreate, onTry }: TemplateCardPr
           type="button"
           className="absolute inset-0 z-10 cursor-pointer appearance-none rounded-xl border-0 bg-transparent p-0 outline-hidden focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid"
           aria-labelledby={nameId}
-          aria-describedby={app.description ? descriptionId : undefined}
+          aria-describedby={
+            app.description ? `${actionDescriptionId} ${descriptionId}` : actionDescriptionId
+          }
           onClick={handleCardClick}
-        />
+        >
+          <span id={actionDescriptionId} className="sr-only">
+            {canViewApp
+              ? t(($) => $['appCard.try'], { ns: 'explore' })
+              : t(($) => $['tryApp.createFromSampleApp'], { ns: 'explore' })}
+          </span>
+        </button>
       )}
       <div className="flex shrink-0 items-center gap-3 px-4 pt-4 pb-2">
         <div className="relative shrink-0">

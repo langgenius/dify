@@ -66,6 +66,13 @@ def _bind_command_database(
     return command_sessions, command_session
 
 
+def _run_fix_app_site_missing() -> None:
+    """Invoke the command callback through a narrowed, non-optional reference."""
+    callback = system_commands.fix_app_site_missing.callback
+    assert callback is not None
+    callback()
+
+
 def test_fix_app_site_missing_passes_loaded_session_to_signal(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_engine: Engine,
@@ -89,7 +96,7 @@ def test_fix_app_site_missing_passes_loaded_session_to_signal(
     monkeypatch.setattr(system_commands.app_was_created, "send", send)
 
     try:
-        system_commands.fix_app_site_missing.callback()
+        _run_fix_app_site_missing()
     finally:
         command_sessions.remove()
 
@@ -123,7 +130,7 @@ def test_fix_app_site_missing_rolls_back_when_signal_fails(
     monkeypatch.setattr(system_commands.app_was_created, "send", MagicMock(side_effect=fail_signal))
 
     try:
-        system_commands.fix_app_site_missing.callback()
+        _run_fix_app_site_missing()
     finally:
         command_sessions.remove()
 

@@ -2,10 +2,10 @@ import type { EndpointListItemResponse } from '@dify/contracts/api/console/works
 import type { PluginDetail } from '../types'
 import {
   AlertDialog,
-  AlertDialogActions,
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
+  AlertDialogFooter,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
@@ -185,7 +185,7 @@ const EndpointCard = ({ pluginDetail, data }: Props) => {
               {t(($) => $['detailPanel.endpointDisableContent'], { ns: 'plugin', name: data.name })}
             </div>
           </div>
-          <AlertDialogActions>
+          <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
@@ -195,7 +195,7 @@ const EndpointCard = ({ pluginDetail, data }: Props) => {
             >
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
       <AlertDialog open={isShowDeleteConfirm} onOpenChange={(open) => !open && hideDeleteConfirm()}>
@@ -208,7 +208,7 @@ const EndpointCard = ({ pluginDetail, data }: Props) => {
               {t(($) => $['detailPanel.endpointDeleteContent'], { ns: 'plugin', name: data.name })}
             </div>
           </div>
-          <AlertDialogActions>
+          <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
@@ -218,7 +218,7 @@ const EndpointCard = ({ pluginDetail, data }: Props) => {
             >
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
-          </AlertDialogActions>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
       {isShowEndpointModal && (

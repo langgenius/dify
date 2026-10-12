@@ -28,6 +28,8 @@
   "menus.plugins": "インテグレーション",
   "menus.status": "ベータ版",
   "menus.tools": "ツール",
+  "settings.accessToken": "アクセストークン",
+  "settings.accessTokenDescription": "選択したアプリとナレッジベースにのみアクセスできるサービス API トークンを作成します。",
   "settings.agentStrategy": "エージェント戦略",
   "settings.billing": "請求",
   "settings.customEndpoint": "カスタム API",

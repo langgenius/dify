@@ -28,6 +28,8 @@
   "menus.plugins": "İnteqrasiyalar",
   "menus.status": "sınaq",
   "menus.tools": "Alətlər",
+  "settings.accessToken": "Giriş tokenləri",
+  "settings.accessTokenDescription": "Yalnız seçilmiş tətbiqlərə və bilik bazalarına giriş verən xidmət API tokenləri yaradın.",
   "settings.agentStrategy": "Agent strategiyası",
   "settings.billing": "Ödənişlər",
   "settings.customEndpoint": "Fərdi son nöqtə",

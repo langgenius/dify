@@ -1,8 +1,7 @@
 'use client'
 
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import { ServiceApiCardView } from '../shared/service-api-card-view'
@@ -21,7 +20,12 @@ export function EnvironmentServiceApiCard({
   highlighted,
 }: EnvironmentServiceApiCardProps) {
   const { t } = useTranslation(['common'])
-  const appMode = useAppStore((state) => state.appDetail?.mode)
+  const { data: appMode } = useSuspenseQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({
+      input: { params: { app_id: appId } },
+      select: (appDetail) => appDetail.mode,
+    }),
+  )
   const params = {
     app_id: appId,
     environment_id: environmentId,

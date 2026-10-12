@@ -1,14 +1,17 @@
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
-from core.plugin.impl.model_runtime_factory import create_plugin_model_assembly
+from core.model_manager import ModelManager
+from core.plugin.impl.model_runtime_factory import create_plugin_model_assembly, create_plugin_model_runtime
 from core.plugin.plugin_service import PluginService
+from core.provider_manager import ProviderManager
+from graphon.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
 
 
 def test_plugin_model_assembly_reuses_single_runtime_across_views():
-    runtime = Mock(name="runtime")
-    provider_factory = Mock(name="provider_factory")
-    provider_manager = Mock(name="provider_manager")
-    model_manager = Mock(name="model_manager")
+    runtime = create_plugin_model_runtime(tenant_id="tenant-1", user_id="user-1")
+    provider_factory = ModelProviderFactory(runtime=runtime)
+    provider_manager = ProviderManager(model_runtime=runtime)
+    model_manager = ModelManager(provider_manager=provider_manager)
 
     with (
         patch(
@@ -38,8 +41,6 @@ def test_plugin_model_assembly_reuses_single_runtime_across_views():
 
 
 def test_create_plugin_model_runtime_injects_plugin_service():
-    from core.plugin.impl.model_runtime_factory import create_plugin_model_runtime
-
     runtime = create_plugin_model_runtime(tenant_id="tenant-1", user_id="user-1")
 
     assert runtime._plugin_service is PluginService

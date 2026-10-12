@@ -92,6 +92,23 @@ class NotFoundError(BaseHTTPException):
     code = 404
 
 
+class UnauthorizedError(BaseHTTPException):
+    error_code = "unauthorized"
+    code = HTTPStatus.UNAUTHORIZED
+    description = "Authentication is required."
+
+
+class InternalServerError(BaseHTTPException):
+    """Expose a safe response while retaining the original exception in server logs."""
+
+    error_code = "internal_server_error"
+    code = HTTPStatus.INTERNAL_SERVER_ERROR
+    description = (
+        "The server encountered an internal error and was unable to complete your request. "
+        "Either the server is overloaded or there is an error in the application."
+    )
+
+
 class InvalidArgumentError(BaseHTTPException):
     error_code = "invalid_param"
     code = 400

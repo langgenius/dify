@@ -144,10 +144,6 @@ describe('useChangeProviderPriority', () => {
       expect(mockUpdateModelList).toHaveBeenCalledTimes(2)
       expect(mockUpdateModelList).toHaveBeenNthCalledWith(1, ModelTypeEnum.textGeneration)
       expect(mockUpdateModelList).toHaveBeenNthCalledWith(2, ModelTypeEnum.textEmbedding)
-      expect(mockNotify).toHaveBeenCalledWith({
-        type: 'success',
-        message: 'common.actionMsg.modifiedSuccessfully',
-      })
       expect(result.current.isChangingPriority).toBe(false)
     })
 

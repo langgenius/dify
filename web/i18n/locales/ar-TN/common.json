@@ -10,7 +10,6 @@
   "actionMsg.generatedUnsuccessfully": "فشل الإنشاء",
   "actionMsg.modifiedSuccessfully": "تم التعديل بنجاح",
   "actionMsg.modifiedUnsuccessfully": "فشل التعديل",
-  "actionMsg.noModification": "لا توجد تعديلات في الوقت الحالي.",
   "actionMsg.payCancelled": "تم إلغاء الدفع",
   "actionMsg.paySucceeded": "نجح الدفع",
   "agentStrategyPage.description": "حدّد كيف يفكر AI Agent ويتخذ القرارات — بما في ذلك كيفية اختيار الأدوات ومعالجة النتائج وحل المشكلات ذاتيًا.",

@@ -13,6 +13,8 @@ import uuid
 from contextlib import contextmanager
 from typing import TYPE_CHECKING, Any, override
 
+from sqlalchemy.orm import Session
+
 from configs import dify_config
 from configs.middleware.vdb.iris_config import IrisVectorConfig
 from core.rag.datasource.vdb.field import parse_metadata_json
@@ -491,7 +493,9 @@ class IrisVectorFactory(AbstractVectorFactory):
     """Factory for creating IrisVector instances."""
 
     @override
-    def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> IrisVector:
+    def init_vector(
+        self, dataset: Dataset, attributes: list, embeddings: Embeddings, *, session: Session | None
+    ) -> IrisVector:
         if dataset.index_struct_dict:
             class_prefix: str = dataset.index_struct_dict["vector_store"]["class_prefix"]
             collection_name = class_prefix

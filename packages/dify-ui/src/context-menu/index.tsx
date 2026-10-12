@@ -23,18 +23,21 @@ const ContextMenuSub = BaseContextMenu.SubmenuRoot
 const ContextMenuGroup = BaseContextMenu.Group
 type ContextMenuProps = BaseContextMenu.Root.Props
 type ContextMenuActions = BaseContextMenu.Root.Actions
+type ContextMenuChangeEventReason = BaseContextMenu.Root.ChangeEventReason
+type ContextMenuChangeEventDetails = BaseContextMenu.Root.ChangeEventDetails
 type ContextMenuTriggerProps = BaseContextMenu.Trigger.Props
 type ContextMenuSubProps = BaseContextMenu.SubmenuRoot.Props
+type ContextMenuSubChangeEventReason = BaseContextMenu.SubmenuRoot.ChangeEventReason
+type ContextMenuSubChangeEventDetails = BaseContextMenu.SubmenuRoot.ChangeEventDetails
 type ContextMenuGroupProps = BaseContextMenu.Group.Props
+type ContextMenuRadioGroupChangeEventReason = BaseContextMenu.RadioGroup.ChangeEventReason
+type ContextMenuRadioGroupChangeEventDetails = BaseContextMenu.RadioGroup.ChangeEventDetails
 type ContextMenuRadioGroupProps<Value = unknown> = Omit<
   BaseContextMenu.RadioGroup.Props,
   'defaultValue' | 'onValueChange' | 'value'
 > & {
   defaultValue?: Value
-  onValueChange?: (
-    value: Value,
-    eventDetails: BaseContextMenu.RadioGroup.ChangeEventDetails,
-  ) => void
+  onValueChange?: (value: Value, eventDetails: ContextMenuRadioGroupChangeEventDetails) => void
   value?: Value
 }
 type ContextMenuItemVariant = MenuItemVariant
@@ -152,6 +155,8 @@ function ContextMenuCheckboxItem({ className, ...props }: ContextMenuCheckboxIte
 }
 
 type ContextMenuCheckboxItemProps = BaseContextMenu.CheckboxItem.Props
+type ContextMenuCheckboxItemChangeEventReason = BaseContextMenu.CheckboxItem.ChangeEventReason
+type ContextMenuCheckboxItemChangeEventDetails = BaseContextMenu.CheckboxItem.ChangeEventDetails
 
 function ContextMenuCheckboxItemIndicator({
   className,
@@ -209,7 +214,7 @@ function ContextMenuSubTrigger({
       {children}
       <span
         aria-hidden
-        className="ms-auto i-ri-arrow-right-s-line size-4 shrink-0 text-text-tertiary"
+        className="ms-auto i-ri-arrow-right-s-line size-4 shrink-0 text-text-tertiary [&:dir(rtl)]:-scale-x-100"
       />
     </BaseContextMenu.SubmenuTrigger>
   )
@@ -217,9 +222,10 @@ function ContextMenuSubTrigger({
 
 type ContextMenuSubContentProps = ContextMenuContentProps
 
+// Base UI's own submenu default: it opens away from the trigger and follows the text direction.
 function ContextMenuSubContent({
   children,
-  placement = 'right-start',
+  placement = 'inline-end-start',
   sideOffset = 4,
   alignOffset = 0,
   className,
@@ -258,7 +264,9 @@ type ContextMenuGroupLabelProps = BaseContextMenu.GroupLabel.Props
 function ContextMenuGroupLabel({ className, ...props }: ContextMenuGroupLabelProps) {
   return (
     <BaseContextMenu.GroupLabel
-      className={(state) => cn(floatingGroupLabelClassName, resolveClassName(className, state))}
+      className={(state) =>
+        cn(floatingGroupLabelClassName, 'px-3', resolveClassName(className, state))
+      }
       {...props}
     />
   )
@@ -296,6 +304,10 @@ export {
 
 export type {
   ContextMenuActions,
+  ContextMenuChangeEventDetails,
+  ContextMenuChangeEventReason,
+  ContextMenuCheckboxItemChangeEventDetails,
+  ContextMenuCheckboxItemChangeEventReason,
   ContextMenuCheckboxItemIndicatorProps,
   ContextMenuCheckboxItemProps,
   ContextMenuContentProps,
@@ -304,10 +316,14 @@ export type {
   ContextMenuItemProps,
   ContextMenuLinkItemProps,
   ContextMenuProps,
+  ContextMenuRadioGroupChangeEventDetails,
+  ContextMenuRadioGroupChangeEventReason,
   ContextMenuRadioGroupProps,
   ContextMenuRadioItemIndicatorProps,
   ContextMenuRadioItemProps,
   ContextMenuSeparatorProps,
+  ContextMenuSubChangeEventDetails,
+  ContextMenuSubChangeEventReason,
   ContextMenuSubContentProps,
   ContextMenuSubProps,
   ContextMenuSubTriggerProps,

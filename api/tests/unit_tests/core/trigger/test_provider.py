@@ -34,7 +34,7 @@ ICON_URL = "https://cdn/icon.png"
 
 class TestToApiEntity:
     @patch("core.trigger.provider.PluginService")
-    def test_includes_icons_when_present(self, mock_plugin_svc):
+    def test_includes_icons_when_present(self, mock_plugin_svc: MagicMock) -> None:
         mock_plugin_svc.get_plugin_icon_url.return_value = ICON_URL
         ctrl = make_controller(entity=make_provider_entity(icon="icon.png", icon_dark="dark.png"))
 
@@ -44,7 +44,7 @@ class TestToApiEntity:
         assert api.icon_dark == ICON_URL
 
     @patch("core.trigger.provider.PluginService")
-    def test_icons_none_when_absent(self, mock_plugin_svc):
+    def test_icons_none_when_absent(self, mock_plugin_svc: MagicMock) -> None:
         ctrl = make_controller(entity=make_provider_entity(icon=None, icon_dark=None))
 
         api = ctrl.to_api_entity()
@@ -54,7 +54,7 @@ class TestToApiEntity:
         mock_plugin_svc.get_plugin_icon_url.assert_not_called()
 
     @patch("core.trigger.provider.PluginService")
-    def test_manual_only_without_schemas(self, mock_plugin_svc):
+    def test_manual_only_without_schemas(self, mock_plugin_svc: MagicMock) -> None:
         mock_plugin_svc.get_plugin_icon_url.return_value = ICON_URL
         ctrl = make_controller(entity=make_provider_entity(constructor=None))
 
@@ -63,7 +63,7 @@ class TestToApiEntity:
         assert api.supported_creation_methods == [TriggerCreationMethod.MANUAL]
 
     @patch("core.trigger.provider.PluginService")
-    def test_adds_oauth_when_oauth_schema_present(self, mock_plugin_svc):
+    def test_adds_oauth_when_oauth_schema_present(self, mock_plugin_svc: MagicMock) -> None:
         mock_plugin_svc.get_plugin_icon_url.return_value = ICON_URL
         oauth = OAuthSchema(client_schema=[], credentials_schema=[])
         ctrl = make_controller(entity=make_provider_entity(constructor=make_constructor(oauth_schema=oauth)))
@@ -74,7 +74,7 @@ class TestToApiEntity:
         assert TriggerCreationMethod.MANUAL in api.supported_creation_methods
 
     @patch("core.trigger.provider.PluginService")
-    def test_adds_apikey_when_credentials_schema_present(self, mock_plugin_svc):
+    def test_adds_apikey_when_credentials_schema_present(self, mock_plugin_svc: MagicMock) -> None:
         mock_plugin_svc.get_plugin_icon_url.return_value = ICON_URL
         ctrl = make_controller(
             entity=make_provider_entity(constructor=make_constructor(credentials_schema=[make_provider_config()]))
@@ -86,20 +86,20 @@ class TestToApiEntity:
 
 
 class TestGetEvent:
-    def test_returns_matching_event(self):
+    def test_returns_matching_event(self) -> None:
         evt = make_event("push")
         ctrl = make_controller(entity=make_provider_entity(events=[evt, make_event("pr")]))
 
         assert ctrl.get_event("push") is evt
 
-    def test_returns_none_for_unknown(self):
+    def test_returns_none_for_unknown(self) -> None:
         ctrl = make_controller(entity=make_provider_entity(events=[make_event("push")]))
 
         assert ctrl.get_event("nonexistent") is None
 
 
 class TestGetSubscriptionDefaultProperties:
-    def test_returns_defaults_skipping_none(self):
+    def test_returns_defaults_skipping_none(self) -> None:
         config1 = make_provider_config("key1")
         config1.default = "val1"
         config2 = make_provider_config("key2")
@@ -112,13 +112,13 @@ class TestGetSubscriptionDefaultProperties:
 
 
 class TestValidateCredentials:
-    def test_raises_when_no_constructor(self):
+    def test_raises_when_no_constructor(self) -> None:
         ctrl = make_controller(entity=make_provider_entity(constructor=None))
 
         with pytest.raises(ValueError, match="Subscription constructor not found"):
             ctrl.validate_credentials("u1", {"key": "val"})
 
-    def test_raises_for_missing_required_field(self):
+    def test_raises_for_missing_required_field(self) -> None:
         required_cfg = make_provider_config("api_key", required=True)
         ctrl = make_controller(
             entity=make_provider_entity(constructor=make_constructor(credentials_schema=[required_cfg]))
@@ -128,7 +128,7 @@ class TestValidateCredentials:
             ctrl.validate_credentials("u1", {})
 
     @patch("core.trigger.provider.PluginTriggerClient")
-    def test_passes_with_valid_credentials(self, mock_client):
+    def test_passes_with_valid_credentials(self, mock_client: MagicMock) -> None:
         required_cfg = make_provider_config("api_key", required=True)
         ctrl = make_controller(
             entity=make_provider_entity(constructor=make_constructor(credentials_schema=[required_cfg]))
@@ -138,7 +138,7 @@ class TestValidateCredentials:
         ctrl.validate_credentials("u1", {"api_key": "secret123"})  # should not raise
 
     @patch("core.trigger.provider.PluginTriggerClient")
-    def test_raises_when_plugin_rejects(self, mock_client):
+    def test_raises_when_plugin_rejects(self, mock_client: MagicMock) -> None:
         required_cfg = make_provider_config("api_key", required=True)
         ctrl = make_controller(
             entity=make_provider_entity(constructor=make_constructor(credentials_schema=[required_cfg]))
@@ -150,11 +150,11 @@ class TestValidateCredentials:
 
 
 class TestGetSupportedCredentialTypes:
-    def test_empty_when_no_constructor(self):
+    def test_empty_when_no_constructor(self) -> None:
         ctrl = make_controller(entity=make_provider_entity(constructor=None))
         assert ctrl.get_supported_credential_types() == []
 
-    def test_oauth_only(self):
+    def test_oauth_only(self) -> None:
         oauth = OAuthSchema(client_schema=[], credentials_schema=[])
         ctrl = make_controller(entity=make_provider_entity(constructor=make_constructor(oauth_schema=oauth)))
 
@@ -163,7 +163,7 @@ class TestGetSupportedCredentialTypes:
         assert CredentialType.OAUTH2 in types
         assert CredentialType.API_KEY not in types
 
-    def test_apikey_only(self):
+    def test_apikey_only(self) -> None:
         ctrl = make_controller(
             entity=make_provider_entity(constructor=make_constructor(credentials_schema=[make_provider_config()]))
         )
@@ -173,7 +173,7 @@ class TestGetSupportedCredentialTypes:
         assert CredentialType.API_KEY in types
         assert CredentialType.OAUTH2 not in types
 
-    def test_both(self):
+    def test_both(self) -> None:
         oauth = OAuthSchema(client_schema=[], credentials_schema=[make_provider_config("oauth_secret")])
         ctrl = make_controller(
             entity=make_provider_entity(
@@ -188,11 +188,11 @@ class TestGetSupportedCredentialTypes:
 
 
 class TestGetCredentialsSchema:
-    def test_returns_empty_when_no_constructor(self):
+    def test_returns_empty_when_no_constructor(self) -> None:
         ctrl = make_controller(entity=make_provider_entity(constructor=None))
         assert ctrl.get_credentials_schema(CredentialType.API_KEY) == []
 
-    def test_returns_apikey_credentials(self):
+    def test_returns_apikey_credentials(self) -> None:
         cfg = make_provider_config("token")
         ctrl = make_controller(entity=make_provider_entity(constructor=make_constructor(credentials_schema=[cfg])))
 
@@ -201,7 +201,7 @@ class TestGetCredentialsSchema:
         assert len(result) == 1
         assert result[0].name == "token"
 
-    def test_returns_oauth_credentials(self):
+    def test_returns_oauth_credentials(self) -> None:
         oauth_cred = make_provider_config("oauth_token")
         oauth = OAuthSchema(client_schema=[], credentials_schema=[oauth_cred])
         ctrl = make_controller(entity=make_provider_entity(constructor=make_constructor(oauth_schema=oauth)))
@@ -211,20 +211,20 @@ class TestGetCredentialsSchema:
         assert len(result) == 1
         assert result[0].name == "oauth_token"
 
-    def test_unauthorized_returns_empty(self):
+    def test_unauthorized_returns_empty(self) -> None:
         ctrl = make_controller(
             entity=make_provider_entity(constructor=make_constructor(credentials_schema=[make_provider_config()]))
         )
         assert ctrl.get_credentials_schema(CredentialType.UNAUTHORIZED) == []
 
-    def test_invalid_type_raises(self):
+    def test_invalid_type_raises(self) -> None:
         ctrl = make_controller(entity=make_provider_entity(constructor=make_constructor()))
         with pytest.raises(ValueError, match="Invalid credential type"):
             ctrl.get_credentials_schema("bogus_type")
 
 
 class TestGetEventParameters:
-    def test_returns_params_for_known_event(self):
+    def test_returns_params_for_known_event(self) -> None:
         param = EventParameter(name="branch", label=i18n("branch"), type=EventParameterType.STRING)
         evt = make_event("push", parameters=[param])
         ctrl = make_controller(entity=make_provider_entity(events=[evt]))
@@ -234,7 +234,7 @@ class TestGetEventParameters:
         assert "branch" in result
         assert result["branch"].name == "branch"
 
-    def test_returns_empty_for_unknown_event(self):
+    def test_returns_empty_for_unknown_event(self) -> None:
         ctrl = make_controller(entity=make_provider_entity(events=[make_event("push")]))
 
         assert ctrl.get_event_parameters("nonexistent") == {}
@@ -242,7 +242,7 @@ class TestGetEventParameters:
 
 class TestDispatch:
     @patch("core.trigger.provider.PluginTriggerClient")
-    def test_delegates_to_client(self, mock_client):
+    def test_delegates_to_client(self, mock_client: MagicMock) -> None:
         ctrl = make_controller()
         expected = MagicMock()
         mock_client.return_value.dispatch_event.return_value = expected
@@ -260,7 +260,7 @@ class TestDispatch:
 
 class TestInvokeTriggerEvent:
     @patch("core.trigger.provider.PluginTriggerClient")
-    def test_delegates_to_client(self, mock_client):
+    def test_delegates_to_client(self, mock_client: MagicMock) -> None:
         ctrl = make_controller()
         expected = MagicMock()
         mock_client.return_value.invoke_trigger_event.return_value = expected
@@ -281,12 +281,12 @@ class TestInvokeTriggerEvent:
 
 class TestSubscribeTrigger:
     @patch("core.trigger.provider.PluginTriggerClient")
-    def test_returns_validated_subscription(self, mock_client):
+    def test_returns_validated_subscription(self, mock_client: MagicMock) -> None:
         ctrl = make_controller()
         mock_client.return_value.subscribe.return_value.subscription = {
             "expires_at": 123,
             "endpoint": "https://e",
-            "properties": {},
+            "properties": dict[str, object](),
         }
 
         result = ctrl.subscribe_trigger(
@@ -302,7 +302,7 @@ class TestSubscribeTrigger:
 
 class TestUnsubscribeTrigger:
     @patch("core.trigger.provider.PluginTriggerClient")
-    def test_returns_validated_result(self, mock_client):
+    def test_returns_validated_result(self, mock_client: MagicMock) -> None:
         ctrl = make_controller()
         mock_client.return_value.unsubscribe.return_value.subscription = {"success": True, "message": "ok"}
 
@@ -318,12 +318,12 @@ class TestUnsubscribeTrigger:
 
 class TestRefreshTrigger:
     @patch("core.trigger.provider.PluginTriggerClient")
-    def test_uses_system_user_id(self, mock_client):
+    def test_uses_system_user_id(self, mock_client: MagicMock) -> None:
         ctrl = make_controller()
         mock_client.return_value.refresh.return_value.subscription = {
             "expires_at": 456,
             "endpoint": "https://e",
-            "properties": {},
+            "properties": dict[str, object](),
         }
 
         ctrl.refresh_trigger(subscription=make_subscription(), credentials={}, credential_type=CredentialType.API_KEY)

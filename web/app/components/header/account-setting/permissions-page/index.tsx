@@ -7,7 +7,6 @@ import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
-import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { getAccessControlTemplateLanguage } from '@/i18n/language'
 import {
@@ -75,7 +74,6 @@ const PermissionsPage = ({ containerRef }: PermissionsPageProps) => {
           { name, description, permission_keys: permissionKeys },
           {
             onSuccess: () => {
-              toast.success(t(($) => $['role.created'], { ns: 'permission' }))
               closeModal()
             },
           },
@@ -85,14 +83,13 @@ const PermissionsPage = ({ containerRef }: PermissionsPageProps) => {
           { id: roleId, name, description, permission_keys: permissionKeys },
           {
             onSuccess: () => {
-              toast.success(t(($) => $['role.updated'], { ns: 'permission' }))
               closeModal()
             },
           },
         )
       }
     },
-    [createWorkspaceRole, updateWorkspaceRole, closeModal, modalState, t],
+    [createWorkspaceRole, updateWorkspaceRole, closeModal, modalState],
   )
 
   useEffect(() => {

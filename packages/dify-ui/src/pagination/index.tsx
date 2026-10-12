@@ -1,6 +1,5 @@
 'use client'
 
-import type { Button as BaseButtonNS } from '@base-ui/react/button'
 import { Button as BaseButton } from '@base-ui/react/button'
 import { mergeProps } from '@base-ui/react/merge-props'
 import { useRender } from '@base-ui/react/use-render'
@@ -210,11 +209,11 @@ function PaginationNavigation({ render, className, ...props }: PaginationNavigat
   })
 }
 
-type PaginationPreviousProps = Omit<BaseButtonNS.Props, 'children'> & {
+type PaginationPreviousProps = Omit<BaseButton.Props, 'children'> & {
   children?: React.ReactNode
 }
 
-type PaginationNextProps = Omit<BaseButtonNS.Props, 'children'> & {
+type PaginationNextProps = Omit<BaseButton.Props, 'children'> & {
   children?: React.ReactNode
 }
 
@@ -251,7 +250,12 @@ function PaginationPrevious({
         if (!event.defaultPrevented && !disabled) pagination.onPageChange(pagination.page - 1)
       }}
     >
-      {children ?? <span className="i-ri-arrow-left-line size-4" aria-hidden="true" />}
+      {children ?? (
+        <span
+          className="i-ri-arrow-left-line size-4 [&:dir(rtl)]:-scale-x-100"
+          aria-hidden="true"
+        />
+      )}
     </BaseButton>
   )
 }
@@ -281,12 +285,17 @@ function PaginationNext({
         if (!event.defaultPrevented && !disabled) pagination.onPageChange(pagination.page + 1)
       }}
     >
-      {children ?? <span className="i-ri-arrow-right-line size-4" aria-hidden="true" />}
+      {children ?? (
+        <span
+          className="i-ri-arrow-right-line size-4 [&:dir(rtl)]:-scale-x-100"
+          aria-hidden="true"
+        />
+      )}
     </BaseButton>
   )
 }
 
-type PaginationPageJumpProps = Omit<BaseButtonNS.Props, 'children'> & {
+type PaginationPageJumpProps = Omit<BaseButton.Props, 'children'> & {
   inputLabel?: string
   children?: React.ReactNode
 }
@@ -427,7 +436,7 @@ function PaginationPageList({ render, className, ...props }: PaginationPageListP
   })
 }
 
-type PaginationPageProps = Omit<BaseButtonNS.Props, 'children'> & {
+type PaginationPageProps = Omit<BaseButton.Props, 'children'> & {
   page: number
   children?: React.ReactNode
 }

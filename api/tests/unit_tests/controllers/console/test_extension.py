@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import builtins
 import uuid
+from collections.abc import Callable, Iterator
 from datetime import UTC, datetime
-from unittest.mock import ANY, MagicMock
+from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
@@ -17,35 +19,48 @@ if not hasattr(builtins, "MethodView"):
     builtins.__dict__["MethodView"] = FlaskMethodView
     _NEEDS_METHOD_VIEW_CLEANUP = True
 
+import controllers.console.extension as module
 from constants import HIDDEN_VALUE
 from controllers.console.extension import (
     APIBasedExtensionAPI,
     APIBasedExtensionDetailAPI,
+    APIBasedExtensionPayload,
     CodeBasedExtensionAPI,
 )
 from enums import DeploymentEdition
 
 if _NEEDS_METHOD_VIEW_CLEANUP:
     del builtins.__dict__["MethodView"]
+from machinery.context import RequestContext
 from models.account import Account, AccountStatus, Tenant
-from models.api_based_extension import APIBasedExtension
+from services.api_based_extension_application_service import (
+    APIBasedExtensionInput,
+    APIBasedExtensionNameConflictError,
+    APIBasedExtensionNotFoundError,
+    APIBasedExtensionRecord,
+    APIBasedExtensionUpdate,
+)
 
 
-def _make_extension(
+def unwrap(func: Callable[..., object]) -> Callable[..., object]:
+    while hasattr(func, "__wrapped__"):
+        func = func.__wrapped__
+    return func
+
+
+def _record(
     *,
     name: str = "Sample Extension",
     api_endpoint: str = "https://example.com/api",
     api_key: str = "super-secret-key",
-) -> APIBasedExtension:
-    extension = APIBasedExtension(
-        tenant_id="tenant-123",
+) -> APIBasedExtensionRecord:
+    return APIBasedExtensionRecord(
+        id=str(uuid.uuid4()),
         name=name,
         api_endpoint=api_endpoint,
         api_key=api_key,
+        created_at=datetime(2024, 1, 1, 12, 0, tzinfo=UTC),
     )
-    extension.id = f"{uuid.uuid4()}"
-    extension.created_at = datetime.now(tz=UTC)
-    return extension
 
 
 def _masked_api_key(api_key: str) -> str:
@@ -56,7 +71,7 @@ def _masked_api_key(api_key: str) -> str:
 
 @pytest.fixture(autouse=True)
 def _mock_console_guards(monkeypatch: pytest.MonkeyPatch) -> Account:
-    """Bypass console decorators so handlers can run in isolation."""
+    """Bypass console decorators so the code-based handler can run in isolation."""
 
     from controllers.console import wraps as wraps_module
 
@@ -82,12 +97,29 @@ def _mock_console_guards(monkeypatch: pytest.MonkeyPatch) -> Account:
 
 
 @pytest.fixture(autouse=True)
-def _restx_mask_defaults(app: Flask):
+def _restx_mask_defaults(app: Flask) -> None:
     app.config.setdefault("RESTX_MASK_HEADER", "X-Fields")
     app.config.setdefault("RESTX_MASK_SWAGGER", False)
 
 
-def test_code_based_extension_get_returns_service_data(app: Flask, monkeypatch: pytest.MonkeyPatch):
+@pytest.fixture
+def request_context() -> RequestContext:
+    return RequestContext(
+        request_id="request-1",
+        trace_id=None,
+        account_id="account-123",
+        active_workspace_id="tenant-123",
+    )
+
+
+@pytest.fixture
+def extensions_service() -> Iterator[MagicMock]:
+    service = MagicMock()
+    with patch.object(module, "application_services", return_value=SimpleNamespace(api_based_extensions=service)):
+        yield service
+
+
+def test_code_based_extension_get_returns_service_data(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     service_result = [{"entrypoint": "main:agent"}]
     service_mock = MagicMock(return_value=service_result)
     monkeypatch.setattr(
@@ -113,146 +145,151 @@ def test_code_based_extension_get_rejects_a_missing_module(app: Flask) -> None:
             CodeBasedExtensionAPI().get()
 
 
-def test_api_based_extension_get_returns_tenant_extensions(app: Flask, monkeypatch: pytest.MonkeyPatch):
-    extension = _make_extension(name="Weather API", api_key="abcdefghi123")
-    service_mock = MagicMock(return_value=[extension])
-    monkeypatch.setattr(
-        "controllers.console.extension.APIBasedExtensionService.get_all_by_tenant_id",
-        service_mock,
-    )
+class TestAPIBasedExtensionAPI:
+    def test_get_lists_workspace_extensions_with_masked_keys(
+        self, app: Flask, request_context: RequestContext, extensions_service: MagicMock
+    ) -> None:
+        extension = _record(name="Weather API", api_key="abcdefghi123")
+        extensions_service.list_extensions.return_value = (extension,)
 
-    with app.test_request_context("/console/api/api-based-extension", method="GET"):
-        response = APIBasedExtensionAPI().get()
+        with app.test_request_context("/console/api/api-based-extension", method="GET"):
+            response = unwrap(APIBasedExtensionAPI().get)(APIBasedExtensionAPI(), request_context)
 
-    assert response[0]["id"] == extension.id
-    assert response[0]["name"] == "Weather API"
-    assert response[0]["api_endpoint"] == extension.api_endpoint
-    assert response[0]["api_key"].startswith(extension.api_key[:3])
-    service_mock.assert_called_once_with("tenant-123", session=ANY)
+        extensions_service.list_extensions.assert_called_once_with(request_context)
+        assert response == [
+            {
+                "id": extension.id,
+                "name": "Weather API",
+                "api_endpoint": extension.api_endpoint,
+                "api_key": _masked_api_key("abcdefghi123"),
+                "created_at": int(extension.created_at.timestamp()),
+            }
+        ]
 
+    def test_post_creates_extension_and_masks_the_submitted_key(
+        self, app: Flask, request_context: RequestContext, extensions_service: MagicMock
+    ) -> None:
+        created = _record(name="Docs API", api_endpoint="https://docs.example.com/hook", api_key="plain-secret")
+        extensions_service.create_extension.return_value = created
+        payload = APIBasedExtensionPayload(
+            name="Docs API", api_endpoint="https://docs.example.com/hook", api_key="plain-secret"
+        )
 
-def test_api_based_extension_post_creates_extension(app: Flask, monkeypatch: pytest.MonkeyPatch):
-    saved_extension = _make_extension(name="Docs API", api_key="encrypted-token-from-save")
-    save_mock = MagicMock(return_value=saved_extension)
-    monkeypatch.setattr("controllers.console.extension.APIBasedExtensionService.save", save_mock)
+        with app.test_request_context("/console/api/api-based-extension", method="POST"):
+            response, status = unwrap(APIBasedExtensionAPI().post)(APIBasedExtensionAPI(), payload, request_context)
 
-    payload = {
-        "name": "Docs API",
-        "api_endpoint": "https://docs.example.com/hook",
-        "api_key": "plain-secret",
-    }
+        extensions_service.create_extension.assert_called_once_with(
+            request_context,
+            APIBasedExtensionInput(
+                name="Docs API", api_endpoint="https://docs.example.com/hook", api_key="plain-secret"
+            ),
+        )
+        assert status == 201
+        assert response["id"] == created.id
+        assert response["name"] == "Docs API"
+        assert response["api_key"] == _masked_api_key("plain-secret")
 
-    with app.test_request_context("/console/api/api-based-extension", method="POST", json=payload):
-        response, status = APIBasedExtensionAPI().post()
+    def test_post_maps_domain_errors_to_legacy_value_error(
+        self, app: Flask, request_context: RequestContext, extensions_service: MagicMock
+    ) -> None:
+        extensions_service.create_extension.side_effect = APIBasedExtensionNameConflictError()
+        payload = APIBasedExtensionPayload(name="Docs API", api_endpoint="https://docs.example.com", api_key="secret")
 
-    args, _ = save_mock.call_args
-    created_extension: APIBasedExtension = args[0]
-    assert created_extension.tenant_id == "tenant-123"
-    assert created_extension.name == payload["name"]
-    assert created_extension.api_endpoint == payload["api_endpoint"]
-    assert created_extension.api_key == payload["api_key"]
-    assert status == 201
-    assert response["name"] == saved_extension.name
-    assert response["api_key"] == _masked_api_key(payload["api_key"])
-    save_mock.assert_called_once()
-
-
-def test_api_based_extension_detail_get_fetches_extension(app: Flask, monkeypatch: pytest.MonkeyPatch):
-    extension = _make_extension(name="Docs API", api_key="abcdefg12345")
-    service_mock = MagicMock(return_value=extension)
-    monkeypatch.setattr(
-        "controllers.console.extension.APIBasedExtensionService.get_with_tenant_id",
-        service_mock,
-    )
-
-    extension_id = uuid.uuid4()
-    with app.test_request_context(f"/console/api/api-based-extension/{extension_id}", method="GET"):
-        response = APIBasedExtensionDetailAPI().get(extension_id)
-
-    assert response["id"] == extension.id
-    assert response["name"] == extension.name
-    service_mock.assert_called_once_with("tenant-123", str(extension_id), session=ANY)
+        with app.test_request_context("/console/api/api-based-extension", method="POST"):
+            with pytest.raises(ValueError, match="name must be unique"):
+                unwrap(APIBasedExtensionAPI().post)(APIBasedExtensionAPI(), payload, request_context)
 
 
-def test_api_based_extension_detail_post_keeps_hidden_api_key(app: Flask, monkeypatch: pytest.MonkeyPatch):
-    existing_extension = _make_extension(name="Docs API", api_key="keep-me")
-    get_mock = MagicMock(return_value=existing_extension)
-    save_mock = MagicMock(return_value=existing_extension)
-    monkeypatch.setattr(
-        "controllers.console.extension.APIBasedExtensionService.get_with_tenant_id",
-        get_mock,
-    )
-    monkeypatch.setattr("controllers.console.extension.APIBasedExtensionService.save", save_mock)
+class TestAPIBasedExtensionDetailAPI:
+    def test_get_fetches_extension(
+        self, app: Flask, request_context: RequestContext, extensions_service: MagicMock
+    ) -> None:
+        extension = _record(name="Docs API", api_key="abcdefg12345")
+        extensions_service.get_extension.return_value = extension
+        extension_id = uuid.uuid4()
 
-    payload = {
-        "name": "Docs API Updated",
-        "api_endpoint": "https://docs.example.com/v2",
-        "api_key": HIDDEN_VALUE,
-    }
+        with app.test_request_context(f"/console/api/api-based-extension/{extension_id}", method="GET"):
+            response = unwrap(APIBasedExtensionDetailAPI().get)(
+                APIBasedExtensionDetailAPI(), request_context, extension_id
+            )
 
-    extension_id = uuid.uuid4()
-    with app.test_request_context(
-        f"/console/api/api-based-extension/{extension_id}",
-        method="POST",
-        json=payload,
-    ):
-        response = APIBasedExtensionDetailAPI().post(extension_id)
+        extensions_service.get_extension.assert_called_once_with(request_context, str(extension_id))
+        assert response["id"] == extension.id
+        assert response["name"] == "Docs API"
+        assert response["api_key"] == _masked_api_key("abcdefg12345")
 
-    assert existing_extension.name == payload["name"]
-    assert existing_extension.api_endpoint == payload["api_endpoint"]
-    assert existing_extension.api_key == "keep-me"
-    save_mock.assert_called_once_with(existing_extension, session=ANY)
-    assert response["name"] == payload["name"]
-    assert response["api_key"] == _masked_api_key("keep-me")
+    def test_get_maps_missing_extension_to_legacy_value_error(
+        self, app: Flask, request_context: RequestContext, extensions_service: MagicMock
+    ) -> None:
+        extensions_service.get_extension.side_effect = APIBasedExtensionNotFoundError()
+        extension_id = uuid.uuid4()
 
+        with app.test_request_context(f"/console/api/api-based-extension/{extension_id}", method="GET"):
+            with pytest.raises(ValueError, match="not found"):
+                unwrap(APIBasedExtensionDetailAPI().get)(APIBasedExtensionDetailAPI(), request_context, extension_id)
 
-def test_api_based_extension_detail_post_updates_api_key_when_provided(app: Flask, monkeypatch: pytest.MonkeyPatch):
-    existing_extension = _make_extension(name="Docs API", api_key="old-secret")
-    get_mock = MagicMock(return_value=existing_extension)
-    save_mock = MagicMock(return_value=existing_extension)
-    monkeypatch.setattr(
-        "controllers.console.extension.APIBasedExtensionService.get_with_tenant_id",
-        get_mock,
-    )
-    monkeypatch.setattr("controllers.console.extension.APIBasedExtensionService.save", save_mock)
+    def test_post_keeps_hidden_api_key(
+        self, app: Flask, request_context: RequestContext, extensions_service: MagicMock
+    ) -> None:
+        updated = _record(name="Docs API Updated", api_endpoint="https://docs.example.com/v2", api_key="keep-me")
+        extensions_service.update_extension.return_value = updated
+        payload = APIBasedExtensionPayload(
+            name="Docs API Updated", api_endpoint="https://docs.example.com/v2", api_key=HIDDEN_VALUE
+        )
+        extension_id = uuid.uuid4()
 
-    payload = {
-        "name": "Docs API Updated",
-        "api_endpoint": "https://docs.example.com/v2",
-        "api_key": "new-secret",
-    }
+        with app.test_request_context(f"/console/api/api-based-extension/{extension_id}", method="POST"):
+            response = unwrap(APIBasedExtensionDetailAPI().post)(
+                APIBasedExtensionDetailAPI(), payload, request_context, extension_id
+            )
 
-    extension_id = uuid.uuid4()
-    with app.test_request_context(
-        f"/console/api/api-based-extension/{extension_id}",
-        method="POST",
-        json=payload,
-    ):
-        response = APIBasedExtensionDetailAPI().post(extension_id)
+        extensions_service.update_extension.assert_called_once_with(
+            request_context,
+            str(extension_id),
+            APIBasedExtensionUpdate(name="Docs API Updated", api_endpoint="https://docs.example.com/v2", api_key=None),
+        )
+        assert response["name"] == "Docs API Updated"
+        assert response["api_key"] == _masked_api_key("keep-me")
 
-    assert existing_extension.api_key == "new-secret"
-    save_mock.assert_called_once_with(existing_extension, session=ANY)
-    assert response["name"] == payload["name"]
-    assert response["api_key"] == _masked_api_key(payload["api_key"])
+    def test_post_forwards_a_new_api_key(
+        self, app: Flask, request_context: RequestContext, extensions_service: MagicMock
+    ) -> None:
+        updated = _record(name="Docs API Updated", api_endpoint="https://docs.example.com/v2", api_key="new-secret")
+        extensions_service.update_extension.return_value = updated
+        payload = APIBasedExtensionPayload(
+            name="Docs API Updated", api_endpoint="https://docs.example.com/v2", api_key="new-secret"
+        )
+        extension_id = uuid.uuid4()
 
+        with app.test_request_context(f"/console/api/api-based-extension/{extension_id}", method="POST"):
+            response = unwrap(APIBasedExtensionDetailAPI().post)(
+                APIBasedExtensionDetailAPI(), payload, request_context, extension_id
+            )
 
-def test_api_based_extension_detail_delete_removes_extension(app: Flask, monkeypatch: pytest.MonkeyPatch):
-    existing_extension = _make_extension()
-    get_mock = MagicMock(return_value=existing_extension)
-    delete_mock = MagicMock()
-    monkeypatch.setattr(
-        "controllers.console.extension.APIBasedExtensionService.get_with_tenant_id",
-        get_mock,
-    )
-    monkeypatch.setattr("controllers.console.extension.APIBasedExtensionService.delete", delete_mock)
+        update = extensions_service.update_extension.call_args.args[2]
+        assert update.api_key == "new-secret"
+        assert response["api_key"] == _masked_api_key("new-secret")
 
-    extension_id = uuid.uuid4()
-    with app.test_request_context(
-        f"/console/api/api-based-extension/{extension_id}",
-        method="DELETE",
-    ):
-        response, status = APIBasedExtensionDetailAPI().delete(extension_id)
+    def test_delete_removes_extension(
+        self, app: Flask, request_context: RequestContext, extensions_service: MagicMock
+    ) -> None:
+        extension_id = uuid.uuid4()
 
-    delete_mock.assert_called_once_with(existing_extension, session=ANY)
-    assert status == 204
-    assert response == ""
+        with app.test_request_context(f"/console/api/api-based-extension/{extension_id}", method="DELETE"):
+            response, status = unwrap(APIBasedExtensionDetailAPI().delete)(
+                APIBasedExtensionDetailAPI(), request_context, extension_id
+            )
+
+        extensions_service.delete_extension.assert_called_once_with(request_context, str(extension_id))
+        assert status == 204
+        assert response == ""
+
+    def test_delete_maps_missing_extension_to_legacy_value_error(
+        self, app: Flask, request_context: RequestContext, extensions_service: MagicMock
+    ) -> None:
+        extensions_service.delete_extension.side_effect = APIBasedExtensionNotFoundError()
+        extension_id = uuid.uuid4()
+
+        with app.test_request_context(f"/console/api/api-based-extension/{extension_id}", method="DELETE"):
+            with pytest.raises(ValueError, match="not found"):
+                unwrap(APIBasedExtensionDetailAPI().delete)(APIBasedExtensionDetailAPI(), request_context, extension_id)

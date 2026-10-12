@@ -195,7 +195,7 @@ function MainNavMenuContent({ onLogout }: MainNavMenuContentProps) {
         </DropdownMenuItem>
         <AppearanceSubmenu />
       </DropdownMenuGroup>
-      <DropdownMenuSeparator className="my-0!" />
+      <DropdownMenuSeparator className="my-0" />
       <DropdownMenuGroup className="p-1">
         <DropdownMenuItem
           className="mx-0 px-3 py-1"
