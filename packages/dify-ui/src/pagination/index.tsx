@@ -1,15 +1,15 @@
 'use client'
 
 import { Button as BaseButton } from '@base-ui/react/button'
-import { mergeProps } from '@base-ui/react/merge-props'
-import { useRender } from '@base-ui/react/use-render'
-import { useMergedRefs } from '@base-ui/utils/useMergedRefs'
 import * as React from 'react'
 import { cn } from '../cn'
 import { resolveClassName } from '../internal/resolve-class-name'
 import { useIsoLayoutEffect } from '../internal/use-iso-layout-effect'
+import { mergeProps } from '../merge-props'
 import { NumberField, NumberFieldGroup, NumberFieldInput } from '../number-field'
 import { SegmentedControl, SegmentedControlItem } from '../segmented-control'
+import { useMergedRefs } from '../use-merged-refs'
+import { useRender } from '../use-render'
 
 type PageItem = number | 'ellipsis-start' | 'ellipsis-end'
 

@@ -1,11 +1,11 @@
 'use client'
 
 import { Collapsible as BaseCollapsible } from '@base-ui/react/collapsible'
-import { mergeProps } from '@base-ui/react/merge-props'
-import { useRender } from '@base-ui/react/use-render'
 import * as React from 'react'
 import { cn } from '../cn'
 import { resolveClassName } from '../internal/resolve-class-name'
+import { mergeProps } from '../merge-props'
+import { useRender } from '../use-render'
 
 const FileTreeLevelContext = React.createContext(1)
 
@@ -62,9 +62,7 @@ function FileTreeList({ render, className, ...props }: FileTreeListProps) {
   })
 }
 
-type FileTreeFolderProps = Omit<BaseCollapsible.Root.Props, 'render'> & {
-  render?: BaseCollapsible.Root.Props['render']
-}
+type FileTreeFolderProps = BaseCollapsible.Root.Props
 
 function FileTreeFolder({ render = <li />, className, ...props }: FileTreeFolderProps) {
   return (
@@ -103,9 +101,7 @@ function FileTreeFolderTrigger({
   )
 }
 
-type FileTreeFolderPanelProps = Omit<BaseCollapsible.Panel.Props, 'render'> & {
-  render?: BaseCollapsible.Panel.Props['render']
-}
+type FileTreeFolderPanelProps = BaseCollapsible.Panel.Props
 
 function FileTreeFolderPanel({
   render = <ul />,

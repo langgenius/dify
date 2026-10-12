@@ -59,9 +59,7 @@ function SegmentedControlItem<Value = string>({
   )
 }
 
-type SegmentedControlDividerProps = Omit<React.ComponentProps<'span'>, 'className'> & {
-  className?: string
-}
+type SegmentedControlDividerProps = React.ComponentProps<'span'>
 
 function SegmentedControlDivider({ className, ...props }: SegmentedControlDividerProps) {
   return (

@@ -17,6 +17,7 @@ const DrawerClose = BaseDrawer.Close
 const createDrawerHandle = BaseDrawer.createHandle
 
 type DrawerActions = BaseDrawer.Root.Actions
+type DrawerSnapPoint = BaseDrawer.Root.SnapPoint
 type DrawerChangeEventReason = BaseDrawer.Root.ChangeEventReason
 type DrawerChangeEventDetails = BaseDrawer.Root.ChangeEventDetails
 type DrawerSnapPointChangeEventReason = BaseDrawer.Root.SnapPointChangeEventReason
@@ -150,6 +151,7 @@ export type {
   DrawerPortalProps,
   DrawerProps,
   DrawerProviderProps,
+  DrawerSnapPoint,
   DrawerSnapPointChangeEventDetails,
   DrawerSnapPointChangeEventReason,
   DrawerSwipeAreaProps,

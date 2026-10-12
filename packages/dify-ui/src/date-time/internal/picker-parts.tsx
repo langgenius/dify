@@ -1,13 +1,14 @@
 'use client'
 
+import type { TextDirection } from '../../direction-provider'
 import type { IconButtonProps } from '../../icon-button'
 import type {
   PopoverActions,
+  PopoverChangeEventDetails,
   PopoverContentProps,
   PopoverProps,
   PopoverTriggerProps,
 } from '../../popover'
-import { useMergedRefs } from '@base-ui/utils/useMergedRefs'
 import * as React from 'react'
 import { cn } from '../../cn'
 import { DirectionProvider, useDirection } from '../../direction-provider'
@@ -15,15 +16,13 @@ import { formLabelClassName } from '../../form-control-shared'
 import { IconButton } from '../../icon-button'
 import { resolveClassName } from '../../internal/resolve-class-name'
 import { Popover, PopoverContent, PopoverTrigger } from '../../popover'
+import { useMergedRefs } from '../../use-merged-refs'
 
-type PickerOpenChangeDetails = Omit<
-  Parameters<NonNullable<PopoverProps['onOpenChange']>>[1],
-  'preventUnmountOnClose'
->
+type PickerOpenChangeDetails = Omit<PopoverChangeEventDetails, 'preventUnmountOnClose'>
 
 type PickerFieldProps = Pick<PopoverProps, 'open' | 'defaultOpen'> & {
   /** Overrides DirectionProvider for this field and its popup; independent of locale. */
-  direction?: DirectionProvider.Props['direction']
+  direction?: TextDirection
   placeholder?: string
   disabled?: boolean
   readOnly?: boolean

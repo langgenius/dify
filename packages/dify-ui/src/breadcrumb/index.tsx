@@ -1,9 +1,9 @@
 'use client'
 
 import type * as React from 'react'
-import { mergeProps } from '@base-ui/react/merge-props'
-import { useRender } from '@base-ui/react/use-render'
 import { cn } from '../cn'
+import { mergeProps } from '../merge-props'
+import { useRender } from '../use-render'
 
 type BreadcrumbName =
   | { 'aria-label': string; 'aria-labelledby'?: never }
