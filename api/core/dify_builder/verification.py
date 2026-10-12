@@ -38,7 +38,17 @@ def publication_decision(
         return PublicationDecision(allowed=False, reason="execution_evidence_unknown")
     if summary.safety_outcome == "simulation_completed":
         return PublicationDecision(allowed=False, reason="simulation_only")
-    if summary.safety_outcome != "restricted_execution_completed" or summary.mode != "restricted":
+    restricted_success = summary.safety_outcome == "restricted_execution_completed" and summary.mode == "restricted"
+    # Confirmation is not publication approval: only the sealed exact-revision
+    # confirmed success passes, and every check below still applies.
+    confirmed_success = (
+        summary.safety_outcome == "confirmed_tool_completed"
+        and summary.mode == "confirmed_tool"
+        and summary.policy_version == "builder-confirmed-gmail-read-v1"
+        and summary.action_state == "completed"
+        and summary.consent_id is not None
+    )
+    if not (restricted_success or confirmed_success):
         return PublicationDecision(allowed=False, reason="execution_failed")
     if run.status == "failed":
         return PublicationDecision(allowed=False, reason="execution_failed")
@@ -69,8 +79,55 @@ def has_output_blocker(run: Run) -> bool:
     )
 
 
+CONFIRMED_COMPLETED_NOTE = "The confirmed read completed; its content stays in the authorized workflow run."
+CONFIRMED_FAILED_REASON = "The confirmed tool test failed. Prepare and confirm a new test to try again."
+CONFIRMED_UNKNOWN_REASON = (
+    "The confirmed tool test outcome is unknown; it is not retried automatically. "
+    "Prepare and confirm a new test to try again."
+)
+
+
+def _confirmed_result_card(run: Run) -> TestResultCard:
+    """IDs, statuses, counts, reason codes and the Run link only; never native content or error text."""
+    evidence = run.verification
+    summary = evidence.execution_evidence if evidence else None
+    assert summary is not None
+    completed = summary.safety_outcome == "confirmed_tool_completed" and run.status == "succeeded"
+    card = TestResultCard(
+        status="succeeded" if completed else "failed",
+        dify_run_id=run.dify_run_id,
+        review_note=CONFIRMED_COMPLETED_NOTE,
+        terminal_outputs=None,
+        executed_node_ids=list(evidence.executed_node_ids) if evidence else [],
+        execution_mode=summary.mode,
+        safety_outcome=summary.safety_outcome,
+        policy_version=summary.policy_version,
+        consent_id=summary.consent_id,
+        action_state=summary.action_state,
+        action_reason_code=summary.action_reason_code,
+    )
+    if completed and has_output_blocker(run):
+        card.status = "failed"
+        card.outcome = "required_output_unresolved"
+        card.failure_reason = (
+            "A required output reference was unresolved or the executed branch produced no terminal output."
+        )
+    elif completed:
+        card.outcome = "execution_succeeded_needs_review"
+    elif summary.safety_outcome == "native_failed":
+        card.outcome = "execution_failed"
+        card.failure_reason = CONFIRMED_FAILED_REASON
+    else:
+        card.outcome = "execution_unknown"
+        card.failure_reason = CONFIRMED_UNKNOWN_REASON
+    return card
+
+
 def result_card(run: Run) -> TestResultCard:
     evidence = run.verification
+    summary = evidence.execution_evidence if evidence else None
+    if summary is not None and summary.mode == "confirmed_tool":
+        return _confirmed_result_card(run)
     card = TestResultCard(
         status="succeeded" if run.status == "succeeded" else "failed",
         dify_run_id=run.dify_run_id,

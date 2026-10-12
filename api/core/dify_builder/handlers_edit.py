@@ -31,11 +31,13 @@ from core.dify_builder.handlers_fix import (
     append_card,
     build_change_set,
     build_form_fields,
+    confirmed_tool_test,
     dead_end_branch_node_id,
     drop_unapplied_repair,
     emit_canvas,
     first_failed_node,
     input_gate_result,
+    is_confirmed_tool_turn,
     is_input_failure,
     launch_error_text,
     merge_known_keys,
@@ -634,6 +636,8 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
     """(working, auto) Live affected-path test via run_draft. Success ->
     edit.review; failure -> real diagnose + propose_repair, staged for the
     edit.await_repair approval gate. No auto-apply (human-gated)."""
+    if is_confirmed_tool_turn(turn, fc):
+        return confirmed_tool_test(env, turn, s, fc, review_state=PcState.EDIT_REVIEW, step_prefix="edit")
     progress = ProgressReporter.for_session(
         emit=env.emit_progress,
         operation_id=env.operation_id,

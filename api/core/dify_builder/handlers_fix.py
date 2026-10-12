@@ -28,6 +28,7 @@ Deltas from the Go source (per the P1 port plan's Global Constraints / ADR):
 import logging
 import re
 import uuid
+from dataclasses import replace
 from typing import Any
 
 from core.dify_builder import credentials, urls
@@ -39,9 +40,11 @@ from core.dify_builder.contract import (
     NoticeItem,
     TestResultCard,
 )
-from core.dify_builder.errors import DraftWouldNotStartError, HashMismatchError, NotFoundError
+from core.dify_builder.errors import ConflictError, DraftWouldNotStartError, HashMismatchError, NotFoundError
+from core.dify_builder.execution_policy import BuilderExecutionRefusal
 from core.dify_builder.input_schema import SYSTEM_QUERY, schema_hash, start_schema, validate_runtime_inputs
 from core.dify_builder.models import (
+    CONFIRMED_TOOL_ACTION,
     ApplyResult,
     ChangeSet,
     ChecklistError,
@@ -89,6 +92,7 @@ __all__ = [
     "append_item",
     "build_change_set",
     "build_form_fields",
+    "confirmed_tool_test",
     "dead_end_branch_node_id",
     "decode_checklist_errors",
     "drop_unapplied_repair",
@@ -108,6 +112,7 @@ __all__ = [
     "handle_propose",
     "handle_publish",
     "handle_verify",
+    "is_confirmed_tool_turn",
     "is_input_failure",
     "merge_known_keys",
     "mint_checkpoint",
@@ -156,6 +161,138 @@ UNKNOWN_OUTCOME_STUCK_BODY = (
     "Open the run in the app's logs to see how it ended, then edit the canvas, keep the draft, or revert."
 )
 UNKNOWN_OUTCOME_STUCK_REPLY = "I couldn't determine the test's outcome twice in a row — see the notice."
+
+# Deterministic, model-free copy for a confirmed Tool test outcome.
+CONFIRMED_COMPLETED_REPLY = "The confirmed tool test completed. Review the result before publishing."
+_DUPLICATE_LAUNCH_REASONS = frozenset({"execution_already_launched", "execution_already_claimed"})
+CONFIRMED_NOT_COMPLETED_REPLY = (
+    "The confirmed tool test did not complete. It is never retried automatically; "
+    "prepare and confirm a new test to try again."
+)
+
+
+def is_confirmed_tool_turn(turn: Turn, fc: DifyBuilderContext) -> bool:
+    """True only for the server-reserved confirmed command of this session; any other refuses.
+
+    Model text, plan approval and resource binding cannot create this action;
+    the default path never passes a consent reference to the port.
+    """
+    action = turn.action
+    if action is None or action.kind != CONFIRMED_TOOL_ACTION:
+        return False
+    if not fc.confirmed_consent_id or not fc.confirmed_command_id or action.command_id != fc.confirmed_command_id:
+        raise ConflictError("dify_builder: confirmed command is not reserved for this session")
+    return True
+
+
+def confirmed_tool_test(
+    env: Env, turn: Turn, s: Session, fc: DifyBuilderContext, *, review_state: PcState, step_prefix: str
+) -> StepResult:
+    """(working) Run the reserved confirmed Tool test once with the saved approved input.
+
+    No mock inputs, no repair, no retry and no post-run diagnosis or model
+    call: the outcome is deterministic status metadata and returns to the
+    mode's existing review/decision state with the new Run. The pending
+    consent/command reference is cleared in this terminal commit; the durable
+    consent and Run records keep the IDs.
+    """
+    run_step = f"{step_prefix}-run-confirmed-test"
+    progress = ProgressReporter.for_session(
+        emit=env.emit_progress,
+        operation_id=env.operation_id,
+        session=s,
+        stage_id=str(s.current_state),
+        steps=[
+            (f"{step_prefix}-prepare-confirmed-test", "Prepare the confirmed tool test"),
+            (run_step, "Run the confirmed tool test"),
+            (f"{step_prefix}-record-confirmed-test", "Record the confirmed test result"),
+        ],
+    )
+    progress.activate(f"{step_prefix}-prepare-confirmed-test")
+    consent_id, command_id = fc.confirmed_consent_id, fc.confirmed_command_id
+    fc.confirmed_consent_id = ""
+    fc.confirmed_command_id = ""
+    fc.diagnosis = None
+    fc.staged_repair = []
+    saved: TestInput | None = None
+    if fc.test_input_ref:
+        try:
+            saved = env.repo.get_test_input(fc.test_input_ref)
+        except NotFoundError:
+            saved = None
+    progress.activate(run_step)
+
+    def emit(event: NodeEvent) -> None:
+        progress.observe_node(run_step, NodeEvent(node_id=event.node_id, status=event.status, run_id=event.run_id))
+
+    if saved is None:
+        raw = Run(
+            kind="verify",
+            status="failed",
+            execution_refusal=BuilderExecutionRefusal(reason_code="test_input_binding_mismatch"),
+        )
+    else:
+        try:
+            raw = env.dify.run_draft(
+                s.app_id,
+                turn.actor,
+                dict(saved.inputs),
+                emit,
+                session_id=s.id,
+                test_input_id=saved.id,
+                on_workflow_event=env.emit_workflow,
+                confirmed_consent_id=consent_id,
+                command_id=command_id,
+            )
+        except Exception as exc:
+            # The type name only: provider and credential text never reach logs or cards.
+            logger.warning(
+                "dify_builder confirmed tool test returned no run (session=%s, command=%s, error=%s)",
+                s.id,
+                command_id,
+                type(exc).__name__,
+            )
+            raw = Run(kind="verify", status="running")
+    refusal = raw.execution_refusal
+    if refusal is not None and refusal.reason_code in _DUPLICATE_LAUNCH_REASONS:
+        # Another delivery owns this command's launch: commit nothing for this one.
+        raise ConflictError("dify_builder: confirmed command was already launched")
+    verification = raw.verification
+    if verification is not None:
+        verification = replace(verification, terminal_outputs=None)
+    run = Run(
+        execution_refusal=raw.execution_refusal,
+        id=str(uuid.uuid4()),
+        session_id=s.id,
+        verification=verification,
+        kind="verify",
+        dify_run_id=raw.dify_run_id,
+        status=raw.status,
+        per_node=[NodeOutput(node_id=node.node_id, status=node.status) for node in raw.per_node],
+        error="",
+        inputs_ref=saved.id if saved is not None else fc.test_input_ref,
+        immutable=True,
+    )
+    fc.verify_run_id = run.id
+    card = result_card(run)
+    if card.outcome == "execution_succeeded_needs_review":
+        progress.complete(run_step)
+        reply = CONFIRMED_COMPLETED_REPLY
+    else:
+        progress.fail_step(run_step)
+        reply = CONFIRMED_NOT_COMPLETED_REPLY
+    progress.activate(f"{step_prefix}-record-confirmed-test")
+    items = append_card(fc, card)
+    items += append_assistant(
+        env,
+        s,
+        fc,
+        reply,
+        execution=progress.finish(),
+        cards=["test_result"],
+        turn_id=progress.operation_id,
+    )
+    return StepResult(next=review_state, context=fc, items=items, run=run, run_id_sink=[run.id])
 
 
 def note_unknown_outcome(fc: DifyBuilderContext) -> bool:
@@ -1079,6 +1216,8 @@ def handle_verify(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
     to ``fix.await_decision`` on pass or graph failure; Chatflow input
     failures return to ``fix.await_testdata``. Never touches the original
     failed run. Port of ``handlers_fix.go:206``."""
+    if is_confirmed_tool_turn(turn, fc):
+        return confirmed_tool_test(env, turn, s, fc, review_state=PcState.FIX_AWAIT_DECISION, step_prefix="fix")
     if not fc.test_input_ref:
         graph, _hash = env.dify.read_graph(s.app_id, turn.actor)
         schema = start_schema(graph, env.dify.get_app_mode(s.app_id, turn.actor))
