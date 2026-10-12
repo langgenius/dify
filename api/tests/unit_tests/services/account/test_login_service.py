@@ -951,15 +951,6 @@ def test_refresh_rejects_invalid_account_state(
     assert dependencies.sessions.rotations == []
 
 
-def test_logout_all_revokes_account_sessions() -> None:
-    dependencies = Dependencies()
-
-    dependencies.service().logout_all("account-1")
-
-    assert dependencies.sessions.revoked_accounts == ["account-1"]
-    assert dependencies.sessions.revoked == []
-
-
 def test_refresh_forwards_retry_request_id() -> None:
     dependencies = Dependencies()
 

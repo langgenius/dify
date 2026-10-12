@@ -9,7 +9,7 @@ import jwt
 from flask import make_response, request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
-from werkzeug.exceptions import BadRequest, Forbidden, Unauthorized
+from werkzeug.exceptions import BadRequest, Forbidden
 
 from configs import dify_config
 from controllers.common.fields import (
@@ -55,7 +55,6 @@ from extensions.ext_application_services import application_services
 from libs.external_api import error_responses
 from libs.helper import EmailStr, dump_response, extract_remote_ip
 from libs.helper import timezone as validate_timezone_string
-from libs.login import current_account_with_tenant_optional, login_required
 from libs.token import (
     clear_access_token_from_cookie,
     clear_csrf_token_from_cookie,
@@ -181,25 +180,12 @@ class LogoutApi(Resource):
     def post(self):
         _check_refresh_origin()
         application_services().accounts.authentication.logout(extract_refresh_token(request))
-        return _logout_response()
-
-
-@console_ns.route("/logout-all")
-class LogoutAllApi(Resource):
-    @setup_required
-    @login_required
-    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
-    @console_ns.response(401, "Unauthorized")
-    @console_ns.doc(description=_REFRESH_ORIGIN_DESCRIPTION)
-    @console_ns.response(403, "Missing or untrusted Origin")
-    def post(self):
-        """Revoke refresh sessions on every device for the authenticated account."""
-        _check_refresh_origin()
-        account, _ = current_account_with_tenant_optional()
-        if account is None:
-            raise Unauthorized()
-        application_services().accounts.authentication.logout_all(account.id)
-        return _logout_response()
+        # response-contract:ignore cookie-bearing Flask response
+        response = make_response(dump_response(SimpleResultResponse, {"result": "success"}))
+        clear_access_token_from_cookie(response)
+        clear_refresh_token_from_cookie(response)
+        clear_csrf_token_from_cookie(response)
+        return response
 
 
 @console_ns.route("/reset-password")
@@ -404,15 +390,6 @@ def _has_refresh_csrf_proof() -> bool:
         refresh_token is None
         or re.fullmatch(rf"v2\.{re.escape(account_id)}\.[0-9a-f]{{32}}\.[0-9a-f]{{64}}", refresh_token) is not None
     )
-
-
-def _logout_response():
-    # response-contract:ignore cookie-bearing Flask response
-    response = make_response(dump_response(SimpleResultResponse, {"result": "success"}))
-    clear_access_token_from_cookie(response)
-    clear_refresh_token_from_cookie(response)
-    clear_csrf_token_from_cookie(response)
-    return response
 
 
 def _token_response(tokens: AccountSessionTokens, response_model: type[BaseModel], data: object):

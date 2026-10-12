@@ -972,7 +972,7 @@ def test_console_session_endpoints_document_origin_and_retry_header(openapi_json
     from controllers.console import bp as console_bp
 
     payload = json.loads(openapi_json(console_bp, "/console/api/openapi.json", True))
-    for path in ("/logout", "/logout-all", "/refresh-token"):
+    for path in ("/logout", "/refresh-token"):
         operation = payload["paths"][path]["post"]
         assert "requestBody" not in operation
         response_schema = operation["responses"]["200"]["content"]["application/json"]["schema"]
