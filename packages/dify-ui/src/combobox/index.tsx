@@ -6,7 +6,7 @@ import type { Placement } from '../internal/placement'
 import { Combobox as BaseCombobox } from '@base-ui/react/combobox'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
-import { focusRingClassName } from '../internal/focus'
+import { focusRingClassName, insetFocusRingClassName } from '../internal/focus'
 import { formLabelClassName, textControlGroupClassName } from '../internal/form-control'
 import {
   floatingGroupLabelClassName,
@@ -195,9 +195,9 @@ function ComboboxInput({
 
 const comboboxControlVariants = cva(
   [
-    'flex shrink-0 touch-manipulation items-center justify-center rounded-md text-text-tertiary outline-hidden transition-colors',
+    'flex shrink-0 touch-manipulation items-center justify-center rounded-md text-text-tertiary transition-colors',
     'hover:bg-components-input-bg-hover hover:text-text-secondary focus-visible:bg-components-input-bg-hover focus-visible:text-text-secondary',
-    'focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid',
+    insetFocusRingClassName,
     'disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-text-tertiary disabled:focus-visible:bg-transparent disabled:focus-visible:ring-0',
     'group-data-disabled/combobox:cursor-not-allowed group-data-disabled/combobox:hover:bg-transparent group-data-disabled/combobox:focus-visible:bg-transparent group-data-disabled/combobox:focus-visible:ring-0',
     'group-data-readonly/combobox:hidden',
@@ -490,7 +490,8 @@ function ComboboxChipRemove({
       }
       className={(state) =>
         cn(
-          'flex size-3.5 shrink-0 items-center justify-center rounded-sm text-text-tertiary outline-hidden hover:bg-state-base-hover-alt hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+          'flex size-3.5 shrink-0 items-center justify-center rounded-sm text-text-tertiary outline-hidden hover:bg-state-base-hover-alt hover:text-text-secondary',
+          focusRingClassName,
           resolveClassName(className, state),
         )
       }

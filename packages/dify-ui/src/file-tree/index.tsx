@@ -3,6 +3,7 @@
 import { Collapsible as BaseCollapsible } from '@base-ui/react/collapsible'
 import * as React from 'react'
 import { cn } from '../cn'
+import { insetFocusRingClassName } from '../internal/focus'
 import { resolveClassName } from '../internal/resolve-class-name'
 import { mergeProps } from '../merge-props'
 import { useRender } from '../use-render'
@@ -25,8 +26,9 @@ type FileTreeFileState = {
 
 function fileTreeRowClassName({ className }: { className?: string }) {
   return cn(
-    'group/file-tree-row relative flex h-6 w-full min-w-0 cursor-pointer items-center rounded-md ps-2 pe-1.5 text-start outline-hidden select-none',
-    'hover:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid',
+    'group/file-tree-row relative flex h-6 w-full min-w-0 cursor-pointer items-center rounded-md ps-2 pe-1.5 text-start select-none',
+    'hover:bg-state-base-hover',
+    insetFocusRingClassName,
     'data-selected:bg-state-base-active',
     'data-disabled:cursor-not-allowed data-disabled:opacity-50 data-disabled:hover:bg-transparent',
     className,

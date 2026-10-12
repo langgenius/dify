@@ -2,7 +2,7 @@
 
 import { Tabs as BaseTabs } from '@base-ui/react/tabs'
 import { cn } from '../cn'
-import { focusRingClassName } from '../internal/focus'
+import { focusRingClassName, insetFocusRingClassName } from '../internal/focus'
 import { resolveClassName } from '../internal/resolve-class-name'
 
 type TabsProps = BaseTabs.Root.Props
@@ -43,12 +43,7 @@ type TabsPanelProps = BaseTabs.Panel.Props
 function TabsPanel({ className, ...props }: TabsPanelProps) {
   return (
     <BaseTabs.Panel
-      className={(state) =>
-        cn(
-          'outline-hidden focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid',
-          resolveClassName(className, state),
-        )
-      }
+      className={(state) => cn(insetFocusRingClassName, resolveClassName(className, state))}
       {...props}
     />
   )

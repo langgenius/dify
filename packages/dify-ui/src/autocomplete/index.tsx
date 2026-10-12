@@ -6,6 +6,7 @@ import type { Placement } from '../internal/placement'
 import { Autocomplete as BaseAutocomplete } from '@base-ui/react/autocomplete'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
+import { insetFocusRingClassName } from '../internal/focus'
 import { textControlGroupClassName } from '../internal/form-control'
 import {
   floatingGroupLabelClassName,
@@ -169,9 +170,9 @@ function AutocompleteInput({
 
 const autocompleteControlVariants = cva(
   [
-    'flex shrink-0 touch-manipulation items-center justify-center rounded-md text-text-tertiary outline-hidden transition-colors',
+    'flex shrink-0 touch-manipulation items-center justify-center rounded-md text-text-tertiary transition-colors',
     'hover:bg-components-input-bg-hover hover:text-text-secondary focus-visible:bg-components-input-bg-hover focus-visible:text-text-secondary',
-    'focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid',
+    insetFocusRingClassName,
     'disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-text-tertiary disabled:focus-visible:bg-transparent disabled:focus-visible:ring-0',
     'group-data-disabled/autocomplete:cursor-not-allowed group-data-disabled/autocomplete:hover:bg-transparent group-data-disabled/autocomplete:focus-visible:bg-transparent group-data-disabled/autocomplete:focus-visible:ring-0',
     'group-data-readonly/autocomplete:hidden',

@@ -7,6 +7,7 @@ import type { Placement } from '../internal/placement'
 import { Select as BaseSelect } from '@base-ui/react/select'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
+import { focusRingClassName } from '../internal/focus'
 import { formLabelClassName } from '../internal/form-control'
 import {
   floatingGroupLabelClassName,
@@ -70,7 +71,7 @@ const selectTriggerVariants = cva(
   [
     'group/select-trigger flex w-full items-center border-0 bg-components-input-bg-normal text-start text-components-input-text-filled outline-hidden',
     'hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt',
-    'focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+    focusRingClassName,
     'data-invalid:not-data-disabled:bg-components-input-bg-destructive data-invalid:not-data-disabled:inset-ring-1 data-invalid:not-data-disabled:inset-ring-components-input-border-destructive',
     'data-placeholder:text-components-input-text-placeholder',
     'data-readonly:not-data-disabled:cursor-default data-readonly:not-data-disabled:not-data-invalid:bg-components-input-bg-normal data-readonly:not-data-disabled:not-data-invalid:hover:bg-components-input-bg-normal',
