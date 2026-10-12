@@ -13,7 +13,6 @@ import { useLogs } from './hooks'
 import NodePanel from './node'
 import SpecialResultPanel from './special-result-panel'
 import { getIterationDurationMap, getIterationResultList } from './utils/format-log/iteration'
-import { getLoopResultList } from './utils/format-log/loop'
 import WorkflowToolTracing from './workflow-tool-tracing'
 import { WorkflowToolTracingContext } from './workflow-tool-tracing-context'
 
@@ -172,7 +171,7 @@ const TracingPanel: FC<TracingPanelProps> = ({
         iterationResultDurationMap={iteration ? getIterationDurationMap(iteration) : undefined}
         showLoopingDetail={!!loop}
         setShowLoopingDetailFalse={() => setContainerId(null)}
-        loopResultList={loop ? getLoopResultList(loop, list) : undefined}
+        loopResultList={loop?.details}
         loopResultDurationMap={loop?.loopDurationMap || loop?.execution_metadata?.loop_duration_map}
         loopResultVariableMap={loop?.execution_metadata?.loop_variable_map}
       />

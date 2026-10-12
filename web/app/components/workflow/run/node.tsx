@@ -248,11 +248,7 @@ const NodePanel: FC<Props> = ({
                 )}
                 {/* The nav to the Loop detail */}
                 {isLoopNode && !notShowLoopNav && onShowLoopDetail && (
-                  <LoopLogTrigger
-                    nodeInfo={nodeInfo}
-                    allExecutions={allExecutions}
-                    onShowLoopResultList={onShowLoopDetail}
-                  />
+                  <LoopLogTrigger nodeInfo={nodeInfo} onShowLoopResultList={onShowLoopDetail} />
                 )}
                 {isRetryNode && onShowRetryDetail && (
                   <RetryLogTrigger nodeInfo={nodeInfo} onShowRetryResultList={onShowRetryDetail} />
