@@ -436,16 +436,9 @@ def _publish_graph_events(
     queue_manager = _EventQueue(InvokeFrom.WEB_APP, runtime_state)
     runner = WorkflowBasedAppRunner(queue_manager=queue_manager, app_id="app")
     workflow_entry = WorkflowEntry(
-        tenant_id="tenant",
-        app_id="app",
-        workflow_id="workflow",
         graph_config={},
         graph=graph,
-        user_id="user",
-        user_from=UserFrom.ACCOUNT,
-        invoke_from=InvokeFrom.WEB_APP,
         call_depth=0,
-        variable_pool=runtime_state.variable_pool,
         graph_runtime_state=runtime_state,
     )
     for event in events:

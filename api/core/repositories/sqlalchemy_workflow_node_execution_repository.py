@@ -501,7 +501,6 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         self,
         workflow_run_id: str,
         order_config: OrderConfig | None = None,
-        triggered_from: WorkflowNodeExecutionTriggeredFrom | None = None,
         *,
         include_paused: bool = False,
     ) -> Sequence[WorkflowNodeExecutionModel]:
@@ -530,7 +529,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
                 WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id,
                 WorkflowNodeExecutionModel.tenant_id == self._tenant_id,
                 WorkflowNodeExecutionModel.triggered_from
-                == (triggered_from or self._triggered_from or WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN),
+                == (self._triggered_from or WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN),
             )
 
             if not include_paused:
@@ -568,7 +567,6 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         self,
         workflow_execution_id: str,
         order_config: OrderConfig | None = None,
-        triggered_from: WorkflowNodeExecutionTriggeredFrom | None = None,
         *,
         include_paused: bool = False,
     ) -> Sequence[WorkflowNodeExecution]:
@@ -588,7 +586,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             A list of node execution instances
         """
         db_models = self.get_db_models_by_workflow_run(
-            workflow_execution_id, order_config, triggered_from, include_paused=include_paused
+            workflow_execution_id, order_config, include_paused=include_paused
         )
 
         with ThreadPoolExecutor(max_workers=10) as executor:

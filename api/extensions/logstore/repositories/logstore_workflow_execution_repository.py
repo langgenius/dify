@@ -83,9 +83,7 @@ class LogstoreWorkflowExecutionRepository(WorkflowExecutionRepository):
         # otherwise write an empty {} instead. Defaults to writing the `graph` field.
         self._enable_put_graph_field = dify_config.LOGSTORE_ENABLE_PUT_GRAPH_FIELD
 
-    def _to_logstore_model(
-        self, domain_model: WorkflowExecution, *, log_version: int | None = None
-    ) -> list[tuple[str, str]]:
+    def _to_logstore_model(self, domain_model: WorkflowExecution, *, log_version: int) -> list[tuple[str, str]]:
         """
         Convert a domain model to a logstore model (List[Tuple[str, str]]).
 
@@ -109,8 +107,7 @@ class LogstoreWorkflowExecutionRepository(WorkflowExecutionRepository):
         if not self._creator_user_role:
             raise ValueError("created_by_role is required in repository constructor")
 
-        # Generate log_version as nanosecond timestamp for record versioning
-        version = str(log_version if log_version is not None else time.time_ns())
+        version = str(log_version)
 
         # Use WorkflowRuntimeTypeConverter to handle complex types (Segment, File, etc.)
         json_converter = WorkflowRuntimeTypeConverter()

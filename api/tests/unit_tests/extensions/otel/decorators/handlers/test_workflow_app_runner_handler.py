@@ -86,7 +86,7 @@ class TestWorkflowAppRunnerHandler:
         mock_workflow_runner.application_generate_entity.app_config.tenant_id = test_tenant_id
         mock_workflow_runner.application_generate_entity.app_config.workflow_id = test_workflow_id
 
-        def runner_run(self):
+        def runner_run(runner):
             return "result"
 
         handler.wrapper(tracer, runner_run, mock_workflow_runner)

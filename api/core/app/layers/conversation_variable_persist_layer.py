@@ -25,10 +25,6 @@ class ConversationVariablePersistenceLayer(Layer):
         self._conversation_variable_updater = conversation_variable_updater
 
     @override
-    def on_graph_start(self) -> None:
-        pass
-
-    @override
     def on_event(self, event: EngineEvent) -> None:
         if not isinstance(event, NodeRunVariableUpdatedEvent):
             return
@@ -46,7 +42,3 @@ class ConversationVariablePersistenceLayer(Layer):
             return
 
         self._conversation_variable_updater.update(conversation_id=conversation_id, variable=event.variable)
-
-    @override
-    def on_graph_end(self, error: Exception | None) -> None:
-        pass

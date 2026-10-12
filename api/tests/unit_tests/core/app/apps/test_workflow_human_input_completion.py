@@ -72,14 +72,7 @@ def workflow_queue(mocker: MockerFixture) -> tuple[WorkflowAppQueueManager, Magi
     return queue, mocker.spy(queue, "publish")
 
 
-def _save_form(
-    session: Session,
-    *,
-    status: HumanInputFormStatus,
-    tenant_id: str = "tenant",
-    app_id: str = "app",
-    workflow_run_id: str = "run-1",
-) -> HumanInputForm:
+def _save_form(session: Session, *, status: HumanInputFormStatus) -> HumanInputForm:
     now = datetime.now(UTC)
     definition = FormDefinition(
         form_content="Decision: {{#$output.answer#}}",
@@ -90,9 +83,9 @@ def _save_form(
         node_title="Approval",
     )
     form = HumanInputForm(
-        tenant_id=tenant_id,
-        app_id=app_id,
-        workflow_run_id=workflow_run_id,
+        tenant_id="tenant",
+        app_id="app",
+        workflow_run_id="run-1",
         node_id="same-human-node",
         form_kind=HumanInputFormKind.RUNTIME,
         form_definition=definition.model_dump_json(),
@@ -125,6 +118,7 @@ def _make_paused_workflow(
         user_id="user",
         user_from=UserFrom.END_USER,
         invoke_from=InvokeFrom.WEB_APP,
+        call_depth=0,
     )
     if human_input_form is not None:
         node_data = HumanInputNodeData(
@@ -164,16 +158,9 @@ def _make_paused_workflow(
         state.graph_execution.pause(HitlRequired(session_id=form.id, node_id=form.node_id, node_title="Approval"))
     state.defer_ready_task(StartTask(frame_id=ROOT_FRAME_ID, node_id=graph.root_node.id))
     return WorkflowEntry(
-        tenant_id="tenant",
-        app_id="app",
-        workflow_id="workflow",
         graph=graph,
         graph_config=graph.graph_config or {},
-        user_id="user",
-        user_from=UserFrom.END_USER,
-        invoke_from=InvokeFrom.WEB_APP,
         call_depth=0,
-        variable_pool=state.variable_pool,
         graph_runtime_state=state,
     )
 
@@ -216,6 +203,7 @@ def _resume_events(runner: WorkflowBasedAppRunner, entry: WorkflowEntry) -> Gene
     return WorkflowRunAgg(
         prepared,
         runner,
+        None,
         workflow_execution_repository=runs,
         workflow_node_execution_repository=nodes,
     ).iter_events()

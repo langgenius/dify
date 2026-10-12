@@ -141,7 +141,7 @@ class WorkflowTaskStopApi(WebApiResource):
             tenant_id=app_model.tenant_id,
             app_id=app_model.id,
             task_id=task_id,
-            app_mode=AppMode.value_of(app_model.mode),
+            app_mode=app_mode,
             owner=None,
         )
 

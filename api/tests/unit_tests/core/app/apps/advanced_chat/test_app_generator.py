@@ -569,7 +569,6 @@ class TestAdvancedChatAppGeneratorInternals:
         assert thread_data["joined"] is True
         assert thread_data["join_timeout"] == 300
         assert thread_data["kwargs"]["pause_state_config"] is pause_state_config
-        assert thread_data["kwargs"]["graph_engine_layers"] == ()
         assert generator._dialogue_count == 3
         assert init_records.call_args.kwargs["session"] is sqlite_session
         get_thread_messages_length.assert_called_once_with(conversation.id, session=sqlite_session)
@@ -730,7 +729,6 @@ class TestAdvancedChatAppGeneratorInternals:
                 variable_loader=SimpleNamespace(),
                 workflow_execution_repository=SimpleNamespace(),
                 workflow_node_execution_repository=SimpleNamespace(),
-                graph_engine_layers=(),
                 graph_runtime_state=None,
             )
 
@@ -782,7 +780,6 @@ class TestAdvancedChatAppGeneratorInternals:
                 variable_loader=SimpleNamespace(),
                 workflow_execution_repository=SimpleNamespace(),
                 workflow_node_execution_repository=SimpleNamespace(),
-                graph_engine_layers=(),
                 graph_runtime_state=None,
             )
 
@@ -845,7 +842,6 @@ class TestAdvancedChatAppGeneratorInternals:
             variable_loader=SimpleNamespace(),
             workflow_execution_repository=SimpleNamespace(),
             workflow_node_execution_repository=SimpleNamespace(),
-            graph_engine_layers=(),
             graph_runtime_state=SimpleNamespace(),
         )
 
@@ -919,7 +915,6 @@ class TestAdvancedChatAppGeneratorInternals:
             variable_loader=SimpleNamespace(),
             workflow_execution_repository=SimpleNamespace(),
             workflow_node_execution_repository=SimpleNamespace(),
-            graph_engine_layers=(),
             graph_runtime_state=None,
         )
 
@@ -988,7 +983,6 @@ class TestAdvancedChatAppGeneratorInternals:
                 variable_loader=SimpleNamespace(),
                 workflow_execution_repository=SimpleNamespace(),
                 workflow_node_execution_repository=SimpleNamespace(),
-                graph_engine_layers=(),
                 graph_runtime_state=None,
             )
 
@@ -1167,7 +1161,6 @@ class TestAdvancedChatAppGeneratorInternals:
             variable_loader=SimpleNamespace(),
             workflow_execution_repository=SimpleNamespace(),
             workflow_node_execution_repository=SimpleNamespace(),
-            graph_engine_layers=(),
             graph_runtime_state=None,
         )
 

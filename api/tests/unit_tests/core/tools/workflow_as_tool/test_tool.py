@@ -4,7 +4,6 @@ import json
 import uuid
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
-from types import SimpleNamespace
 from typing import Any
 from unittest.mock import patch
 
@@ -188,10 +187,6 @@ def _build_tool(*, tenant_id: str = "test_tool", workflow_app_id: str = "app-1",
     )
 
 
-def _workflow_stub(*, nodes: list[dict[str, Any]] | None = None) -> SimpleNamespace:
-    return SimpleNamespace(graph_dict={"nodes": nodes or []})
-
-
 def test_legacy_workflow_tool_executes_with_the_upper_owned_driver(
     sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session], sqlite_session: Session
 ) -> None:
@@ -270,7 +265,7 @@ def test_workflow_tool_should_raise_tool_invoke_error_when_result_has_error_fiel
 
     # needs to patch those methods to avoid database access.
     monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
-    monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: _workflow_stub())
+    monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: None)
 
     user = make_account(account_id="test_user")
     monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: user)
@@ -296,7 +291,7 @@ def test_workflow_tool_does_not_use_pause_state_config(
     tool = _build_tool()
 
     monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
-    monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: _workflow_stub())
+    monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: None)
 
     user = make_account(account_id="test_user")
     monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: user)
@@ -323,7 +318,7 @@ def test_workflow_tool_passes_parent_trace_context_from_runtime(
     )
 
     monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
-    monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: _workflow_stub())
+    monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: None)
 
     user = make_account(account_id="test_user")
     monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: user)
@@ -357,7 +352,7 @@ def test_workflow_tool_passes_parent_trace_session_id(
     tool.set_trace_session_id("session-1")
 
     monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
-    monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: _workflow_stub())
+    monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: None)
 
     user = make_account(account_id="test_user")
     monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: user)
@@ -398,7 +393,7 @@ def test_workflow_tool_keeps_user_inputs_named_like_trace_runtime_keys(
     )
 
     monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
-    monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: _workflow_stub())
+    monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: None)
 
     user = make_account(account_id="test_user")
     monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: user)
@@ -439,7 +434,7 @@ def test_workflow_tool_can_clear_parent_trace_context(
     tool.clear_parent_trace_context()
 
     monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
-    monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: _workflow_stub())
+    monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: None)
 
     user = make_account(account_id="test_user")
     monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: user)
@@ -463,7 +458,7 @@ def test_workflow_tool_can_clear_trace_session_id(
     tool.clear_trace_session_id()
 
     monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
-    monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: _workflow_stub())
+    monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: None)
 
     user = make_account(account_id="test_user")
     monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: user)
@@ -496,7 +491,7 @@ def test_workflow_tool_omits_parent_trace_context_when_runtime_is_incomplete(
     tool.runtime.runtime_parameters = runtime_parameters
 
     monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
-    monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: _workflow_stub())
+    monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: None)
 
     user = make_account(account_id="test_user")
     monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: user)
@@ -522,7 +517,7 @@ def test_workflow_tool_should_generate_variable_messages_for_outputs(
 
     # needs to patch those methods to avoid database access.
     monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
-    monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: _workflow_stub())
+    monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: None)
 
     user = make_account(account_id="test_user")
     monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: user)
@@ -566,7 +561,7 @@ def test_workflow_tool_should_handle_empty_outputs(
 
     # needs to patch those methods to avoid database access.
     monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
-    monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: _workflow_stub())
+    monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: None)
 
     user = make_account(account_id="test_user")
     monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: user)
@@ -718,7 +713,7 @@ def test_invoke_raises_when_user_not_found(
     """Raise ToolInvokeError when user resolution fails."""
     tool = _build_tool()
     monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
-    monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: _workflow_stub())
+    monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: None)
     monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: None)
 
     with pytest.raises(ToolInvokeError, match="User not found"):
@@ -892,7 +887,7 @@ def test_workflow_tool_invocation_normalizes_optional_files_parameter(
     tool.entity.parameters = [images_param]
 
     monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
-    monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: _workflow_stub())
+    monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: None)
     user = make_account(account_id="test_user")
     monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: user)
 

@@ -48,7 +48,6 @@ from services.human_input_service import (
     InvalidFormDataError,
 )
 from services.workflow_event_snapshot_service import build_workflow_event_stream
-from services.workflow_run_agg import WorkflowRunAgg
 
 logger = logging.getLogger(__name__)
 
@@ -218,12 +217,12 @@ class ConsoleWorkflowEventsApi(Resource):
 
         else:
             msg_generator = MessageGenerator()
-            generator: BaseAppGenerator
+            generator: type[BaseAppGenerator]
             match app.mode:
                 case AppMode.ADVANCED_CHAT:
-                    generator = AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run)
+                    generator = AdvancedChatAppGenerator
                 case AppMode.WORKFLOW:
-                    generator = WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run)
+                    generator = WorkflowAppGenerator
                 case _:
                     raise InvalidArgumentError(f"cannot subscribe to workflow run, workflow_run_id={workflow_run.id}")
 

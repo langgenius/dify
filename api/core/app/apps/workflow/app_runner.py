@@ -176,16 +176,9 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         self._queue_manager.graph_runtime_state = graph_runtime_state
 
         workflow_entry = WorkflowEntry(
-            tenant_id=self._workflow.tenant_id,
-            app_id=self._workflow.app_id,
-            workflow_id=self._workflow.id,
             graph=graph,
             graph_config=self._workflow.graph_dict,
-            user_id=self.application_generate_entity.user_id,
-            user_from=user_from,
-            invoke_from=invoke_from,
             call_depth=self.application_generate_entity.call_depth,
-            variable_pool=variable_pool,
             graph_runtime_state=graph_runtime_state,
             command_channel=command_channel,
             response_stream_filter=self._response_stream_filter,

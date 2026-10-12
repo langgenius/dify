@@ -2,7 +2,6 @@
 
 from unittest.mock import MagicMock, patch
 
-from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.workflow.workflow_entry import WorkflowEntry
 from graphon.engine.command import RedisChannel
 from graphon.runtime import RuntimeState, VariablePool
@@ -27,16 +26,9 @@ class TestWorkflowEntryRedisChannel:
         with patch("core.workflow.workflow_entry.Engine", autospec=True) as mock_graph_engine_type:
             # Create WorkflowEntry with Redis channel
             workflow_entry = WorkflowEntry(
-                tenant_id="test-tenant",
-                app_id="test-app",
-                workflow_id="test-workflow",
                 graph_config=mock_graph_config,
                 graph=mock_graph,
-                user_id="test-user",
-                user_from=UserFrom.ACCOUNT,
-                invoke_from=InvokeFrom.DEBUGGER,
                 call_depth=0,
-                variable_pool=variable_pool,
                 graph_runtime_state=graph_runtime_state,
                 command_channel=redis_channel,  # Provide Redis channel
             )
@@ -63,16 +55,9 @@ class TestWorkflowEntryRedisChannel:
             mock_inmemory_channel = mock_in_memory_channel.return_value
             # Create WorkflowEntry without providing a channel
             workflow_entry = WorkflowEntry(
-                tenant_id="test-tenant",
-                app_id="test-app",
-                workflow_id="test-workflow",
                 graph_config=mock_graph_config,
                 graph=mock_graph,
-                user_id="test-user",
-                user_from=UserFrom.ACCOUNT,
-                invoke_from=InvokeFrom.DEBUGGER,
                 call_depth=0,
-                variable_pool=variable_pool,
                 graph_runtime_state=graph_runtime_state,
                 command_channel=None,  # No channel provided
             )
@@ -110,16 +95,9 @@ class TestWorkflowEntryRedisChannel:
 
             # Create WorkflowEntry with Redis channel
             workflow_entry = WorkflowEntry(
-                tenant_id="test-tenant",
-                app_id="test-app",
-                workflow_id="test-workflow",
                 graph_config=mock_graph_config,
                 graph=mock_graph,
-                user_id="test-user",
-                user_from=UserFrom.ACCOUNT,
-                invoke_from=InvokeFrom.DEBUGGER,
                 call_depth=0,
-                variable_pool=variable_pool,
                 graph_runtime_state=graph_runtime_state,
                 command_channel=redis_channel,
             )

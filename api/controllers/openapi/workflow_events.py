@@ -43,7 +43,6 @@ from core.workflow.human_input_policy import HumanInputSurface
 from models.model import AppMode
 from repositories.factory import DifyAPIRepositoryFactory
 from services.workflow_event_snapshot_service import build_workflow_event_stream
-from services.workflow_run_agg import WorkflowRunAgg
 
 
 class WorkflowEventsQuery(BaseModel):
@@ -128,12 +127,8 @@ class OpenApiWorkflowEventsApi(Resource):
             event_generator = _generate_finished_events
         else:
             msg_generator = MessageGenerator()
-            generator: BaseAppGenerator
-            generator = (
-                AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run)
-                if app_mode == AppMode.ADVANCED_CHAT
-                else WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run)
-            )
+            generator: type[BaseAppGenerator]
+            generator = AdvancedChatAppGenerator if app_mode == AppMode.ADVANCED_CHAT else WorkflowAppGenerator
 
             include_state_snapshot = query.include_state_snapshot
             continue_on_pause = query.continue_on_pause

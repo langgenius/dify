@@ -1,6 +1,6 @@
 import logging
 import time
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 from typing import Any, cast, override
 
 from sqlalchemy import select
@@ -42,7 +42,6 @@ from extensions.ext_redis import redis_client
 from extensions.workflow_warm_shutdown import WORKFLOW_WARM_SHUTDOWN_ABORT_REASON, celery_warm_shutdown_started
 from graphon.engine.command import RedisChannel
 from graphon.engine.filter import ResponseStreamFilter
-from graphon.engine.layer import Layer
 from graphon.enums import WorkflowType
 from graphon.runtime import RuntimeState, VariablePool
 from graphon.variable_loader import VariableLoader
@@ -72,7 +71,6 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         system_user_id: str,
         app: App,
         execution_driver: WorkflowRunDriver | None = None,
-        graph_engine_layers: Sequence[Layer] = (),
         graph_runtime_state: RuntimeState | None = None,
         response_stream_filter: ResponseStreamFilter | None = None,
     ):
@@ -81,7 +79,6 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             execution_driver=execution_driver,
             variable_loader=variable_loader,
             app_id=application_generate_entity.app_config.app_id,
-            graph_engine_layers=graph_engine_layers,
         )
         self.application_generate_entity = application_generate_entity
         self.conversation = conversation
@@ -240,16 +237,9 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         )
 
         workflow_entry = WorkflowEntry(
-            tenant_id=self._workflow.tenant_id,
-            app_id=self._workflow.app_id,
-            workflow_id=self._workflow.id,
             graph=graph,
             graph_config=self._workflow.graph_dict,
-            user_id=self.application_generate_entity.user_id,
-            user_from=user_from,
-            invoke_from=invoke_from,
             call_depth=self.application_generate_entity.call_depth,
-            variable_pool=variable_pool,
             graph_runtime_state=graph_runtime_state,
             command_channel=command_channel,
             response_stream_filter=self._response_stream_filter,

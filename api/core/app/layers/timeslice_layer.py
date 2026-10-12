@@ -6,7 +6,6 @@ from apscheduler.schedulers.background import BackgroundScheduler  # type: ignor
 
 from graphon.engine.command import PauseCommand
 from graphon.engine.layer import Layer
-from graphon.engine_events import EngineEvent
 from services.workflow.entities import WorkflowScheduleCFSPlanEntity
 from services.workflow.scheduler import CFSPlanScheduler, SchedulerCommand
 
@@ -71,10 +70,6 @@ class TimeSliceLayer(Layer):
                 seconds=self.cfs_plan_scheduler.plan.granularity,
                 id=self.schedule_id,
             )
-
-    @override
-    def on_event(self, event: EngineEvent):
-        pass
 
     @override
     def on_graph_end(self, error: Exception | None) -> None:

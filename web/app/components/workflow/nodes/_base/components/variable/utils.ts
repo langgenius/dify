@@ -59,7 +59,7 @@ import { isAgentV2NodeData } from '@/app/components/workflow/nodes/agent-v2/type
 import DataSourceNodeDefault from '@/app/components/workflow/nodes/data-source/default'
 import HumanInputNodeDefault from '@/app/components/workflow/nodes/human-input/default'
 import { DeliveryMethodType } from '@/app/components/workflow/nodes/human-input/types'
-import { ComparisonOperator } from '@/app/components/workflow/nodes/if-else/types'
+import { comparisonOperatorNotRequireValue } from '@/app/components/workflow/nodes/if-else/utils'
 import ToolNodeDefault from '@/app/components/workflow/nodes/tool/default'
 import { resolveVarType } from '@/app/components/workflow/nodes/tool/output-schema-utils'
 import PluginTriggerNodeDefault from '@/app/components/workflow/nodes/trigger-plugin/default'
@@ -1412,9 +1412,7 @@ export const getNodeUsedVars = (node: Node, { forExecution = false } = {}): Valu
         templates.push(
           ...(payload.filter_by?.conditions || []).flatMap((condition) =>
             typeof condition.value === 'string' &&
-            (!forExecution ||
-              (condition.comparison_operator !== ComparisonOperator.empty &&
-                condition.comparison_operator !== ComparisonOperator.notEmpty))
+            (!forExecution || !comparisonOperatorNotRequireValue(condition.comparison_operator))
               ? [condition.value]
               : [],
           ),

@@ -19,11 +19,7 @@ class AgentLogEvent(NodeEventPayload):
     node_id: str = Field(..., description="node id")
 
 
-class GraphAgentNodeEventBase(NodeEvent):
-    pass
-
-
-class NodeRunAgentLogEvent(GraphAgentNodeEventBase):
+class NodeRunAgentLogEvent(NodeEvent):
     message_id: str = Field(..., description="message id")
     label: str = Field(..., description="label")
     node_execution_id: str = Field(..., description="node execution id")

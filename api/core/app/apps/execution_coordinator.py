@@ -81,7 +81,6 @@ def clear_app_task_cancellation_signals(task_id: str) -> None:
     channel_key = app_task_command_channel_key(task_id)
     try:
         discarded = RedisChannel(redis_client, channel_key).fetch_commands()
-        redis_client.delete(channel_key)
         if discarded:
             logger.info(
                 "Discarded %s stale GraphEngine command(s) for app task %s",

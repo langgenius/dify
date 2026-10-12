@@ -224,6 +224,7 @@ class TestWorkflowBasedAppRunner:
                 graph_runtime_state=runtime_state,
                 user_from=UserFrom.ACCOUNT,
                 invoke_from=InvokeFrom.DEBUGGER,
+                call_depth=0,
             )
 
         with pytest.raises(ValidationError, match="nodes"):
@@ -232,6 +233,7 @@ class TestWorkflowBasedAppRunner:
                 graph_runtime_state=runtime_state,
                 user_from=UserFrom.ACCOUNT,
                 invoke_from=InvokeFrom.DEBUGGER,
+                call_depth=0,
             )
 
         with pytest.raises(ValidationError, match="edges"):
@@ -240,6 +242,7 @@ class TestWorkflowBasedAppRunner:
                 graph_runtime_state=runtime_state,
                 user_from=UserFrom.ACCOUNT,
                 invoke_from=InvokeFrom.DEBUGGER,
+                call_depth=0,
             )
 
     def test_init_graph_includes_trace_session_id_in_run_context(self, monkeypatch: pytest.MonkeyPatch):
@@ -294,6 +297,7 @@ class TestWorkflowBasedAppRunner:
             user_from=UserFrom.ACCOUNT,
             invoke_from=InvokeFrom.DEBUGGER,
             root_node_id="start",
+            call_depth=0,
         )
 
         assert set(graph.nodes) == {"start", "outer", "end"}
@@ -763,9 +767,10 @@ class TestWorkflowBasedAppRunner:
             graph_runtime_state=state,
             user_from=UserFrom.ACCOUNT,
             invoke_from=InvokeFrom.DEBUGGER,
+            call_depth=0,
         )
         engine = Engine(graph=graph, runtime_state=state, workers=1)
-        index = WorkflowRunIndex()
+        index = WorkflowRunIndex(())
         layer.set_node_run_indices(index.indices)
         engine.add_layer(index)
         engine.add_layer(layer)

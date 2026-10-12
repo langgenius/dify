@@ -152,13 +152,8 @@ class TestWorkflowEventsApi:
         workflow_run = _workflow_run()
         workflow_events_module = _mock_repo_for_run(monkeypatch, workflow_run=workflow_run, sqlite_engine=sqlite_engine)
         msg_generator = Mock()
-        msg_generator.retrieve_events.return_value = ["raw-event"]
-        workflow_generator = Mock()
-        workflow_generator.convert_to_event_stream.return_value = iter(["data: streamed\n\n"])
+        msg_generator.retrieve_events.return_value = [{"event": "streamed"}]
         monkeypatch.setattr(workflow_events_module, "MessageGenerator", lambda: msg_generator)
-        monkeypatch.setattr(
-            workflow_events_module, "WorkflowAppGenerator", lambda *, execution_driver: workflow_generator
-        )
 
         api = WorkflowEventsApi()
         handler = unwrap(api.get)
@@ -168,13 +163,12 @@ class TestWorkflowEventsApi:
         with app.test_request_context("/workflow/run-1/events?user=u1", method="GET"):
             response = handler(api, app_model=app_model, end_user=end_user, workflow_run_id="run-1")
 
-        assert response.get_data(as_text=True) == "data: streamed\n\n"
+        assert response.get_data(as_text=True) == 'data: {"event":"streamed"}\n\n'
         msg_generator.retrieve_events.assert_called_once_with(
             AppMode.WORKFLOW,
             "run-1",
             terminal_events=None,
         )
-        workflow_generator.convert_to_event_stream.assert_called_once_with(["raw-event"])
 
     def test_running_run_with_snapshot(
         self, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine
@@ -182,13 +176,8 @@ class TestWorkflowEventsApi:
         workflow_run = _workflow_run()
         workflow_events_module = _mock_repo_for_run(monkeypatch, workflow_run=workflow_run, sqlite_engine=sqlite_engine)
         msg_generator = Mock()
-        workflow_generator = Mock()
-        workflow_generator.convert_to_event_stream.return_value = iter(["data: snapshot\n\n"])
-        snapshot_builder = Mock(return_value=["snapshot-events"])
+        snapshot_builder = Mock(return_value=[{"event": "snapshot"}])
         monkeypatch.setattr(workflow_events_module, "MessageGenerator", lambda: msg_generator)
-        monkeypatch.setattr(
-            workflow_events_module, "WorkflowAppGenerator", lambda *, execution_driver: workflow_generator
-        )
         monkeypatch.setattr(workflow_events_module, "build_workflow_event_stream", snapshot_builder)
 
         api = WorkflowEventsApi()
@@ -199,7 +188,6 @@ class TestWorkflowEventsApi:
         with app.test_request_context("/workflow/run-1/events?user=u1&include_state_snapshot=true", method="GET"):
             response = handler(api, app_model=app_model, end_user=end_user, workflow_run_id="run-1")
 
-        assert response.get_data(as_text=True) == "data: snapshot\n\n"
+        assert response.get_data(as_text=True) == 'data: {"event":"snapshot"}\n\n'
         msg_generator.retrieve_events.assert_not_called()
         snapshot_builder.assert_called_once()
-        workflow_generator.convert_to_event_stream.assert_called_once_with(["snapshot-events"])

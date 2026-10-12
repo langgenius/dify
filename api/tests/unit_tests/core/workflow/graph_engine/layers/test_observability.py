@@ -17,7 +17,6 @@ import pytest
 from opentelemetry.sdk.trace import ReadableSpan, SpanProcessor
 from opentelemetry.trace import StatusCode, get_current_span
 
-from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.app.workflow.layers.observability import ObservabilityLayer
 from core.workflow.workflow_entry import WorkflowEntry
 from extensions.otel.semconv import DifySpanAttributes
@@ -69,16 +68,9 @@ def test_instrument_flag_enables_workflow_node_spans(memory_span_exporter, confi
         runtime_state=state,
     )
     entry = WorkflowEntry(
-        tenant_id="tenant",
-        app_id="app",
-        workflow_id="workflow",
         graph_config={},
         graph=Graph.new().add_root(node).build(),
-        user_id="user",
-        user_from=UserFrom.ACCOUNT,
-        invoke_from=InvokeFrom.DEBUGGER,
         call_depth=0,
-        variable_pool=state.variable_pool,
         graph_runtime_state=state,
     )
 

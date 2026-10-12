@@ -1375,11 +1375,10 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         )
         with self._session_maker(expire_on_commit=False) as session, session.begin():
             workflow_run = session.scalar(stmt)
-            if workflow_run is not None and owner is not None:
-                if (workflow_run.created_by_role, workflow_run.created_by) != owner:
-                    raise WorkflowTaskOwnerMismatchError()
             if workflow_run is None:
                 return None
+            if owner is not None and (workflow_run.created_by_role, workflow_run.created_by) != owner:
+                raise WorkflowTaskOwnerMismatchError()
             if workflow_run.status == WorkflowExecutionStatus.STOPPED and workflow_run.stop_requested_at is not None:
                 # A retry can finish publishing history/SSE if the external
                 # history backend failed after the durable stop committed.
@@ -1391,7 +1390,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                 # A resumed attempt may not have recreated its Redis ownership
                 # cache yet. Preserve this durable admission so stop can still
                 # arm its command channel during that handoff.
-                return workflow_run if workflow_run.status == WorkflowExecutionStatus.RUNNING else None
+                return workflow_run
             pause = session.scalar(select(WorkflowPause).where(WorkflowPause.workflow_run_id == workflow_run.id))
             workflow_run.status = WorkflowExecutionStatus.STOPPED
             workflow_run.error = "User requested stop"
