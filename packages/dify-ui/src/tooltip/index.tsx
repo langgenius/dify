@@ -4,7 +4,7 @@ import type * as React from 'react'
 import type { Placement } from '../internal/placement'
 import { Tooltip as BaseTooltip } from '@base-ui/react/tooltip'
 import { cn } from '../cn'
-import { hintPopupClassName } from '../internal/overlay'
+import { hintPopupClassName, positionerClassName } from '../internal/overlay'
 import { parsePlacement } from '../internal/placement'
 import { resolveClassName } from '../internal/resolve-class-name'
 
@@ -43,7 +43,7 @@ function TooltipContent({
         align={align}
         sideOffset={sideOffset}
         alignOffset={alignOffset}
-        className="z-50 outline-hidden"
+        className={positionerClassName}
       >
         <BaseTooltip.Popup
           className={(state) => cn(hintPopupClassName, resolveClassName(className, state))}

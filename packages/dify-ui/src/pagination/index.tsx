@@ -1,7 +1,6 @@
 'use client'
 
 import { Button as BaseButton } from '@base-ui/react/button'
-import { useIsoLayoutEffect } from '@base-ui/utils/useIsoLayoutEffect'
 import * as React from 'react'
 import { cn } from '../cn'
 import { focusRingClassName } from '../internal/focus'
@@ -315,7 +314,7 @@ function PaginationPageJump({
   const restoreSummaryFocusRef = React.useRef(false)
   const mergedSummaryRef = useMergedRefs(summaryButtonRef, ref)
 
-  useIsoLayoutEffect(() => {
+  React.useLayoutEffect(() => {
     if (editing || !restoreSummaryFocusRef.current) return
 
     restoreSummaryFocusRef.current = false
@@ -355,11 +354,8 @@ function PaginationPageJump({
               // oxlint-disable-next-line jsx-a11y/no-autofocus -- Editing starts after an explicit user action and focus must move to the replacement input.
               autoFocus
               className="px-2 py-1.5 text-center system-xs-medium tabular-nums"
-              onBlur={() => requestAnimationFrame(() => setEditing(false))}
-              onFocus={(event) => {
-                const input = event.currentTarget
-                requestAnimationFrame(() => input.select())
-              }}
+              onBlur={() => setEditing(false)}
+              onFocus={(event) => event.currentTarget.select()}
               onKeyDown={(event) => {
                 if (event.key === 'Enter') {
                   event.preventDefault()

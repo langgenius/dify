@@ -52,9 +52,7 @@ function Checkbox({ className, ...props }: CheckboxProps) {
   )
 }
 
-type CheckboxSkeletonProps = Omit<React.ComponentProps<'div'>, 'className'> & {
-  className?: string
-}
+type CheckboxSkeletonProps = React.ComponentProps<'div'>
 
 function CheckboxSkeleton({ className, ...props }: CheckboxSkeletonProps) {
   return <div className={cn(checkboxSkeletonClassName, className)} {...props} />
