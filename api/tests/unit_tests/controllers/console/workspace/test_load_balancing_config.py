@@ -5,6 +5,8 @@ from __future__ import annotations
 import builtins
 import importlib
 import sys
+from collections.abc import Callable
+from types import ModuleType
 from unittest.mock import ANY, MagicMock
 
 import pytest
@@ -30,13 +32,13 @@ def app() -> Flask:
 
 
 @pytest.fixture
-def load_balancing_module(monkeypatch: pytest.MonkeyPatch):
+def load_balancing_module(monkeypatch: pytest.MonkeyPatch) -> ModuleType:
     """Reload controller module with lightweight decorators for testing."""
 
     from controllers.console import console_ns, wraps
     from libs import login
 
-    def _noop(func):
+    def _noop(func: Callable[..., object]) -> Callable[..., object]:
         return func
 
     monkeypatch.setattr(login, "login_required", _noop)
@@ -44,7 +46,7 @@ def load_balancing_module(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(wraps, "account_initialization_required", _noop)
 
     def _noop_route[**P](*args: P.args, **kwargs: P.kwargs):  # type: ignore[override]
-        def _decorator(cls):
+        def _decorator(cls: type) -> type:
             return cls
 
         return _decorator
@@ -61,7 +63,9 @@ def _account(role: TenantAccountRole) -> Account:
     return make_account(name="Owner", email="owner@example.com", role=role)
 
 
-def _prepare_context(module, monkeypatch: pytest.MonkeyPatch, role=TenantAccountRole.OWNER):
+def _prepare_context(
+    module: ModuleType, monkeypatch: pytest.MonkeyPatch, role: TenantAccountRole = TenantAccountRole.OWNER
+) -> MagicMock:
     user = _account(role)
     from controllers.console import wraps
 
@@ -71,11 +75,13 @@ def _prepare_context(module, monkeypatch: pytest.MonkeyPatch, role=TenantAccount
     return mock_service
 
 
-def _request_payload():
+def _request_payload() -> dict[str, object]:
     return {"model": "gpt-4o", "model_type": ModelType.LLM, "credentials": {"api_key": "sk-***"}}
 
 
-def test_validate_credentials_success(app: Flask, load_balancing_module, monkeypatch: pytest.MonkeyPatch):
+def test_validate_credentials_success(
+    app: Flask, load_balancing_module: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
     service = _prepare_context(load_balancing_module, monkeypatch)
 
     with app.test_request_context(
@@ -96,7 +102,9 @@ def test_validate_credentials_success(app: Flask, load_balancing_module, monkeyp
     )
 
 
-def test_validate_credentials_returns_error_message(app: Flask, load_balancing_module, monkeypatch: pytest.MonkeyPatch):
+def test_validate_credentials_returns_error_message(
+    app: Flask, load_balancing_module: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
     service = _prepare_context(load_balancing_module, monkeypatch)
     service.validate_load_balancing_credentials.side_effect = CredentialsValidateFailedError("invalid credentials")
 
@@ -111,8 +119,8 @@ def test_validate_credentials_returns_error_message(app: Flask, load_balancing_m
 
 
 def test_validate_credentials_requires_privileged_role(
-    app: Flask, load_balancing_module, monkeypatch: pytest.MonkeyPatch
-):
+    app: Flask, load_balancing_module: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
     _prepare_context(load_balancing_module, monkeypatch, role=TenantAccountRole.NORMAL)
 
     with app.test_request_context(
@@ -125,7 +133,9 @@ def test_validate_credentials_requires_privileged_role(
             api.post(provider="openai")
 
 
-def test_validate_credentials_with_config_id(app: Flask, load_balancing_module, monkeypatch: pytest.MonkeyPatch):
+def test_validate_credentials_with_config_id(
+    app: Flask, load_balancing_module: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
     service = _prepare_context(load_balancing_module, monkeypatch)
 
     with app.test_request_context(
