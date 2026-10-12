@@ -1,13 +1,16 @@
 from collections.abc import Callable
-from datetime import datetime
+from datetime import datetime, timedelta
+from unittest.mock import call, create_autospec
 
 import pytest
 from flask import request
 
 from dify_app import DifyApp
 from extensions import ext_proxy_fix
+from libs import rate_limit as rate_limit_module
 from libs.helper import (
     OptionalTimestampField,
+    RateLimiter,
     alphanumeric,
     email,
     escape_like_pattern,
@@ -19,38 +22,77 @@ from models.model import EndUser
 
 
 @pytest.mark.parametrize(
-    ("trust_proxy", "headers", "expected_ip"),
+    ("trust_proxy", "headers", "expected_ips", "expected_statuses"),
     [
-        (False, {}, "198.51.100.7"),
-        (False, {"CF-Connecting-IP": "203.0.113.1"}, "198.51.100.7"),
-        (False, {"X-Forwarded-For": "203.0.113.1"}, "198.51.100.7"),
-        (
+        pytest.param(
             False,
-            {"CF-Connecting-IP": "203.0.113.1", "X-Forwarded-For": "203.0.113.2, 192.0.2.42"},
-            "198.51.100.7",
+            [
+                {},
+                {"CF-Connecting-IP": "203.0.113.1"},
+                {"X-Forwarded-For": "203.0.113.2, 192.0.2.42"},
+            ],
+            ["198.51.100.7"] * 3,
+            [200, 429, 429],
+            id="direct-client-ignores-untrusted-headers",
         ),
-        (
+        pytest.param(
             True,
-            {"CF-Connecting-IP": "203.0.113.1", "X-Forwarded-For": "203.0.113.2, 192.0.2.42"},
-            "192.0.2.42",
+            [
+                {"CF-Connecting-IP": "203.0.113.1", "X-Forwarded-For": "192.0.2.42"},
+                {"CF-Connecting-IP": "203.0.113.2", "X-Forwarded-For": "203.0.113.3, 192.0.2.42"},
+            ],
+            ["192.0.2.42"] * 2,
+            [200, 429],
+            id="spoofed-headers-cannot-change-trusted-ip-bucket",
         ),
-        (True, {"CF-Connecting-IP": "203.0.113.1"}, "198.51.100.7"),
+        pytest.param(
+            True,
+            [{"X-Forwarded-For": "192.0.2.42"}, {"X-Forwarded-For": "192.0.2.43"}],
+            ["192.0.2.42", "192.0.2.43"],
+            [200, 200],
+            id="canonical-visitors-have-distinct-buckets",
+        ),
+        pytest.param(
+            True,
+            [{"CF-Connecting-IP": "203.0.113.1"}, {"CF-Connecting-IP": "203.0.113.2"}],
+            ["198.51.100.7"] * 2,
+            [200, 429],
+            id="cloudflare-header-alone-is-not-trusted",
+        ),
     ],
 )
-def test_extract_remote_ip_uses_trusted_wsgi_address(
-    config_overrides: Callable[..., None], trust_proxy: bool, headers: dict[str, str], expected_ip: str
+def test_extract_remote_ip_preserves_trusted_rate_limit_buckets(
+    config_overrides: Callable[..., None],
+    monkeypatch: pytest.MonkeyPatch,
+    trust_proxy: bool,
+    headers: list[dict[str, str]],
+    expected_ips: list[str],
+    expected_statuses: list[int],
 ) -> None:
     config_overrides(RESPECT_XFORWARD_HEADERS_ENABLED=trust_proxy)
     app = DifyApp(__name__)
     ext_proxy_fix.init_app(app)
+    used_keys: set[str] = set()
+    limiter = create_autospec(RateLimiter, instance=True, spec_set=True)
+    limiter.is_rate_limited.side_effect = lambda key: key in used_keys
+    limiter.increment_rate_limit.side_effect = used_keys.add
+    monkeypatch.setattr(rate_limit_module, "_build_limiter", lambda _spec: limiter)
 
     @app.get("/")
+    @rate_limit_module.rate_limit(
+        rate_limit_module.RateLimit(limit=1, window=timedelta(minutes=1), scopes=(rate_limit_module.RateLimitScope.IP,))
+    )
     def remote_ip() -> str:
         return extract_remote_ip(request)
 
-    response = app.test_client().get("/", headers=headers, environ_overrides={"REMOTE_ADDR": "198.51.100.7"})
+    client = app.test_client()
+    for request_headers, expected_ip, expected_status in zip(headers, expected_ips, expected_statuses, strict=True):
+        response = client.get("/", headers=request_headers, environ_overrides={"REMOTE_ADDR": "198.51.100.7"})
+        assert response.status_code == expected_status
+        if expected_status == 200:
+            assert response.get_data(as_text=True) == expected_ip
 
-    assert response.get_data(as_text=True) == expected_ip
+    assert limiter.is_rate_limited.call_args_list == [call(f"ip:{ip}") for ip in expected_ips]
 
 
 class TestExtractTenantId:
