@@ -1629,6 +1629,53 @@ class BuilderRealCallConsentService:
                 raise _refuse("consent_record_invalid")
             return _ClaimedRuntime(installed=stored.installed, initial_revision=row.initial_credential_revision)
 
+    def validate_runtime_snapshot(self, *, binding: ConfirmedToolBinding, reference: CredentialReference) -> None:
+        """Admit the native owner's selected detached snapshot only if it is exactly the approved one.
+
+        Called after native selection and before any compliance, decryption,
+        refresh or dispatch. Compares the supplied full reference (row
+        primitive, acting member's effective access and selected OAuth client)
+        with the reference this grant stored at preparation; phase claims later
+        recheck current state, but only this check binds the bytes the native
+        owner will actually use. SQL-local: no external read, reselection,
+        decryption or transport. A proven mismatch on an unspent claimed grant is
+        a known pre-phase denial (counters untouched); a final, spent or
+        uncertain grant refuses without being rewritten. Fixed reasons only.
+        """
+        binding = _verify_binding(binding)
+        if not isinstance(reference, CredentialReference):
+            raise _refuse("credential_snapshot_mismatch")
+        try:
+            reference = CredentialReference.model_validate(reference.model_dump())
+        except ValidationError:
+            raise _refuse("credential_snapshot_mismatch") from None
+        context = binding.context
+        actor = Actor(account_id=context.actor_id, tenant_id=context.tenant_id)
+        owned = self._owned_consent(actor, context.session_id, context.consent_id)
+        pending: BuilderExecutionPolicyError | None = None
+        with self._session_factory.begin() as db:
+            row = _lock_consent(db, owned.consent_id)
+            request = _lock_request(db, row.execution_request_id)
+            stored = _verify_launch(row, request, context, node_id=binding.node_id, native_run_id=binding.native_run_id)
+            _verify_claimed(row, binding)
+            if _state(row) != "claimed":
+                raise _refuse("consent_not_claimed")
+            if (
+                row.refresh_claimed_at is not None
+                or row.business_claimed_at is not None
+                or row.outcome_state is not None
+            ):
+                raise _refuse("phase_already_claimed")
+            if not _same(stored.credential.revision, row.initial_credential_revision) or not _same(
+                stored.credential.oauth_client_revision, row.oauth_client_revision
+            ):
+                raise _refuse("consent_record_invalid")
+            if reference.model_dump(mode="json") != stored.credential.model_dump(mode="json"):
+                row.state, row.reason_code = _post_claim_failure(row), "credential_snapshot_mismatch"
+                pending = _refuse("credential_snapshot_mismatch")
+        if pending is not None:
+            raise pending
+
     def refuse_phase(self, *, binding: ConfirmedToolBinding, phase: Phase, reason_code: str) -> None:
         """Record a refusal the native boundary found before spending ``phase`` (e.g. a widened envelope)."""
         binding = _verify_binding(binding)
