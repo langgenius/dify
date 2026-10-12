@@ -47,7 +47,7 @@ describe('execution time offset label', () => {
     expect(times[2]).toMatch(/November 1, 2026, 1:30\sAM \(UTC-4\)/)
     expect(times[3]).toMatch(/November 1, 2026, 1:30\sAM \(UTC-5\)/)
   })
-  
+
   it('labels the upcoming repeated hour in visual daily mode', () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-11-01T06:05:00Z'))
