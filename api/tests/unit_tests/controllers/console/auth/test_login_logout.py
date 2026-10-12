@@ -10,7 +10,7 @@ from typing import Never
 
 import jwt
 import pytest
-from flask import Flask, Response, request
+from flask import Flask, request
 from flask_cors import CORS
 from werkzeug.exceptions import BadRequest, Forbidden, Unauthorized
 
@@ -43,7 +43,6 @@ from controllers.console.error import (
 )
 from enums import DeploymentEdition
 from extensions.ext_blueprints import AUTHENTICATED_HEADERS
-from extensions.ext_login import DifyLoginManager
 from libs.token import generate_csrf_token
 from services import account_errors
 from services.entities.account_entities import AccountSessionTokens
@@ -53,7 +52,6 @@ from services.entities.account_login_entities import (
     PasswordLoginCommand,
     PasswordLoginResult,
 )
-from tests.unit_tests.model_factories import make_account
 
 TEST_TOKEN = "00000000-0000-4000-8000-000000000001"
 TOKENS = AccountSessionTokens(access_token="access-token", refresh_token="refresh-token", csrf_token="csrf-token")
@@ -67,7 +65,6 @@ class FakeAuthenticationService:
     email_code_login_commands: list[EmailCodeLoginCommand] = field(default_factory=list)
     reset_arguments: list[tuple[str, str | None, str]] = field(default_factory=list)
     logout_tokens: list[str | None] = field(default_factory=list)
-    logout_account_ids: list[str] = field(default_factory=list)
     refresh_tokens: list[str] = field(default_factory=list)
     refresh_request_ids: list[str | None] = field(default_factory=list)
     workspace_found: bool = True
@@ -86,9 +83,6 @@ class FakeAuthenticationService:
 
     def logout(self, refresh_token: str | None) -> None:
         self.logout_tokens.append(refresh_token)
-
-    def logout_all(self, account_id: str) -> None:
-        self.logout_account_ids.append(account_id)
 
     def send_reset_password_email(self, *, email: str, language: str | None, ip_address: str) -> str:
         self.reset_arguments.append((email, language, ip_address))
@@ -287,8 +281,8 @@ def test_logout_revokes_cookie_without_loading_expired_access(
 ) -> None:
     monkeypatch.setattr(login, "extract_refresh_token", lambda _request: refresh_token)
     monkeypatch.setattr(
-        login,
-        "current_account_with_tenant_optional",
+        login_helpers,
+        "_resolve_current_user",
         lambda: pytest.fail("Logout must not require a valid access token"),
     )
     with app.test_request_context(
@@ -298,60 +292,9 @@ def test_logout_revokes_cookie_without_loading_expired_access(
 
     assert response.json == {"result": "success"}
     assert service.logout_tokens == [refresh_token]
-    assert service.logout_account_ids == []
     cookies = response.headers.getlist("Set-Cookie")
     for name in ("access_token", "refresh_token", "csrf_token"):
         assert any(f"{name}=;" in cookie and "Expires=Thu, 01 Jan 1970" in cookie for cookie in cookies)
-
-
-def test_logout_all_requires_authentication_and_csrf(
-    app: Flask,
-    service: FakeAuthenticationService,
-    monkeypatch: pytest.MonkeyPatch,
-    config_overrides: Callable[..., None],
-) -> None:
-    config_overrides(LOGIN_DISABLED=False)
-    monkeypatch.setattr(login_helpers, "_resolve_current_user", lambda: None)
-    manager = DifyLoginManager()
-    manager.unauthorized_handler(lambda: Response(status=401))
-    monkeypatch.setattr(login_helpers, "_get_login_manager", lambda: manager)
-    with app.test_request_context("/logout-all", method="POST", headers={"Origin": "http://localhost"}):
-        assert login.LogoutAllApi().post().status_code == 401
-
-    account = make_account()
-    monkeypatch.setattr(login_helpers, "_resolve_current_user", lambda: account)
-    with app.test_request_context("/logout-all", method="POST", headers={"Origin": "http://localhost"}):
-        with pytest.raises(Unauthorized, match="CSRF"):
-            login.LogoutAllApi().post()
-    assert service.logout_account_ids == []
-
-
-def test_logout_all_revokes_authenticated_account_and_clears_cookies(
-    app: Flask,
-    service: FakeAuthenticationService,
-    monkeypatch: pytest.MonkeyPatch,
-    config_overrides: Callable[..., None],
-) -> None:
-    config_overrides(
-        LOGIN_DISABLED=False,
-        SECRET_KEY="logout-all-test-secret-key-at-least-32-bytes",
-        CONSOLE_WEB_URL="",
-        CONSOLE_API_URL="",
-    )
-    account = make_account()
-    monkeypatch.setattr(login_helpers, "_resolve_current_user", lambda: account)
-    csrf_token = generate_csrf_token(account.id)
-    with app.test_request_context(
-        "/logout-all",
-        method="POST",
-        headers={"Origin": "http://localhost", "X-CSRF-Token": csrf_token, "Cookie": f"csrf_token={csrf_token}"},
-    ):
-        response = login.LogoutAllApi().post()
-
-    assert response.json == {"result": "success"}
-    assert service.logout_account_ids == [account.id]
-    assert service.logout_tokens == []
-    assert len(response.headers.getlist("Set-Cookie")) == 3
 
 
 @pytest.mark.parametrize("endpoint", [login.LogoutApi, login.RefreshTokenApi])

@@ -27,7 +27,6 @@ import { init } from './init/orpc.gen.ts'
 import { installedApps } from './installed-apps/orpc.gen.ts'
 import { instructionGenerate } from './instruction-generate/orpc.gen.ts'
 import { login } from './login/orpc.gen.ts'
-import { logoutAll } from './logout-all/orpc.gen.ts'
 import { logout } from './logout/orpc.gen.ts'
 import { notification } from './notification/orpc.gen.ts'
 import { notion } from './notion/orpc.gen.ts'
@@ -85,7 +84,6 @@ const communityContract = {
   instructionGenerate,
   login,
   logout,
-  logoutAll,
   notification,
   notion,
   oauth,

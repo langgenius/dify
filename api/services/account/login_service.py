@@ -221,9 +221,6 @@ class ConsoleAuthenticationService:
         if refresh_token:
             self._sessions.revoke(refresh_token)
 
-    def logout_all(self, account_id: str) -> None:
-        self._sessions.revoke_all(account_id)
-
     def send_reset_password_email(self, *, email: str, language: str | None, ip_address: str) -> str:
         normalized_email = email.lower()
         self._ensure_email_eligible(normalized_email, ip_address)
