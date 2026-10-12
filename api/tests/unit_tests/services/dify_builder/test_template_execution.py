@@ -33,12 +33,13 @@ from tests.unit_tests.services.dify_builder.test_execution_policy_service import
 @pytest.fixture(autouse=True)
 def no_jinja_compilation(monkeypatch):
     """Restricted rendering interprets finite AST only; lex/parse stay real."""
-    from jinja2 import Environment, Template
+    from jinja2 import Environment, Template, debug
 
     spies = []
     for owner, names in (
         (Environment, ("from_string", "compile", "compile_expression", "compile_templates", "_generate", "_compile")),
         (Template, ("render", "generate", "render_async", "generate_async")),
+        (debug, ("rewrite_traceback_stack", "fake_traceback")),
     ):
         for name in names:
             spy = Mock(side_effect=AssertionError(f"Jinja compilation/rendering reached: {name}"))
@@ -395,6 +396,30 @@ def test_parser_failures_are_sanitized_refusals(monkeypatch, error_type):
         admitted_node_bindings(snapshot(template_graph()))
     assert error.value.reason_code == "unsupported_template_syntax"
     assert "SECRET-PARSER-TEXT" not in str(error.value)
+
+
+@pytest.mark.parametrize(
+    "template",
+    [
+        pytest.param(r"{{ '\x' }} SECRET-LEXER", id="lexer-string-escape"),
+        pytest.param("{% if subject %}SECRET-PARSER", id="parser-unclosed-if"),
+    ],
+)
+def test_malformed_lexer_and_parser_never_rewrite_python_traceback(owned, template):
+    from jinja2 import debug
+
+    renderer = renderer_from_factory(owned)
+    with pytest.raises(BuilderExecutionPolicyError) as refusal:
+        admitted_node_bindings(snapshot(template_graph(template)))
+    assert refusal.value.reason_code == "unsupported_template_syntax"
+    assert "SECRET-" not in str(refusal.value)
+    with pytest.raises(TemplateRenderError) as failure:
+        renderer.render_template(template, {"subject": "safe", "body": ""})
+    assert "SECRET-" not in str(failure.value)
+    # Call-stage assertions make the synthetic Python boundary visible as a
+    # behavioral failure even when admission/renderer sanitize its guard error.
+    debug.rewrite_traceback_stack.assert_not_called()
+    debug.fake_traceback.assert_not_called()
 
 
 @pytest.mark.parametrize("mutation", ["class", "version", "latest", "raw-config", "binding"])
