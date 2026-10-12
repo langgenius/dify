@@ -8,12 +8,6 @@ min-severity = "warn"
 
 # Existing strict-mode debt. Remove a file when bringing it under strict checking.
 project-excludes = [
-  "clients/agent_backend/test_cleanup_composition_compositor_integration.py",
-  "clients/agent_backend/test_client.py",
-  "clients/agent_backend/test_event_adapter.py",
-  "clients/agent_backend/test_fake_client.py",
-  "clients/agent_backend/test_request_builder.py",
-  "clients/agent_backend/test_session_cleanup.py",
   "commands/test_archive_workflow_runs.py",
   "commands/test_data_migration_commands.py",
   "commands/test_generate_swagger_markdown_docs.py",
