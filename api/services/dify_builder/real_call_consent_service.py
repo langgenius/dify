@@ -23,6 +23,13 @@ enqueue stay with the caller's existing dispatch owner: acquire that lock
 before ``reserve_execution``, release it on refusal, and enqueue exactly once
 only when the returned flag is ``True``. A replayed request never relaunches.
 
+Launch linkage for that dispatch owner and the worker (in-process only):
+``replay_execution`` answers a matching duplicate while the lease is held
+(no lock or write), ``reserved_launch`` reloads the unlaunched reserved
+command from its sidecar and lineage, ``settle_launch`` closes a grant from
+the launch's own sealed proof and ``reconcile_stranded`` closes the grants of
+a stranded session; none of them reserves, claims or resets a counter.
+
 Lifecycle
 ---------
 ``prepared`` → ``confirmed`` | ``declined``; a confirmed grant is reserved once
@@ -562,6 +569,51 @@ def _current(
     return _Current(binding=binding, admitted_nodes=admission.nodes)
 
 
+def _execute_body_digest(actor: Actor, session_id: str, consent_id: str, scope: str, at_version: int) -> str:
+    return canonical_digest(
+        {
+            "operation": "execute",
+            "tenant_id": actor.tenant_id,
+            "actor_id": actor.account_id,
+            "session_id": session_id,
+            "consent_id": consent_id,
+            "scope_digest": scope,
+            "at_version": at_version,
+        }
+    )
+
+
+def _settled_state(row: DifyBuilderRealCallConsent, request: DifyBuilderExecutionRequest, now: datetime) -> str | None:
+    """Final state for a reserved grant whose launch ended or stranded; ``None`` leaves it as is.
+
+    Before any claim nothing was spent: expiry or a launch that never claimed is
+    a known failure. After a claim, completion needs the sidecar's sealed
+    confirmed-completed summary for this exact Run; a recorded declared failure
+    stays failed; anything else (unresolved phase, stranded pre-retention claim,
+    unknown outcome) is unknown. Counters are never touched.
+    """
+    state = _state(row)
+    if state not in ("confirmed", "claimed") or row.command_id is None:
+        return None
+    if row.claimed_at is None:
+        return "expired" if now >= _aware(row.expires_at) else "failed"
+    summary = request.completion_summary if request.state == "sealed" else None
+    sealed_completed = (
+        isinstance(summary, dict)
+        and summary.get("safety_outcome") == "confirmed_tool_completed"
+        and summary.get("sealed") is True
+        and summary.get("consent_id") == row.id
+        and summary.get("native_run_id") is not None
+        and summary.get("native_run_id") == row.native_run_id == request.native_run_id
+    )
+    if row.outcome_state == "completed" and sealed_completed:
+        return "completed"
+    refresh_unresolved = row.refresh_claimed_at is not None and row.derived_credential_revision is None
+    if row.outcome_state == "failed" and not refresh_unresolved:
+        return "failed"
+    return "unknown"
+
+
 def _verify_context(context: object) -> ConfirmedToolExecutionContext:
     if not isinstance(context, ConfirmedToolExecutionContext):
         raise _refuse("invalid_execution_context")
@@ -926,17 +978,7 @@ class BuilderRealCallConsentService:
         idempotency_key = _bounded(idempotency_key, "invalid_idempotency_key")
         at_version = _version(at_version)
         supplied_scope = _digest(scope_digest)
-        body_digest = canonical_digest(
-            {
-                "operation": "execute",
-                "tenant_id": actor.tenant_id,
-                "actor_id": actor.account_id,
-                "session_id": session_id,
-                "consent_id": consent_id,
-                "scope_digest": supplied_scope,
-                "at_version": at_version,
-            }
-        )
+        body_digest = _execute_body_digest(actor, session_id, consent_id, supplied_scope, at_version)
         owned = self._owned_consent(actor, session_id, consent_id)
         check_execution_permission(actor, owned.app_id, self._session_factory)
         if owned.execute_key is not None:
@@ -1020,6 +1062,146 @@ class BuilderRealCallConsentService:
             ):
                 raise _refuse("consent_not_found")
             return _receipt(row, _utcnow())
+
+    # -- launch linkage for the existing dispatch owner and worker (in-process) --
+
+    def replay_execution(
+        self,
+        *,
+        actor: Actor,
+        session_id: str,
+        consent_id: str,
+        scope_digest: str,
+        at_version: int,
+        idempotency_key: str,
+    ) -> ConsentReceipt | None:
+        """Replay-only execute: the CURRENT receipt of an already saved identical execute, else ``None``.
+
+        No lock, reservation or write. The dispatch owner calls this when the
+        session's advance lease is held, so a matching duplicate is answered
+        without reserving or enqueuing; a different key or body refuses.
+        """
+        idempotency_key = _bounded(idempotency_key, "invalid_idempotency_key")
+        at_version = _version(at_version)
+        supplied_scope = _digest(scope_digest)
+        body_digest = _execute_body_digest(actor, session_id, consent_id, supplied_scope, at_version)
+        owned = self._owned_consent(actor, session_id, consent_id)
+        check_execution_permission(actor, owned.app_id, self._session_factory)
+        if owned.execute_key is None:
+            return None
+        return self._execute_replay(owned.consent_id, idempotency_key, body_digest, _utcnow())
+
+    def reserved_launch(
+        self, *, actor: Actor, session_id: str, consent_id: str, command_id: str
+    ) -> ConfirmedToolExecutionContext:
+        """Reload the server-reserved, not yet launched command for this actor/session.
+
+        The only source of a launchable context: the stored sidecar, verified
+        against the consent row, the reserved command and the session's current
+        commit lineage. A serialized payload, a duplicate delivery after the
+        launch identity was claimed or any other command refuses. Read only;
+        expiry and scope are decided again at ``claim_tool``.
+        """
+        _require_enabled()
+        command_id = _uuid(command_id, "execution_launch_mismatch")
+        owned = self._owned_consent(actor, session_id, consent_id)
+        with self._session_factory() as db:
+            row = db.get(DifyBuilderRealCallConsent, owned.consent_id)
+            session_row = db.get(DifyBuilderSession, owned.session_id)
+            if row is None or session_row is None or row.command_id is None:
+                raise _refuse("execution_launch_mismatch")
+            if not _same(row.command_id, command_id) or row.execution_request_id is None:
+                raise _refuse("execution_launch_mismatch")
+            if session_row.owner_account_id != actor.account_id or session_row.tenant_id != actor.tenant_id:
+                raise _refuse("execution_owner_mismatch")
+            request = db.get(DifyBuilderExecutionRequest, row.execution_request_id)
+            if request is None:
+                raise _refuse("execution_request_mismatch")
+            if request.state != "prepared" or request.native_run_id is not None or row.claimed_at is not None:
+                raise _refuse("execution_already_launched")
+            if _state(row) != "confirmed":
+                raise _refuse("consent_not_confirmed")
+            context = validate_execution_context(request.context)
+            if not isinstance(context, ConfirmedToolExecutionContext) or not _same(
+                request.context_digest, context.context_digest
+            ):
+                raise _refuse("execution_request_mismatch")
+            if (
+                context.consent_id != row.id
+                or context.command_id != row.command_id
+                or context.request_id != row.execution_request_id
+                or not _same(context.scope_digest, row.scope_digest)
+                or (context.tenant_id, context.actor_id, context.session_id)
+                != (actor.tenant_id, actor.account_id, session_id)
+            ):
+                raise _refuse("execution_request_mismatch")
+            _require_command_lineage(db, row, session_row)
+            return context
+
+    def settle_launch(self, *, context: ConfirmedToolExecutionContext) -> ConsentReceipt:
+        """Close this launch's grant from its own durable facts after the native Run ended.
+
+        Consent → request lock order. Completed only from the sidecar's sealed
+        confirmed-completed summary for the same Run; never downgrades an
+        unknown, never resets counters and never re-enables the grant.
+        """
+        context = _verify_context(context)
+        actor = Actor(account_id=context.actor_id, tenant_id=context.tenant_id)
+        owned = self._owned_consent(actor, context.session_id, context.consent_id)
+        with self._session_factory.begin() as db:
+            row = _lock_consent(db, owned.consent_id)
+            request = _lock_request(db, row.execution_request_id)
+            if row.command_id != context.command_id or request.id != context.request_id:
+                raise _refuse("execution_request_mismatch")
+            now = _utcnow()
+            self._settle(row, request, now, reason=None)
+            return _receipt(row, now)
+
+    def reconcile_stranded(self, *, session_id: str) -> int:
+        """Settle every reserved grant of a session the sweeper found stranded (no live lease).
+
+        Called only for a stale working session without a live advance lease,
+        so no worker can still record into it. Never redispatches; a grant
+        already final is left untouched. Returns the number of grants settled.
+        """
+        settled = 0
+        with self._session_factory.begin() as db:
+            ids = list(
+                db.scalars(
+                    select(DifyBuilderRealCallConsent.id)
+                    .where(
+                        DifyBuilderRealCallConsent.session_id == session_id,
+                        DifyBuilderRealCallConsent.command_id.is_not(None),
+                        DifyBuilderRealCallConsent.state.in_(("confirmed", "claimed")),
+                    )
+                    .order_by(DifyBuilderRealCallConsent.id)
+                )
+            )
+            for consent_id in ids:
+                row = _lock_consent(db, consent_id)
+                request = _lock_request(db, row.execution_request_id)
+                if self._settle(row, request, _utcnow(), reason="launch_stranded"):
+                    settled += 1
+        return settled
+
+    @staticmethod
+    def _settle(
+        row: DifyBuilderRealCallConsent, request: DifyBuilderExecutionRequest, now: datetime, *, reason: str | None
+    ) -> bool:
+        """Apply ``_settled_state``; a recorded outcome keeps its own reason code."""
+        final = _settled_state(row, request, now)
+        if final is None:
+            return False
+        if final == "expired":
+            fallback = "consent_expired"
+        elif row.claimed_at is None:
+            fallback = reason or "launch_not_claimed"
+        else:
+            fallback = reason or "execution_evidence_unknown"
+        row.state = final
+        if row.reason_code is None or (row.claimed_at is None and final != "expired"):
+            row.reason_code = fallback
+        return True
 
     # -- internal spends (in-process only) -----------------------------------
 

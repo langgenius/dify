@@ -96,3 +96,66 @@ def test_verification_present_null_and_unknown_are_reviewable(state, allowed):
     assert card.executed_node_ids == ["end"]
     assert card.outcome == ("execution_succeeded_needs_review" if allowed else "required_output_unresolved")
     assert "not verified" in card.review_note
+
+
+def confirmed_run(outcome="confirmed_tool_completed", *, action="completed", status="succeeded", **changes):
+    summary = ExecutionEvidenceSummary(
+        request_id="request",
+        policy_version="builder-confirmed-gmail-read-v1",
+        mode="confirmed_tool",
+        sealed=True,
+        safety_outcome=outcome,
+        sandbox_profile="disabled",
+        native_run_id="native",
+        consent_id="consent-1",
+        action_state=action,
+        action_reason_code="message_returned" if action == "completed" else "stream_incomplete",
+    )
+    run = verified()
+    run.status = status
+    run.error = "provider said: PROVIDER-ERROR-SENTINEL"
+    assert run.verification is not None
+    run.verification.execution_evidence = summary
+    run.verification.terminal_outputs = {"result": "BODY-SENTINEL"}
+    for name, value in changes.items():
+        setattr(run.verification, name, value)
+    return run
+
+
+def test_confirmed_success_is_publishable_only_when_sealed_and_revision_exact():
+    from core.dify_builder.verification import publication_decision
+
+    def decide(run):
+        return publication_decision(run, session_id="s", current_revision="rev", current_graph_revision="graph")
+
+    assert decide(confirmed_run()).allowed is True
+    assert decide(confirmed_run(execution_revision="other")).reason == "stale_revision"
+    assert decide(confirmed_run("execution_evidence_unknown", action="unknown")).reason == "execution_evidence_unknown"
+    assert decide(confirmed_run("native_failed", action="failed", status="failed")).allowed is False
+
+
+@pytest.mark.parametrize(
+    ("outcome", "action", "status", "card_outcome"),
+    [
+        ("confirmed_tool_completed", "completed", "succeeded", "execution_succeeded_needs_review"),
+        ("execution_evidence_unknown", "unknown", "succeeded", "execution_unknown"),
+        ("native_failed", "failed", "failed", "execution_failed"),
+    ],
+)
+def test_confirmed_card_has_ids_status_and_reasons_but_no_native_content(outcome, action, status, card_outcome):
+    import json
+    from dataclasses import asdict
+
+    from core.dify_builder.verification import result_card
+
+    card = result_card(confirmed_run(outcome, action=action, status=status))
+    text = json.dumps(asdict(card))
+    assert "BODY-SENTINEL" not in text
+    assert "PROVIDER-ERROR-SENTINEL" not in text
+    assert card.terminal_outputs is None
+    assert (card.execution_mode, card.safety_outcome, card.outcome) == ("confirmed_tool", outcome, card_outcome)
+    assert (card.policy_version, card.consent_id, card.action_state) == (
+        "builder-confirmed-gmail-read-v1",
+        "consent-1",
+        action,
+    )
