@@ -233,11 +233,23 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
 
         def migrate(target: str, *, downgrade: bool = False) -> tuple[str, ...]:
             def revisions(current: tuple[str, ...], _context: MigrationContext) -> list[RevisionStep]:
-                # These are the same real graph planners used by Alembic command upgrade/downgrade.
-                # Alembic passes head tuples here; its planner annotations still declare a scalar.
+                if downgrade:
+                    assert target == merge_revision
+                    assert current == (merge_revision,)
+                    # A relative -1 cannot choose between a merge's two parents.
+                    # Inclusive traversal of the exact merge reverts only that script;
+                    # Alembic's real HeadMaintainer then splits its two parent revisions.
+                    to_revert = list(
+                        scripts.iterate_revisions(current, target, inclusive=True, select_for_downgrade=True)
+                    )
+                    assert [revision.revision for revision in to_revert] == [merge_revision]
+                    return [
+                        RevisionStep.downgrade_from_script(scripts.revision_map, revision) for revision in to_revert
+                    ]
+                # Alembic passes head tuples here; its upgrade planner annotation declares a scalar.
                 planner = cast(
                     Callable[[str, tuple[str, ...]], list[RevisionStep]],
-                    scripts._downgrade_revs if downgrade else scripts._upgrade_revs,
+                    scripts._upgrade_revs,
                 )
                 return planner(target, current)
 
@@ -314,7 +326,7 @@ def test_real_postgres_forward_merge_preserves_both_branches(flask_app_with_cont
         before = witness()
         assert migrate("head") == (merge_revision,)
         assert witness() == before
-        assert set(migrate("-1", downgrade=True)) == branch_heads
+        assert set(migrate(merge_revision, downgrade=True)) == branch_heads
         assert witness() == before
         assert migrate("head") == (merge_revision,)
         assert witness() == before

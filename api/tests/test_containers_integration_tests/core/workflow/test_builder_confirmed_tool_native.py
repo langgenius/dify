@@ -30,7 +30,10 @@ before the shared database/Redis cleanup. The two helpers differ in their report
 Before forking, the parent primes the tenant private-key cache (``_prime_tenant_key``): the key
 lives in OpenDAL storage, whose I/O runtime the parent started, and a forked process must not be
 the first to load it. Boundary observations of a host are the host's own records, reported over
-the pipe. Every case's connections also carry server-side SQL deadlines.
+the pipe. Every case's connections also carry server-side SQL deadlines. Child diagnostics use
+a one-shot signal alarm, never ``dump_traceback_later`` or its cancellation: those wait for a
+watchdog thread inherited from pytest which does not survive fork. Pytest's parent watchdog
+continues unchanged.
 """
 
 import faulthandler
@@ -686,6 +689,8 @@ def _supervise_host(target: Callable[[int], None], *, name: str, seconds: float 
     deadline (``_read_report_frame``), then in ``finally`` joins, terminates and kills (each bounded
     by ``_HOST_JOIN_SECONDS``), closes both pipe ends and asserts the host is dead, whatever the
     transfer status. The host always ends with ``os._exit``, which ends every thread it started.
+    A child-local signal alarm retains its 120-second stack dump without touching pytest's
+    inherited watchdog-thread locks. The raw stderr descriptor avoids inherited stream locks.
     """
     assert os.getpid() == _PYTEST_PID, "test hosts are started by pytest only"
     assert "fork" in multiprocessing.get_all_start_methods(), "test-host containment needs fork (Linux CI)"
@@ -695,9 +700,17 @@ def _supervise_host(target: Callable[[int], None], *, name: str, seconds: float 
     def host_main() -> None:
         try:
             os.close(read_fd)
+            # CPython dump_traceback_later/cancel join the previous watchdog; pytest armed it
+            # before fork, but that thread exists only in the parent. Never call either here.
+            faulthandler.register(signal.SIGALRM, file=2, all_threads=True)
+            signal.setitimer(signal.ITIMER_REAL, _WORK_SECONDS)
             target(write_fd)
         finally:
-            os._exit(0)  # ends this host and every thread it started, finished or not
+            try:
+                signal.setitimer(signal.ITIMER_REAL, 0)
+                faulthandler.unregister(signal.SIGALRM)
+            finally:
+                os._exit(0)  # ends this host and every thread it started, finished or not
 
     host = ctx.Process(target=host_main, name=f"test-host-{name}", daemon=True)
     started = monotonic()
@@ -751,9 +764,6 @@ def run_in_host(gmail: "Gmail", scenario: Callable[[], dict[str, object]], *, na
         report: dict[str, object] = {}
         try:
             with gmail.app.test_request_context():
-                # Retain child stacks if a native dependency stalls; the parent's stack alone
-                # cannot identify whether the host is waiting on SQL, storage or its producer.
-                faulthandler.dump_traceback_later(_WORK_SECONDS)
                 db.engine.dispose(close=False)
                 gmail.boundary.witness.forget_inherited()
                 reset_provider_cache()
@@ -762,7 +772,6 @@ def run_in_host(gmail: "Gmail", scenario: Callable[[], dict[str, object]], *, na
             report["host_error"] = f"{type(error).__name__}: {error}"[:_HOST_TEXT_LIMIT]
             report["host_traceback"] = traceback.format_exc()[-_HOST_TEXT_LIMIT:]
         finally:
-            faulthandler.cancel_dump_traceback_later()
             report["observed"] = gmail.boundary.facts_since(point)
             _write_report_frame(write_fd, report)
 
@@ -2171,7 +2180,6 @@ def _crash_in_child(gmail: Gmail, reserved: ConsentReceipt, phase: Literal["refr
         facts: dict[str, object] = {}
         try:
             with gmail.app.test_request_context():
-                faulthandler.dump_traceback_later(_WORK_SECONDS)
                 # Drop the inherited pool without closing the parent's sockets.
                 db.engine.dispose(close=False)
                 gmail.boundary.witness.forget_inherited()
@@ -2180,7 +2188,6 @@ def _crash_in_child(gmail: Gmail, reserved: ConsentReceipt, phase: Literal["refr
                 facts["returned"] = gmail.run(reserved).status
         except BaseException as error:
             facts["child_error"] = type(error).__name__
-        faulthandler.cancel_dump_traceback_later()
         _write_report_frame(write_fd, facts)
 
     transfer = _supervise_host(child_main, name=f"crash-at-{phase}", seconds=_CHILD_RESULT_SECONDS)
