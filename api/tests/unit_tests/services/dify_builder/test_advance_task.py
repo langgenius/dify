@@ -87,7 +87,9 @@ def repo(engine: Engine) -> SqlDifyBuilderRepository:
 
 @pytest.fixture(autouse=True)
 def active_worker_lock(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(mod.session_lock, "activate", lambda _session_id, _token: True)
+    # The worker releases exactly the owner value its activation returned; these
+    # engine-wiring tests use the dispatch token as that value.
+    monkeypatch.setattr(mod.session_lock, "activate", lambda _session_id, token: token)
 
 
 @pytest.fixture
@@ -395,7 +397,7 @@ def test_expired_queued_task_does_not_run_or_release_newer_lock(
 ) -> None:
     events, released = wired
     session = _seed_fix_session(repo)
-    monkeypatch.setattr(mod.session_lock, "activate", lambda _session_id, _token: False)
+    monkeypatch.setattr(mod.session_lock, "activate", lambda _session_id, _token: None)
 
     mod.advance_session(session.id, _act("request_fix", 1), _ACTOR_DICT, "expired-token")
 
