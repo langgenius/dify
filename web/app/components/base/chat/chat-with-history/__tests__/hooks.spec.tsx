@@ -5,6 +5,7 @@ import type { AppConversationData, AppData, AppMeta, ConversationItem } from '@/
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { AppToastHost } from '@/app/notifications/host'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import {
   AppSourceType,
   delConversation,
@@ -195,7 +196,7 @@ describe('useChatWithHistory', () => {
       mockFetchChatList.mockResolvedValue({ data: [] })
 
       // Act
-      const { result } = await renderWithClient(() => useChatWithHistory())
+      const { result, queryClient } = await renderWithClient(() => useChatWithHistory())
 
       // Assert
       await waitFor(() => {
@@ -229,6 +230,7 @@ describe('useChatWithHistory', () => {
       await waitFor(() => {
         expect(result!.current.conversationList).toEqual(listData.data)
       })
+      expect(queryClient.getQueryState(userProfileQueryOptions().queryKey)).toBeUndefined()
     })
   })
 
