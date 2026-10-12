@@ -235,8 +235,13 @@ export function ContactsImPlatformManagementSurface() {
   ) => {
     if (integration.statusDescription) return integration.statusDescription
     if (integration.statusReason) return statusReasonLabels[integration.statusReason]
-    if (provider.provider === ContactImProvider.Email && integration.displayIdentifier)
-      return t(($) => $['imPlatform.email.summary'], { email: integration.displayIdentifier })
+    if (provider.provider === ContactImProvider.Email) {
+      const senderEmail = integration.configuredValues.senderEmail
+      return senderEmail
+        ? t(($) => $['imPlatform.email.summary'], { email: senderEmail })
+        : statusLabels[integration.status]
+    }
+    if (provider.provider === ContactImProvider.Slack) return statusLabels[integration.status]
     return integration.displayIdentifier ?? statusLabels[integration.status]
   }
 
