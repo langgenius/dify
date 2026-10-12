@@ -2142,7 +2142,10 @@ Enable or disable annotation reply for an app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Action completed successfully | **application/json**: [AnnotationJobStatusResponse](#annotationjobstatusresponse)<br> |
+| 400 | Invalid action |  |
 | 403 | Insufficient permissions |  |
+| 404 | App not found |  |
+| 422 | Invalid payload |  |
 
 ### [GET] /apps/{app_id}/annotation-reply/{action}/status/{job_id}
 Get status of annotation reply action job
@@ -2160,7 +2163,9 @@ Get status of annotation reply action job
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Job status retrieved successfully | **application/json**: [AnnotationJobStatusDetailResponse](#annotationjobstatusdetailresponse)<br> |
+| 400 | Invalid action |  |
 | 403 | Insufficient permissions |  |
+| 404 | App or owned job not found |  |
 
 ### [GET] /apps/{app_id}/annotation-setting
 Get annotation settings for an app
@@ -2212,7 +2217,7 @@ Update annotation settings for an app
 
 | Code | Description |
 | ---- | ----------- |
-| 200 | Success |
+| 204 | Annotations deleted successfully |
 
 ### [GET] /apps/{app_id}/annotations
 Get annotations for an app with pagination
@@ -2268,11 +2273,13 @@ Batch import annotations from CSV file with rate limiting and security checks
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Batch import started successfully | **application/json**: [AnnotationBatchImportResponse](#annotationbatchimportresponse)<br> |
-| 400 | No file uploaded or too many files |  |
+| 200 | Import started, or CSV/subscription validation failed (error_msg) | **application/json**: [AnnotationBatchImportResponse](#annotationbatchimportresponse)<br> |
+| 400 | Missing, multiple, empty or invalid file |  |
 | 403 | Insufficient permissions |  |
+| 404 | App not found |  |
 | 413 | File too large |  |
 | 429 | Too many requests or concurrent imports |  |
+| 500 | Import infrastructure failed |  |
 
 ### [GET] /apps/{app_id}/annotations/batch-import-status/{job_id}
 Get status of batch import job
@@ -2290,6 +2297,8 @@ Get status of batch import job
 | ---- | ----------- | ------ |
 | 200 | Job status retrieved successfully | **application/json**: [AnnotationJobStatusDetailResponse](#annotationjobstatusdetailresponse)<br> |
 | 403 | Insufficient permissions |  |
+| 404 | App or owned job not found |  |
+| 500 | Import status could not be read |  |
 
 ### [GET] /apps/{app_id}/annotations/count
 Get count of message annotations for the app
@@ -2334,7 +2343,7 @@ Export all annotations for an app with CSV injection protection
 
 | Code | Description |
 | ---- | ----------- |
-| 200 | Success |
+| 204 | Annotation deleted successfully |
 
 ### [POST] /apps/{app_id}/annotations/{annotation_id}
 Update or delete an annotation
