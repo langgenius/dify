@@ -14,6 +14,7 @@ The snapshot is internal, tenant/action-bound and never persisted in a graph.
 
 from __future__ import annotations
 
+import json
 from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
@@ -28,7 +29,11 @@ if TYPE_CHECKING:
     from sqlalchemy import Select
     from sqlalchemy.orm import Session, sessionmaker
 
+    from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
+    from models.account import Account
+    from models.model import App, EndUser
     from models.tools import BuiltinToolProvider
+    from models.workflow import Workflow, WorkflowRun
 
 INVENTORY_TOOL_PROVIDER_TYPES = frozenset({"builtin", "plugin"})
 
@@ -214,6 +219,89 @@ def admit_draft_tool_setup(*, tenant_id: str, graph: Mapping[str, Any], actor_id
         actor_id=actor_id,
         declarations=prepare_tool_declarations(tenant_id=tenant_id, graph=graph),
     )
+
+
+def admit_resumed_draft_tool_setup(
+    *,
+    workflow_run_id: str,
+    workflow_run: WorkflowRun,
+    workflow: Workflow,
+    app: App,
+    user: Account | EndUser,
+    generate_entity: AdvancedChatAppGenerateEntity | WorkflowAppGenerateEntity,
+) -> None:
+    """Admit the saved execution graph before cancellation or pause mutations.
+
+    The native generators restore ``WorkflowRun.graph`` using the serialized
+    invocation's execution ID. Bind that invocation to the same stored run,
+    workflow, app, tenant and acting account before inspecting its saved graph.
+    A missing/malformed snapshot cannot fall back to the mutable draft. Normal
+    published invocation retains its native delegation. Call after closing the
+    resume owner's read session: declaration lookup may perform external I/O.
+    """
+    from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
+    from models.account import Account
+    from models.enums import CreatorUserRole
+    from models.workflow import Workflow
+
+    if generate_entity.invoke_from != InvokeFrom.DEBUGGER or Workflow.VERSION_DRAFT not in (
+        workflow.version,
+        workflow_run.version,
+    ):
+        return
+
+    config = generate_entity.app_config
+    execution_id = (
+        generate_entity.workflow_execution_id
+        if isinstance(generate_entity, WorkflowAppGenerateEntity)
+        else generate_entity.workflow_run_id
+    )
+    if (
+        not isinstance(user, Account)
+        or not user.id
+        or workflow_run.created_by_role != CreatorUserRole.ACCOUNT
+        or workflow_run.created_by != user.id
+        or generate_entity.user_id != user.id
+        or workflow_run.id != workflow_run_id
+        or execution_id != workflow_run.id
+        or workflow_run.workflow_id != workflow.id
+        or workflow_run.app_id != workflow.app_id
+        or workflow.app_id != app.id
+        or not app.tenant_id
+        or workflow_run.tenant_id != app.tenant_id
+        or workflow.tenant_id != app.tenant_id
+        or workflow.version != Workflow.VERSION_DRAFT
+        or workflow_run.version != Workflow.VERSION_DRAFT
+        or config is None
+        or config.tenant_id != app.tenant_id
+        or config.app_id != app.id
+        or config.workflow_id != workflow.id
+        or config.app_mode != app.mode
+    ):
+        raise ToolProviderCredentialValidationError("Saved draft execution does not match its acting account and app.")
+
+    try:
+        graph = json.loads(workflow_run.graph) if workflow_run.graph is not None else None
+    except (TypeError, ValueError):
+        raise ToolProviderCredentialValidationError("Saved draft execution graph could not be verified.") from None
+    # Require the native graph containers and node data before the metadata
+    # inventory can skip malformed entries. Native owners retain full graph
+    # and node-schema validation; this check does not inspect the current draft.
+    if (
+        not isinstance(graph, dict)
+        or not isinstance(nodes := graph.get("nodes"), list)
+        or not nodes
+        or not isinstance(graph.get("edges"), list)
+        or any(
+            not isinstance(node, dict)
+            or not isinstance(data := node.get("data"), dict)
+            or not isinstance(data.get("type"), str)
+            or not data["type"]
+            for node in nodes
+        )
+    ):
+        raise ToolProviderCredentialValidationError("Saved draft execution graph could not be verified.")
+    admit_draft_tool_setup(tenant_id=app.tenant_id, graph=graph, actor_id=user.id)
 
 
 @dataclass(frozen=True, slots=True)
