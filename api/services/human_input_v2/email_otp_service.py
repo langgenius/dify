@@ -6,14 +6,17 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import StrEnum
 from hashlib import sha256
+from typing import Annotated, Literal
 
 import sqlalchemy as sa
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError
 from redis.exceptions import RedisError
 from sqlalchemy.orm import Session
 
 from core.human_input_v2.shared.values import TenantId
 from core.workflow.nodes.human_input.enums import HumanInputFormStatus
+from extensions.ext_redis import RedisClientWrapper
+from extensions.redis_names import serialize_redis_name
 from graphon.enums import WorkflowExecutionStatus
 from libs.datetime_utils import naive_utc_now
 from libs.helper import RateLimiter
@@ -22,15 +25,6 @@ from models.model import App
 from models.workflow import WorkflowRun
 from repositories.human_input_v2.contact import ContactType
 from repositories.human_input_v2.delivery_repository import Delivery, EmailTargetSnapshot, SubmissionAuthType
-from repositories.human_input_v2.email_otp_repository import (
-    EmailChallenge,
-    EmailOtpRepository,
-    EmailOtpSubject,
-    EmailSubject,
-    ExternalContactChallenge,
-    ExternalContactSubject,
-    VerificationStatus,
-)
 from repositories.human_input_v2.recipient_repository import ContactRecipientSubject, EmailRecipientSubject
 from repositories.human_input_v2.sqlalchemy_contact_repository import SQLAlchemyContactRepository
 from repositories.human_input_v2.sqlalchemy_delivery_repository import SQLAlchemyDeliveryRepository
@@ -38,6 +32,49 @@ from repositories.human_input_v2.sqlalchemy_recipient_repository import SQLAlche
 
 logger = logging.getLogger(__name__)
 _COOLDOWN_SECONDS = 60
+
+
+class EmailSubject(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    type: Literal["email"] = "email"
+    email: str
+
+
+class ExternalContactSubject(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    type: Literal["external_contact"] = "external_contact"
+    contact_id: str
+    email: str
+
+
+type EmailOtpSubject = Annotated[EmailSubject | ExternalContactSubject, Field(discriminator="type")]
+
+
+class EmailChallenge(EmailSubject):
+    otp: str = Field(repr=False)
+
+
+class ExternalContactChallenge(ExternalContactSubject):
+    otp: str = Field(repr=False)
+
+
+type EmailOtpChallenge = Annotated[EmailChallenge | ExternalContactChallenge, Field(discriminator="type")]
+
+
+class VerificationStatus(StrEnum):
+    VERIFIED = "verified"
+    INVALID = "invalid"
+    STALE = "stale"
+    EXPIRED = "expired"
+
+
+_CHALLENGE_TTL_SECONDS = 600
+_MAX_FAILED_ATTEMPTS = 5
+
+_CHALLENGE_ADAPTER = TypeAdapter(EmailOtpChallenge)
+_COUNTER_ADAPTER = TypeAdapter(Annotated[int, Field(ge=0)])
 
 
 class OtpFailure(StrEnum):
@@ -104,12 +141,12 @@ class EmailOtpService:
         self,
         *,
         session_factory: Callable[[], Session],
-        challenges: EmailOtpRepository,
+        redis: RedisClientWrapper,
         limiter: RateLimiter,
         mail: OtpMail,
     ) -> None:
         self._sessions = session_factory
-        self._challenges = challenges
+        self._redis = redis
         self._limiter = limiter
         self._mail = mail
 
@@ -127,7 +164,7 @@ class EmailOtpService:
                 challenge = ExternalContactChallenge(contact_id=subject.contact_id, email=subject.email, otp=otp)
             else:
                 challenge = EmailChallenge(email=subject.email, otp=otp)
-            self._challenges.create(delivery.id, token, challenge)
+            self._create_challenge(delivery.id, token, challenge)
         except RedisError:
             raise EmailOtpError(OtpFailure.UNAVAILABLE) from None
         # Authorization transaction is already closed before external I/O.
@@ -137,7 +174,7 @@ class EmailOtpService:
             self.cleanup(delivery.id, token)
             raise EmailOtpError(OtpFailure.DELIVERY, self._retry_after(delivery.id)) from None
         try:
-            remaining = self._challenges.remaining_seconds(delivery.id, token)
+            remaining = self._challenge_remaining_seconds(delivery.id, token)
             if remaining <= 0:
                 raise EmailOtpError(OtpFailure.CHALLENGE_EXPIRED)
             return AccessChallenge(
@@ -157,8 +194,8 @@ class EmailOtpService:
             reason = OtpFailure.INVALID
         else:
             try:
-                status = self._challenges.verify(delivery.id, challenge_token, subject, otp_code)
-            except RedisError:
+                status = self._verify_challenge(delivery.id, challenge_token, subject, otp_code)
+            except (RedisError, ValidationError):
                 reason = OtpFailure.UNAVAILABLE
             else:
                 match status:
@@ -178,10 +215,63 @@ class EmailOtpService:
     def cleanup(self, delivery_id: str, challenge_token: str) -> None:
         """Best effort after commit or a failed send; never affects another challenge."""
         try:
-            self._challenges.delete(delivery_id, challenge_token)
+            key = self._challenge_key(delivery_id, challenge_token)
+            self._redis.delete(key, self._counter_key(key))
         except RedisError:
             # Redis errors can embed command arguments; do not log the exception.
             logger.warning("OTP cleanup failed: delivery_id=%s", delivery_id)
+
+    @staticmethod
+    def _challenge_key(delivery_id: str, token: str) -> str:
+        # Keep the payload and counter in the same Redis Cluster slot.
+        return "hitl:otp:challenge:{" + delivery_id + ":" + token + "}"
+
+    @staticmethod
+    def _counter_key(challenge_key: str) -> str:
+        return f"{challenge_key}:failed_attempts"
+
+    def _create_challenge(self, delivery_id: str, token: str, challenge: EmailOtpChallenge) -> None:
+        # Publish the JSON and zero counter with their TTLs in one transaction.
+        # Raw pipelines require physical names, unlike RedisClientWrapper commands.
+        key = self._challenge_key(delivery_id, token)
+        with self._redis.pipeline(transaction=True) as pipeline:
+            pipeline.set(serialize_redis_name(key), challenge.model_dump_json(), ex=_CHALLENGE_TTL_SECONDS)
+            pipeline.set(serialize_redis_name(self._counter_key(key)), 0, ex=_CHALLENGE_TTL_SECONDS)
+            pipeline.execute()
+
+    def _verify_challenge(self, delivery_id: str, token: str, subject: EmailOtpSubject, otp: str) -> VerificationStatus:
+        key = self._challenge_key(delivery_id, token)
+        raw = self._redis.get(key)
+        if raw is None:
+            return VerificationStatus.EXPIRED
+        counter_key = self._counter_key(key)
+        raw_count = self._redis.get(counter_key)
+        if raw_count is None or _COUNTER_ADAPTER.validate_json(raw_count) >= _MAX_FAILED_ATTEMPTS:
+            return VerificationStatus.EXPIRED
+        challenge = _CHALLENGE_ADAPTER.validate_json(raw)
+        if challenge.type != subject.type or challenge.email != subject.email:
+            return VerificationStatus.STALE
+        if isinstance(challenge, ExternalContactChallenge) and (
+            not isinstance(subject, ExternalContactSubject) or challenge.contact_id != subject.contact_id
+        ):
+            return VerificationStatus.STALE
+        # A matching code is valid at these reads, even if another request later
+        # removes the challenge. Counter exhaustion also blocks pending cleanup.
+        if challenge.otp == otp:
+            return VerificationStatus.VERIFIED
+        failures = self._redis.incr_if_exists(counter_key)
+        if failures is None:
+            return VerificationStatus.EXPIRED
+        if failures >= _MAX_FAILED_ATTEMPTS:
+            self._redis.delete(key, counter_key)
+            return VerificationStatus.STALE if failures == _MAX_FAILED_ATTEMPTS else VerificationStatus.EXPIRED
+        return VerificationStatus.INVALID
+
+    def _challenge_remaining_seconds(self, delivery_id: str, token: str) -> int:
+        remaining = self._redis.ttl(self._challenge_key(delivery_id, token))
+        if not isinstance(remaining, int):
+            raise ValueError("Invalid Redis TTL response")
+        return max(0, remaining)
 
     def _retry_after(self, delivery_id: str) -> int:
         try:

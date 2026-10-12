@@ -18,7 +18,7 @@ from flask import Request, Response, stream_with_context
 from flask_restx import fields
 from pydantic import BaseModel, ConfigDict, TypeAdapter, WithJsonSchema, with_config
 from pydantic.functional_validators import AfterValidator
-from typing_extensions import TypedDict
+from typing_extensions import TypedDict, deprecated
 
 from configs import dify_config
 from core.app.features.rate_limiting.rate_limit import RateLimitGenerator
@@ -589,6 +589,20 @@ def _default_rate_limit_member_factory() -> str:
 
 
 _ACQUIRE_RATE_LIMIT_LUA = """
+-- EVAL contract: exactly 1 key and 4 arguments.
+-- KEYS[1]: Physical Redis ZSET key for one rate-limit subject. Members are
+--          unique request IDs; scores are Redis Unix timestamps in seconds.
+-- ARGV[1]: Positive rolling-window duration in seconds.
+-- ARGV[2]: Positive maximum number of accepted requests within that window.
+-- ARGV[3]: Minimum seconds between accepted requests, from 0 to ARGV[1].
+-- ARGV[4]: Unique, nonempty request ID to consume a slot if allowed; an empty
+--          string only queries the delay without consuming a slot.
+-- Returns: 0 when allowed; otherwise the positive number of seconds to wait,
+--          rounded up and accounting for both the window limit and cooldown.
+-- Every call removes scores <= now - window, retaining (now - window, now].
+-- Only an allowed, nonempty request ID is inserted and refreshes the key TTL.
+-- Rejected requests and delay queries do not consume quota or refresh TTL.
+-- Redis TIME and atomic execution keep these decisions consistent across nodes.
 local clock = redis.call('TIME')
 local now = tonumber(clock[1]) + tonumber(clock[2]) / 1000000
 local window = tonumber(ARGV[1])
@@ -630,6 +644,10 @@ class RateLimiter:
     def _get_key(self, email: str) -> str:
         return f"{self.prefix}:{email}"
 
+    @deprecated(
+        "Use acquire() for atomic admission, or retry_after() to query the delay without consuming a slot.",
+        category=None,
+    )
     def is_rate_limited(self, email: str) -> bool:
         key = self._get_key(email)
         current_time = int(time.time())
@@ -643,6 +661,11 @@ class RateLimiter:
         return False
 
     def increment_rate_limit(self, email: str):
+        """Record an event unconditionally, without enforcing admission limits.
+
+        For atomic check-and-consume admission, use acquire() instead of calling
+        is_rate_limited() and this method separately.
+        """
         key = self._get_key(email)
         member = self._member_factory()
         current_time = int(time.time())
@@ -675,6 +698,7 @@ class RateLimiter:
             raise ValueError("Invalid Redis rate limit response")
         return remaining
 
+    @deprecated("Use retry_after(); it returns 0 when no delay is required.", category=None)
     def seconds_until_available(self, email: str) -> int:
         """Seconds until the oldest in-window entry expires, freeing a slot.
 

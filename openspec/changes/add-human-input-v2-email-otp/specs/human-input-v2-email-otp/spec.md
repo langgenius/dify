@@ -20,9 +20,9 @@
 
 系统 MUST 为每次获准的发码请求生成独立 challenge token 和 OTP，在共享 Redis 中保存对应记录。系统 MUST 允许同一 Delivery 同时拥有多个有效 challenge；创建、失败、验证或删除一个 challenge MUST NOT 替换或删除其他 challenge。系统 MUST NOT 维护唯一当前 challenge、发送预约记录或用于串行等待邮件调用的发送锁。
 
-Challenge token MUST 具有至少 256 bit 随机熵，直接作为 Redis key 的一部分保存。OTP MUST 为六位 ASCII 数字字符串，以明文保存在共享 Redis 的 challenge 记录中。OTP 和 challenge token MUST NOT 进入日志、审计或异常诊断。
+Challenge token MUST 具有至少 256 bit 随机熵，直接作为 Redis key 的一部分保存。OTP MUST 为六位 ASCII 数字字符串，以明文保存在共享 Redis 的 challenge 记录中。OTP 服务自身 MUST NOT 将 OTP 和 challenge token 写入日志、审计或异常诊断。
 
-Challenge 记录 MUST 区分 Email Based 和 External Contact：前者保存解析后的邮箱和 OTP，后者额外保存原 contact_id。失败次数 MUST 与该 challenge 共用 Redis key 和 TTL。External Contact 的记录 MUST NOT 替代当前 Contact 授权检查；Email Based MUST NOT 重新解析 dynamic_email 变量。
+Challenge 记录 MUST 区分 Email Based 和 External Contact：前者保存解析后的邮箱和 OTP，后者额外保存原 contact_id。错误次数 MUST 使用独立的标量 counter，与 payload 在同一事务创建并设置相同的十分钟 TTL。External Contact 的记录 MUST NOT 替代当前 Contact 授权检查；Email Based MUST NOT 重新解析 dynamic_email 变量。
 
 #### Scenario: Resend succeeds
 - **WHEN** 同一 Delivery 在限流允许后生成第二个 challenge
@@ -60,7 +60,7 @@ Challenge 记录 MUST 区分 Email Based 和 External Contact：前者保存解�
 
 系统 MUST 在通过授权和限流检查后保存本次 challenge，再通过部署级 `ext_mail.mail` 发送固定验证模板。系统 MUST NOT 读取租户 Email Channel 或使用 workflow 可编辑模板。邮件 MUST 不包含 form token 或 challenge token，邮件 I/O MUST 不持有数据库 Session／事务。系统 MUST 在邮件调用成功且记录未到期后返回 challenge token 和剩余时长。
 
-邮件调用 MUST 使用有限超时，本流程 MUST 不自动重试。调用失败或超时时 MUST 尝试删除本次记录且不返回新 token；删除失败或进程中断留下的记录 MUST 自然到期，不要求额外状态回收。其他 challenge MUST 保持不变。
+邮件调用 MUST 沿用部署级邮件组件现有的日志与超时策略，本流程 MUST 不自动重试。调用失败或超时时 MUST 尝试删除本次记录且不返回新 token；删除失败或进程中断留下的记录 MUST 自然到期，不要求额外状态回收。其他 challenge MUST 保持不变。
 
 #### Scenario: Tenant email channel is removed
 - **WHEN** 租户 Email Channel 被删除，但部署级邮件配置可用且当前授权有效
@@ -84,7 +84,7 @@ Challenge 记录 MUST 区分 Email Based 和 External Contact：前者保存解�
 
 ### Requirement: Each challenge MUST have independent expiry and bounded guesses
 
-每条 challenge MUST 从写入 Redis 起固定有效十分钟，MUST NOT 按 Form／workflow deadline 截断或因验证刷新 TTL。Submission MUST 独立检查 Form／workflow 截止时间。验证码比较和失败次数更新 MUST 原子执行。每个 challenge 最多允许五次错误验证码；第五次错误时 MUST 原子删除该 challenge key 并返回 challenge-stale；后续请求 MUST 按记录不存在返回 challenge-expired。正确验证码 MUST 不增加或重置错误次数。
+每条 challenge MUST 从写入 Redis 起固定有效十分钟，MUST NOT 按 Form／workflow deadline 截断或因验证刷新 TTL。Submission MUST 独立检查 Form／workflow 截止时间。payload 解析、身份绑定检查和验证码比较 MUST 在 Python 中执行。counter 递增 MUST 原子执行、保留 TTL，且 MUST NOT 重新创建已过期或已删除的 counter。次数上限判断及到限删除 MUST 在 Python 中执行；缺失或耗尽的 counter MUST 阻止后续验证。正确验证码以读取有效 payload 和未耗尽 counter 的时刻为准；并发删除 MUST NOT 取消已经读取该记录的匹配请求。每个 challenge 最多允许五次错误验证码；首次达到五次错误时 MUST 删除该 challenge 的 payload 和 counter 并返回 challenge-stale；后续请求 MUST 按记录不存在返回 challenge-expired。正确验证码 MUST 不增加或重置错误次数。
 
 #### Scenario: Correct code follows four mismatches
 - **WHEN** 未过期 challenge 已有四次错误，随后收到正确验证码
@@ -92,11 +92,11 @@ Challenge 记录 MUST 区分 Email Based 和 External Contact：前者保存解�
 
 #### Scenario: Fifth mismatch affects only one challenge
 - **WHEN** 同一 Delivery 的一个 challenge 达到第五次错误
-- **THEN** 系统 MUST 原子删除该 challenge key；后续即使携带正确验证码也 MUST 返回 challenge-expired，其他 challenge 的次数和有效性 MUST 不受影响
+- **THEN** 系统 MUST 删除该 challenge 的 payload 和 counter；后续即使携带正确验证码也 MUST 返回 challenge-expired，其他 challenge 的次数和有效性 MUST 不受影响
 
 #### Scenario: Guesses arrive concurrently
 - **WHEN** 多个节点并发验证同一 challenge
-- **THEN** 错误次数 MUST 不因丢失更新突破五次上限，达到上限后 MUST 不再接受正确验证码
+- **THEN** counter 更新 MUST 不丢失；读取到已耗尽 counter 或并发递增结果超过上限的请求 MUST 被拒绝，MUST NOT 重置 counter 继续猜码
 
 #### Scenario: Form expires before the challenge
 - **WHEN** OTP 仍在十分钟有效期内，但 Form 或 workflow 已到截止时间

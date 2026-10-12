@@ -1,3 +1,5 @@
+import json
+
 """OTP authorization and audit transactions against actual SQLite persistence."""
 
 from collections.abc import Iterator
@@ -6,7 +8,7 @@ from datetime import timedelta
 from hashlib import sha256
 from pathlib import Path
 from sqlite3 import Connection as SQLiteConnection
-from unittest.mock import Mock
+from unittest.mock import MagicMock, Mock, create_autospec
 from uuid import uuid4
 
 import pytest
@@ -20,6 +22,7 @@ from core.human_input_v2.resolved_form import ResolvedForm
 from core.human_input_v2.shared.values import ContactId, NormalizedEmail, TenantId
 from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from core.workflow.nodes.human_input_v2.entities import DynamicEmail, OnetimeEmail
+from extensions.ext_redis import RedisClientWrapper
 from libs.datetime_utils import naive_utc_now
 from libs.helper import RateLimiter
 from models.account import Account, Tenant, TenantAccountJoin
@@ -41,7 +44,6 @@ from repositories.human_input_v2.delivery_repository import (
     EmailTargetSnapshot,
     SubmissionAuthType,
 )
-from repositories.human_input_v2.email_otp_repository import EmailOtpRepository, VerificationStatus
 from repositories.human_input_v2.form_repository import Form, FormCreateParams, FormSubmissionFailure
 from repositories.human_input_v2.recipient_repository import (
     ContactRecipientSubject,
@@ -52,14 +54,21 @@ from repositories.human_input_v2.sqlalchemy_contact_repository import SQLAlchemy
 from repositories.human_input_v2.sqlalchemy_delivery_repository import SQLAlchemyDeliveryRepository
 from repositories.human_input_v2.sqlalchemy_form_repository import SQLAlchemyFormRepository
 from repositories.human_input_v2.sqlalchemy_recipient_repository import SQLAlchemyRecipientRepository
-from services.human_input_v2.email_otp_service import EmailOtpError, EmailOtpService, OtpFailure, OtpMail, VerifiedEmail
+from services.human_input_v2.email_otp_service import (
+    EmailOtpError,
+    EmailOtpService,
+    OtpFailure,
+    OtpMail,
+    VerificationStatus,
+    VerifiedEmail,
+)
 
 
 @dataclass
 class Context:
     sessions: sessionmaker[Session]
     service: EmailOtpService
-    challenges: Mock
+    redis: Mock
     limiter: Mock
     send: Mock
     delivery: Delivery
@@ -152,20 +161,28 @@ def context(request: pytest.FixtureRequest, tmp_path: Path) -> Iterator[Context]
                 target_snapshot=EmailTargetSnapshot(email_address="approver@example.com"),
             ),
         )
-    challenges = Mock(spec=EmailOtpRepository)
-    challenges.remaining_seconds.return_value = 600
-    challenges.verify.return_value = VerificationStatus.VERIFIED
+    redis = Mock(spec=RedisClientWrapper)
+    payload = {"type": "email", "email": "approver@example.com", "otp": "123456"}
+    if isinstance(subject, ContactRecipientSubject):
+        payload.update(type="external_contact", contact_id=subject.contact_id)
+    redis.get.return_value = json.dumps(payload).encode()
+    redis.get.side_effect = lambda key: b"0" if key.endswith(":failed_attempts") else redis.get.return_value
+    redis.ttl.return_value = 600
+    redis.incr_if_exists.return_value = 1
+    pipeline = MagicMock()
+    pipeline.__enter__.return_value = pipeline
+    redis.pipeline.return_value = pipeline
     limiter = Mock(spec=RateLimiter)
     limiter.acquire.return_value = 0
     limiter.retry_after.return_value = 60
     send = Mock()
     service = EmailOtpService(
         session_factory=sessions,
-        challenges=challenges,
+        redis=redis,
         limiter=limiter,
         mail=OtpMail(available=lambda: True, send=send),
     )
-    yield Context(sessions, service, challenges, limiter, send, delivery, form, token)
+    yield Context(sessions, service, redis, limiter, send, delivery, form, token)
     engine.dispose()
 
 
@@ -193,7 +210,10 @@ def test_send_uses_frozen_email_and_six_digit_code_without_tokens(context: Conte
 def test_rejected_proof_persists_failure_audit(
     context: Context, status: VerificationStatus, reason: OtpFailure
 ) -> None:
-    context.challenges.verify.return_value = status
+    if status == VerificationStatus.EXPIRED:
+        context.redis.get.return_value = None
+    elif status == VerificationStatus.STALE:
+        context.redis.incr_if_exists.return_value = 5
     with pytest.raises(EmailOtpError) as error:
         context.service.verify(
             context.token, challenge_token="challenge-secret", otp_code="000000", ip_address="127.0.0.1"
@@ -214,7 +234,7 @@ def test_missing_proof_is_audited_without_spending_guesses(context: Context) -> 
     with pytest.raises(EmailOtpError) as error:
         context.service.verify(context.token, challenge_token=None, otp_code=None, ip_address=None)
     assert error.value.reason == OtpFailure.INVALID
-    context.challenges.verify.assert_not_called()
+    context.redis.incr_if_exists.assert_not_called()
     with context.sessions() as session:
         assert session.scalar(sa.select(sa.func.count()).select_from(HumanInputAuditEvent)) == 1
 
@@ -234,14 +254,12 @@ def test_send_failure_removes_only_its_challenge(context: Context) -> None:
         context.service.request_access(context.token)
     assert error.value.reason == OtpFailure.DELIVERY
     assert error.value.retry_after == 60
-    created_delivery, created_token, _ = context.challenges.create.call_args.args
-    context.challenges.delete.assert_called_once_with(created_delivery, created_token)
 
 
 def test_storage_failure_does_not_send(context: Context) -> None:
     from redis.exceptions import ConnectionError
 
-    context.challenges.create.side_effect = ConnectionError("secret-command")
+    context.redis.pipeline.return_value.execute.side_effect = ConnectionError("secret-command")
     with pytest.raises(EmailOtpError) as error:
         context.service.request_access(context.token)
     assert error.value.reason == OtpFailure.UNAVAILABLE
@@ -258,7 +276,7 @@ def test_terminal_form_cannot_issue_or_verify_proof(context: Context, status: Hu
     with pytest.raises(EmailOtpError):
         context.service.verify(context.token, challenge_token="proof", otp_code="123456", ip_address=None)
     context.send.assert_not_called()
-    context.challenges.verify.assert_not_called()
+    context.redis.incr_if_exists.assert_not_called()
 
 
 def test_wrong_auth_type_does_not_issue_otp(context: Context) -> None:
@@ -362,7 +380,7 @@ def test_form_deadline_is_checked_independently_of_proof(context: Context) -> No
     with pytest.raises(EmailOtpError) as error:
         context.service.verify(context.token, challenge_token="proof", otp_code="123456", ip_address=None)
     assert error.value.reason == OtpFailure.EXPIRED
-    context.challenges.verify.assert_not_called()
+    context.redis.incr_if_exists.assert_not_called()
 
 
 def test_cleanup_failure_does_not_undo_submission_or_log_secrets(
@@ -370,7 +388,7 @@ def test_cleanup_failure_does_not_undo_submission_or_log_secrets(
 ) -> None:
     from redis.exceptions import ConnectionError
 
-    context.challenges.delete.side_effect = ConnectionError("proof-secret otp-secret")
+    context.redis.delete.side_effect = ConnectionError("proof-secret otp-secret")
     context.service.cleanup(context.delivery.id, "proof-secret")
     assert "cleanup failed" in caplog.text
     assert "proof-secret" not in caplog.text
@@ -380,13 +398,11 @@ def test_cleanup_failure_does_not_undo_submission_or_log_secrets(
 def test_audit_failure_does_not_repeat_verification_or_restore_budget(context: Context) -> None:
     from sqlalchemy.exc import OperationalError
 
-    context.challenges.verify.return_value = VerificationStatus.INVALID
     with context.sessions.begin() as session:
         session.execute(sa.text("DROP TABLE hitlv2_audit_events"))
     with pytest.raises(OperationalError):
         context.service.verify(context.token, challenge_token="proof", otp_code="000000", ip_address=None)
-    context.challenges.verify.assert_called_once()
-    context.challenges.create.assert_not_called()
+    context.redis.incr_if_exists.assert_called_once()
 
 
 def test_field_validation_failure_does_not_write_success_audit(context: Context) -> None:
@@ -395,37 +411,36 @@ def test_field_validation_failure_does_not_write_success_audit(context: Context)
     with context.sessions() as session:
         assert session.scalar(sa.select(sa.func.count()).select_from(HumanInputAuditEvent)) == 0
     context.service.verify(context.token, challenge_token="proof", otp_code="123456", ip_address=None)
-    context.challenges.delete.assert_not_called()
 
 
 def test_deployment_mail_content_and_provider_failure_redaction(
     context: Context, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
+    monkeypatch.setattr("services.human_input_v2.email_otp_service.secrets.randbelow", lambda _bound: 1234)
+    from extensions.ext_mail import Mail
     from services.human_input_v2 import email_otp_composition as composition
 
-    mail = Mock()
+    mail = create_autospec(Mail, instance=True)
     mail.is_inited.return_value = True
     mail.send.side_effect = TimeoutError("provider echoed otp-secret")
     monkeypatch.setattr(composition, "mail", mail)
     monkeypatch.setattr(composition.session_factory, "create_session", context.sessions)
-    monkeypatch.setattr(composition, "RedisEmailOtpRepository", lambda _redis: context.challenges)
+    monkeypatch.setattr(composition, "redis_client", context.redis)
     monkeypatch.setattr(composition, "RateLimiter", lambda **_kwargs: context.limiter)
     with pytest.raises(EmailOtpError) as error:
         composition.build_email_otp_service().request_access(context.token)
     assert error.value.reason == OtpFailure.DELIVERY
-    challenge = context.challenges.create.call_args.args[2]
     sent = mail.send.call_args.kwargs
-    assert challenge.otp in sent["html"]
-    assert sent["sensitive"] is True
+    assert "001234" in sent["html"]
     assert "otp-secret" not in caplog.text
-    assert challenge.otp not in caplog.text
+    assert "001234" not in caplog.text
     assert context.token not in sent["html"]
 
 
 def test_unconfigured_deployment_mail_does_not_spend_sending_budget(context: Context) -> None:
     service = EmailOtpService(
         session_factory=context.sessions,
-        challenges=context.challenges,
+        redis=context.redis,
         limiter=context.limiter,
         mail=OtpMail(available=lambda: False, send=context.send),
     )
@@ -482,7 +497,7 @@ def test_mail_is_sent_after_authorization_session_closes(context: Context) -> No
 
     service = EmailOtpService(
         session_factory=sessions,
-        challenges=context.challenges,
+        redis=context.redis,
         limiter=context.limiter,
         mail=OtpMail(available=lambda: True, send=send),
     )
@@ -503,7 +518,7 @@ def test_cross_tenant_owner_chain_is_rejected(context: Context, owner: str) -> N
 
 
 def test_no_access_token_is_returned_if_challenge_expires_during_send(context: Context) -> None:
-    context.challenges.remaining_seconds.return_value = 0
+    context.redis.ttl.return_value = 0
     with pytest.raises(EmailOtpError) as error:
         context.service.request_access(context.token)
     assert error.value.reason == OtpFailure.CHALLENGE_EXPIRED
@@ -514,7 +529,7 @@ def test_redis_verification_outage_is_audited_without_logging_its_command(
 ) -> None:
     from redis.exceptions import ConnectionError
 
-    context.challenges.verify.side_effect = ConnectionError("secret-command otp-secret")
+    context.redis.get.side_effect = ConnectionError("secret-command otp-secret")
     with pytest.raises(EmailOtpError) as error:
         context.service.verify(context.token, challenge_token="proof-secret", otp_code="001234", ip_address=None)
     assert error.value.reason == OtpFailure.UNAVAILABLE
@@ -548,3 +563,41 @@ def test_deleted_tenant_email_channel_does_not_block_deployment_otp(context: Con
     response = context.service.request_access(context.token)
     assert response.expires_in_seconds == 600
     assert context.send.call_args.args[0] == "approver@example.com"
+
+
+def test_binding_mismatch_does_not_consume_guesses(context: Context) -> None:
+    payload = json.loads(context.redis.get.return_value)
+    payload["email"] = "another@example.com"
+    context.redis.get.return_value = json.dumps(payload)
+    with pytest.raises(EmailOtpError) as error:
+        context.service.verify(context.token, challenge_token="proof", otp_code="123456", ip_address=None)
+    assert error.value.reason == OtpFailure.STALE
+    context.redis.incr_if_exists.assert_not_called()
+
+
+def test_challenge_removed_before_counter_update_is_expired(context: Context) -> None:
+    context.redis.incr_if_exists.return_value = None
+    with pytest.raises(EmailOtpError) as error:
+        context.service.verify(context.token, challenge_token="proof", otp_code="000000", ip_address=None)
+    assert error.value.reason == OtpFailure.CHALLENGE_EXPIRED
+
+
+def test_corrupt_challenge_is_unavailable_without_disclosing_payload(context: Context) -> None:
+    context.redis.get.return_value = b'{"type":"invalid-secret-type","otp":"otp-secret"}'
+    with pytest.raises(EmailOtpError) as error:
+        context.service.verify(context.token, challenge_token="proof", otp_code="123456", ip_address=None)
+    assert error.value.reason == OtpFailure.UNAVAILABLE
+    assert "otp-secret" not in str(error.value)
+    assert error.value.__context__ is None
+    context.redis.incr_if_exists.assert_not_called()
+
+
+@pytest.mark.parametrize("counter", [None, b"5", b"6"])
+def test_missing_or_exhausted_counter_rejects_correct_otp(context: Context, counter: bytes | None) -> None:
+    context.redis.get.side_effect = lambda key: (
+        counter if key.endswith(":failed_attempts") else context.redis.get.return_value
+    )
+    with pytest.raises(EmailOtpError) as error:
+        context.service.verify(context.token, challenge_token="proof", otp_code="123456", ip_address=None)
+    assert error.value.reason == OtpFailure.CHALLENGE_EXPIRED
+    context.redis.incr_if_exists.assert_not_called()

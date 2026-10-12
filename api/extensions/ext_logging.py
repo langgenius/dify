@@ -50,10 +50,6 @@ def init_app(app: DifyApp):
         force=True,
     )
 
-    # SendGrid's HTTP SDK logs authorization headers and mail bodies at DEBUG.
-    # Application debug mode must never enable those credential-bearing records.
-    logging.getLogger("python_http_client.client").setLevel(logging.WARNING)
-
     # Disable propagation for noisy loggers to avoid duplicate logs
     logging.getLogger("sqlalchemy.engine").propagate = False
 

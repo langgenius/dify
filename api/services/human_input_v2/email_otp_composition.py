@@ -11,7 +11,6 @@ from core.db.session_factory import session_factory
 from extensions.ext_mail import mail
 from extensions.ext_redis import redis_client
 from libs.helper import RateLimiter
-from repositories.human_input_v2.redis_email_otp_repository import RedisEmailOtpRepository
 from services.human_input_v2.email_otp_service import EmailOtpError, EmailOtpService, OtpFailure, OtpMail
 
 logger = logging.getLogger(__name__)
@@ -20,14 +19,12 @@ _OTP_TEMPLATE = """<p>Use this verification code to submit your approval form:</
 
 
 def _send(email: str, otp: str) -> None:
-    # SMTP uses a 10s socket timeout; Resend defaults to 30s, and sensitive
-    # SendGrid calls set 30s explicitly. Provider exceptions may contain secrets.
+    # Provider exceptions may contain secrets; expose only the OTP failure code.
     try:
         mail.send(
             to=email,
             subject="Verify your approval form submission",
             html=_OTP_TEMPLATE.format(code=otp),
-            sensitive=True,
         )
     except (SMTPException, OSError, HTTPError, ResendError, RequestException, ValueError):
         logger.warning("Human Input OTP mail delivery failed")
@@ -37,7 +34,7 @@ def _send(email: str, otp: str) -> None:
 def build_email_otp_service() -> EmailOtpService:
     return EmailOtpService(
         session_factory=session_factory.create_session,
-        challenges=RedisEmailOtpRepository(redis_client),
+        redis=redis_client,
         limiter=RateLimiter(prefix="hitl:otp:sends", max_attempts=5, time_window=3600),
         mail=OtpMail(available=mail.is_inited, send=_send),
     )

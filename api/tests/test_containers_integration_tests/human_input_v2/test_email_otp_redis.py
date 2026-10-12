@@ -1,4 +1,6 @@
-"""CI-only acceptance of the real Redis scripts, including simultaneous callers."""
+"""CI-only OTP behavior through the service with real Redis and migrated PostgreSQL."""
+
+from __future__ import annotations
 
 import runpy
 from collections.abc import Callable, Iterator
@@ -18,7 +20,7 @@ from sqlalchemy import Engine, create_engine, delete, func, select, text
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.human_input_v2.resolved_form import ResolvedForm
-from core.human_input_v2.shared.values import NormalizedEmail, TenantId
+from core.human_input_v2.shared.values import ContactId, NormalizedEmail, TenantId
 from core.workflow.nodes.human_input.enums import HumanInputFormKind
 from core.workflow.nodes.human_input_v2.entities import OnetimeEmail
 from extensions.ext_database import db
@@ -26,25 +28,31 @@ from extensions.ext_redis import redis_client
 from extensions.redis_names import serialize_redis_name
 from libs.datetime_utils import naive_utc_now
 from libs.helper import RateLimiter
-from models.account import Tenant
-from models.human_input_v2 import HumanInputAuditEvent, HumanInputDelivery, HumanInputForm, HumanInputRecipient
+from models.account import Account, Tenant, TenantAccountJoin
+from models.human_input_v2 import (
+    HumanInputAuditEvent,
+    HumanInputContactIdentity,
+    HumanInputDelivery,
+    HumanInputExternalContactProfile,
+    HumanInputForm,
+    HumanInputPlatformContactWorkspaceEntry,
+    HumanInputRecipient,
+)
 from models.model import App, AppMode
+from repositories.human_input_v2.contact import ExternalContact
 from repositories.human_input_v2.delivery_repository import (
     Delivery,
     DeliveryCreateParams,
     EmailTargetSnapshot,
     SubmissionAuthType,
 )
-from repositories.human_input_v2.email_otp_repository import (
-    EmailChallenge,
-    EmailSubject,
-    ExternalContactChallenge,
-    ExternalContactSubject,
-    VerificationStatus,
-)
 from repositories.human_input_v2.form_repository import Form, FormCreateParams, FormSubmissionFailure
-from repositories.human_input_v2.recipient_repository import EmailRecipientSubject, RecipientCreateParams
-from repositories.human_input_v2.redis_email_otp_repository import RedisEmailOtpRepository
+from repositories.human_input_v2.recipient_repository import (
+    ContactRecipientSubject,
+    EmailRecipientSubject,
+    RecipientCreateParams,
+)
+from repositories.human_input_v2.sqlalchemy_contact_repository import SQLAlchemyContactRepository
 from repositories.human_input_v2.sqlalchemy_delivery_repository import SQLAlchemyDeliveryRepository
 from repositories.human_input_v2.sqlalchemy_form_repository import SQLAlchemyFormRepository
 from repositories.human_input_v2.sqlalchemy_recipient_repository import SQLAlchemyRecipientRepository
@@ -53,60 +61,88 @@ from services.human_input_v2.email_otp_service import EmailOtpError, EmailOtpSer
 pytestmark = pytest.mark.usefixtures("flask_app_with_containers")
 
 
-@pytest.mark.parametrize("external", [False, True])
-def test_challenges_are_independent_and_fifth_mismatch_deletes_only_one(external: bool) -> None:
-    first, second = RedisEmailOtpRepository(redis_client), RedisEmailOtpRepository(redis_client)
-    delivery = str(uuid4())
-    if external:
-        subject = ExternalContactSubject(contact_id=str(uuid4()), email="approver@example.com")
-        challenge = ExternalContactChallenge(contact_id=subject.contact_id, email=subject.email, otp="001234")
-    else:
-        subject = EmailSubject(email="approver@example.com")
-        challenge = EmailChallenge(email=subject.email, otp="001234")
-    first.create(delivery, "first", challenge)
-    second.create(delivery, "second", challenge)
-    assert first.remaining_seconds(delivery, "first") <= 600
-    assert second.verify(delivery, "first", subject, "001234") == VerificationStatus.VERIFIED
-    assert first.verify("different-delivery", "first", subject, "001234") == VerificationStatus.EXPIRED
+def test_challenges_are_independent_and_fifth_mismatch_deletes_only_one(
+    otp_case: OtpCase,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("services.human_input_v2.email_otp_service.secrets.randbelow", lambda _bound: 1234)
+    first_node, second_node = otp_case.service(), otp_case.service()
+    first = first_node.request_access(otp_case.token)
+    otp_case.release_cooldown()
+    second = second_node.request_access(otp_case.token)
+    assert otp_case.sent[0][1] == "001234"
+    other_token = str(uuid4())
+    with otp_case.sessions.begin() as session:
+        SQLAlchemyDeliveryRepository(session).create_delivery(
+            tenant_id=otp_case.form.tenant_id,
+            form_id=otp_case.form.id,
+            params=DeliveryCreateParams(
+                recipient_id=otp_case.delivery.recipient_id,
+                token_hash=sha256(other_token.encode()).hexdigest(),
+                auth_type=SubmissionAuthType.EMAIL_OTP,
+                target_snapshot=EmailTargetSnapshot(email_address="ci@example.com"),
+            ),
+        )
+    with pytest.raises(EmailOtpError) as error:
+        second_node.verify(other_token, challenge_token=first.challenge_token, otp_code="001234", ip_address=None)
+    assert error.value.reason == OtpFailure.CHALLENGE_EXPIRED
+    second_node.verify(otp_case.token, challenge_token=first.challenge_token, otp_code="001234", ip_address=None)
     for _ in range(4):
-        assert second.verify(delivery, "first", subject, "1234") == VerificationStatus.INVALID
-    # Successful verification neither resets guesses nor consumes proof.
-    assert first.verify(delivery, "first", subject, "001234") == VerificationStatus.VERIFIED
-    assert first.verify(delivery, "first", subject, "000000") == VerificationStatus.STALE
-    assert not redis_client.exists(f"hitl:otp:challenge:{delivery}:first")
-    assert second.verify(delivery, "first", subject, "001234") == VerificationStatus.EXPIRED
-    assert second.verify(delivery, "second", subject, "001234") == VerificationStatus.VERIFIED
-    second.delete(delivery, "second")
+        with pytest.raises(EmailOtpError) as error:
+            second_node.verify(otp_case.token, challenge_token=first.challenge_token, otp_code="1234", ip_address=None)
+        assert error.value.reason == OtpFailure.INVALID
+    first_node.verify(otp_case.token, challenge_token=first.challenge_token, otp_code="001234", ip_address=None)
+    with pytest.raises(EmailOtpError) as error:
+        first_node.verify(otp_case.token, challenge_token=first.challenge_token, otp_code="000000", ip_address=None)
+    assert error.value.reason == OtpFailure.STALE
+    assert not redis_client.exists(f"hitl:otp:challenge:{{{otp_case.delivery.id}:{first.challenge_token}}}")
+    with pytest.raises(EmailOtpError) as error:
+        second_node.verify(otp_case.token, challenge_token=first.challenge_token, otp_code="001234", ip_address=None)
+    assert error.value.reason == OtpFailure.CHALLENGE_EXPIRED
+    second_node.verify(otp_case.token, challenge_token=second.challenge_token, otp_code="001234", ip_address=None)
 
 
-def test_contact_identity_and_email_mismatch_do_not_consume_guesses() -> None:
-    store = RedisEmailOtpRepository(redis_client)
-    delivery = str(uuid4())
-    subject = ExternalContactSubject(contact_id="original", email="approver@example.com")
-    store.create(delivery, "challenge", ExternalContactChallenge(**subject.model_dump(), otp="001234"))
+@pytest.mark.parametrize("otp_case", ["external_contact"], indirect=True)
+def test_contact_email_change_does_not_consume_guesses(otp_case: OtpCase) -> None:
+    service = otp_case.service()
+    challenge = service.request_access(otp_case.token)
+    with otp_case.sessions.begin() as session:
+        profile = session.scalars(select(HumanInputExternalContactProfile)).one()
+        profile.email = "changed@example.com"
     for _ in range(6):
-        replacement = ExternalContactSubject(contact_id="replacement", email=subject.email)
-        assert store.verify(delivery, "challenge", replacement, "001234") == VerificationStatus.STALE
-    assert store.verify(delivery, "challenge", subject, "001234") == VerificationStatus.VERIFIED
-    store.delete(delivery, "challenge")
+        with pytest.raises(EmailOtpError) as error:
+            service.verify(
+                otp_case.token, challenge_token=challenge.challenge_token, otp_code=otp_case.sent[0][1], ip_address=None
+            )
+        assert error.value.reason == OtpFailure.STALE
+    with otp_case.sessions.begin() as session:
+        profile = session.scalars(select(HumanInputExternalContactProfile)).one()
+        profile.email = "ci@example.com"
+    service.verify(
+        otp_case.token, challenge_token=challenge.challenge_token, otp_code=otp_case.sent[0][1], ip_address=None
+    )
 
 
-def test_concurrent_guesses_cannot_exceed_budget() -> None:
-    store = RedisEmailOtpRepository(redis_client)
-    delivery = str(uuid4())
-    subject = EmailSubject(email="approver@example.com")
-    store.create(delivery, "challenge", EmailChallenge(email=subject.email, otp="001234"))
+def test_concurrent_guesses_cannot_exceed_budget(otp_case: OtpCase) -> None:
+    service = otp_case.service()
+    challenge = service.request_access(otp_case.token)
     barrier = Barrier(12)
 
-    def guess(_: int) -> VerificationStatus:
+    def guess(_: int) -> OtpFailure:
         barrier.wait()
-        return store.verify(delivery, "challenge", subject, "000000")
+        try:
+            service.verify(
+                otp_case.token, challenge_token=challenge.challenge_token, otp_code="wrong-code", ip_address=None
+            )
+        except EmailOtpError as error:
+            return error.reason
+        pytest.fail("An incorrect code was accepted")
 
     with ThreadPoolExecutor(max_workers=12) as executor:
         results = list(executor.map(guess, range(12)))
-    assert results.count(VerificationStatus.INVALID) == 4
-    assert results.count(VerificationStatus.STALE) == 1
-    assert results.count(VerificationStatus.EXPIRED) == 7
+    assert results.count(OtpFailure.INVALID) == 4
+    assert results.count(OtpFailure.STALE) == 1
+    assert results.count(OtpFailure.CHALLENGE_EXPIRED) == 7
 
 
 def test_concurrent_sends_consume_one_slot_and_rejections_do_not_count() -> None:
@@ -144,17 +180,23 @@ def test_hourly_window_and_cooldown_return_combined_delay() -> None:
     redis_client.delete(f"{limiter.prefix}:delivery")
 
 
-def test_verification_does_not_refresh_ttl() -> None:
-    store = RedisEmailOtpRepository(redis_client)
-    delivery = str(uuid4())
-    subject = EmailSubject(email="approver@example.com")
-    store.create(delivery, "challenge", EmailChallenge(email=subject.email, otp="001234"))
-    key = f"hitl:otp:challenge:{delivery}:challenge"
+def test_verification_does_not_refresh_ttl(otp_case: OtpCase) -> None:
+    service = otp_case.service()
+    challenge = service.request_access(otp_case.token)
+    key = f"hitl:otp:challenge:{{{otp_case.delivery.id}:{challenge.challenge_token}}}"
     redis_client.expire(key, 20)
-    assert store.verify(delivery, "challenge", subject, "000000") == VerificationStatus.INVALID
-    assert 0 < store.remaining_seconds(delivery, "challenge") <= 20
+    with pytest.raises(EmailOtpError) as error:
+        service.verify(
+            otp_case.token, challenge_token=challenge.challenge_token, otp_code="wrong-code", ip_address=None
+        )
+    assert error.value.reason == OtpFailure.INVALID
+    assert 0 < redis_client.ttl(key) <= 20
     redis_client.expire(key, 0)
-    assert store.verify(delivery, "challenge", subject, "001234") == VerificationStatus.EXPIRED
+    with pytest.raises(EmailOtpError) as error:
+        service.verify(
+            otp_case.token, challenge_token=challenge.challenge_token, otp_code=otp_case.sent[0][1], ip_address=None
+        )
+    assert error.value.reason == OtpFailure.CHALLENGE_EXPIRED
 
 
 @dataclass
@@ -163,14 +205,13 @@ class OtpCase:
     form: Form
     delivery: Delivery
     token: str
-    store: RedisEmailOtpRepository
     limiter: RateLimiter
     sent: list[tuple[str, str]]
 
     def service(self, send: Callable[[str, str], None] | None = None) -> EmailOtpService:
         return EmailOtpService(
             session_factory=self.sessions,
-            challenges=self.store,
+            redis=redis_client,
             limiter=self.limiter,
             mail=OtpMail(available=lambda: True, send=send or (lambda email, code: self.sent.append((email, code)))),
         )
@@ -202,7 +243,15 @@ def migrated_otp_engine(flask_app_with_containers: Flask) -> Iterator[Engine]:
     engine = create_engine(admin_engine.url, connect_args={"options": f"-csearch_path={schema},public"})
     try:
         # App and Tenant are unrelated prerequisites already migrated by Dify.
-        for model in (Tenant, App):
+        for model in (
+            Tenant,
+            App,
+            Account,
+            TenantAccountJoin,
+            HumanInputContactIdentity,
+            HumanInputExternalContactProfile,
+            HumanInputPlatformContactWorkspaceEntry,
+        ):
             model.metadata.tables[model.__tablename__].create(engine)
         migrations = Path(__file__).resolve().parents[3] / "migrations" / "versions"
         names = (
@@ -222,8 +271,8 @@ def migrated_otp_engine(flask_app_with_containers: Flask) -> Iterator[Engine]:
             connection.execute(text(f'DROP SCHEMA "{schema}" CASCADE'))
 
 
-@pytest.fixture
-def otp_case(migrated_otp_engine: Engine) -> Iterator[OtpCase]:
+@pytest.fixture(params=["email", "external_contact"])
+def otp_case(migrated_otp_engine: Engine, request: pytest.FixtureRequest) -> Iterator[OtpCase]:
     engine = migrated_otp_engine
     sessions = sessionmaker(engine, expire_on_commit=False)
     tenant_id, app_id, token = TenantId(str(uuid4())), str(uuid4()), str(uuid4())
@@ -246,10 +295,24 @@ def otp_case(migrated_otp_engine: Engine) -> Iterator[OtpCase]:
                 global_timeout_deadline=now + timedelta(hours=2),
             )
         )
+        if request.param == "external_contact":
+            contact = SQLAlchemyContactRepository(session).save_external_contact(
+                tenant_id,
+                ExternalContact(
+                    id=ContactId(str(uuid4())),
+                    name="CI approver",
+                    email="ci@example.com",
+                    avatar_file_id=None,
+                    created_at=now,
+                ),
+            )
+            subject = ContactRecipientSubject(contact.id)
+        else:
+            subject = EmailRecipientSubject(NormalizedEmail("ci@example.com"))
         recipient = SQLAlchemyRecipientRepository(session, tenant_id, form.id).create_recipients(
             [
                 RecipientCreateParams(
-                    subject=EmailRecipientSubject(NormalizedEmail("ci@example.com")),
+                    subject=subject,
                     sources=(OnetimeEmail(email="ci@example.com"),),
                     name=None,
                 )
@@ -265,13 +328,12 @@ def otp_case(migrated_otp_engine: Engine) -> Iterator[OtpCase]:
                 target_snapshot=EmailTargetSnapshot(email_address="ci@example.com"),
             ),
         )
-    store = RedisEmailOtpRepository(redis_client)
     limiter = RateLimiter(prefix=f"otp-ci:{uuid4()}", max_attempts=5, time_window=3600)
     try:
-        yield OtpCase(sessions, form, delivery, token, store, limiter, [])
+        yield OtpCase(sessions, form, delivery, token, limiter, [])
     finally:
         # Remove all test-issued challenges without adding a production list API.
-        pattern = serialize_redis_name(f"hitl:otp:challenge:{delivery.id}:*")
+        pattern = serialize_redis_name(f"hitl:otp:challenge:{{{delivery.id}:*")
         for key in redis_client.scan_iter(match=pattern):
             redis_client.delete(key)
         redis_client.delete(f"{limiter.prefix}:{delivery.id}")
@@ -284,15 +346,16 @@ def otp_case(migrated_otp_engine: Engine) -> Iterator[OtpCase]:
 
 
 def test_verified_challenges_accept_one_form_on_postgres(otp_case: OtpCase) -> None:
-    store, delivery, form, token = otp_case.store, otp_case.delivery, otp_case.form, otp_case.token
+    delivery, form, token = otp_case.delivery, otp_case.form, otp_case.token
     sessions = otp_case.sessions
     tenant_id, app_id, recipient_id = form.tenant_id, form.app_id, delivery.recipient_id
     service = otp_case.service()
-    for challenge_token in ("first", "second"):
-        store.create(delivery.id, challenge_token, EmailChallenge(email="ci@example.com", otp="001234"))
+    challenges = [service.request_access(token)]
+    otp_case.release_cooldown()
+    challenges.append(service.request_access(token))
     proofs = [
-        service.verify(token, challenge_token=challenge_token, otp_code="001234", ip_address=None)
-        for challenge_token in ("first", "second")
+        service.verify(token, challenge_token=challenge.challenge_token, otp_code=sent[1], ip_address=None)
+        for challenge, sent in zip(challenges, otp_case.sent, strict=True)
     ]
     barrier = Barrier(2)
 
@@ -347,8 +410,8 @@ def test_lost_response_and_failed_resend_preserve_earlier_proof_and_budget(otp_c
     assert error.value.retry_after > 0
     service.verify(otp_case.token, challenge_token=first.challenge_token, otp_code=first_code, ip_address=None)
     assert redis_client.zcard(f"{otp_case.limiter.prefix}:{otp_case.delivery.id}") == 3
-    pattern = serialize_redis_name(f"hitl:otp:challenge:{otp_case.delivery.id}:*")
-    assert len(list(redis_client.scan_iter(match=pattern))) == 2
+    pattern = serialize_redis_name(f"hitl:otp:challenge:{{{otp_case.delivery.id}:*")
+    assert len(list(redis_client.scan_iter(match=pattern))) == 4
 
 
 def test_older_mail_finishing_last_does_not_replace_newer_challenge(otp_case: OtpCase) -> None:

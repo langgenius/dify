@@ -21,7 +21,7 @@ class SMTPClient:
         self.use_tls = use_tls
         self.opportunistic_tls = opportunistic_tls
 
-    def send(self, mail: dict[str, Any], *, sensitive: bool = False):
+    def send(self, mail: dict[str, Any]):
         smtp: smtplib.SMTP | None = None
         local_host = dify_config.SMTP_LOCAL_HOSTNAME
         try:
@@ -50,16 +50,13 @@ class SMTPClient:
 
             smtp.sendmail(self._from, mail["to"], msg.as_string())
         except smtplib.SMTPException:
-            if not sensitive:
-                logger.exception("SMTP error occurred")
+            logger.exception("SMTP error occurred")
             raise
         except TimeoutError:
-            if not sensitive:
-                logger.exception("Timeout occurred while sending email")
+            logger.exception("Timeout occurred while sending email")
             raise
         except Exception:
-            if not sensitive:
-                logger.exception("Unexpected error occurred while sending email to %s", mail["to"])
+            logger.exception("Unexpected error occurred while sending email to %s", mail["to"])
             raise
         finally:
             if smtp:
