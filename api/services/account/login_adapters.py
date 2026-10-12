@@ -94,8 +94,8 @@ class AccountActivationConsoleAuthInvitationGateway(ConsoleAuthInvitationGateway
         return None
 
     @override
-    def ensure_membership(self, *, email: str, token: str) -> bool:
-        return self._activation.ensure_membership(email=email, token=token)
+    def ensure_membership(self, *, account_id: str, email: str, token: str) -> bool:
+        return self._activation.ensure_membership(account_id=account_id, email=email, token=token)
 
 
 class DeploymentConsoleAuthPolicyGateway(ConsoleAuthPolicyGateway):

@@ -99,7 +99,13 @@ def test_invitation_gateway_restores_editor_membership_without_revoking_token(
         activation=activation,
     )
 
-    assert gateway.ensure_membership(email="user@example.com", token="token-1") is True
+    commands.side_effect = lambda command, *_args, **_kwargs: (
+        3600 if command == "PTTL" else b"OK" if command == "SET" else commands.return_value
+    )
+    assert gateway.ensure_membership(account_id="different-account", email="user@example.com", token="token-1") is False
+    with sqlite_session_factory() as session:
+        assert session.scalar(select(TenantAccountJoin)) is None
+    assert gateway.ensure_membership(account_id="account-1", email="user@example.com", token="token-1") is True
 
     with sqlite_session_factory() as session:
         persisted = session.get(Account, "account-1")

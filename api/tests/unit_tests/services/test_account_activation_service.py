@@ -287,7 +287,7 @@ class TestEnsureMembership:
     ) -> None:
         redis_transport[1].return_value = None
 
-        assert service.ensure_membership(email="invitee@example.com", token="missing") is False
+        assert service.ensure_membership(account_id="account-1", email="invitee@example.com", token="missing") is False
 
         boundaries["revoke"].assert_not_called()
         boundaries["activate"].assert_not_called()
@@ -302,7 +302,7 @@ class TestEnsureMembership:
             ("owner", TenantAccountRole.NORMAL),
         ],
     )
-    def test_restores_membership_without_changing_active_account_or_consuming_token(
+    def test_restores_membership_once_and_preserves_activation(
         self,
         service: AccountActivationService,
         boundaries: dict[str, MagicMock],
@@ -321,7 +321,22 @@ class TestEnsureMembership:
             f'{role_json},"requires_setup":false}}'
         ).encode()
 
-        restored = service.ensure_membership(email="Invitee@Example.com", token="token-1")
+        used: set[object] = set()
+
+        def execute(command: object, key: object, *args: object, **_kwargs: object) -> object:
+            if command == "PTTL":
+                return 3600
+            if command == "SET":
+                assert "NX" in args
+                assert "PX" in args
+                if key in used:
+                    return None
+                used.add(key)
+                return b"OK"
+            return redis_transport[1].return_value
+
+        redis_transport[1].side_effect = execute
+        restored = service.ensure_membership(account_id="account-1", email="Invitee@Example.com", token="token-1")
 
         assert restored is True
         boundaries["revoke"].assert_not_called()
@@ -345,3 +360,40 @@ class TestEnsureMembership:
         check = service.check(InvitationLookup(workspace_id=None, email=None, token="token-1"))
         assert check.is_valid is True
         boundaries["revoke"].assert_not_called()
+
+        with sqlite_session_factory.begin() as session:
+            session.execute(delete(TenantAccountJoin))
+        boundaries["activate"].reset_mock()
+        assert service.ensure_membership(account_id="account-1", email="invitee@example.com", token="token-1") is False
+        boundaries["activate"].assert_not_called()
+        with sqlite_session_factory() as session:
+            assert session.scalar(select(TenantAccountJoin)) is None
+
+        service.activate(
+            ActivationCommand(invitation=InvitationLookup(workspace_id=None, email=None, token="token-1")),
+            authenticated_account_id="account-1",
+        )
+        boundaries["revoke"].assert_called_once()
+        with sqlite_session_factory() as session:
+            membership = session.scalar(select(TenantAccountJoin))
+            assert membership is not None
+            assert membership.role == stored_role
+
+    def test_account_mismatch_does_not_write_membership_or_consume_token(
+        self,
+        service: AccountActivationService,
+        boundaries: dict[str, MagicMock],
+        redis_transport: tuple[RedisClientWrapper, MagicMock],
+    ) -> None:
+        redis_transport[
+            1
+        ].return_value = b'{"account_id":"account-1","email":"invitee@example.com","workspace_id":"workspace-1"}'
+        assert (
+            service.ensure_membership(account_id="different-account", email="invitee@example.com", token="token-1")
+            is False
+        )
+        boundaries["activate"].assert_not_called()
+        boundaries["revoke"].assert_not_called()
+        boundaries["cache"].assert_not_called()
+        boundaries["sync"].assert_not_called()
+        assert all(args[0] == "GET" for args, _ in redis_transport[1].call_args_list)

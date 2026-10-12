@@ -25,6 +25,8 @@ _PENDING_ACCOUNT_STATUS = "pending"
 
 
 class InvitationTokenStore(Protocol):
+    def consume_membership(self, invitation: InvitationLookup) -> bool: ...
+
     def find(self, invitation: InvitationLookup) -> InvitationToken | None: ...
 
     def revoke(self, invitation: InvitationLookup) -> None: ...
@@ -125,9 +127,12 @@ class AccountActivationService:
             self._membership_cache.invalidate(invitation.workspace_id)
         self._member_access_sync.sync(invitation.workspace_id, invitation.account_id)
 
-    def ensure_membership(self, *, email: str, token: str) -> bool:
-        invitation = self._resolve(InvitationLookup(workspace_id=None, email=email, token=token))
-        if invitation is None:
+    def ensure_membership(self, *, account_id: str, email: str, token: str) -> bool:
+        lookup = InvitationLookup(workspace_id=None, email=email, token=token)
+        invitation = self._resolve(lookup)
+        if invitation is None or invitation.account_id != account_id:
+            return False
+        if not self._tokens.consume_membership(lookup):
             return False
 
         result = self._accounts.activate(invitation, role=self._membership_role(invitation.role), setup=None)

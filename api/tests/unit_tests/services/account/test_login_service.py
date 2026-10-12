@@ -59,15 +59,15 @@ class FakeWorkspaces:
 @dataclass
 class FakeInvitations:
     invitation: LoginInvitation | None = None
-    ensured: list[tuple[str, str]] = field(default_factory=list)
+    ensured: list[tuple[str, str, str]] = field(default_factory=list)
     restored_workspace: FakeWorkspaces | None = None
 
     def resolve(self, *, email: str, token: str) -> LoginInvitation | None:
         _ = email, token
         return self.invitation
 
-    def ensure_membership(self, *, email: str, token: str) -> bool:
-        self.ensured.append((email, token))
+    def ensure_membership(self, *, account_id: str, email: str, token: str) -> bool:
+        self.ensured.append((account_id, email, token))
         if self.restored_workspace is None:
             return False
         self.restored_workspace.active = True
@@ -571,7 +571,7 @@ def test_password_login_restores_invited_membership_when_account_has_no_workspac
 
     result = dependencies.service().login_with_password(_password_command(invite_token="invite"))
 
-    assert dependencies.invitations.ensured == [("User@Example.com", "invite")]
+    assert dependencies.invitations.ensured == [("account-1", "User@Example.com", "invite")]
     assert dependencies.workspaces.checks == ["account-1", "account-1"]
     assert result.workspace_found
     assert result.tokens == TOKENS
@@ -615,7 +615,7 @@ def test_password_login_enforces_workspace_capacity_when_invitation_does_not_res
     with pytest.raises(account_errors.LoginWorkspaceLimitError):
         dependencies.service().login_with_password(_password_command(invite_token="invite"))
 
-    assert dependencies.invitations.ensured == [("User@Example.com", "invite")]
+    assert dependencies.invitations.ensured == [("account-1", "User@Example.com", "invite")]
     assert dependencies.workspaces.checks == ["account-1", "account-1"]
     assert dependencies.sessions.issued == []
 
