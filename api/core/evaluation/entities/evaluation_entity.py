@@ -281,8 +281,9 @@ class EvaluationDatasetInput(BaseModel):
     ``expected_outputs`` and resolved by the user-visible node title at
     execution time. Legacy node-ID columns remain supported. Agent reference
     traces follow the same convention with ``expected_tool_calls``. Optional
-    Agent outcome criteria use ``success_criteria`` columns and never require
-    tool names or trace internals from dataset authors.
+    Agent success requirements use ``success_criteria`` columns. They may
+    describe outcomes or observable actions and never require internal tool
+    names or trace structures from dataset authors.
     """
 
     index: int

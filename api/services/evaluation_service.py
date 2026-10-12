@@ -2012,7 +2012,7 @@ class EvaluationService:
         *,
         evaluation_instance: BaseEvaluationInstance | None = None,
     ) -> list[EvaluationTemplateColumn]:
-        """Build optional node-scoped success criteria columns for Agent outcome metrics."""
+        """Build optional node-scoped success-criteria columns for Agent task metrics."""
         filtered_metrics = cls.filter_console_default_metrics(default_metrics)
         if not filtered_metrics:
             return []
@@ -2563,7 +2563,7 @@ class EvaluationService:
         - ``index,<input...>,expected_output`` for the legacy single-reference flow
         - ``index,<input...>,<node_title> : expected_output`` for node-specific references
         - ``index,<input...>,<node_title> : expected_tool_calls`` for Agent trace references
-        - ``index,<input...>,<node_title> : success_criteria`` for optional Agent outcome criteria
+        - ``index,<input...>,<node_title> : success_criteria`` for optional Agent success requirements
 
         Column parsing treats the *last* ``:`` as the separator between the
         node title and the reference-field suffix.

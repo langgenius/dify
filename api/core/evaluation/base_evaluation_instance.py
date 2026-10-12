@@ -75,7 +75,7 @@ class BaseEvaluationInstance(ABC):
         return False
 
     def metric_accepts_success_criteria(self, metric_name: str) -> bool:
-        """Return whether a metric accepts optional Agent outcome criteria."""
+        """Return whether a metric accepts optional Agent success requirements."""
         return False
 
     def evaluate_with_customized_workflow(

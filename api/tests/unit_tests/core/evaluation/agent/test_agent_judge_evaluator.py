@@ -4,6 +4,7 @@ from core.evaluation.agent import agent_judge_evaluator
 from core.evaluation.agent.agent_judge_evaluator import (
     AgentLLMJudgeEvaluator,
     CriterionAssessment,
+    SuccessCriterionAssessment,
     TaskCompletionCriteria,
     TaskCompletionJudgeOutput,
     ToolArgumentCriteria,
@@ -15,6 +16,7 @@ from core.evaluation.agent.agent_judge_evaluator import (
     _sanitize_value,
     _strict_judge_json_schema,
     _tool_selection_payload,
+    _validated_success_criteria_assessments,
 )
 from core.evaluation.agent.judge_prompts import get_agent_judge_prompt
 from core.evaluation.entities.evaluation_entity import (
@@ -90,6 +92,15 @@ def test_task_completion_recomputes_weighted_score_and_uses_success_criteria(
                 correctness_and_evidence_consistency=_criterion(0.5),
                 completeness=_criterion(1.0),
             ),
+            success_criteria_assessments=[
+                SuccessCriterionAssessment(
+                    criterion_id="success-criterion-1",
+                    applicable=True,
+                    score=0.75,
+                    reason="The criterion is mostly satisfied.",
+                    evidence_step_ids=["final-output"],
+                )
+            ],
             failed_criteria=["correctness_and_evidence_consistency"],
         )
     )
@@ -124,10 +135,146 @@ def test_task_completion_recomputes_weighted_score_and_uses_success_criteria(
     assert result.error is None
     assert result.metrics[0].value == 0.7125
     assert result.metrics[0].details["reported_score"] == 0.99
-    assert result.metrics[0].details["prompt_version"] == "agent.task_completion.v1"
+    assert result.metrics[0].details["prompt_version"] == "agent.task_completion.v2"
     assert fake_model.payload is not None
-    assert fake_model.payload["success_criteria"] == ["Use the real shipment status."]
+    assert fake_model.payload["success_criteria"] == [
+        {"criterion_id": "success-criterion-1", "requirement": "Use the real shipment status."}
+    ]
+    assert result.metrics[0].details["success_criteria_assessments"][0]["score"] == 0.75
     assert "TARGET METRIC: task_completion" in fake_model.system_prompt
+
+
+def test_task_completion_caps_goal_satisfaction_with_failed_observable_requirement(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fake_model = _FakeJudgeModel(
+        TaskCompletionJudgeOutput(
+            score=0.8875,
+            reason="The final answer is correct, but the required tool was not called.",
+            criteria=TaskCompletionCriteria(
+                goal_satisfaction=_criterion(0.75),
+                correctness_and_evidence_consistency=_criterion(1.0),
+                completeness=_criterion(1.0),
+            ),
+            success_criteria_assessments=[
+                SuccessCriterionAssessment(
+                    criterion_id="success-criterion-1",
+                    applicable=True,
+                    score=0,
+                    reason="Only the current-time tool was called.",
+                    evidence_step_ids=["time-call"],
+                )
+            ],
+            failed_criteria=["goal_satisfaction"],
+        )
+    )
+    monkeypatch.setattr(agent_judge_evaluator, "_DifyAgentJudgeModel", lambda *_args: fake_model)
+    item = AgentEvaluationItem(
+        index=0,
+        inputs={"task": "Answer with the current time."},
+        output="2026-09-30 07-03-00",
+        success_criteria=["调用了运行代码工具"],
+        tool_calls=[
+            AgentToolCall(
+                name="current_time",
+                call_id="call-time",
+                tool_ref="time/current_time",
+                arguments={"timezone": "UTC"},
+                output="2026-09-30 07:03:00",
+            )
+        ],
+        available_tools=[
+            AgentToolDefinition(
+                tool_ref="time/current_time",
+                name="current_time",
+                display_name="获取当前时间",
+                description="Return the current time.",
+            ),
+            AgentToolDefinition(
+                tool_ref="code/code",
+                name="code",
+                display_name="代码解释器",
+                description="Run code.",
+            ),
+        ],
+        trajectory=AgentTrajectory(
+            source="legacy",
+            steps=[
+                AgentTrajectoryStep(
+                    step_id="time-call",
+                    sequence=0,
+                    step_type="tool_call",
+                    tool_call_id="call-time",
+                    tool_ref="time/current_time",
+                    tool_name="current_time",
+                    status="succeeded",
+                ),
+                AgentTrajectoryStep(
+                    step_id="time-result",
+                    sequence=1,
+                    step_type="tool_result",
+                    tool_call_id="call-time",
+                    tool_ref="time/current_time",
+                    tool_name="current_time",
+                    content="2026-09-30 07:03:00",
+                    status="succeeded",
+                ),
+            ],
+        ),
+    )
+
+    metric = (
+        AgentLLMJudgeEvaluator()
+        .evaluate(
+            [item],
+            ["task_completion"],
+            "provider",
+            "model",
+            "tenant",
+        )[0]
+        .metrics[0]
+    )
+
+    assert metric.value == 0.55
+    assert metric.details["criteria"]["goal_satisfaction"]["score"] == 0
+    assert metric.details["criteria"]["goal_satisfaction"]["reported_score"] == 0.75
+    assert metric.details["success_criteria_assessments"][0]["score"] == 0
+    assert fake_model.payload is not None
+    assert fake_model.payload["observed_tool_calls"] == [
+        {
+            "step_id": "time-call",
+            "tool_call_id": "call-time",
+            "tool_ref": "time/current_time",
+            "tool_name": "current_time",
+            "tool_display_name": "获取当前时间",
+            "tool_description": "Return the current time.",
+            "status": "succeeded",
+            "error": None,
+        }
+    ]
+
+
+def test_task_completion_requires_one_assessment_per_success_criterion() -> None:
+    with pytest.raises(ValueError, match="exactly one assessment"):
+        _validated_success_criteria_assessments(
+            {"success_criteria": [{"criterion_id": "success-criterion-1", "requirement": "Use the code tool."}]},
+            [],
+        )
+
+
+def test_task_completion_rejects_inapplicable_success_criterion_without_data_limitation() -> None:
+    with pytest.raises(ValueError, match="without an explicit data limitation"):
+        _validated_success_criteria_assessments(
+            {"success_criteria": [{"criterion_id": "success-criterion-1", "requirement": "Use the code tool."}]},
+            [
+                SuccessCriterionAssessment(
+                    criterion_id="success-criterion-1",
+                    applicable=False,
+                    score=None,
+                    reason="The call cannot be verified.",
+                )
+            ],
+        )
 
 
 def test_tool_argument_correctness_scores_each_assessable_call(
@@ -334,3 +481,8 @@ def test_agent_judge_prompts_are_english_and_contain_injection_defenses() -> Non
     assert "untrusted evidence" in prompt
     assert "private chain-of-thought" in prompt
     assert "TARGET METRIC: trajectory_quality" in prompt
+
+    task_version, task_prompt = get_agent_judge_prompt("task_completion")
+    assert task_version == "agent.task_completion.v2"
+    assert "exactly one success_criteria_assessment" in task_prompt
+    assert "contains no matching successful call" in task_prompt
