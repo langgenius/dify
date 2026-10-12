@@ -1229,7 +1229,7 @@ def gmail(
     metadata_daemon = install_fake_daemon(monkeypatch, FakeToolDaemon())
     metadata_request = metadata_daemon.request
 
-    def public_metadata_request(**kwargs: Any):
+    def public_metadata_request(**kwargs: object):
         boundary.mark("draft_schema")
         payload = boundary.declaration.model_dump(mode="json")
         payload["declaration"]["identity"]["name"] = boundary.declaration.provider
