@@ -1,10 +1,10 @@
 'use client'
 
 import { Button as BaseButton } from '@base-ui/react/button'
+import { useIsoLayoutEffect } from '@base-ui/utils/useIsoLayoutEffect'
 import * as React from 'react'
 import { cn } from '../cn'
 import { resolveClassName } from '../internal/resolve-class-name'
-import { useIsoLayoutEffect } from '../internal/use-iso-layout-effect'
 import { mergeProps } from '../merge-props'
 import { NumberField, NumberFieldGroup, NumberFieldInput } from '../number-field'
 import { SegmentedControl, SegmentedControlItem } from '../segmented-control'

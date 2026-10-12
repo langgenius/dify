@@ -33,7 +33,7 @@ expressions when JavaScript cannot infer their name. Use `event` or `error` inst
 Every public primitive needs a matching `package.json#exports` subpath. Import relatively between
 package components; consumers import only through public subpaths.
 
-Keep package-private helpers in `src/internal/`; top-level TypeScript modules in `src/` are
+Keep package-private helpers in `src/internal/`; top-level runtime utility modules in `src/` are
 public utility subpaths. Components share code through the owning component's entrypoint or an
 explicit internal module, not another component's implementation files.
 
