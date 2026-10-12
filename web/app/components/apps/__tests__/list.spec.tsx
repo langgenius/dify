@@ -1071,11 +1071,10 @@ describe('List', () => {
 
   describe('Search Functionality', () => {
     it('should clear the keywords URL state', async () => {
+      const user = userEvent.setup()
       const { onUrlUpdate } = renderList('?keywords=existing+search')
 
-      const clearButton = document.querySelector('.i-ri-close-circle-fill')?.closest('button')
-      expect(clearButton)!.toBeInTheDocument()
-      if (clearButton) fireEvent.click(clearButton)
+      await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
 
       expect(screen.getByRole('searchbox')).toHaveValue('')
       await waitFor(() => {
