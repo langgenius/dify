@@ -297,6 +297,7 @@
   "settings.ipPolicyUsedBy": "هنوز در {{count}} برنامه استفاده می‌شود",
   "settings.ipPolicyUsedByLabel": "استفاده‌شده توسط",
   "settings.ipPolicyUsedBy_one": "هنوز در {{count}} برنامه استفاده می‌شود",
+  "settings.ipPolicyViewDescription": "فقط مالک و مدیران فضای کاری می‌توانند سیاست‌های IP را ویرایش کنند.",
   "sort.cancelled": "مرتب‌سازی {{item}} لغو شد.",
   "sort.finished": "{{item}} در جایگاه {{position}} از {{count}} قرار گرفت.",
   "sort.handle": "تغییر ترتیب {{item}}",

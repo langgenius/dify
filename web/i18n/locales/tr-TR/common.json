@@ -297,6 +297,7 @@
   "settings.ipPolicyUsedBy": "Hâlâ {{count}} uygulama tarafından kullanılıyor",
   "settings.ipPolicyUsedByLabel": "Kullanan",
   "settings.ipPolicyUsedBy_one": "Hâlâ {{count}} uygulama tarafından kullanılıyor",
+  "settings.ipPolicyViewDescription": "IP politikalarını yalnızca çalışma alanının sahibi ve yöneticileri düzenleyebilir.",
   "sort.cancelled": "{{item}} sıralaması iptal edildi.",
   "sort.finished": "{{item}}, {{count}} öğeden {{position}}. sıraya yerleştirildi.",
   "sort.handle": "{{item}} sırasını değiştir",

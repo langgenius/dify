@@ -80,6 +80,11 @@ describe('IpPoliciesPage', () => {
       await user.keyboard('{Enter}')
 
       const dialog = screen.getByRole('dialog', { name: 'Internal Network' })
+      expect(dialog).toHaveAccessibleDescription(
+        'Only the workspace owner and admins can edit IP policies.',
+      )
+      expect(within(dialog).getAllByText('Internal Network')).toHaveLength(1)
+      expect(within(dialog).queryByText('Name')).not.toBeInTheDocument()
       expect(trackEvent).toHaveBeenCalledWith('ip_policy_interaction', {
         action: 'settings_tab_viewed',
       })

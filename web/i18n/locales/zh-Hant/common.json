@@ -297,6 +297,7 @@
   "settings.ipPolicyUsedBy": "仍有 {{count}} 個應用程式在使用",
   "settings.ipPolicyUsedByLabel": "被用於",
   "settings.ipPolicyUsedBy_one": "仍有 {{count}} 個應用程式在使用",
+  "settings.ipPolicyViewDescription": "只有工作空間的 Owner 和 Admin 可以編輯 IP 策略。",
   "sort.cancelled": "已取消對 {{item}} 的排序。",
   "sort.finished": "已確認 {{item}} 位於第 {{position}} 項，共 {{count}} 項。",
   "sort.handle": "調整 {{item}} 的順序",

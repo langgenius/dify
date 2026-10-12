@@ -259,6 +259,7 @@
   "settings.ipPolicyEmptyCreate": "IP siyasəti yarat",
   "settings.ipPolicyEmptyDescription": "Siyasət girişə icazə verilən IP ünvanlarının siyahısıdır.",
   "settings.ipPolicyEmptyTitle": "Bu iş məkanında hələ IP siyasəti yoxdur",
+  "settings.ipPolicyViewDescription": "IP siyasətlərini yalnız iş sahəsinin sahibi və administratorları redaktə edə bilər.",
   "sort.cancelled": "{{item}} elementinin sıralanması ləğv edildi.",
   "sort.finished": "{{item}} elementi {{count}} mövqe arasında {{position}} nömrəli mövqeyə yerləşdirildi.",
   "sort.handle": "{{item}} elementinin sırasını dəyiş",

@@ -297,6 +297,7 @@
   "settings.ipPolicyUsedBy": "ยังมี {{count}} แอปที่ใช้นโยบายนี้อยู่",
   "settings.ipPolicyUsedByLabel": "ถูกใช้โดย",
   "settings.ipPolicyUsedBy_one": "ยังมี {{count}} แอปที่ใช้นโยบายนี้อยู่",
+  "settings.ipPolicyViewDescription": "เฉพาะเจ้าของและผู้ดูแลระบบของพื้นที่ทำงานเท่านั้นที่สามารถแก้ไขนโยบาย IP ได้",
   "sort.cancelled": "ยกเลิกการเรียงลำดับ {{item}} แล้ว",
   "sort.finished": "วาง {{item}} ที่ตำแหน่ง {{position}} จาก {{count}} แล้ว",
   "sort.handle": "เรียงลำดับ {{item}} ใหม่",

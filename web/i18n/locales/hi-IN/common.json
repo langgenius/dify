@@ -297,6 +297,7 @@
   "settings.ipPolicyUsedBy": "अभी भी {{count}} ऐप में उपयोग की जा रही है",
   "settings.ipPolicyUsedByLabel": "इनके द्वारा उपयोग",
   "settings.ipPolicyUsedBy_one": "अभी भी {{count}} ऐप में उपयोग की जा रही है",
+  "settings.ipPolicyViewDescription": "केवल कार्यक्षेत्र के स्वामी और व्यवस्थापक ही IP नीतियों को संपादित कर सकते हैं।",
   "sort.cancelled": "{{item}} का क्रम बदलना रद्द किया गया।",
   "sort.finished": "{{item}} को {{count}} में से स्थान {{position}} पर रखा गया।",
   "sort.handle": "{{item}} का क्रम बदलें",

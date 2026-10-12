@@ -297,6 +297,7 @@
   "settings.ipPolicyUsedBy": "Liczba aplikacji nadal korzystających z tej polityki: {{count}}",
   "settings.ipPolicyUsedByLabel": "Używane przez",
   "settings.ipPolicyUsedBy_one": "Liczba aplikacji nadal korzystających z tej polityki: {{count}}",
+  "settings.ipPolicyViewDescription": "Tylko właściciel i administratorzy obszaru roboczego mogą edytować zasady IP.",
   "sort.cancelled": "Anulowano sortowanie {{item}}.",
   "sort.finished": "Umieszczono {{item}} na pozycji {{position}} z {{count}}.",
   "sort.handle": "Zmień kolejność {{item}}",

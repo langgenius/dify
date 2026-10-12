@@ -108,7 +108,7 @@ export function IpPolicyDialog({
             </DialogTitle>
             <DialogDescription className="system-sm-regular text-text-tertiary">
               {mode === 'view'
-                ? t(($) => $['settings.ipPoliciesDescription'], { ns: 'common' })
+                ? t(($) => $['settings.ipPolicyViewDescription'], { ns: 'common' })
                 : t(($) => $['settings.ipPolicyDialogDescription'], { ns: 'common' })}
             </DialogDescription>
           </div>
@@ -128,14 +128,6 @@ export function IpPolicyDialog({
         {mode === 'view' ? (
           <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto">
             <dl className="flex flex-col gap-6">
-              <div className="flex flex-col gap-3">
-                <dt className="system-sm-medium text-text-primary">
-                  {t(($) => $['settings.ipPolicyName'], { ns: 'common' })}
-                </dt>
-                <dd className="system-sm-regular wrap-anywhere text-text-secondary">
-                  {initialName}
-                </dd>
-              </div>
               <div className="flex flex-col gap-3">
                 <dt className="system-sm-medium text-text-primary">
                   {t(($) => $['settings.ipPolicyAllowlist'], { ns: 'common' })}

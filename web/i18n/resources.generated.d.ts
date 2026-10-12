@@ -1847,6 +1847,7 @@ export default interface Resources {
     'settings.ipPolicyRemoveEntry': 'Remove entry'
     'settings.ipPolicyUsedBy': 'Still used by {{count}} apps' | 'Still used by {{count}} app'
     'settings.ipPolicyUsedByLabel': 'Used by'
+    'settings.ipPolicyViewDescription': 'Only the workspace owner and admins can edit IP policies.'
     'sort.cancelled': 'Sorting {{item}} cancelled.'
     'sort.finished': 'Placed {{item}} at position {{position}} of {{count}}.'
     'sort.handle': 'Reorder {{item}}'

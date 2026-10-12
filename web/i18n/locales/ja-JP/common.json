@@ -297,6 +297,7 @@
   "settings.ipPolicyUsedBy": "まだ {{count}} 個のアプリで使用中",
   "settings.ipPolicyUsedByLabel": "使用中のアプリ",
   "settings.ipPolicyUsedBy_one": "まだ {{count}} 個のアプリで使用中",
+  "settings.ipPolicyViewDescription": "IP ポリシーを編集できるのはワークスペースの Owner と Admin のみです。",
   "sort.cancelled": "{{item}} の並べ替えをキャンセルしました。",
   "sort.finished": "{{item}} を {{count}} 件中 {{position}} 番目に確定しました。",
   "sort.handle": "{{item}} を並べ替え",

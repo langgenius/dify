@@ -297,6 +297,7 @@
   "settings.ipPolicyUsedBy": "Still used by {{count}} apps",
   "settings.ipPolicyUsedByLabel": "Used by",
   "settings.ipPolicyUsedBy_one": "Still used by {{count}} app",
+  "settings.ipPolicyViewDescription": "Only the workspace owner and admins can edit IP policies.",
   "sort.cancelled": "Sorting {{item}} cancelled.",
   "sort.finished": "Placed {{item}} at position {{position}} of {{count}}.",
   "sort.handle": "Reorder {{item}}",

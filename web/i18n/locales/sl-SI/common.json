@@ -297,6 +297,7 @@
   "settings.ipPolicyUsedBy": "Število aplikacij, ki še uporabljajo pravilnik: {{count}}",
   "settings.ipPolicyUsedByLabel": "Uporablja",
   "settings.ipPolicyUsedBy_one": "Število aplikacij, ki še uporabljajo pravilnik: {{count}}",
+  "settings.ipPolicyViewDescription": "Pravila IP lahko urejajo samo lastnik in skrbniki delovnega prostora.",
   "sort.cancelled": "Razvrščanje {{item}} preklicano.",
   "sort.finished": "{{item}} postavljen na položaj {{position}} od {{count}}.",
   "sort.handle": "Prerazporedi {{item}}",

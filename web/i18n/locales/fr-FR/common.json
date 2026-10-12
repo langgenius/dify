@@ -297,6 +297,7 @@
   "settings.ipPolicyUsedBy": "Encore utilisée par {{count}} applications",
   "settings.ipPolicyUsedByLabel": "Utilisé par",
   "settings.ipPolicyUsedBy_one": "Encore utilisée par {{count}} application",
+  "settings.ipPolicyViewDescription": "Seuls le propriétaire et les administrateurs de l’espace de travail peuvent modifier les politiques IP.",
   "sort.cancelled": "Tri de {{item}} annulé.",
   "sort.finished": "{{item}} placé à la position {{position}} sur {{count}}.",
   "sort.handle": "Réordonner {{item}}",

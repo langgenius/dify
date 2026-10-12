@@ -297,6 +297,7 @@
   "settings.ipPolicyUsedBy": "Кількість застосунків, які досі використовують політику: {{count}}",
   "settings.ipPolicyUsedByLabel": "Використовується",
   "settings.ipPolicyUsedBy_one": "Кількість застосунків, які досі використовують політику: {{count}}",
+  "settings.ipPolicyViewDescription": "Лише власник і адміністратори робочого простору можуть редагувати політики IP.",
   "sort.cancelled": "Сортування {{item}} скасовано.",
   "sort.finished": "{{item}} розміщено на позиції {{position}} з {{count}}.",
   "sort.handle": "Змінити порядок: {{item}}",
