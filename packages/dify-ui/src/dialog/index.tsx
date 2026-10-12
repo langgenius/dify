@@ -3,12 +3,12 @@
 import type * as React from 'react'
 import { Dialog as BaseDialog } from '@base-ui/react/dialog'
 import { cn } from '../cn'
-import { resolveClassName } from '../internal/resolve-class-name'
 import {
   modalBackdropClassName,
   modalPopupAnimationClassName,
   triggerFocusClassName,
-} from '../overlay-shared'
+} from '../internal/overlay-shared'
+import { resolveClassName } from '../internal/resolve-class-name'
 
 const Dialog = BaseDialog.Root
 const DialogTitle = BaseDialog.Title

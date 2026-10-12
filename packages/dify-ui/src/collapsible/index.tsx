@@ -2,8 +2,8 @@
 
 import { Collapsible as BaseCollapsible } from '@base-ui/react/collapsible'
 import { cn } from '../cn'
+import { triggerFocusClassName } from '../internal/overlay-shared'
 import { resolveClassName } from '../internal/resolve-class-name'
-import { triggerFocusClassName } from '../overlay-shared'
 
 type CollapsibleProps = BaseCollapsible.Root.Props
 type CollapsibleChangeEventReason = BaseCollapsible.Root.ChangeEventReason

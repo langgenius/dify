@@ -1,12 +1,12 @@
 'use client'
 
 import type * as React from 'react'
-import type { Placement } from '../placement'
+import type { Placement } from '../internal/placement'
 import { Tooltip as BaseTooltip } from '@base-ui/react/tooltip'
 import { cn } from '../cn'
+import { hintPopupClassName } from '../internal/overlay-shared'
+import { parsePlacement } from '../internal/placement'
 import { resolveClassName } from '../internal/resolve-class-name'
-import { hintPopupClassName } from '../overlay-shared'
-import { parsePlacement } from '../placement'
 
 const TooltipProvider = BaseTooltip.Provider
 const Tooltip = BaseTooltip.Root

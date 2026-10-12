@@ -1,13 +1,13 @@
 'use client'
 
 import type * as React from 'react'
-import type { Placement } from '../placement'
+import type { Placement } from '../internal/placement'
 import { Popover as BasePopover } from '@base-ui/react/popover'
 import { cn } from '../cn'
 import { iconButtonVariants } from '../icon-button'
+import { hintPopupClassName } from '../internal/overlay-shared'
+import { parsePlacement } from '../internal/placement'
 import { resolveClassName } from '../internal/resolve-class-name'
-import { hintPopupClassName } from '../overlay-shared'
-import { parsePlacement } from '../placement'
 
 const iconClassNames = {
   question: 'i-ri-question-line',

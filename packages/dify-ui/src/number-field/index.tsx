@@ -5,7 +5,7 @@ import type * as React from 'react'
 import { NumberField as BaseNumberField } from '@base-ui/react/number-field'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
-import { textControlGroupClassName } from '../form-control-shared'
+import { textControlGroupClassName } from '../internal/form-control-shared'
 import { resolveClassName } from '../internal/resolve-class-name'
 
 const NumberField = BaseNumberField.Root

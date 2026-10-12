@@ -2,20 +2,20 @@
 
 import type { VariantProps } from 'class-variance-authority'
 import type * as React from 'react'
-import type { Placement } from '../placement'
+import type { Placement } from '../internal/placement'
 import { Combobox as BaseCombobox } from '@base-ui/react/combobox'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
-import { formLabelClassName, textControlGroupClassName } from '../form-control-shared'
-import { resolveClassName } from '../internal/resolve-class-name'
+import { formLabelClassName, textControlGroupClassName } from '../internal/form-control-shared'
 import {
   floatingGroupLabelClassName,
   floatingItemIndicatorClassName,
   floatingPopupAnimationClassName,
   floatingSeparatorClassName,
   triggerFocusClassName,
-} from '../overlay-shared'
-import { parsePlacement } from '../placement'
+} from '../internal/overlay-shared'
+import { parsePlacement } from '../internal/placement'
+import { resolveClassName } from '../internal/resolve-class-name'
 
 type ComboboxActions = BaseCombobox.Root.Actions
 
@@ -81,10 +81,12 @@ type ComboboxRowProps = BaseCombobox.Row.Props
 
 // The popup is limited to the available height and lays its parts out in a column, so an input or status
 // sharing it with the list leaves the list to shrink. The popup scrolls only when nothing can.
+// Same layout as `AutocompletePopup`; keep the two local definitions aligned.
 const comboboxPopupClassName = [
   'flex max-h-(--available-height) w-(--anchor-width) max-w-[min(28rem,var(--available-width))] flex-col overflow-x-hidden overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg outline-hidden',
 ]
 
+// Same layout as `AutocompleteList`; keep the two local definitions aligned.
 const comboboxListClassName = [
   'max-h-[min(20rem,var(--available-height))] overflow-y-auto overflow-x-hidden overscroll-contain p-1 outline-hidden scroll-py-1',
   'data-empty:max-h-none data-empty:p-0',

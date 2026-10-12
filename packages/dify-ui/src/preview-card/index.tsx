@@ -1,12 +1,12 @@
 'use client'
 
 import type * as React from 'react'
-import type { Placement } from '../placement'
+import type { Placement } from '../internal/placement'
 import { PreviewCard as BasePreviewCard } from '@base-ui/react/preview-card'
 import { cn } from '../cn'
+import { floatingPopupAnimationClassName } from '../internal/overlay-shared'
+import { parsePlacement } from '../internal/placement'
 import { resolveClassName } from '../internal/resolve-class-name'
-import { floatingPopupAnimationClassName } from '../overlay-shared'
-import { parsePlacement } from '../placement'
 
 /**
  * PreviewCard follows Base UI's canonical semantics: a hover/focus-triggered

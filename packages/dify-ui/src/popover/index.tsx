@@ -1,12 +1,12 @@
 'use client'
 
 import type * as React from 'react'
-import type { Placement } from '../placement'
+import type { Placement } from '../internal/placement'
 import { Popover as BasePopover } from '@base-ui/react/popover'
 import { cn } from '../cn'
+import { floatingPopupAnimationClassName, triggerFocusClassName } from '../internal/overlay-shared'
+import { parsePlacement } from '../internal/placement'
 import { resolveClassName } from '../internal/resolve-class-name'
-import { floatingPopupAnimationClassName, triggerFocusClassName } from '../overlay-shared'
-import { parsePlacement } from '../placement'
 
 const Popover = BasePopover.Root
 const PopoverArrow = BasePopover.Arrow

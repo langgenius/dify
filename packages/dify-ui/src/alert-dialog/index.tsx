@@ -5,12 +5,12 @@ import type { ButtonProps } from '../button'
 import { AlertDialog as BaseAlertDialog } from '@base-ui/react/alert-dialog'
 import { Button } from '../button'
 import { cn } from '../cn'
-import { resolveClassName } from '../internal/resolve-class-name'
 import {
   modalBackdropClassName,
   modalPopupAnimationClassName,
   triggerFocusClassName,
-} from '../overlay-shared'
+} from '../internal/overlay-shared'
+import { resolveClassName } from '../internal/resolve-class-name'
 
 const AlertDialog = BaseAlertDialog.Root
 const AlertDialogTitle = BaseAlertDialog.Title
