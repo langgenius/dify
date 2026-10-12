@@ -262,6 +262,7 @@ class RedisEmailCodeGateway(EmailCodeGateway):
         normalized_email: str,
         recipient_email: str,
         language: str,
+        registration_allowed: bool,
     ) -> str:
         normalized_email = normalized_email.lower()
         if self._rate_limiter.is_rate_limited(normalized_email):
@@ -274,7 +275,8 @@ class RedisEmailCodeGateway(EmailCodeGateway):
         except EmailCodeLoginChallengeUnavailableError as error:
             logger.warning("Email-code challenge creation is unavailable", exc_info=True)
             raise account_errors.EmailCodeLoginUnavailableError from error
-        send_email_code_login_mail_task.delay(language=language, to=recipient_email, code=code)
+        if account_id is not None or registration_allowed:
+            send_email_code_login_mail_task.delay(language=language, to=recipient_email, code=code)
         self._rate_limiter.increment_rate_limit(normalized_email)
         return token
 
