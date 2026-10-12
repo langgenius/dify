@@ -230,8 +230,6 @@ class WorkflowRunNodeExecutionListResponse(ResponseModel):
 
 
 class WorkflowToolNodeExecutionResponse(WorkflowRunNodeExecutionResponse):
-    app_id: str
-    workflow_id: str
     node_execution_id: str | None = None
 
 
