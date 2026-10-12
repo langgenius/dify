@@ -287,6 +287,7 @@ def _extract_agent_trace(
     tool_calls: list[AgentToolCall] = []
     steps: list[AgentTrajectoryStep] = []
     sequence = 0
+    canonical_call_keys = _canonical_labeled_tool_call_keys(raw_entries)
     for entry_position, raw_entry in enumerate(raw_entries, start=1):
         if not isinstance(raw_entry, Mapping):
             continue
@@ -297,21 +298,14 @@ def _extract_agent_trace(
         nested_output = data.get("output")
         nested_call = nested_output if isinstance(nested_output, Mapping) else {}
         label = str(raw_entry.get("label") or "")
-        name = str(
-            data.get("tool_name")
-            or data.get("tool_call_name")
-            or nested_call.get("tool_call_name")
-            or nested_call.get("tool_name")
-            or _tool_name_from_label(label)
-            or ""
-        ).strip()
+        name = _tool_name_from_log_entry(raw_entry)
         is_tool_call = bool(name) and (
             label.startswith(_TOOL_CALL_LABEL_PREFIX)
             or any(key in data or key in nested_call for key in ("tool_name", "tool_call_name"))
         )
         if not is_tool_call:
-            error = str(raw_entry.get("error") or "").strip()
-            if error:
+            entry_error = str(raw_entry.get("error") or "").strip()
+            if entry_error:
                 steps.append(
                     AgentTrajectoryStep(
                         step_id=str(raw_entry.get("id") or f"legacy-error-{entry_position}"),
@@ -320,10 +314,16 @@ def _extract_agent_trace(
                         step_type="error",
                         content=_observable_log_content(data),
                         status="failed",
-                        error=error,
+                        error=entry_error,
                     )
                 )
                 sequence += 1
+            continue
+        parent_step_id = _optional_string(raw_entry.get("parent_id"))
+        if label.endswith(" Thought") and parent_step_id is not None and (parent_step_id, name) in canonical_call_keys:
+            # Legacy logs can contain both a model-thought summary and a canonical
+            # CALL child for the same invocation. Only the CALL entry has the real
+            # call id, arguments, and observation.
             continue
 
         raw_arguments = data.get("tool_call_args")
@@ -350,7 +350,7 @@ def _extract_agent_trace(
         call_id = str(raw_call_id)
         log_id = str(raw_entry.get("id") or call_id)
         status = _normalize_step_status(raw_entry.get("status"), raw_entry.get("error"))
-        error = _optional_string(raw_entry.get("error"))
+        tool_error = _optional_string(raw_entry.get("error"))
         tool = tool_by_name.get(name)
         tool_ref = tool.tool_ref if tool else name
         arguments = _normalize_tool_arguments(raw_arguments)
@@ -368,7 +368,7 @@ def _extract_agent_trace(
         steps.append(
             AgentTrajectoryStep(
                 step_id=call_step_id,
-                parent_step_id=_optional_string(raw_entry.get("parent_id")),
+                parent_step_id=parent_step_id,
                 sequence=sequence,
                 step_type="tool_call",
                 tool_call_id=call_id,
@@ -376,11 +376,11 @@ def _extract_agent_trace(
                 tool_name=name,
                 arguments=arguments,
                 status=status,
-                error=error,
+                error=tool_error,
             )
         )
         sequence += 1
-        if tool_output is not None or error:
+        if tool_output is not None or tool_error:
             steps.append(
                 AgentTrajectoryStep(
                     step_id=f"{log_id}:result",
@@ -392,7 +392,7 @@ def _extract_agent_trace(
                     tool_name=name,
                     content=tool_output,
                     status=status,
-                    error=error,
+                    error=tool_error,
                 )
             )
             sequence += 1
@@ -435,6 +435,38 @@ def _observable_log_content(data: Mapping[str, Any]) -> Any | None:
         if key in data:
             return data[key]
     return None
+
+
+def _canonical_labeled_tool_call_keys(raw_entries: list[Any]) -> set[tuple[str, str]]:
+    keys: set[tuple[str, str]] = set()
+    for raw_entry in raw_entries:
+        if not isinstance(raw_entry, Mapping):
+            continue
+        label = str(raw_entry.get("label") or "")
+        if not label.startswith(_TOOL_CALL_LABEL_PREFIX):
+            continue
+        parent_step_id = _optional_string(raw_entry.get("parent_id"))
+        tool_name = _tool_name_from_log_entry(raw_entry)
+        if parent_step_id and tool_name:
+            keys.add((parent_step_id, tool_name))
+    return keys
+
+
+def _tool_name_from_log_entry(raw_entry: Mapping[str, Any]) -> str:
+    data = raw_entry.get("data")
+    if not isinstance(data, Mapping):
+        return ""
+    nested_output = data.get("output")
+    nested_call = nested_output if isinstance(nested_output, Mapping) else {}
+    label = str(raw_entry.get("label") or "")
+    return str(
+        data.get("tool_name")
+        or data.get("tool_call_name")
+        or nested_call.get("tool_call_name")
+        or nested_call.get("tool_name")
+        or _tool_name_from_label(label)
+        or ""
+    ).strip()
 
 
 def _tool_name_from_label(label: str) -> str:

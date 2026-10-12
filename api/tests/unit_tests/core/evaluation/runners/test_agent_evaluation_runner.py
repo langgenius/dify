@@ -96,6 +96,71 @@ def test_agent_runner_normalizes_react_and_function_calling_logs() -> None:
     ]
 
 
+def test_agent_runner_deduplicates_thought_summary_and_canonical_call_log() -> None:
+    evaluation_instance = MagicMock()
+    evaluation_instance.evaluate_agent.return_value = []
+    runner = AgentEvaluationRunner(evaluation_instance)
+    round_id = "round-1"
+
+    runner.evaluate_metrics(
+        node_run_result_list=[
+            NodeRunResult(
+                inputs={"query": "What time is it?"},
+                outputs={
+                    "text": "2026-09-30 07-03-00",
+                    "json": [
+                        {
+                            "id": "thought-1",
+                            "parent_id": round_id,
+                            "label": "gpt Thought",
+                            "status": "success",
+                            "data": {
+                                "output": "",
+                                "tool_input": [{"args": {}, "name": "current_time"}],
+                                "tool_name": "current_time",
+                            },
+                        },
+                        {
+                            "id": "call-log-1",
+                            "parent_id": round_id,
+                            "label": "CALL current_time",
+                            "status": "success",
+                            "data": {
+                                "output": {
+                                    "tool_call_id": "call-1",
+                                    "tool_call_input": {
+                                        "format": "%Y-%m-%d %H:%M:%S",
+                                        "timezone": "UTC",
+                                    },
+                                    "tool_call_name": "current_time",
+                                    "tool_response": "2026-09-30 07:03:00",
+                                }
+                            },
+                        },
+                    ],
+                },
+            )
+        ],
+        default_metric=DefaultMetric(metric="task_completion", node_info_list=[]),
+        model_provider="provider",
+        model_name="model",
+        tenant_id="tenant-1",
+    )
+
+    item = evaluation_instance.evaluate_agent.call_args.args[0][0]
+    assert [call.model_dump() for call in item.tool_calls] == [
+        {
+            "name": "current_time",
+            "call_id": "call-1",
+            "tool_ref": "current_time",
+            "arguments": {"format": "%Y-%m-%d %H:%M:%S", "timezone": "UTC"},
+            "output": "2026-09-30 07:03:00",
+        }
+    ]
+    assert item.trajectory is not None
+    assert [step.step_type for step in item.trajectory.steps] == ["tool_call", "tool_result", "final_output"]
+
+
 def test_agent_runner_uses_dataset_input_when_node_has_no_user_task_field() -> None:
     evaluation_instance = MagicMock()
     evaluation_instance.evaluate_agent.return_value = []

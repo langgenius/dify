@@ -80,6 +80,10 @@ class TaskCompletionCriteria(BaseModel):
     completeness: CriterionAssessment
 
 
+class SuccessCriterionAssessment(CriterionAssessment):
+    criterion_id: str = Field(min_length=1)
+
+
 class TrajectoryQualityCriteria(BaseModel):
     progress_and_coherence: CriterionAssessment
     efficiency: CriterionAssessment
@@ -109,6 +113,10 @@ class _JudgeOutputBase(BaseModel):
 
 class TaskCompletionJudgeOutput(_JudgeOutputBase):
     criteria: TaskCompletionCriteria
+    success_criteria_assessments: list[SuccessCriterionAssessment] = Field(
+        default_factory=list,
+        max_length=_MAX_COLLECTION_ITEMS,
+    )
     failed_criteria: list[str] = Field(default_factory=list)
 
 
@@ -311,6 +319,7 @@ class AgentLLMJudgeEvaluator:
             schema=schema,
         )
 
+        details: dict[str, Any]
         if isinstance(judge_output, ToolArgumentJudgeOutput):
             sanitized_calls = cast(list[Mapping[str, Any]], sanitized_payload["tool_calls"])
             expected_tool_refs = {
@@ -353,11 +362,32 @@ class AgentLLMJudgeEvaluator:
                 TaskCompletionJudgeOutput | TrajectoryQualityJudgeOutput | ToolSelectionJudgeOutput,
             ):
                 raise TypeError(f"Unexpected Agent judge output: {type(judge_output).__name__}")
-            score = _weighted_score(judge_output.criteria, weights)
+            effective_criteria = judge_output.criteria
+            effective_task_criteria: TaskCompletionCriteria | None = None
+            serialized_success_criteria: list[dict[str, Any]] | None = None
+            if isinstance(judge_output, TaskCompletionJudgeOutput):
+                ordered_assessments = _validated_success_criteria_assessments(
+                    sanitized_payload,
+                    judge_output.success_criteria_assessments,
+                )
+                effective_task_criteria = _apply_success_criteria_to_task_completion(
+                    judge_output.criteria,
+                    ordered_assessments,
+                )
+                effective_criteria = effective_task_criteria
+                serialized_success_criteria = [assessment.model_dump(mode="json") for assessment in ordered_assessments]
+
+            score = _weighted_score(effective_criteria, weights)
+            serialized_criteria = effective_criteria.model_dump(mode="json")
+            if isinstance(judge_output, TaskCompletionJudgeOutput) and effective_task_criteria is not None:
+                reported_goal_score = judge_output.criteria.goal_satisfaction.score
+                effective_goal_score = effective_task_criteria.goal_satisfaction.score
+                if effective_goal_score != reported_goal_score:
+                    serialized_criteria["goal_satisfaction"]["reported_score"] = reported_goal_score
             details = {
                 "status": "evaluated",
                 "reason": judge_output.reason,
-                "criteria": judge_output.criteria.model_dump(mode="json"),
+                "criteria": serialized_criteria,
                 "failed_criteria": judge_output.failed_criteria,
                 "evidence_step_ids": judge_output.evidence_step_ids,
                 "warnings": _dedupe_strings([*payload_warnings, *sanitization_warnings, *judge_output.warnings]),
@@ -365,7 +395,58 @@ class AgentLLMJudgeEvaluator:
                 "prompt_version": prompt_version,
                 "evaluator_model": judge_model.model_identifier,
             }
+            if serialized_success_criteria is not None:
+                details["success_criteria_assessments"] = serialized_success_criteria
         return EvaluationMetric(name=metric_name, value=score, details=details)
+
+
+def _validated_success_criteria_assessments(
+    payload: Mapping[str, Any],
+    assessments: Sequence[SuccessCriterionAssessment],
+) -> list[SuccessCriterionAssessment]:
+    raw_criteria = payload.get("success_criteria")
+    if not isinstance(raw_criteria, list):
+        raise ValueError("The sanitized success-criteria payload is missing.")
+
+    expected_ids = [
+        str(criterion.get("criterion_id"))
+        for criterion in raw_criteria
+        if isinstance(criterion, Mapping) and criterion.get("criterion_id")
+    ]
+    returned_ids = [assessment.criterion_id for assessment in assessments]
+    if len(expected_ids) != len(raw_criteria):
+        raise ValueError("The sanitized success-criteria payload is invalid.")
+    if len(returned_ids) != len(set(returned_ids)) or set(returned_ids) != set(expected_ids):
+        raise ValueError("The judge did not return exactly one assessment for every success criterion.")
+    if any(not assessment.applicable for assessment in assessments) and not payload.get("data_limitations"):
+        raise ValueError("The judge marked a success criterion inapplicable without an explicit data limitation.")
+
+    assessments_by_id = {assessment.criterion_id: assessment for assessment in assessments}
+    return [assessments_by_id[criterion_id] for criterion_id in expected_ids]
+
+
+def _apply_success_criteria_to_task_completion(
+    criteria: TaskCompletionCriteria,
+    assessments: Sequence[SuccessCriterionAssessment],
+) -> TaskCompletionCriteria:
+    assessment_scores = [
+        float(assessment.score) for assessment in assessments if assessment.applicable and assessment.score is not None
+    ]
+    if not assessment_scores:
+        return criteria
+
+    goal_satisfaction = criteria.goal_satisfaction
+    effective_score = min(
+        *assessment_scores,
+        float(goal_satisfaction.score) if goal_satisfaction.applicable and goal_satisfaction.score is not None else 1.0,
+    )
+    effective_goal_satisfaction = goal_satisfaction.model_copy(
+        update={
+            "applicable": True,
+            "score": effective_score,
+        }
+    )
+    return criteria.model_copy(update={"goal_satisfaction": effective_goal_satisfaction})
 
 
 def _strict_judge_json_schema(schema: type[BaseModel]) -> dict[str, Any]:
@@ -407,9 +488,65 @@ def _task_completion_payload(item: AgentEvaluationItem) -> dict[str, Any]:
     return {
         "task": str(item.inputs.get("task", "")),
         "final_output": item.output,
-        "success_criteria": item.success_criteria or [],
+        "success_criteria": [
+            {"criterion_id": f"success-criterion-{position}", "requirement": requirement}
+            for position, requirement in enumerate(item.success_criteria or [], start=1)
+        ],
+        "observed_tool_calls": _task_completion_tool_calls(item),
         "evidence_observations": observations,
     }
+
+
+def _task_completion_tool_calls(item: AgentEvaluationItem) -> list[dict[str, Any]]:
+    tool_by_ref = {tool.tool_ref: tool for tool in item.available_tools or []}
+    tool_by_name = {tool.name: tool for tool in item.available_tools or []}
+    calls: list[dict[str, Any]] = []
+    seen_call_ids: set[str] = set()
+
+    if item.trajectory is not None:
+        for step in sorted(item.trajectory.steps, key=lambda candidate: candidate.sequence):
+            if step.step_type != "tool_call":
+                continue
+            call_id = step.tool_call_id or step.step_id
+            if call_id in seen_call_ids:
+                continue
+            seen_call_ids.add(call_id)
+            tool = tool_by_ref.get(step.tool_ref or "") or tool_by_name.get(step.tool_name or "")
+            calls.append(
+                {
+                    "step_id": step.step_id,
+                    "tool_call_id": call_id,
+                    "tool_ref": step.tool_ref or step.tool_name or "",
+                    "tool_name": step.tool_name or (tool.name if tool else ""),
+                    "tool_display_name": tool.display_name if tool else "",
+                    "tool_description": tool.description if tool else "",
+                    "status": step.status,
+                    "error": step.error,
+                }
+            )
+
+    if calls:
+        return calls
+
+    for position, call in enumerate(item.tool_calls, start=1):
+        call_id = call.call_id or f"tool-call-{position}"
+        if call_id in seen_call_ids:
+            continue
+        seen_call_ids.add(call_id)
+        tool = tool_by_ref.get(call.tool_ref or "") or tool_by_name.get(call.name)
+        calls.append(
+            {
+                "step_id": call_id,
+                "tool_call_id": call_id,
+                "tool_ref": call.tool_ref or call.name,
+                "tool_name": call.name,
+                "tool_display_name": tool.display_name if tool else "",
+                "tool_description": tool.description if tool else "",
+                "status": "unknown",
+                "error": None,
+            }
+        )
+    return calls
 
 
 def _trajectory_quality_payload(item: AgentEvaluationItem) -> dict[str, Any]:
