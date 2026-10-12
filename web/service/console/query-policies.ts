@@ -1067,6 +1067,44 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           },
         },
       },
+      resourceAccessTokens: {
+        post: {
+          mutationOptions: {
+            onSettled: (_data, error, _variables, _result, context) => {
+              if (error) return
+              void context.client.invalidateQueries({
+                queryKey: consoleQuery.resourceAccessTokens.get.key(),
+              })
+            },
+          },
+        },
+        byTokenId: {
+          patch: {
+            mutationOptions: {
+              onSettled: (_data, error, _variables, _result, context) => {
+                if (error) return
+                void context.client.invalidateQueries({
+                  queryKey: consoleQuery.resourceAccessTokens.get.key(),
+                })
+              },
+            },
+          },
+          relations: {
+            byRelationId: {
+              delete: {
+                mutationOptions: {
+                  onSettled: (_data, error, _variables, _result, context) => {
+                    if (error) return
+                    void context.client.invalidateQueries({
+                      queryKey: consoleQuery.resourceAccessTokens.get.key(),
+                    })
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
       tags: {
         post: {
           mutationOptions: {
