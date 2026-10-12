@@ -9,7 +9,7 @@ import type {
 import type * as React from 'react'
 import { Toast as BaseToast } from '@base-ui/react/toast'
 import { cn } from '../cn'
-import { iconButtonVariants } from '../icon-button/variants'
+import { iconButtonVariants } from '../icon-button'
 
 type ToastData = Record<string, never>
 // `loading` is reserved for `promise`, which resolves it into `success` or `error`.
