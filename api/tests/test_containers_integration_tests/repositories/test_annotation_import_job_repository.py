@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from typing import Literal
 from uuid import uuid4
@@ -65,14 +66,14 @@ def store(request: pytest.FixtureRequest, flask_app_with_containers: Flask) -> I
         dify_config.REDIS_KEY_PREFIX = previous_prefix
 
 
-def test_created_job_retains_waiting_status_and_owner_until_worker_completion(store: JobStore) -> None:
+def test_created_job_has_fallback_expiry_for_waiting_status_and_owner(store: JobStore) -> None:
     store.repository.create(tenant_id=store.tenant_id, app_id=store.app_id, job_id=store.job_id, now_ms=200000)
 
     assert store.repository.get(
         tenant_id=store.tenant_id, app_id=store.app_id, job_id=store.job_id
     ) == AnnotationImportJob(job_id=store.job_id, job_status="waiting")
-    assert store.redis.ttl(annotation_import_job_owner_key(job_id=store.job_id)) == -1
-    assert store.redis.ttl(f"app_annotation_batch_import_{store.job_id}") == -1
+    assert 0 < store.redis.ttl(annotation_import_job_owner_key(job_id=store.job_id)) <= 86400
+    assert 0 < store.redis.ttl(f"app_annotation_batch_import_{store.job_id}") <= 86400
     assert store.repository.count_active(tenant_id=store.tenant_id, now_ms=200000) == 1
     assert 0 < store.redis.ttl(f"annotation_import_active:{store.tenant_id}") <= 7200
 
@@ -172,7 +173,7 @@ def test_active_count_excludes_the_two_minute_boundary_and_is_tenant_scoped(stor
     assert store.repository.count_active(tenant_id=other_tenant_id, now_ms=200000) == 1
 
 
-def test_release_removes_only_the_selected_job_from_the_tenants_prefixed_key(store: JobStore) -> None:
+def test_release_removes_owned_job_and_only_its_active_entry(store: JobStore) -> None:
     store.repository.create(tenant_id=store.tenant_id, app_id=store.app_id, job_id=store.job_id, now_ms=200000)
     active_key = f"annotation_import_active:{store.tenant_id}"
     store.redis.zadd(active_key, {"remaining": 200000})
@@ -180,18 +181,37 @@ def test_release_removes_only_the_selected_job_from_the_tenants_prefixed_key(sto
     store.redis.zadd(other_tenant_key, {store.job_id: 200000})
     if store.prefix:
         store.raw_redis.zadd(active_key, {store.job_id: 200000})
+    error_key = f"app_annotation_batch_import_error_msg_{store.job_id}"
+    store.redis.setex(error_key, 600, "failed publication")
 
-    store.repository.release(tenant_id=store.tenant_id, job_id=store.job_id)
-    store.repository.release(tenant_id=store.tenant_id, job_id=store.job_id)
+    store.repository.release(tenant_id=store.tenant_id, app_id=store.app_id, job_id=store.job_id)
+    store.repository.release(tenant_id=store.tenant_id, app_id=store.app_id, job_id=store.job_id)
 
     assert store.repository.count_active(tenant_id=store.tenant_id, now_ms=200000) == 1
     assert store.redis.zcard(other_tenant_key) == 1
     if store.prefix:
         assert store.raw_redis.zscore(f"{store.prefix}:{active_key}", store.job_id) is None
         assert store.raw_redis.zscore(active_key, store.job_id) == 200000
+    assert store.repository.get(tenant_id=store.tenant_id, app_id=store.app_id, job_id=store.job_id) is None
+    assert store.redis.get(annotation_import_job_owner_key(job_id=store.job_id)) is None
+    assert store.redis.get(f"app_annotation_batch_import_{store.job_id}") is None
+    assert store.redis.get(error_key) is None
+
+
+@pytest.mark.parametrize("different_owner", ["tenant", "app"])
+def test_release_cannot_remove_another_owners_job(store: JobStore, different_owner: Literal["tenant", "app"]) -> None:
+    store.repository.create(tenant_id=store.tenant_id, app_id=store.app_id, job_id=store.job_id, now_ms=200000)
+
+    store.repository.release(
+        tenant_id=str(uuid4()) if different_owner == "tenant" else store.tenant_id,
+        app_id=str(uuid4()) if different_owner == "app" else store.app_id,
+        job_id=store.job_id,
+    )
+
     assert store.repository.get(
         tenant_id=store.tenant_id, app_id=store.app_id, job_id=store.job_id
     ) == AnnotationImportJob(job_id=store.job_id, job_status="waiting")
+    assert store.repository.count_active(tenant_id=store.tenant_id, now_ms=200000) == 1
 
 
 @pytest.mark.parametrize(("window_seconds", "suffix"), [(60, "1min"), (3600, "1hour")])
@@ -212,10 +232,24 @@ def test_request_count_excludes_the_window_boundary_and_sets_ttl(
     assert store.redis.zcard(other_key) == 1
 
 
-def test_rate_windows_remain_independent_and_retain_timestamp_members(store: JobStore) -> None:
+def test_rate_windows_remain_independent_and_count_every_request_in_the_same_millisecond(store: JobStore) -> None:
     assert store.repository.record_request(tenant_id=store.tenant_id, window_seconds=60, now_ms=4000000) == 1
-    assert store.repository.record_request(tenant_id=store.tenant_id, window_seconds=60, now_ms=4000000) == 1
-    assert store.repository.record_request(tenant_id=store.tenant_id, window_seconds=60, now_ms=4000001) == 2
+    assert store.repository.record_request(tenant_id=store.tenant_id, window_seconds=60, now_ms=4000000) == 2
+    assert store.repository.record_request(tenant_id=store.tenant_id, window_seconds=60, now_ms=4000001) == 3
     assert store.repository.record_request(tenant_id=store.tenant_id, window_seconds=3600, now_ms=4000001) == 1
-    assert store.redis.zcard(f"annotation_import_rate_limit:{store.tenant_id}:1min") == 2
+    assert store.redis.zcard(f"annotation_import_rate_limit:{store.tenant_id}:1min") == 3
     assert store.redis.zcard(f"annotation_import_rate_limit:{store.tenant_id}:1hour") == 1
+
+
+def test_simultaneous_requests_in_the_same_millisecond_are_all_recorded(store: JobStore) -> None:
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        results = [
+            executor.submit(
+                store.repository.record_request, tenant_id=store.tenant_id, window_seconds=60, now_ms=4000000
+            )
+            for _ in range(32)
+        ]
+        for result in results:
+            result.result()
+
+    assert store.redis.zcard(f"annotation_import_rate_limit:{store.tenant_id}:1min") == 32

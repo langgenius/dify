@@ -1,9 +1,12 @@
 """Retain annotation import worker keys while scoping job reads to their owner."""
 
 from typing import Literal
+from uuid import uuid4
 
 from extensions.ext_redis import RedisClientWrapper
 from services.annotation_import_service import AnnotationImportJob, AnnotationImportJobStore
+
+_PENDING_JOB_TTL_SECONDS = 24 * 60 * 60
 
 
 def annotation_import_job_owner_key(*, job_id: str) -> str:
@@ -21,7 +24,7 @@ class RedisAnnotationImportJobRepository(AnnotationImportJobStore):
     def record_request(self, *, tenant_id: str, window_seconds: Literal[60, 3600], now_ms: int) -> int:
         window = "1min" if window_seconds == 60 else "1hour"
         key = f"annotation_import_rate_limit:{tenant_id}:{window}"
-        self._redis.zadd(key, {now_ms: now_ms})
+        self._redis.zadd(key, {f"{now_ms}:{uuid4()}": now_ms})
         self._redis.zremrangebyscore(key, 0, now_ms - window_seconds * 1000)
         count = self._redis.zcard(key)
         self._redis.expire(key, window_seconds * 2)
@@ -33,17 +36,28 @@ class RedisAnnotationImportJobRepository(AnnotationImportJobStore):
         return self._redis.zcard(key)
 
     def create(self, *, tenant_id: str, app_id: str, job_id: str, now_ms: int) -> None:
-        # Publish ownership before the legacy status key; pending jobs retain both keys until worker completion.
-        owner_created = self._redis.setnx(annotation_import_job_owner_key(job_id=job_id), f"{tenant_id}:{app_id}")
+        # Bound abandoned jobs while allowing queued imports a day to start; workers shorten terminal retention.
+        owner_created = self._redis.set(
+            annotation_import_job_owner_key(job_id=job_id),
+            f"{tenant_id}:{app_id}",
+            nx=True,
+            ex=_PENDING_JOB_TTL_SECONDS,
+        )
         if not owner_created and not self._is_owner(tenant_id=tenant_id, app_id=app_id, job_id=job_id):
             raise RuntimeError(f"Annotation import job {job_id} already belongs to another app or tenant")
         active_jobs_key = f"annotation_import_active:{tenant_id}"
         self._redis.zadd(active_jobs_key, {job_id: now_ms})
         self._redis.expire(active_jobs_key, 7200)
-        self._redis.setnx(f"app_annotation_batch_import_{job_id}", "waiting")
+        self._redis.set(f"app_annotation_batch_import_{job_id}", "waiting", nx=True, ex=_PENDING_JOB_TTL_SECONDS)
 
-    def release(self, *, tenant_id: str, job_id: str) -> None:
+    def release(self, *, tenant_id: str, app_id: str, job_id: str) -> None:
+        """Remove an unpublished job only when its recorded workspace and app still match."""
+        if not self._is_owner(tenant_id=tenant_id, app_id=app_id, job_id=job_id):
+            return
         self._redis.zrem(f"annotation_import_active:{tenant_id}", job_id)
+        self._redis.delete(f"app_annotation_batch_import_{job_id}")
+        self._redis.delete(f"app_annotation_batch_import_error_msg_{job_id}")
+        self._redis.delete(annotation_import_job_owner_key(job_id=job_id))
 
     def get(self, *, tenant_id: str, app_id: str, job_id: str) -> AnnotationImportJob | None:
         if not self._is_owner(tenant_id=tenant_id, app_id=app_id, job_id=job_id):

@@ -1,10 +1,13 @@
 """Admit annotation reply jobs before accessing their cache or publishing tasks."""
 
+import logging
 from dataclasses import dataclass
 from typing import Literal, Protocol
 from uuid import uuid4
 
 from services.annotation_query import AnnotationAppQuery
+
+logger = logging.getLogger(__name__)
 
 type AnnotationReplyAction = Literal["enable", "disable"]
 
@@ -21,11 +24,11 @@ class AnnotationReplyJob:
 
 
 class AnnotationReplyJobStore(Protocol):
-    def get_processing(self, *, tenant_id: str, app_id: str, action: AnnotationReplyAction) -> str | None:
-        """Return an owned processing job ID, or None when no such job is cached."""
+    def reserve(self, *, tenant_id: str, app_id: str, action: AnnotationReplyAction, job_id: str) -> str:
+        """Reserve this job or return the existing owned job ID without another publication."""
         ...
 
-    def create(self, *, tenant_id: str, app_id: str, action: AnnotationReplyAction, job_id: str) -> None: ...
+    def cancel(self, *, tenant_id: str, app_id: str, action: AnnotationReplyAction, job_id: str) -> None: ...
 
     def get(
         self, *, tenant_id: str, app_id: str, action: AnnotationReplyAction, job_id: str
@@ -77,31 +80,45 @@ class AnnotationReplyService:
         embedding_model_name: str,
     ) -> AnnotationReplyJob:
         self._apps.require_app(tenant_id=tenant_id, app_id=app_id)
-        pending = self._jobs.get_processing(tenant_id=tenant_id, app_id=app_id, action="enable")
-        if pending is not None:
-            return AnnotationReplyJob(job_id=pending, job_status="processing")
         job_id = str(uuid4())
-        self._jobs.create(tenant_id=tenant_id, app_id=app_id, action="enable", job_id=job_id)
-        self._enable_task(
-            job_id=job_id,
-            app_id=app_id,
-            user_id=account_id,
-            tenant_id=tenant_id,
-            score_threshold=score_threshold,
-            embedding_provider_name=embedding_provider_name,
-            embedding_model_name=embedding_model_name,
-        )
+        try:
+            pending = self._jobs.reserve(tenant_id=tenant_id, app_id=app_id, action="enable", job_id=job_id)
+            if pending != job_id:
+                return AnnotationReplyJob(job_id=pending, job_status="processing")
+            self._enable_task(
+                job_id=job_id,
+                app_id=app_id,
+                user_id=account_id,
+                tenant_id=tenant_id,
+                score_threshold=score_threshold,
+                embedding_provider_name=embedding_provider_name,
+                embedding_model_name=embedding_model_name,
+            )
+        except Exception:
+            self._cancel_failed_job(tenant_id=tenant_id, app_id=app_id, action="enable", job_id=job_id)
+            raise
         return AnnotationReplyJob(job_id=job_id, job_status="waiting")
 
     def disable(self, *, tenant_id: str, app_id: str) -> AnnotationReplyJob:
         self._apps.require_app(tenant_id=tenant_id, app_id=app_id)
-        pending = self._jobs.get_processing(tenant_id=tenant_id, app_id=app_id, action="disable")
-        if pending is not None:
-            return AnnotationReplyJob(job_id=pending, job_status="processing")
         job_id = str(uuid4())
-        self._jobs.create(tenant_id=tenant_id, app_id=app_id, action="disable", job_id=job_id)
-        self._disable_task(job_id=job_id, app_id=app_id, tenant_id=tenant_id)
+        try:
+            pending = self._jobs.reserve(tenant_id=tenant_id, app_id=app_id, action="disable", job_id=job_id)
+            if pending != job_id:
+                return AnnotationReplyJob(job_id=pending, job_status="processing")
+            self._disable_task(job_id=job_id, app_id=app_id, tenant_id=tenant_id)
+        except Exception:
+            self._cancel_failed_job(tenant_id=tenant_id, app_id=app_id, action="disable", job_id=job_id)
+            raise
         return AnnotationReplyJob(job_id=job_id, job_status="waiting")
+
+    def _cancel_failed_job(self, *, tenant_id: str, app_id: str, action: AnnotationReplyAction, job_id: str) -> None:
+        try:
+            self._jobs.cancel(tenant_id=tenant_id, app_id=app_id, action=action, job_id=job_id)
+        except Exception:
+            logger.exception(
+                "Failed to cancel annotation reply job %s for app %s in workspace %s", job_id, app_id, tenant_id
+            )
 
     def get_status(
         self, *, tenant_id: str, app_id: str, action: AnnotationReplyAction, job_id: str

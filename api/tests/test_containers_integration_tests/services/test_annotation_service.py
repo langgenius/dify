@@ -521,42 +521,6 @@ class TestAnnotationService:
         # Verify task was called
         mock_external_service_dependencies["disable_task"].delay.assert_called_once()
 
-    def test_enable_app_annotation_cached_job(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        """
-        Test enabling app annotation when job is already cached.
-        """
-        fake = Faker()
-        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
-
-        # Mock Redis to return cached job
-        from extensions.ext_redis import redis_client
-
-        cached_job_id = fake.uuid4()
-        enable_app_annotation_key = f"enable_app_annotation_{app.id}"
-        redis_client.set(enable_app_annotation_key, cached_job_id)
-
-        # Setup enable arguments
-        enable_args = {
-            "score_threshold": 0.8,
-            "embedding_provider_name": "openai",
-            "embedding_model_name": "text-embedding-ada-002",
-        }
-
-        # Enable annotation (should return cached job)
-        result = AppAnnotationService.enable_app_annotation(enable_args, app.id)
-
-        # Verify cached result
-        assert cached_job_id == result["job_id"].decode("utf-8")
-        assert result["job_status"] == "processing"
-
-        # Verify task was not called again
-        mock_external_service_dependencies["enable_task"].delay.assert_not_called()
-
-        # Clean up
-        redis_client.delete(enable_app_annotation_key)
-
     def test_add_annotation_history_success(
         self, db_session_with_containers: Session, mock_external_service_dependencies
     ):

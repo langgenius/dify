@@ -157,31 +157,6 @@ def _observer_get(factory: sessionmaker[Session], model: type[Any], identifier: 
         return observer.get(model, identifier)
 
 
-class TestAppAnnotationServiceEnableDisable:
-    def test_enable_returns_processing_on_cache_hit(self, current_user: Account) -> None:
-        args = {"score_threshold": 0.5, "embedding_provider_name": "p", "embedding_model_name": "m"}
-        with (
-            patch.object(annotation_service_module, "redis_client") as redis,
-            patch.object(annotation_service_module, "enable_annotation_reply_task") as task,
-        ):
-            redis.get.return_value = "job-1"
-            result = AppAnnotationService.enable_app_annotation(args, "app-1")
-
-        assert result == {"job_id": "job-1", "job_status": "processing"}
-        task.delay.assert_not_called()
-
-    def test_disable_returns_processing_on_cache_hit(self, current_user: Account) -> None:
-        with (
-            patch.object(annotation_service_module, "redis_client") as redis,
-            patch.object(annotation_service_module, "disable_annotation_reply_task") as task,
-        ):
-            redis.get.return_value = "job-2"
-            result = AppAnnotationService.disable_app_annotation("app-1")
-
-        assert result == {"job_id": "job-2", "job_status": "processing"}
-        task.delay.assert_not_called()
-
-
 class TestAppAnnotationServiceList:
     def test_list_rejects_cross_tenant_app(self, sqlite_session: Session, current_user: Account) -> None:
         app = _persist_app(sqlite_session, tenant_id=OTHER_TENANT_ID)

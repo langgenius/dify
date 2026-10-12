@@ -1,3 +1,4 @@
+import logging
 import uuid
 from typing import TypedDict
 
@@ -17,6 +18,8 @@ from tasks.annotation.delete_annotation_index_task import delete_annotation_inde
 from tasks.annotation.disable_annotation_reply_task import disable_annotation_reply_task
 from tasks.annotation.enable_annotation_reply_task import enable_annotation_reply_task
 from tasks.annotation.update_annotation_to_index_task import update_annotation_to_index_task
+
+logger = logging.getLogger(__name__)
 
 
 class AnnotationJobStatusDict(TypedDict):
@@ -64,44 +67,48 @@ class AppAnnotationService:
 
     @classmethod
     def enable_app_annotation(cls, args: EnableAnnotationArgs, app_id: str) -> AnnotationJobStatusDict:
-        enable_app_annotation_key = f"enable_app_annotation_{app_id}"
-        cache_result = redis_client.get(enable_app_annotation_key)
-        if cache_result is not None:
-            return {"job_id": cache_result, "job_status": "processing"}
-
-        # async job
         job_id = str(uuid.uuid4())
         current_user, current_tenant_id = current_account_with_tenant()
         # TODO: Remove this bridge when the Service API migrates to AnnotationReplyService.
-        RedisAnnotationReplyJobRepository(redis=redis_client).create(
-            tenant_id=current_tenant_id, app_id=app_id, action="enable", job_id=job_id
-        )
-        enable_annotation_reply_task.delay(
-            job_id,
-            app_id,
-            current_user.id,
-            current_tenant_id,
-            args["score_threshold"],
-            args["embedding_provider_name"],
-            args["embedding_model_name"],
-        )
+        jobs = RedisAnnotationReplyJobRepository(redis=redis_client)
+        try:
+            reserved_job_id = jobs.reserve(tenant_id=current_tenant_id, app_id=app_id, action="enable", job_id=job_id)
+            if reserved_job_id != job_id:
+                return {"job_id": reserved_job_id, "job_status": "processing"}
+            enable_annotation_reply_task.delay(
+                job_id,
+                app_id,
+                current_user.id,
+                current_tenant_id,
+                args["score_threshold"],
+                args["embedding_provider_name"],
+                args["embedding_model_name"],
+            )
+        except Exception:
+            try:
+                jobs.cancel(tenant_id=current_tenant_id, app_id=app_id, action="enable", job_id=job_id)
+            except Exception:
+                logger.exception("Failed to cancel annotation reply job %s for app %s", job_id, app_id)
+            raise
         return {"job_id": job_id, "job_status": "waiting"}
 
     @classmethod
     def disable_app_annotation(cls, app_id: str) -> AnnotationJobStatusDict:
         _, current_tenant_id = current_account_with_tenant()
-        disable_app_annotation_key = f"disable_app_annotation_{app_id}"
-        cache_result = redis_client.get(disable_app_annotation_key)
-        if cache_result is not None:
-            return {"job_id": cache_result, "job_status": "processing"}
-
-        # async job
         job_id = str(uuid.uuid4())
         # TODO: Remove this bridge when the Service API migrates to AnnotationReplyService.
-        RedisAnnotationReplyJobRepository(redis=redis_client).create(
-            tenant_id=current_tenant_id, app_id=app_id, action="disable", job_id=job_id
-        )
-        disable_annotation_reply_task.delay(job_id, app_id, current_tenant_id)
+        jobs = RedisAnnotationReplyJobRepository(redis=redis_client)
+        try:
+            reserved_job_id = jobs.reserve(tenant_id=current_tenant_id, app_id=app_id, action="disable", job_id=job_id)
+            if reserved_job_id != job_id:
+                return {"job_id": reserved_job_id, "job_status": "processing"}
+            disable_annotation_reply_task.delay(job_id, app_id, current_tenant_id)
+        except Exception:
+            try:
+                jobs.cancel(tenant_id=current_tenant_id, app_id=app_id, action="disable", job_id=job_id)
+            except Exception:
+                logger.exception("Failed to cancel annotation reply job %s for app %s", job_id, app_id)
+            raise
         return {"job_id": job_id, "job_status": "waiting"}
 
     @classmethod

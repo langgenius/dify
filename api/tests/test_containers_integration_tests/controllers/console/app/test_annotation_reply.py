@@ -1,14 +1,15 @@
 """Real HTTP admission, PostgreSQL, Redis and Celery memory transport for reply jobs.
 
-Workers are not executed: these tests cover admission and publication, not
-embedding/vector execution.
+Exercises admission, publication and worker cleanup without embedding/vector I/O.
 """
 
 from __future__ import annotations
 
 from collections.abc import Iterator
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, replace
 from queue import Empty
+from threading import Barrier
 from typing import Literal
 from uuid import UUID, uuid4
 
@@ -34,7 +35,7 @@ from libs.passport import PassportService
 from libs.token import generate_csrf_token
 from models import Account, App, Tenant
 from models.account import TenantAccountJoin
-from models.model import DifySetup
+from models.model import AppAnnotationSetting, DifySetup
 from repositories.annotation_reply_job_repository import (
     RedisAnnotationReplyJobRepository,
     annotation_reply_job_owner_key,
@@ -227,7 +228,6 @@ def test_cached_owned_job_returns_decoded_identifier_without_duplicate_publish(
     started = harness.request(action).get_json()
     job_id = started["job_id"]
     _consume_task(harness, action, job_id)
-    harness.redis.setex(f"{action}_app_annotation_{harness.target.id}", 600, job_id)
 
     response = harness.request(action)
 
@@ -289,7 +289,7 @@ def test_status_preserves_worker_error_and_handles_expired_error_key(
 
 
 @pytest.mark.parametrize("action", ["enable", "disable"])
-def test_publish_failure_propagates_and_preserves_waiting_job(harness: _Harness, action: AnnotationReplyAction) -> None:
+def test_publish_failure_cleans_job_and_allows_retry(harness: _Harness, action: AnnotationReplyAction) -> None:
     harness.tasks[0 if action == "enable" else 1].serializer = "not-installed"
 
     if action == "enable":
@@ -306,13 +306,81 @@ def test_publish_failure_propagates_and_preserves_waiting_job(harness: _Harness,
         with pytest.raises(SerializerNotInstalled):
             harness.service.disable(tenant_id=harness.target.tenant_id, app_id=harness.target.id)
 
-    keys = list(harness.redis.scan_iter(match=f"{action}_app_annotation_job_owner_*"))
-    assert len(keys) == 1
-    job_id = keys[0].decode().rsplit("_", 1)[1]
-    response = harness.request(action, job_id=job_id)
-    assert response.status_code == 200
-    assert response.get_json() == {"job_id": job_id, "job_status": "waiting", "error_msg": ""}
+    assert list(harness.redis.scan_iter(match=f"{action}_app_annotation_job_owner_*")) == []
+    assert list(harness.redis.scan_iter(match=f"{action}_app_annotation_job_*")) == []
+    assert harness.redis.get(f"{action}_app_annotation_{harness.target.id}") is None
     assert all(not session.in_transaction() and not session.identity_map for session in harness.sessions)
     with harness.celery.connection_for_read() as connection, SimpleQueue(connection, harness.queue) as messages:
         with pytest.raises(Empty):
             messages.get(block=False)
+
+    harness.tasks[0 if action == "enable" else 1].serializer = "json"
+    response = harness.request(action)
+    assert response.status_code == 200
+    assert response.get_json()["job_status"] == "waiting"
+    _consume_task(harness, action, response.get_json()["job_id"])
+
+
+@pytest.mark.parametrize("action", ["enable", "disable"])
+def test_concurrent_requests_publish_only_one_reply_task(harness: _Harness, action: AnnotationReplyAction) -> None:
+    barrier = Barrier(8)
+
+    def request() -> str:
+        barrier.wait(timeout=10)
+        if action == "enable":
+            result = harness.service.enable(
+                tenant_id=harness.target.tenant_id,
+                app_id=harness.target.id,
+                account_id=harness.account.id,
+                score_threshold=0.75,
+                embedding_provider_name="openai",
+                embedding_model_name="text-embedding-3-small",
+            )
+        else:
+            result = harness.service.disable(tenant_id=harness.target.tenant_id, app_id=harness.target.id)
+        return result.job_id
+
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        futures = [executor.submit(request) for _ in range(8)]
+        job_ids = [future.result() for future in futures]
+
+    assert len(set(job_ids)) == 1
+    _consume_task(harness, action, job_ids[0])
+
+
+def test_finished_worker_releases_its_reservation(harness: _Harness) -> None:
+    with harness.factory.begin() as session:
+        session.add(
+            AppAnnotationSetting(
+                app_id=harness.target.id,
+                score_threshold=0.75,
+                collection_binding_id=str(uuid4()),
+                created_user_id=harness.account.id,
+                updated_user_id=harness.account.id,
+            )
+        )
+    started = harness.request("disable").get_json()
+    job_id = started["job_id"]
+    _consume_task(harness, "disable", job_id)
+
+    with harness.app.app_context():
+        disable_annotation_reply_task.run(job_id, harness.target.id, harness.target.tenant_id)
+
+    assert harness.redis.get(f"disable_app_annotation_{harness.target.id}") is None
+    response = harness.request("disable", job_id=job_id)
+    assert response.get_json() == {"job_id": job_id, "job_status": "completed", "error_msg": ""}
+    assert 0 < harness.redis.ttl(annotation_reply_job_owner_key(action="disable", job_id=job_id)) <= 600
+
+
+def test_early_returning_old_worker_does_not_release_new_reservation(harness: _Harness) -> None:
+    started = harness.request("disable").get_json()
+    old_job_id = started["job_id"]
+    _consume_task(harness, "disable", old_job_id)
+    harness.redis.expire(f"disable_app_annotation_{harness.target.id}", 0)
+    current = harness.request("disable").get_json()
+    _consume_task(harness, "disable", current["job_id"])
+
+    with harness.app.app_context():
+        disable_annotation_reply_task.run(old_job_id, harness.target.id, harness.target.tenant_id)
+
+    assert harness.redis.get(f"disable_app_annotation_{harness.target.id}") == current["job_id"].encode()
