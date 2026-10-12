@@ -41,6 +41,7 @@ type AccessPointProps = {
 }
 
 type AccessPointContentProps = AccessPointProps & {
+  canViewLayout: boolean
   canDeploy: boolean
   canManageAccessPoint: boolean
   canReleaseAndVersion: boolean
@@ -49,6 +50,7 @@ type AccessPointContentProps = AccessPointProps & {
 
 function AccessPointContent({
   appId,
+  canViewLayout,
   canDeploy,
   canManageAccessPoint,
   canReleaseAndVersion,
@@ -147,6 +149,7 @@ function AccessPointContent({
             {selectedEnvironment === BUILT_IN_ENVIRONMENT_ID ? (
               <BuiltInAccessPoints
                 appId={appId}
+                canViewLayout={canViewLayout}
                 canDeploy={canDeploy}
                 canManageAccessPoint={canManageAccessPoint}
                 canReleaseAndVersion={canReleaseAndVersion}
@@ -190,6 +193,7 @@ export default function AccessPoint({ appId }: AccessPointProps) {
     <AccessPointStateBoundary appId={appId} environmentQueryEnabled={showEnvironmentTabs}>
       <AccessPointContent
         appId={appId}
+        canViewLayout={capabilities.canViewLayout}
         canDeploy={capabilities.canDeploy}
         canManageAccessPoint={capabilities.canManageAccessPoint}
         canReleaseAndVersion={capabilities.canReleaseAndVersion}

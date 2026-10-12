@@ -4471,7 +4471,7 @@
   },
   "web/service/use-tools.ts": {
     "@tanstack/query/prefer-query-options": {
-      "count": 15
+      "count": 13
     },
     "no-restricted-imports": {
       "count": 1

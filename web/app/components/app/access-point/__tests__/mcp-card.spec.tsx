@@ -118,9 +118,8 @@ function renderCard(cardAppInfo: AppDetailWithSite = appInfo, workflow?: Publish
       <MCPAccessPointCard
         appInfo={cardAppInfo}
         canManageAccessPoint
-        triggerModeDisabled={false}
+        availability="available"
         workflow={workflow}
-        workflowLoading={false}
       />
     </QueryClientProvider>,
   )
