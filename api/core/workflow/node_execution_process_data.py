@@ -29,20 +29,9 @@ def keep_agent_and_tool_ids(
     return None if process_data is None and not updated_process_data else updated_process_data
 
 
-def build_workflow_agent_workspace_key(
-    node_id: str, workflow_agent_binding_id: str, workflow_tool_invocation_id: str | None = None
-) -> str:
-    """Partition repeated Tool calls without splitting loop executions inside a call."""
-    workspace_key = f"{node_id}:{workflow_agent_binding_id}"
-    if workflow_tool_invocation_id is not None:
-        return f"workflow-tool:{workflow_tool_invocation_id}:{workspace_key}"
-    return workspace_key
-
-
 __all__ = [
     "WORKFLOW_AGENT_BINDING_ID_KEY",
     "WORKFLOW_TOOL_INVOCATION_ID_KEY",
     "WORKFLOW_TOOL_ROOT_APP_ID_KEY",
-    "build_workflow_agent_workspace_key",
     "keep_agent_and_tool_ids",
 ]

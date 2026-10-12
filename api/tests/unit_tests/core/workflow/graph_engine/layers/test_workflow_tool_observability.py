@@ -136,7 +136,7 @@ def test_standalone_node_uses_worker_scoped_tracing_context(
     node = _outer_graph(tool).root_node
     tracer = tracer_provider_with_memory_exporter.get_tracer(__name__)
     with tracer.start_as_current_span("standalone") as parent:
-        events = list(WorkflowEntry._run_node_with_layers(node, tenant_id="tenant"))
+        events = list(WorkflowEntry._run_node_with_layers(node))
         assert get_current_span() is parent
 
     assert isinstance(events[-1], NodeEvent)
@@ -175,7 +175,7 @@ def test_interleaved_snippets_restore_caller_flask_context(
                 yield MagicMock()
 
             monkeypatch.setattr(node, "run", run_node)
-            snippets.append(WorkflowEntry._run_node_with_layers(node, tenant_id="tenant"))
+            snippets.append(WorkflowEntry._run_node_with_layers(node))
 
     caller = DifyApp("caller")
     init_app(caller)

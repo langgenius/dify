@@ -369,7 +369,7 @@ def test_workflow_tool_agent_finds_its_persisted_caller_before_resolving_binding
             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
         ),
     )
-    index = WorkflowRunIndex()
+    index = WorkflowRunIndex(())
     index.seed_source(source.app_id, source.workflow_id, ())
     layer.set_node_run_indices(index.indices)
     node.runtime_state.variable_pool.add(("sys", "workflow_run_id"), "outer-run")

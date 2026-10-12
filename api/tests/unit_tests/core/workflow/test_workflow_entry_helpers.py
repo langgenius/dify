@@ -80,19 +80,12 @@ class TestWorkflowEntryInit:
         source = _workflow_tool_source()
         with config_overrides_context(WORKFLOW_MAX_EXECUTION_STEPS=2, GRAPH_ENGINE_MAX_WORKERS=1):
             entry = workflow_entry.WorkflowEntry(
-                tenant_id="tenant",
-                app_id="outer-app",
-                workflow_id="outer-workflow",
                 graph_config=tool.init_params.graph_config,
                 graph=_outer_graph(tool),
-                user_id="user",
-                user_from=UserFrom.ACCOUNT,
-                invoke_from=InvokeFrom.DEBUGGER,
                 call_depth=0,
-                variable_pool=tool.runtime_state.variable_pool,
                 graph_runtime_state=tool.runtime_state,
-                workflow_tool_sources={source.workflow_id: source},
             )
+            entry.workflow_tool_sources[source.workflow_id] = source
             events = list(entry.run())
 
         assert isinstance(events[-1], GraphRunAbortedEvent)

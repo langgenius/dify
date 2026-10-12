@@ -706,9 +706,9 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
             }
         )
         return WorkflowToolContainerPayload(
-            source_app_id=str(tool.workflow_app_id),
-            source_workflow_id=str(tool.workflow_id),
-            source_workflow_version=str(tool.version),
+            source_app_id=tool.workflow_app_id,
+            source_workflow_id=tool.workflow_id,
+            source_workflow_version=tool.version,
             inputs=json_inputs["inputs"],
             system_files=json_inputs["system_files"],
             inputs_for_log=json_inputs["inputs_for_log"],

@@ -300,7 +300,7 @@ def test_workflow_tool_rejects_paused_generator_result(
     )
 
     monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
-    monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: _workflow_stub())
+    monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: None)
     monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: user)
     monkeypatch.setattr("core.app.apps.workflow.app_generator.WorkflowAppGenerator.generate", generate)
 

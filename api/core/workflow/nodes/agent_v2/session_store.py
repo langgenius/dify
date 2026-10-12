@@ -11,10 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.db.session_factory import session_factory
-from core.workflow.node_execution_process_data import (
-    WORKFLOW_TOOL_INVOCATION_ID_KEY,
-    build_workflow_agent_workspace_key,
-)
+from core.workflow.node_execution_process_data import WORKFLOW_TOOL_INVOCATION_ID_KEY
 from models.agent import (
     AgentConfigVersionKind,
     AgentWorkspaceBinding,
@@ -49,9 +46,10 @@ def resolve_workflow_agent_workspace_owner_scope(
     their invocation scope and the owning run's lifetime, even inside Chatflows.
     """
 
-    owner_scope_key = build_workflow_agent_workspace_key(
-        node_id, workflow_agent_binding_id, workflow_tool_invocation_id
-    )
+    owner_scope_key = f"{node_id}:{workflow_agent_binding_id}"
+    if workflow_tool_invocation_id is not None:
+        # Partition repeated Tool calls without splitting loop executions inside a call.
+        owner_scope_key = f"workflow-tool:{workflow_tool_invocation_id}:{owner_scope_key}"
     if conversation_id and workflow_tool_invocation_id is None:
         return WorkspaceOwnerScope(
             tenant_id=tenant_id,

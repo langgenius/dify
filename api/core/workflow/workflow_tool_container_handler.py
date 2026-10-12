@@ -458,7 +458,6 @@ class WorkflowToolContainerHandler:
             tenant_id=run_context.tenant_id,
             strict_type_validation=run_context.invoke_from == InvokeFrom.SERVICE_API,
         )
-        variable_pool.remove((root_node_id,))
         add_node_inputs_to_pool(
             variable_pool,
             node_id=root_node_id,

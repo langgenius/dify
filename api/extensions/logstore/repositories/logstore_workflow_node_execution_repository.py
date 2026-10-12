@@ -389,10 +389,9 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
     ) -> Sequence[WorkflowNodeExecution]:
         """
         Retrieve all node executions for a workflow execution.
+        Paused nodes are always included; include_paused accepts the shared resume-read contract.
         Uses LogStore SQL query with window function to get the latest version of each node execution.
         This ensures we only get the most recent version of each node execution record.
-        LogStore already includes paused nodes by default; include_paused is
-        accepted for the shared resume-read contract without changing that behavior.
         Args:
             workflow_execution_id: The workflow execution identifier
             order_config: Optional configuration for ordering results
@@ -442,11 +441,9 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
 
         # Build app_id filter for subquery
         app_id_filter = ""
-        escaped_app_id = escape_identifier(self._app_id or "")
         if self._app_id:
+            escaped_app_id = escape_identifier(self._app_id)
             app_id_filter = f" AND app_id='{escaped_app_id}'"
-
-        owner_filter = f"{origin_filter}{app_id_filter}"
 
         # Use window function to get latest version of each node execution
         sql = f"""
@@ -455,7 +452,8 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
                 FROM {AliyunLogStore.workflow_node_execution_logstore}
                 WHERE workflow_run_id='{escaped_workflow_execution_id}'
                   AND tenant_id='{escaped_tenant_id}'
-                  AND {owner_filter}
+                  AND {origin_filter}
+                  {app_id_filter}
             ) t
             WHERE rn = 1
         """

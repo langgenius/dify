@@ -175,11 +175,7 @@ class WorkflowTool(Tool):
         tool_parameters: Mapping[str, Any],
     ) -> tuple[dict[str, Any], list[dict[str, str | None]]]:
         """Merge configured parameters and convert them into workflow inputs."""
-        runtime_parameters = self.runtime.runtime_parameters if self.runtime else None
-        merged_parameters = {
-            **tool_parameters,
-            **(runtime_parameters or {}),
-        }
+        merged_parameters = {**tool_parameters, **self.runtime.runtime_parameters}
         typed_parameters = self._transform_tool_parameters_type(merged_parameters)
         return self._transform_args(tool_parameters=typed_parameters)
 

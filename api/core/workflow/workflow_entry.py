@@ -123,7 +123,6 @@ class WorkflowEntry:
         graph: Graph,
         call_depth: int,
         graph_runtime_state: RuntimeState,
-        workflow_tool_sources: Mapping[str, WorkflowToolSource] | None = None,
         command_channel: CommandChannel | None = None,
         response_stream_filter: ResponseStreamFilter | None = None,
     ) -> None:
@@ -133,7 +132,6 @@ class WorkflowEntry:
         :param graph: workflow graph
         :param call_depth: call depth
         :param graph_runtime_state: pre-created graph runtime state
-        :param workflow_tool_sources: materialized pinned Workflow Tool definitions
         :param command_channel: command channel for external control (optional, defaults to InMemoryChannel)
         :param response_stream_filter: pre-restored filter for resumed runs (optional, defaults to a fresh
             ResponseStreamFilter for runs with no prior pause)
@@ -149,7 +147,7 @@ class WorkflowEntry:
 
         self.command_channel = command_channel
         self.graph_config = graph_config
-        self.workflow_tool_sources = dict(workflow_tool_sources or {})
+        self.workflow_tool_sources: dict[str, WorkflowToolSource] = {}
         self.workflow_tool_event_listener_factory: WorkflowToolEventListenerFactory | None = None
         self._response_stream_filter = response_stream_filter or ResponseStreamFilter()
         file_runtime = create_dify_workflow_file_runtime()
