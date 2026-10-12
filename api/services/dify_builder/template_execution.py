@@ -46,6 +46,17 @@ def _refuse(reason: str = "unsupported_template_syntax") -> NoReturn:
     raise BuilderExecutionPolicyError(reason)
 
 
+class _ParserEnvironment(Environment):
+    """Keep real lex/parse, bypass Jinja's synthetic Python traceback frames."""
+
+    @override
+    def handle_exception(self, source: str | None = None) -> NoReturn:
+        # Public lex/parse route syntax errors here. Never rewrite their
+        # traceback (Jinja debug does Python compile/exec), or expose source.
+        _ = source
+        raise BuilderExecutionPolicyError("unsupported_template_syntax") from None
+
+
 def _text_bytes(value: object, limit: int) -> int:
     """Bound character count before allocating any UTF-8 representation."""
     if type(value) is not str:
@@ -140,7 +151,7 @@ def inspect_template(template: str, declared: frozenset[str]) -> nodes.Template:
     """Refuse before parsing on source/token bounds, then inspect iteratively."""
     validate_template_source(template)
     try:
-        environment = Environment()
+        environment = _ParserEnvironment()
         for count, _token in enumerate(environment.lex(template), 1):
             if count > MAX_TOKENS:
                 _refuse("template_execution_limit")
