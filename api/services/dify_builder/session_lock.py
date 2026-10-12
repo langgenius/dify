@@ -28,9 +28,14 @@ _ACTIVE_LEASE_GRACE_SECONDS = 60
 # token it was given on acquire. Prevents a slow/expired holder from
 # deleting a lock that another process has since acquired.
 _RELEASE_LUA = "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end"
+# Atomic compare-and-swap: the first worker presenting the dispatch token
+# replaces it with its own owner value and extends the lease. A second delivery
+# of the same token then no longer matches, and the bare dispatch token can no
+# longer release (delete) the active worker's lease.
 _ACTIVATE_LUA = """
 if redis.call('get', KEYS[1]) == ARGV[1] then
-    return redis.call('pexpire', KEYS[1], ARGV[2])
+    redis.call('set', KEYS[1], ARGV[2], 'PX', ARGV[3])
+    return 1
 else
     return 0
 end
@@ -61,21 +66,28 @@ def acquire(session_id: str) -> str | None:
     return token if ok else None
 
 
-def activate(session_id: str, token: str) -> bool:
-    """Claim an enqueued command at worker start and extend its lease.
+def activate(session_id: str, token: str) -> str | None:
+    """Claim an enqueued command at worker start; return the owner value, or ``None``.
 
-    A command that sat in the queue past its dispatch lease must not run after
-    another command acquired the same session. The compare-and-extend is atomic
-    so an expired worker cannot extend a newer worker's token.
+    Exactly one worker can activate a dispatch token: the atomic swap replaces
+    it with a fresh owner value and extends the lease, so a duplicate delivery
+    of the same command, a command that sat in the queue past its dispatch
+    lease, or an expired worker gets ``None`` and must not run or release.
+    Only the returned owner value releases an activated lease.
     """
     active_ms = (dify_config.DIFY_BUILDER_MAX_ADVANCE_SECONDS + _ACTIVE_LEASE_GRACE_SECONDS) * 1000
-    return bool(redis_client.eval(_ACTIVATE_LUA, 1, serialize_redis_name(_key(session_id)), token, active_ms))
+    owner = f"{token}:{uuid4()}"
+    activated = redis_client.eval(_ACTIVATE_LUA, 1, serialize_redis_name(_key(session_id)), token, owner, active_ms)
+    return owner if activated else None
 
 
 def release(session_id: str, token: str) -> None:
     """Release the advance lock for ``session_id`` iff ``token`` matches the
     holder currently recorded in Redis (compare-del). A no-op if the lock
-    was already released, expired, or is held by a different token.
+    was already released, expired, or is held by a different value.
+
+    Before activation the holder is the dispatch token (web-process refusal or
+    enqueue failure); after activation only the worker's owner value matches.
     """
     # RedisClientWrapper prefixes .set/.get, but .eval is delegated to the raw client — serialize
     # the key ourselves so it matches acquire()'s written key.

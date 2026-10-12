@@ -47,9 +47,15 @@ class FakeRedis:
         return self.store.get(serialize_redis_name(name))
 
     def eval(self, script: str, numkeys: int, *args: str) -> int:  # noqa: ARG002
+        """Every session_lock script is ``GET == ARGV[1]`` then one write command:
+        ``set`` (KEYS[1] := ARGV[2] with PX ARGV[3]), ``pexpire`` (PX ARGV[2]) or ``del``."""
         key, token = args[0], args[1]
         if self.store.get(key) != token:
             return 0
+        if "'set'" in script:
+            self.store[key] = args[2]
+            self.lease_ms[key] = int(args[3])
+            return 1
         if "pexpire" in script:
             self.lease_ms[key] = int(args[2])
             return 1
@@ -116,6 +122,43 @@ def test_worker_activation_extends_only_its_own_unexpired_lease() -> None:
         assert new_token is not None
         assert not session_lock.activate(SESSION_ID, old_token)
         assert fake.store[key] == new_token
+
+
+def test_same_dispatch_token_activates_exactly_one_worker() -> None:
+    """Two deliveries of one queued command carry the same dispatch token; only the first may own it."""
+    fake = FakeRedis()
+    with patch("services.dify_builder.session_lock.redis_client", fake):
+        token = session_lock.acquire(SESSION_ID)
+        assert token is not None
+        winner = session_lock.activate(SESSION_ID, token)
+        loser = session_lock.activate(SESSION_ID, token)
+
+    assert winner
+    assert not loser
+
+
+def test_only_the_activated_owner_release_deletes_the_lease() -> None:
+    fake = FakeRedis()
+    with patch("services.dify_builder.session_lock.redis_client", fake):
+        token = session_lock.acquire(SESSION_ID)
+        assert token is not None
+        owned = session_lock.activate(SESSION_ID, token)
+        assert owned
+
+        # A same-token loser (or a web-process release of the bare dispatch token) cannot delete it.
+        session_lock.release(SESSION_ID, token)
+        assert session_lock.exists(SESSION_ID) is True
+        # Malformed and stale values are no-ops.
+        session_lock.release(SESSION_ID, "not-the-real-token")
+        session_lock.release(SESSION_ID, f"{token}:forged")
+        assert session_lock.exists(SESSION_ID) is True
+        assert not session_lock.activate(SESSION_ID, "not-the-real-token")
+
+        assert isinstance(owned, str)
+        session_lock.release(SESSION_ID, owned)
+        assert session_lock.exists(SESSION_ID) is False
+        # A released dispatch token can never be activated again.
+        assert not session_lock.activate(SESSION_ID, token)
 
 
 def test_exists_reflects_held_and_free_state() -> None:

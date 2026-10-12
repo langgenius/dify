@@ -46,7 +46,7 @@ from core.dify_builder.contract import (
     post_canvas_action_id,
 )
 from core.dify_builder.errors import ConflictError
-from core.dify_builder.execution_policy import BuilderExecutionPolicyError
+from core.dify_builder.execution_policy import BuilderExecutionPolicyError, ConfirmedToolExecutionContext
 from core.dify_builder.handlers_build import build_registry
 from core.dify_builder.handlers_edit import edit_registry
 from core.dify_builder.handlers_fix import fix_registry
@@ -82,7 +82,9 @@ def _build_consent_service() -> BuilderRealCallConsentService:
     return BuilderRealCallConsentService(sessionmaker(bind=db.engine, expire_on_commit=False))
 
 
-def _require_reserved_launch(repo: SqlDifyBuilderRepository, session_id: str, action: Action, actor: Actor) -> None:
+def _require_reserved_launch(
+    repo: SqlDifyBuilderRepository, session_id: str, action: Action, actor: Actor
+) -> ConfirmedToolExecutionContext:
     """Reload the server-reserved confirmed command before any environment or agent setup.
 
     The queued payload is only a pointer: its consent reference must equal the
@@ -101,7 +103,7 @@ def _require_reserved_launch(repo: SqlDifyBuilderRepository, session_id: str, ac
         logger.warning("dify_builder confirmed command not reserved (session=%s)", session_id)
         raise ConflictError(f"dify_builder: confirmed command is not reserved for session {session_id}")
     try:
-        _build_consent_service().reserved_launch(
+        return _build_consent_service().reserved_launch(
             actor=actor, session_id=session_id, consent_id=consent_id, command_id=action.command_id
         )
     except BuilderExecutionPolicyError as error:
@@ -140,7 +142,27 @@ def _persist_failed_state(
     ).to_item(seq=context.next_seq, at_version=at_version)
     context.next_seq += 1
     context.last_command_id = command_id
+    # Terminal: a pending confirmed command reference never survives into a retry.
+    context.confirmed_consent_id = ""
+    context.confirmed_command_id = ""
     return repo.compare_and_advance(session.id, session.version, PcState.FAILED, context, [item])
+
+
+def _settle_reserved_grant(context: ConfirmedToolExecutionContext) -> None:
+    """Close this worker's own reloaded grant from its durable record after a terminal failure.
+
+    The consent owner decides: failed/expired before any claim, unknown after
+    one unless a sealed completion exists; counters are never touched and a
+    final grant is left as is. A failed write is repaired by the sweeper.
+    """
+    try:
+        _build_consent_service().settle_launch(context=context)
+    except Exception:
+        logger.warning(
+            "dify_builder confirmed grant settlement deferred to reconciliation (session=%s, command=%s)",
+            context.session_id,
+            context.command_id,
+        )
 
 
 @shared_task(
@@ -150,11 +172,16 @@ def _persist_failed_state(
 )
 def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token: str) -> None:
     """Run one ``Runner.advance`` for ``session_id``, then release the
-    advance lock held under ``token``. Always releases the lock, even on a
-    lost CAS race or an unexpected engine failure -- a stuck lock would wedge
-    the session for its full TTL (``DIFY_BUILDER_MAX_ADVANCE_SECONDS``)."""
-    if not session_lock.activate(session_id, token):
-        logger.warning("dify_builder stale queued advance ignored for session %s", session_id)
+    advance lock this worker activated from ``token``. Always releases its own
+    lock, even on a lost CAS race or an unexpected engine failure -- a stuck
+    lock would wedge the session for its full TTL
+    (``DIFY_BUILDER_MAX_ADVANCE_SECONDS``). A delivery that cannot activate the
+    token (stale, or a duplicate of a running command) neither runs nor releases."""
+    # Exactly one delivery owns the lease; a duplicate or stale delivery gets None and never
+    # runs or releases, so it cannot delete an active worker's lease.
+    owner = session_lock.activate(session_id, token)
+    if not owner:
+        logger.warning("dify_builder stale or duplicate queued advance ignored for session %s", session_id)
         return
 
     terminal_error: dict | None = None
@@ -169,6 +196,8 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
     progress_activities: dict[str, ExecutionActivity] = {}
     progress_operation_id = ""
     action: Action | None = None
+    # Set only after this worker reloaded its own server-reserved confirmed command.
+    confirmed_context: ConfirmedToolExecutionContext | None = None
     try:
         repo = _build_repo()
         dify = WorkflowServiceDifyPort()
@@ -176,7 +205,7 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
         action = Action(**action_dict)
         confirmed = action.kind == CONFIRMED_TOOL_ACTION
         if confirmed:
-            _require_reserved_launch(repo, session_id, action, actor)
+            confirmed_context = _require_reserved_launch(repo, session_id, action, actor)
         # The per-session model choice lives on the context (stable for the session).
         # Read the head so the real agent is constructed with the user's chosen model.
         loaded_session, _fc = repo.get_session(session_id)
@@ -448,8 +477,13 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
                 "session_id": session_id,
                 "command_id": action.command_id if action is not None else action_dict.get("command_id"),
             }
+        if confirmed_context is not None:
+            # Terminal failure of this worker's own reserved command: settle its grant once
+            # (idempotent; a grant the port already settled is final and left as is).
+            _settle_reserved_grant(confirmed_context)
     finally:
-        session_lock.release(session_id, token)
+        # Only this worker's owner value releases the activated lease.
+        session_lock.release(session_id, owner)
 
     # Publish terminal frames only after releasing the lock so the
     # authoritative SSE state no longer projects a completed/waiting

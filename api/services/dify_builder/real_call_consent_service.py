@@ -46,7 +46,7 @@ message content never leave this module.
 
 import hmac
 import re
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Any, Literal, cast
@@ -91,7 +91,7 @@ from core.dify_builder.real_call_consent import (
     validate_phase,
     validate_scope,
 )
-from core.dify_builder.state import PcState
+from core.dify_builder.state import PcState, is_working
 from core.plugin.plugin_service import PluginService
 from libs.uuid_utils import uuidv7
 from models.dify_builder import (
@@ -1183,6 +1183,62 @@ class BuilderRealCallConsentService:
                 if self._settle(row, request, _utcnow(), reason="launch_stranded"):
                     settled += 1
         return settled
+
+    def reconcile_terminal_grants(self, *, limit: int, lease_held: Callable[[str], bool]) -> int:
+        """Settle reserved grants whose command already ended (review, FAILED or abandoned).
+
+        Repairs a settlement write that failed after the command's terminal
+        commit. Only reserved, unfinished grants are candidates (``command_id``
+        set, ``confirmed``/``claimed``); an unexecuted user confirmation has no
+        command and is never selected. A grant is skipped while its session
+        holds a live advance lease (an active worker) or while the session
+        still references it as the pending command of a working state (the
+        stale-working sweep owns that case). Bounded by ``limit`` per call;
+        never redispatches, rewrites a session head or touches counters.
+        """
+        if limit <= 0:
+            return 0
+        with self._session_factory() as db:
+            candidates = list(
+                db.execute(
+                    select(DifyBuilderRealCallConsent.id, DifyBuilderRealCallConsent.session_id)
+                    .where(
+                        DifyBuilderRealCallConsent.command_id.is_not(None),
+                        DifyBuilderRealCallConsent.state.in_(("confirmed", "claimed")),
+                    )
+                    .order_by(DifyBuilderRealCallConsent.created_at, DifyBuilderRealCallConsent.id)
+                    .limit(limit)
+                ).tuples()
+            )
+        settled = 0
+        for consent_id, session_id in candidates:
+            if lease_held(session_id) or self._still_pending(consent_id, session_id):
+                continue
+            with self._session_factory.begin() as db:
+                row = _lock_consent(db, consent_id)
+                request = _lock_request(db, row.execution_request_id)
+                if self._settle(row, request, _utcnow(), reason="launch_stranded"):
+                    settled += 1
+        return settled
+
+    def _still_pending(self, consent_id: str, session_id: str) -> bool:
+        """Whether the session's committed head still holds this grant as its pending working command."""
+        with self._session_factory() as db:
+            session_row = db.get(DifyBuilderSession, session_id)
+            row = db.get(DifyBuilderRealCallConsent, consent_id)
+            if session_row is None or row is None:
+                return False
+            try:
+                state = PcState(session_row.current_state)
+            except ValueError:
+                return False
+            if not is_working(state):
+                return False
+            try:
+                latest = _context_of(_latest_commit(db, session_row))
+            except BuilderExecutionPolicyError:
+                return True  # unreadable head: conservatively leave it to the stale-working sweep
+            return (latest.confirmed_consent_id, latest.confirmed_command_id) == (row.id, row.command_id)
 
     @staticmethod
     def _settle(

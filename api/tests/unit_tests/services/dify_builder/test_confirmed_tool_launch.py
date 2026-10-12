@@ -510,7 +510,7 @@ def wire_worker(
     released: list[str] = []
     monkeypatch.setattr(mod.progress_bus, "publish", lambda _sid, ev: events.append(ev))
     monkeypatch.setattr(mod.session_lock, "release", lambda _sid, tok: released.append(tok))
-    monkeypatch.setattr(mod.session_lock, "activate", lambda _sid, _tok: True)
+    monkeypatch.setattr(mod.session_lock, "activate", lambda _sid, tok: tok)
     monkeypatch.setattr(mod.session_lock, "exists", lambda _sid: False)
     return mod, repo, events, released
 
@@ -594,6 +594,228 @@ def test_duplicate_celery_delivery_cannot_launch_the_old_grant_again(
     assert port.confirmed_calls == []
     assert "agent" not in order
     assert events[-1]["kind"] == "error"
+
+
+def test_same_token_duplicate_delivery_cannot_release_or_settle_the_active_winner(
+    consent_owner: Owner, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Real ``session_lock`` lease semantics at the Redis-client boundary (test-local substitute).
+
+    Worker A runs the reserved command. While it is inside its native run, a second Celery
+    delivery B of the same dispatch token arrives, then the sweeper runs. B must not take,
+    release or settle anything; only A releases the lease when it finishes.
+    """
+    import schedule.dify_builder_reconcile_task as sweeper
+    import tasks.dify_builder_advance_task as mod
+    from services.dify_builder import session_lock
+    from tests.unit_tests.services.dify_builder.test_session_lock import FakeRedis
+
+    owner = consent_owner
+    fake = FakeRedis()
+    monkeypatch.setattr(session_lock, "redis_client", fake)
+    enqueue = SpyEnqueue()
+    dispatcher = DifyBuilderService(
+        SqlDifyBuilderRepository(owner.factory), session_lock, enqueue, real_call_consent=owner.service()
+    )
+    reserved = execute(dispatcher, owner, confirmed(owner))
+    [(_sid, action, _actor, token)] = enqueue.calls
+    repo = SqlDifyBuilderRepository(owner.factory)
+    monkeypatch.setattr(mod, "_build_repo", lambda: repo)
+    monkeypatch.setattr(mod, "_build_consent_service", owner.service)
+    monkeypatch.setattr(mod, "build_dify_builder_agent", lambda **_kwargs: NoModelAgent())
+    events: list[dict[str, object]] = []
+    monkeypatch.setattr(mod.progress_bus, "publish", lambda _sid, event: events.append(event))
+    monkeypatch.setattr(sweeper, "_session_factory", lambda: owner.factory)
+    stale_now = naive_utc_now() + timedelta(days=1)
+    monkeypatch.setattr(sweeper, "naive_utc_now", lambda: stale_now)
+    observed: dict[str, object] = {}
+
+    class WinnerPort(ConfirmedSpyPort):
+        @override
+        def run_draft(
+            self,
+            _app_id: str,
+            _actor: Actor,
+            inputs: Inputs,
+            on_event: Callable[[NodeEvent], None],
+            *,
+            session_id: str,
+            test_input_id: str,
+            on_workflow_event: Callable[[Mapping[str, object]], None] | None = None,
+            confirmed_consent_id: str | None = None,
+            command_id: str | None = None,
+        ) -> Run:
+            # A has launched: its sidecar launch identity is claimed (existing fixture stand-in).
+            simulate_task6_launch(owner, reserved)
+            mod.advance_session(owner.session_id, asdict(action), asdict(owner.actor), token)
+            observed["lease_after_duplicate"] = session_lock.exists(owner.session_id)
+            observed["swept"] = sweeper.reconcile_interrupted_sessions()
+            observed["grant_during_run"] = owner.consent_row(reserved.consent_id).state
+            return super().run_draft(
+                _app_id,
+                _actor,
+                inputs,
+                on_event,
+                session_id=session_id,
+                test_input_id=test_input_id,
+                on_workflow_event=on_workflow_event,
+                confirmed_consent_id=confirmed_consent_id,
+                command_id=command_id,
+            )
+
+    port = WinnerPort()
+    monkeypatch.setattr(mod, "WorkflowServiceDifyPort", lambda: port)
+
+    mod.advance_session(owner.session_id, asdict(action), asdict(owner.actor), token)
+
+    assert observed == {"lease_after_duplicate": True, "swept": 0, "grant_during_run": "confirmed"}
+    assert len(port.confirmed_calls) == 1  # B never reached the port
+    assert session_lock.exists(owner.session_id) is False  # A, the owner, released it
+    assert repo.get_session(owner.session_id)[0].current_state == PcState.BUILD_REVIEW
+    # B published no conflict/error frame; A's stream ends with its own command_finished.
+    assert events[-1]["kind"] == "command_finished"
+    assert all(event["kind"] != "error" for event in events)
+
+
+def _fail_settlement_once(monkeypatch: pytest.MonkeyPatch) -> list[str]:
+    """One transient settlement-write failure in the consent owner, then normal behavior."""
+    from services.dify_builder.real_call_consent_service import BuilderRealCallConsentService
+
+    failures: list[str] = []
+    real_settle = BuilderRealCallConsentService.settle_launch
+
+    def flaky_settle(self: BuilderRealCallConsentService, *, context: ConfirmedToolExecutionContext) -> ConsentReceipt:
+        if not failures:
+            failures.append(context.consent_id)
+            raise RuntimeError("database write unavailable")
+        return real_settle(self, context=context)
+
+    monkeypatch.setattr(BuilderRealCallConsentService, "settle_launch", flaky_settle)
+    return failures
+
+
+def _sweep(monkeypatch: pytest.MonkeyPatch, owner: Owner, *, lease_held: bool = False) -> int:
+    import schedule.dify_builder_reconcile_task as sweeper
+
+    monkeypatch.setattr(sweeper, "_session_factory", lambda: owner.factory)
+    stale_now = naive_utc_now() + timedelta(days=1)
+    monkeypatch.setattr(sweeper, "naive_utc_now", lambda: stale_now)
+    monkeypatch.setattr(sweeper.session_lock, "exists", lambda _sid: lease_held)
+    monkeypatch.setattr(sweeper.progress_bus, "publish", lambda *_args: None)
+    return sweeper.reconcile_interrupted_sessions()
+
+
+@pytest.mark.parametrize("settlement", ["succeeds", "fails_once"])
+def test_agent_setup_failure_clears_reference_and_settles_the_unclaimed_grant(
+    consent_owner: Owner, monkeypatch: pytest.MonkeyPatch, settlement: str
+) -> None:
+    owner = consent_owner
+    reserved, action, token = reserve_directly(owner)
+    port, order = ConfirmedSpyPort(), list[str]()
+    mod, repo, _events, released = wire_worker(monkeypatch, owner, port, order)
+
+    def broken_agent(**_kwargs: object) -> NoReturn:
+        raise RuntimeError("model provider unavailable")
+
+    monkeypatch.setattr(mod, "build_dify_builder_agent", broken_agent)
+    failures: list[str] = _fail_settlement_once(monkeypatch) if settlement == "fails_once" else []
+
+    mod.advance_session(owner.session_id, asdict(action), asdict(owner.actor), token)
+
+    session, fc = repo.get_session(owner.session_id)
+    assert session.current_state == PcState.FAILED
+    assert (fc.confirmed_consent_id, fc.confirmed_command_id) == ("", "")
+    assert port.confirmed_calls == []
+    assert released == [token]
+    row = owner.consent_row(reserved.consent_id)
+    if settlement == "fails_once":
+        assert failures == [reserved.consent_id]
+        assert row.state == "confirmed"  # the transient write failed; nothing else touched it
+        # Authoritative repair of the terminal FAILED session, without redispatch or head rewrite.
+        before = repo.get_session(owner.session_id)[0].version
+        assert _sweep(monkeypatch, owner) == 0  # not a stale working session
+        assert repo.get_session(owner.session_id)[0].version == before
+        row = owner.consent_row(reserved.consent_id)
+    assert (row.state, row.claimed_at, row.refresh_count, row.business_count) == ("failed", None, 0, 0)
+
+
+def test_transient_port_settlement_failure_is_repaired_after_terminal_review(
+    consent_owner: Owner, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Real port + real handler: settlement fails once, review commits, the sweeper repairs it."""
+    import services.dify_builder.dify_port as port_module
+
+    owner = consent_owner
+    reserved, action, token = reserve_directly(owner)
+    bind_fixture_engine(monkeypatch, owner)
+    install_native_generation(owner, monkeypatch)
+    port = port_module.WorkflowServiceDifyPort()
+    _spy, order = ConfirmedSpyPort(), list[str]()
+    mod, repo, _events, _released = wire_worker(monkeypatch, owner, _spy, order)
+    monkeypatch.setattr(mod, "WorkflowServiceDifyPort", lambda: port)
+    failures = _fail_settlement_once(monkeypatch)
+
+    mod.advance_session(owner.session_id, asdict(action), asdict(owner.actor), token)
+
+    assert failures == [reserved.consent_id]
+    session, fc = repo.get_session(owner.session_id)
+    assert session.current_state == PcState.BUILD_REVIEW
+    assert (fc.confirmed_consent_id, fc.confirmed_command_id) == ("", "")
+    row = owner.consent_row(reserved.consent_id)
+    assert (row.state, row.outcome_state, row.business_count) == ("claimed", "completed", 1)
+
+    # A live lease (an active worker) is never touched.
+    _sweep(monkeypatch, owner, lease_held=True)
+    assert owner.consent_row(reserved.consent_id).state == "claimed"
+
+    before = repo.get_session(owner.session_id)[0].version
+    _sweep(monkeypatch, owner)
+
+    row = owner.consent_row(reserved.consent_id)
+    # Completed from the sidecar's own sealed proof; counters untouched; no redispatch or head rewrite.
+    assert (row.state, row.business_count, row.refresh_count) == ("completed", 1, 0)
+    assert repo.get_session(owner.session_id)[0].version == before
+
+
+def test_terminal_repair_never_selects_an_unexecuted_user_confirmation(
+    consent_owner: Owner, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    owner = consent_owner
+    # An unexecuted, user-confirmed grant has no reserved command and is never selected,
+    # even after its session left the waiting gate.
+    unreserved = confirmed(owner)
+    from models.dify_builder import DifyBuilderSession
+
+    with owner.factory.begin() as db:
+        head = db.get(DifyBuilderSession, owner.session_id)
+        assert head is not None
+        head.current_state = str(PcState.BUILD_REVIEW)
+    _sweep(monkeypatch, owner)
+    assert owner.consent_row(unreserved.consent_id).state == "confirmed"
+    assert owner.consent_row(unreserved.consent_id).command_id is None
+
+
+def test_terminal_repair_is_bounded_and_unknown_stays_final(consent_owner: Owner) -> None:
+    owner = consent_owner
+    reserved, _action, _token = reserve_directly(owner)
+    context, run_id = simulate_task6_launch(owner, reserved)
+    binding = owner.service().claim_tool(
+        context=context, node_id="tool", native_run_id=run_id, native_node_execution_id="node-exec-1"
+    )
+    owner.service().claim_phase(binding=binding, phase="business", final_parameters=APPROVED)
+    from core.dify_builder.real_call_consent import ActionOutcome
+    from models.dify_builder import DifyBuilderSession
+
+    owner.service().finish(binding=binding, outcome=ActionOutcome(state="unknown", reason_code="stream_incomplete"))
+    with owner.factory.begin() as db:
+        head = db.get(DifyBuilderSession, owner.session_id)
+        assert head is not None
+        head.current_state = str(PcState.FAILED)
+
+    assert owner.service().reconcile_terminal_grants(limit=0, lease_held=lambda _sid: False) == 0
+    assert owner.service().reconcile_terminal_grants(limit=10, lease_held=lambda _sid: False) == 0
+    row = owner.consent_row(reserved.consent_id)
+    assert (row.state, row.reason_code, row.business_count) == ("unknown", "stream_incomplete", 1)
 
 
 @pytest.mark.parametrize("kind", ["recovery_continue", "recovery_restart"])
@@ -1128,6 +1350,87 @@ def bind_fixture_engine(monkeypatch: pytest.MonkeyPatch, owner: Owner) -> None:
     monkeypatch.setattr(port_module, "db", engine)
     monkeypatch.setattr(workflow_service_module, "db", engine)
     monkeypatch.setattr(port_module, "set_login_user", lambda _account: None)
+
+
+def install_native_generation(owner: Owner, monkeypatch: pytest.MonkeyPatch) -> list[str]:
+    """Replace only native generation: real admission → launch claim → recorder → guard → native rows.
+
+    The worker thread runs the real admission callback, dispatches the approved read through
+    the service guard, writes fixture native Run/node rows and reports completion, exactly as
+    the port e2e test does. Returns the fixture native Run IDs (uuid4, not Graphon-allocated).
+    """
+    import threading
+    from collections.abc import Iterator
+    from types import SimpleNamespace
+
+    from sqlalchemy.orm import Session
+
+    import services.dify_builder.dify_port as port_module
+    from core.app.apps.workflow.app_generator import BuilderExecutionAdmission
+    from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
+    from models.account import Account
+    from models.model import App
+    from services.dify_builder.dify_port import ConfirmedLaunchRecorder
+
+    run_ids: list[str] = []
+
+    def native_generate(
+        *,
+        app_model: App,
+        user: Account,
+        args: Mapping[str, Mapping[str, object]],
+        invoke_from: InvokeFrom,
+        session: Session,
+        builder_execution: ConfirmedToolExecutionContext,
+        builder_execution_admit: BuilderExecutionAdmission,
+        **_kw: object,
+    ) -> Iterator[str]:
+        _ = (user, invoke_from, session)
+        run_id = str(uuid4())
+        run_ids.append(run_id)
+        with owner.factory() as db:
+            workflow = db.get(Workflow, owner.workflow_id)
+        assert workflow is not None
+        entity = SimpleNamespace(
+            builder_execution=builder_execution,
+            files=[],
+            single_iteration_run=None,
+            single_loop_run=None,
+            invoke_from=InvokeFrom.DEBUGGER,
+            app_config=SimpleNamespace(
+                app_id=owner.app_id, tenant_id=owner.actor.tenant_id, workflow_id=owner.workflow_id, app_mode="workflow"
+            ),
+            user_id=owner.actor.account_id,
+            inputs=dict(args["inputs"]),
+            call_depth=0,
+            workflow_execution_id=run_id,
+            task_id="task",
+        )
+
+        def worker() -> None:
+            builder_execution_admit.admit_raw(workflow, app_model)
+            recorder = builder_execution_admit(
+                workflow, app_model, cast(WorkflowAppGenerateEntity, entity), "start", False
+            )
+            assert isinstance(recorder, ConfirmedLaunchRecorder)
+            dispatched(recorder)
+            native_rows(owner, run_id, "node-exec-1")
+            builder_execution_admit.on_worker_finished(
+                context=builder_execution,
+                native_run_id=run_id,
+                task_id="task",
+                recorder=recorder,
+                worker_thread=threading.current_thread(),
+                exit_kind="returned",
+            )
+
+        thread = threading.Thread(target=worker)
+        thread.start()
+        thread.join()
+        return iter(_native_frames(run_id))
+
+    monkeypatch.setattr(port_module.AppGenerateService, "generate", native_generate)
+    return run_ids
 
 
 def _native_frames(run_id: str) -> list[str]:
