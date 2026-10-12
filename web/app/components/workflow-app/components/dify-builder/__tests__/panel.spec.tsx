@@ -583,7 +583,48 @@ describe('DifyBuilderPanel', () => {
     })
   })
 
-  it('submits free text only for the option that requests it', async () => {
+  it.each([
+    ['retry_repair', 'workflow.difyBuilder.noRepair.retry'],
+    ['finish_repair', 'workflow.difyBuilder.noRepair.finish'],
+  ])(
+    'submits %s without a rejection reason when no repair is available',
+    async (optionId, label) => {
+      const user = userEvent.setup()
+      renderPanel({
+        ...choiceView,
+        actions: [
+          { id: 'retry_repair', label: 'Try again', kind: 'primary' },
+          { id: 'finish_repair', label: 'Finish', kind: 'secondary' },
+        ],
+        decision: {
+          title: 'No repair available',
+          description: 'Try again to find a repair, or finish this session.',
+          default_option_id: 'retry_repair',
+          submit: { id: 'confirm', label: 'Submit', kind: 'primary' },
+          options: [
+            { id: 'retry_repair', label: 'Try again', is_default: true },
+            { id: 'finish_repair', label: 'Finish' },
+          ],
+        },
+      })
+
+      const dock = screen.getByRole('region', { name: 'workflow.difyBuilder.noRepair.title' })
+      expect(within(dock).getAllByRole('radio')).toHaveLength(2)
+      expect(within(dock).queryByRole('textbox')).not.toBeInTheDocument()
+      expect(
+        within(dock).getByRole('radio', { name: 'workflow.difyBuilder.noRepair.retry' }),
+      ).toBeChecked()
+      const submit = within(dock).getByRole('button', { name: 'common.operation.submit' })
+      expect(submit).toBeEnabled()
+
+      await user.click(within(dock).getByRole('radio', { name: label }))
+      await user.click(submit)
+
+      expect(mocks.runAction).toHaveBeenCalledWith('confirm', { option_id: optionId })
+    },
+  )
+
+  it('submits a proposed repair rejection without requesting a reason', async () => {
     const user = userEvent.setup()
     renderPanel({
       ...choiceView,
@@ -598,29 +639,19 @@ describe('DifyBuilderPanel', () => {
         submit: { id: 'confirm', label: 'Submit', kind: 'primary' },
         options: [
           { id: 'approve_plan', label: 'Approve fix', is_default: true },
-          {
-            id: 'reject_repair',
-            label: 'Reject',
-            input: {
-              placeholder: 'Explain the rejection',
-              min_length: 10,
-              max_length: 200,
-              required: true,
-            },
-          },
+          { id: 'reject_repair', label: 'Reject', tone: 'destructive' },
         ],
       },
     })
 
-    await user.click(screen.getByRole('radio', { name: 'Reject' }))
-    await user.type(
-      screen.getByRole('textbox', { name: 'Explain the rejection' }),
-      'Too risky to apply',
-    )
-    await user.click(screen.getByRole('radio', { name: 'Approve fix' }))
-    await user.click(screen.getByRole('button', { name: 'common.operation.submit' }))
+    const dock = screen.getByRole('region', { name: 'How should Builder proceed with this fix?' })
+    await user.click(within(dock).getByRole('radio', { name: 'Reject' }))
+    expect(within(dock).queryByRole('textbox')).not.toBeInTheDocument()
+    const submit = within(dock).getByRole('button', { name: 'common.operation.submit' })
+    expect(submit).toBeEnabled()
+    await user.click(submit)
 
-    expect(mocks.runAction).toHaveBeenCalledWith('confirm', { option_id: 'approve_plan' })
+    expect(mocks.runAction).toHaveBeenCalledWith('confirm', { option_id: 'reject_repair' })
   })
 
   it('wraps provided test inputs in the backend testdata payload', async () => {

@@ -2,9 +2,10 @@
 
 Runs in the service layer (may call the LLM) and is injected into the pure
 engine as Env callbacks. Value-matches item strings against the static-string
-catalog (core.dify_builder.strings); LLM-generated prose (already localized by
-M1) never matches and is passed through. Translations are cached per
-(source, language) so a language's finite vocabulary is translated once.
+catalogs (core.dify_builder.strings and the service-owned repair gate).
+LLM-generated prose (already localized by M1) never matches and is passed through.
+Translations are cached per (source, language) so a language's finite vocabulary
+is translated once.
 """
 
 import json
@@ -15,6 +16,7 @@ from collections.abc import Callable
 from core.dify_builder import strings
 from core.dify_builder.models import ConversationItem
 from services.dify_builder.agent import llm
+from services.dify_builder.repair_gate import STATIC_COPY
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +41,7 @@ _LANG_CODE_RE = re.compile(r"^[A-Za-z]{2,3}(-[A-Za-z0-9]{1,8})*$")
 # concurrent duplicate translation of the same key is harmless and idempotent
 # -- no lock needed.
 _TRANSLATION_CACHE: dict[tuple[str, str], str] = {}
+_PLAIN = strings.PLAIN | STATIC_COPY
 
 
 class Localizer:
@@ -139,7 +142,7 @@ class Localizer:
     def _source_to_translate(self, value: str) -> str | None:
         """The catalog source string that would be translated for `value`, or None.
         Plain catalog hit -> the value itself; template hit -> the template form."""
-        if value in strings.PLAIN:
+        if value in _PLAIN:
             return value
         m = strings.match_template(value)
         if m is not None:
@@ -147,7 +150,7 @@ class Localizer:
         return None
 
     def _translate_value(self, value: str, language: str) -> str:
-        if value in strings.PLAIN:
+        if value in _PLAIN:
             return _TRANSLATION_CACHE.get((value, language), value)
         m = strings.match_template(value)
         if m is not None:

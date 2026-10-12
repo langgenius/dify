@@ -1,8 +1,9 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { useAtomValue, useSetAtom } from 'jotai'
-import { useCallback, useEffect, useRef } from 'react'
+import { Suspense, useCallback, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import ErrorBoundary from '@/app/components/base/error-boundary'
+import { SkeletonContainer, SkeletonRectangle } from '@/app/components/base/skeleton'
 import { useStore } from '@/app/components/workflow/store'
 import { DifyBuilderConversation } from './conversation'
 import { DifyBuilderPanelBackground } from './panel/background'
@@ -122,23 +123,37 @@ const DifyBuilderPanel = () => {
                 </div>
               )}
               <ErrorBoundary key={sessionId}>
-                <DifyBuilderConversation
-                  items={conversation}
-                  localInteractionResponse={
-                    localInteractionResponse?.sessionId === sessionId
-                      ? localInteractionResponse
-                      : null
+                <Suspense
+                  fallback={
+                    <SkeletonContainer
+                      role="status"
+                      aria-label={t(($) => $.loading, { ns: 'common' })}
+                      className="gap-3 px-4 py-4"
+                    >
+                      <SkeletonRectangle aria-hidden className="h-4 w-1/2" />
+                      <SkeletonRectangle aria-hidden className="h-4 w-full" />
+                      <SkeletonRectangle aria-hidden className="h-4 w-3/4" />
+                    </SkeletonContainer>
                   }
-                  localUserMessage={
-                    localUserMessage?.sessionId === null ||
-                    localUserMessage?.sessionId === sessionId
-                      ? localUserMessage
-                      : null
-                  }
-                  busy={interactionBusy || !canvasReady}
-                  interrupted={interrupted}
-                  onStreamingContentChange={scrollToBottomIfPinned}
-                />
+                >
+                  <DifyBuilderConversation
+                    items={conversation}
+                    localInteractionResponse={
+                      localInteractionResponse?.sessionId === sessionId
+                        ? localInteractionResponse
+                        : null
+                    }
+                    localUserMessage={
+                      localUserMessage?.sessionId === null ||
+                      localUserMessage?.sessionId === sessionId
+                        ? localUserMessage
+                        : null
+                    }
+                    busy={interactionBusy || !canvasReady}
+                    interrupted={interrupted}
+                    onStreamingContentChange={scrollToBottomIfPinned}
+                  />
+                </Suspense>
               </ErrorBoundary>
             </>
           ) : (

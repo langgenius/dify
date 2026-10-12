@@ -1152,10 +1152,13 @@ def test_repair_view_only_offers_approval_for_a_staged_repair(
     view = service.get_session_view(session.id, _actor())
 
     expected = ["approve_plan", *remaining_actions] if staged else remaining_actions
+    if state == PcState.FIX_AWAIT_APPROVAL and not staged:
+        expected = ["retry_repair", "finish_repair"]
     assert [action.id for action in view.actions] == expected
     assert view.decision is not None
     assert [option.id for option in view.decision.options] == expected
-    assert view.decision.default_option_id == ("approve_plan" if staged else "")
+    expected_default = "approve_plan" if staged else "retry_repair" if state == PcState.FIX_AWAIT_APPROVAL else ""
+    assert view.decision.default_option_id == expected_default
 
 
 @pytest.mark.parametrize("state", [PcState.BUILD_PLAN_APPROVAL, PcState.EDIT_PLAN_APPROVAL])
