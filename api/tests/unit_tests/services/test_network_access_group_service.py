@@ -8,6 +8,7 @@ import pytest
 from machinery.context import RequestContext
 from services.entities.network_access_group_entities import (
     NetworkAccessAppConfig,
+    NetworkAccessAppStatusSnapshot,
     NetworkAccessBinding,
     NetworkAccessBindingUpdate,
     NetworkAccessCurrentIPCheck,
@@ -128,6 +129,7 @@ def _harness(*, role: str | None = "owner", paid: bool = True, app_mode: str = "
     for method in (control_plane.get_group, control_plane.create_group, control_plane.update_group):
         method.return_value = _group()
     control_plane.get_app_binding.return_value = _config()
+    control_plane.get_app_status.return_value = NetworkAccessAppStatusSnapshot(True, False, False, ())
     control_plane.update_app_binding.return_value = NetworkAccessBindingUpdate(_binding(), False)
     control_plane.delete_group.return_value = True
     control_plane.cleanup_app_binding.return_value = True
@@ -342,8 +344,8 @@ def test_app_binding_rejects_disallowed_roles_before_app_lookup(operation: Mutat
 
 def test_normal_member_can_read_only_app_entry_status() -> None:
     harness = _harness(role="normal")
-    harness.control_plane.get_app_binding.return_value = _config(
-        _binding(enabled=True, group_id=GROUP_ID, access_points=("webapp", "service_api"))
+    harness.control_plane.get_app_status.return_value = NetworkAccessAppStatusSnapshot(
+        entitled=True, configured=True, enabled=True, access_points=("webapp", "service_api")
     )
 
     status = harness.service.get_app_status(_context(), app_id=APP_ID)
@@ -355,7 +357,8 @@ def test_normal_member_can_read_only_app_entry_status() -> None:
     assert status.available_count == 4
     assert not hasattr(status, "group_id")
     assert not hasattr(status, "allowed_cidrs")
-    harness.control_plane.get_app_binding.assert_called_once_with(WORKSPACE_ID, APP_ID, ACCOUNT_ID)
+    harness.control_plane.get_app_status.assert_called_once_with(WORKSPACE_ID, APP_ID, ACCOUNT_ID)
+    harness.control_plane.get_app_binding.assert_not_called()
 
 
 @pytest.mark.parametrize("role", ["dataset_operator", None])
@@ -366,6 +369,29 @@ def test_app_entry_status_rejects_roles_without_app_access(role: str | None) -> 
         harness.service.get_app_status(_context(), app_id=APP_ID)
 
     harness.apps.get_manageable_app.assert_not_called()
+    harness.control_plane.get_app_status.assert_not_called()
+    harness.control_plane.get_app_binding.assert_not_called()
+
+
+def test_app_status_rejects_missing_tenant_scoped_app_before_upstream_read() -> None:
+    harness = _harness(role="normal")
+    harness.apps.get_manageable_app.return_value = None
+
+    with pytest.raises(NetworkAccessGroupAppNotFoundError):
+        harness.service.get_app_status(_context(), app_id=APP_ID)
+
+    harness.apps.get_manageable_app.assert_called_once_with(workspace_id=WORKSPACE_ID, app_id=APP_ID)
+    harness.control_plane.get_app_status.assert_not_called()
+    harness.control_plane.get_app_binding.assert_not_called()
+
+
+def test_app_status_rejects_unsupported_app_mode_before_upstream_read() -> None:
+    harness = _harness(role="normal", app_mode="unknown")
+
+    with pytest.raises(NetworkAccessGroupUnsupportedAppModeError):
+        harness.service.get_app_status(_context(), app_id=APP_ID)
+
+    harness.control_plane.get_app_status.assert_not_called()
     harness.control_plane.get_app_binding.assert_not_called()
 
 

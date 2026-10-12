@@ -24,6 +24,7 @@ from enums import CloudPlan
 from services.billing_service import BillingService, _BillingHTTPStatusError
 from services.entities.network_access_group_entities import (
     NetworkAccessAppConfig,
+    NetworkAccessAppStatusSnapshot,
     NetworkAccessBinding,
     NetworkAccessBindingUpdate,
     NetworkAccessGroup,
@@ -176,6 +177,14 @@ class _BindingUpdateWire(_WireModel):
     effective_enabled: StrictBool = False
 
 
+class _AppStatusWire(_WireModel):
+    aliases = {"access_points": ("accessPoints",)}
+    entitled: StrictBool = False
+    configured: StrictBool = False
+    enabled: StrictBool = False
+    access_points: tuple[StrictStr, ...] = ()
+
+
 class _DeletedWire(_WireModel):
     deleted: StrictBool = False
 
@@ -321,6 +330,18 @@ class NetworkAccessGroupGateway(NetworkAccessGroupControlPlane):
             wire.effective_enabled,
             wire.binding.record() if wire.binding is not None else None,
         )
+
+    @override
+    def get_app_status(self, workspace_id: str, app_id: str, actor_account_id: str) -> NetworkAccessAppStatusSnapshot:
+        wire = _decode(
+            _AppStatusWire,
+            self._send_request(
+                "GET",
+                f"/tenants/{workspace_id}/apps/{app_id}/network-access-group/status",
+                params={"actor_account_id": actor_account_id},
+            ),
+        )
+        return NetworkAccessAppStatusSnapshot(wire.entitled, wire.configured, wire.enabled, wire.access_points)
 
     @override
     def update_app_binding(
