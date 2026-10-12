@@ -58,13 +58,18 @@ class FakeSessionLock:
         self._held[session_id] = token
         return token
 
-    def activate(self, session_id: str, token: str) -> bool:
-        """Compare-and-extend, as the real one does at worker start: true only
-        while this token still holds the session, so a command that sat in the
-        queue past its lease cannot run after another worker took over. The
-        real implementation also extends the Redis lease; this double has no
-        TTL, so only the compare is modelled."""
-        return self._held.get(session_id) == token
+    def activate(self, session_id: str, token: str) -> str | None:
+        """Exclusive held-owner swap, as the real one does at worker start: only
+        while the dispatch token still holds the session does it swap in and
+        return a worker owner value; otherwise ``None``. So a command that sat in
+        the queue past its lease, or a duplicate delivery of a running command,
+        cannot run, and only the returned owner value releases. The real
+        implementation also extends the Redis lease; this double has no TTL."""
+        if self._held.get(session_id) != token:
+            return None
+        owner = f"{token}:owner"
+        self._held[session_id] = owner
+        return owner
 
     def release(self, session_id: str, token: str) -> None:
         if self._held.get(session_id) == token:
