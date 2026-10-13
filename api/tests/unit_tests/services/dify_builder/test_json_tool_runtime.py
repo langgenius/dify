@@ -8,12 +8,18 @@ from types import SimpleNamespace
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.entities.provider_entities import ProviderConfig, ProviderConfigType
+from core.helper.provider_encryption import ProviderConfigEncrypter
+from core.plugin.entities.oauth import OAuthSchema
+from core.plugin.impl.oauth import OAuthHandler
+from core.tools import tool_file_manager as file_manager_module
 from core.tools import tool_manager as manager_module
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolProviderType
 from core.tools.plugin_tool import tool as plugin_tool_module
 from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.plugin_tool.tool import PluginTool
+from core.tools.tool_file_manager import ToolFileManager
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.configuration import ToolParameterConfigurationManager
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
@@ -35,6 +41,8 @@ from services.dify_builder.json_tool_runtime import (
     QualifiedJsonToolNodeRuntime,
     _GuardedJsonPluginTool,
 )
+from services.tools import draft_tool_setup
+from services.tools.builtin_tools_manage_service import BuiltinToolManageService
 from tests.unit_tests.services.dify_builder.test_json_tool_metadata import TENANT, _provider
 from tests.workflow_test_utils import build_test_run_context
 
@@ -208,6 +216,58 @@ def test_text_byte_and_count_limits_close_transport(monkeypatch, sqlite_engine, 
     assert not guarded.complete
 
 
+@pytest.mark.parametrize(
+    ("texts", "accepted"),
+    [(["a" * 65534, "é"], True), (["a" * 65535, "é"], False)],
+    ids=["exact-65536-utf8-bytes", "aggregate-65537-utf8-bytes"],
+)
+def test_aggregate_multibyte_text_limit_is_exact(monkeypatch, sqlite_engine, texts, accepted):
+    closed = []
+
+    class Manager:
+        def invoke(self, **_kwargs):
+            try:
+                for value in texts:
+                    yield _message(value)
+            finally:
+                closed.append(True)
+
+    monkeypatch.setattr(plugin_tool_module, "PluginToolManager", Manager)
+    guarded = _GuardedJsonPluginTool(_native(), EXPECTED)
+    with Session(sqlite_engine) as session:
+        if accepted:
+            assert [item.message.text for item in guarded.invoke(session, "user", dict(EXPECTED))] == texts
+            assert guarded.text_bytes == 65536
+            assert guarded.complete
+        else:
+            with pytest.raises(Exception, match="json_execution_limit"):
+                list(guarded.invoke(session, "user", dict(EXPECTED)))
+            assert not guarded.complete
+    assert closed == [True]
+
+
+def test_invalid_unicode_text_refuses_and_closes_transport(monkeypatch, sqlite_engine):
+    closed = []
+    invalid = ToolInvokeMessage.model_construct(
+        type=ToolInvokeMessage.MessageType.TEXT,
+        message=ToolInvokeMessage.TextMessage.model_construct(text="\ud800"),
+    )
+
+    class Manager:
+        def invoke(self, **_kwargs):
+            try:
+                yield invalid
+            finally:
+                closed.append(True)
+
+    monkeypatch.setattr(plugin_tool_module, "PluginToolManager", Manager)
+    guarded = _GuardedJsonPluginTool(_native(), EXPECTED)
+    with Session(sqlite_engine) as session, pytest.raises(Exception, match="unsupported_json_tool_output"):
+        list(guarded.invoke(session, "user", dict(EXPECTED)))
+    assert closed == [True]
+    assert not guarded.complete
+
+
 def test_final_envelope_mismatch_prevents_native_dispatch(monkeypatch, sqlite_engine):
     class Manager:
         def invoke(self, **_kwargs):
@@ -303,6 +363,58 @@ def test_actual_controller_drift_refuses_before_credentials(monkeypatch, sqlite_
         )
 
 
+def _forbid_credential_and_dynamic_owners(monkeypatch):
+    calls = []
+
+    def fail(owner):
+        def spy(*_args, **_kwargs):
+            calls.append(owner)
+            pytest.fail(f"{owner} reached")
+
+        return spy
+
+    monkeypatch.setattr(draft_tool_setup, "prepare_draft_tool_runtime_selection", fail("draft-selection"))
+    monkeypatch.setattr(Session, "scalar", fail("credential-lookup"))
+    monkeypatch.setattr(manager_module, "create_provider_encrypter", fail("credential-decrypt-setup"))
+    monkeypatch.setattr(ProviderConfigEncrypter, "decrypt", fail("credential-decrypt"))
+    monkeypatch.setattr(OAuthHandler, "refresh_credentials", fail("oauth-refresh"))
+    monkeypatch.setattr(BuiltinToolManageService, "get_oauth_client", fail("oauth-client-lookup"))
+    monkeypatch.setattr(PluginToolProviderController, "_validate_credentials", fail("credential-validation"))
+    monkeypatch.setattr(ToolParameterConfigurationManager, "decrypt_tool_parameters", fail("parameter-decrypt"))
+    monkeypatch.setattr(plugin_tool_module.PluginToolManager, "get_runtime_parameters", fail("dynamic-parameters"))
+    return calls
+
+
+@pytest.mark.parametrize("drift", ["credentials", "oauth"], ids=["api-key-schema", "oauth-schema"])
+def test_current_native_controller_credential_drift_refuses_before_all_credential_owners(
+    monkeypatch, sqlite_engine, drift
+):
+    declaration = _provider().declaration
+    secret = ProviderConfig(type=ProviderConfigType.SECRET_INPUT, name="access_token")
+    if drift == "credentials":
+        declaration.credentials_schema = [secret]
+    else:
+        declaration.oauth_schema = OAuthSchema(credentials_schema=[secret])
+    controller = PluginToolProviderController(
+        entity=declaration,
+        plugin_id=metadata.PLUGIN_ID,
+        plugin_unique_identifier=metadata.UNIQUE_IDENTIFIER,
+        tenant_id=TENANT,
+    )
+    assert controller.need_credentials
+    runtime, recorder = _runtime(monkeypatch, sqlite_engine, controller=controller)
+    calls = _forbid_credential_and_dynamic_owners(monkeypatch)
+    with pytest.raises(ToolRuntimeResolutionError, match="json_tool_controller_mismatch"):
+        runtime.get_runtime(
+            node_id="node2",
+            node_data=_node_data(ascii_value=False, wrapped=False),
+            variable_pool=VariablePool(),
+            node_execution_id="node-execution",
+        )
+    assert calls == []
+    assert recorder.receipts == []
+
+
 def test_actual_parse_schema_drift_refuses_before_dynamic_fetch(monkeypatch, sqlite_engine):
     provider = _provider().declaration
     provider.tools[0].has_runtime_parameters = True
@@ -340,33 +452,16 @@ def test_hardcoded_fallback_refuses_before_credential_branch(monkeypatch, sqlite
 
 
 def test_static_resolution_never_reads_dynamic_or_decrypts(monkeypatch, sqlite_engine):
-    monkeypatch.setattr(
-        plugin_tool_module.PluginToolManager,
-        "get_runtime_parameters",
-        lambda *_args, **_kwargs: pytest.fail("dynamic parameter fetch reached"),
-    )
-    monkeypatch.setattr(
-        ToolParameterConfigurationManager,
-        "decrypt_tool_parameters",
-        lambda *_args, **_kwargs: pytest.fail("configuration decryption reached"),
-    )
-    monkeypatch.setattr(
-        PluginToolProviderController,
-        "_validate_credentials",
-        lambda *_args, **_kwargs: pytest.fail("credential validation reached"),
-    )
-    monkeypatch.setattr(
-        manager_module,
-        "create_provider_encrypter",
-        lambda *_args, **_kwargs: pytest.fail("credential decryption setup reached"),
-    )
+    calls = _forbid_credential_and_dynamic_owners(monkeypatch)
     runtime, _ = _runtime(monkeypatch, sqlite_engine)
-    runtime.get_runtime(
+    handle = runtime.get_runtime(
         node_id="node2",
         node_data=_node_data(ascii_value=False, wrapped=False),
         variable_pool=VariablePool(),
         node_execution_id="node-execution",
     )
+    assert isinstance(runtime._tool_from_handle(handle), PluginTool)
+    assert calls == []
 
 
 @pytest.mark.parametrize(
@@ -519,8 +614,6 @@ def test_interrupted_stream_closes_native_generator_without_receipt(monkeypatch,
 
 
 def test_non_text_is_refused_before_native_file_transform(monkeypatch, sqlite_engine):
-    from core.tools.tool_file_manager import ToolFileManager
-
     monkeypatch.setattr(
         ToolFileManager,
         "create_file_by_url",
@@ -554,6 +647,66 @@ def test_non_text_is_refused_before_native_file_transform(monkeypatch, sqlite_en
     with pytest.raises(ToolRuntimeInvocationError):
         list(runtime.invoke(tool_runtime=handle, tool_parameters=EXPECTED, workflow_call_depth=0, provider_name="json"))
     assert transformed == []
+    assert recorder.receipts == []
+
+
+@pytest.mark.parametrize("file_output", ["image", "blob"])
+def test_file_producing_output_refuses_before_all_file_owners(monkeypatch, sqlite_engine, file_output):
+    calls = []
+    closed = []
+    transformed = []
+
+    def fail(owner):
+        def spy(*_args, **_kwargs):
+            calls.append(owner)
+            pytest.fail(f"{owner} reached")
+
+        return spy
+
+    monkeypatch.setattr(ToolFileManager, "__init__", fail("file-manager-construction"))
+    monkeypatch.setattr(ToolFileManager, "create_file_by_url", fail("create-file-by-url"))
+    monkeypatch.setattr(ToolFileManager, "create_file_by_raw", fail("create-file-by-raw"))
+    monkeypatch.setattr(file_manager_module.remote_fetcher, "make_request", fail("file-download"))
+    monkeypatch.setattr(file_manager_module, "storage", SimpleNamespace(save=fail("file-storage")))
+    original = ToolFileMessageTransformer.transform_tool_invoke_messages
+
+    def observing_transform(*args, **kwargs):
+        for message in original(*args, **kwargs):
+            transformed.append(message)
+            yield message
+
+    monkeypatch.setattr(ToolFileMessageTransformer, "transform_tool_invoke_messages", observing_transform)
+
+    class Manager:
+        def invoke(self, **_kwargs):
+            try:
+                if file_output == "image":
+                    yield ToolInvokeMessage(
+                        type=ToolInvokeMessage.MessageType.IMAGE,
+                        message=ToolInvokeMessage.TextMessage(text="https://example.invalid/private.png"),
+                    )
+                else:
+                    yield ToolInvokeMessage(
+                        type=ToolInvokeMessage.MessageType.BLOB,
+                        message=ToolInvokeMessage.BlobMessage(blob=b"private bytes"),
+                        meta={"mime_type": "application/octet-stream", "filename": "private.bin"},
+                    )
+            finally:
+                closed.append(True)
+
+    monkeypatch.setattr(plugin_tool_module, "PluginToolManager", Manager)
+    runtime, recorder = _runtime(monkeypatch, sqlite_engine)
+    handle = runtime.get_runtime(
+        node_id="node2",
+        node_data=_node_data(ascii_value=False, wrapped=False),
+        variable_pool=VariablePool(),
+        node_execution_id="node-execution",
+    )
+    with pytest.raises(ToolRuntimeInvocationError, match="unsupported_json_tool_output"):
+        list(runtime.invoke(tool_runtime=handle, tool_parameters=EXPECTED, workflow_call_depth=0, provider_name="json"))
+    assert calls == []
+    assert transformed == []
+    assert closed == [True]
     assert recorder.receipts == []
 
 
