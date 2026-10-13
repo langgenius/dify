@@ -128,6 +128,7 @@ const createSessionView = (overrides: Partial<SessionView> = {}): SessionView =>
     last_command_id: 'command-1',
     phase: 'clarify',
     run_status: 'waiting_input',
+    reply_language: '',
     session_id: 'session-1',
     version: 1,
     ...overrides,

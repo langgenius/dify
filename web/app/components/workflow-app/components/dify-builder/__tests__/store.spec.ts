@@ -49,6 +49,7 @@ const createSessionView = (overrides: Partial<SessionView> = {}): SessionView =>
   interrupted: false,
   phase: 'understand',
   run_status: 'complete',
+  reply_language: '',
   session_id: 'session-1',
   version: 1,
   ...overrides,
