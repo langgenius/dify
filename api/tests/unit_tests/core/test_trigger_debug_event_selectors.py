@@ -3,8 +3,8 @@ import json
 from datetime import UTC, datetime
 
 import pytest
-import pytz
-
+#import pytz
+from zoneinfo import ZoneInfo
 from core.trigger.debug import event_selectors
 from core.workflow.nodes.trigger_schedule.entities import ScheduleConfig
 
@@ -81,7 +81,7 @@ def test_schedule_runtime_cache_normalizes_timezone(
     redis_client = _DummyRedis()
     poller = _make_poller(monkeypatch, redis_client)
 
-    localized_time = pytz.timezone("Asia/Shanghai").localize(datetime(2025, 1, 1, 20, 0, 0))
+    localized_time = ZoneInfo("Asia/Shanghai").localize(datetime(2025, 1, 1, 20, 0, 0))
 
     cron_hash = hashlib.sha256(dummy_schedule_config.cron_expression.encode()).hexdigest()
     cache_key = poller.schedule_debug_runtime_key(cron_hash)
