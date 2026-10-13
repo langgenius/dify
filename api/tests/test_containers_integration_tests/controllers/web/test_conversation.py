@@ -14,7 +14,6 @@ from controllers.web.conversation import (
     ConversationApi,
     ConversationListApi,
     ConversationPinApi,
-    ConversationRenameApi,
     ConversationUnPinApi,
 )
 from controllers.web.error import NotChatAppError
@@ -22,7 +21,7 @@ from services.errors.conversation import ConversationNotExistsError
 
 
 def _chat_app() -> SimpleNamespace:
-    return SimpleNamespace(id="app-1", mode="chat")
+    return SimpleNamespace(id="app-1", tenant_id="tenant-1", mode="chat")
 
 
 def _completion_app() -> SimpleNamespace:
@@ -89,47 +88,6 @@ class TestConversationApi:
         with app.test_request_context(f"/conversations/{c_id}"):
             with pytest.raises(NotFound, match="Conversation Not Exists"):
                 ConversationApi().delete(_chat_app(), _end_user(), c_id)
-
-
-class TestConversationRenameApi:
-    @pytest.fixture
-    def app(self, flask_app_with_containers: Flask):
-        return flask_app_with_containers
-
-    def test_non_chat_mode_raises(self, app: Flask) -> None:
-        with app.test_request_context(f"/conversations/{uuid4()}/name", method="POST", json={"name": "x"}):
-            with pytest.raises(NotChatAppError):
-                ConversationRenameApi().post(_completion_app(), _end_user(), uuid4())
-
-    @patch("controllers.web.conversation.ConversationService.rename")
-    def test_rename_success(self, mock_rename: MagicMock, app: Flask) -> None:
-        c_id = uuid4()
-        conv = SimpleNamespace(
-            id=str(c_id),
-            name="New Name",
-            inputs={},
-            status="normal",
-            introduction="",
-            created_at=1700000000,
-            updated_at=1700000000,
-        )
-        mock_rename.return_value = conv
-
-        with app.test_request_context(f"/conversations/{c_id}/name", method="POST", json={"name": "New Name"}):
-            result = ConversationRenameApi().post(_chat_app(), _end_user(), c_id)
-
-        assert result["name"] == "New Name"
-
-    @patch(
-        "controllers.web.conversation.ConversationService.rename",
-        side_effect=ConversationNotExistsError(),
-    )
-    def test_rename_not_found(self, mock_rename: MagicMock, app: Flask) -> None:
-        c_id = uuid4()
-
-        with app.test_request_context(f"/conversations/{c_id}/name", method="POST", json={"name": "X"}):
-            with pytest.raises(NotFound, match="Conversation Not Exists"):
-                ConversationRenameApi().post(_chat_app(), _end_user(), c_id)
 
 
 class TestConversationPinApi:

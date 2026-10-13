@@ -173,11 +173,12 @@ Rename a specific conversation with a custom name or auto-generate one.
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Conversation renamed successfully | **application/json**: [SimpleConversation](#simpleconversation)<br> |
+| 200 | Conversation renamed successfully; model failure preserves the existing name. | **application/json**: [SimpleConversation](#simpleconversation)<br> |
 | 400 | Bad Request |  |
 | 401 | Unauthorized |  |
 | 403 | Forbidden |  |
-| 404 | Conversation Not Found or Not a Chat App |  |
+| 404 | `conversation_not_found`: Conversation does not exist. `conversation_first_message_not_found`: No first message is available for automatic naming. |  |
+| 422 | Invalid conversation rename payload. |  |
 | 500 | Internal Server Error |  |
 
 ### [PATCH] /conversations/{c_id}/pin

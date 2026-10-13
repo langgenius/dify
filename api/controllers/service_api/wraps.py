@@ -30,7 +30,7 @@ from extensions.ext_redis import redis_client
 from libs.login import current_user
 from models import Account, Tenant, TenantAccountJoin, TenantStatus
 from models.dataset import Dataset, RateLimitLog
-from models.model import ApiToken
+from models.model import ApiToken, EndUser
 from repositories.knowledge import dataset_api_key_bindings
 from services.api_token_service import ApiTokenCache, fetch_token_with_single_flight, record_token_usage
 from services.app_service import AppService
@@ -77,7 +77,7 @@ VECTOR_SPACE_UNAVAILABLE_RESPONSE = {
 }
 
 
-def _document_app_token_contract(view_func: Callable[..., object], fetch_user_arg: FetchUserArg | None) -> None:
+def document_app_token_contract(view_func: Callable[..., object], fetch_user_arg: FetchUserArg | None) -> None:
     doc: dict[str, object] = {"responses": APP_TOKEN_FORBIDDEN_RESPONSE}
     if fetch_user_arg is not None:
         setattr(view_func, USER_FETCH_FROM_ATTR, fetch_user_arg.fetch_from.name)
@@ -112,6 +112,10 @@ def validate_app_token[**P, R](
     def decorator(view_func: Callable[P, R]) -> Callable[P, R]:
         @wraps(view_func)
         def decorated_view(*args: P.args, **kwargs: P.kwargs) -> R:
+            # TODO: Remove these duplicate app/workspace checks when all legacy
+            # ORM App/EndUser handlers (including account-only endpoints) migrate
+            # to scalar admission. Keep resource-token routing and app policy aligned
+            # with service_api_end_user_admission until then.
             auth_token = peek_service_api_bearer_token()
             if auth_token and is_resource_access_token(auth_token):
                 with resource_access_token_errors():
@@ -146,31 +150,9 @@ def validate_app_token[**P, R](
 
             # If caller needs end-user context, attach EndUser to current_user
             if fetch_user_arg:
-                user_id = None
-                match fetch_user_arg.fetch_from:
-                    case WhereisUserArg.QUERY:
-                        user_id = request.args.get("user")
-                    case WhereisUserArg.JSON:
-                        user_id = request.get_json().get("user")
-                    case WhereisUserArg.FORM:
-                        user_id = request.form.get("user")
-
-                if not user_id and fetch_user_arg.required:
-                    raise ValueError("Arg user must be provided.")
-
-                if user_id:
-                    user_id = str(user_id)
-
-                end_user = application_services().app_scoped_end_users.commands.get_or_create_end_user(
-                    app_model.tenant_id,
-                    app_model.id,
-                    user_id,
+                kwargs["end_user"] = resolve_service_api_end_user(
+                    tenant_id=app_model.tenant_id, app_id=app_model.id, fetch_user_arg=fetch_user_arg
                 )
-                kwargs["end_user"] = end_user
-
-                # Set EndUser as current logged-in user for flask_login.current_user
-                current_app.login_manager._update_request_context_with_user(end_user)  # type: ignore
-                user_logged_in.send(current_app._get_current_object(), user=end_user)  # type: ignore
             else:
                 # For service API without end-user context, ensure an Account is logged in
                 # so services relying on current_account_with_tenant() work correctly.
@@ -195,13 +177,35 @@ def validate_app_token[**P, R](
 
             return view_func(*args, **kwargs)
 
-        _document_app_token_contract(decorated_view, fetch_user_arg)
+        document_app_token_contract(decorated_view, fetch_user_arg)
         return decorated_view
 
     if view is None:
         return decorator
     else:
         return decorator(view)
+
+
+def resolve_service_api_end_user(*, tenant_id: str, app_id: str, fetch_user_arg: FetchUserArg) -> EndUser:
+    """Share user parsing, provisioning and Flask login identity across API admission paths."""
+    user_id = None
+    match fetch_user_arg.fetch_from:
+        case WhereisUserArg.QUERY:
+            user_id = request.args.get("user")
+        case WhereisUserArg.JSON:
+            user_id = request.get_json().get("user")
+        case WhereisUserArg.FORM:
+            user_id = request.form.get("user")
+
+    if not user_id and fetch_user_arg.required:
+        raise ValueError("Arg user must be provided.")
+    if user_id:
+        user_id = str(user_id)
+
+    end_user = application_services().app_scoped_end_users.commands.get_or_create_end_user(tenant_id, app_id, user_id)
+    current_app.login_manager._update_request_context_with_user(end_user)  # type: ignore
+    user_logged_in.send(current_app._get_current_object(), user=end_user)  # type: ignore
+    return end_user
 
 
 def cloud_edition_billing_resource_check[**P, R](

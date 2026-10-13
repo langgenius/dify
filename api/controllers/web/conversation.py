@@ -1,3 +1,4 @@
+from http import HTTPStatus
 from typing import Literal
 from uuid import UUID
 
@@ -7,12 +8,14 @@ from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import NotFound
 
 from controllers.common.controller_schemas import ConversationRenamePayload
+from controllers.common.errors import ConversationFirstMessageNotFoundHTTPError, ConversationNotFoundHTTPError
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console.wraps import model_validate
 from controllers.web import web_ns
 from controllers.web.error import NotChatAppError
 from controllers.web.wraps import WebApiResource
 from core.app.entities.app_invoke_entities import InvokeFrom
+from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from fields.conversation_fields import (
     ConversationInfiniteScrollPagination,
@@ -20,10 +23,12 @@ from fields.conversation_fields import (
     ResultResponse,
     SimpleConversation,
 )
-from libs.helper import uuid_value
+from libs.helper import dump_response, uuid_value
 from models.model import App, AppMode, EndUser
 from services.conversation_service import ConversationService
+from services.entities.conversation_entities import EndUserConversationRef
 from services.errors.conversation import ConversationNotExistsError, LastConversationNotExistsError
+from services.errors.message import MessageNotExistsError
 from services.web_conversation_service import WebConversationService
 
 
@@ -144,18 +149,24 @@ class ConversationRenameApi(WebApiResource):
     )
     @web_ns.doc(
         responses={
-            200: "Conversation renamed successfully",
-            400: "Bad Request",
-            401: "Unauthorized",
-            403: "Forbidden",
-            404: "Conversation Not Found or Not a Chat App",
-            500: "Internal Server Error",
+            HTTPStatus.OK: "Conversation renamed successfully; model failure preserves the existing name.",
+            HTTPStatus.BAD_REQUEST: "Bad Request",
+            HTTPStatus.UNAUTHORIZED: "Unauthorized",
+            HTTPStatus.FORBIDDEN: "Forbidden",
+            HTTPStatus.NOT_FOUND: (
+                "`conversation_not_found`: Conversation does not exist. "
+                "`conversation_first_message_not_found`: No first message is available for automatic naming."
+            ),
+            HTTPStatus.UNPROCESSABLE_ENTITY: "Invalid conversation rename payload.",
+            HTTPStatus.INTERNAL_SERVER_ERROR: "Internal Server Error",
         }
     )
-    @web_ns.response(200, "Conversation renamed successfully", web_ns.models[SimpleConversation.__name__])
+    @web_ns.response(HTTPStatus.OK, "Conversation renamed successfully", web_ns.models[SimpleConversation.__name__])
     @web_ns.expect(web_ns.models[ConversationRenamePayload.__name__])
     @model_validate(ConversationRenamePayload)
-    def post(self, payload: ConversationRenamePayload, app_model: App, end_user: EndUser, c_id: UUID):
+    def post(
+        self, payload: ConversationRenamePayload, app_model: App, end_user: EndUser, c_id: UUID
+    ) -> dict[str, object]:
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
             raise NotChatAppError()
@@ -163,17 +174,22 @@ class ConversationRenameApi(WebApiResource):
         conversation_id = str(c_id)
 
         try:
-            session = db.session()
-            conversation = ConversationService.rename(
-                app_model, conversation_id, end_user, payload.name, payload.auto_generate, session=session
+            conversation = application_services().conversation_names.rename(
+                ref=EndUserConversationRef(
+                    app_id=app_model.id,
+                    tenant_id=app_model.tenant_id,
+                    end_user_id=end_user.id,
+                    conversation_id=conversation_id,
+                ),
+                app_mode=app_model.mode,
+                name=payload.name,
+                auto_generate=payload.auto_generate,
             )
-            return (
-                TypeAdapter(SimpleConversation)
-                .validate_python(ConversationResponseSource(conversation, session=session), from_attributes=True)
-                .model_dump(mode="json")
-            )
-        except ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+            return dump_response(SimpleConversation, conversation)
+        except ConversationNotExistsError as error:
+            raise ConversationNotFoundHTTPError() from error
+        except MessageNotExistsError as error:
+            raise ConversationFirstMessageNotFoundHTTPError() from error
 
 
 @web_ns.route("/conversations/<uuid:c_id>/pin")
