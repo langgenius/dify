@@ -1013,6 +1013,16 @@ export type EndUserDetail = {
   updated_at: string
 }
 
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type EventStreamResponse = string
 
 export type ExecutionContentType = 'human_input'
@@ -2456,9 +2466,11 @@ export type GetAppFeedbacksData = {
 }
 
 export type GetAppFeedbacksErrors = {
-  401: unknown
-  403: unknown
+  401: ErrorResponse
+  403: ErrorResponse
 }
+
+export type GetAppFeedbacksError = GetAppFeedbacksErrors[keyof GetAppFeedbacksErrors]
 
 export type GetAppFeedbacksResponses = {
   200: AppFeedbackListResponse
@@ -2476,9 +2488,12 @@ export type PostAppsAnnotationReplyByActionData = {
 }
 
 export type PostAppsAnnotationReplyByActionErrors = {
-  401: unknown
-  403: unknown
+  401: ErrorResponse
+  403: ErrorResponse
 }
+
+export type PostAppsAnnotationReplyByActionError =
+  PostAppsAnnotationReplyByActionErrors[keyof PostAppsAnnotationReplyByActionErrors]
 
 export type PostAppsAnnotationReplyByActionResponses = {
   200: AnnotationJobStatusResponse
@@ -2498,10 +2513,13 @@ export type GetAppsAnnotationReplyByActionStatusByJobIdData = {
 }
 
 export type GetAppsAnnotationReplyByActionStatusByJobIdErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
 }
+
+export type GetAppsAnnotationReplyByActionStatusByJobIdError =
+  GetAppsAnnotationReplyByActionStatusByJobIdErrors[keyof GetAppsAnnotationReplyByActionStatusByJobIdErrors]
 
 export type GetAppsAnnotationReplyByActionStatusByJobIdResponses = {
   200: AnnotationJobStatusDetailResponse
@@ -2522,9 +2540,11 @@ export type GetAppsAnnotationsData = {
 }
 
 export type GetAppsAnnotationsErrors = {
-  401: unknown
-  403: unknown
+  401: ErrorResponse
+  403: ErrorResponse
 }
+
+export type GetAppsAnnotationsError = GetAppsAnnotationsErrors[keyof GetAppsAnnotationsErrors]
 
 export type GetAppsAnnotationsResponses = {
   200: AnnotationList
@@ -2541,9 +2561,11 @@ export type PostAppsAnnotationsData = {
 }
 
 export type PostAppsAnnotationsErrors = {
-  401: unknown
-  403: unknown
+  401: ErrorResponse
+  403: ErrorResponse
 }
+
+export type PostAppsAnnotationsError = PostAppsAnnotationsErrors[keyof PostAppsAnnotationsErrors]
 
 export type PostAppsAnnotationsResponses = {
   201: Annotation
@@ -2562,10 +2584,13 @@ export type DeleteAppsAnnotationsByAnnotationIdData = {
 }
 
 export type DeleteAppsAnnotationsByAnnotationIdErrors = {
-  401: unknown
-  403: unknown
-  404: unknown
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
 }
+
+export type DeleteAppsAnnotationsByAnnotationIdError =
+  DeleteAppsAnnotationsByAnnotationIdErrors[keyof DeleteAppsAnnotationsByAnnotationIdErrors]
 
 export type DeleteAppsAnnotationsByAnnotationIdResponses = {
   204: void
@@ -2584,10 +2609,13 @@ export type PutAppsAnnotationsByAnnotationIdData = {
 }
 
 export type PutAppsAnnotationsByAnnotationIdErrors = {
-  401: unknown
-  403: unknown
-  404: unknown
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
 }
+
+export type PutAppsAnnotationsByAnnotationIdError =
+  PutAppsAnnotationsByAnnotationIdErrors[keyof PutAppsAnnotationsByAnnotationIdErrors]
 
 export type PutAppsAnnotationsByAnnotationIdResponses = {
   200: Annotation
@@ -2607,13 +2635,15 @@ export type PostAudioToTextData = {
 }
 
 export type PostAudioToTextErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
-  413: unknown
-  415: unknown
-  500: unknown
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  413: ErrorResponse
+  415: ErrorResponse
+  500: ErrorResponse
 }
+
+export type PostAudioToTextError = PostAudioToTextErrors[keyof PostAudioToTextErrors]
 
 export type PostAudioToTextResponses = {
   200: AudioTranscriptResponse
@@ -2629,13 +2659,15 @@ export type PostChatMessagesData = {
 }
 
 export type PostChatMessagesErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
-  404: unknown
-  429: unknown
-  500: unknown
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  429: ErrorResponse
+  500: ErrorResponse
 }
+
+export type PostChatMessagesError = PostChatMessagesErrors[keyof PostChatMessagesErrors]
 
 export type PostChatMessagesResponses = {
   200: ChatBlockingResponse | string
@@ -2653,10 +2685,13 @@ export type PostChatMessagesByTaskIdStopData = {
 }
 
 export type PostChatMessagesByTaskIdStopErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
 }
+
+export type PostChatMessagesByTaskIdStopError =
+  PostChatMessagesByTaskIdStopErrors[keyof PostChatMessagesByTaskIdStopErrors]
 
 export type PostChatMessagesByTaskIdStopResponses = {
   200: SimpleResultResponse
@@ -2673,12 +2708,15 @@ export type PostCompletionMessagesData = {
 }
 
 export type PostCompletionMessagesErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
-  429: unknown
-  500: unknown
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  429: ErrorResponse
+  500: ErrorResponse
 }
+
+export type PostCompletionMessagesError =
+  PostCompletionMessagesErrors[keyof PostCompletionMessagesErrors]
 
 export type PostCompletionMessagesResponses = {
   200: CompletionBlockingResponse | string
@@ -2697,10 +2735,13 @@ export type PostCompletionMessagesByTaskIdStopData = {
 }
 
 export type PostCompletionMessagesByTaskIdStopErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
 }
+
+export type PostCompletionMessagesByTaskIdStopError =
+  PostCompletionMessagesByTaskIdStopErrors[keyof PostCompletionMessagesByTaskIdStopErrors]
 
 export type PostCompletionMessagesByTaskIdStopResponses = {
   200: SimpleResultResponse
@@ -2722,11 +2763,13 @@ export type GetConversationsData = {
 }
 
 export type GetConversationsErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
-  404: unknown
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
 }
+
+export type GetConversationsError = GetConversationsErrors[keyof GetConversationsErrors]
 
 export type GetConversationsResponses = {
   200: ConversationInfiniteScrollPagination
@@ -2744,11 +2787,14 @@ export type DeleteConversationsByConversationIdData = {
 }
 
 export type DeleteConversationsByConversationIdErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
-  404: unknown
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
 }
+
+export type DeleteConversationsByConversationIdError =
+  DeleteConversationsByConversationIdErrors[keyof DeleteConversationsByConversationIdErrors]
 
 export type DeleteConversationsByConversationIdResponses = {
   204: void
@@ -2767,11 +2813,14 @@ export type PostConversationsByConversationIdNameData = {
 }
 
 export type PostConversationsByConversationIdNameErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
-  404: unknown
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
 }
+
+export type PostConversationsByConversationIdNameError =
+  PostConversationsByConversationIdNameErrors[keyof PostConversationsByConversationIdNameErrors]
 
 export type PostConversationsByConversationIdNameResponses = {
   200: SimpleConversation
@@ -2795,11 +2844,14 @@ export type GetConversationsByConversationIdVariablesData = {
 }
 
 export type GetConversationsByConversationIdVariablesErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
-  404: unknown
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
 }
+
+export type GetConversationsByConversationIdVariablesError =
+  GetConversationsByConversationIdVariablesErrors[keyof GetConversationsByConversationIdVariablesErrors]
 
 export type GetConversationsByConversationIdVariablesResponses = {
   200: ConversationVariableInfiniteScrollPaginationResponse
@@ -2819,11 +2871,14 @@ export type PutConversationsByConversationIdVariablesByVariableIdData = {
 }
 
 export type PutConversationsByConversationIdVariablesByVariableIdErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
-  404: unknown
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
 }
+
+export type PutConversationsByConversationIdVariablesByVariableIdError =
+  PutConversationsByConversationIdVariablesByVariableIdErrors[keyof PutConversationsByConversationIdVariablesByVariableIdErrors]
 
 export type PutConversationsByConversationIdVariablesByVariableIdResponses = {
   200: ConversationVariableResponse
@@ -2846,9 +2901,11 @@ export type GetDatasetsData = {
 }
 
 export type GetDatasetsErrors = {
-  401: unknown
-  403: unknown
+  401: ErrorResponse
+  403: ErrorResponse
 }
+
+export type GetDatasetsError = GetDatasetsErrors[keyof GetDatasetsErrors]
 
 export type GetDatasetsResponses = {
   200: DatasetListResponse
@@ -2864,11 +2921,13 @@ export type PostDatasetsData = {
 }
 
 export type PostDatasetsErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
-  409: unknown
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  409: ErrorResponse
 }
+
+export type PostDatasetsError = PostDatasetsErrors[keyof PostDatasetsErrors]
 
 export type PostDatasetsResponses = {
   200: DatasetDetailResponse
@@ -2886,12 +2945,15 @@ export type PostDatasetsPipelineFileUploadData = {
 }
 
 export type PostDatasetsPipelineFileUploadErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
-  413: unknown
-  415: unknown
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  413: ErrorResponse
+  415: ErrorResponse
 }
+
+export type PostDatasetsPipelineFileUploadError =
+  PostDatasetsPipelineFileUploadErrors[keyof PostDatasetsPipelineFileUploadErrors]
 
 export type PostDatasetsPipelineFileUploadResponses = {
   201: PipelineUploadFileResponse
@@ -2908,10 +2970,12 @@ export type DeleteDatasetsTagsData = {
 }
 
 export type DeleteDatasetsTagsErrors = {
-  401: unknown
-  403: unknown
-  404: unknown
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
 }
+
+export type DeleteDatasetsTagsError = DeleteDatasetsTagsErrors[keyof DeleteDatasetsTagsErrors]
 
 export type DeleteDatasetsTagsResponses = {
   204: void
@@ -2928,9 +2992,11 @@ export type GetDatasetsTagsData = {
 }
 
 export type GetDatasetsTagsErrors = {
-  401: unknown
-  403: unknown
+  401: ErrorResponse
+  403: ErrorResponse
 }
+
+export type GetDatasetsTagsError = GetDatasetsTagsErrors[keyof GetDatasetsTagsErrors]
 
 export type GetDatasetsTagsResponses = {
   200: KnowledgeTagListResponse
@@ -2946,11 +3012,13 @@ export type PatchDatasetsTagsData = {
 }
 
 export type PatchDatasetsTagsErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
-  404: unknown
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
 }
+
+export type PatchDatasetsTagsError = PatchDatasetsTagsErrors[keyof PatchDatasetsTagsErrors]
 
 export type PatchDatasetsTagsResponses = {
   200: KnowledgeTagResponse
@@ -2966,10 +3034,12 @@ export type PostDatasetsTagsData = {
 }
 
 export type PostDatasetsTagsErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
 }
+
+export type PostDatasetsTagsError = PostDatasetsTagsErrors[keyof PostDatasetsTagsErrors]
 
 export type PostDatasetsTagsResponses = {
   200: KnowledgeTagResponse
@@ -2985,10 +3055,13 @@ export type PostDatasetsTagsBindingData = {
 }
 
 export type PostDatasetsTagsBindingErrors = {
-  401: unknown
-  403: unknown
-  404: unknown
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
 }
+
+export type PostDatasetsTagsBindingError =
+  PostDatasetsTagsBindingErrors[keyof PostDatasetsTagsBindingErrors]
 
 export type PostDatasetsTagsBindingResponses = {
   204: void
@@ -3005,10 +3078,13 @@ export type PostDatasetsTagsUnbindingData = {
 }
 
 export type PostDatasetsTagsUnbindingErrors = {
-  401: unknown
-  403: unknown
-  404: unknown
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
 }
+
+export type PostDatasetsTagsUnbindingError =
+  PostDatasetsTagsUnbindingErrors[keyof PostDatasetsTagsUnbindingErrors]
 
 export type PostDatasetsTagsUnbindingResponses = {
   204: void
@@ -3027,10 +3103,13 @@ export type DeleteDatasetsByDatasetIdData = {
 }
 
 export type DeleteDatasetsByDatasetIdErrors = {
-  401: unknown
-  403: unknown
-  404: unknown
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
 }
+
+export type DeleteDatasetsByDatasetIdError =
+  DeleteDatasetsByDatasetIdErrors[keyof DeleteDatasetsByDatasetIdErrors]
 
 export type DeleteDatasetsByDatasetIdResponses = {
   204: void
@@ -3049,10 +3128,13 @@ export type GetDatasetsByDatasetIdData = {
 }
 
 export type GetDatasetsByDatasetIdErrors = {
-  401: unknown
-  403: unknown
-  404: unknown
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
 }
+
+export type GetDatasetsByDatasetIdError =
+  GetDatasetsByDatasetIdErrors[keyof GetDatasetsByDatasetIdErrors]
 
 export type GetDatasetsByDatasetIdResponses = {
   200: DatasetDetailWithPartialMembersResponse
@@ -3071,11 +3153,14 @@ export type PatchDatasetsByDatasetIdData = {
 }
 
 export type PatchDatasetsByDatasetIdErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
-  404: unknown
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
 }
+
+export type PatchDatasetsByDatasetIdError =
+  PatchDatasetsByDatasetIdErrors[keyof PatchDatasetsByDatasetIdErrors]
 
 export type PatchDatasetsByDatasetIdResponses = {
   200: DatasetDetailWithPartialMembersResponse
@@ -3097,13 +3182,16 @@ export type PostDatasetsByDatasetIdDocumentCreateByFileData = {
 }
 
 export type PostDatasetsByDatasetIdDocumentCreateByFileErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
-  404: unknown
-  413: unknown
-  503: unknown
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  413: ErrorResponse
+  503: ErrorResponse
 }
+
+export type PostDatasetsByDatasetIdDocumentCreateByFileError =
+  PostDatasetsByDatasetIdDocumentCreateByFileErrors[keyof PostDatasetsByDatasetIdDocumentCreateByFileErrors]
 
 export type PostDatasetsByDatasetIdDocumentCreateByFileResponses = {
   200: DocumentAndBatchResponse
@@ -3122,12 +3210,15 @@ export type PostDatasetsByDatasetIdDocumentCreateByTextData = {
 }
 
 export type PostDatasetsByDatasetIdDocumentCreateByTextErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
-  404: unknown
-  503: unknown
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  503: ErrorResponse
 }
+
+export type PostDatasetsByDatasetIdDocumentCreateByTextError =
+  PostDatasetsByDatasetIdDocumentCreateByTextErrors[keyof PostDatasetsByDatasetIdDocumentCreateByTextErrors]
 
 export type PostDatasetsByDatasetIdDocumentCreateByTextResponses = {
   200: DocumentAndBatchResponse
@@ -3149,13 +3240,16 @@ export type PostDatasetsByDatasetIdDocumentCreateByFile2Data = {
 }
 
 export type PostDatasetsByDatasetIdDocumentCreateByFile2Errors = {
-  400: unknown
-  401: unknown
-  403: unknown
-  404: unknown
-  413: unknown
-  503: unknown
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  413: ErrorResponse
+  503: ErrorResponse
 }
+
+export type PostDatasetsByDatasetIdDocumentCreateByFile2Error =
+  PostDatasetsByDatasetIdDocumentCreateByFile2Errors[keyof PostDatasetsByDatasetIdDocumentCreateByFile2Errors]
 
 export type PostDatasetsByDatasetIdDocumentCreateByFile2Responses = {
   200: DocumentAndBatchResponse
@@ -3174,12 +3268,15 @@ export type PostDatasetsByDatasetIdDocumentCreateByText2Data = {
 }
 
 export type PostDatasetsByDatasetIdDocumentCreateByText2Errors = {
-  400: unknown
-  401: unknown
-  403: unknown
-  404: unknown
-  503: unknown
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  503: ErrorResponse
 }
+
+export type PostDatasetsByDatasetIdDocumentCreateByText2Error =
+  PostDatasetsByDatasetIdDocumentCreateByText2Errors[keyof PostDatasetsByDatasetIdDocumentCreateByText2Errors]
 
 export type PostDatasetsByDatasetIdDocumentCreateByText2Responses = {
   200: DocumentAndBatchResponse
@@ -3203,10 +3300,13 @@ export type GetDatasetsByDatasetIdDocumentsData = {
 }
 
 export type GetDatasetsByDatasetIdDocumentsErrors = {
-  401: unknown
-  403: unknown
-  404: unknown
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
 }
+
+export type GetDatasetsByDatasetIdDocumentsError =
+  GetDatasetsByDatasetIdDocumentsErrors[keyof GetDatasetsByDatasetIdDocumentsErrors]
 
 export type GetDatasetsByDatasetIdDocumentsResponses = {
   200: DocumentListResponse
@@ -3225,10 +3325,13 @@ export type PostDatasetsByDatasetIdDocumentsDownloadZipData = {
 }
 
 export type PostDatasetsByDatasetIdDocumentsDownloadZipErrors = {
-  401: unknown
-  403: unknown
-  404: unknown
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
 }
+
+export type PostDatasetsByDatasetIdDocumentsDownloadZipError =
+  PostDatasetsByDatasetIdDocumentsDownloadZipErrors[keyof PostDatasetsByDatasetIdDocumentsDownloadZipErrors]
 
 export type PostDatasetsByDatasetIdDocumentsDownloadZipResponses = {
   200: Blob | File
@@ -3247,11 +3350,14 @@ export type PostDatasetsByDatasetIdDocumentsMetadataData = {
 }
 
 export type PostDatasetsByDatasetIdDocumentsMetadataErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
-  404: unknown
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
 }
+
+export type PostDatasetsByDatasetIdDocumentsMetadataError =
+  PostDatasetsByDatasetIdDocumentsMetadataErrors[keyof PostDatasetsByDatasetIdDocumentsMetadataErrors]
 
 export type PostDatasetsByDatasetIdDocumentsMetadataResponses = {
   200: DatasetMetadataActionResponse
@@ -3271,11 +3377,14 @@ export type PatchDatasetsByDatasetIdDocumentsStatusByActionData = {
 }
 
 export type PatchDatasetsByDatasetIdDocumentsStatusByActionErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
-  404: unknown
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
 }
+
+export type PatchDatasetsByDatasetIdDocumentsStatusByActionError =
+  PatchDatasetsByDatasetIdDocumentsStatusByActionErrors[keyof PatchDatasetsByDatasetIdDocumentsStatusByActionErrors]
 
 export type PatchDatasetsByDatasetIdDocumentsStatusByActionResponses = {
   200: SimpleResultResponse
@@ -3295,10 +3404,13 @@ export type GetDatasetsByDatasetIdDocumentsByBatchIndexingStatusData = {
 }
 
 export type GetDatasetsByDatasetIdDocumentsByBatchIndexingStatusErrors = {
-  401: unknown
-  403: unknown
-  404: unknown
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
 }
+
+export type GetDatasetsByDatasetIdDocumentsByBatchIndexingStatusError =
+  GetDatasetsByDatasetIdDocumentsByBatchIndexingStatusErrors[keyof GetDatasetsByDatasetIdDocumentsByBatchIndexingStatusErrors]
 
 export type GetDatasetsByDatasetIdDocumentsByBatchIndexingStatusResponses = {
   200: DocumentStatusListResponse
@@ -3318,10 +3430,13 @@ export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdData = {
 }
 
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdErrors = {
-  401: unknown
-  403: unknown
-  404: unknown
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
 }
+
+export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdError =
+  DeleteDatasetsByDatasetIdDocumentsByDocumentIdErrors[keyof DeleteDatasetsByDatasetIdDocumentsByDocumentIdErrors]
 
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdResponses = {
   204: void
@@ -3343,11 +3458,14 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdData = {
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
-  404: unknown
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
 }
+
+export type GetDatasetsByDatasetIdDocumentsByDocumentIdError =
+  GetDatasetsByDatasetIdDocumentsByDocumentIdErrors[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdErrors]
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdResponses = {
   200: DocumentDetailResponse
@@ -3370,14 +3488,17 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdData = {
 }
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
-  404: unknown
-  413: unknown
-  415: unknown
-  503: unknown
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  413: ErrorResponse
+  415: ErrorResponse
+  503: ErrorResponse
 }
+
+export type PatchDatasetsByDatasetIdDocumentsByDocumentIdError =
+  PatchDatasetsByDatasetIdDocumentsByDocumentIdErrors[keyof PatchDatasetsByDatasetIdDocumentsByDocumentIdErrors]
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdResponses = {
   200: DocumentAndBatchResponse
@@ -3397,10 +3518,13 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadData = {
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadErrors = {
-  401: unknown
-  403: unknown
-  404: unknown
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
 }
+
+export type GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadError =
+  GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadErrors[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadErrors]
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadResponses = {
   200: UrlResponse
@@ -3425,11 +3549,14 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsData = {
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
-  404: unknown
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
 }
+
+export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsError =
+  GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsErrors[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsErrors]
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponses = {
   200: SegmentListResponse
@@ -3449,12 +3576,15 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsData = {
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
-  404: unknown
-  503: unknown
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  503: ErrorResponse
 }
+
+export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsError =
+  PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsErrors[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsErrors]
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponses = {
   200: SegmentCreateListResponse
@@ -3475,11 +3605,14 @@ export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdDat
 }
 
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
-  404: unknown
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
 }
+
+export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdError =
+  DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdErrors[keyof DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdErrors]
 
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponses = {
   204: void
@@ -3500,11 +3633,14 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdData =
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
-  404: unknown
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
 }
+
+export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdError =
+  GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdErrors[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdErrors]
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponses = {
   200: SegmentDetailResponse
@@ -3525,12 +3661,15 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdData 
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
-  404: unknown
-  503: unknown
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  503: ErrorResponse
 }
+
+export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdError =
+  PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdErrors[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdErrors]
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponses = {
   200: SegmentDetailResponse
@@ -3555,10 +3694,13 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildC
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksErrors = {
-  401: unknown
-  403: unknown
-  404: unknown
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
 }
+
+export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksError =
+  GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksErrors[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksErrors]
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponses = {
   200: ChildChunkListResponse
@@ -3579,12 +3721,15 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChild
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
-  404: unknown
-  503: unknown
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  503: ErrorResponse
 }
+
+export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksError =
+  PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksErrors[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksErrors]
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponses = {
   200: ChildChunkDetailResponse
@@ -3608,11 +3753,14 @@ export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChi
 
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdErrors =
   {
-    400: unknown
-    401: unknown
-    403: unknown
-    404: unknown
+    400: ErrorResponse
+    401: ErrorResponse
+    403: ErrorResponse
+    404: ErrorResponse
   }
+
+export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdError =
+  DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdErrors[keyof DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdErrors]
 
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponses =
   {
@@ -3637,12 +3785,15 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChil
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdErrors =
   {
-    400: unknown
-    401: unknown
-    403: unknown
-    404: unknown
-    503: unknown
+    400: ErrorResponse
+    401: ErrorResponse
+    403: ErrorResponse
+    404: ErrorResponse
+    503: ErrorResponse
   }
+
+export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdError =
+  PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdErrors[keyof PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdErrors]
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponses =
   {
@@ -3666,14 +3817,17 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileData = {
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
-  404: unknown
-  413: unknown
-  415: unknown
-  503: unknown
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  413: ErrorResponse
+  415: ErrorResponse
+  503: ErrorResponse
 }
+
+export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileError =
+  PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileErrors[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileErrors]
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileResponses = {
   200: DocumentAndBatchResponse
@@ -3693,12 +3847,15 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextData = {
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
-  404: unknown
-  503: unknown
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  503: ErrorResponse
 }
+
+export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextError =
+  PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextErrors[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextErrors]
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextResponses = {
   200: DocumentAndBatchResponse
@@ -3721,14 +3878,17 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Data = {
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Errors = {
-  400: unknown
-  401: unknown
-  403: unknown
-  404: unknown
-  413: unknown
-  415: unknown
-  503: unknown
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  413: ErrorResponse
+  415: ErrorResponse
+  503: ErrorResponse
 }
+
+export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Error =
+  PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Errors[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Errors]
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Responses = {
   200: DocumentAndBatchResponse
@@ -3748,11 +3908,14 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Data = {
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Errors = {
-  401: unknown
-  403: unknown
-  404: unknown
-  503: unknown
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  503: ErrorResponse
 }
+
+export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Error =
+  PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Errors[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Errors]
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Responses = {
   200: DocumentAndBatchResponse
@@ -3771,12 +3934,15 @@ export type PostDatasetsByDatasetIdHitTestingData = {
 }
 
 export type PostDatasetsByDatasetIdHitTestingErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
-  404: unknown
-  500: unknown
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  500: ErrorResponse
 }
+
+export type PostDatasetsByDatasetIdHitTestingError =
+  PostDatasetsByDatasetIdHitTestingErrors[keyof PostDatasetsByDatasetIdHitTestingErrors]
 
 export type PostDatasetsByDatasetIdHitTestingResponses = {
   200: HitTestingResponse
@@ -3795,10 +3961,13 @@ export type GetDatasetsByDatasetIdMetadataData = {
 }
 
 export type GetDatasetsByDatasetIdMetadataErrors = {
-  401: unknown
-  403: unknown
-  404: unknown
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
 }
+
+export type GetDatasetsByDatasetIdMetadataError =
+  GetDatasetsByDatasetIdMetadataErrors[keyof GetDatasetsByDatasetIdMetadataErrors]
 
 export type GetDatasetsByDatasetIdMetadataResponses = {
   200: DatasetMetadataListResponse
@@ -3817,11 +3986,14 @@ export type PostDatasetsByDatasetIdMetadataData = {
 }
 
 export type PostDatasetsByDatasetIdMetadataErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
-  404: unknown
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
 }
+
+export type PostDatasetsByDatasetIdMetadataError =
+  PostDatasetsByDatasetIdMetadataErrors[keyof PostDatasetsByDatasetIdMetadataErrors]
 
 export type PostDatasetsByDatasetIdMetadataResponses = {
   201: DatasetMetadataResponse
@@ -3840,10 +4012,13 @@ export type GetDatasetsByDatasetIdMetadataBuiltInData = {
 }
 
 export type GetDatasetsByDatasetIdMetadataBuiltInErrors = {
-  401: unknown
-  403: unknown
-  404: unknown
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
 }
+
+export type GetDatasetsByDatasetIdMetadataBuiltInError =
+  GetDatasetsByDatasetIdMetadataBuiltInErrors[keyof GetDatasetsByDatasetIdMetadataBuiltInErrors]
 
 export type GetDatasetsByDatasetIdMetadataBuiltInResponses = {
   200: DatasetMetadataBuiltInFieldsResponse
@@ -3863,10 +4038,13 @@ export type PostDatasetsByDatasetIdMetadataBuiltInByActionData = {
 }
 
 export type PostDatasetsByDatasetIdMetadataBuiltInByActionErrors = {
-  401: unknown
-  403: unknown
-  404: unknown
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
 }
+
+export type PostDatasetsByDatasetIdMetadataBuiltInByActionError =
+  PostDatasetsByDatasetIdMetadataBuiltInByActionErrors[keyof PostDatasetsByDatasetIdMetadataBuiltInByActionErrors]
 
 export type PostDatasetsByDatasetIdMetadataBuiltInByActionResponses = {
   200: DatasetMetadataActionResponse
@@ -3886,10 +4064,13 @@ export type DeleteDatasetsByDatasetIdMetadataByMetadataIdData = {
 }
 
 export type DeleteDatasetsByDatasetIdMetadataByMetadataIdErrors = {
-  401: unknown
-  403: unknown
-  404: unknown
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
 }
+
+export type DeleteDatasetsByDatasetIdMetadataByMetadataIdError =
+  DeleteDatasetsByDatasetIdMetadataByMetadataIdErrors[keyof DeleteDatasetsByDatasetIdMetadataByMetadataIdErrors]
 
 export type DeleteDatasetsByDatasetIdMetadataByMetadataIdResponses = {
   204: void
@@ -3909,11 +4090,14 @@ export type PatchDatasetsByDatasetIdMetadataByMetadataIdData = {
 }
 
 export type PatchDatasetsByDatasetIdMetadataByMetadataIdErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
-  404: unknown
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
 }
+
+export type PatchDatasetsByDatasetIdMetadataByMetadataIdError =
+  PatchDatasetsByDatasetIdMetadataByMetadataIdErrors[keyof PatchDatasetsByDatasetIdMetadataByMetadataIdErrors]
 
 export type PatchDatasetsByDatasetIdMetadataByMetadataIdResponses = {
   200: DatasetMetadataResponse
@@ -3934,11 +4118,14 @@ export type GetDatasetsByDatasetIdPipelineDatasourcePluginsData = {
 }
 
 export type GetDatasetsByDatasetIdPipelineDatasourcePluginsErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
-  404: unknown
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
 }
+
+export type GetDatasetsByDatasetIdPipelineDatasourcePluginsError =
+  GetDatasetsByDatasetIdPipelineDatasourcePluginsErrors[keyof GetDatasetsByDatasetIdPipelineDatasourcePluginsErrors]
 
 export type GetDatasetsByDatasetIdPipelineDatasourcePluginsResponses = {
   200: DatasourcePluginListResponse
@@ -3958,11 +4145,14 @@ export type PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunData = {
 }
 
 export type PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
-  404: unknown
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
 }
+
+export type PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunError =
+  PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunErrors[keyof PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunErrors]
 
 export type PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunResponses = {
   200: string
@@ -3981,12 +4171,15 @@ export type PostDatasetsByDatasetIdPipelineRunData = {
 }
 
 export type PostDatasetsByDatasetIdPipelineRunErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
-  404: unknown
-  500: unknown
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  500: ErrorResponse
 }
+
+export type PostDatasetsByDatasetIdPipelineRunError =
+  PostDatasetsByDatasetIdPipelineRunErrors[keyof PostDatasetsByDatasetIdPipelineRunErrors]
 
 export type PostDatasetsByDatasetIdPipelineRunResponses = {
   200: PipelineRunJsonResponse | string
@@ -4005,12 +4198,15 @@ export type PostDatasetsByDatasetIdRetrieveData = {
 }
 
 export type PostDatasetsByDatasetIdRetrieveErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
-  404: unknown
-  500: unknown
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  500: ErrorResponse
 }
+
+export type PostDatasetsByDatasetIdRetrieveError =
+  PostDatasetsByDatasetIdRetrieveErrors[keyof PostDatasetsByDatasetIdRetrieveErrors]
 
 export type PostDatasetsByDatasetIdRetrieveResponses = {
   200: HitTestingResponse
@@ -4029,10 +4225,13 @@ export type GetDatasetsByDatasetIdTagsData = {
 }
 
 export type GetDatasetsByDatasetIdTagsErrors = {
-  401: unknown
-  403: unknown
-  404: unknown
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
 }
+
+export type GetDatasetsByDatasetIdTagsError =
+  GetDatasetsByDatasetIdTagsErrors[keyof GetDatasetsByDatasetIdTagsErrors]
 
 export type GetDatasetsByDatasetIdTagsResponses = {
   200: DatasetBoundTagListResponse
@@ -4051,10 +4250,13 @@ export type GetEndUsersByEndUserIdData = {
 }
 
 export type GetEndUsersByEndUserIdErrors = {
-  401: unknown
-  403: unknown
-  404: unknown
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
 }
+
+export type GetEndUsersByEndUserIdError =
+  GetEndUsersByEndUserIdErrors[keyof GetEndUsersByEndUserIdErrors]
 
 export type GetEndUsersByEndUserIdResponses = {
   200: EndUserDetail
@@ -4074,12 +4276,14 @@ export type PostFilesUploadData = {
 }
 
 export type PostFilesUploadErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
-  413: unknown
-  415: unknown
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  413: ErrorResponse
+  415: ErrorResponse
 }
+
+export type PostFilesUploadError = PostFilesUploadErrors[keyof PostFilesUploadErrors]
 
 export type PostFilesUploadResponses = {
   201: FileResponse
@@ -4100,10 +4304,13 @@ export type GetFilesByFileIdPreviewData = {
 }
 
 export type GetFilesByFileIdPreviewErrors = {
-  401: unknown
-  403: unknown
-  404: unknown
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
 }
+
+export type GetFilesByFileIdPreviewError =
+  GetFilesByFileIdPreviewErrors[keyof GetFilesByFileIdPreviewErrors]
 
 export type GetFilesByFileIdPreviewResponses = {
   200: Blob | File
@@ -4122,11 +4329,14 @@ export type GetFormHumanInputByFormTokenData = {
 }
 
 export type GetFormHumanInputByFormTokenErrors = {
-  401: unknown
-  403: unknown
-  404: unknown
-  412: unknown
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  412: ErrorResponse
 }
+
+export type GetFormHumanInputByFormTokenError =
+  GetFormHumanInputByFormTokenErrors[keyof GetFormHumanInputByFormTokenErrors]
 
 export type GetFormHumanInputByFormTokenResponses = {
   200: HumanInputFormDefinitionResponse
@@ -4145,12 +4355,15 @@ export type PostFormHumanInputByFormTokenData = {
 }
 
 export type PostFormHumanInputByFormTokenErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
-  404: unknown
-  412: unknown
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  412: ErrorResponse
 }
+
+export type PostFormHumanInputByFormTokenError =
+  PostFormHumanInputByFormTokenErrors[keyof PostFormHumanInputByFormTokenErrors]
 
 export type PostFormHumanInputByFormTokenResponses = {
   200: HumanInputFormSubmitResponse
@@ -4167,10 +4380,12 @@ export type GetInfoData = {
 }
 
 export type GetInfoErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
 }
+
+export type GetInfoError = GetInfoErrors[keyof GetInfoErrors]
 
 export type GetInfoResponses = {
   200: AppInfoResponse
@@ -4191,11 +4406,13 @@ export type GetMessagesData = {
 }
 
 export type GetMessagesErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
-  404: unknown
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
 }
+
+export type GetMessagesError = GetMessagesErrors[keyof GetMessagesErrors]
 
 export type GetMessagesResponses = {
   200: MessageInfiniteScrollPagination
@@ -4213,11 +4430,14 @@ export type PostMessagesByMessageIdFeedbacksData = {
 }
 
 export type PostMessagesByMessageIdFeedbacksErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
-  404: unknown
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
 }
+
+export type PostMessagesByMessageIdFeedbacksError =
+  PostMessagesByMessageIdFeedbacksErrors[keyof PostMessagesByMessageIdFeedbacksErrors]
 
 export type PostMessagesByMessageIdFeedbacksResponses = {
   200: ResultResponse
@@ -4238,12 +4458,15 @@ export type GetMessagesByMessageIdSuggestedData = {
 }
 
 export type GetMessagesByMessageIdSuggestedErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
-  404: unknown
-  500: unknown
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  500: ErrorResponse
 }
+
+export type GetMessagesByMessageIdSuggestedError =
+  GetMessagesByMessageIdSuggestedErrors[keyof GetMessagesByMessageIdSuggestedErrors]
 
 export type GetMessagesByMessageIdSuggestedResponses = {
   200: SimpleResultStringListResponse
@@ -4260,10 +4483,12 @@ export type GetMetaData = {
 }
 
 export type GetMetaErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
 }
+
+export type GetMetaError = GetMetaErrors[keyof GetMetaErrors]
 
 export type GetMetaResponses = {
   200: AppMetaResponse
@@ -4279,10 +4504,12 @@ export type GetParametersData = {
 }
 
 export type GetParametersErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
 }
+
+export type GetParametersError = GetParametersErrors[keyof GetParametersErrors]
 
 export type GetParametersResponses = {
   200: Parameters
@@ -4298,9 +4525,11 @@ export type GetSiteData = {
 }
 
 export type GetSiteErrors = {
-  401: unknown
-  403: unknown
+  401: ErrorResponse
+  403: ErrorResponse
 }
+
+export type GetSiteError = GetSiteErrors[keyof GetSiteErrors]
 
 export type GetSiteResponses = {
   200: Site
@@ -4316,11 +4545,13 @@ export type PostTextToAudioData = {
 }
 
 export type PostTextToAudioErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
-  500: unknown
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  500: ErrorResponse
 }
+
+export type PostTextToAudioError = PostTextToAudioErrors[keyof PostTextToAudioErrors]
 
 export type PostTextToAudioResponses = {
   200: Blob | File
@@ -4342,11 +4573,14 @@ export type GetWorkflowByWorkflowRunIdEventsData = {
 }
 
 export type GetWorkflowByWorkflowRunIdEventsErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
-  404: unknown
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
 }
+
+export type GetWorkflowByWorkflowRunIdEventsError =
+  GetWorkflowByWorkflowRunIdEventsErrors[keyof GetWorkflowByWorkflowRunIdEventsErrors]
 
 export type GetWorkflowByWorkflowRunIdEventsResponses = {
   200: string
@@ -4372,10 +4606,12 @@ export type GetWorkflowsLogsData = {
 }
 
 export type GetWorkflowsLogsErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
 }
+
+export type GetWorkflowsLogsError = GetWorkflowsLogsErrors[keyof GetWorkflowsLogsErrors]
 
 export type GetWorkflowsLogsResponses = {
   200: WorkflowAppLogPaginationResponse
@@ -4391,12 +4627,14 @@ export type PostWorkflowsRunData = {
 }
 
 export type PostWorkflowsRunErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
-  429: unknown
-  500: unknown
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  429: ErrorResponse
+  500: ErrorResponse
 }
+
+export type PostWorkflowsRunError = PostWorkflowsRunErrors[keyof PostWorkflowsRunErrors]
 
 export type PostWorkflowsRunResponses = {
   200: WorkflowBlockingResponse | string
@@ -4414,11 +4652,14 @@ export type GetWorkflowsRunByWorkflowRunIdData = {
 }
 
 export type GetWorkflowsRunByWorkflowRunIdErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
-  404: unknown
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
 }
+
+export type GetWorkflowsRunByWorkflowRunIdError =
+  GetWorkflowsRunByWorkflowRunIdErrors[keyof GetWorkflowsRunByWorkflowRunIdErrors]
 
 export type GetWorkflowsRunByWorkflowRunIdResponses = {
   200: WorkflowRunResponse
@@ -4437,10 +4678,13 @@ export type PostWorkflowsTasksByTaskIdStopData = {
 }
 
 export type PostWorkflowsTasksByTaskIdStopErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
 }
+
+export type PostWorkflowsTasksByTaskIdStopError =
+  PostWorkflowsTasksByTaskIdStopErrors[keyof PostWorkflowsTasksByTaskIdStopErrors]
 
 export type PostWorkflowsTasksByTaskIdStopResponses = {
   200: SimpleResultResponse
@@ -4459,13 +4703,16 @@ export type PostWorkflowsByWorkflowIdRunData = {
 }
 
 export type PostWorkflowsByWorkflowIdRunErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
-  404: unknown
-  429: unknown
-  500: unknown
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  429: ErrorResponse
+  500: ErrorResponse
 }
+
+export type PostWorkflowsByWorkflowIdRunError =
+  PostWorkflowsByWorkflowIdRunErrors[keyof PostWorkflowsByWorkflowIdRunErrors]
 
 export type PostWorkflowsByWorkflowIdRunResponses = {
   200: WorkflowBlockingResponse | string
@@ -4484,8 +4731,11 @@ export type GetWorkspacesCurrentModelsModelTypesByModelTypeData = {
 }
 
 export type GetWorkspacesCurrentModelsModelTypesByModelTypeErrors = {
-  401: unknown
+  401: ErrorResponse
 }
+
+export type GetWorkspacesCurrentModelsModelTypesByModelTypeError =
+  GetWorkspacesCurrentModelsModelTypesByModelTypeErrors[keyof GetWorkspacesCurrentModelsModelTypesByModelTypeErrors]
 
 export type GetWorkspacesCurrentModelsModelTypesByModelTypeResponses = {
   200: ProviderWithModelsListResponse

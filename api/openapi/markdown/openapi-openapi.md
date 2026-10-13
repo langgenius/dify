@@ -232,10 +232,10 @@ Upload a file to use as an input variable when running the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | File uploaded successfully | **application/json**: [FileResponse](#fileresponse)<br> |
-| 400 | Bad request — invalid filename or blocked extension |  |
-| 401 | Unauthorized — invalid or expired bearer token |  |
-| 413 | File too large |  |
-| 415 | Unsupported file type |  |
+| 400 | Bad request — invalid filename or blocked extension | **application/json**: [ErrorBody](#errorbody)<br> |
+| 401 | Unauthorized — invalid or expired bearer token | **application/json**: [ErrorBody](#errorbody)<br> |
+| 413 | File too large | **application/json**: [ErrorBody](#errorbody)<br> |
+| 415 | Unsupported file type | **application/json**: [ErrorBody](#errorbody)<br> |
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 

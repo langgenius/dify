@@ -60,6 +60,16 @@ export type AgentAppDetailWithSite = {
   workflow: WorkflowPartial | null
 }
 
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type AgentInviteOptionsResponse = {
   data: Array<AgentInviteOptionResponse>
   has_more: boolean
@@ -2304,10 +2314,12 @@ export type PostAgentData = {
 }
 
 export type PostAgentErrors = {
-  400: unknown
-  403: unknown
-  409: unknown
+  400: ErrorResponse
+  403: ErrorResponse
+  409: ErrorResponse
 }
+
+export type PostAgentError = PostAgentErrors[keyof PostAgentErrors]
 
 export type PostAgentResponses = {
   201: AgentAppDetailWithSite
@@ -2344,8 +2356,10 @@ export type DeleteAgentByAgentIdData = {
 }
 
 export type DeleteAgentByAgentIdErrors = {
-  403: unknown
+  403: ErrorResponse
 }
+
+export type DeleteAgentByAgentIdError = DeleteAgentByAgentIdErrors[keyof DeleteAgentByAgentIdErrors]
 
 export type DeleteAgentByAgentIdResponses = {
   204: void
@@ -2379,9 +2393,11 @@ export type PutAgentByAgentIdData = {
 }
 
 export type PutAgentByAgentIdErrors = {
-  400: unknown
-  403: unknown
+  400: ErrorResponse
+  403: ErrorResponse
 }
+
+export type PutAgentByAgentIdError = PutAgentByAgentIdErrors[keyof PutAgentByAgentIdErrors]
 
 export type PutAgentByAgentIdResponses = {
   200: AgentAppDetailWithSite
@@ -2415,8 +2431,11 @@ export type PostAgentByAgentIdApiEnableData = {
 }
 
 export type PostAgentByAgentIdApiEnableErrors = {
-  403: unknown
+  403: ErrorResponse
 }
+
+export type PostAgentByAgentIdApiEnableError =
+  PostAgentByAgentIdApiEnableErrors[keyof PostAgentByAgentIdApiEnableErrors]
 
 export type PostAgentByAgentIdApiEnableResponses = {
   200: AgentApiAccessResponse
@@ -2451,8 +2470,11 @@ export type PostAgentByAgentIdApiKeysData = {
 }
 
 export type PostAgentByAgentIdApiKeysErrors = {
-  400: unknown
+  400: ErrorResponse
 }
+
+export type PostAgentByAgentIdApiKeysError =
+  PostAgentByAgentIdApiKeysErrors[keyof PostAgentByAgentIdApiKeysErrors]
 
 export type PostAgentByAgentIdApiKeysResponses = {
   201: ApiKeyItem
@@ -2491,10 +2513,13 @@ export type PostAgentByAgentIdAudioToTextData = {
 }
 
 export type PostAgentByAgentIdAudioToTextErrors = {
-  400: unknown
-  404: unknown
-  413: unknown
+  400: ErrorResponse
+  404: ErrorResponse
+  413: ErrorResponse
 }
+
+export type PostAgentByAgentIdAudioToTextError =
+  PostAgentByAgentIdAudioToTextErrors[keyof PostAgentByAgentIdAudioToTextErrors]
 
 export type PostAgentByAgentIdAudioToTextResponses = {
   200: AudioTranscriptResponse
@@ -2513,9 +2538,12 @@ export type PostAgentByAgentIdBuildChatFinalizeData = {
 }
 
 export type PostAgentByAgentIdBuildChatFinalizeErrors = {
-  400: unknown
-  404: unknown
+  400: ErrorResponse
+  404: ErrorResponse
 }
+
+export type PostAgentByAgentIdBuildChatFinalizeError =
+  PostAgentByAgentIdBuildChatFinalizeErrors[keyof PostAgentByAgentIdBuildChatFinalizeErrors]
 
 export type PostAgentByAgentIdBuildChatFinalizeResponses = {
   200: SimpleResultResponse
@@ -2550,8 +2578,11 @@ export type GetAgentByAgentIdBuildDraftData = {
 }
 
 export type GetAgentByAgentIdBuildDraftErrors = {
-  404: unknown
+  404: ErrorResponse
 }
+
+export type GetAgentByAgentIdBuildDraftError =
+  GetAgentByAgentIdBuildDraftErrors[keyof GetAgentByAgentIdBuildDraftErrors]
 
 export type GetAgentByAgentIdBuildDraftResponses = {
   200: AgentBuildDraftResponse
@@ -2622,8 +2653,11 @@ export type GetAgentByAgentIdChatMessagesData = {
 }
 
 export type GetAgentByAgentIdChatMessagesErrors = {
-  404: unknown
+  404: ErrorResponse
 }
+
+export type GetAgentByAgentIdChatMessagesError =
+  GetAgentByAgentIdChatMessagesErrors[keyof GetAgentByAgentIdChatMessagesErrors]
 
 export type GetAgentByAgentIdChatMessagesResponses = {
   200: MessageInfiniteScrollPaginationResponse
@@ -2643,12 +2677,15 @@ export type GetAgentByAgentIdChatMessagesByMessageIdSuggestedQuestionsData = {
 }
 
 export type GetAgentByAgentIdChatMessagesByMessageIdSuggestedQuestionsErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
-  404: unknown
-  500: unknown
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  500: ErrorResponse
 }
+
+export type GetAgentByAgentIdChatMessagesByMessageIdSuggestedQuestionsError =
+  GetAgentByAgentIdChatMessagesByMessageIdSuggestedQuestionsErrors[keyof GetAgentByAgentIdChatMessagesByMessageIdSuggestedQuestionsErrors]
 
 export type GetAgentByAgentIdChatMessagesByMessageIdSuggestedQuestionsResponses = {
   200: SuggestedQuestionsResponse
@@ -3026,9 +3063,12 @@ export type PostAgentByAgentIdCopyData = {
 }
 
 export type PostAgentByAgentIdCopyErrors = {
-  400: unknown
-  403: unknown
+  400: ErrorResponse
+  403: ErrorResponse
 }
+
+export type PostAgentByAgentIdCopyError =
+  PostAgentByAgentIdCopyErrors[keyof PostAgentByAgentIdCopyErrors]
 
 export type PostAgentByAgentIdCopyResponses = {
   201: AgentAppDetailWithSite
@@ -3047,8 +3087,11 @@ export type PostAgentByAgentIdDebugConversationRefreshData = {
 }
 
 export type PostAgentByAgentIdDebugConversationRefreshErrors = {
-  403: unknown
+  403: ErrorResponse
 }
+
+export type PostAgentByAgentIdDebugConversationRefreshError =
+  PostAgentByAgentIdDebugConversationRefreshErrors[keyof PostAgentByAgentIdDebugConversationRefreshErrors]
 
 export type PostAgentByAgentIdDebugConversationRefreshResponses = {
   200: AgentDebugConversationRefreshResponse
@@ -3067,9 +3110,12 @@ export type PostAgentByAgentIdFeaturesData = {
 }
 
 export type PostAgentByAgentIdFeaturesErrors = {
-  400: unknown
-  404: unknown
+  400: ErrorResponse
+  404: ErrorResponse
 }
+
+export type PostAgentByAgentIdFeaturesError =
+  PostAgentByAgentIdFeaturesErrors[keyof PostAgentByAgentIdFeaturesErrors]
 
 export type PostAgentByAgentIdFeaturesResponses = {
   200: SimpleResultResponse
@@ -3088,8 +3134,11 @@ export type PostAgentByAgentIdFeedbacksData = {
 }
 
 export type PostAgentByAgentIdFeedbacksErrors = {
-  404: unknown
+  404: ErrorResponse
 }
+
+export type PostAgentByAgentIdFeedbacksError =
+  PostAgentByAgentIdFeedbacksErrors[keyof PostAgentByAgentIdFeedbacksErrors]
 
 export type PostAgentByAgentIdFeedbacksResponses = {
   200: SimpleResultResponse
@@ -3182,8 +3231,11 @@ export type GetAgentByAgentIdMessagesByMessageIdData = {
 }
 
 export type GetAgentByAgentIdMessagesByMessageIdErrors = {
-  404: unknown
+  404: ErrorResponse
 }
+
+export type GetAgentByAgentIdMessagesByMessageIdError =
+  GetAgentByAgentIdMessagesByMessageIdErrors[keyof GetAgentByAgentIdMessagesByMessageIdErrors]
 
 export type GetAgentByAgentIdMessagesByMessageIdResponses = {
   200: MessageDetailResponse
@@ -3202,8 +3254,11 @@ export type PostAgentByAgentIdPublishData = {
 }
 
 export type PostAgentByAgentIdPublishErrors = {
-  403: unknown
+  403: ErrorResponse
 }
+
+export type PostAgentByAgentIdPublishError =
+  PostAgentByAgentIdPublishErrors[keyof PostAgentByAgentIdPublishErrors]
 
 export type PostAgentByAgentIdPublishResponses = {
   200: AgentPublishResponse
@@ -3222,8 +3277,11 @@ export type GetAgentByAgentIdReferencingWorkflowsData = {
 }
 
 export type GetAgentByAgentIdReferencingWorkflowsErrors = {
-  404: unknown
+  404: ErrorResponse
 }
+
+export type GetAgentByAgentIdReferencingWorkflowsError =
+  GetAgentByAgentIdReferencingWorkflowsErrors[keyof GetAgentByAgentIdReferencingWorkflowsErrors]
 
 export type GetAgentByAgentIdReferencingWorkflowsResponses = {
   200: AgentReferencingWorkflowsResponse
@@ -3337,10 +3395,13 @@ export type PostAgentByAgentIdTextToAudioData = {
 }
 
 export type PostAgentByAgentIdTextToAudioErrors = {
-  400: unknown
-  403: unknown
-  404: unknown
+  400: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
 }
+
+export type PostAgentByAgentIdTextToAudioError =
+  PostAgentByAgentIdTextToAudioErrors[keyof PostAgentByAgentIdTextToAudioErrors]
 
 export type PostAgentByAgentIdTextToAudioResponses = {
   200: Blob | File
@@ -3361,9 +3422,12 @@ export type GetAgentByAgentIdTextToAudioVoicesData = {
 }
 
 export type GetAgentByAgentIdTextToAudioVoicesErrors = {
-  400: unknown
-  404: unknown
+  400: ErrorResponse
+  404: ErrorResponse
 }
+
+export type GetAgentByAgentIdTextToAudioVoicesError =
+  GetAgentByAgentIdTextToAudioVoicesErrors[keyof GetAgentByAgentIdTextToAudioVoicesErrors]
 
 export type GetAgentByAgentIdTextToAudioVoicesResponses = {
   200: TextToSpeechVoiceListResponse

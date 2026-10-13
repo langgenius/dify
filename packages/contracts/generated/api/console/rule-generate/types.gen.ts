@@ -12,6 +12,16 @@ export type RuleGeneratePayload = {
 
 export type GeneratorResponse = unknown
 
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type ModelConfig = {
   completion_params?: {
     [key: string]: unknown
@@ -31,9 +41,11 @@ export type PostRuleGenerateData = {
 }
 
 export type PostRuleGenerateErrors = {
-  400: unknown
-  402: unknown
+  400: ErrorResponse
+  402: ErrorResponse
 }
+
+export type PostRuleGenerateError = PostRuleGenerateErrors[keyof PostRuleGenerateErrors]
 
 export type PostRuleGenerateResponses = {
   200: GeneratorResponse

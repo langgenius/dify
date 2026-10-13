@@ -11,6 +11,16 @@ export type RuleStructuredOutputPayload = {
 
 export type GeneratorResponse = unknown
 
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type ModelConfig = {
   completion_params?: {
     [key: string]: unknown
@@ -30,9 +40,12 @@ export type PostRuleStructuredOutputGenerateData = {
 }
 
 export type PostRuleStructuredOutputGenerateErrors = {
-  400: unknown
-  402: unknown
+  400: ErrorResponse
+  402: ErrorResponse
 }
+
+export type PostRuleStructuredOutputGenerateError =
+  PostRuleStructuredOutputGenerateErrors[keyof PostRuleStructuredOutputGenerateErrors]
 
 export type PostRuleStructuredOutputGenerateResponses = {
   200: GeneratorResponse

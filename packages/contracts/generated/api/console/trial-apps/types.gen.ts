@@ -135,6 +135,16 @@ export type AppExportResponse = {
   data: string
 }
 
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type FileResponse = {
   conversation_id?: string | null
   created_at?: number | null
@@ -1589,8 +1599,11 @@ export type GetTrialAppsByAppIdExportData = {
 }
 
 export type GetTrialAppsByAppIdExportErrors = {
-  404: unknown
+  404: ErrorResponse
 }
+
+export type GetTrialAppsByAppIdExportError =
+  GetTrialAppsByAppIdExportErrors[keyof GetTrialAppsByAppIdExportErrors]
 
 export type GetTrialAppsByAppIdExportResponses = {
   200: AppExportResponse | Blob | File

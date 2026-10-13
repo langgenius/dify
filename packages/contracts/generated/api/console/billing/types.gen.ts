@@ -8,6 +8,16 @@ export type BillingInvoiceResponse = {
   url: string
 }
 
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type BillingOperationFailedErrorResponse = {
   code: 'billing_operation_failed'
   message: string
@@ -38,7 +48,7 @@ export type GetBillingInvoicesData = {
 }
 
 export type GetBillingInvoicesErrors = {
-  403: unknown
+  403: ErrorResponse
   502: BillingOperationFailedErrorResponse
   503: BillingUnavailableErrorResponse
 }
@@ -63,7 +73,7 @@ export type GetBillingSubscriptionData = {
 }
 
 export type GetBillingSubscriptionErrors = {
-  403: unknown
+  403: ErrorResponse
   422: BillingUnprocessableEntityErrorResponse
   502: BillingOperationFailedErrorResponse
   503: BillingUnavailableErrorResponse

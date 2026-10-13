@@ -16,6 +16,16 @@ export type SimpleDataResponse = {
   data: string
 }
 
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type RagPipelineDatasetImportPayload = {
   yaml_content: string
 }
@@ -774,8 +784,11 @@ export type PostRagPipelineCustomizedTemplatesByTemplateIdData = {
 }
 
 export type PostRagPipelineCustomizedTemplatesByTemplateIdErrors = {
-  404: unknown
+  404: ErrorResponse
 }
+
+export type PostRagPipelineCustomizedTemplatesByTemplateIdError =
+  PostRagPipelineCustomizedTemplatesByTemplateIdErrors[keyof PostRagPipelineCustomizedTemplatesByTemplateIdErrors]
 
 export type PostRagPipelineCustomizedTemplatesByTemplateIdResponses = {
   200: SimpleDataResponse
@@ -841,8 +854,11 @@ export type GetRagPipelineTemplatesByTemplateIdData = {
 }
 
 export type GetRagPipelineTemplatesByTemplateIdErrors = {
-  404: unknown
+  404: ErrorResponse
 }
+
+export type GetRagPipelineTemplatesByTemplateIdError =
+  GetRagPipelineTemplatesByTemplateIdErrors[keyof GetRagPipelineTemplatesByTemplateIdErrors]
 
 export type GetRagPipelineTemplatesByTemplateIdResponses = {
   200: PipelineTemplateDetailResponse
@@ -952,8 +968,11 @@ export type PostRagPipelinesTransformDatasetsByDatasetIdData = {
 }
 
 export type PostRagPipelinesTransformDatasetsByDatasetIdErrors = {
-  404: unknown
+  404: ErrorResponse
 }
+
+export type PostRagPipelinesTransformDatasetsByDatasetIdError =
+  PostRagPipelinesTransformDatasetsByDatasetIdErrors[keyof PostRagPipelinesTransformDatasetsByDatasetIdErrors]
 
 export type PostRagPipelinesTransformDatasetsByDatasetIdResponses = {
   200: RagPipelineOpaqueResponse
@@ -972,8 +991,11 @@ export type PostRagPipelinesByPipelineIdCustomizedPublishData = {
 }
 
 export type PostRagPipelinesByPipelineIdCustomizedPublishErrors = {
-  404: unknown
+  404: ErrorResponse
 }
+
+export type PostRagPipelinesByPipelineIdCustomizedPublishError =
+  PostRagPipelinesByPipelineIdCustomizedPublishErrors[keyof PostRagPipelinesByPipelineIdCustomizedPublishErrors]
 
 export type PostRagPipelinesByPipelineIdCustomizedPublishResponses = {
   204: void
@@ -1085,8 +1107,11 @@ export type GetRagPipelinesByPipelineIdWorkflowsData = {
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsErrors = {
-  403: unknown
+  403: ErrorResponse
 }
+
+export type GetRagPipelinesByPipelineIdWorkflowsError =
+  GetRagPipelinesByPipelineIdWorkflowsErrors[keyof GetRagPipelinesByPipelineIdWorkflowsErrors]
 
 export type GetRagPipelinesByPipelineIdWorkflowsResponses = {
   200: WorkflowPaginationResponse
@@ -1140,8 +1165,11 @@ export type GetRagPipelinesByPipelineIdWorkflowsDraftData = {
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsDraftErrors = {
-  404: unknown
+  404: ErrorResponse
 }
+
+export type GetRagPipelinesByPipelineIdWorkflowsDraftError =
+  GetRagPipelinesByPipelineIdWorkflowsDraftErrors[keyof GetRagPipelinesByPipelineIdWorkflowsDraftErrors]
 
 export type GetRagPipelinesByPipelineIdWorkflowsDraftResponses = {
   200: WorkflowResponse
@@ -1638,10 +1666,13 @@ export type PatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdData = {
 }
 
 export type PatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdErrors = {
-  400: unknown
-  403: unknown
-  404: unknown
+  400: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
 }
+
+export type PatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdError =
+  PatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdErrors[keyof PatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdErrors]
 
 export type PatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponses = {
   200: WorkflowResponse

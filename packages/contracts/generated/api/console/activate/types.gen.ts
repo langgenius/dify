@@ -17,6 +17,16 @@ export type ActivationResponse = {
   result: string
 }
 
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type ActivationCheckResponse = {
   data?: ActivationCheckData | null
   is_valid: boolean
@@ -38,8 +48,10 @@ export type PostActivateData = {
 }
 
 export type PostActivateErrors = {
-  400: unknown
+  400: ErrorResponse
 }
+
+export type PostActivateError = PostActivateErrors[keyof PostActivateErrors]
 
 export type PostActivateResponses = {
   200: ActivationResponse

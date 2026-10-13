@@ -71,6 +71,16 @@ export type SnippetResponse = {
   version: number
 }
 
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type SnippetImportPayload = {
   description?: string | null
   mode: string
@@ -3006,8 +3016,11 @@ export type PostWorkspacesCurrentCustomizedSnippetsData = {
 }
 
 export type PostWorkspacesCurrentCustomizedSnippetsErrors = {
-  400: unknown
+  400: ErrorResponse
 }
+
+export type PostWorkspacesCurrentCustomizedSnippetsError =
+  PostWorkspacesCurrentCustomizedSnippetsErrors[keyof PostWorkspacesCurrentCustomizedSnippetsErrors]
 
 export type PostWorkspacesCurrentCustomizedSnippetsResponses = {
   201: SnippetResponse
@@ -3024,8 +3037,11 @@ export type PostWorkspacesCurrentCustomizedSnippetsImportsData = {
 }
 
 export type PostWorkspacesCurrentCustomizedSnippetsImportsErrors = {
-  400: unknown
+  400: ErrorResponse
 }
+
+export type PostWorkspacesCurrentCustomizedSnippetsImportsError =
+  PostWorkspacesCurrentCustomizedSnippetsImportsErrors[keyof PostWorkspacesCurrentCustomizedSnippetsImportsErrors]
 
 export type PostWorkspacesCurrentCustomizedSnippetsImportsResponses = {
   200: SnippetImportResponse
@@ -3045,8 +3061,11 @@ export type PostWorkspacesCurrentCustomizedSnippetsImportsByImportIdConfirmData 
 }
 
 export type PostWorkspacesCurrentCustomizedSnippetsImportsByImportIdConfirmErrors = {
-  400: unknown
+  400: ErrorResponse
 }
+
+export type PostWorkspacesCurrentCustomizedSnippetsImportsByImportIdConfirmError =
+  PostWorkspacesCurrentCustomizedSnippetsImportsByImportIdConfirmErrors[keyof PostWorkspacesCurrentCustomizedSnippetsImportsByImportIdConfirmErrors]
 
 export type PostWorkspacesCurrentCustomizedSnippetsImportsByImportIdConfirmResponses = {
   200: SnippetImportResponse
@@ -3065,8 +3084,11 @@ export type DeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdData = {
 }
 
 export type DeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdErrors = {
-  404: unknown
+  404: ErrorResponse
 }
+
+export type DeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdError =
+  DeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdErrors[keyof DeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdErrors]
 
 export type DeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdResponses = {
   204: void
@@ -3085,8 +3107,11 @@ export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdData = {
 }
 
 export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdErrors = {
-  404: unknown
+  404: ErrorResponse
 }
+
+export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdError =
+  GetWorkspacesCurrentCustomizedSnippetsBySnippetIdErrors[keyof GetWorkspacesCurrentCustomizedSnippetsBySnippetIdErrors]
 
 export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdResponses = {
   200: SnippetResponse
@@ -3105,9 +3130,12 @@ export type PatchWorkspacesCurrentCustomizedSnippetsBySnippetIdData = {
 }
 
 export type PatchWorkspacesCurrentCustomizedSnippetsBySnippetIdErrors = {
-  400: unknown
-  404: unknown
+  400: ErrorResponse
+  404: ErrorResponse
 }
+
+export type PatchWorkspacesCurrentCustomizedSnippetsBySnippetIdError =
+  PatchWorkspacesCurrentCustomizedSnippetsBySnippetIdErrors[keyof PatchWorkspacesCurrentCustomizedSnippetsBySnippetIdErrors]
 
 export type PatchWorkspacesCurrentCustomizedSnippetsBySnippetIdResponses = {
   200: SnippetResponse
@@ -3126,8 +3154,11 @@ export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdCheckDependenciesDa
 }
 
 export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdCheckDependenciesErrors = {
-  404: unknown
+  404: ErrorResponse
 }
+
+export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdCheckDependenciesError =
+  GetWorkspacesCurrentCustomizedSnippetsBySnippetIdCheckDependenciesErrors[keyof GetWorkspacesCurrentCustomizedSnippetsBySnippetIdCheckDependenciesErrors]
 
 export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdCheckDependenciesResponses = {
   200: SnippetDependencyCheckResponse
@@ -3149,8 +3180,11 @@ export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdExportData = {
 }
 
 export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdExportErrors = {
-  404: unknown
+  404: ErrorResponse
 }
+
+export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdExportError =
+  GetWorkspacesCurrentCustomizedSnippetsBySnippetIdExportErrors[keyof GetWorkspacesCurrentCustomizedSnippetsBySnippetIdExportErrors]
 
 export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdExportResponses = {
   200: TextFileResponse
@@ -3169,8 +3203,11 @@ export type PostWorkspacesCurrentCustomizedSnippetsBySnippetIdUseCountIncrementD
 }
 
 export type PostWorkspacesCurrentCustomizedSnippetsBySnippetIdUseCountIncrementErrors = {
-  404: unknown
+  404: ErrorResponse
 }
+
+export type PostWorkspacesCurrentCustomizedSnippetsBySnippetIdUseCountIncrementError =
+  PostWorkspacesCurrentCustomizedSnippetsBySnippetIdUseCountIncrementErrors[keyof PostWorkspacesCurrentCustomizedSnippetsBySnippetIdUseCountIncrementErrors]
 
 export type PostWorkspacesCurrentCustomizedSnippetsBySnippetIdUseCountIncrementResponses = {
   200: SnippetUseCountResponse
@@ -3231,8 +3268,11 @@ export type PostWorkspacesCurrentEndpointsData = {
 }
 
 export type PostWorkspacesCurrentEndpointsErrors = {
-  403: unknown
+  403: ErrorResponse
 }
+
+export type PostWorkspacesCurrentEndpointsError =
+  PostWorkspacesCurrentEndpointsErrors[keyof PostWorkspacesCurrentEndpointsErrors]
 
 export type PostWorkspacesCurrentEndpointsResponses = {
   200: EndpointMutationResponse
@@ -3249,8 +3289,11 @@ export type PostWorkspacesCurrentEndpointsCreateData = {
 }
 
 export type PostWorkspacesCurrentEndpointsCreateErrors = {
-  403: unknown
+  403: ErrorResponse
 }
+
+export type PostWorkspacesCurrentEndpointsCreateError =
+  PostWorkspacesCurrentEndpointsCreateErrors[keyof PostWorkspacesCurrentEndpointsCreateErrors]
 
 export type PostWorkspacesCurrentEndpointsCreateResponses = {
   200: EndpointMutationResponse
@@ -3267,8 +3310,11 @@ export type PostWorkspacesCurrentEndpointsDeleteData = {
 }
 
 export type PostWorkspacesCurrentEndpointsDeleteErrors = {
-  403: unknown
+  403: ErrorResponse
 }
+
+export type PostWorkspacesCurrentEndpointsDeleteError =
+  PostWorkspacesCurrentEndpointsDeleteErrors[keyof PostWorkspacesCurrentEndpointsDeleteErrors]
 
 export type PostWorkspacesCurrentEndpointsDeleteResponses = {
   200: EndpointMutationResponse
@@ -3285,8 +3331,11 @@ export type PostWorkspacesCurrentEndpointsDisableData = {
 }
 
 export type PostWorkspacesCurrentEndpointsDisableErrors = {
-  403: unknown
+  403: ErrorResponse
 }
+
+export type PostWorkspacesCurrentEndpointsDisableError =
+  PostWorkspacesCurrentEndpointsDisableErrors[keyof PostWorkspacesCurrentEndpointsDisableErrors]
 
 export type PostWorkspacesCurrentEndpointsDisableResponses = {
   200: EndpointMutationResponse
@@ -3303,8 +3352,11 @@ export type PostWorkspacesCurrentEndpointsEnableData = {
 }
 
 export type PostWorkspacesCurrentEndpointsEnableErrors = {
-  403: unknown
+  403: ErrorResponse
 }
+
+export type PostWorkspacesCurrentEndpointsEnableError =
+  PostWorkspacesCurrentEndpointsEnableErrors[keyof PostWorkspacesCurrentEndpointsEnableErrors]
 
 export type PostWorkspacesCurrentEndpointsEnableResponses = {
   200: EndpointMutationResponse
@@ -3356,8 +3408,11 @@ export type PostWorkspacesCurrentEndpointsUpdateData = {
 }
 
 export type PostWorkspacesCurrentEndpointsUpdateErrors = {
-  403: unknown
+  403: ErrorResponse
 }
+
+export type PostWorkspacesCurrentEndpointsUpdateError =
+  PostWorkspacesCurrentEndpointsUpdateErrors[keyof PostWorkspacesCurrentEndpointsUpdateErrors]
 
 export type PostWorkspacesCurrentEndpointsUpdateResponses = {
   200: EndpointMutationResponse
@@ -3376,8 +3431,11 @@ export type DeleteWorkspacesCurrentEndpointsByIdData = {
 }
 
 export type DeleteWorkspacesCurrentEndpointsByIdErrors = {
-  403: unknown
+  403: ErrorResponse
 }
+
+export type DeleteWorkspacesCurrentEndpointsByIdError =
+  DeleteWorkspacesCurrentEndpointsByIdErrors[keyof DeleteWorkspacesCurrentEndpointsByIdErrors]
 
 export type DeleteWorkspacesCurrentEndpointsByIdResponses = {
   200: EndpointMutationResponse
@@ -3396,8 +3454,11 @@ export type PatchWorkspacesCurrentEndpointsByIdData = {
 }
 
 export type PatchWorkspacesCurrentEndpointsByIdErrors = {
-  403: unknown
+  403: ErrorResponse
 }
+
+export type PatchWorkspacesCurrentEndpointsByIdError =
+  PatchWorkspacesCurrentEndpointsByIdErrors[keyof PatchWorkspacesCurrentEndpointsByIdErrors]
 
 export type PatchWorkspacesCurrentEndpointsByIdResponses = {
   200: EndpointMutationResponse
@@ -5843,8 +5904,11 @@ export type GetWorkspacesCurrentSummaryData = {
 }
 
 export type GetWorkspacesCurrentSummaryErrors = {
-  409: unknown
+  409: ErrorResponse
 }
+
+export type GetWorkspacesCurrentSummaryError =
+  GetWorkspacesCurrentSummaryErrors[keyof GetWorkspacesCurrentSummaryErrors]
 
 export type GetWorkspacesCurrentSummaryResponses = {
   200: CurrentWorkspaceSummaryResponse

@@ -25,6 +25,16 @@ export type RecommendedAppDetailResponse = {
   version_id?: string | null
 }
 
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type BannerListResponse = Array<BannerResponse>
 
 export type RecommendedAppResponse = {
@@ -140,8 +150,11 @@ export type GetExploreAppsByAppIdData = {
 }
 
 export type GetExploreAppsByAppIdErrors = {
-  404: unknown
+  404: ErrorResponse
 }
+
+export type GetExploreAppsByAppIdError =
+  GetExploreAppsByAppIdErrors[keyof GetExploreAppsByAppIdErrors]
 
 export type GetExploreAppsByAppIdResponses = {
   200: RecommendedAppDetailResponse

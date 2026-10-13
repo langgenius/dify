@@ -46,11 +46,11 @@ Deprecated legacy alias for creating a new document by providing text content. U
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Document created successfully | **application/json**: [DocumentAndBatchResponse](#documentandbatchresponse)<br> |
-| 400 | Bad request - invalid parameters |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - dataset API access or workspace access denied |  |
-| 404 | `not_found` : Knowledge base not found. |  |
-| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. |  |
+| 400 | Bad request - invalid parameters | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Knowledge base not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### ~~[POST] /datasets/{dataset_id}/documents/{document_id}/update_by_text~~
 
@@ -78,10 +78,10 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Document updated successfully | **application/json**: [DocumentAndBatchResponse](#documentandbatchresponse)<br> |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - dataset API access or workspace access denied |  |
-| 404 | Document not found |  |
-| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. |  |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Document not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
 ## default
@@ -103,8 +103,8 @@ Retrieve a paginated list of all feedback submitted for messages in this applica
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | A list of application feedbacks. | **application/json**: [AppFeedbackListResponse](#appfeedbacklistresponse)<br> |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /messages/{message_id}/feedbacks
 **Submit Message Feedback**
@@ -128,10 +128,10 @@ Submit feedback for a message. End users can rate messages as `like` or `dislike
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Feedback submitted successfully | **application/json**: [ResultResponse](#resultresponse)<br> |
-| 400 | Bad request - invalid feedback payload |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
-| 404 | `not_found` : Message does not exist. |  |
+| 400 | Bad request - invalid feedback payload | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Message does not exist. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
 ## default
@@ -158,8 +158,8 @@ Enables or disables the annotation reply feature. Requires embedding model confi
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Annotation reply settings task initiated. | **application/json**: [AnnotationJobStatusResponse](#annotationjobstatusresponse)<br> |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/annotation-reply/{action}/status/{job_id}
 **Get Annotation Reply Job Status**
@@ -178,9 +178,9 @@ Retrieves the status of an asynchronous annotation reply configuration job start
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Successfully retrieved task status. | **application/json**: [AnnotationJobStatusDetailResponse](#annotationjobstatusdetailresponse)<br> |
-| 400 | `invalid_param` : The specified job does not exist. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
+| 400 | `invalid_param` : The specified job does not exist. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/annotations
 **List Annotations**
@@ -200,8 +200,8 @@ Retrieves a paginated list of annotations for the application. Supports keyword 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Successfully retrieved annotation list. | **application/json**: [AnnotationList](#annotationlist)<br> |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/annotations
 **Create Annotation**
@@ -219,8 +219,8 @@ Creates a new annotation. Annotations provide predefined question-answer pairs t
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Annotation created successfully. | **application/json**: [Annotation](#annotation)<br> |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /apps/annotations/{annotation_id}
 **Delete Annotation**
@@ -235,12 +235,12 @@ Deletes an annotation and its associated hit history.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 204 | Annotation deleted successfully. |
-| 401 | Unauthorized - invalid API token |
-| 403 | `forbidden` : Insufficient permissions to edit annotations. |
-| 404 | `not_found` : Annotation does not exist. |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Annotation deleted successfully. |  |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | `forbidden` : Insufficient permissions to edit annotations. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Annotation does not exist. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /apps/annotations/{annotation_id}
 **Update Annotation**
@@ -264,9 +264,9 @@ Updates the question and answer of an existing annotation.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Annotation updated successfully. | **application/json**: [Annotation](#annotation)<br> |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | `forbidden` : Insufficient permissions to edit annotations. |  |
-| 404 | `not_found` : Annotation does not exist. |  |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | `forbidden` : Insufficient permissions to edit annotations. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Annotation does not exist. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
 ## default
@@ -287,12 +287,12 @@ Convert audio file to text. Supported MIME types: `audio/mp3`, `audio/mpga`, `au
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Successfully converted audio to text. | **application/json**: [AudioTranscriptResponse](#audiotranscriptresponse)<br> |
-| 400 | - `app_unavailable` : App unavailable or misconfigured. - `speech_to_text_disabled` : Speech-to-text is disabled for this app. - `provider_not_support_speech_to_text` : Model provider does not support speech-to-text. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model does not support this operation. - `completion_request_error` : Speech recognition request failed. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
-| 413 | `audio_too_large` : Audio file size exceeded the limit. |  |
-| 415 | `unsupported_audio_type` : Audio type is not allowed. |  |
-| 500 | `internal_server_error` : Internal server error. |  |
+| 400 | - `app_unavailable` : App unavailable or misconfigured. - `speech_to_text_disabled` : Speech-to-text is disabled for this app. - `provider_not_support_speech_to_text` : Model provider does not support speech-to-text. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model does not support this operation. - `completion_request_error` : Speech recognition request failed. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 413 | `audio_too_large` : Audio file size exceeded the limit. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 415 | `unsupported_audio_type` : Audio type is not allowed. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 500 | `internal_server_error` : Internal server error. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /text-to-audio
 **Convert Text to Audio**
@@ -310,10 +310,10 @@ Convert text to speech.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Returns the generated audio. The `Content-Type` header reflects the provider audio container, verified from the response bytes when recognizable. The binary response can be AAC, FLAC, MP4, MP3, Ogg, WAV, or WebM. | **audio/aac**: binary<br>**audio/flac**: binary<br>**audio/mp4**: binary<br>**audio/mpeg**: binary<br>**audio/ogg**: binary<br>**audio/wav**: binary<br>**audio/webm**: binary<br> |
-| 400 | - `app_unavailable` : App unavailable or misconfigured. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model does not support this operation. - `completion_request_error` : Text-to-speech request failed. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
-| 500 | `internal_server_error` : Internal server error. |  |
+| 400 | - `app_unavailable` : App unavailable or misconfigured. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model does not support this operation. - `completion_request_error` : Text-to-speech request failed. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 500 | `internal_server_error` : Internal server error. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
 ## default
@@ -334,12 +334,12 @@ Send a request to the chat application.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Successful response. The content type and structure depend on the `response_mode` parameter in the request.  - If `response_mode` is `blocking`, returns `application/json` with a `ChatCompletionResponse` object. - If `response_mode` is `streaming`, returns `text/event-stream` with a stream of Server-Sent Events. | **application/json**: [ChatBlockingResponse](#chatblockingresponse)<br>**text/event-stream**: string<br> |
-| 400 | - `app_unavailable` : App unavailable or misconfigured. - `not_chat_app` : App mode does not match the API route. - `conversation_completed` : The conversation has ended. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model unavailable. - `completion_request_error` : Text generation failed. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | `workflow_version_execution_not_allowed` : Workflow version execution is unavailable on the current plan. Upgrade to a paid plan. |  |
-| 404 | `not_found` : Conversation does not exist. |  |
-| 429 | - `too_many_requests` : Too many concurrent requests for this app. - `rate_limit_error` : The Dify Cloud workflow execution quota for this workspace has been reached. |  |
-| 500 | `internal_server_error` : Internal server error. |  |
+| 400 | - `app_unavailable` : App unavailable or misconfigured. - `not_chat_app` : App mode does not match the API route. - `conversation_completed` : The conversation has ended. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model unavailable. - `completion_request_error` : Text generation failed. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | `workflow_version_execution_not_allowed` : Workflow version execution is unavailable on the current plan. Upgrade to a paid plan. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Conversation does not exist. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 429 | - `too_many_requests` : Too many concurrent requests for this app. - `rate_limit_error` : The Dify Cloud workflow execution quota for this workspace has been reached. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 500 | `internal_server_error` : Internal server error. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /chat-messages/{task_id}/stop
 **Stop Chat Message Generation**
@@ -363,9 +363,9 @@ Stops a chat message generation task. Only supported in `streaming` mode.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Task stopped successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 400 | `not_chat_app` : App mode does not match the API route. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
+| 400 | `not_chat_app` : App mode does not match the API route. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /messages/{message_id}/suggested
 **Get Next Suggested Questions**
@@ -384,11 +384,11 @@ Get next questions suggestions for the current message.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Suggested questions retrieved successfully | **application/json**: [SimpleResultStringListResponse](#simpleresultstringlistresponse)<br> |
-| 400 | - `not_chat_app` : App mode does not match the API route. - `bad_request` : Suggested questions feature is disabled. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
-| 404 | `not_found` : Message does not exist. |  |
-| 500 | `internal_server_error` : Internal server error. |  |
+| 400 | - `not_chat_app` : App mode does not match the API route. - `bad_request` : Suggested questions feature is disabled. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Message does not exist. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 500 | `internal_server_error` : Internal server error. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workflow/{workflow_run_id}/events
 **Stream Workflow Events**
@@ -409,10 +409,10 @@ Resume the Server-Sent Events stream for a workflow run after a pause or a dropp
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Server-Sent Events stream. Each event is delivered as `data: {JSON}\\n\\n`. Event payloads follow the same schemas as the original streaming response. | **text/event-stream**: string<br> |
-| 400 | `not_workflow_app` : Please check if your app mode matches the right API route. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
-| 404 | `not_found` : Workflow run not found. |  |
+| 400 | `not_workflow_app` : Please check if your app mode matches the right API route. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Workflow run not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workflows/logs
 **List Workflow Logs**
@@ -437,9 +437,9 @@ Retrieve paginated workflow execution logs with filtering options.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Successfully retrieved workflow logs. | **application/json**: [WorkflowAppLogPaginationResponse](#workflowapplogpaginationresponse)<br> |
-| 400 | Bad request - invalid query parameters |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
+| 400 | Bad request - invalid query parameters | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workflows/run/{workflow_run_id}
 **Get Workflow Run Detail**
@@ -457,10 +457,10 @@ Retrieve the current execution results of a workflow task based on the workflow 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Successfully retrieved workflow run details. | **application/json**: [WorkflowRunResponse](#workflowrunresponse)<br> |
-| 400 | `not_workflow_app` : App mode does not match the API route. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
-| 404 | `not_found` : Workflow run not found. |  |
+| 400 | `not_workflow_app` : App mode does not match the API route. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Workflow run not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
 ## default
@@ -481,12 +481,12 @@ Send a request to the chat application.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Successful response. The content type and structure depend on the `response_mode` parameter in the request.  - If `response_mode` is `blocking`, returns `application/json` with a `ChatCompletionResponse` object. - If `response_mode` is `streaming`, returns `text/event-stream` with a stream of Server-Sent Events. | **application/json**: [ChatBlockingResponse](#chatblockingresponse)<br>**text/event-stream**: string<br> |
-| 400 | - `app_unavailable` : App unavailable or misconfigured. - `not_chat_app` : App mode does not match the API route. - `conversation_completed` : The conversation has ended. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model unavailable. - `completion_request_error` : Text generation failed. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | `workflow_version_execution_not_allowed` : Workflow version execution is unavailable on the current plan. Upgrade to a paid plan. |  |
-| 404 | `not_found` : Conversation does not exist. |  |
-| 429 | - `too_many_requests` : Too many concurrent requests for this app. - `rate_limit_error` : The Dify Cloud workflow execution quota for this workspace has been reached. |  |
-| 500 | `internal_server_error` : Internal server error. |  |
+| 400 | - `app_unavailable` : App unavailable or misconfigured. - `not_chat_app` : App mode does not match the API route. - `conversation_completed` : The conversation has ended. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model unavailable. - `completion_request_error` : Text generation failed. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | `workflow_version_execution_not_allowed` : Workflow version execution is unavailable on the current plan. Upgrade to a paid plan. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Conversation does not exist. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 429 | - `too_many_requests` : Too many concurrent requests for this app. - `rate_limit_error` : The Dify Cloud workflow execution quota for this workspace has been reached. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 500 | `internal_server_error` : Internal server error. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /chat-messages/{task_id}/stop
 **Stop Chat Message Generation**
@@ -510,9 +510,9 @@ Stops a chat message generation task. Only supported in `streaming` mode.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Task stopped successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 400 | `not_chat_app` : App mode does not match the API route. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
+| 400 | `not_chat_app` : App mode does not match the API route. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /messages/{message_id}/suggested
 **Get Next Suggested Questions**
@@ -531,11 +531,11 @@ Get next questions suggestions for the current message.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Suggested questions retrieved successfully | **application/json**: [SimpleResultStringListResponse](#simpleresultstringlistresponse)<br> |
-| 400 | - `not_chat_app` : App mode does not match the API route. - `bad_request` : Suggested questions feature is disabled. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
-| 404 | `not_found` : Message does not exist. |  |
-| 500 | `internal_server_error` : Internal server error. |  |
+| 400 | - `not_chat_app` : App mode does not match the API route. - `bad_request` : Suggested questions feature is disabled. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Message does not exist. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 500 | `internal_server_error` : Internal server error. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
 ## default
@@ -556,11 +556,11 @@ Send a request to the text generation application.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Successful response. The content type and structure depend on the `response_mode` parameter in the request.  - If `response_mode` is `blocking`, returns `application/json` with a `CompletionResponse` object. - If `response_mode` is `streaming`, returns `text/event-stream` with a stream of `ChunkCompletionEvent` objects. | **application/json**: [CompletionBlockingResponse](#completionblockingresponse)<br>**text/event-stream**: string<br> |
-| 400 | - `app_unavailable` : App unavailable or misconfigured. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model unavailable. - `completion_request_error` : Text generation failed. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
-| 429 | `too_many_requests` : Too many concurrent requests for this app. |  |
-| 500 | `internal_server_error` : Internal server error. |  |
+| 400 | - `app_unavailable` : App unavailable or misconfigured. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model unavailable. - `completion_request_error` : Text generation failed. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 429 | `too_many_requests` : Too many concurrent requests for this app. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 500 | `internal_server_error` : Internal server error. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /completion-messages/{task_id}/stop
 **Stop Completion Message Generation**
@@ -584,9 +584,9 @@ Stops a completion message generation task. Only supported in `streaming` mode.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Task stopped successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 400 | `app_unavailable` : App unavailable or misconfigured. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
+| 400 | `app_unavailable` : App unavailable or misconfigured. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
 ## default
@@ -610,10 +610,10 @@ Retrieve the conversation list for the current user, ordered by most recently ac
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Successfully retrieved conversations list. | **application/json**: [ConversationInfiniteScrollPagination](#conversationinfinitescrollpagination)<br> |
-| 400 | `not_chat_app` : App mode does not match the API route. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
-| 404 | `not_found` : Last conversation does not exist (invalid `last_id`). |  |
+| 400 | `not_chat_app` : App mode does not match the API route. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Last conversation does not exist (invalid `last_id`). | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /conversations/{conversation_id}
 **Delete Conversation**
@@ -634,13 +634,13 @@ Delete a conversation.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 204 | Conversation deleted successfully. |
-| 400 | `not_chat_app` : App mode does not match the API route. |
-| 401 | Unauthorized - invalid API token |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |
-| 404 | `not_found` : Conversation does not exist. |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Conversation deleted successfully. |  |
+| 400 | `not_chat_app` : App mode does not match the API route. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Conversation does not exist. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /conversations/{conversation_id}/name
 **Rename Conversation**
@@ -664,10 +664,10 @@ Rename a conversation or auto-generate a name. The conversation name is used for
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Conversation renamed successfully. | **application/json**: [SimpleConversation](#simpleconversation)<br> |
-| 400 | `not_chat_app` : App mode does not match the API route. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
-| 404 | `not_found` : Conversation does not exist. |  |
+| 400 | `not_chat_app` : App mode does not match the API route. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Conversation does not exist. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /conversations/{conversation_id}/variables
 **List Conversation Variables**
@@ -689,10 +689,10 @@ Retrieve variables from a specific conversation.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Successfully retrieved conversation variables. | **application/json**: [ConversationVariableInfiniteScrollPaginationResponse](#conversationvariableinfinitescrollpaginationresponse)<br> |
-| 400 | `not_chat_app` : App mode does not match the API route. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
-| 404 | `not_found` : Conversation does not exist. |  |
+| 400 | `not_chat_app` : App mode does not match the API route. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Conversation does not exist. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /conversations/{conversation_id}/variables/{variable_id}
 **Update Conversation Variable**
@@ -717,10 +717,10 @@ Update the value of a specific conversation variable. The value must match the e
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Variable updated successfully. | **application/json**: [ConversationVariableResponse](#conversationvariableresponse)<br> |
-| 400 | - `not_chat_app` : App mode does not match the API route. - `bad_request` : Variable value type mismatch. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
-| 404 | - `not_found` : Conversation does not exist. - `not_found` : Conversation variable does not exist. |  |
+| 400 | - `not_chat_app` : App mode does not match the API route. - `bad_request` : Variable value type mismatch. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | - `not_found` : Conversation does not exist. - `not_found` : Conversation variable does not exist. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /messages
 **List Conversation Messages**
@@ -741,10 +741,10 @@ Returns historical chat records in a scrolling load format, with the first page 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Successfully retrieved conversation history. | **application/json**: [MessageInfiniteScrollPagination](#messageinfinitescrollpagination)<br> |
-| 400 | `not_chat_app` : App mode does not match the API route. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
-| 404 | - `not_found` : Conversation does not exist. - `not_found` : First message does not exist. |  |
+| 400 | `not_chat_app` : App mode does not match the API route. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | - `not_found` : Conversation does not exist. - `not_found` : First message does not exist. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
 ## default
@@ -769,8 +769,8 @@ Returns a paginated list of knowledge bases. Supports filtering by keyword and t
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | List of knowledge bases. | **application/json**: [DatasetListResponse](#datasetlistresponse)<br> |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - dataset API access or workspace access denied |  |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets
 **Create an Empty Knowledge Base**
@@ -788,10 +788,10 @@ Create a new empty knowledge base. After creation, use [Create Document by Text]
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Knowledge base created successfully. | **application/json**: [DatasetDetailResponse](#datasetdetailresponse)<br> |
-| 400 | Bad request - invalid parameters |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - dataset API access or workspace access denied |  |
-| 409 | `dataset_name_duplicate` : The dataset name already exists. Please modify your dataset name. |  |
+| 400 | Bad request - invalid parameters | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 409 | `dataset_name_duplicate` : The dataset name already exists. Please modify your dataset name. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /datasets/{dataset_id}
 **Delete Knowledge Base**
@@ -806,12 +806,12 @@ Permanently delete a knowledge base and all its documents.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 204 | Success. |
-| 401 | Unauthorized - invalid API token |
-| 403 | Forbidden - dataset API access or workspace access denied |
-| 404 | `not_found` : Dataset not found. |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Success. |  |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Dataset not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}
 **Get Knowledge Base**
@@ -829,9 +829,9 @@ Retrieve detailed information about a specific knowledge base, including its emb
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Knowledge base details. | **application/json**: [DatasetDetailWithPartialMembersResponse](#datasetdetailwithpartialmembersresponse)<br> |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | `forbidden` : Insufficient permissions to access this knowledge base. |  |
-| 404 | `not_found` : Dataset not found. |  |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | `forbidden` : Insufficient permissions to access this knowledge base. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Dataset not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /datasets/{dataset_id}
 **Update Knowledge Base**
@@ -855,10 +855,10 @@ Update the name, description, permissions, or retrieval settings of an existing 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Knowledge base updated successfully. | **application/json**: [DatasetDetailWithPartialMembersResponse](#datasetdetailwithpartialmembersresponse)<br> |
-| 400 | Bad request - invalid embedding or reranking model configuration |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | `forbidden` : Insufficient permissions to access this knowledge base. |  |
-| 404 | `not_found` : Dataset not found. |  |
+| 400 | Bad request - invalid embedding or reranking model configuration | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | `forbidden` : Insufficient permissions to access this knowledge base. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Dataset not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### ~~[POST] /datasets/{dataset_id}/hit-testing~~
 
@@ -885,11 +885,11 @@ Performs a search query against a knowledge base to retrieve the most relevant c
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Retrieval results. | **application/json**: [HitTestingResponse](#hittestingresponse)<br> |
-| 400 | - `dataset_not_initialized` : The dataset is still being initialized or indexing. Please wait a moment. - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `provider_quota_exceeded` : Your quota for Dify Hosted OpenAI has been exhausted. Please go to Settings -> Model Provider to complete your own provider credentials. - `model_currently_not_support` : Dify Hosted OpenAI trial currently not support the GPT-4 model. - `completion_request_error` : Completion request failed. - `invalid_param` : Invalid parameter value. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | `forbidden` : Insufficient permissions. |  |
-| 404 | `not_found` : Knowledge base not found. |  |
-| 500 | `internal_server_error` : An internal error occurred during retrieval. |  |
+| 400 | - `dataset_not_initialized` : The dataset is still being initialized or indexing. Please wait a moment. - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `provider_quota_exceeded` : Your quota for Dify Hosted OpenAI has been exhausted. Please go to Settings -> Model Provider to complete your own provider credentials. - `model_currently_not_support` : Dify Hosted OpenAI trial currently not support the GPT-4 model. - `completion_request_error` : Completion request failed. - `invalid_param` : Invalid parameter value. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | `forbidden` : Insufficient permissions. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Knowledge base not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 500 | `internal_server_error` : An internal error occurred during retrieval. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/retrieve
 **Retrieve Chunks from a Knowledge Base / Test Retrieval**
@@ -913,11 +913,11 @@ Performs a search query against a knowledge base to retrieve the most relevant c
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Retrieval results. | **application/json**: [HitTestingResponse](#hittestingresponse)<br> |
-| 400 | - `dataset_not_initialized` : The dataset is still being initialized or indexing. Please wait a moment. - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `provider_quota_exceeded` : Your quota for Dify Hosted OpenAI has been exhausted. Please go to Settings -> Model Provider to complete your own provider credentials. - `model_currently_not_support` : Dify Hosted OpenAI trial currently not support the GPT-4 model. - `completion_request_error` : Completion request failed. - `invalid_param` : Invalid parameter value. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | `forbidden` : Insufficient permissions. |  |
-| 404 | `not_found` : Knowledge base not found. |  |
-| 500 | `internal_server_error` : An internal error occurred during retrieval. |  |
+| 400 | - `dataset_not_initialized` : The dataset is still being initialized or indexing. Please wait a moment. - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `provider_quota_exceeded` : Your quota for Dify Hosted OpenAI has been exhausted. Please go to Settings -> Model Provider to complete your own provider credentials. - `model_currently_not_support` : Dify Hosted OpenAI trial currently not support the GPT-4 model. - `completion_request_error` : Completion request failed. - `invalid_param` : Invalid parameter value. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | `forbidden` : Insufficient permissions. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Knowledge base not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 500 | `internal_server_error` : An internal error occurred during retrieval. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
 ## default
@@ -938,11 +938,11 @@ Upload a file for use in a knowledge pipeline. Accepts a single file via `multip
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | File uploaded successfully. | **application/json**: [PipelineUploadFileResponse](#pipelineuploadfileresponse)<br> |
-| 400 | - `no_file_uploaded` : Please upload your file. - `filename_not_exists_error` : The specified filename does not exist. - `too_many_files` : Only one file is allowed. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - dataset API access or workspace access denied |  |
-| 413 | `file_too_large` : File size exceeded. |  |
-| 415 | `unsupported_file_type` : File type not allowed. |  |
+| 400 | - `no_file_uploaded` : Please upload your file. - `filename_not_exists_error` : The specified filename does not exist. - `too_many_files` : Only one file is allowed. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 413 | `file_too_large` : File size exceeded. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 415 | `unsupported_file_type` : File type not allowed. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/pipeline/datasource-plugins
 **List Datasource Plugins**
@@ -961,10 +961,10 @@ List the datasource nodes configured in the knowledge pipeline. Each node includ
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | List of datasource nodes configured in the pipeline. | **application/json**: [DatasourcePluginListResponse](#datasourcepluginlistresponse)<br> |
-| 400 | Bad request - pipeline is not configured |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - dataset API access or workspace access denied |  |
-| 404 | `not_found` : Dataset not found. |  |
+| 400 | Bad request - pipeline is not configured | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Dataset not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/pipeline/datasource/nodes/{node_id}/run
 **Run Datasource Node**
@@ -989,10 +989,10 @@ Execute a single datasource node within the knowledge pipeline. Returns a stream
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Streaming response with node execution events. | **text/event-stream**: string<br> |
-| 400 | Bad request - invalid payload or pipeline is not configured |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - dataset API access or workspace access denied |  |
-| 404 | `not_found` : Dataset not found. |  |
+| 400 | Bad request - invalid payload or pipeline is not configured | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Dataset not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/pipeline/run
 **Run Pipeline**
@@ -1016,11 +1016,11 @@ Execute the full knowledge pipeline for a knowledge base. Published runs are que
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Pipeline execution result. Published runs return a JSON object containing `batch`, `dataset`, and `documents`. Draft runs return `text/event-stream` for streaming mode or a workflow result JSON object for blocking mode. | **application/json**: [PipelineRunJsonResponse](#pipelinerunjsonresponse)<br>**text/event-stream**: string<br> |
-| 400 | Bad request - invalid payload or pipeline is not configured |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | `forbidden` : Forbidden. |  |
-| 404 | `not_found` : Dataset not found. |  |
-| 500 | `pipeline_run_error` : Pipeline execution failed. |  |
+| 400 | Bad request - invalid payload or pipeline is not configured | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | `forbidden` : Forbidden. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Dataset not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 500 | `pipeline_run_error` : Pipeline execution failed. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
 ## default
@@ -1038,12 +1038,12 @@ Permanently delete a knowledge base tag. Does not delete the knowledge bases tha
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 204 | Success. |
-| 401 | Unauthorized - invalid API token |
-| 403 | Forbidden - insufficient permissions |
-| 404 | Tag not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Success. |  |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Tag not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/tags
 **List Knowledge Tags**
@@ -1055,8 +1055,8 @@ Returns the list of all knowledge base tags in the workspace.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | List of tags. | **application/json**: [KnowledgeTagListResponse](#knowledgetaglistresponse)<br> |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - dataset API access or workspace access denied |  |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /datasets/tags
 **Update Knowledge Tag**
@@ -1074,10 +1074,10 @@ Rename an existing knowledge base tag.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Tag updated successfully. | **application/json**: [KnowledgeTagResponse](#knowledgetagresponse)<br> |
-| 400 | Bad request - tag name already exists |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - insufficient permissions |  |
-| 404 | Tag not found |  |
+| 400 | Bad request - tag name already exists | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Tag not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/tags
 **Create Knowledge Tag**
@@ -1095,9 +1095,9 @@ Create a new tag for organizing knowledge bases.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Tag created successfully. | **application/json**: [KnowledgeTagResponse](#knowledgetagresponse)<br> |
-| 400 | Bad request - tag name already exists |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - insufficient permissions |  |
+| 400 | Bad request - tag name already exists | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/tags/binding
 **Create Tag Binding**
@@ -1112,12 +1112,12 @@ Bind one or more tags to a knowledge base. A knowledge base can have multiple ta
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 204 | Success. |
-| 401 | Unauthorized - invalid API token |
-| 403 | Forbidden - insufficient permissions |
-| 404 | Dataset not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Success. |  |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Dataset not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/tags/unbinding
 **Delete Tag Binding**
@@ -1132,12 +1132,12 @@ Remove one or more tags from a knowledge base.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 204 | Success. |
-| 401 | Unauthorized - invalid API token |
-| 403 | Forbidden - insufficient permissions |
-| 404 | Dataset not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Success. |  |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Dataset not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/tags
 **Get Knowledge Base Tags**
@@ -1155,9 +1155,9 @@ Returns the list of tags bound to a specific knowledge base.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Tags bound to the knowledge base. | **application/json**: [DatasetBoundTagListResponse](#datasetboundtaglistresponse)<br> |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - dataset API access or workspace access denied |  |
-| 404 | `not_found` : Knowledge base not found. |  |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Knowledge base not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
 ## default
@@ -1184,12 +1184,12 @@ Create a document by uploading a file. Supports common document formats (PDF, TX
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Document created successfully. | **application/json**: [DocumentAndBatchResponse](#documentandbatchresponse)<br> |
-| 400 | - `no_file_uploaded` : Please upload your file. - `too_many_files` : Only one file is allowed. - `filename_not_exists_error` : The specified filename does not exist. - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `invalid_param` : Knowledge base does not exist, external datasets not supported, unsupported file type, missing required fields, or invalid doc_form (must be `text_model`, `hierarchical_model`, or `qa_model`). |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - dataset API access or workspace access denied |  |
-| 404 | `not_found` : Knowledge base not found. |  |
-| 413 | `file_too_large` : File size exceeded. |  |
-| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. |  |
+| 400 | - `no_file_uploaded` : Please upload your file. - `too_many_files` : Only one file is allowed. - `filename_not_exists_error` : The specified filename does not exist. - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `invalid_param` : Knowledge base does not exist, external datasets not supported, unsupported file type, missing required fields, or invalid doc_form (must be `text_model`, `hierarchical_model`, or `qa_model`). | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Knowledge base not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 413 | `file_too_large` : File size exceeded. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/document/create-by-text
 **Create Document by Text**
@@ -1213,11 +1213,11 @@ Create a document from raw text content. The document is processed asynchronousl
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Document created successfully. | **application/json**: [DocumentAndBatchResponse](#documentandbatchresponse)<br> |
-| 400 | - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `invalid_param` : Knowledge base does not exist. / indexing_technique is required. / Invalid doc_form (must be `text_model`, `hierarchical_model`, or `qa_model`). |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - dataset API access or workspace access denied |  |
-| 404 | `not_found` : Knowledge base not found. |  |
-| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. |  |
+| 400 | - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `invalid_param` : Knowledge base does not exist. / indexing_technique is required. / Invalid doc_form (must be `text_model`, `hierarchical_model`, or `qa_model`). | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Knowledge base not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### ~~[POST] /datasets/{dataset_id}/document/create_by_file~~
 
@@ -1244,12 +1244,12 @@ Create a document by uploading a file. Supports common document formats (PDF, TX
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Document created successfully. | **application/json**: [DocumentAndBatchResponse](#documentandbatchresponse)<br> |
-| 400 | - `no_file_uploaded` : Please upload your file. - `too_many_files` : Only one file is allowed. - `filename_not_exists_error` : The specified filename does not exist. - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `invalid_param` : Knowledge base does not exist, external datasets not supported, unsupported file type, missing required fields, or invalid doc_form (must be `text_model`, `hierarchical_model`, or `qa_model`). |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - dataset API access or workspace access denied |  |
-| 404 | `not_found` : Knowledge base not found. |  |
-| 413 | `file_too_large` : File size exceeded. |  |
-| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. |  |
+| 400 | - `no_file_uploaded` : Please upload your file. - `too_many_files` : Only one file is allowed. - `filename_not_exists_error` : The specified filename does not exist. - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `invalid_param` : Knowledge base does not exist, external datasets not supported, unsupported file type, missing required fields, or invalid doc_form (must be `text_model`, `hierarchical_model`, or `qa_model`). | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Knowledge base not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 413 | `file_too_large` : File size exceeded. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/documents
 **List Documents**
@@ -1271,9 +1271,9 @@ Returns a paginated list of documents in the knowledge base. Supports filtering 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | List of documents. | **application/json**: [DocumentListResponse](#documentlistresponse)<br> |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - dataset API access or workspace access denied |  |
-| 404 | `not_found` : Knowledge base not found. |  |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Knowledge base not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/documents/download-zip
 **Download Documents as ZIP**
@@ -1297,9 +1297,9 @@ Download multiple uploaded-file documents as a single ZIP archive. Accepts up to
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | ZIP archive containing the requested documents. | **application/zip**: binary<br> |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | `forbidden` : Insufficient permissions. |  |
-| 404 | `not_found` : Document or dataset not found. |  |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | `forbidden` : Insufficient permissions. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Document or dataset not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /datasets/{dataset_id}/documents/status/{action}
 **Update Document Status in Batch**
@@ -1324,10 +1324,10 @@ Enable, disable, archive, or unarchive multiple documents at once.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Document status updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 400 | `invalid_action` : Invalid action. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | `forbidden` : Insufficient permissions. |  |
-| 404 | `not_found` : Knowledge base not found. |  |
+| 400 | `invalid_action` : Invalid action. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | `forbidden` : Insufficient permissions. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Knowledge base not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/documents/{batch}/indexing-status
 **Get Document Indexing Status**
@@ -1346,9 +1346,9 @@ Check the indexing progress of documents in a batch. Returns the current process
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Indexing status for documents in the batch. | **application/json**: [DocumentStatusListResponse](#documentstatuslistresponse)<br> |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - dataset API access or workspace access denied |  |
-| 404 | `not_found` : Knowledge base not found. / Documents not found. |  |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Knowledge base not found. / Documents not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /datasets/{dataset_id}/documents/{document_id}
 **Delete Document**
@@ -1364,12 +1364,12 @@ Permanently delete a document and all its chunks from the knowledge base.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 204 | Success. |
-| 401 | Unauthorized - invalid API token |
-| 403 | `archived_document_immutable` : The archived document is not editable. |
-| 404 | `not_found` : Document Not Exists. |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Success. |  |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | `archived_document_immutable` : The archived document is not editable. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Document Not Exists. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/documents/{document_id}
 **Get Document**
@@ -1389,10 +1389,10 @@ Retrieve detailed information about a specific document, including its indexing 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Document details. The response shape varies based on the `metadata` query parameter. When `metadata` is `only`, only `id`, `doc_type`, and `doc_metadata` are returned. When `metadata` is `without`, `doc_type` and `doc_metadata` are omitted. | **application/json**: [DocumentDetailResponse](#documentdetailresponse)<br> |
-| 400 | `invalid_metadata` : Invalid metadata value for the specified key. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | `forbidden` : No permission. |  |
-| 404 | `not_found` : Document not found. |  |
+| 400 | `invalid_metadata` : Invalid metadata value for the specified key. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | `forbidden` : No permission. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Document not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /datasets/{dataset_id}/documents/{document_id}
 **Update Document by File**
@@ -1417,13 +1417,13 @@ Update an existing document by uploading a new file. Re-triggers indexing — us
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Document updated successfully. | **application/json**: [DocumentAndBatchResponse](#documentandbatchresponse)<br> |
-| 400 | - `too_many_files` : Only one file is allowed. - `filename_not_exists_error` : The specified filename does not exist. - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `invalid_param` : Knowledge base does not exist, external datasets not supported, unsupported file type, or invalid doc_form (must be `text_model`, `hierarchical_model`, or `qa_model`). |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - dataset API access or workspace access denied |  |
-| 404 | Document not found |  |
-| 413 | `file_too_large` : File size exceeded. |  |
-| 415 | Unsupported file type |  |
-| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. |  |
+| 400 | - `too_many_files` : Only one file is allowed. - `filename_not_exists_error` : The specified filename does not exist. - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `invalid_param` : Knowledge base does not exist, external datasets not supported, unsupported file type, or invalid doc_form (must be `text_model`, `hierarchical_model`, or `qa_model`). | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Document not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 413 | `file_too_large` : File size exceeded. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 415 | Unsupported file type | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/documents/{document_id}/download
 **Download Document**
@@ -1442,9 +1442,9 @@ Get a signed download URL for a document's original uploaded file.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Download URL generated successfully. | **application/json**: [UrlResponse](#urlresponse)<br> |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | `forbidden` : No permission to access this document. |  |
-| 404 | `not_found` : Document not found. |  |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | `forbidden` : No permission to access this document. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Document not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### ~~[POST] /datasets/{dataset_id}/documents/{document_id}/update-by-file~~
 
@@ -1472,13 +1472,13 @@ Update an existing document by uploading a new file. Re-triggers indexing — us
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Document updated successfully. | **application/json**: [DocumentAndBatchResponse](#documentandbatchresponse)<br> |
-| 400 | - `too_many_files` : Only one file is allowed. - `filename_not_exists_error` : The specified filename does not exist. - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `invalid_param` : Knowledge base does not exist, external datasets not supported, unsupported file type, or invalid doc_form (must be `text_model`, `hierarchical_model`, or `qa_model`). |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - dataset API access or workspace access denied |  |
-| 404 | Document not found |  |
-| 413 | `file_too_large` : File size exceeded. |  |
-| 415 | Unsupported file type |  |
-| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. |  |
+| 400 | - `too_many_files` : Only one file is allowed. - `filename_not_exists_error` : The specified filename does not exist. - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `invalid_param` : Knowledge base does not exist, external datasets not supported, unsupported file type, or invalid doc_form (must be `text_model`, `hierarchical_model`, or `qa_model`). | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Document not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 413 | `file_too_large` : File size exceeded. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 415 | Unsupported file type | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/documents/{document_id}/update-by-text
 **Update Document by Text**
@@ -1503,11 +1503,11 @@ Update an existing document's text content, name, or processing configuration. R
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Document updated successfully. | **application/json**: [DocumentAndBatchResponse](#documentandbatchresponse)<br> |
-| 400 | - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `invalid_param` : Knowledge base does not exist, name is required when text is provided, or invalid doc_form (must be `text_model`, `hierarchical_model`, or `qa_model`). |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - dataset API access or workspace access denied |  |
-| 404 | Document not found |  |
-| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. |  |
+| 400 | - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `invalid_param` : Knowledge base does not exist, name is required when text is provided, or invalid doc_form (must be `text_model`, `hierarchical_model`, or `qa_model`). | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Document not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### ~~[POST] /datasets/{dataset_id}/documents/{document_id}/update_by_file~~
 
@@ -1535,13 +1535,13 @@ Update an existing document by uploading a new file. Re-triggers indexing — us
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Document updated successfully. | **application/json**: [DocumentAndBatchResponse](#documentandbatchresponse)<br> |
-| 400 | - `too_many_files` : Only one file is allowed. - `filename_not_exists_error` : The specified filename does not exist. - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `invalid_param` : Knowledge base does not exist, external datasets not supported, unsupported file type, or invalid doc_form (must be `text_model`, `hierarchical_model`, or `qa_model`). |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - dataset API access or workspace access denied |  |
-| 404 | Document not found |  |
-| 413 | `file_too_large` : File size exceeded. |  |
-| 415 | Unsupported file type |  |
-| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. |  |
+| 400 | - `too_many_files` : Only one file is allowed. - `filename_not_exists_error` : The specified filename does not exist. - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `invalid_param` : Knowledge base does not exist, external datasets not supported, unsupported file type, or invalid doc_form (must be `text_model`, `hierarchical_model`, or `qa_model`). | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Document not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 413 | `file_too_large` : File size exceeded. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 415 | Unsupported file type | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
 ## default
@@ -1568,10 +1568,10 @@ Update metadata values for multiple documents at once. Each document in the requ
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Document metadata updated successfully. | **application/json**: [DatasetMetadataActionResponse](#datasetmetadataactionresponse)<br> |
-| 400 | Bad request - invalid or conflicting document metadata operation |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - dataset API access or workspace access denied |  |
-| 404 | Dataset, document, or metadata not found |  |
+| 400 | Bad request - invalid or conflicting document metadata operation | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Dataset, document, or metadata not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/metadata
 **List Metadata Fields**
@@ -1589,9 +1589,9 @@ Returns the list of all metadata fields (both custom and built-in) for the knowl
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Metadata fields for the knowledge base. | **application/json**: [DatasetMetadataListResponse](#datasetmetadatalistresponse)<br> |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - dataset API access or workspace access denied |  |
-| 404 | Dataset not found |  |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Dataset not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/metadata
 **Create Metadata Field**
@@ -1615,10 +1615,10 @@ Create a custom metadata field for the knowledge base. Metadata fields can be us
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Metadata field created successfully. | **application/json**: [DatasetMetadataResponse](#datasetmetadataresponse)<br> |
-| 400 | Bad request - invalid or duplicate metadata name |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - dataset API access or workspace access denied |  |
-| 404 | Dataset not found |  |
+| 400 | Bad request - invalid or duplicate metadata name | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Dataset not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/metadata/built-in
 **Get Built-in Metadata Fields**
@@ -1636,9 +1636,9 @@ Returns the list of built-in metadata fields provided by the system (e.g., docum
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Built-in metadata fields. | **application/json**: [DatasetMetadataBuiltInFieldsResponse](#datasetmetadatabuiltinfieldsresponse)<br> |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - dataset API access or workspace access denied |  |
-| 404 | `not_found` : Knowledge base not found. |  |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Knowledge base not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/metadata/built-in/{action}
 **Update Built-in Metadata Field**
@@ -1657,9 +1657,9 @@ Enable or disable built-in metadata fields for the knowledge base.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Built-in metadata field toggled successfully. | **application/json**: [DatasetMetadataActionResponse](#datasetmetadataactionresponse)<br> |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - dataset API access or workspace access denied |  |
-| 404 | Dataset not found |  |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Dataset not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /datasets/{dataset_id}/metadata/{metadata_id}
 **Delete Metadata Field**
@@ -1675,12 +1675,12 @@ Permanently delete a custom metadata field. Documents using this field will lose
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 204 | Success. |
-| 401 | Unauthorized - invalid API token |
-| 403 | Forbidden - dataset API access or workspace access denied |
-| 404 | Dataset or metadata not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Success. |  |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Dataset or metadata not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /datasets/{dataset_id}/metadata/{metadata_id}
 **Update Metadata Field**
@@ -1705,10 +1705,10 @@ Rename a custom metadata field.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Metadata field updated successfully. | **application/json**: [DatasetMetadataResponse](#datasetmetadataresponse)<br> |
-| 400 | Bad request - invalid or duplicate metadata name |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - dataset API access or workspace access denied |  |
-| 404 | Dataset or metadata not found |  |
+| 400 | Bad request - invalid or duplicate metadata name | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Dataset or metadata not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
 ## default
@@ -1734,10 +1734,10 @@ Returns a paginated list of chunks within a document. Supports filtering by keyw
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | List of chunks. | **application/json**: [SegmentListResponse](#segmentlistresponse)<br> |
-| 400 | Bad request - embedding model is not configured |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - dataset API access or workspace access denied |  |
-| 404 | Dataset or document not found |  |
+| 400 | Bad request - embedding model is not configured | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Dataset or document not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/documents/{document_id}/segments
 **Create Chunks**
@@ -1762,11 +1762,11 @@ Create one or more chunks within a document. Each chunk can include optional key
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Chunks created successfully. | **application/json**: [SegmentCreateListResponse](#segmentcreatelistresponse)<br> |
-| 400 | Bad request - segments data is missing |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - dataset API access or workspace access denied |  |
-| 404 | `not_found` : Document is not completed or is disabled. |  |
-| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. |  |
+| 400 | Bad request - segments data is missing | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Document is not completed or is disabled. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}
 **Delete Chunk**
@@ -1783,13 +1783,13 @@ Permanently delete a chunk from the document.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 204 | Success. |
-| 400 | Bad request - invalid dataset model state or concurrent deletion |
-| 401 | Unauthorized - invalid API token |
-| 403 | Forbidden - dataset API access or workspace access denied |
-| 404 | Dataset, document, or segment not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Success. |  |
+| 400 | Bad request - invalid dataset model state or concurrent deletion | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Dataset, document, or segment not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}
 **Get Chunk**
@@ -1809,10 +1809,10 @@ Retrieve detailed information about a specific chunk, including its content, key
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Chunk details. | **application/json**: [SegmentDetailResponse](#segmentdetailresponse)<br> |
-| 400 | Bad request - invalid dataset model configuration |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - dataset API access or workspace access denied |  |
-| 404 | Dataset, document, or segment not found |  |
+| 400 | Bad request - invalid dataset model configuration | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Dataset, document, or segment not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}
 **Update Chunk**
@@ -1838,11 +1838,11 @@ Update a chunk's content, keywords, or answer. Re-triggers indexing for the modi
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Chunk updated successfully. | **application/json**: [SegmentDetailResponse](#segmentdetailresponse)<br> |
-| 400 | Bad request - invalid segment or embedding model configuration |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - dataset API access or workspace access denied |  |
-| 404 | Dataset, document, or segment not found |  |
-| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. |  |
+| 400 | Bad request - invalid segment or embedding model configuration | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Dataset, document, or segment not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks
 **List Child Chunks**
@@ -1865,9 +1865,9 @@ Returns a paginated list of child chunks under a specific parent chunk.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | List of child chunks. | **application/json**: [ChildChunkListResponse](#childchunklistresponse)<br> |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - dataset API access or workspace access denied |  |
-| 404 | Dataset, document, or segment not found |  |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Dataset, document, or segment not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks
 **Create Child Chunk**
@@ -1893,11 +1893,11 @@ Create a child chunk under the specified segment.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Child chunk created successfully. | **application/json**: [ChildChunkDetailResponse](#childchunkdetailresponse)<br> |
-| 400 | `invalid_param` : Create child chunk index failed. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - dataset API access or workspace access denied |  |
-| 404 | Dataset, document, or segment not found |  |
-| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. |  |
+| 400 | `invalid_param` : Create child chunk index failed. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Dataset, document, or segment not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks/{child_chunk_id}
 **Delete Child Chunk**
@@ -1915,13 +1915,13 @@ Permanently delete a child chunk from its parent chunk.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 204 | Success. |
-| 400 | `invalid_param` : Delete child chunk index failed. |
-| 401 | Unauthorized - invalid API token |
-| 403 | Forbidden - dataset API access or workspace access denied |
-| 404 | Dataset, document, segment, or child chunk not found |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Success. |  |
+| 400 | `invalid_param` : Delete child chunk index failed. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Dataset, document, segment, or child chunk not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks/{child_chunk_id}
 **Update Child Chunk**
@@ -1948,11 +1948,11 @@ Update the content of an existing child chunk.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Child chunk updated successfully. | **application/json**: [ChildChunkDetailResponse](#childchunkdetailresponse)<br> |
-| 400 | `invalid_param` : Update child chunk index failed. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - dataset API access or workspace access denied |  |
-| 404 | Dataset, document, segment, or child chunk not found |  |
-| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. |  |
+| 400 | `invalid_param` : Update child chunk index failed. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Dataset, document, segment, or child chunk not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
 ## default
@@ -1973,9 +1973,9 @@ Retrieve an end user by ID. Useful when other APIs return an end-user ID (e.g., 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | End user retrieved successfully. | **application/json**: [EndUserDetail](#enduserdetail)<br> |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
-| 404 | `end_user_not_found` : End user not found. |  |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `end_user_not_found` : End user not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
 ## default
@@ -1996,11 +1996,11 @@ Upload a file for use when sending messages, enabling multimodal understanding o
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | File uploaded successfully. | **application/json**: [FileResponse](#fileresponse)<br> |
-| 400 | - `no_file_uploaded` : No file was provided in the request. - `too_many_files` : Only one file is allowed per request. - `filename_not_exists_error` : The uploaded file has no filename. - `file_extension_blocked` : The file extension is blocked for security reasons. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
-| 413 | `file_too_large` : File size exceeded. |  |
-| 415 | `unsupported_file_type` : File type not allowed. |  |
+| 400 | - `no_file_uploaded` : No file was provided in the request. - `too_many_files` : Only one file is allowed per request. - `filename_not_exists_error` : The uploaded file has no filename. - `file_extension_blocked` : The file extension is blocked for security reasons. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 413 | `file_too_large` : File size exceeded. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 415 | `unsupported_file_type` : File type not allowed. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /files/{file_id}/preview
 **Download File**
@@ -2020,9 +2020,9 @@ Preview or download uploaded files previously uploaded via the [Upload File](/ap
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Returns the raw file content. The `Content-Type` header is set to the file's MIME type. If `as_attachment` is `true`, the file is returned as a download with `Content-Disposition: attachment`. | `*/*`: binary<br> |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | `file_access_denied` : Access to the requested file is denied. |  |
-| 404 | `file_not_found` : The requested file was not found. |  |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | `file_access_denied` : Access to the requested file is denied. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `file_not_found` : The requested file was not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
 ## default
@@ -2043,10 +2043,10 @@ Retrieve a paused Human Input form's contents using the `form_token` from a `hum
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Form contents retrieved successfully. | **application/json**: [HumanInputFormDefinitionResponse](#humaninputformdefinitionresponse)<br> |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
-| 404 | `not_found` : Form not found. |  |
-| 412 | - `human_input_form_submitted` : Form already submitted. Forms are one-shot; the first response wins regardless of which user submits it. - `human_input_form_expired` : The form's expiration time passed before submission arrived. |  |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Form not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 412 | - `human_input_form_submitted` : Form already submitted. Forms are one-shot; the first response wins regardless of which user submits it. - `human_input_form_expired` : The form's expiration time passed before submission arrived. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /form/human_input/{form_token}
 **Submit Human Input Form**
@@ -2070,11 +2070,11 @@ Submit the recipient's response to a paused Human Input form. The workflow resum
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Form submitted successfully. The response body is an empty object. | **application/json**: [HumanInputFormSubmitResponse](#humaninputformsubmitresponse)<br> |
-| 400 | - `bad_request` : Form recipient type is invalid. - `invalid_form_data` : Submission failed validation against the form definition. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
-| 404 | `not_found` : Form not found. |  |
-| 412 | - `human_input_form_submitted` : Form already submitted. Forms are one-shot; the first response wins regardless of which user submits it. - `human_input_form_expired` : The form's expiration time passed before submission arrived. |  |
+| 400 | - `bad_request` : Form recipient type is invalid. - `invalid_form_data` : Submission failed validation against the form definition. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Form not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 412 | - `human_input_form_submitted` : Form already submitted. Forms are one-shot; the first response wins regardless of which user submits it. - `human_input_form_expired` : The form's expiration time passed before submission arrived. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
 ## default
@@ -2089,9 +2089,9 @@ Retrieve basic information about this application, including name, description, 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Basic information of the application. | **application/json**: [AppInfoResponse](#appinforesponse)<br> |
-| 400 | `app_unavailable` : App unavailable or misconfigured. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
+| 400 | `app_unavailable` : App unavailable or misconfigured. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /meta
 **Get App Meta**
@@ -2103,9 +2103,9 @@ Retrieve metadata about this application, including tool icons and other configu
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Successfully retrieved application meta information. | **application/json**: [AppMetaResponse](#appmetaresponse)<br> |
-| 400 | `app_unavailable` : App unavailable or misconfigured. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
+| 400 | `app_unavailable` : App unavailable or misconfigured. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /parameters
 **Get App Parameters**
@@ -2117,9 +2117,9 @@ Retrieve the application's input form configuration, including feature switches,
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Application parameters information. | **application/json**: [Parameters](#parameters)<br> |
-| 400 | `app_unavailable` : App unavailable or misconfigured. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
+| 400 | `app_unavailable` : App unavailable or misconfigured. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /site
 **Get App WebApp Settings**
@@ -2131,8 +2131,8 @@ Retrieve the WebApp settings of this application, including site configuration, 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | WebApp settings of the application. | **application/json**: [Site](#site)<br> |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | `forbidden` : Site not found for this application or the workspace has been archived. |  |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | `forbidden` : Site not found for this application or the workspace has been archived. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
 ## default
@@ -2156,10 +2156,10 @@ Resume the Server-Sent Events stream for a workflow run after a pause or a dropp
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Server-Sent Events stream. Each event is delivered as `data: {JSON}\\n\\n`. Event payloads follow the same schemas as the original streaming response. | **text/event-stream**: string<br> |
-| 400 | `not_workflow_app` : Please check if your app mode matches the right API route. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
-| 404 | `not_found` : Workflow run not found. |  |
+| 400 | `not_workflow_app` : Please check if your app mode matches the right API route. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Workflow run not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workflows/logs
 **List Workflow Logs**
@@ -2184,9 +2184,9 @@ Retrieve paginated workflow execution logs with filtering options.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Successfully retrieved workflow logs. | **application/json**: [WorkflowAppLogPaginationResponse](#workflowapplogpaginationresponse)<br> |
-| 400 | Bad request - invalid query parameters |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
+| 400 | Bad request - invalid query parameters | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workflows/run
 **Run Workflow**
@@ -2204,11 +2204,11 @@ Execute a workflow. Cannot be executed without a published workflow.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Successful response. The content type and structure depend on the `response_mode` parameter in the request.  - If `response_mode` is `blocking`, returns `application/json` with a `WorkflowBlockingResponse` object. - If `response_mode` is `streaming`, returns `text/event-stream` with a stream of `ChunkWorkflowEvent` objects. | **application/json**: [WorkflowBlockingResponse](#workflowblockingresponse)<br>**text/event-stream**: string<br> |
-| 400 | - `not_workflow_app` : App mode does not match the API route. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model unavailable. - `completion_request_error` : Workflow execution request failed. - `invalid_param` : Invalid parameter value. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | - `forbidden` : Token scope, app, or workspace access denied. - `trigger_workflow_service_mode_unavailable` : Trigger-entry workflows cannot be invoked through Web App, Service API, OpenAPI, or MCP. |  |
-| 429 | - `too_many_requests` : Too many concurrent requests for this app. - `rate_limit_error` : The Dify Cloud workflow execution quota for this workspace has been reached. |  |
-| 500 | `internal_server_error` : Internal server error. |  |
+| 400 | - `not_workflow_app` : App mode does not match the API route. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model unavailable. - `completion_request_error` : Workflow execution request failed. - `invalid_param` : Invalid parameter value. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | - `forbidden` : Token scope, app, or workspace access denied. - `trigger_workflow_service_mode_unavailable` : Trigger-entry workflows cannot be invoked through Web App, Service API, OpenAPI, or MCP. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 429 | - `too_many_requests` : Too many concurrent requests for this app. - `rate_limit_error` : The Dify Cloud workflow execution quota for this workspace has been reached. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 500 | `internal_server_error` : Internal server error. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workflows/run/{workflow_run_id}
 **Get Workflow Run Detail**
@@ -2226,10 +2226,10 @@ Retrieve the current execution results of a workflow task based on the workflow 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Successfully retrieved workflow run details. | **application/json**: [WorkflowRunResponse](#workflowrunresponse)<br> |
-| 400 | `not_workflow_app` : App mode does not match the API route. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
-| 404 | `not_found` : Workflow run not found. |  |
+| 400 | `not_workflow_app` : App mode does not match the API route. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Workflow run not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workflows/tasks/{task_id}/stop
 **Stop Workflow Task**
@@ -2253,9 +2253,9 @@ Stop a running workflow task. Only supported in `streaming` mode.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Task stopped successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 400 | - `not_workflow_app` : App mode does not match the API route. - `invalid_param` : Required parameter missing or invalid. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
+| 400 | - `not_workflow_app` : App mode does not match the API route. - `invalid_param` : Required parameter missing or invalid. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workflows/{workflow_id}/run
 **Run Workflow by ID**
@@ -2279,12 +2279,12 @@ Execute a specific workflow version identified by its ID. Useful for running a p
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Successful response. The content type and structure depend on the `response_mode` parameter in the request.  - If `response_mode` is `blocking`, returns `application/json` with a `WorkflowBlockingResponse` object. - If `response_mode` is `streaming`, returns `text/event-stream` with a stream of `ChunkWorkflowEvent` objects. | **application/json**: [WorkflowBlockingResponse](#workflowblockingresponse)<br>**text/event-stream**: string<br> |
-| 400 | - `not_workflow_app` : App mode does not match the API route. - `bad_request` : Workflow is a draft or has an invalid ID format. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model unavailable. - `completion_request_error` : Workflow execution request failed. - `invalid_param` : Required parameter missing or invalid. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | - `forbidden` : Token scope, app, or workspace access denied. - `workflow_version_execution_not_allowed` : Workflow version execution is unavailable on the current plan. Upgrade to a paid plan. - `trigger_workflow_service_mode_unavailable` : The selected workflow version uses a trigger entry and cannot be invoked through Web App, Service API, OpenAPI, or MCP. |  |
-| 404 | `not_found` : Workflow not found. |  |
-| 429 | - `too_many_requests` : Too many concurrent requests for this app. - `rate_limit_error` : The Dify Cloud workflow execution quota for this workspace has been reached. |  |
-| 500 | `internal_server_error` : Internal server error. |  |
+| 400 | - `not_workflow_app` : App mode does not match the API route. - `bad_request` : Workflow is a draft or has an invalid ID format. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model unavailable. - `completion_request_error` : Workflow execution request failed. - `invalid_param` : Required parameter missing or invalid. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | - `forbidden` : Token scope, app, or workspace access denied. - `workflow_version_execution_not_allowed` : Workflow version execution is unavailable on the current plan. Upgrade to a paid plan. - `trigger_workflow_service_mode_unavailable` : The selected workflow version uses a trigger entry and cannot be invoked through Web App, Service API, OpenAPI, or MCP. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `not_found` : Workflow not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 429 | - `too_many_requests` : Too many concurrent requests for this app. - `rate_limit_error` : The Dify Cloud workflow execution quota for this workspace has been reached. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 500 | `internal_server_error` : Internal server error. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
 ## default
@@ -2305,7 +2305,7 @@ Retrieve the list of available models by type. Primarily used to query `text-emb
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Available models for the specified type. | **application/json**: [ProviderWithModelsListResponse](#providerwithmodelslistresponse)<br> |
-| 401 | Unauthorized - invalid API token |  |
+| 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
 ### Schemas
@@ -3291,6 +3291,21 @@ Full end-user detail returned by the Service API.
 | tenant_id | string (uuid) |  | Yes |
 | type | string |  | Yes |
 | updated_at | dateTime |  | Yes |
+
+#### ErrorResponse
+
+Documented non-2xx body emitted by ``register_external_error_handlers``.
+
+``params`` and ``details`` appear only on the errors that set them. The schema
+stays open because ``HTTPException.data`` may carry extra keys.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string |  | Yes |
+| details | object |  | No |
+| message | string |  | Yes |
+| params | string |  | No |
+| status | integer |  | Yes |
 
 #### EventStreamResponse
 

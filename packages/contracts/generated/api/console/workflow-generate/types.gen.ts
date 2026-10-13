@@ -22,6 +22,16 @@ export type WorkflowGenerateResponse = {
   mode?: 'advanced-chat' | 'workflow' | null
 }
 
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type WorkflowGenerateStreamEventResponse =
   | WorkflowGeneratePlanEventResponse
   | WorkflowGenerateResultEventResponse
@@ -147,9 +157,11 @@ export type PostWorkflowGenerateData = {
 }
 
 export type PostWorkflowGenerateErrors = {
-  400: unknown
-  402: unknown
+  400: ErrorResponse
+  402: ErrorResponse
 }
+
+export type PostWorkflowGenerateError = PostWorkflowGenerateErrors[keyof PostWorkflowGenerateErrors]
 
 export type PostWorkflowGenerateResponses = {
   200: WorkflowGenerateResponse
@@ -166,8 +178,11 @@ export type PostWorkflowGenerateStreamData = {
 }
 
 export type PostWorkflowGenerateStreamErrors = {
-  400: unknown
+  400: ErrorResponse
 }
+
+export type PostWorkflowGenerateStreamError =
+  PostWorkflowGenerateStreamErrors[keyof PostWorkflowGenerateStreamErrors]
 
 export type PostWorkflowGenerateStreamResponses = {
   200: WorkflowGenerateStreamEventResponse
@@ -184,8 +199,11 @@ export type PostWorkflowGenerateSuggestionsData = {
 }
 
 export type PostWorkflowGenerateSuggestionsErrors = {
-  400: unknown
+  400: ErrorResponse
 }
+
+export type PostWorkflowGenerateSuggestionsError =
+  PostWorkflowGenerateSuggestionsErrors[keyof PostWorkflowGenerateSuggestionsErrors]
 
 export type PostWorkflowGenerateSuggestionsResponses = {
   200: WorkflowInstructionSuggestionsResponse

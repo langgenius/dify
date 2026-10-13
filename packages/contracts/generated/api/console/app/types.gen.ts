@@ -13,6 +13,16 @@ export type AdvancedPromptTemplateResponse = {
   } | null
 }
 
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type GetAppPromptTemplatesData = {
   body?: never
   path?: never
@@ -26,8 +36,11 @@ export type GetAppPromptTemplatesData = {
 }
 
 export type GetAppPromptTemplatesErrors = {
-  400: unknown
+  400: ErrorResponse
 }
+
+export type GetAppPromptTemplatesError =
+  GetAppPromptTemplatesErrors[keyof GetAppPromptTemplatesErrors]
 
 export type GetAppPromptTemplatesResponses = {
   200: AdvancedPromptTemplateResponse

@@ -8,6 +8,16 @@ export type OAuthDataSourceBindingResponse = {
   result: string
 }
 
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type OAuthDataSourceResponse = {
   data: string
 }
@@ -80,8 +90,11 @@ export type GetOauthDataSourceBindingByProviderData = {
 }
 
 export type GetOauthDataSourceBindingByProviderErrors = {
-  400: unknown
+  400: ErrorResponse
 }
+
+export type GetOauthDataSourceBindingByProviderError =
+  GetOauthDataSourceBindingByProviderErrors[keyof GetOauthDataSourceBindingByProviderErrors]
 
 export type GetOauthDataSourceBindingByProviderResponses = {
   200: OAuthDataSourceBindingResponse
@@ -100,9 +113,12 @@ export type GetOauthDataSourceByProviderData = {
 }
 
 export type GetOauthDataSourceByProviderErrors = {
-  400: unknown
-  403: unknown
+  400: ErrorResponse
+  403: ErrorResponse
 }
+
+export type GetOauthDataSourceByProviderError =
+  GetOauthDataSourceByProviderErrors[keyof GetOauthDataSourceByProviderErrors]
 
 export type GetOauthDataSourceByProviderResponses = {
   200: OAuthDataSourceResponse
@@ -122,8 +138,11 @@ export type GetOauthDataSourceByProviderByBindingIdSyncData = {
 }
 
 export type GetOauthDataSourceByProviderByBindingIdSyncErrors = {
-  400: unknown
+  400: ErrorResponse
 }
+
+export type GetOauthDataSourceByProviderByBindingIdSyncError =
+  GetOauthDataSourceByProviderByBindingIdSyncErrors[keyof GetOauthDataSourceByProviderByBindingIdSyncErrors]
 
 export type GetOauthDataSourceByProviderByBindingIdSyncResponses = {
   200: OAuthDataSourceSyncResponse

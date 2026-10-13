@@ -886,10 +886,10 @@ export type PostAppsByAppIdFilesData = {
 }
 
 export type PostAppsByAppIdFilesErrors = {
-  400: unknown
-  401: unknown
-  413: unknown
-  415: unknown
+  400: ErrorBody
+  401: ErrorBody
+  413: ErrorBody
+  415: ErrorBody
   422: ErrorBody
   default: ErrorBody
 }

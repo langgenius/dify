@@ -63,6 +63,16 @@ export type DatasetDetailWithPartialMembersResponse = {
   word_count: number
 }
 
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type ApiBaseUrlResponse = {
   api_base_url: string
 }
@@ -1135,8 +1145,10 @@ export type PostDatasetsData = {
 }
 
 export type PostDatasetsErrors = {
-  400: unknown
+  400: ErrorResponse
 }
+
+export type PostDatasetsError = PostDatasetsErrors[keyof PostDatasetsErrors]
 
 export type PostDatasetsResponses = {
   201: DatasetDetailWithPartialMembersResponse
@@ -1180,8 +1192,10 @@ export type PostDatasetsApiKeysData = {
 }
 
 export type PostDatasetsApiKeysErrors = {
-  400: unknown
+  400: ErrorResponse
 }
+
+export type PostDatasetsApiKeysError = PostDatasetsApiKeysErrors[keyof PostDatasetsApiKeysErrors]
 
 export type PostDatasetsApiKeysResponses = {
   200: ApiKeyItem
@@ -1230,9 +1244,11 @@ export type PostDatasetsExternalData = {
 }
 
 export type PostDatasetsExternalErrors = {
-  400: unknown
-  403: unknown
+  400: ErrorResponse
+  403: ErrorResponse
 }
+
+export type PostDatasetsExternalError = PostDatasetsExternalErrors[keyof PostDatasetsExternalErrors]
 
 export type PostDatasetsExternalResponses = {
   201: DatasetDetailResponse
@@ -1267,8 +1283,11 @@ export type PostDatasetsExternalKnowledgeApiData = {
 }
 
 export type PostDatasetsExternalKnowledgeApiErrors = {
-  403: unknown
+  403: ErrorResponse
 }
+
+export type PostDatasetsExternalKnowledgeApiError =
+  PostDatasetsExternalKnowledgeApiErrors[keyof PostDatasetsExternalKnowledgeApiErrors]
 
 export type PostDatasetsExternalKnowledgeApiResponses = {
   201: ExternalKnowledgeApiResponse
@@ -1303,8 +1322,11 @@ export type GetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdData = {
 }
 
 export type GetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdErrors = {
-  404: unknown
+  404: ErrorResponse
 }
+
+export type GetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdError =
+  GetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdErrors[keyof GetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdErrors]
 
 export type GetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponses = {
   200: ExternalKnowledgeApiResponse
@@ -1323,8 +1345,11 @@ export type PatchDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdData = {
 }
 
 export type PatchDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdErrors = {
-  404: unknown
+  404: ErrorResponse
 }
+
+export type PatchDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdError =
+  PatchDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdErrors[keyof PatchDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdErrors]
 
 export type PatchDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponses = {
   200: ExternalKnowledgeApiResponse
@@ -1371,8 +1396,10 @@ export type PostDatasetsInitData = {
 }
 
 export type PostDatasetsInitErrors = {
-  400: unknown
+  400: ErrorResponse
 }
+
+export type PostDatasetsInitError = PostDatasetsInitErrors[keyof PostDatasetsInitErrors]
 
 export type PostDatasetsInitResponses = {
   200: DatasetAndDocumentResponse
@@ -1480,9 +1507,12 @@ export type GetDatasetsByDatasetIdData = {
 }
 
 export type GetDatasetsByDatasetIdErrors = {
-  403: unknown
-  404: unknown
+  403: ErrorResponse
+  404: ErrorResponse
 }
+
+export type GetDatasetsByDatasetIdError =
+  GetDatasetsByDatasetIdErrors[keyof GetDatasetsByDatasetIdErrors]
 
 export type GetDatasetsByDatasetIdResponses = {
   200: DatasetDetailWithPartialMembersResponse
@@ -1501,9 +1531,12 @@ export type PatchDatasetsByDatasetIdData = {
 }
 
 export type PatchDatasetsByDatasetIdErrors = {
-  403: unknown
-  404: unknown
+  403: ErrorResponse
+  404: ErrorResponse
 }
+
+export type PatchDatasetsByDatasetIdError =
+  PatchDatasetsByDatasetIdErrors[keyof PatchDatasetsByDatasetIdErrors]
 
 export type PatchDatasetsByDatasetIdResponses = {
   200: DatasetDetailWithPartialMembersResponse
@@ -1539,8 +1572,11 @@ export type GetDatasetsByDatasetIdAutoDisableLogsData = {
 }
 
 export type GetDatasetsByDatasetIdAutoDisableLogsErrors = {
-  404: unknown
+  404: ErrorResponse
 }
+
+export type GetDatasetsByDatasetIdAutoDisableLogsError =
+  GetDatasetsByDatasetIdAutoDisableLogsErrors[keyof GetDatasetsByDatasetIdAutoDisableLogsErrors]
 
 export type GetDatasetsByDatasetIdAutoDisableLogsResponses = {
   200: AutoDisableLogsResponse
@@ -1666,10 +1702,13 @@ export type PostDatasetsByDatasetIdDocumentsGenerateSummaryData = {
 }
 
 export type PostDatasetsByDatasetIdDocumentsGenerateSummaryErrors = {
-  400: unknown
-  403: unknown
-  404: unknown
+  400: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
 }
+
+export type PostDatasetsByDatasetIdDocumentsGenerateSummaryError =
+  PostDatasetsByDatasetIdDocumentsGenerateSummaryErrors[keyof PostDatasetsByDatasetIdDocumentsGenerateSummaryErrors]
 
 export type PostDatasetsByDatasetIdDocumentsGenerateSummaryResponses = {
   200: SimpleResultResponse
@@ -1688,8 +1727,11 @@ export type PostDatasetsByDatasetIdDocumentsMetadataData = {
 }
 
 export type PostDatasetsByDatasetIdDocumentsMetadataErrors = {
-  404: unknown
+  404: ErrorResponse
 }
+
+export type PostDatasetsByDatasetIdDocumentsMetadataError =
+  PostDatasetsByDatasetIdDocumentsMetadataErrors[keyof PostDatasetsByDatasetIdDocumentsMetadataErrors]
 
 export type PostDatasetsByDatasetIdDocumentsMetadataResponses = {
   204: void
@@ -1745,8 +1787,11 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdData = {
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdErrors = {
-  404: unknown
+  404: ErrorResponse
 }
+
+export type GetDatasetsByDatasetIdDocumentsByDocumentIdError =
+  GetDatasetsByDatasetIdDocumentsByDocumentIdErrors[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdErrors]
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdResponses = {
   200: DocumentDetailResponse
@@ -1783,9 +1828,12 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingEstimateData = {
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingEstimateErrors = {
-  400: unknown
-  404: unknown
+  400: ErrorResponse
+  404: ErrorResponse
 }
+
+export type GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingEstimateError =
+  GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingEstimateErrors[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingEstimateErrors]
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingEstimateResponses = {
   200: IndexingEstimateResponse
@@ -1805,8 +1853,11 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingStatusData = {
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingStatusErrors = {
-  404: unknown
+  404: ErrorResponse
 }
+
+export type GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingStatusError =
+  GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingStatusErrors[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingStatusErrors]
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingStatusResponses = {
   200: DocumentStatusResponse
@@ -1826,9 +1877,12 @@ export type PutDatasetsByDatasetIdDocumentsByDocumentIdMetadataData = {
 }
 
 export type PutDatasetsByDatasetIdDocumentsByDocumentIdMetadataErrors = {
-  403: unknown
-  404: unknown
+  403: ErrorResponse
+  404: ErrorResponse
 }
+
+export type PutDatasetsByDatasetIdDocumentsByDocumentIdMetadataError =
+  PutDatasetsByDatasetIdDocumentsByDocumentIdMetadataErrors[keyof PutDatasetsByDatasetIdDocumentsByDocumentIdMetadataErrors]
 
 export type PutDatasetsByDatasetIdDocumentsByDocumentIdMetadataResponses = {
   200: SimpleResultMessageResponse
@@ -1917,9 +1971,12 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionData 
 }
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionErrors = {
-  400: unknown
-  404: unknown
+  400: ErrorResponse
+  404: ErrorResponse
 }
+
+export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionError =
+  PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionErrors[keyof PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionErrors]
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionResponses = {
   200: SimpleResultResponse
@@ -2189,8 +2246,11 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdSummaryStatusData = {
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSummaryStatusErrors = {
-  404: unknown
+  404: ErrorResponse
 }
+
+export type GetDatasetsByDatasetIdDocumentsByDocumentIdSummaryStatusError =
+  GetDatasetsByDatasetIdDocumentsByDocumentIdSummaryStatusErrors[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdSummaryStatusErrors]
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSummaryStatusResponses = {
   200: DocumentSummaryStatusResponse
@@ -2226,8 +2286,11 @@ export type GetDatasetsByDatasetIdErrorDocsData = {
 }
 
 export type GetDatasetsByDatasetIdErrorDocsErrors = {
-  404: unknown
+  404: ErrorResponse
 }
+
+export type GetDatasetsByDatasetIdErrorDocsError =
+  GetDatasetsByDatasetIdErrorDocsErrors[keyof GetDatasetsByDatasetIdErrorDocsErrors]
 
 export type GetDatasetsByDatasetIdErrorDocsResponses = {
   200: ErrorDocsResponse
@@ -2246,9 +2309,12 @@ export type PostDatasetsByDatasetIdExternalHitTestingData = {
 }
 
 export type PostDatasetsByDatasetIdExternalHitTestingErrors = {
-  400: unknown
-  404: unknown
+  400: ErrorResponse
+  404: ErrorResponse
 }
+
+export type PostDatasetsByDatasetIdExternalHitTestingError =
+  PostDatasetsByDatasetIdExternalHitTestingErrors[keyof PostDatasetsByDatasetIdExternalHitTestingErrors]
 
 export type PostDatasetsByDatasetIdExternalHitTestingResponses = {
   200: ExternalHitTestingResponse
@@ -2267,9 +2333,12 @@ export type PostDatasetsByDatasetIdHitTestingData = {
 }
 
 export type PostDatasetsByDatasetIdHitTestingErrors = {
-  400: unknown
-  404: unknown
+  400: ErrorResponse
+  404: ErrorResponse
 }
+
+export type PostDatasetsByDatasetIdHitTestingError =
+  PostDatasetsByDatasetIdHitTestingErrors[keyof PostDatasetsByDatasetIdHitTestingErrors]
 
 export type PostDatasetsByDatasetIdHitTestingResponses = {
   200: HitTestingResponse
@@ -2403,9 +2472,12 @@ export type GetDatasetsByDatasetIdPermissionPartUsersData = {
 }
 
 export type GetDatasetsByDatasetIdPermissionPartUsersErrors = {
-  403: unknown
-  404: unknown
+  403: ErrorResponse
+  404: ErrorResponse
 }
+
+export type GetDatasetsByDatasetIdPermissionPartUsersError =
+  GetDatasetsByDatasetIdPermissionPartUsersErrors[keyof GetDatasetsByDatasetIdPermissionPartUsersErrors]
 
 export type GetDatasetsByDatasetIdPermissionPartUsersResponses = {
   200: PartialMemberListResponse
@@ -2504,8 +2576,11 @@ export type PostDatasetsByResourceIdApiKeysData = {
 }
 
 export type PostDatasetsByResourceIdApiKeysErrors = {
-  400: unknown
+  400: ErrorResponse
 }
+
+export type PostDatasetsByResourceIdApiKeysError =
+  PostDatasetsByResourceIdApiKeysErrors[keyof PostDatasetsByResourceIdApiKeysErrors]
 
 export type PostDatasetsByResourceIdApiKeysResponses = {
   201: ApiKeyItem

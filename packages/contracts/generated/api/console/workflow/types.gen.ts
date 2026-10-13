@@ -11,6 +11,16 @@ export type WorkflowPauseDetailsResponse = {
   paused_nodes: Array<PausedNodeResponse>
 }
 
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type PausedNodeResponse = {
   node_id: string
   node_title: string
@@ -49,8 +59,11 @@ export type GetWorkflowByWorkflowRunIdPauseDetailsData = {
 }
 
 export type GetWorkflowByWorkflowRunIdPauseDetailsErrors = {
-  404: unknown
+  404: ErrorResponse
 }
+
+export type GetWorkflowByWorkflowRunIdPauseDetailsError =
+  GetWorkflowByWorkflowRunIdPauseDetailsErrors[keyof GetWorkflowByWorkflowRunIdPauseDetailsErrors]
 
 export type GetWorkflowByWorkflowRunIdPauseDetailsResponses = {
   200: WorkflowPauseDetailsResponse

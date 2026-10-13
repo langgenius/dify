@@ -52,6 +52,16 @@ export type AppDetailWithSite = {
   workflow: WorkflowPartial | null
 }
 
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type AppImportPayload = {
   app_id?: string | null
   description?: string | null
@@ -4207,9 +4217,11 @@ export type PostAppsData = {
 }
 
 export type PostAppsErrors = {
-  400: unknown
-  403: unknown
+  400: ErrorResponse
+  403: ErrorResponse
 }
+
+export type PostAppsError = PostAppsErrors[keyof PostAppsErrors]
 
 export type PostAppsResponses = {
   201: AppDetailWithSite
@@ -4236,9 +4248,9 @@ export type PostAppsImportsData = {
 
 export type PostAppsImportsErrors = {
   400: Import
-  403: unknown
-  409: unknown
-  413: unknown
+  403: ErrorResponse
+  409: ErrorResponse
+  413: ErrorResponse
 }
 
 export type PostAppsImportsError = PostAppsImportsErrors[keyof PostAppsImportsErrors]
@@ -4359,8 +4371,10 @@ export type DeleteAppsByAppIdData = {
 }
 
 export type DeleteAppsByAppIdErrors = {
-  403: unknown
+  403: ErrorResponse
 }
+
+export type DeleteAppsByAppIdError = DeleteAppsByAppIdErrors[keyof DeleteAppsByAppIdErrors]
 
 export type DeleteAppsByAppIdResponses = {
   204: void
@@ -4393,9 +4407,11 @@ export type PutAppsByAppIdData = {
 }
 
 export type PutAppsByAppIdErrors = {
-  400: unknown
-  403: unknown
+  400: ErrorResponse
+  403: ErrorResponse
 }
+
+export type PutAppsByAppIdError = PutAppsByAppIdErrors[keyof PutAppsByAppIdErrors]
 
 export type PutAppsByAppIdResponses = {
   200: AppDetailWithSite
@@ -4489,9 +4505,12 @@ export type PostAppsByAppIdAdvancedChatWorkflowsDraftIterationNodesByNodeIdRunDa
 }
 
 export type PostAppsByAppIdAdvancedChatWorkflowsDraftIterationNodesByNodeIdRunErrors = {
-  403: unknown
-  404: unknown
+  403: ErrorResponse
+  404: ErrorResponse
 }
+
+export type PostAppsByAppIdAdvancedChatWorkflowsDraftIterationNodesByNodeIdRunError =
+  PostAppsByAppIdAdvancedChatWorkflowsDraftIterationNodesByNodeIdRunErrors[keyof PostAppsByAppIdAdvancedChatWorkflowsDraftIterationNodesByNodeIdRunErrors]
 
 export type PostAppsByAppIdAdvancedChatWorkflowsDraftIterationNodesByNodeIdRunResponses = {
   200: GeneratedAppResponse
@@ -4511,9 +4530,12 @@ export type PostAppsByAppIdAdvancedChatWorkflowsDraftLoopNodesByNodeIdRunData = 
 }
 
 export type PostAppsByAppIdAdvancedChatWorkflowsDraftLoopNodesByNodeIdRunErrors = {
-  403: unknown
-  404: unknown
+  403: ErrorResponse
+  404: ErrorResponse
 }
+
+export type PostAppsByAppIdAdvancedChatWorkflowsDraftLoopNodesByNodeIdRunError =
+  PostAppsByAppIdAdvancedChatWorkflowsDraftLoopNodesByNodeIdRunErrors[keyof PostAppsByAppIdAdvancedChatWorkflowsDraftLoopNodesByNodeIdRunErrors]
 
 export type PostAppsByAppIdAdvancedChatWorkflowsDraftLoopNodesByNodeIdRunResponses = {
   200: GeneratedAppResponse
@@ -4532,9 +4554,12 @@ export type PostAppsByAppIdAdvancedChatWorkflowsDraftRunData = {
 }
 
 export type PostAppsByAppIdAdvancedChatWorkflowsDraftRunErrors = {
-  400: unknown
-  403: unknown
+  400: ErrorResponse
+  403: ErrorResponse
 }
+
+export type PostAppsByAppIdAdvancedChatWorkflowsDraftRunError =
+  PostAppsByAppIdAdvancedChatWorkflowsDraftRunErrors[keyof PostAppsByAppIdAdvancedChatWorkflowsDraftRunErrors]
 
 export type PostAppsByAppIdAdvancedChatWorkflowsDraftRunResponses = {
   200: GeneratedAppResponse
@@ -4847,8 +4872,11 @@ export type GetAppsByAppIdAgentLogsData = {
 }
 
 export type GetAppsByAppIdAgentLogsErrors = {
-  400: unknown
+  400: ErrorResponse
 }
+
+export type GetAppsByAppIdAgentLogsError =
+  GetAppsByAppIdAgentLogsErrors[keyof GetAppsByAppIdAgentLogsErrors]
 
 export type GetAppsByAppIdAgentLogsResponses = {
   200: AgentLogResponse
@@ -4868,8 +4896,11 @@ export type PostAppsByAppIdAnnotationReplyByActionData = {
 }
 
 export type PostAppsByAppIdAnnotationReplyByActionErrors = {
-  403: unknown
+  403: ErrorResponse
 }
+
+export type PostAppsByAppIdAnnotationReplyByActionError =
+  PostAppsByAppIdAnnotationReplyByActionErrors[keyof PostAppsByAppIdAnnotationReplyByActionErrors]
 
 export type PostAppsByAppIdAnnotationReplyByActionResponses = {
   200: AnnotationJobStatusResponse
@@ -4890,8 +4921,11 @@ export type GetAppsByAppIdAnnotationReplyByActionStatusByJobIdData = {
 }
 
 export type GetAppsByAppIdAnnotationReplyByActionStatusByJobIdErrors = {
-  403: unknown
+  403: ErrorResponse
 }
+
+export type GetAppsByAppIdAnnotationReplyByActionStatusByJobIdError =
+  GetAppsByAppIdAnnotationReplyByActionStatusByJobIdErrors[keyof GetAppsByAppIdAnnotationReplyByActionStatusByJobIdErrors]
 
 export type GetAppsByAppIdAnnotationReplyByActionStatusByJobIdResponses = {
   200: AnnotationJobStatusDetailResponse
@@ -4910,8 +4944,11 @@ export type GetAppsByAppIdAnnotationSettingData = {
 }
 
 export type GetAppsByAppIdAnnotationSettingErrors = {
-  403: unknown
+  403: ErrorResponse
 }
+
+export type GetAppsByAppIdAnnotationSettingError =
+  GetAppsByAppIdAnnotationSettingErrors[keyof GetAppsByAppIdAnnotationSettingErrors]
 
 export type GetAppsByAppIdAnnotationSettingResponses = {
   200: AnnotationSettingResponse
@@ -4931,8 +4968,11 @@ export type PostAppsByAppIdAnnotationSettingsByAnnotationSettingIdData = {
 }
 
 export type PostAppsByAppIdAnnotationSettingsByAnnotationSettingIdErrors = {
-  403: unknown
+  403: ErrorResponse
 }
+
+export type PostAppsByAppIdAnnotationSettingsByAnnotationSettingIdError =
+  PostAppsByAppIdAnnotationSettingsByAnnotationSettingIdErrors[keyof PostAppsByAppIdAnnotationSettingsByAnnotationSettingIdErrors]
 
 export type PostAppsByAppIdAnnotationSettingsByAnnotationSettingIdResponses = {
   200: AnnotationSettingResponse
@@ -4971,8 +5011,11 @@ export type GetAppsByAppIdAnnotationsData = {
 }
 
 export type GetAppsByAppIdAnnotationsErrors = {
-  403: unknown
+  403: ErrorResponse
 }
+
+export type GetAppsByAppIdAnnotationsError =
+  GetAppsByAppIdAnnotationsErrors[keyof GetAppsByAppIdAnnotationsErrors]
 
 export type GetAppsByAppIdAnnotationsResponses = {
   200: AnnotationList
@@ -4991,8 +5034,11 @@ export type PostAppsByAppIdAnnotationsData = {
 }
 
 export type PostAppsByAppIdAnnotationsErrors = {
-  403: unknown
+  403: ErrorResponse
 }
+
+export type PostAppsByAppIdAnnotationsError =
+  PostAppsByAppIdAnnotationsErrors[keyof PostAppsByAppIdAnnotationsErrors]
 
 export type PostAppsByAppIdAnnotationsResponses = {
   201: Annotation
@@ -5011,11 +5057,14 @@ export type PostAppsByAppIdAnnotationsBatchImportData = {
 }
 
 export type PostAppsByAppIdAnnotationsBatchImportErrors = {
-  400: unknown
-  403: unknown
-  413: unknown
-  429: unknown
+  400: ErrorResponse
+  403: ErrorResponse
+  413: ErrorResponse
+  429: ErrorResponse
 }
+
+export type PostAppsByAppIdAnnotationsBatchImportError =
+  PostAppsByAppIdAnnotationsBatchImportErrors[keyof PostAppsByAppIdAnnotationsBatchImportErrors]
 
 export type PostAppsByAppIdAnnotationsBatchImportResponses = {
   200: AnnotationBatchImportResponse
@@ -5035,8 +5084,11 @@ export type GetAppsByAppIdAnnotationsBatchImportStatusByJobIdData = {
 }
 
 export type GetAppsByAppIdAnnotationsBatchImportStatusByJobIdErrors = {
-  403: unknown
+  403: ErrorResponse
 }
+
+export type GetAppsByAppIdAnnotationsBatchImportStatusByJobIdError =
+  GetAppsByAppIdAnnotationsBatchImportStatusByJobIdErrors[keyof GetAppsByAppIdAnnotationsBatchImportStatusByJobIdErrors]
 
 export type GetAppsByAppIdAnnotationsBatchImportStatusByJobIdResponses = {
   200: AnnotationJobStatusDetailResponse
@@ -5071,8 +5123,11 @@ export type GetAppsByAppIdAnnotationsExportData = {
 }
 
 export type GetAppsByAppIdAnnotationsExportErrors = {
-  403: unknown
+  403: ErrorResponse
 }
+
+export type GetAppsByAppIdAnnotationsExportError =
+  GetAppsByAppIdAnnotationsExportErrors[keyof GetAppsByAppIdAnnotationsExportErrors]
 
 export type GetAppsByAppIdAnnotationsExportResponses = {
   200: AnnotationExportList
@@ -5109,8 +5164,11 @@ export type PostAppsByAppIdAnnotationsByAnnotationIdData = {
 }
 
 export type PostAppsByAppIdAnnotationsByAnnotationIdErrors = {
-  403: unknown
+  403: ErrorResponse
 }
+
+export type PostAppsByAppIdAnnotationsByAnnotationIdError =
+  PostAppsByAppIdAnnotationsByAnnotationIdErrors[keyof PostAppsByAppIdAnnotationsByAnnotationIdErrors]
 
 export type PostAppsByAppIdAnnotationsByAnnotationIdResponses = {
   200: Annotation
@@ -5134,8 +5192,11 @@ export type GetAppsByAppIdAnnotationsByAnnotationIdHitHistoriesData = {
 }
 
 export type GetAppsByAppIdAnnotationsByAnnotationIdHitHistoriesErrors = {
-  403: unknown
+  403: ErrorResponse
 }
+
+export type GetAppsByAppIdAnnotationsByAnnotationIdHitHistoriesError =
+  GetAppsByAppIdAnnotationsByAnnotationIdHitHistoriesErrors[keyof GetAppsByAppIdAnnotationsByAnnotationIdHitHistoriesErrors]
 
 export type GetAppsByAppIdAnnotationsByAnnotationIdHitHistoriesResponses = {
   200: AnnotationHitHistoryList
@@ -5154,8 +5215,11 @@ export type PostAppsByAppIdApiEnableData = {
 }
 
 export type PostAppsByAppIdApiEnableErrors = {
-  403: unknown
+  403: ErrorResponse
 }
+
+export type PostAppsByAppIdApiEnableError =
+  PostAppsByAppIdApiEnableErrors[keyof PostAppsByAppIdApiEnableErrors]
 
 export type PostAppsByAppIdApiEnableResponses = {
   200: AppDetail
@@ -5176,9 +5240,12 @@ export type PostAppsByAppIdAudioToTextData = {
 }
 
 export type PostAppsByAppIdAudioToTextErrors = {
-  400: unknown
-  413: unknown
+  400: ErrorResponse
+  413: ErrorResponse
 }
+
+export type PostAppsByAppIdAudioToTextError =
+  PostAppsByAppIdAudioToTextErrors[keyof PostAppsByAppIdAudioToTextErrors]
 
 export type PostAppsByAppIdAudioToTextResponses = {
   200: AudioTranscriptResponse
@@ -5205,8 +5272,11 @@ export type GetAppsByAppIdChatConversationsData = {
 }
 
 export type GetAppsByAppIdChatConversationsErrors = {
-  403: unknown
+  403: ErrorResponse
 }
+
+export type GetAppsByAppIdChatConversationsError =
+  GetAppsByAppIdChatConversationsErrors[keyof GetAppsByAppIdChatConversationsErrors]
 
 export type GetAppsByAppIdChatConversationsResponses = {
   200: ConversationWithSummaryPagination
@@ -5226,9 +5296,12 @@ export type DeleteAppsByAppIdChatConversationsByConversationIdData = {
 }
 
 export type DeleteAppsByAppIdChatConversationsByConversationIdErrors = {
-  403: unknown
-  404: unknown
+  403: ErrorResponse
+  404: ErrorResponse
 }
+
+export type DeleteAppsByAppIdChatConversationsByConversationIdError =
+  DeleteAppsByAppIdChatConversationsByConversationIdErrors[keyof DeleteAppsByAppIdChatConversationsByConversationIdErrors]
 
 export type DeleteAppsByAppIdChatConversationsByConversationIdResponses = {
   204: void
@@ -5248,9 +5321,12 @@ export type GetAppsByAppIdChatConversationsByConversationIdData = {
 }
 
 export type GetAppsByAppIdChatConversationsByConversationIdErrors = {
-  403: unknown
-  404: unknown
+  403: ErrorResponse
+  404: ErrorResponse
 }
+
+export type GetAppsByAppIdChatConversationsByConversationIdError =
+  GetAppsByAppIdChatConversationsByConversationIdErrors[keyof GetAppsByAppIdChatConversationsByConversationIdErrors]
 
 export type GetAppsByAppIdChatConversationsByConversationIdResponses = {
   200: ConversationDetail
@@ -5273,8 +5349,11 @@ export type GetAppsByAppIdChatMessagesData = {
 }
 
 export type GetAppsByAppIdChatMessagesErrors = {
-  404: unknown
+  404: ErrorResponse
 }
+
+export type GetAppsByAppIdChatMessagesError =
+  GetAppsByAppIdChatMessagesErrors[keyof GetAppsByAppIdChatMessagesErrors]
 
 export type GetAppsByAppIdChatMessagesResponses = {
   200: MessageInfiniteScrollPaginationResponse
@@ -5294,12 +5373,15 @@ export type GetAppsByAppIdChatMessagesByMessageIdSuggestedQuestionsData = {
 }
 
 export type GetAppsByAppIdChatMessagesByMessageIdSuggestedQuestionsErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
-  404: unknown
-  500: unknown
+  400: ErrorResponse
+  401: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  500: ErrorResponse
 }
+
+export type GetAppsByAppIdChatMessagesByMessageIdSuggestedQuestionsError =
+  GetAppsByAppIdChatMessagesByMessageIdSuggestedQuestionsErrors[keyof GetAppsByAppIdChatMessagesByMessageIdSuggestedQuestionsErrors]
 
 export type GetAppsByAppIdChatMessagesByMessageIdSuggestedQuestionsResponses = {
   200: SuggestedQuestionsResponse
@@ -5342,8 +5424,11 @@ export type GetAppsByAppIdCompletionConversationsData = {
 }
 
 export type GetAppsByAppIdCompletionConversationsErrors = {
-  403: unknown
+  403: ErrorResponse
 }
+
+export type GetAppsByAppIdCompletionConversationsError =
+  GetAppsByAppIdCompletionConversationsErrors[keyof GetAppsByAppIdCompletionConversationsErrors]
 
 export type GetAppsByAppIdCompletionConversationsResponses = {
   200: ConversationPagination
@@ -5363,9 +5448,12 @@ export type DeleteAppsByAppIdCompletionConversationsByConversationIdData = {
 }
 
 export type DeleteAppsByAppIdCompletionConversationsByConversationIdErrors = {
-  403: unknown
-  404: unknown
+  403: ErrorResponse
+  404: ErrorResponse
 }
+
+export type DeleteAppsByAppIdCompletionConversationsByConversationIdError =
+  DeleteAppsByAppIdCompletionConversationsByConversationIdErrors[keyof DeleteAppsByAppIdCompletionConversationsByConversationIdErrors]
 
 export type DeleteAppsByAppIdCompletionConversationsByConversationIdResponses = {
   204: void
@@ -5385,9 +5473,12 @@ export type GetAppsByAppIdCompletionConversationsByConversationIdData = {
 }
 
 export type GetAppsByAppIdCompletionConversationsByConversationIdErrors = {
-  403: unknown
-  404: unknown
+  403: ErrorResponse
+  404: ErrorResponse
 }
+
+export type GetAppsByAppIdCompletionConversationsByConversationIdError =
+  GetAppsByAppIdCompletionConversationsByConversationIdErrors[keyof GetAppsByAppIdCompletionConversationsByConversationIdErrors]
 
 export type GetAppsByAppIdCompletionConversationsByConversationIdResponses = {
   200: ConversationMessageDetail
@@ -5406,9 +5497,12 @@ export type PostAppsByAppIdCompletionMessagesData = {
 }
 
 export type PostAppsByAppIdCompletionMessagesErrors = {
-  400: unknown
-  404: unknown
+  400: ErrorResponse
+  404: ErrorResponse
 }
+
+export type PostAppsByAppIdCompletionMessagesError =
+  PostAppsByAppIdCompletionMessagesErrors[keyof PostAppsByAppIdCompletionMessagesErrors]
 
 export type PostAppsByAppIdCompletionMessagesResponses = {
   200: {
@@ -5464,9 +5558,12 @@ export type PostAppsByAppIdConvertToWorkflowData = {
 }
 
 export type PostAppsByAppIdConvertToWorkflowErrors = {
-  400: unknown
-  403: unknown
+  400: ErrorResponse
+  403: ErrorResponse
 }
+
+export type PostAppsByAppIdConvertToWorkflowError =
+  PostAppsByAppIdConvertToWorkflowErrors[keyof PostAppsByAppIdConvertToWorkflowErrors]
 
 export type PostAppsByAppIdConvertToWorkflowResponses = {
   200: NewAppResponse
@@ -5485,8 +5582,10 @@ export type PostAppsByAppIdCopyData = {
 }
 
 export type PostAppsByAppIdCopyErrors = {
-  403: unknown
+  403: ErrorResponse
 }
+
+export type PostAppsByAppIdCopyError = PostAppsByAppIdCopyErrors[keyof PostAppsByAppIdCopyErrors]
 
 export type PostAppsByAppIdCopyResponses = {
   201: AppDetailWithSite
@@ -5511,8 +5610,10 @@ export type GetAppsByAppIdExportData = {
 }
 
 export type GetAppsByAppIdExportErrors = {
-  403: unknown
+  403: ErrorResponse
 }
+
+export type GetAppsByAppIdExportError = GetAppsByAppIdExportErrors[keyof GetAppsByAppIdExportErrors]
 
 export type GetAppsByAppIdExportResponses = {
   200: AppExportResponse | Blob | File
@@ -5531,9 +5632,12 @@ export type PostAppsByAppIdFeedbacksData = {
 }
 
 export type PostAppsByAppIdFeedbacksErrors = {
-  403: unknown
-  404: unknown
+  403: ErrorResponse
+  404: ErrorResponse
 }
+
+export type PostAppsByAppIdFeedbacksError =
+  PostAppsByAppIdFeedbacksErrors[keyof PostAppsByAppIdFeedbacksErrors]
 
 export type PostAppsByAppIdFeedbacksResponses = {
   200: SimpleResultResponse
@@ -5552,8 +5656,10 @@ export type PostAppsByAppIdIconData = {
 }
 
 export type PostAppsByAppIdIconErrors = {
-  403: unknown
+  403: ErrorResponse
 }
+
+export type PostAppsByAppIdIconError = PostAppsByAppIdIconErrors[keyof PostAppsByAppIdIconErrors]
 
 export type PostAppsByAppIdIconResponses = {
   200: AppDetail
@@ -5573,8 +5679,11 @@ export type GetAppsByAppIdMessagesByMessageIdData = {
 }
 
 export type GetAppsByAppIdMessagesByMessageIdErrors = {
-  404: unknown
+  404: ErrorResponse
 }
+
+export type GetAppsByAppIdMessagesByMessageIdError =
+  GetAppsByAppIdMessagesByMessageIdErrors[keyof GetAppsByAppIdMessagesByMessageIdErrors]
 
 export type GetAppsByAppIdMessagesByMessageIdResponses = {
   200: MessageDetailResponse
@@ -5593,9 +5702,12 @@ export type PostAppsByAppIdModelConfigData = {
 }
 
 export type PostAppsByAppIdModelConfigErrors = {
-  400: unknown
-  404: unknown
+  400: ErrorResponse
+  404: ErrorResponse
 }
+
+export type PostAppsByAppIdModelConfigError =
+  PostAppsByAppIdModelConfigErrors[keyof PostAppsByAppIdModelConfigErrors]
 
 export type PostAppsByAppIdModelConfigResponses = {
   200: SimpleResultResponse
@@ -5662,9 +5774,12 @@ export type PostAppsByAppIdServerData = {
 }
 
 export type PostAppsByAppIdServerErrors = {
-  403: unknown
-  409: unknown
+  403: ErrorResponse
+  409: ErrorResponse
 }
+
+export type PostAppsByAppIdServerError =
+  PostAppsByAppIdServerErrors[keyof PostAppsByAppIdServerErrors]
 
 export type PostAppsByAppIdServerResponses = {
   201: AppMcpServerResponse
@@ -5683,9 +5798,11 @@ export type PutAppsByAppIdServerData = {
 }
 
 export type PutAppsByAppIdServerErrors = {
-  403: unknown
-  404: unknown
+  403: ErrorResponse
+  404: ErrorResponse
 }
+
+export type PutAppsByAppIdServerError = PutAppsByAppIdServerErrors[keyof PutAppsByAppIdServerErrors]
 
 export type PutAppsByAppIdServerResponses = {
   200: AppMcpServerResponse
@@ -5704,9 +5821,12 @@ export type PostAppsByAppIdServerRefreshData = {
 }
 
 export type PostAppsByAppIdServerRefreshErrors = {
-  403: unknown
-  404: unknown
+  403: ErrorResponse
+  404: ErrorResponse
 }
+
+export type PostAppsByAppIdServerRefreshError =
+  PostAppsByAppIdServerRefreshErrors[keyof PostAppsByAppIdServerRefreshErrors]
 
 export type PostAppsByAppIdServerRefreshResponses = {
   200: AppMcpServerResponse
@@ -5725,9 +5845,11 @@ export type PostAppsByAppIdSiteData = {
 }
 
 export type PostAppsByAppIdSiteErrors = {
-  403: unknown
-  404: unknown
+  403: ErrorResponse
+  404: ErrorResponse
 }
+
+export type PostAppsByAppIdSiteError = PostAppsByAppIdSiteErrors[keyof PostAppsByAppIdSiteErrors]
 
 export type PostAppsByAppIdSiteResponses = {
   200: AppSiteResponse
@@ -5746,8 +5868,11 @@ export type PostAppsByAppIdSiteEnableData = {
 }
 
 export type PostAppsByAppIdSiteEnableErrors = {
-  403: unknown
+  403: ErrorResponse
 }
+
+export type PostAppsByAppIdSiteEnableError =
+  PostAppsByAppIdSiteEnableErrors[keyof PostAppsByAppIdSiteEnableErrors]
 
 export type PostAppsByAppIdSiteEnableResponses = {
   200: AppDetail
@@ -5766,9 +5891,12 @@ export type PostAppsByAppIdSiteAccessTokenResetData = {
 }
 
 export type PostAppsByAppIdSiteAccessTokenResetErrors = {
-  403: unknown
-  404: unknown
+  403: ErrorResponse
+  404: ErrorResponse
 }
+
+export type PostAppsByAppIdSiteAccessTokenResetError =
+  PostAppsByAppIdSiteAccessTokenResetErrors[keyof PostAppsByAppIdSiteAccessTokenResetErrors]
 
 export type PostAppsByAppIdSiteAccessTokenResetResponses = {
   200: AppSiteResponse
@@ -5787,8 +5915,11 @@ export type DeleteAppsByAppIdStarData = {
 }
 
 export type DeleteAppsByAppIdStarErrors = {
-  404: unknown
+  404: ErrorResponse
 }
+
+export type DeleteAppsByAppIdStarError =
+  DeleteAppsByAppIdStarErrors[keyof DeleteAppsByAppIdStarErrors]
 
 export type DeleteAppsByAppIdStarResponses = {
   200: SimpleResultResponse
@@ -5807,8 +5938,10 @@ export type PostAppsByAppIdStarData = {
 }
 
 export type PostAppsByAppIdStarErrors = {
-  404: unknown
+  404: ErrorResponse
 }
+
+export type PostAppsByAppIdStarError = PostAppsByAppIdStarErrors[keyof PostAppsByAppIdStarErrors]
 
 export type PostAppsByAppIdStarResponses = {
   200: SimpleResultResponse
@@ -5979,8 +6112,11 @@ export type PostAppsByAppIdTextToAudioData = {
 }
 
 export type PostAppsByAppIdTextToAudioErrors = {
-  400: unknown
+  400: ErrorResponse
 }
+
+export type PostAppsByAppIdTextToAudioError =
+  PostAppsByAppIdTextToAudioErrors[keyof PostAppsByAppIdTextToAudioErrors]
 
 export type PostAppsByAppIdTextToAudioResponses = {
   200: {
@@ -6003,8 +6139,11 @@ export type GetAppsByAppIdTextToAudioVoicesData = {
 }
 
 export type GetAppsByAppIdTextToAudioVoicesErrors = {
-  400: unknown
+  400: ErrorResponse
 }
+
+export type GetAppsByAppIdTextToAudioVoicesError =
+  GetAppsByAppIdTextToAudioVoicesErrors[keyof GetAppsByAppIdTextToAudioVoicesErrors]
 
 export type GetAppsByAppIdTextToAudioVoicesResponses = {
   200: TextToSpeechVoiceListResponse
@@ -6039,8 +6178,10 @@ export type PostAppsByAppIdTraceData = {
 }
 
 export type PostAppsByAppIdTraceErrors = {
-  403: unknown
+  403: ErrorResponse
 }
+
+export type PostAppsByAppIdTraceError = PostAppsByAppIdTraceErrors[keyof PostAppsByAppIdTraceErrors]
 
 export type PostAppsByAppIdTraceResponses = {
   200: SimpleResultResponse
@@ -6061,11 +6202,14 @@ export type DeleteAppsByAppIdTraceConfigData = {
 }
 
 export type DeleteAppsByAppIdTraceConfigErrors = {
-  400: unknown
-  403: unknown
-  404: unknown
-  500: unknown
+  400: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  500: ErrorResponse
 }
+
+export type DeleteAppsByAppIdTraceConfigError =
+  DeleteAppsByAppIdTraceConfigErrors[keyof DeleteAppsByAppIdTraceConfigErrors]
 
 export type DeleteAppsByAppIdTraceConfigResponses = {
   204: void
@@ -6086,10 +6230,13 @@ export type GetAppsByAppIdTraceConfigData = {
 }
 
 export type GetAppsByAppIdTraceConfigErrors = {
-  400: unknown
-  404: unknown
-  500: unknown
+  400: ErrorResponse
+  404: ErrorResponse
+  500: ErrorResponse
 }
+
+export type GetAppsByAppIdTraceConfigError =
+  GetAppsByAppIdTraceConfigErrors[keyof GetAppsByAppIdTraceConfigErrors]
 
 export type GetAppsByAppIdTraceConfigResponses = {
   200: TraceAppConfigResponse
@@ -6108,11 +6255,14 @@ export type PatchAppsByAppIdTraceConfigData = {
 }
 
 export type PatchAppsByAppIdTraceConfigErrors = {
-  400: unknown
-  403: unknown
-  404: unknown
-  500: unknown
+  400: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  500: ErrorResponse
 }
+
+export type PatchAppsByAppIdTraceConfigError =
+  PatchAppsByAppIdTraceConfigErrors[keyof PatchAppsByAppIdTraceConfigErrors]
 
 export type PatchAppsByAppIdTraceConfigResponses = {
   200: TraceAppConfigResponse
@@ -6131,12 +6281,15 @@ export type PostAppsByAppIdTraceConfigData = {
 }
 
 export type PostAppsByAppIdTraceConfigErrors = {
-  400: unknown
-  403: unknown
-  404: unknown
-  409: unknown
-  500: unknown
+  400: ErrorResponse
+  403: ErrorResponse
+  404: ErrorResponse
+  409: ErrorResponse
+  500: ErrorResponse
 }
+
+export type PostAppsByAppIdTraceConfigError =
+  PostAppsByAppIdTraceConfigErrors[keyof PostAppsByAppIdTraceConfigErrors]
 
 export type PostAppsByAppIdTraceConfigResponses = {
   201: TraceAppConfigResponse
@@ -6262,9 +6415,12 @@ export type PostAppsByAppIdWorkflowRunsTasksByTaskIdStopData = {
 }
 
 export type PostAppsByAppIdWorkflowRunsTasksByTaskIdStopErrors = {
-  403: unknown
-  404: unknown
+  403: ErrorResponse
+  404: ErrorResponse
 }
+
+export type PostAppsByAppIdWorkflowRunsTasksByTaskIdStopError =
+  PostAppsByAppIdWorkflowRunsTasksByTaskIdStopErrors[keyof PostAppsByAppIdWorkflowRunsTasksByTaskIdStopErrors]
 
 export type PostAppsByAppIdWorkflowRunsTasksByTaskIdStopResponses = {
   200: SimpleResultResponse
@@ -6284,8 +6440,11 @@ export type GetAppsByAppIdWorkflowRunsByRunIdData = {
 }
 
 export type GetAppsByAppIdWorkflowRunsByRunIdErrors = {
-  404: unknown
+  404: ErrorResponse
 }
+
+export type GetAppsByAppIdWorkflowRunsByRunIdError =
+  GetAppsByAppIdWorkflowRunsByRunIdErrors[keyof GetAppsByAppIdWorkflowRunsByRunIdErrors]
 
 export type GetAppsByAppIdWorkflowRunsByRunIdResponses = {
   200: WorkflowRunDetailResponse
@@ -6305,8 +6464,11 @@ export type GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsData = {
 }
 
 export type GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsErrors = {
-  404: unknown
+  404: ErrorResponse
 }
+
+export type GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsError =
+  GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsErrors[keyof GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsErrors]
 
 export type GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsResponses = {
   200: WorkflowRunNodeExecutionListResponse
@@ -6671,8 +6833,11 @@ export type GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeData = 
 }
 
 export type GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeErrors = {
-  404: unknown
+  404: ErrorResponse
 }
+
+export type GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeError =
+  GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeErrors[keyof GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeErrors]
 
 export type GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeResponses = {
   200: DefaultBlockConfigResponse
@@ -6691,8 +6856,11 @@ export type GetAppsByAppIdWorkflowsDraftData = {
 }
 
 export type GetAppsByAppIdWorkflowsDraftErrors = {
-  404: unknown
+  404: ErrorResponse
 }
+
+export type GetAppsByAppIdWorkflowsDraftError =
+  GetAppsByAppIdWorkflowsDraftErrors[keyof GetAppsByAppIdWorkflowsDraftErrors]
 
 export type GetAppsByAppIdWorkflowsDraftResponses = {
   200: WorkflowResponse
@@ -6711,9 +6879,12 @@ export type PostAppsByAppIdWorkflowsDraftData = {
 }
 
 export type PostAppsByAppIdWorkflowsDraftErrors = {
-  400: unknown
-  403: unknown
+  400: ErrorResponse
+  403: ErrorResponse
 }
+
+export type PostAppsByAppIdWorkflowsDraftError =
+  PostAppsByAppIdWorkflowsDraftErrors[keyof PostAppsByAppIdWorkflowsDraftErrors]
 
 export type PostAppsByAppIdWorkflowsDraftResponses = {
   200: SyncDraftWorkflowResponse
@@ -6732,8 +6903,11 @@ export type GetAppsByAppIdWorkflowsDraftConversationVariablesData = {
 }
 
 export type GetAppsByAppIdWorkflowsDraftConversationVariablesErrors = {
-  404: unknown
+  404: ErrorResponse
 }
+
+export type GetAppsByAppIdWorkflowsDraftConversationVariablesError =
+  GetAppsByAppIdWorkflowsDraftConversationVariablesErrors[keyof GetAppsByAppIdWorkflowsDraftConversationVariablesErrors]
 
 export type GetAppsByAppIdWorkflowsDraftConversationVariablesResponses = {
   200: WorkflowDraftVariableListResponse
@@ -6768,8 +6942,11 @@ export type GetAppsByAppIdWorkflowsDraftEnvironmentVariablesData = {
 }
 
 export type GetAppsByAppIdWorkflowsDraftEnvironmentVariablesErrors = {
-  404: unknown
+  404: ErrorResponse
 }
+
+export type GetAppsByAppIdWorkflowsDraftEnvironmentVariablesError =
+  GetAppsByAppIdWorkflowsDraftEnvironmentVariablesErrors[keyof GetAppsByAppIdWorkflowsDraftEnvironmentVariablesErrors]
 
 export type GetAppsByAppIdWorkflowsDraftEnvironmentVariablesResponses = {
   200: EnvironmentVariableListResponse
@@ -6872,9 +7049,12 @@ export type PostAppsByAppIdWorkflowsDraftIterationNodesByNodeIdRunData = {
 }
 
 export type PostAppsByAppIdWorkflowsDraftIterationNodesByNodeIdRunErrors = {
-  403: unknown
-  404: unknown
+  403: ErrorResponse
+  404: ErrorResponse
 }
+
+export type PostAppsByAppIdWorkflowsDraftIterationNodesByNodeIdRunError =
+  PostAppsByAppIdWorkflowsDraftIterationNodesByNodeIdRunErrors[keyof PostAppsByAppIdWorkflowsDraftIterationNodesByNodeIdRunErrors]
 
 export type PostAppsByAppIdWorkflowsDraftIterationNodesByNodeIdRunResponses = {
   200: GeneratedAppResponse
@@ -6894,9 +7074,12 @@ export type PostAppsByAppIdWorkflowsDraftLoopNodesByNodeIdRunData = {
 }
 
 export type PostAppsByAppIdWorkflowsDraftLoopNodesByNodeIdRunErrors = {
-  403: unknown
-  404: unknown
+  403: ErrorResponse
+  404: ErrorResponse
 }
+
+export type PostAppsByAppIdWorkflowsDraftLoopNodesByNodeIdRunError =
+  PostAppsByAppIdWorkflowsDraftLoopNodesByNodeIdRunErrors[keyof PostAppsByAppIdWorkflowsDraftLoopNodesByNodeIdRunErrors]
 
 export type PostAppsByAppIdWorkflowsDraftLoopNodesByNodeIdRunResponses = {
   200: GeneratedAppResponse
@@ -7037,9 +7220,12 @@ export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdLastRunData = {
 }
 
 export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdLastRunErrors = {
-  403: unknown
-  404: unknown
+  403: ErrorResponse
+  404: ErrorResponse
 }
+
+export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdLastRunError =
+  GetAppsByAppIdWorkflowsDraftNodesByNodeIdLastRunErrors[keyof GetAppsByAppIdWorkflowsDraftNodesByNodeIdLastRunErrors]
 
 export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdLastRunResponses = {
   200: WorkflowRunNodeExecutionResponse
@@ -7059,9 +7245,12 @@ export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdRunData = {
 }
 
 export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdRunErrors = {
-  403: unknown
-  404: unknown
+  403: ErrorResponse
+  404: ErrorResponse
 }
+
+export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdRunError =
+  PostAppsByAppIdWorkflowsDraftNodesByNodeIdRunErrors[keyof PostAppsByAppIdWorkflowsDraftNodesByNodeIdRunErrors]
 
 export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdRunResponses = {
   200: WorkflowRunNodeExecutionResponse
@@ -7081,9 +7270,12 @@ export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdTriggerRunData = {
 }
 
 export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdTriggerRunErrors = {
-  403: unknown
-  500: unknown
+  403: ErrorResponse
+  500: ErrorResponse
 }
+
+export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdTriggerRunError =
+  PostAppsByAppIdWorkflowsDraftNodesByNodeIdTriggerRunErrors[keyof PostAppsByAppIdWorkflowsDraftNodesByNodeIdTriggerRunErrors]
 
 export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdTriggerRunResponses = {
   200: GeneratedAppResponse
@@ -7136,8 +7328,11 @@ export type PostAppsByAppIdWorkflowsDraftRunData = {
 }
 
 export type PostAppsByAppIdWorkflowsDraftRunErrors = {
-  403: unknown
+  403: ErrorResponse
 }
+
+export type PostAppsByAppIdWorkflowsDraftRunError =
+  PostAppsByAppIdWorkflowsDraftRunErrors[keyof PostAppsByAppIdWorkflowsDraftRunErrors]
 
 export type PostAppsByAppIdWorkflowsDraftRunResponses = {
   200: GeneratedAppResponse
@@ -7157,8 +7352,11 @@ export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsData = {
 }
 
 export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsErrors = {
-  404: unknown
+  404: ErrorResponse
 }
+
+export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsError =
+  GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsErrors[keyof GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsErrors]
 
 export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsResponses = {
   200: WorkflowRunSnapshotView
@@ -7178,8 +7376,11 @@ export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEventsData = {
 }
 
 export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEventsErrors = {
-  404: unknown
+  404: ErrorResponse
 }
+
+export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEventsError =
+  GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEventsErrors[keyof GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEventsErrors]
 
 export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEventsResponses = {
   200: EventStreamResponse
@@ -7200,8 +7401,11 @@ export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdData = {
 }
 
 export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdErrors = {
-  404: unknown
+  404: ErrorResponse
 }
+
+export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdError =
+  GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdErrors[keyof GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdErrors]
 
 export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdResponses = {
   200: NodeOutputsView
@@ -7223,8 +7427,11 @@ export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdByOutputNa
 }
 
 export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewErrors = {
-  404: unknown
+  404: ErrorResponse
 }
+
+export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewError =
+  GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewErrors[keyof GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewErrors]
 
 export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewResponses =
   {
@@ -7260,9 +7467,12 @@ export type PostAppsByAppIdWorkflowsDraftTriggerRunData = {
 }
 
 export type PostAppsByAppIdWorkflowsDraftTriggerRunErrors = {
-  403: unknown
-  500: unknown
+  403: ErrorResponse
+  500: ErrorResponse
 }
+
+export type PostAppsByAppIdWorkflowsDraftTriggerRunError =
+  PostAppsByAppIdWorkflowsDraftTriggerRunErrors[keyof PostAppsByAppIdWorkflowsDraftTriggerRunErrors]
 
 export type PostAppsByAppIdWorkflowsDraftTriggerRunResponses = {
   200: GeneratedAppResponse
@@ -7281,9 +7491,12 @@ export type PostAppsByAppIdWorkflowsDraftTriggerRunAllData = {
 }
 
 export type PostAppsByAppIdWorkflowsDraftTriggerRunAllErrors = {
-  403: unknown
-  500: unknown
+  403: ErrorResponse
+  500: ErrorResponse
 }
+
+export type PostAppsByAppIdWorkflowsDraftTriggerRunAllError =
+  PostAppsByAppIdWorkflowsDraftTriggerRunAllErrors[keyof PostAppsByAppIdWorkflowsDraftTriggerRunAllErrors]
 
 export type PostAppsByAppIdWorkflowsDraftTriggerRunAllResponses = {
   200: GeneratedAppResponse
@@ -7338,8 +7551,11 @@ export type DeleteAppsByAppIdWorkflowsDraftVariablesByVariableIdData = {
 }
 
 export type DeleteAppsByAppIdWorkflowsDraftVariablesByVariableIdErrors = {
-  404: unknown
+  404: ErrorResponse
 }
+
+export type DeleteAppsByAppIdWorkflowsDraftVariablesByVariableIdError =
+  DeleteAppsByAppIdWorkflowsDraftVariablesByVariableIdErrors[keyof DeleteAppsByAppIdWorkflowsDraftVariablesByVariableIdErrors]
 
 export type DeleteAppsByAppIdWorkflowsDraftVariablesByVariableIdResponses = {
   204: void
@@ -7359,8 +7575,11 @@ export type GetAppsByAppIdWorkflowsDraftVariablesByVariableIdData = {
 }
 
 export type GetAppsByAppIdWorkflowsDraftVariablesByVariableIdErrors = {
-  404: unknown
+  404: ErrorResponse
 }
+
+export type GetAppsByAppIdWorkflowsDraftVariablesByVariableIdError =
+  GetAppsByAppIdWorkflowsDraftVariablesByVariableIdErrors[keyof GetAppsByAppIdWorkflowsDraftVariablesByVariableIdErrors]
 
 export type GetAppsByAppIdWorkflowsDraftVariablesByVariableIdResponses = {
   200: WorkflowDraftVariableResponse
@@ -7380,8 +7599,11 @@ export type PatchAppsByAppIdWorkflowsDraftVariablesByVariableIdData = {
 }
 
 export type PatchAppsByAppIdWorkflowsDraftVariablesByVariableIdErrors = {
-  404: unknown
+  404: ErrorResponse
 }
+
+export type PatchAppsByAppIdWorkflowsDraftVariablesByVariableIdError =
+  PatchAppsByAppIdWorkflowsDraftVariablesByVariableIdErrors[keyof PatchAppsByAppIdWorkflowsDraftVariablesByVariableIdErrors]
 
 export type PatchAppsByAppIdWorkflowsDraftVariablesByVariableIdResponses = {
   200: WorkflowDraftVariableResponse
@@ -7401,8 +7623,11 @@ export type PutAppsByAppIdWorkflowsDraftVariablesByVariableIdResetData = {
 }
 
 export type PutAppsByAppIdWorkflowsDraftVariablesByVariableIdResetErrors = {
-  404: unknown
+  404: ErrorResponse
 }
+
+export type PutAppsByAppIdWorkflowsDraftVariablesByVariableIdResetError =
+  PutAppsByAppIdWorkflowsDraftVariablesByVariableIdResetErrors[keyof PutAppsByAppIdWorkflowsDraftVariablesByVariableIdResetErrors]
 
 export type PutAppsByAppIdWorkflowsDraftVariablesByVariableIdResetResponses = {
   200: WorkflowDraftVariableResponse
@@ -7455,8 +7680,11 @@ export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsData = {
 }
 
 export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsErrors = {
-  404: unknown
+  404: ErrorResponse
 }
+
+export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsError =
+  GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsErrors[keyof GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsErrors]
 
 export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsResponses = {
   200: WorkflowRunSnapshotView
@@ -7476,8 +7704,11 @@ export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEventsData = {
 }
 
 export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEventsErrors = {
-  404: unknown
+  404: ErrorResponse
 }
+
+export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEventsError =
+  GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEventsErrors[keyof GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEventsErrors]
 
 export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEventsResponses = {
   200: EventStreamResponse
@@ -7498,8 +7729,11 @@ export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdData =
 }
 
 export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdErrors = {
-  404: unknown
+  404: ErrorResponse
 }
+
+export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdError =
+  GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdErrors[keyof GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdErrors]
 
 export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdResponses = {
   200: NodeOutputsView
@@ -7523,8 +7757,11 @@ export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdByOutp
 
 export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewErrors =
   {
-    404: unknown
+    404: ErrorResponse
   }
+
+export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewError =
+  GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewErrors[keyof GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewErrors]
 
 export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewResponses =
   {
@@ -7580,9 +7817,12 @@ export type PatchAppsByAppIdWorkflowsByWorkflowIdData = {
 }
 
 export type PatchAppsByAppIdWorkflowsByWorkflowIdErrors = {
-  403: unknown
-  404: unknown
+  403: ErrorResponse
+  404: ErrorResponse
 }
+
+export type PatchAppsByAppIdWorkflowsByWorkflowIdError =
+  PatchAppsByAppIdWorkflowsByWorkflowIdErrors[keyof PatchAppsByAppIdWorkflowsByWorkflowIdErrors]
 
 export type PatchAppsByAppIdWorkflowsByWorkflowIdResponses = {
   200: WorkflowResponse
@@ -7602,9 +7842,12 @@ export type PostAppsByAppIdWorkflowsByWorkflowIdRestoreData = {
 }
 
 export type PostAppsByAppIdWorkflowsByWorkflowIdRestoreErrors = {
-  400: unknown
-  404: unknown
+  400: ErrorResponse
+  404: ErrorResponse
 }
+
+export type PostAppsByAppIdWorkflowsByWorkflowIdRestoreError =
+  PostAppsByAppIdWorkflowsByWorkflowIdRestoreErrors[keyof PostAppsByAppIdWorkflowsByWorkflowIdRestoreErrors]
 
 export type PostAppsByAppIdWorkflowsByWorkflowIdRestoreResponses = {
   200: WorkflowRestoreResponse
@@ -7639,8 +7882,11 @@ export type PostAppsByResourceIdApiKeysData = {
 }
 
 export type PostAppsByResourceIdApiKeysErrors = {
-  400: unknown
+  400: ErrorResponse
 }
+
+export type PostAppsByResourceIdApiKeysError =
+  PostAppsByResourceIdApiKeysErrors[keyof PostAppsByResourceIdApiKeysErrors]
 
 export type PostAppsByResourceIdApiKeysResponses = {
   201: ApiKeyItem
