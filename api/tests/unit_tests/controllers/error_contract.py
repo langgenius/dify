@@ -13,6 +13,7 @@ from weakref import WeakKeyDictionary, WeakSet
 
 from flask import Flask, Response, current_app, request
 from flask_restx.swagger import Swagger, extract_path
+from jsonschema import Draft202012Validator
 
 from libs.external_api import ExternalApi
 
@@ -39,11 +40,7 @@ def track_external_apis() -> None:
 
 def _candidate_apis() -> Iterator[ExternalApi]:
     yield from _created
-    for name in _MODULE_APIS:
-        module = sys.modules.get(name)
-        api = vars(module).get("api") if module is not None else None
-        if isinstance(api, ExternalApi):
-            yield api
+    yield from _module_apis()
 
 
 def _serving_api(app: Flask) -> ExternalApi | None:
@@ -57,8 +54,22 @@ def _serving_api(app: Flask) -> ExternalApi | None:
     return None
 
 
+def _module_apis() -> Iterator[ExternalApi]:
+    for name in _MODULE_APIS:
+        module = sys.modules.get(name)
+        api = vars(module).get("api") if module is not None else None
+        if isinstance(api, ExternalApi):
+            yield api
+
+
 def _document(api: ExternalApi) -> dict[str, object]:
     if api not in _documents:
+        # Test apps often mount a few resources on a fresh ExternalApi without the namespace
+        # that registers their models; borrow those from the real surfaces so the document builds.
+        for surface in _module_apis():
+            if surface is not api:
+                for name, model in surface.models.items():
+                    api.models.setdefault(name, model)
         _documents[api] = cast(dict[str, object], Swagger(api).as_dict())
     return _documents[api]
 
@@ -89,6 +100,15 @@ def _is_error_body(schema: Mapping[str, object], error_models: set[str]) -> bool
     return schema.get("title") in error_models or bool(schema.get("allOf"))
 
 
+def _schema_errors(schema: Mapping[str, object], components: Mapping[str, object], body: object) -> list[str]:
+    """How ``body`` fails ``schema``, resolving ``$ref`` against the document's components."""
+    validator = Draft202012Validator({**schema, "components": {"schemas": dict(components)}})
+    return [
+        f"{'/'.join(str(part) for part in error.absolute_path) or 'body'}: {error.message}"
+        for error in validator.iter_errors(body)
+    ]
+
+
 def violation(api: ExternalApi, response: Response) -> str | None:
     """Why ``response`` contradicts the operation's documented error contract, if it does."""
     document = _document(api)
@@ -107,23 +127,34 @@ def violation(api: ExternalApi, response: Response) -> str | None:
     if not isinstance(body, dict):
         return f"{where}: error body is not a JSON object: {response.get_data(as_text=True)[:200]!r}"
 
-    declared = (operation.get("responses") or {}).get(str(response.status_code))
-    media = ((declared or {}).get("content") or {}).get("application/json") if isinstance(declared, Mapping) else None
-    schema = media.get("schema") if isinstance(media, Mapping) else None
-    error_models = {api.error_response_model.__name__}
+    responses = _mapping(operation.get("responses"))
+    declared = _mapping(responses.get(str(response.status_code)) or responses.get("default"))
+    schema = _mapping(_mapping(declared.get("content")).get("application/json")).get("schema")
+    error_model = api.error_response_model.__name__
     alternatives = schema.get("anyOf") if isinstance(schema, Mapping) else None
-    options = [_resolve(option, components) for option in (alternatives or [schema] if schema is not None else [])]
-    error_options = [option for option in options if _is_error_body(option, error_models)]
-    if options and not error_options:
-        return None  # the status declares its own, non-error model
-    if options and len(error_options) < len(options) and not body.keys() >= STANDARD_KEYS:
-        return None  # a legacy body the status also declares
+    raw_options = [_mapping(option) for option in (alternatives or ([schema] if schema is not None else []))]
+    options = [(option, _resolve(option, components)) for option in raw_options]
+    error_options = [raw for raw, resolved in options if _is_error_body(resolved, {error_model})]
+    legacy_options = [raw for raw, resolved in options if not _is_error_body(resolved, {error_model})]
 
+    # A body that matches a legacy model the status also declares is documented as is.
+    if any(not _schema_errors(option, components, body) for option in legacy_options):
+        return None
+    if legacy_options and not error_options:
+        return f"{where}: error body matches none of the declared models: {body!r}"
+
+    standard = {"$ref": f"#/components/schemas/{error_model}"} if error_model in components else None
+    problems: list[str] = _schema_errors(standard, components, body) if standard else []
     if not body.keys() >= STANDARD_KEYS:
         return f"{where}: error body lacks {sorted(STANDARD_KEYS - body.keys())}: {body!r}"
+    if problems:
+        return f"{where}: error body does not match {error_model} ({'; '.join(problems)}): {body!r}"
     if body["status"] != response.status_code:
         return f"{where}: body status {body['status']!r} differs from the HTTP status"
-    codes = next((codes for option in error_options if (codes := _documented_codes(option)) is not None), None)
+    codes = next(
+        (codes for option in error_options if (codes := _documented_codes(_resolve(option, components))) is not None),
+        None,
+    )
     if codes is not None and body["code"] not in codes:
         return f"{where}: code {body['code']!r} is not documented for this status (documented: {sorted(codes)})"
     return None
@@ -138,10 +169,11 @@ def check_response(sender: Flask, response: Response, violations: list[str]) -> 
     with current_app.app_context():
         try:
             found = violation(api, response)
-        except Exception:
-            # A test app that registers only some of an API's resources may not be able to build
-            # the API's document (e.g. a model registered elsewhere). There is no contract to check
-            # then, and the checker must never change the response under test.
-            return
+        except Exception as exc:
+            # The checker never changes the response under test, but a response it cannot check
+            # (e.g. a test app missing a model the document needs) must not pass silently.
+            found = (
+                f"{request.method} {request.path} -> {response.status_code}: cannot check the error contract: {exc!r}"
+            )
     if found is not None:
         violations.append(found)

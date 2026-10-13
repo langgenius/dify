@@ -60,8 +60,30 @@ def test_accepts_documented_and_implied_codes() -> None:
     assert _check({"code": "not_found", "message": "m", "status": 404}, 404) is None
 
 
-def test_skips_statuses_that_declare_their_own_model() -> None:
+def test_accepts_a_body_matching_a_legacy_model_the_status_declares() -> None:
     assert _check({"error": "legacy"}, 409) is None
+    assert _check({"code": "item_gone", "message": "m", "status": 409}, 409) is None
+
+
+def test_rejects_a_body_matching_neither_the_legacy_nor_the_standard_model() -> None:
+    found = _check({"code": "conflict", "message": "m"}, 409)
+    assert found is not None
+    assert "lacks ['status']" in found
+
+
+@pytest.mark.parametrize(
+    ("body", "field"),
+    [
+        ({"code": "item_gone", "message": {"nested": True}, "status": 404}, "message"),
+        ({"code": ["item_gone"], "message": "m", "status": 404}, "code"),
+        ({"code": "item_gone", "message": "m", "status": "404"}, "status"),
+    ],
+)
+def test_rejects_standard_fields_of_the_wrong_type(body: dict[str, object], field: str) -> None:
+    found = _check(body, 404)
+    assert found is not None
+    assert "does not match ErrorResponse" in found
+    assert f"{field}:" in found
 
 
 @pytest.mark.allow_error_contract_violations
@@ -84,3 +106,29 @@ def test_checks_responses_served_by_an_api_mounted_on_the_app() -> None:
 
     assert len(violations) == 1
     assert "lacks" in violations[0]
+
+
+@pytest.mark.allow_error_contract_violations
+def test_reports_responses_it_cannot_check() -> None:
+    app = Flask(__name__)
+    api = ExternalApi(app)
+
+    class _Unregistered(BaseModel):
+        value: str
+
+    @api.route("/items")
+    class Items(Resource):
+        @api.response(200, "OK", _Unregistered.__name__)
+        def get(self) -> tuple[dict[str, str], int]:
+            return {"wrong": "shape"}, 400
+
+    violations: list[str] = []
+
+    def receiver(sender: Flask, response: Response, **_: object) -> None:
+        check_response(sender, response, violations)
+
+    with request_finished.connected_to(receiver, app):
+        app.test_client().get("/items")
+
+    assert len(violations) == 1
+    assert "cannot check the error contract" in violations[0]

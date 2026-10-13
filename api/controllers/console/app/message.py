@@ -54,7 +54,7 @@ from machinery.context import RequestContext
 from models.account import Account
 from models.enums import FeedbackFromSource, FeedbackRating
 from models.model import App, AppMode, Conversation, Message, MessageAnnotation, MessageFeedback
-from services.agent.errors import AgentNotFoundError
+from services.agent.errors import AgentNotFoundError, AgentVersionNotFoundError
 from services.app.agent_app_contracts import AgentAppNotFoundError
 from services.app.console_service import ConsoleAppNotFoundError
 from services.app_definition_query_service import AppDefinitionUnavailableError
@@ -318,6 +318,7 @@ class MessageSuggestedQuestionApi(Resource):
 class AgentMessageSuggestedQuestionApi(Resource):
     @error_responses(
         AgentNotFoundError,
+        AgentVersionNotFoundError,
         AppSuggestedQuestionsAfterAnswerDisabledError,
         AppUnavailableError,
         CompletionRequestError,
