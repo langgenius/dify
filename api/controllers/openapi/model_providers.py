@@ -94,12 +94,16 @@ def _active(response: ProviderResponse) -> CredentialRef | None:
     return CredentialRef(id=config.current_credential_id, name=config.current_credential_name)
 
 
+def _configured(response: ProviderResponse) -> bool:
+    return response.custom_configuration.status == CustomConfigurationStatus.ACTIVE
+
+
 def _row(response: ProviderResponse, language: str | None) -> dict[str, Any]:
     return {
         "provider": response.provider,
         "label": localized(response.label, language),
         "model_types": [str(model_type) for model_type in response.supported_model_types],
-        "configured": response.custom_configuration.status == CustomConfigurationStatus.ACTIVE,
+        "configured": _configured(response),
         "active_credential": _active(response),
     }
 
@@ -217,7 +221,7 @@ class ModelProviderApi(Resource):
         model_schema = response.model_credential_schema
         hints = (
             []
-            if credentials or not form
+            if _configured(response) or not form
             else [
                 Hint(
                     summary="Ask the user for these values, then save them",

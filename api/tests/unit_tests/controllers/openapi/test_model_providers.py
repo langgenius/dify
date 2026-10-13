@@ -8,11 +8,18 @@ from flask import Flask
 from pydantic import ValidationError
 
 from controllers.openapi import model_providers
-from controllers.openapi._models import CredentialWriteResponse, ModelCredentialCreatePayload, ModelListQuery, ModelRef
+from controllers.openapi._models import (
+    CredentialWriteResponse,
+    ModelCredentialCreatePayload,
+    ModelListQuery,
+    ModelProviderDetailResponse,
+    ModelRef,
+)
 from controllers.openapi._search import matches
 from controllers.openapi.auth.context import Context
 from controllers.openapi.model_providers import (
     ModelCredentialsApi,
+    ModelProviderApi,
     _model_write_response,
     _provider_write_response,
     model_rows,
@@ -20,7 +27,19 @@ from controllers.openapi.model_providers import (
 from core.entities.model_entities import ModelStatus, ModelWithProviderEntity, SimpleModelProviderEntity
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import FetchFrom, ModelPropertyKey, ModelType
-from services.entities.model_provider_entities import ProviderResponse
+from graphon.model_runtime.entities.provider_entities import (
+    ConfigurateMethod,
+    CredentialFormSchema,
+    FormType,
+    ProviderCredentialSchema,
+)
+from services.entities.model_provider_entities import (
+    CustomConfigurationResponse,
+    CustomConfigurationStatus,
+    ProviderResponse,
+    ProviderType,
+    SystemConfigurationResponse,
+)
 from services.model_provider.service import ModelProviderService
 
 
@@ -178,3 +197,63 @@ def test_creating_a_model_credential_never_switches_the_active_one(app: Flask, m
     assert status == 201
     assert not response.active
     assert [call[0] for call in service.method_calls] == ["create_model_credential"]
+
+
+class _DescribeView(Protocol):
+    __handler__: Callable[..., ModelProviderDetailResponse]
+
+
+def _describable_provider(status: CustomConfigurationStatus) -> ProviderResponse:
+    return ProviderResponse(
+        tenant_id="ws",
+        provider=_OPENAI,
+        label=I18nObject(en_US="OpenAI"),
+        supported_model_types=[ModelType.LLM],
+        configurate_methods=[ConfigurateMethod.PREDEFINED_MODEL],
+        provider_credential_schema=ProviderCredentialSchema(
+            credential_form_schemas=[
+                CredentialFormSchema(variable="api_key", label=I18nObject(en_US="API Key"), type=FormType.SECRET_INPUT)
+            ]
+        ),
+        preferred_provider_type=ProviderType.CUSTOM,
+        custom_configuration=CustomConfigurationResponse(status=status),
+        system_configuration=SystemConfigurationResponse(enabled=False),
+    )
+
+
+_OPENAI = "langgenius/openai/openai"
+_ASK_SUMMARY = "Ask the user for these values, then save them"
+
+
+@pytest.mark.parametrize(
+    ("status", "visible", "asks"),
+    [
+        (CustomConfigurationStatus.ACTIVE, [], False),
+        (CustomConfigurationStatus.ACTIVE, [SimpleNamespace(credential_id="c1", credential_name="main")], False),
+        (CustomConfigurationStatus.NO_CONFIGURE, [], True),
+    ],
+    ids=["active-via-a-credential-the-caller-cannot-see", "active-and-visible", "not-configured"],
+)
+def test_describe_asks_for_credentials_only_while_the_provider_is_not_configured(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    status: CustomConfigurationStatus,
+    visible: list[SimpleNamespace],
+    asks: bool,
+) -> None:
+    service = Mock(spec=ModelProviderService)
+    service.get_provider_available_credentials.return_value = visible
+    monkeypatch.setattr(model_providers, "ModelProviderService", Mock(return_value=service))
+    monkeypatch.setattr(model_providers, "_provider", lambda *_args: _describable_provider(status))
+    monkeypatch.setattr(model_providers, "application_services", lambda: SimpleNamespace(credential_queries=None))
+    ctx = cast(
+        Context,
+        SimpleNamespace(workspace=SimpleNamespace(id="ws"), account=SimpleNamespace(interface_language="en-US")),
+    )
+
+    api = ModelProviderApi()
+    with app.test_request_context(f"/openapi/v1/workspaces/ws/model-providers/{_OPENAI}"):
+        response = cast(_DescribeView, api.get).__handler__(api, ctx, "ws", _OPENAI)
+
+    assert (_ASK_SUMMARY in [hint.summary for hint in response.hints]) is asks
+    assert response.configured is (status == CustomConfigurationStatus.ACTIVE)
