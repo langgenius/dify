@@ -205,3 +205,97 @@ def test_project_subclasses_of_http_errors_fail(tmp_path: Path) -> None:
     assert result.returncode == 1
     assert "api/services/agents.py:4:" in result.stderr
     assert "api/services/agents.py:9:" in result.stderr
+
+
+def test_import_change_that_makes_an_untouched_raise_http_fails(tmp_path: Path) -> None:
+    git(tmp_path, "init", "-b", "main")
+    git(tmp_path, "config", "user.name", "Tester")
+    git(tmp_path, "config", "user.email", "tester@example.com")
+    body = """
+
+        def load(item):
+            if item is None:
+                raise Error("missing")
+            return item
+        """
+    write(tmp_path, "api/services/swap.py", "from builtins import ValueError as Error\n" + textwrap.dedent(body))
+    git(tmp_path, "add", ".")
+    git(tmp_path, "commit", "-m", "baseline")
+    base = git(tmp_path, "rev-parse", "HEAD")
+    write(
+        tmp_path, "api/services/swap.py", "from werkzeug.exceptions import NotFound as Error\n" + textwrap.dedent(body)
+    )
+
+    result = check(tmp_path, base)
+
+    assert result.returncode == 1
+    assert "api/services/swap.py:6:" in result.stderr
+
+
+def test_base_class_change_in_another_module_fails(tmp_path: Path) -> None:
+    git(tmp_path, "init", "-b", "main")
+    git(tmp_path, "config", "user.name", "Tester")
+    git(tmp_path, "config", "user.email", "tester@example.com")
+    write(tmp_path, "api/services/errors.py", "class Missing(Exception):\n    pass\n")
+    write(
+        tmp_path,
+        "api/services/items.py",
+        """
+        from services.errors import Missing
+
+
+        def load() -> None:
+            raise Missing("old message")
+        """,
+    )
+    git(tmp_path, "add", ".")
+    git(tmp_path, "commit", "-m", "baseline")
+    base = git(tmp_path, "rev-parse", "HEAD")
+    write(
+        tmp_path,
+        "api/services/errors.py",
+        "from werkzeug.exceptions import NotFound\n\n\nclass Missing(NotFound):\n    pass\n",
+    )
+    write(
+        tmp_path,
+        "api/services/items.py",
+        """
+        from services.errors import Missing
+
+
+        def load() -> None:
+            raise Missing("new message")
+        """,
+    )
+
+    result = check(tmp_path, base)
+
+    assert result.returncode == 1
+    assert "api/services/errors.py:4:" in result.stderr
+    assert "api/services/items.py:5:" in result.stderr
+
+
+def test_function_scoped_imports_do_not_shadow_each_other(tmp_path: Path) -> None:
+    base = repo_with_baseline(tmp_path)
+    write(
+        tmp_path,
+        "api/services/scoped.py",
+        """
+        def first() -> None:
+            from werkzeug.exceptions import NotFound as Error
+
+            raise Error()
+
+
+        def second() -> None:
+            from builtins import ValueError as Error
+
+            raise Error()
+        """,
+    )
+
+    result = check(tmp_path, base)
+
+    assert result.returncode == 1
+    assert "api/services/scoped.py:4:" in result.stderr
+    assert "api/services/scoped.py:10:" not in result.stderr
