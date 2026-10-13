@@ -1,6 +1,6 @@
 # App DSL
 
-Start from an export of the app's draft: a new app's export is a valid empty skeleton. Keep its `version`, `kind`, `features`, `environment_variables` and `conversation_variables`.
+Start from an export of the app's draft. A new Workflow app's export is empty. A new Chatflow's is `start` → `llm` (no model, so `resource_unavailable`) → `answer` (`{{#llm.text#}}`). Keep the export's `version`, `kind`, `features`, `environment_variables` and `conversation_variables`.
 
 ## Where things go
 

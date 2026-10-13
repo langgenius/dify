@@ -41,7 +41,7 @@ Build this one app; never make copies.
    - `completed-with-warnings`: stop and read `warnings`.
    - `pending`: the DSL version differs from the server's. Show the human both versions. On a yes, run `difyctl confirm console_app dsl_import --import-id <id> --json`.
    - `dsl_invalid`: fix the issues in `details` by `loc`.
-   - The draft changed since your export: someone else edited it. Export again, show the human the difference, and never overwrite it.
+   - `draft_changed` (409, also on `confirm`): someone else edited the draft since your export. Export again, show the human the difference, and never overwrite it.
    - Any other failure: stop and show the human the message.
 
 5. Test each new node alone. It reuses the last full run's values; override them with `--inputs`, keyed `#<node_id>.<var>#`. Give a file variable a local file with `--files '{"<variable>": "<path>"}'`.

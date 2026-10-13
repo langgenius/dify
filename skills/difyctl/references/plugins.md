@@ -28,10 +28,10 @@
 2. Ask the human for each form value. Never invent one, never print it, never write it into the working folder.
 3. Pass the values on stdin: `difyctl create model_provider credential --provider <id> --credentials @-` (for tools, `difyctl create tool_provider credential --provider <id> --credentials @-`), then write the JSON object to stdin.
 4. Rejected (model 422, tool 400): nothing saved; show the message, ask again.
-5. Model providers only: if a credential is already active, the hint offers `set` to replace it.
+5. Model providers only: if a credential is already active, the hint offers `set` to replace it. `active: false` with no hint means the model has saved credentials but none in use: ask the human to pick one in the console.
 6. A tool provider whose `credential_types` lacks `api-key` uses OAuth. Ask the human to authorize it in the console.
 
-Self-hosted or OpenAI-compatible models: `create model credential` with `--model`, `--model-type` and `--credentials @-`.
+Self-hosted or OpenAI-compatible models: `create model credential` with `--provider <id>`, `--model`, `--model-type` and `--credentials @-`.
 
 ## Remove
 
