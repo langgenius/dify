@@ -384,15 +384,21 @@ jobs:
               "test_content_utf8_byte_boundary": 4,
               "test_parameter_validator_requires_exact_final_types_and_keys": 1,
               "test_qualified_binding_is_frozen_and_strict": 1,
+              "test_reserved_native_owner_refuses_for_every_node": 9,
+              "test_optional_start_user_id_cannot_collide_with_native_system_owner": 1,
           }
           json_contract_expected = {
               "tests.unit_tests.services.dify_builder.test_execution_policy_service": {
                   "test_historical_restricted_context_tag_and_absence_decode_identically": 1,
-                  "test_json_context_digest_covers_qualified_binding": 13,
+                  "test_json_context_digest_covers_qualified_binding": 14,
                   "test_json_context_decodes_through_completion_and_requires_explicit_tag": 1,
+                  "test_saved_pre_extraction_context_bytes_and_digest_are_unchanged": 3,
+                  "test_saved_pre_extraction_context_refuses_json_fields_and_unknown_tags": 3,
               },
               "tests.unit_tests.core.dify_builder.test_execution_policy": {
                   "test_json_evidence_variant_and_receipt_are_strict": 1,
+                  "test_json_success_evidence_requires_raw_boolean_seal": 5,
+                  "test_json_non_success_evidence_allows_exact_false_seal_and_legacy_coercion_is_unchanged": 1,
               },
           }
           for module, expected in {json_policy_module: json_policy_expected, **json_contract_expected}.items():
