@@ -67,7 +67,6 @@ class SQLAlchemyDatasetRepository:
         with self._session_factory() as session:
             return session.scalar(pipeline_dataset_query(workspace_id, pipeline_id).with_only_columns(Dataset.id))
 
-
     def list_workspace_dataset_ids(self, tenant_id: str) -> list[str]:
         with self._session_factory() as session:
             return list(session.scalars(select(Dataset.id).where(Dataset.tenant_id == tenant_id)).all())

@@ -2,6 +2,8 @@
 
 from dataclasses import dataclass
 
+from sqlalchemy.orm import Session, sessionmaker
+
 from extensions.ext_redis import RedisClientWrapper
 from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.app.console_repository import ConsoleAppRepository
