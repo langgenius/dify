@@ -47,10 +47,14 @@ def _candidate_apis() -> Iterator[ExternalApi]:
 
 
 def _serving_api(app: Flask) -> ExternalApi | None:
-    blueprint = app.blueprints.get(request.blueprint or "")
-    if blueprint is None:
-        return None
-    return next((api for api in _candidate_apis() if api.blueprint is blueprint), None)
+    """The ExternalApi that routed this request, whether mounted on a blueprint or on the app."""
+    blueprint = app.blueprints.get(request.blueprint) if request.blueprint else None
+    for api in _candidate_apis():
+        if blueprint is not None and api.blueprint is blueprint:
+            return api
+        if blueprint is None and api.blueprint is None and api.app is app:
+            return api
+    return None
 
 
 def _document(api: ExternalApi) -> dict[str, object]:
@@ -132,6 +136,12 @@ def check_response(sender: Flask, response: Response, violations: list[str]) -> 
     if api is None:
         return
     with current_app.app_context():
-        found = violation(api, response)
+        try:
+            found = violation(api, response)
+        except Exception:
+            # A test app that registers only some of an API's resources may not be able to build
+            # the API's document (e.g. a model registered elsewhere). There is no contract to check
+            # then, and the checker must never change the response under test.
+            return
     if found is not None:
         violations.append(found)

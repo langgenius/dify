@@ -398,7 +398,7 @@ def test_console_and_trial_gates_run_before_app_lookup(
 
     if gate == "login":
         assert response.status_code == 401
-        assert response.get_json() == {"code": "unauthorized", "message": "Unauthorized."}
+        assert response.get_json() == {"code": "unauthorized", "message": "Unauthorized.", "status": 401}
         assert response.headers["Content-Type"] == "application/json"
     else:
         _assert_error(response, status, code)

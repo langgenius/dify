@@ -1,11 +1,12 @@
-from flask import Blueprint, Flask, Response, json
+import pytest
+from flask import Blueprint, Flask, Response, json, request_finished
 from flask_restx import Namespace, Resource
 from pydantic import BaseModel
 
 from controllers.common.schema import register_response_schema_models
 from libs.exception import BaseHTTPException
 from libs.external_api import ExternalApi, error_responses
-from tests.unit_tests.controllers.error_contract import violation
+from tests.unit_tests.controllers.error_contract import check_response, violation
 
 
 class _ItemGoneError(BaseHTTPException):
@@ -61,3 +62,25 @@ def test_accepts_documented_and_implied_codes() -> None:
 
 def test_skips_statuses_that_declare_their_own_model() -> None:
     assert _check({"error": "legacy"}, 409) is None
+
+
+@pytest.mark.allow_error_contract_violations
+def test_checks_responses_served_by_an_api_mounted_on_the_app() -> None:
+    app = Flask(__name__)
+    api = ExternalApi(app)
+
+    @api.route("/items")
+    class Items(Resource):
+        def get(self) -> tuple[dict[str, str], int]:
+            return {"wrong": "shape"}, 400
+
+    violations: list[str] = []
+
+    def receiver(sender: Flask, response: Response, **_: object) -> None:
+        check_response(sender, response, violations)
+
+    with request_finished.connected_to(receiver, app):
+        app.test_client().get("/items")
+
+    assert len(violations) == 1
+    assert "lacks" in violations[0]
