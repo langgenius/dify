@@ -224,7 +224,7 @@ function countReadableFiles(files: AgentFileNode[]): number {
   }, 0)
 }
 
-async function isNoActiveBindingError(error: unknown) {
+function isNoActiveBindingError(error: unknown) {
   if (!(error instanceof ORPCError) || error.status !== 404) return false
 
   return error.code === 'no_active_binding'
@@ -300,7 +300,7 @@ export function AgentWorkingDirectoryPanel({
       try {
         return await fileListQueryOptions.queryFn(context)
       } catch (error) {
-        if (await isNoActiveBindingError(error)) {
+        if (isNoActiveBindingError(error)) {
           return {
             entries: [],
             path: '.',
@@ -322,7 +322,7 @@ export function AgentWorkingDirectoryPanel({
           try {
             return await queryOptions.queryFn(context)
           } catch (error) {
-            if (await isNoActiveBindingError(error)) {
+            if (isNoActiveBindingError(error)) {
               return {
                 entries: [],
                 path,

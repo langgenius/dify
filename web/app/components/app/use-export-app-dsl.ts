@@ -10,7 +10,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { consoleClient } from '@/service/console'
 import { downloadBlob } from '@/utils/download'
-import { getAppTransferErrorMessage } from './transfer-error'
+import { getErrorMessage } from '@/utils/error-message'
 
 type ExportAppDslInput = {
   appId: string
@@ -82,10 +82,7 @@ export async function exportAppDslFile({
 }
 
 async function downloadAppDsl(input: ExportAppDslInput, messages: ExportAppDslMessages) {
-  const exportPromise = exportAppDslFile(input).catch(async (error: unknown) => {
-    throw new Error(getAppTransferErrorMessage(error), { cause: error })
-  })
-  await toast.promise(exportPromise, {
+  await toast.promise(exportAppDslFile(input), {
     loading: {
       title: messages.loading,
     },
@@ -95,7 +92,7 @@ async function downloadAppDsl(input: ExportAppDslInput, messages: ExportAppDslMe
     }),
     error: (error) => ({
       title: input.format === 'yaml' ? messages.error : messages.packageError,
-      description: error instanceof Error ? error.message || undefined : undefined,
+      description: getErrorMessage(error),
     }),
   })
 
@@ -149,7 +146,7 @@ export function useExportWorkflowAppDsl() {
       try {
         secretEnvList = await getSecretEnvironmentVariables(input.appId)
       } catch (error) {
-        toast.error(messages.packageError, { description: getAppTransferErrorMessage(error) })
+        toast.error(messages.packageError, { description: getErrorMessage(error) })
         throw error
       }
 
