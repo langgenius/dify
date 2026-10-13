@@ -221,6 +221,35 @@ describe('initialNodes', () => {
     expect(parentNode.zIndex! + 1000).toBeLessThan(childNode.zIndex!)
   })
 
+  it('should repair missing parentId from loop_id metadata', () => {
+    const nodes = [
+      createNode({
+        id: 'loop-1',
+        data: { type: BlockEnum.Loop, title: '', desc: '' },
+      }),
+      createNode({
+        id: 'assigner-1',
+        data: {
+          type: BlockEnum.Assigner,
+          title: '',
+          desc: '',
+          isInLoop: true,
+          loop_id: 'loop-1',
+        },
+      }),
+    ]
+
+    const result = initialNodes(nodes, [])
+    const assignerNode = result.find((node) => node.id === 'assigner-1')!
+    const loopNode = result.find((node) => node.id === 'loop-1')!
+
+    expect(assignerNode.parentId).toBe('loop-1')
+    expect((loopNode.data as LoopNodeType)._children).toContainEqual({
+      nodeId: 'assigner-1',
+      nodeType: BlockEnum.Assigner,
+    })
+  })
+
   it('should set positions when first node has no position', () => {
     const nodes = [
       createNode({ id: 'n1', data: { type: BlockEnum.Start, title: '', desc: '' } }),

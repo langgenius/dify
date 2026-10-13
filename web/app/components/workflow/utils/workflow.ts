@@ -3,9 +3,7 @@ import { uniqBy } from 'es-toolkit/compat'
 import { getOutgoers } from 'reactflow'
 import { BlockEnum } from '../types'
 
-export const canRunBySingle = (nodeType: BlockEnum, isChildNode: boolean) => {
-  // child node means in iteration or loop. Set value to iteration(or loop) may cause variable not exit problem in backend.
-  if (isChildNode && nodeType === BlockEnum.Assigner) return false
+export const canRunBySingle = (nodeType: BlockEnum, _isChildNode: boolean) => {
   return (
     nodeType === BlockEnum.LLM ||
     nodeType === BlockEnum.KnowledgeRetrieval ||
