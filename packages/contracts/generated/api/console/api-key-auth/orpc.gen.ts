@@ -3,13 +3,11 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
-  zDeleteApiKeyAuthDataSourceBindingDeleteError400,
-  zDeleteApiKeyAuthDataSourceBindingDeleteError401,
-  zGetApiKeyAuthDataSourceError400,
-  zGetApiKeyAuthDataSourceError401,
-  zPostApiKeyAuthDataSourceBindingError400,
-  zPostApiKeyAuthDataSourceBindingError401,
-  zPostApiKeyAuthDataSourceBindingError502,
+  zAccountNotInitializedError,
+  zDataSourceApiKeyAuthProviderUnavailableError,
+  zNotInitValidatedError,
+  zNotSetupError,
+  zUnsupportedDataSourceApiKeyAuthProviderError,
 } from './zod.gen.ts'
 import {
   zDeleteApiKeyAuthDataSourceByBindingIdPath,
@@ -30,27 +28,17 @@ export const post = oc
   .input(z.object({ body: zPostApiKeyAuthDataSourceBindingBody }))
   .output(zPostApiKeyAuthDataSourceBindingResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zPostApiKeyAuthDataSourceBindingError400 },
-    bad_host: { status: 400, data: zPostApiKeyAuthDataSourceBindingError400 },
-    bad_request: { status: 400, data: zPostApiKeyAuthDataSourceBindingError400 },
-    bad_request_key_error: { status: 400, data: zPostApiKeyAuthDataSourceBindingError400 },
-    client_disconnected: { status: 400, data: zPostApiKeyAuthDataSourceBindingError400 },
-    invalid_param: { status: 400, data: zPostApiKeyAuthDataSourceBindingError400 },
-    security_error: { status: 400, data: zPostApiKeyAuthDataSourceBindingError400 },
-    unsupported_data_source_api_key_auth_provider: {
-      status: 400,
-      data: zPostApiKeyAuthDataSourceBindingError400,
-    },
-    websocket_mismatch: { status: 400, data: zPostApiKeyAuthDataSourceBindingError400 },
-    not_init_validated: { status: 401, data: zPostApiKeyAuthDataSourceBindingError401 },
-    not_setup: { status: 401, data: zPostApiKeyAuthDataSourceBindingError401 },
-    unauthorized: { status: 401, data: zPostApiKeyAuthDataSourceBindingError401 },
-    bad_gateway: { status: 502, data: zPostApiKeyAuthDataSourceBindingError502 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     data_source_api_key_auth_provider_unavailable: {
       status: 502,
-      data: zPostApiKeyAuthDataSourceBindingError502,
+      data: zDataSourceApiKeyAuthProviderUnavailableError,
     },
-    plugin_runtime_error: { status: 502, data: zPostApiKeyAuthDataSourceBindingError502 },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    unsupported_data_source_api_key_auth_provider: {
+      status: 400,
+      data: zUnsupportedDataSourceApiKeyAuthProviderError,
+    },
   })
 
 export const binding = {
@@ -69,20 +57,9 @@ export const delete_ = oc
   .input(z.object({ params: zDeleteApiKeyAuthDataSourceByBindingIdPath }))
   .output(zDeleteApiKeyAuthDataSourceByBindingIdResponse)
   .errors({
-    account_not_initialized: {
-      status: 400,
-      data: zDeleteApiKeyAuthDataSourceBindingDeleteError400,
-    },
-    bad_host: { status: 400, data: zDeleteApiKeyAuthDataSourceBindingDeleteError400 },
-    bad_request: { status: 400, data: zDeleteApiKeyAuthDataSourceBindingDeleteError400 },
-    bad_request_key_error: { status: 400, data: zDeleteApiKeyAuthDataSourceBindingDeleteError400 },
-    client_disconnected: { status: 400, data: zDeleteApiKeyAuthDataSourceBindingDeleteError400 },
-    invalid_param: { status: 400, data: zDeleteApiKeyAuthDataSourceBindingDeleteError400 },
-    security_error: { status: 400, data: zDeleteApiKeyAuthDataSourceBindingDeleteError400 },
-    websocket_mismatch: { status: 400, data: zDeleteApiKeyAuthDataSourceBindingDeleteError400 },
-    not_init_validated: { status: 401, data: zDeleteApiKeyAuthDataSourceBindingDeleteError401 },
-    not_setup: { status: 401, data: zDeleteApiKeyAuthDataSourceBindingDeleteError401 },
-    unauthorized: { status: 401, data: zDeleteApiKeyAuthDataSourceBindingDeleteError401 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const byBindingId = {
@@ -99,17 +76,9 @@ export const get = oc
   })
   .output(zGetApiKeyAuthDataSourceResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zGetApiKeyAuthDataSourceError400 },
-    bad_host: { status: 400, data: zGetApiKeyAuthDataSourceError400 },
-    bad_request: { status: 400, data: zGetApiKeyAuthDataSourceError400 },
-    bad_request_key_error: { status: 400, data: zGetApiKeyAuthDataSourceError400 },
-    client_disconnected: { status: 400, data: zGetApiKeyAuthDataSourceError400 },
-    invalid_param: { status: 400, data: zGetApiKeyAuthDataSourceError400 },
-    security_error: { status: 400, data: zGetApiKeyAuthDataSourceError400 },
-    websocket_mismatch: { status: 400, data: zGetApiKeyAuthDataSourceError400 },
-    not_init_validated: { status: 401, data: zGetApiKeyAuthDataSourceError401 },
-    not_setup: { status: 401, data: zGetApiKeyAuthDataSourceError401 },
-    unauthorized: { status: 401, data: zGetApiKeyAuthDataSourceError401 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const dataSource = {

@@ -3,15 +3,18 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
-  zGetGetRemoteFileInfoError400,
-  zGetGetRemoteFileInfoError401,
-  zGetGetRemoteFileInfoError404,
-  zGetGetRemoteFileInfoError502,
-  zPostRemoteFileUploadError400,
-  zPostRemoteFileUploadError404,
-  zPostRemoteFileUploadError413,
-  zPostRemoteFileUploadError415,
-  zPostRemoteFileUploadError502,
+  zAccountNotInitializedError,
+  zFileExtensionBlockedError,
+  zFileTooLargeError,
+  zNotInitValidatedError,
+  zNotSetupError,
+  zRemoteFileAccessDeniedError,
+  zRemoteFileInvalidResponseError,
+  zRemoteFileInvalidUrlError,
+  zRemoteFileNotFoundError,
+  zRemoteFileUnavailableError,
+  zRemoteFileUrlBlockedError,
+  zUnsupportedFileTypeError,
 } from './zod.gen.ts'
 import {
   zGetRemoteFilesByUrlPath,
@@ -32,27 +35,15 @@ export const post = oc
   .input(z.object({ body: zPostRemoteFilesUploadBody }))
   .output(zPostRemoteFilesUploadResponse)
   .errors({
-    bad_host: { status: 400, data: zPostRemoteFileUploadError400 },
-    bad_request: { status: 400, data: zPostRemoteFileUploadError400 },
-    bad_request_key_error: { status: 400, data: zPostRemoteFileUploadError400 },
-    client_disconnected: { status: 400, data: zPostRemoteFileUploadError400 },
-    file_extension_blocked: { status: 400, data: zPostRemoteFileUploadError400 },
-    invalid_param: { status: 400, data: zPostRemoteFileUploadError400 },
-    remote_file_access_denied: { status: 400, data: zPostRemoteFileUploadError400 },
-    remote_file_invalid_url: { status: 400, data: zPostRemoteFileUploadError400 },
-    remote_file_url_blocked: { status: 400, data: zPostRemoteFileUploadError400 },
-    security_error: { status: 400, data: zPostRemoteFileUploadError400 },
-    websocket_mismatch: { status: 400, data: zPostRemoteFileUploadError400 },
-    not_found: { status: 404, data: zPostRemoteFileUploadError404 },
-    remote_file_not_found: { status: 404, data: zPostRemoteFileUploadError404 },
-    file_too_large: { status: 413, data: zPostRemoteFileUploadError413 },
-    request_entity_too_large: { status: 413, data: zPostRemoteFileUploadError413 },
-    unsupported_file_type: { status: 415, data: zPostRemoteFileUploadError415 },
-    unsupported_media_type: { status: 415, data: zPostRemoteFileUploadError415 },
-    bad_gateway: { status: 502, data: zPostRemoteFileUploadError502 },
-    plugin_runtime_error: { status: 502, data: zPostRemoteFileUploadError502 },
-    remote_file_invalid_response: { status: 502, data: zPostRemoteFileUploadError502 },
-    remote_file_unavailable: { status: 502, data: zPostRemoteFileUploadError502 },
+    file_extension_blocked: { status: 400, data: zFileExtensionBlockedError },
+    file_too_large: { status: 413, data: zFileTooLargeError },
+    remote_file_access_denied: { status: 400, data: zRemoteFileAccessDeniedError },
+    remote_file_invalid_response: { status: 502, data: zRemoteFileInvalidResponseError },
+    remote_file_invalid_url: { status: 400, data: zRemoteFileInvalidUrlError },
+    remote_file_not_found: { status: 404, data: zRemoteFileNotFoundError },
+    remote_file_unavailable: { status: 502, data: zRemoteFileUnavailableError },
+    remote_file_url_blocked: { status: 400, data: zRemoteFileUrlBlockedError },
+    unsupported_file_type: { status: 415, data: zUnsupportedFileTypeError },
   })
 
 export const upload = {
@@ -70,26 +61,15 @@ export const get = oc
   .input(z.object({ params: zGetRemoteFilesByUrlPath }))
   .output(zGetRemoteFilesByUrlResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zGetGetRemoteFileInfoError400 },
-    bad_host: { status: 400, data: zGetGetRemoteFileInfoError400 },
-    bad_request: { status: 400, data: zGetGetRemoteFileInfoError400 },
-    bad_request_key_error: { status: 400, data: zGetGetRemoteFileInfoError400 },
-    client_disconnected: { status: 400, data: zGetGetRemoteFileInfoError400 },
-    invalid_param: { status: 400, data: zGetGetRemoteFileInfoError400 },
-    remote_file_access_denied: { status: 400, data: zGetGetRemoteFileInfoError400 },
-    remote_file_invalid_url: { status: 400, data: zGetGetRemoteFileInfoError400 },
-    remote_file_url_blocked: { status: 400, data: zGetGetRemoteFileInfoError400 },
-    security_error: { status: 400, data: zGetGetRemoteFileInfoError400 },
-    websocket_mismatch: { status: 400, data: zGetGetRemoteFileInfoError400 },
-    not_init_validated: { status: 401, data: zGetGetRemoteFileInfoError401 },
-    not_setup: { status: 401, data: zGetGetRemoteFileInfoError401 },
-    unauthorized: { status: 401, data: zGetGetRemoteFileInfoError401 },
-    not_found: { status: 404, data: zGetGetRemoteFileInfoError404 },
-    remote_file_not_found: { status: 404, data: zGetGetRemoteFileInfoError404 },
-    bad_gateway: { status: 502, data: zGetGetRemoteFileInfoError502 },
-    plugin_runtime_error: { status: 502, data: zGetGetRemoteFileInfoError502 },
-    remote_file_invalid_response: { status: 502, data: zGetGetRemoteFileInfoError502 },
-    remote_file_unavailable: { status: 502, data: zGetGetRemoteFileInfoError502 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    remote_file_access_denied: { status: 400, data: zRemoteFileAccessDeniedError },
+    remote_file_invalid_response: { status: 502, data: zRemoteFileInvalidResponseError },
+    remote_file_invalid_url: { status: 400, data: zRemoteFileInvalidUrlError },
+    remote_file_not_found: { status: 404, data: zRemoteFileNotFoundError },
+    remote_file_unavailable: { status: 502, data: zRemoteFileUnavailableError },
+    remote_file_url_blocked: { status: 400, data: zRemoteFileUrlBlockedError },
   })
 
 export const byUrl = {

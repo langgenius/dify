@@ -2,14 +2,7 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-import {
-  zCreateWorkflowRunArchiveDownloadError400,
-  zCreateWorkflowRunArchiveDownloadError401,
-  zGetWorkflowRunArchiveDownloadError400,
-  zGetWorkflowRunArchiveDownloadError401,
-  zListWorkflowRunArchivesError400,
-  zListWorkflowRunArchivesError401,
-} from './zod.gen.ts'
+import { zAccountNotInitializedError, zNotInitValidatedError, zNotSetupError } from './zod.gen.ts'
 import {
   zGetWorkflowRunArchivesDownloadsByDownloadIdPath,
   zGetWorkflowRunArchivesDownloadsByDownloadIdResponse,
@@ -33,17 +26,9 @@ export const get = oc
   .input(z.object({ params: zGetWorkflowRunArchivesDownloadsByDownloadIdPath }))
   .output(zGetWorkflowRunArchivesDownloadsByDownloadIdResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zGetWorkflowRunArchiveDownloadError400 },
-    bad_host: { status: 400, data: zGetWorkflowRunArchiveDownloadError400 },
-    bad_request: { status: 400, data: zGetWorkflowRunArchiveDownloadError400 },
-    bad_request_key_error: { status: 400, data: zGetWorkflowRunArchiveDownloadError400 },
-    client_disconnected: { status: 400, data: zGetWorkflowRunArchiveDownloadError400 },
-    invalid_param: { status: 400, data: zGetWorkflowRunArchiveDownloadError400 },
-    security_error: { status: 400, data: zGetWorkflowRunArchiveDownloadError400 },
-    websocket_mismatch: { status: 400, data: zGetWorkflowRunArchiveDownloadError400 },
-    not_init_validated: { status: 401, data: zGetWorkflowRunArchiveDownloadError401 },
-    not_setup: { status: 401, data: zGetWorkflowRunArchiveDownloadError401 },
-    unauthorized: { status: 401, data: zGetWorkflowRunArchiveDownloadError401 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const byDownloadId = {
@@ -66,17 +51,9 @@ export const post = oc
   .input(z.object({ body: zPostWorkflowRunArchivesDownloadsBody }))
   .output(zPostWorkflowRunArchivesDownloadsResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zCreateWorkflowRunArchiveDownloadError400 },
-    bad_host: { status: 400, data: zCreateWorkflowRunArchiveDownloadError400 },
-    bad_request: { status: 400, data: zCreateWorkflowRunArchiveDownloadError400 },
-    bad_request_key_error: { status: 400, data: zCreateWorkflowRunArchiveDownloadError400 },
-    client_disconnected: { status: 400, data: zCreateWorkflowRunArchiveDownloadError400 },
-    invalid_param: { status: 400, data: zCreateWorkflowRunArchiveDownloadError400 },
-    security_error: { status: 400, data: zCreateWorkflowRunArchiveDownloadError400 },
-    websocket_mismatch: { status: 400, data: zCreateWorkflowRunArchiveDownloadError400 },
-    not_init_validated: { status: 401, data: zCreateWorkflowRunArchiveDownloadError401 },
-    not_setup: { status: 401, data: zCreateWorkflowRunArchiveDownloadError401 },
-    unauthorized: { status: 401, data: zCreateWorkflowRunArchiveDownloadError401 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const downloads = {
@@ -98,17 +75,9 @@ export const get2 = oc
   })
   .output(zGetWorkflowRunArchivesResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zListWorkflowRunArchivesError400 },
-    bad_host: { status: 400, data: zListWorkflowRunArchivesError400 },
-    bad_request: { status: 400, data: zListWorkflowRunArchivesError400 },
-    bad_request_key_error: { status: 400, data: zListWorkflowRunArchivesError400 },
-    client_disconnected: { status: 400, data: zListWorkflowRunArchivesError400 },
-    invalid_param: { status: 400, data: zListWorkflowRunArchivesError400 },
-    security_error: { status: 400, data: zListWorkflowRunArchivesError400 },
-    websocket_mismatch: { status: 400, data: zListWorkflowRunArchivesError400 },
-    not_init_validated: { status: 401, data: zListWorkflowRunArchivesError401 },
-    not_setup: { status: 401, data: zListWorkflowRunArchivesError401 },
-    unauthorized: { status: 401, data: zListWorkflowRunArchivesError401 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const workflowRunArchives = {

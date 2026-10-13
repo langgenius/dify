@@ -3,54 +3,29 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
-  zGetAccountAvatarError400,
-  zGetAccountAvatarError401,
-  zGetAccountDeleteVerifyApiError400,
-  zGetAccountDeleteVerifyApiError401,
-  zGetAccountDeleteVerifyApiError429,
-  zGetAccountIntegrateApiError400,
-  zGetAccountIntegrateApiError401,
-  zGetAccountProfileApiError400,
-  zGetAccountProfileApiError401,
-  zGetEducationApiError400,
-  zGetEducationApiError401,
-  zGetEducationAutoCompleteApiError400,
-  zGetEducationAutoCompleteApiError401,
-  zGetEducationVerifyApiError400,
-  zGetEducationVerifyApiError401,
-  zGetEducationVerifyApiError429,
-  zPatchAccountProfileApiError400,
-  zPatchAccountProfileApiError401,
-  zPostAccountDeleteApiError400,
-  zPostAccountDeleteApiError401,
-  zPostAccountDeleteUpdateFeedbackApiError401,
-  zPostAccountInitApiError400,
-  zPostAccountInitApiError401,
-  zPostAccountPasswordApiError400,
-  zPostAccountPasswordApiError401,
-  zPostChangeEmailCheckApiError400,
-  zPostChangeEmailCheckApiError401,
-  zPostChangeEmailCheckApiError429,
-  zPostChangeEmailResetApiError400,
-  zPostChangeEmailResetApiError401,
-  zPostChangeEmailSendEmailApiError400,
-  zPostChangeEmailSendEmailApiError401,
-  zPostChangeEmailSendEmailApiError429,
-  zPostCheckEmailUniqueError400,
-  zPostCheckEmailUniqueError401,
-  zPostEducationApiError400,
-  zPostEducationApiError401,
-  zPostEducationApiError429,
-  zUpdateAccountAvatarDeprecatedError400,
-  zUpdateAccountAvatarDeprecatedError401,
-  zUpdateAccountInterfaceLanguageDeprecatedError400,
-  zUpdateAccountInterfaceLanguageDeprecatedError401,
-  zUpdateAccountInterfaceThemeDeprecatedError400,
-  zUpdateAccountInterfaceThemeDeprecatedError401,
-  zUpdateAccountNameDeprecatedError400,
-  zUpdateAccountNameDeprecatedError401,
-  zUpdateAccountTimezoneDeprecatedError400,
-  zUpdateAccountTimezoneDeprecatedError401,
+  zAccountAlreadyInitedError,
+  zAccountInFreezeError,
+  zAccountNotFoundError,
+  zAccountNotInitializedError,
+  zCurrentPasswordIncorrectError,
+  zEducationActivateLimitError,
+  zEducationVerifyLimitError,
+  zEmailAlreadyInUseError,
+  zEmailChangeLimitError,
+  zEmailChangeRateLimitExceededError,
+  zEmailCodeAccountDeletionRateLimitExceededError,
+  zEmailCodeError,
+  zEmailDomainSuspendedError,
+  zEmailSendIpLimitError,
+  zInvalidAccountDeletionCodeError,
+  zInvalidAccountPasswordError,
+  zInvalidEmailError,
+  zInvalidInvitationCodeError,
+  zInvalidOrExpiredTokenError,
+  zMissingInvitationCodeError,
+  zNotInitValidatedError,
+  zNotSetupError,
+  zUnauthorizedAndForceLogoutError,
 } from './zod.gen.ts'
 import {
   zGetAccountAvatarQuery,
@@ -109,17 +84,9 @@ export const get = oc
   .input(z.object({ query: zGetAccountAvatarQuery }))
   .output(zGetAccountAvatarResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zGetAccountAvatarError400 },
-    bad_host: { status: 400, data: zGetAccountAvatarError400 },
-    bad_request: { status: 400, data: zGetAccountAvatarError400 },
-    bad_request_key_error: { status: 400, data: zGetAccountAvatarError400 },
-    client_disconnected: { status: 400, data: zGetAccountAvatarError400 },
-    invalid_param: { status: 400, data: zGetAccountAvatarError400 },
-    security_error: { status: 400, data: zGetAccountAvatarError400 },
-    websocket_mismatch: { status: 400, data: zGetAccountAvatarError400 },
-    not_init_validated: { status: 401, data: zGetAccountAvatarError401 },
-    not_setup: { status: 401, data: zGetAccountAvatarError401 },
-    unauthorized: { status: 401, data: zGetAccountAvatarError401 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 /**
@@ -140,18 +107,10 @@ export const post = oc
   .input(z.object({ body: zPostAccountAvatarBody }))
   .output(zPostAccountAvatarResponse)
   .errors({
-    account_not_found: { status: 400, data: zUpdateAccountAvatarDeprecatedError400 },
-    account_not_initialized: { status: 400, data: zUpdateAccountAvatarDeprecatedError400 },
-    bad_host: { status: 400, data: zUpdateAccountAvatarDeprecatedError400 },
-    bad_request: { status: 400, data: zUpdateAccountAvatarDeprecatedError400 },
-    bad_request_key_error: { status: 400, data: zUpdateAccountAvatarDeprecatedError400 },
-    client_disconnected: { status: 400, data: zUpdateAccountAvatarDeprecatedError400 },
-    invalid_param: { status: 400, data: zUpdateAccountAvatarDeprecatedError400 },
-    security_error: { status: 400, data: zUpdateAccountAvatarDeprecatedError400 },
-    websocket_mismatch: { status: 400, data: zUpdateAccountAvatarDeprecatedError400 },
-    not_init_validated: { status: 401, data: zUpdateAccountAvatarDeprecatedError401 },
-    not_setup: { status: 401, data: zUpdateAccountAvatarDeprecatedError401 },
-    unauthorized: { status: 401, data: zUpdateAccountAvatarDeprecatedError401 },
+    account_not_found: { status: 400, data: zAccountNotFoundError },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const avatar = {
@@ -170,19 +129,11 @@ export const post2 = oc
   .input(z.object({ body: zPostAccountChangeEmailCheckEmailUniqueBody }))
   .output(zPostAccountChangeEmailCheckEmailUniqueResponse)
   .errors({
-    account_in_freeze: { status: 400, data: zPostCheckEmailUniqueError400 },
-    bad_host: { status: 400, data: zPostCheckEmailUniqueError400 },
-    bad_request: { status: 400, data: zPostCheckEmailUniqueError400 },
-    bad_request_key_error: { status: 400, data: zPostCheckEmailUniqueError400 },
-    client_disconnected: { status: 400, data: zPostCheckEmailUniqueError400 },
-    email_already_in_use: { status: 400, data: zPostCheckEmailUniqueError400 },
-    email_domain_suspended: { status: 400, data: zPostCheckEmailUniqueError400 },
-    invalid_param: { status: 400, data: zPostCheckEmailUniqueError400 },
-    security_error: { status: 400, data: zPostCheckEmailUniqueError400 },
-    websocket_mismatch: { status: 400, data: zPostCheckEmailUniqueError400 },
-    not_init_validated: { status: 401, data: zPostCheckEmailUniqueError401 },
-    not_setup: { status: 401, data: zPostCheckEmailUniqueError401 },
-    unauthorized: { status: 401, data: zPostCheckEmailUniqueError401 },
+    account_in_freeze: { status: 400, data: zAccountInFreezeError },
+    email_already_in_use: { status: 400, data: zEmailAlreadyInUseError },
+    email_domain_suspended: { status: 400, data: zEmailDomainSuspendedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const checkEmailUnique = {
@@ -200,22 +151,14 @@ export const post3 = oc
   .input(z.object({ body: zPostAccountChangeEmailResetBody }))
   .output(zPostAccountChangeEmailResetResponse)
   .errors({
-    account_in_freeze: { status: 400, data: zPostChangeEmailResetApiError400 },
-    account_not_found: { status: 400, data: zPostChangeEmailResetApiError400 },
-    account_not_initialized: { status: 400, data: zPostChangeEmailResetApiError400 },
-    bad_host: { status: 400, data: zPostChangeEmailResetApiError400 },
-    bad_request: { status: 400, data: zPostChangeEmailResetApiError400 },
-    bad_request_key_error: { status: 400, data: zPostChangeEmailResetApiError400 },
-    client_disconnected: { status: 400, data: zPostChangeEmailResetApiError400 },
-    email_already_in_use: { status: 400, data: zPostChangeEmailResetApiError400 },
-    email_domain_suspended: { status: 400, data: zPostChangeEmailResetApiError400 },
-    invalid_or_expired_token: { status: 400, data: zPostChangeEmailResetApiError400 },
-    invalid_param: { status: 400, data: zPostChangeEmailResetApiError400 },
-    security_error: { status: 400, data: zPostChangeEmailResetApiError400 },
-    websocket_mismatch: { status: 400, data: zPostChangeEmailResetApiError400 },
-    not_init_validated: { status: 401, data: zPostChangeEmailResetApiError401 },
-    not_setup: { status: 401, data: zPostChangeEmailResetApiError401 },
-    unauthorized: { status: 401, data: zPostChangeEmailResetApiError401 },
+    account_in_freeze: { status: 400, data: zAccountInFreezeError },
+    account_not_found: { status: 400, data: zAccountNotFoundError },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    email_already_in_use: { status: 400, data: zEmailAlreadyInUseError },
+    email_domain_suspended: { status: 400, data: zEmailDomainSuspendedError },
+    invalid_or_expired_token: { status: 400, data: zInvalidOrExpiredTokenError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const reset = {
@@ -233,22 +176,13 @@ export const post4 = oc
   .input(z.object({ body: zPostAccountChangeEmailValidityBody }))
   .output(zPostAccountChangeEmailValidityResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zPostChangeEmailCheckApiError400 },
-    bad_host: { status: 400, data: zPostChangeEmailCheckApiError400 },
-    bad_request: { status: 400, data: zPostChangeEmailCheckApiError400 },
-    bad_request_key_error: { status: 400, data: zPostChangeEmailCheckApiError400 },
-    client_disconnected: { status: 400, data: zPostChangeEmailCheckApiError400 },
-    email_code_error: { status: 400, data: zPostChangeEmailCheckApiError400 },
-    invalid_email: { status: 400, data: zPostChangeEmailCheckApiError400 },
-    invalid_or_expired_token: { status: 400, data: zPostChangeEmailCheckApiError400 },
-    invalid_param: { status: 400, data: zPostChangeEmailCheckApiError400 },
-    security_error: { status: 400, data: zPostChangeEmailCheckApiError400 },
-    websocket_mismatch: { status: 400, data: zPostChangeEmailCheckApiError400 },
-    not_init_validated: { status: 401, data: zPostChangeEmailCheckApiError401 },
-    not_setup: { status: 401, data: zPostChangeEmailCheckApiError401 },
-    unauthorized: { status: 401, data: zPostChangeEmailCheckApiError401 },
-    email_change_limit: { status: 429, data: zPostChangeEmailCheckApiError429 },
-    too_many_requests: { status: 429, data: zPostChangeEmailCheckApiError429 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    email_change_limit: { status: 429, data: zEmailChangeLimitError },
+    email_code_error: { status: 400, data: zEmailCodeError },
+    invalid_email: { status: 400, data: zInvalidEmailError },
+    invalid_or_expired_token: { status: 400, data: zInvalidOrExpiredTokenError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const validity = {
@@ -266,23 +200,14 @@ export const post5 = oc
   .input(z.object({ body: zPostAccountChangeEmailBody }))
   .output(zPostAccountChangeEmailResponse)
   .errors({
-    account_not_found: { status: 400, data: zPostChangeEmailSendEmailApiError400 },
-    account_not_initialized: { status: 400, data: zPostChangeEmailSendEmailApiError400 },
-    bad_host: { status: 400, data: zPostChangeEmailSendEmailApiError400 },
-    bad_request: { status: 400, data: zPostChangeEmailSendEmailApiError400 },
-    bad_request_key_error: { status: 400, data: zPostChangeEmailSendEmailApiError400 },
-    client_disconnected: { status: 400, data: zPostChangeEmailSendEmailApiError400 },
-    invalid_email: { status: 400, data: zPostChangeEmailSendEmailApiError400 },
-    invalid_or_expired_token: { status: 400, data: zPostChangeEmailSendEmailApiError400 },
-    invalid_param: { status: 400, data: zPostChangeEmailSendEmailApiError400 },
-    security_error: { status: 400, data: zPostChangeEmailSendEmailApiError400 },
-    websocket_mismatch: { status: 400, data: zPostChangeEmailSendEmailApiError400 },
-    not_init_validated: { status: 401, data: zPostChangeEmailSendEmailApiError401 },
-    not_setup: { status: 401, data: zPostChangeEmailSendEmailApiError401 },
-    unauthorized: { status: 401, data: zPostChangeEmailSendEmailApiError401 },
-    email_change_rate_limit_exceeded: { status: 429, data: zPostChangeEmailSendEmailApiError429 },
-    email_send_ip_limit: { status: 429, data: zPostChangeEmailSendEmailApiError429 },
-    too_many_requests: { status: 429, data: zPostChangeEmailSendEmailApiError429 },
+    account_not_found: { status: 400, data: zAccountNotFoundError },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    email_change_rate_limit_exceeded: { status: 429, data: zEmailChangeRateLimitExceededError },
+    email_send_ip_limit: { status: 429, data: zEmailSendIpLimitError },
+    invalid_email: { status: 400, data: zInvalidEmailError },
+    invalid_or_expired_token: { status: 400, data: zInvalidOrExpiredTokenError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const changeEmail = {
@@ -303,9 +228,8 @@ export const post6 = oc
   .input(z.object({ body: zPostAccountDeleteFeedbackBody }))
   .output(zPostAccountDeleteFeedbackResponse)
   .errors({
-    not_init_validated: { status: 401, data: zPostAccountDeleteUpdateFeedbackApiError401 },
-    not_setup: { status: 401, data: zPostAccountDeleteUpdateFeedbackApiError401 },
-    unauthorized: { status: 401, data: zPostAccountDeleteUpdateFeedbackApiError401 },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const feedback = {
@@ -322,23 +246,14 @@ export const get2 = oc
   })
   .output(zGetAccountDeleteVerifyResponse)
   .errors({
-    account_not_found: { status: 400, data: zGetAccountDeleteVerifyApiError400 },
-    account_not_initialized: { status: 400, data: zGetAccountDeleteVerifyApiError400 },
-    bad_host: { status: 400, data: zGetAccountDeleteVerifyApiError400 },
-    bad_request: { status: 400, data: zGetAccountDeleteVerifyApiError400 },
-    bad_request_key_error: { status: 400, data: zGetAccountDeleteVerifyApiError400 },
-    client_disconnected: { status: 400, data: zGetAccountDeleteVerifyApiError400 },
-    invalid_param: { status: 400, data: zGetAccountDeleteVerifyApiError400 },
-    security_error: { status: 400, data: zGetAccountDeleteVerifyApiError400 },
-    websocket_mismatch: { status: 400, data: zGetAccountDeleteVerifyApiError400 },
-    not_init_validated: { status: 401, data: zGetAccountDeleteVerifyApiError401 },
-    not_setup: { status: 401, data: zGetAccountDeleteVerifyApiError401 },
-    unauthorized: { status: 401, data: zGetAccountDeleteVerifyApiError401 },
+    account_not_found: { status: 400, data: zAccountNotFoundError },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     email_code_account_deletion_rate_limit_exceeded: {
       status: 429,
-      data: zGetAccountDeleteVerifyApiError429,
+      data: zEmailCodeAccountDeletionRateLimitExceededError,
     },
-    too_many_requests: { status: 429, data: zGetAccountDeleteVerifyApiError429 },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const verify = {
@@ -356,18 +271,10 @@ export const post7 = oc
   .input(z.object({ body: zPostAccountDeleteBody }))
   .output(zPostAccountDeleteResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zPostAccountDeleteApiError400 },
-    bad_host: { status: 400, data: zPostAccountDeleteApiError400 },
-    bad_request: { status: 400, data: zPostAccountDeleteApiError400 },
-    bad_request_key_error: { status: 400, data: zPostAccountDeleteApiError400 },
-    client_disconnected: { status: 400, data: zPostAccountDeleteApiError400 },
-    invalid_account_deletion_code: { status: 400, data: zPostAccountDeleteApiError400 },
-    invalid_param: { status: 400, data: zPostAccountDeleteApiError400 },
-    security_error: { status: 400, data: zPostAccountDeleteApiError400 },
-    websocket_mismatch: { status: 400, data: zPostAccountDeleteApiError400 },
-    not_init_validated: { status: 401, data: zPostAccountDeleteApiError401 },
-    not_setup: { status: 401, data: zPostAccountDeleteApiError401 },
-    unauthorized: { status: 401, data: zPostAccountDeleteApiError401 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    invalid_account_deletion_code: { status: 400, data: zInvalidAccountDeletionCodeError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const delete_ = {
@@ -387,17 +294,9 @@ export const get3 = oc
   .input(z.object({ query: zGetAccountEducationAutocompleteQuery }))
   .output(zGetAccountEducationAutocompleteResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zGetEducationAutoCompleteApiError400 },
-    bad_host: { status: 400, data: zGetEducationAutoCompleteApiError400 },
-    bad_request: { status: 400, data: zGetEducationAutoCompleteApiError400 },
-    bad_request_key_error: { status: 400, data: zGetEducationAutoCompleteApiError400 },
-    client_disconnected: { status: 400, data: zGetEducationAutoCompleteApiError400 },
-    invalid_param: { status: 400, data: zGetEducationAutoCompleteApiError400 },
-    security_error: { status: 400, data: zGetEducationAutoCompleteApiError400 },
-    websocket_mismatch: { status: 400, data: zGetEducationAutoCompleteApiError400 },
-    not_init_validated: { status: 401, data: zGetEducationAutoCompleteApiError401 },
-    not_setup: { status: 401, data: zGetEducationAutoCompleteApiError401 },
-    unauthorized: { status: 401, data: zGetEducationAutoCompleteApiError401 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const autocomplete = {
@@ -414,20 +313,11 @@ export const get4 = oc
   })
   .output(zGetAccountEducationVerifyResponse)
   .errors({
-    account_not_found: { status: 400, data: zGetEducationVerifyApiError400 },
-    account_not_initialized: { status: 400, data: zGetEducationVerifyApiError400 },
-    bad_host: { status: 400, data: zGetEducationVerifyApiError400 },
-    bad_request: { status: 400, data: zGetEducationVerifyApiError400 },
-    bad_request_key_error: { status: 400, data: zGetEducationVerifyApiError400 },
-    client_disconnected: { status: 400, data: zGetEducationVerifyApiError400 },
-    invalid_param: { status: 400, data: zGetEducationVerifyApiError400 },
-    security_error: { status: 400, data: zGetEducationVerifyApiError400 },
-    websocket_mismatch: { status: 400, data: zGetEducationVerifyApiError400 },
-    not_init_validated: { status: 401, data: zGetEducationVerifyApiError401 },
-    not_setup: { status: 401, data: zGetEducationVerifyApiError401 },
-    unauthorized: { status: 401, data: zGetEducationVerifyApiError401 },
-    education_verify_limit: { status: 429, data: zGetEducationVerifyApiError429 },
-    too_many_requests: { status: 429, data: zGetEducationVerifyApiError429 },
+    account_not_found: { status: 400, data: zAccountNotFoundError },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    education_verify_limit: { status: 429, data: zEducationVerifyLimitError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const verify2 = {
@@ -444,17 +334,9 @@ export const get5 = oc
   })
   .output(zGetAccountEducationResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zGetEducationApiError400 },
-    bad_host: { status: 400, data: zGetEducationApiError400 },
-    bad_request: { status: 400, data: zGetEducationApiError400 },
-    bad_request_key_error: { status: 400, data: zGetEducationApiError400 },
-    client_disconnected: { status: 400, data: zGetEducationApiError400 },
-    invalid_param: { status: 400, data: zGetEducationApiError400 },
-    security_error: { status: 400, data: zGetEducationApiError400 },
-    websocket_mismatch: { status: 400, data: zGetEducationApiError400 },
-    not_init_validated: { status: 401, data: zGetEducationApiError401 },
-    not_setup: { status: 401, data: zGetEducationApiError401 },
-    unauthorized: { status: 401, data: zGetEducationApiError401 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const post8 = oc
@@ -468,20 +350,11 @@ export const post8 = oc
   .input(z.object({ body: zPostAccountEducationBody }))
   .output(zPostAccountEducationResponse)
   .errors({
-    account_not_found: { status: 400, data: zPostEducationApiError400 },
-    account_not_initialized: { status: 400, data: zPostEducationApiError400 },
-    bad_host: { status: 400, data: zPostEducationApiError400 },
-    bad_request: { status: 400, data: zPostEducationApiError400 },
-    bad_request_key_error: { status: 400, data: zPostEducationApiError400 },
-    client_disconnected: { status: 400, data: zPostEducationApiError400 },
-    invalid_param: { status: 400, data: zPostEducationApiError400 },
-    security_error: { status: 400, data: zPostEducationApiError400 },
-    websocket_mismatch: { status: 400, data: zPostEducationApiError400 },
-    not_init_validated: { status: 401, data: zPostEducationApiError401 },
-    not_setup: { status: 401, data: zPostEducationApiError401 },
-    unauthorized: { status: 401, data: zPostEducationApiError401 },
-    education_activate_limit: { status: 429, data: zPostEducationApiError429 },
-    too_many_requests: { status: 429, data: zPostEducationApiError429 },
+    account_not_found: { status: 400, data: zAccountNotFoundError },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    education_activate_limit: { status: 429, data: zEducationActivateLimitError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const education = {
@@ -502,20 +375,12 @@ export const post9 = oc
   .input(z.object({ body: zPostAccountInitBody }))
   .output(zPostAccountInitResponse)
   .errors({
-    account_already_inited: { status: 400, data: zPostAccountInitApiError400 },
-    account_not_found: { status: 400, data: zPostAccountInitApiError400 },
-    bad_host: { status: 400, data: zPostAccountInitApiError400 },
-    bad_request: { status: 400, data: zPostAccountInitApiError400 },
-    bad_request_key_error: { status: 400, data: zPostAccountInitApiError400 },
-    client_disconnected: { status: 400, data: zPostAccountInitApiError400 },
-    invalid_invitation_code: { status: 400, data: zPostAccountInitApiError400 },
-    invalid_param: { status: 400, data: zPostAccountInitApiError400 },
-    missing_invitation_code: { status: 400, data: zPostAccountInitApiError400 },
-    security_error: { status: 400, data: zPostAccountInitApiError400 },
-    websocket_mismatch: { status: 400, data: zPostAccountInitApiError400 },
-    not_init_validated: { status: 401, data: zPostAccountInitApiError401 },
-    not_setup: { status: 401, data: zPostAccountInitApiError401 },
-    unauthorized: { status: 401, data: zPostAccountInitApiError401 },
+    account_already_inited: { status: 400, data: zAccountAlreadyInitedError },
+    account_not_found: { status: 400, data: zAccountNotFoundError },
+    invalid_invitation_code: { status: 400, data: zInvalidInvitationCodeError },
+    missing_invitation_code: { status: 400, data: zMissingInvitationCodeError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const init = {
@@ -532,17 +397,9 @@ export const get6 = oc
   })
   .output(zGetAccountIntegratesResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zGetAccountIntegrateApiError400 },
-    bad_host: { status: 400, data: zGetAccountIntegrateApiError400 },
-    bad_request: { status: 400, data: zGetAccountIntegrateApiError400 },
-    bad_request_key_error: { status: 400, data: zGetAccountIntegrateApiError400 },
-    client_disconnected: { status: 400, data: zGetAccountIntegrateApiError400 },
-    invalid_param: { status: 400, data: zGetAccountIntegrateApiError400 },
-    security_error: { status: 400, data: zGetAccountIntegrateApiError400 },
-    websocket_mismatch: { status: 400, data: zGetAccountIntegrateApiError400 },
-    not_init_validated: { status: 401, data: zGetAccountIntegrateApiError401 },
-    not_setup: { status: 401, data: zGetAccountIntegrateApiError401 },
-    unauthorized: { status: 401, data: zGetAccountIntegrateApiError401 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const integrates = {
@@ -567,21 +424,10 @@ export const post10 = oc
   .input(z.object({ body: zPostAccountInterfaceLanguageBody }))
   .output(zPostAccountInterfaceLanguageResponse)
   .errors({
-    account_not_found: { status: 400, data: zUpdateAccountInterfaceLanguageDeprecatedError400 },
-    account_not_initialized: {
-      status: 400,
-      data: zUpdateAccountInterfaceLanguageDeprecatedError400,
-    },
-    bad_host: { status: 400, data: zUpdateAccountInterfaceLanguageDeprecatedError400 },
-    bad_request: { status: 400, data: zUpdateAccountInterfaceLanguageDeprecatedError400 },
-    bad_request_key_error: { status: 400, data: zUpdateAccountInterfaceLanguageDeprecatedError400 },
-    client_disconnected: { status: 400, data: zUpdateAccountInterfaceLanguageDeprecatedError400 },
-    invalid_param: { status: 400, data: zUpdateAccountInterfaceLanguageDeprecatedError400 },
-    security_error: { status: 400, data: zUpdateAccountInterfaceLanguageDeprecatedError400 },
-    websocket_mismatch: { status: 400, data: zUpdateAccountInterfaceLanguageDeprecatedError400 },
-    not_init_validated: { status: 401, data: zUpdateAccountInterfaceLanguageDeprecatedError401 },
-    not_setup: { status: 401, data: zUpdateAccountInterfaceLanguageDeprecatedError401 },
-    unauthorized: { status: 401, data: zUpdateAccountInterfaceLanguageDeprecatedError401 },
+    account_not_found: { status: 400, data: zAccountNotFoundError },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const interfaceLanguage = {
@@ -606,18 +452,10 @@ export const post11 = oc
   .input(z.object({ body: zPostAccountInterfaceThemeBody }))
   .output(zPostAccountInterfaceThemeResponse)
   .errors({
-    account_not_found: { status: 400, data: zUpdateAccountInterfaceThemeDeprecatedError400 },
-    account_not_initialized: { status: 400, data: zUpdateAccountInterfaceThemeDeprecatedError400 },
-    bad_host: { status: 400, data: zUpdateAccountInterfaceThemeDeprecatedError400 },
-    bad_request: { status: 400, data: zUpdateAccountInterfaceThemeDeprecatedError400 },
-    bad_request_key_error: { status: 400, data: zUpdateAccountInterfaceThemeDeprecatedError400 },
-    client_disconnected: { status: 400, data: zUpdateAccountInterfaceThemeDeprecatedError400 },
-    invalid_param: { status: 400, data: zUpdateAccountInterfaceThemeDeprecatedError400 },
-    security_error: { status: 400, data: zUpdateAccountInterfaceThemeDeprecatedError400 },
-    websocket_mismatch: { status: 400, data: zUpdateAccountInterfaceThemeDeprecatedError400 },
-    not_init_validated: { status: 401, data: zUpdateAccountInterfaceThemeDeprecatedError401 },
-    not_setup: { status: 401, data: zUpdateAccountInterfaceThemeDeprecatedError401 },
-    unauthorized: { status: 401, data: zUpdateAccountInterfaceThemeDeprecatedError401 },
+    account_not_found: { status: 400, data: zAccountNotFoundError },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const interfaceTheme = {
@@ -642,18 +480,10 @@ export const post12 = oc
   .input(z.object({ body: zPostAccountNameBody }))
   .output(zPostAccountNameResponse)
   .errors({
-    account_not_found: { status: 400, data: zUpdateAccountNameDeprecatedError400 },
-    account_not_initialized: { status: 400, data: zUpdateAccountNameDeprecatedError400 },
-    bad_host: { status: 400, data: zUpdateAccountNameDeprecatedError400 },
-    bad_request: { status: 400, data: zUpdateAccountNameDeprecatedError400 },
-    bad_request_key_error: { status: 400, data: zUpdateAccountNameDeprecatedError400 },
-    client_disconnected: { status: 400, data: zUpdateAccountNameDeprecatedError400 },
-    invalid_param: { status: 400, data: zUpdateAccountNameDeprecatedError400 },
-    security_error: { status: 400, data: zUpdateAccountNameDeprecatedError400 },
-    websocket_mismatch: { status: 400, data: zUpdateAccountNameDeprecatedError400 },
-    not_init_validated: { status: 401, data: zUpdateAccountNameDeprecatedError401 },
-    not_setup: { status: 401, data: zUpdateAccountNameDeprecatedError401 },
-    unauthorized: { status: 401, data: zUpdateAccountNameDeprecatedError401 },
+    account_not_found: { status: 400, data: zAccountNotFoundError },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const name = {
@@ -671,20 +501,12 @@ export const post13 = oc
   .input(z.object({ body: zPostAccountPasswordBody }))
   .output(zPostAccountPasswordResponse)
   .errors({
-    account_not_found: { status: 400, data: zPostAccountPasswordApiError400 },
-    account_not_initialized: { status: 400, data: zPostAccountPasswordApiError400 },
-    bad_host: { status: 400, data: zPostAccountPasswordApiError400 },
-    bad_request: { status: 400, data: zPostAccountPasswordApiError400 },
-    bad_request_key_error: { status: 400, data: zPostAccountPasswordApiError400 },
-    client_disconnected: { status: 400, data: zPostAccountPasswordApiError400 },
-    current_password_incorrect: { status: 400, data: zPostAccountPasswordApiError400 },
-    invalid_account_password: { status: 400, data: zPostAccountPasswordApiError400 },
-    invalid_param: { status: 400, data: zPostAccountPasswordApiError400 },
-    security_error: { status: 400, data: zPostAccountPasswordApiError400 },
-    websocket_mismatch: { status: 400, data: zPostAccountPasswordApiError400 },
-    not_init_validated: { status: 401, data: zPostAccountPasswordApiError401 },
-    not_setup: { status: 401, data: zPostAccountPasswordApiError401 },
-    unauthorized: { status: 401, data: zPostAccountPasswordApiError401 },
+    account_not_found: { status: 400, data: zAccountNotFoundError },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    current_password_incorrect: { status: 400, data: zCurrentPasswordIncorrectError },
+    invalid_account_password: { status: 400, data: zInvalidAccountPasswordError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const password = {
@@ -701,19 +523,11 @@ export const get7 = oc
   })
   .output(zGetAccountProfileResponse)
   .errors({
-    account_not_found: { status: 400, data: zGetAccountProfileApiError400 },
-    account_not_initialized: { status: 400, data: zGetAccountProfileApiError400 },
-    bad_host: { status: 400, data: zGetAccountProfileApiError400 },
-    bad_request: { status: 400, data: zGetAccountProfileApiError400 },
-    bad_request_key_error: { status: 400, data: zGetAccountProfileApiError400 },
-    client_disconnected: { status: 400, data: zGetAccountProfileApiError400 },
-    invalid_param: { status: 400, data: zGetAccountProfileApiError400 },
-    security_error: { status: 400, data: zGetAccountProfileApiError400 },
-    websocket_mismatch: { status: 400, data: zGetAccountProfileApiError400 },
-    not_init_validated: { status: 401, data: zGetAccountProfileApiError401 },
-    not_setup: { status: 401, data: zGetAccountProfileApiError401 },
-    unauthorized: { status: 401, data: zGetAccountProfileApiError401 },
-    unauthorized_and_force_logout: { status: 401, data: zGetAccountProfileApiError401 },
+    account_not_found: { status: 400, data: zAccountNotFoundError },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    unauthorized_and_force_logout: { status: 401, data: zUnauthorizedAndForceLogoutError },
   })
 
 export const patch = oc
@@ -727,18 +541,10 @@ export const patch = oc
   .input(z.object({ body: zPatchAccountProfileBody }))
   .output(zPatchAccountProfileResponse)
   .errors({
-    account_not_found: { status: 400, data: zPatchAccountProfileApiError400 },
-    account_not_initialized: { status: 400, data: zPatchAccountProfileApiError400 },
-    bad_host: { status: 400, data: zPatchAccountProfileApiError400 },
-    bad_request: { status: 400, data: zPatchAccountProfileApiError400 },
-    bad_request_key_error: { status: 400, data: zPatchAccountProfileApiError400 },
-    client_disconnected: { status: 400, data: zPatchAccountProfileApiError400 },
-    invalid_param: { status: 400, data: zPatchAccountProfileApiError400 },
-    security_error: { status: 400, data: zPatchAccountProfileApiError400 },
-    websocket_mismatch: { status: 400, data: zPatchAccountProfileApiError400 },
-    not_init_validated: { status: 401, data: zPatchAccountProfileApiError401 },
-    not_setup: { status: 401, data: zPatchAccountProfileApiError401 },
-    unauthorized: { status: 401, data: zPatchAccountProfileApiError401 },
+    account_not_found: { status: 400, data: zAccountNotFoundError },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const profile = {
@@ -764,18 +570,10 @@ export const post14 = oc
   .input(z.object({ body: zPostAccountTimezoneBody }))
   .output(zPostAccountTimezoneResponse)
   .errors({
-    account_not_found: { status: 400, data: zUpdateAccountTimezoneDeprecatedError400 },
-    account_not_initialized: { status: 400, data: zUpdateAccountTimezoneDeprecatedError400 },
-    bad_host: { status: 400, data: zUpdateAccountTimezoneDeprecatedError400 },
-    bad_request: { status: 400, data: zUpdateAccountTimezoneDeprecatedError400 },
-    bad_request_key_error: { status: 400, data: zUpdateAccountTimezoneDeprecatedError400 },
-    client_disconnected: { status: 400, data: zUpdateAccountTimezoneDeprecatedError400 },
-    invalid_param: { status: 400, data: zUpdateAccountTimezoneDeprecatedError400 },
-    security_error: { status: 400, data: zUpdateAccountTimezoneDeprecatedError400 },
-    websocket_mismatch: { status: 400, data: zUpdateAccountTimezoneDeprecatedError400 },
-    not_init_validated: { status: 401, data: zUpdateAccountTimezoneDeprecatedError401 },
-    not_setup: { status: 401, data: zUpdateAccountTimezoneDeprecatedError401 },
-    unauthorized: { status: 401, data: zUpdateAccountTimezoneDeprecatedError401 },
+    account_not_found: { status: 400, data: zAccountNotFoundError },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const timezone = {

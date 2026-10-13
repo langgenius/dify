@@ -2,7 +2,15 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-import { zGenerateRuleCodeError400, zGenerateRuleCodeError401 } from './zod.gen.ts'
+import {
+  zAccountNotInitializedError,
+  zCompletionRequestError,
+  zModelCurrentlyNotSupportError,
+  zNotInitValidatedError,
+  zNotSetupError,
+  zProviderNotInitializeError,
+  zProviderQuotaExceededError,
+} from './zod.gen.ts'
 import { zPostRuleCodeGenerateBody, zPostRuleCodeGenerateResponse } from './zod.gen.ts'
 
 /**
@@ -20,21 +28,13 @@ export const post = oc
   .input(z.object({ body: zPostRuleCodeGenerateBody }))
   .output(zPostRuleCodeGenerateResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zGenerateRuleCodeError400 },
-    bad_host: { status: 400, data: zGenerateRuleCodeError400 },
-    bad_request: { status: 400, data: zGenerateRuleCodeError400 },
-    bad_request_key_error: { status: 400, data: zGenerateRuleCodeError400 },
-    client_disconnected: { status: 400, data: zGenerateRuleCodeError400 },
-    completion_request_error: { status: 400, data: zGenerateRuleCodeError400 },
-    invalid_param: { status: 400, data: zGenerateRuleCodeError400 },
-    model_currently_not_support: { status: 400, data: zGenerateRuleCodeError400 },
-    provider_not_initialize: { status: 400, data: zGenerateRuleCodeError400 },
-    provider_quota_exceeded: { status: 400, data: zGenerateRuleCodeError400 },
-    security_error: { status: 400, data: zGenerateRuleCodeError400 },
-    websocket_mismatch: { status: 400, data: zGenerateRuleCodeError400 },
-    not_init_validated: { status: 401, data: zGenerateRuleCodeError401 },
-    not_setup: { status: 401, data: zGenerateRuleCodeError401 },
-    unauthorized: { status: 401, data: zGenerateRuleCodeError401 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
   })
 
 export const ruleCodeGenerate = {

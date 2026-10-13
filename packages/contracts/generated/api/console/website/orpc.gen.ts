@@ -3,12 +3,10 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
-  zCrawlWebsiteError400,
-  zCrawlWebsiteError401,
-  zCrawlWebsiteError500,
-  zGetCrawlStatusError400,
-  zGetCrawlStatusError401,
-  zGetCrawlStatusError500,
+  zAccountNotInitializedError,
+  zCrawlFailedError,
+  zNotInitValidatedError,
+  zNotSetupError,
 } from './zod.gen.ts'
 import {
   zGetWebsiteCrawlStatusByJobIdPath,
@@ -38,21 +36,10 @@ export const get = oc
   )
   .output(zGetWebsiteCrawlStatusByJobIdResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zGetCrawlStatusError400 },
-    bad_host: { status: 400, data: zGetCrawlStatusError400 },
-    bad_request: { status: 400, data: zGetCrawlStatusError400 },
-    bad_request_key_error: { status: 400, data: zGetCrawlStatusError400 },
-    client_disconnected: { status: 400, data: zGetCrawlStatusError400 },
-    invalid_param: { status: 400, data: zGetCrawlStatusError400 },
-    security_error: { status: 400, data: zGetCrawlStatusError400 },
-    websocket_mismatch: { status: 400, data: zGetCrawlStatusError400 },
-    not_init_validated: { status: 401, data: zGetCrawlStatusError401 },
-    not_setup: { status: 401, data: zGetCrawlStatusError401 },
-    unauthorized: { status: 401, data: zGetCrawlStatusError401 },
-    active_workspace_required: { status: 500, data: zGetCrawlStatusError500 },
-    crawl_failed: { status: 500, data: zGetCrawlStatusError500 },
-    internal_server_error: { status: 500, data: zGetCrawlStatusError500 },
-    unknown: { status: 500, data: zGetCrawlStatusError500 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    crawl_failed: { status: 500, data: zCrawlFailedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const byJobId = {
@@ -78,21 +65,10 @@ export const post = oc
   .input(z.object({ body: zPostWebsiteCrawlBody }))
   .output(zPostWebsiteCrawlResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zCrawlWebsiteError400 },
-    bad_host: { status: 400, data: zCrawlWebsiteError400 },
-    bad_request: { status: 400, data: zCrawlWebsiteError400 },
-    bad_request_key_error: { status: 400, data: zCrawlWebsiteError400 },
-    client_disconnected: { status: 400, data: zCrawlWebsiteError400 },
-    invalid_param: { status: 400, data: zCrawlWebsiteError400 },
-    security_error: { status: 400, data: zCrawlWebsiteError400 },
-    websocket_mismatch: { status: 400, data: zCrawlWebsiteError400 },
-    not_init_validated: { status: 401, data: zCrawlWebsiteError401 },
-    not_setup: { status: 401, data: zCrawlWebsiteError401 },
-    unauthorized: { status: 401, data: zCrawlWebsiteError401 },
-    active_workspace_required: { status: 500, data: zCrawlWebsiteError500 },
-    crawl_failed: { status: 500, data: zCrawlWebsiteError500 },
-    internal_server_error: { status: 500, data: zCrawlWebsiteError500 },
-    unknown: { status: 500, data: zCrawlWebsiteError500 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    crawl_failed: { status: 500, data: zCrawlFailedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const crawl = {

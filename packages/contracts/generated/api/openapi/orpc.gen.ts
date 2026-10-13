@@ -2,12 +2,7 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-import {
-  zPostDeviceApproveApiError400,
-  zPostDeviceApproveApiError401,
-  zPostDeviceDenyApiError400,
-  zPostDeviceDenyApiError401,
-} from './zod.gen.ts'
+import { zAccountNotInitializedError, zNotInitValidatedError, zNotSetupError } from './zod.gen.ts'
 import {
   zDeleteAccountSessionsBySessionIdPath,
   zDeleteAccountSessionsBySessionIdResponse,
@@ -476,11 +471,9 @@ export const post8 = oc
   .input(z.object({ body: zPostOauthDeviceApproveBody }))
   .output(zPostOauthDeviceApproveResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zPostDeviceApproveApiError400 },
-    bad_request: { status: 400, data: zPostDeviceApproveApiError400 },
-    not_init_validated: { status: 401, data: zPostDeviceApproveApiError401 },
-    not_setup: { status: 401, data: zPostDeviceApproveApiError401 },
-    unauthorized: { status: 401, data: zPostDeviceApproveApiError401 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const approve = {
@@ -513,11 +506,9 @@ export const post10 = oc
   .input(z.object({ body: zPostOauthDeviceDenyBody }))
   .output(zPostOauthDeviceDenyResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zPostDeviceDenyApiError400 },
-    bad_request: { status: 400, data: zPostDeviceDenyApiError400 },
-    not_init_validated: { status: 401, data: zPostDeviceDenyApiError401 },
-    not_setup: { status: 401, data: zPostDeviceDenyApiError401 },
-    unauthorized: { status: 401, data: zPostDeviceDenyApiError401 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const deny = {

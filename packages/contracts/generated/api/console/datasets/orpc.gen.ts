@@ -3,237 +3,29 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
-  zCheckDatasetUseError400,
-  zCheckDatasetUseError401,
-  zCheckDatasetUseError409,
-  zCheckExternalApiUsageError400,
-  zCheckExternalApiUsageError401,
-  zCreateDatasetApiKeyError400,
-  zCreateDatasetApiKeyError401,
-  zCreateDatasetApiKeyError409,
-  zCreateDatasetError400,
-  zCreateDatasetError401,
-  zCreateDatasetError409,
-  zCreateExternalApiTemplateError400,
-  zCreateExternalApiTemplateError401,
-  zCreateExternalApiTemplateError409,
-  zCreateExternalDatasetError400,
-  zCreateExternalDatasetError401,
-  zCreateExternalDatasetError409,
-  zDeleteChildChunkUpdateApiError400,
-  zDeleteChildChunkUpdateApiError401,
-  zDeleteChildChunkUpdateApiError500,
-  zDeleteDatasetApiError400,
-  zDeleteDatasetApiError401,
-  zDeleteDatasetApiError409,
-  zDeleteDatasetApiKeyA407Edb2Error400,
-  zDeleteDatasetApiKeyA407Edb2Error401,
-  zDeleteDatasetApiKeyA407Edb2Error409,
-  zDeleteDatasetApiKeyError400,
-  zDeleteDatasetApiKeyError401,
-  zDeleteDatasetApiKeyError409,
-  zDeleteDatasetDocumentListApiError400,
-  zDeleteDatasetDocumentListApiError401,
-  zDeleteDatasetDocumentListApiError403,
-  zDeleteDatasetDocumentSegmentListApiError400,
-  zDeleteDatasetDocumentSegmentListApiError401,
-  zDeleteDatasetDocumentSegmentListApiError500,
-  zDeleteDatasetDocumentSegmentUpdateApiError400,
-  zDeleteDatasetDocumentSegmentUpdateApiError401,
-  zDeleteDatasetDocumentSegmentUpdateApiError500,
-  zDeleteDatasetMetadataApiError400,
-  zDeleteDatasetMetadataApiError401,
-  zDeleteDocumentApiError400,
-  zDeleteDocumentApiError401,
-  zDeleteDocumentApiError403,
-  zDeleteExternalApiTemplateApiError400,
-  zDeleteExternalApiTemplateApiError401,
-  zDeleteExternalApiTemplateApiError409,
-  zDownloadDatasetDocumentsAsZipError400,
-  zDownloadDatasetDocumentsAsZipError401,
-  zDownloadDatasetDocumentsAsZipError403,
-  zEstimateDatasetIndexingError400,
-  zEstimateDatasetIndexingError401,
-  zEstimateDatasetIndexingError403,
-  zEstimateDatasetIndexingError404,
-  zEstimateDatasetIndexingError500,
-  zEstimateDocumentIndexingError400,
-  zEstimateDocumentIndexingError401,
-  zEstimateDocumentIndexingError403,
-  zEstimateDocumentIndexingError404,
-  zEstimateDocumentIndexingError500,
-  zGenerateSummaryForDocumentsError400,
-  zGenerateSummaryForDocumentsError401,
-  zGenerateSummaryForDocumentsError403,
-  zGetChildChunkAddApiError400,
-  zGetChildChunkAddApiError401,
-  zGetChildChunkAddApiError500,
-  zGetDataSourceNotionDatasetSyncApiError400,
-  zGetDataSourceNotionDatasetSyncApiError401,
-  zGetDataSourceNotionDatasetSyncApiError403,
-  zGetDataSourceNotionDatasetSyncApiError404,
-  zGetDataSourceNotionDocumentSyncApiError400,
-  zGetDataSourceNotionDocumentSyncApiError401,
-  zGetDataSourceNotionDocumentSyncApiError403,
-  zGetDataSourceNotionDocumentSyncApiError404,
-  zGetDatasetApiBaseInfoError400,
-  zGetDatasetApiBaseInfoError401,
-  zGetDatasetApiKeys4114B8EbError400,
-  zGetDatasetApiKeys4114B8EbError401,
-  zGetDatasetApiKeys4114B8EbError409,
-  zGetDatasetApiKeysError400,
-  zGetDatasetApiKeysError401,
-  zGetDatasetApiKeysError409,
-  zGetDatasetAutoDisableLogsError400,
-  zGetDatasetAutoDisableLogsError401,
-  zGetDatasetAutoDisableLogsError409,
-  zGetDatasetDocumentDownloadUrlError400,
-  zGetDatasetDocumentDownloadUrlError401,
-  zGetDatasetDocumentDownloadUrlError403,
-  zGetDatasetDocumentSegmentBatchImportStatusApiError400,
-  zGetDatasetDocumentSegmentBatchImportStatusApiError401,
-  zGetDatasetDocumentSegmentListApiError400,
-  zGetDatasetDocumentSegmentListApiError401,
-  zGetDatasetDocumentSegmentListApiError500,
-  zGetDatasetDocumentsError400,
-  zGetDatasetDocumentsError401,
-  zGetDatasetDocumentsError403,
-  zGetDatasetError400,
-  zGetDatasetError401,
-  zGetDatasetError409,
-  zGetDatasetErrorDocsError400,
-  zGetDatasetErrorDocsError401,
-  zGetDatasetErrorDocsError409,
-  zGetDatasetIndexingStatusError400,
-  zGetDatasetIndexingStatusError401,
-  zGetDatasetIndexingStatusError409,
-  zGetDatasetMetadataBuiltInFieldApiError400,
-  zGetDatasetMetadataBuiltInFieldApiError401,
-  zGetDatasetMetadataCreateApiError400,
-  zGetDatasetMetadataCreateApiError401,
-  zGetDatasetPermissionUsersError400,
-  zGetDatasetPermissionUsersError401,
-  zGetDatasetPermissionUsersError409,
-  zGetDatasetQueriesError400,
-  zGetDatasetQueriesError401,
-  zGetDatasetQueriesError409,
-  zGetDatasetRelatedAppsError400,
-  zGetDatasetRelatedAppsError401,
-  zGetDatasetRelatedAppsError409,
-  zGetDatasetRetrievalSettingError400,
-  zGetDatasetRetrievalSettingError401,
-  zGetDatasetRetrievalSettingMockError400,
-  zGetDatasetRetrievalSettingMockError401,
-  zGetDatasetsError400,
-  zGetDatasetsError401,
-  zGetDocumentBatchIndexingEstimateApiError400,
-  zGetDocumentBatchIndexingEstimateApiError401,
-  zGetDocumentBatchIndexingEstimateApiError403,
-  zGetDocumentBatchIndexingEstimateApiError404,
-  zGetDocumentBatchIndexingEstimateApiError500,
-  zGetDocumentBatchIndexingStatusApiError400,
-  zGetDocumentBatchIndexingStatusApiError401,
-  zGetDocumentBatchIndexingStatusApiError403,
-  zGetDocumentError400,
-  zGetDocumentError401,
-  zGetDocumentError403,
-  zGetDocumentIndexingStatusError400,
-  zGetDocumentIndexingStatusError401,
-  zGetDocumentIndexingStatusError403,
-  zGetDocumentPipelineExecutionLogApiError400,
-  zGetDocumentPipelineExecutionLogApiError401,
-  zGetDocumentPipelineExecutionLogApiError403,
-  zGetDocumentSummaryStatusError400,
-  zGetDocumentSummaryStatusError401,
-  zGetDocumentSummaryStatusError403,
-  zGetExternalApiTemplateError400,
-  zGetExternalApiTemplateError401,
-  zGetExternalApiTemplateError409,
-  zGetExternalApiTemplatesError400,
-  zGetExternalApiTemplatesError401,
-  zGetProcessRuleError400,
-  zGetProcessRuleError401,
-  zGetProcessRuleError403,
-  zGetWebsiteDocumentSyncApiError400,
-  zGetWebsiteDocumentSyncApiError401,
-  zGetWebsiteDocumentSyncApiError403,
-  zInitDatasetError400,
-  zInitDatasetError401,
-  zInitDatasetError403,
-  zPatchChildChunkAddApiError400,
-  zPatchChildChunkAddApiError401,
-  zPatchChildChunkAddApiError500,
-  zPatchChildChunkUpdateApiError400,
-  zPatchChildChunkUpdateApiError401,
-  zPatchChildChunkUpdateApiError500,
-  zPatchDatasetDocumentSegmentApiError400,
-  zPatchDatasetDocumentSegmentApiError401,
-  zPatchDatasetDocumentSegmentApiError500,
-  zPatchDatasetDocumentSegmentUpdateApiError400,
-  zPatchDatasetDocumentSegmentUpdateApiError401,
-  zPatchDatasetDocumentSegmentUpdateApiError500,
-  zPatchDatasetMetadataApiError400,
-  zPatchDatasetMetadataApiError401,
-  zPatchDocumentPauseApiError400,
-  zPatchDocumentPauseApiError401,
-  zPatchDocumentPauseApiError403,
-  zPatchDocumentRecoverApiError400,
-  zPatchDocumentRecoverApiError401,
-  zPatchDocumentRecoverApiError403,
-  zPatchDocumentStatusApiError400,
-  zPatchDocumentStatusApiError401,
-  zPatchDocumentStatusApiError403,
-  zPostChildChunkAddApiError400,
-  zPostChildChunkAddApiError401,
-  zPostChildChunkAddApiError500,
-  zPostDataSourceNotionIndexingEstimateApiError400,
-  zPostDataSourceNotionIndexingEstimateApiError401,
-  zPostDataSourceNotionIndexingEstimateApiError404,
-  zPostDataSourceNotionIndexingEstimateApiError500,
-  zPostDatasetApiKeyApiError400,
-  zPostDatasetApiKeyApiError401,
-  zPostDatasetApiKeyApiError409,
-  zPostDatasetDocumentListApiError400,
-  zPostDatasetDocumentListApiError401,
-  zPostDatasetDocumentListApiError403,
-  zPostDatasetDocumentSegmentAddApiError400,
-  zPostDatasetDocumentSegmentAddApiError401,
-  zPostDatasetDocumentSegmentAddApiError500,
-  zPostDatasetDocumentSegmentBatchImportApiError400,
-  zPostDatasetDocumentSegmentBatchImportApiError401,
-  zPostDatasetDocumentSegmentBatchImportApiError500,
-  zPostDatasetEnableApiApiError400,
-  zPostDatasetEnableApiApiError401,
-  zPostDatasetEnableApiApiError409,
-  zPostDatasetMetadataBuiltInFieldActionApiError400,
-  zPostDatasetMetadataBuiltInFieldActionApiError401,
-  zPostDatasetMetadataCreateApiError400,
-  zPostDatasetMetadataCreateApiError401,
-  zPostDocumentMetadataEditApiError400,
-  zPostDocumentMetadataEditApiError401,
-  zPostDocumentRenameApiError400,
-  zPostDocumentRenameApiError401,
-  zPostDocumentRenameApiError403,
-  zPostDocumentRetryApiError400,
-  zPostDocumentRetryApiError401,
-  zPostDocumentRetryApiError403,
-  zTestDatasetRetrievalError400,
-  zTestDatasetRetrievalError401,
-  zTestExternalKnowledgeRetrievalError400,
-  zTestExternalKnowledgeRetrievalError401,
-  zTestExternalKnowledgeRetrievalError409,
-  zUpdateDatasetError400,
-  zUpdateDatasetError401,
-  zUpdateDatasetError409,
-  zUpdateDocumentMetadataError400,
-  zUpdateDocumentMetadataError401,
-  zUpdateDocumentMetadataError403,
-  zUpdateDocumentProcessingError400,
-  zUpdateDocumentProcessingError401,
-  zUpdateDocumentProcessingError403,
-  zUpdateExternalApiTemplateError400,
-  zUpdateExternalApiTemplateError401,
-  zUpdateExternalApiTemplateError409,
+  zAccountNotInitializedError,
+  zAgentNotPublishedError,
+  zArchivedDocumentImmutableError,
+  zChildChunkDeleteIndexError,
+  zChildChunkIndexingError,
+  zCompletionRequestError,
+  zDatasetAccessDeniedError,
+  zDatasetInUseError,
+  zDatasetNameDuplicateError,
+  zDocumentAlreadyFinishedError,
+  zDocumentIndexingError,
+  zIndexingEstimateError,
+  zInvalidActionError,
+  zInvalidMetadataError,
+  zInvalidParamError,
+  zMaxKeysExceededError,
+  zModelCurrentlyNotSupportError,
+  zNotFoundError,
+  zNotInitValidatedError,
+  zNotSetupError,
+  zProviderNotInitializeError,
+  zProviderQuotaExceededError,
+  zUnauthorizedAndForceLogoutError,
 } from './zod.gen.ts'
 import {
   zDeleteDatasetsApiKeysByApiKeyIdPath,
@@ -431,17 +223,9 @@ export const get = oc
   })
   .output(zGetDatasetsApiBaseInfoResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zGetDatasetApiBaseInfoError400 },
-    bad_host: { status: 400, data: zGetDatasetApiBaseInfoError400 },
-    bad_request: { status: 400, data: zGetDatasetApiBaseInfoError400 },
-    bad_request_key_error: { status: 400, data: zGetDatasetApiBaseInfoError400 },
-    client_disconnected: { status: 400, data: zGetDatasetApiBaseInfoError400 },
-    invalid_param: { status: 400, data: zGetDatasetApiBaseInfoError400 },
-    security_error: { status: 400, data: zGetDatasetApiBaseInfoError400 },
-    websocket_mismatch: { status: 400, data: zGetDatasetApiBaseInfoError400 },
-    not_init_validated: { status: 401, data: zGetDatasetApiBaseInfoError401 },
-    not_setup: { status: 401, data: zGetDatasetApiBaseInfoError401 },
-    unauthorized: { status: 401, data: zGetDatasetApiBaseInfoError401 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const apiBaseInfo = {
@@ -464,20 +248,11 @@ export const delete_ = oc
   .input(z.object({ params: zDeleteDatasetsApiKeysByApiKeyIdPath }))
   .output(zDeleteDatasetsApiKeysByApiKeyIdResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zDeleteDatasetApiKeyError400 },
-    bad_host: { status: 400, data: zDeleteDatasetApiKeyError400 },
-    bad_request: { status: 400, data: zDeleteDatasetApiKeyError400 },
-    bad_request_key_error: { status: 400, data: zDeleteDatasetApiKeyError400 },
-    client_disconnected: { status: 400, data: zDeleteDatasetApiKeyError400 },
-    invalid_param: { status: 400, data: zDeleteDatasetApiKeyError400 },
-    max_keys_exceeded: { status: 400, data: zDeleteDatasetApiKeyError400 },
-    security_error: { status: 400, data: zDeleteDatasetApiKeyError400 },
-    websocket_mismatch: { status: 400, data: zDeleteDatasetApiKeyError400 },
-    not_init_validated: { status: 401, data: zDeleteDatasetApiKeyError401 },
-    not_setup: { status: 401, data: zDeleteDatasetApiKeyError401 },
-    unauthorized: { status: 401, data: zDeleteDatasetApiKeyError401 },
-    agent_not_published: { status: 409, data: zDeleteDatasetApiKeyError409 },
-    conflict: { status: 409, data: zDeleteDatasetApiKeyError409 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    agent_not_published: { status: 409, data: zAgentNotPublishedError },
+    max_keys_exceeded: { status: 400, data: zMaxKeysExceededError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const byApiKeyId = {
@@ -498,20 +273,11 @@ export const get2 = oc
   })
   .output(zGetDatasetsApiKeysResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zGetDatasetApiKeysError400 },
-    bad_host: { status: 400, data: zGetDatasetApiKeysError400 },
-    bad_request: { status: 400, data: zGetDatasetApiKeysError400 },
-    bad_request_key_error: { status: 400, data: zGetDatasetApiKeysError400 },
-    client_disconnected: { status: 400, data: zGetDatasetApiKeysError400 },
-    invalid_param: { status: 400, data: zGetDatasetApiKeysError400 },
-    max_keys_exceeded: { status: 400, data: zGetDatasetApiKeysError400 },
-    security_error: { status: 400, data: zGetDatasetApiKeysError400 },
-    websocket_mismatch: { status: 400, data: zGetDatasetApiKeysError400 },
-    not_init_validated: { status: 401, data: zGetDatasetApiKeysError401 },
-    not_setup: { status: 401, data: zGetDatasetApiKeysError401 },
-    unauthorized: { status: 401, data: zGetDatasetApiKeysError401 },
-    agent_not_published: { status: 409, data: zGetDatasetApiKeysError409 },
-    conflict: { status: 409, data: zGetDatasetApiKeysError409 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    agent_not_published: { status: 409, data: zAgentNotPublishedError },
+    max_keys_exceeded: { status: 400, data: zMaxKeysExceededError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const post = oc
@@ -525,20 +291,11 @@ export const post = oc
   .input(z.object({ body: zPostDatasetsApiKeysBody }))
   .output(zPostDatasetsApiKeysResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zPostDatasetApiKeyApiError400 },
-    bad_host: { status: 400, data: zPostDatasetApiKeyApiError400 },
-    bad_request: { status: 400, data: zPostDatasetApiKeyApiError400 },
-    bad_request_key_error: { status: 400, data: zPostDatasetApiKeyApiError400 },
-    client_disconnected: { status: 400, data: zPostDatasetApiKeyApiError400 },
-    invalid_param: { status: 400, data: zPostDatasetApiKeyApiError400 },
-    max_keys_exceeded: { status: 400, data: zPostDatasetApiKeyApiError400 },
-    security_error: { status: 400, data: zPostDatasetApiKeyApiError400 },
-    websocket_mismatch: { status: 400, data: zPostDatasetApiKeyApiError400 },
-    not_init_validated: { status: 401, data: zPostDatasetApiKeyApiError401 },
-    not_setup: { status: 401, data: zPostDatasetApiKeyApiError401 },
-    unauthorized: { status: 401, data: zPostDatasetApiKeyApiError401 },
-    agent_not_published: { status: 409, data: zPostDatasetApiKeyApiError409 },
-    conflict: { status: 409, data: zPostDatasetApiKeyApiError409 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    agent_not_published: { status: 409, data: zAgentNotPublishedError },
+    max_keys_exceeded: { status: 400, data: zMaxKeysExceededError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const apiKeys = {
@@ -558,32 +315,9 @@ export const get3 = oc
   .input(z.object({ params: zGetDatasetsBatchImportStatusByJobIdPath }))
   .output(zGetDatasetsBatchImportStatusByJobIdResponse)
   .errors({
-    account_not_initialized: {
-      status: 400,
-      data: zGetDatasetDocumentSegmentBatchImportStatusApiError400,
-    },
-    bad_host: { status: 400, data: zGetDatasetDocumentSegmentBatchImportStatusApiError400 },
-    bad_request: { status: 400, data: zGetDatasetDocumentSegmentBatchImportStatusApiError400 },
-    bad_request_key_error: {
-      status: 400,
-      data: zGetDatasetDocumentSegmentBatchImportStatusApiError400,
-    },
-    client_disconnected: {
-      status: 400,
-      data: zGetDatasetDocumentSegmentBatchImportStatusApiError400,
-    },
-    invalid_param: { status: 400, data: zGetDatasetDocumentSegmentBatchImportStatusApiError400 },
-    security_error: { status: 400, data: zGetDatasetDocumentSegmentBatchImportStatusApiError400 },
-    websocket_mismatch: {
-      status: 400,
-      data: zGetDatasetDocumentSegmentBatchImportStatusApiError400,
-    },
-    not_init_validated: {
-      status: 401,
-      data: zGetDatasetDocumentSegmentBatchImportStatusApiError401,
-    },
-    not_setup: { status: 401, data: zGetDatasetDocumentSegmentBatchImportStatusApiError401 },
-    unauthorized: { status: 401, data: zGetDatasetDocumentSegmentBatchImportStatusApiError401 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const byJobId = {
@@ -610,19 +344,10 @@ export const post2 = oc
   .input(z.object({ body: zPostDatasetsExternalBody }))
   .output(zPostDatasetsExternalResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zCreateExternalDatasetError400 },
-    bad_host: { status: 400, data: zCreateExternalDatasetError400 },
-    bad_request: { status: 400, data: zCreateExternalDatasetError400 },
-    bad_request_key_error: { status: 400, data: zCreateExternalDatasetError400 },
-    client_disconnected: { status: 400, data: zCreateExternalDatasetError400 },
-    invalid_param: { status: 400, data: zCreateExternalDatasetError400 },
-    security_error: { status: 400, data: zCreateExternalDatasetError400 },
-    websocket_mismatch: { status: 400, data: zCreateExternalDatasetError400 },
-    not_init_validated: { status: 401, data: zCreateExternalDatasetError401 },
-    not_setup: { status: 401, data: zCreateExternalDatasetError401 },
-    unauthorized: { status: 401, data: zCreateExternalDatasetError401 },
-    conflict: { status: 409, data: zCreateExternalDatasetError409 },
-    dataset_name_duplicate: { status: 409, data: zCreateExternalDatasetError409 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    dataset_name_duplicate: { status: 409, data: zDatasetNameDuplicateError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const external = {
@@ -644,17 +369,9 @@ export const get4 = oc
   .input(z.object({ params: zGetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdUseCheckPath }))
   .output(zGetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdUseCheckResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zCheckExternalApiUsageError400 },
-    bad_host: { status: 400, data: zCheckExternalApiUsageError400 },
-    bad_request: { status: 400, data: zCheckExternalApiUsageError400 },
-    bad_request_key_error: { status: 400, data: zCheckExternalApiUsageError400 },
-    client_disconnected: { status: 400, data: zCheckExternalApiUsageError400 },
-    invalid_param: { status: 400, data: zCheckExternalApiUsageError400 },
-    security_error: { status: 400, data: zCheckExternalApiUsageError400 },
-    websocket_mismatch: { status: 400, data: zCheckExternalApiUsageError400 },
-    not_init_validated: { status: 401, data: zCheckExternalApiUsageError401 },
-    not_setup: { status: 401, data: zCheckExternalApiUsageError401 },
-    unauthorized: { status: 401, data: zCheckExternalApiUsageError401 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const useCheck = {
@@ -673,19 +390,10 @@ export const delete2 = oc
   .input(z.object({ params: zDeleteDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdPath }))
   .output(zDeleteDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zDeleteExternalApiTemplateApiError400 },
-    bad_host: { status: 400, data: zDeleteExternalApiTemplateApiError400 },
-    bad_request: { status: 400, data: zDeleteExternalApiTemplateApiError400 },
-    bad_request_key_error: { status: 400, data: zDeleteExternalApiTemplateApiError400 },
-    client_disconnected: { status: 400, data: zDeleteExternalApiTemplateApiError400 },
-    invalid_param: { status: 400, data: zDeleteExternalApiTemplateApiError400 },
-    security_error: { status: 400, data: zDeleteExternalApiTemplateApiError400 },
-    websocket_mismatch: { status: 400, data: zDeleteExternalApiTemplateApiError400 },
-    not_init_validated: { status: 401, data: zDeleteExternalApiTemplateApiError401 },
-    not_setup: { status: 401, data: zDeleteExternalApiTemplateApiError401 },
-    unauthorized: { status: 401, data: zDeleteExternalApiTemplateApiError401 },
-    conflict: { status: 409, data: zDeleteExternalApiTemplateApiError409 },
-    dataset_name_duplicate: { status: 409, data: zDeleteExternalApiTemplateApiError409 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    dataset_name_duplicate: { status: 409, data: zDatasetNameDuplicateError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 /**
@@ -703,19 +411,10 @@ export const get5 = oc
   .input(z.object({ params: zGetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdPath }))
   .output(zGetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zGetExternalApiTemplateError400 },
-    bad_host: { status: 400, data: zGetExternalApiTemplateError400 },
-    bad_request: { status: 400, data: zGetExternalApiTemplateError400 },
-    bad_request_key_error: { status: 400, data: zGetExternalApiTemplateError400 },
-    client_disconnected: { status: 400, data: zGetExternalApiTemplateError400 },
-    invalid_param: { status: 400, data: zGetExternalApiTemplateError400 },
-    security_error: { status: 400, data: zGetExternalApiTemplateError400 },
-    websocket_mismatch: { status: 400, data: zGetExternalApiTemplateError400 },
-    not_init_validated: { status: 401, data: zGetExternalApiTemplateError401 },
-    not_setup: { status: 401, data: zGetExternalApiTemplateError401 },
-    unauthorized: { status: 401, data: zGetExternalApiTemplateError401 },
-    conflict: { status: 409, data: zGetExternalApiTemplateError409 },
-    dataset_name_duplicate: { status: 409, data: zGetExternalApiTemplateError409 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    dataset_name_duplicate: { status: 409, data: zDatasetNameDuplicateError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 /**
@@ -738,19 +437,10 @@ export const patch = oc
   )
   .output(zPatchDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zUpdateExternalApiTemplateError400 },
-    bad_host: { status: 400, data: zUpdateExternalApiTemplateError400 },
-    bad_request: { status: 400, data: zUpdateExternalApiTemplateError400 },
-    bad_request_key_error: { status: 400, data: zUpdateExternalApiTemplateError400 },
-    client_disconnected: { status: 400, data: zUpdateExternalApiTemplateError400 },
-    invalid_param: { status: 400, data: zUpdateExternalApiTemplateError400 },
-    security_error: { status: 400, data: zUpdateExternalApiTemplateError400 },
-    websocket_mismatch: { status: 400, data: zUpdateExternalApiTemplateError400 },
-    not_init_validated: { status: 401, data: zUpdateExternalApiTemplateError401 },
-    not_setup: { status: 401, data: zUpdateExternalApiTemplateError401 },
-    unauthorized: { status: 401, data: zUpdateExternalApiTemplateError401 },
-    conflict: { status: 409, data: zUpdateExternalApiTemplateError409 },
-    dataset_name_duplicate: { status: 409, data: zUpdateExternalApiTemplateError409 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    dataset_name_duplicate: { status: 409, data: zDatasetNameDuplicateError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const byExternalKnowledgeApiId = {
@@ -775,17 +465,9 @@ export const get6 = oc
   .input(z.object({ query: zGetDatasetsExternalKnowledgeApiQuery.optional() }))
   .output(zGetDatasetsExternalKnowledgeApiResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zGetExternalApiTemplatesError400 },
-    bad_host: { status: 400, data: zGetExternalApiTemplatesError400 },
-    bad_request: { status: 400, data: zGetExternalApiTemplatesError400 },
-    bad_request_key_error: { status: 400, data: zGetExternalApiTemplatesError400 },
-    client_disconnected: { status: 400, data: zGetExternalApiTemplatesError400 },
-    invalid_param: { status: 400, data: zGetExternalApiTemplatesError400 },
-    security_error: { status: 400, data: zGetExternalApiTemplatesError400 },
-    websocket_mismatch: { status: 400, data: zGetExternalApiTemplatesError400 },
-    not_init_validated: { status: 401, data: zGetExternalApiTemplatesError401 },
-    not_setup: { status: 401, data: zGetExternalApiTemplatesError401 },
-    unauthorized: { status: 401, data: zGetExternalApiTemplatesError401 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 /**
@@ -804,19 +486,10 @@ export const post3 = oc
   .input(z.object({ body: zPostDatasetsExternalKnowledgeApiBody }))
   .output(zPostDatasetsExternalKnowledgeApiResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zCreateExternalApiTemplateError400 },
-    bad_host: { status: 400, data: zCreateExternalApiTemplateError400 },
-    bad_request: { status: 400, data: zCreateExternalApiTemplateError400 },
-    bad_request_key_error: { status: 400, data: zCreateExternalApiTemplateError400 },
-    client_disconnected: { status: 400, data: zCreateExternalApiTemplateError400 },
-    invalid_param: { status: 400, data: zCreateExternalApiTemplateError400 },
-    security_error: { status: 400, data: zCreateExternalApiTemplateError400 },
-    websocket_mismatch: { status: 400, data: zCreateExternalApiTemplateError400 },
-    not_init_validated: { status: 401, data: zCreateExternalApiTemplateError401 },
-    not_setup: { status: 401, data: zCreateExternalApiTemplateError401 },
-    unauthorized: { status: 401, data: zCreateExternalApiTemplateError401 },
-    conflict: { status: 409, data: zCreateExternalApiTemplateError409 },
-    dataset_name_duplicate: { status: 409, data: zCreateExternalApiTemplateError409 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    dataset_name_duplicate: { status: 409, data: zDatasetNameDuplicateError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const externalKnowledgeApi = {
@@ -840,25 +513,14 @@ export const post4 = oc
   .input(z.object({ body: zPostDatasetsIndexingEstimateBody }))
   .output(zPostDatasetsIndexingEstimateResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zEstimateDatasetIndexingError400 },
-    bad_host: { status: 400, data: zEstimateDatasetIndexingError400 },
-    bad_request: { status: 400, data: zEstimateDatasetIndexingError400 },
-    bad_request_key_error: { status: 400, data: zEstimateDatasetIndexingError400 },
-    client_disconnected: { status: 400, data: zEstimateDatasetIndexingError400 },
-    invalid_param: { status: 400, data: zEstimateDatasetIndexingError400 },
-    provider_not_initialize: { status: 400, data: zEstimateDatasetIndexingError400 },
-    security_error: { status: 400, data: zEstimateDatasetIndexingError400 },
-    websocket_mismatch: { status: 400, data: zEstimateDatasetIndexingError400 },
-    not_init_validated: { status: 401, data: zEstimateDatasetIndexingError401 },
-    not_setup: { status: 401, data: zEstimateDatasetIndexingError401 },
-    unauthorized: { status: 401, data: zEstimateDatasetIndexingError401 },
-    dataset_access_denied: { status: 403, data: zEstimateDatasetIndexingError403 },
-    forbidden: { status: 403, data: zEstimateDatasetIndexingError403 },
-    not_found: { status: 404, data: zEstimateDatasetIndexingError404 },
-    active_workspace_required: { status: 500, data: zEstimateDatasetIndexingError500 },
-    indexing_estimate_error: { status: 500, data: zEstimateDatasetIndexingError500 },
-    internal_server_error: { status: 500, data: zEstimateDatasetIndexingError500 },
-    unknown: { status: 500, data: zEstimateDatasetIndexingError500 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    dataset_access_denied: { status: 403, data: zDatasetAccessDeniedError },
+    indexing_estimate_error: { status: 500, data: zIndexingEstimateError },
+    invalid_param: { status: 400, data: zInvalidParamError },
+    not_found: { status: 404, data: zNotFoundError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
   })
 
 export const indexingEstimate = {
@@ -880,24 +542,15 @@ export const post5 = oc
   .input(z.object({ body: zPostDatasetsInitBody }))
   .output(zPostDatasetsInitResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zInitDatasetError400 },
-    bad_host: { status: 400, data: zInitDatasetError400 },
-    bad_request: { status: 400, data: zInitDatasetError400 },
-    bad_request_key_error: { status: 400, data: zInitDatasetError400 },
-    client_disconnected: { status: 400, data: zInitDatasetError400 },
-    document_indexing: { status: 400, data: zInitDatasetError400 },
-    invalid_action: { status: 400, data: zInitDatasetError400 },
-    invalid_param: { status: 400, data: zInitDatasetError400 },
-    model_currently_not_support: { status: 400, data: zInitDatasetError400 },
-    provider_not_initialize: { status: 400, data: zInitDatasetError400 },
-    provider_quota_exceeded: { status: 400, data: zInitDatasetError400 },
-    security_error: { status: 400, data: zInitDatasetError400 },
-    websocket_mismatch: { status: 400, data: zInitDatasetError400 },
-    not_init_validated: { status: 401, data: zInitDatasetError401 },
-    not_setup: { status: 401, data: zInitDatasetError401 },
-    unauthorized: { status: 401, data: zInitDatasetError401 },
-    archived_document_immutable: { status: 403, data: zInitDatasetError403 },
-    forbidden: { status: 403, data: zInitDatasetError403 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    archived_document_immutable: { status: 403, data: zArchivedDocumentImmutableError },
+    document_indexing: { status: 400, data: zDocumentIndexingError },
+    invalid_action: { status: 400, data: zInvalidActionError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
   })
 
 export const init = {
@@ -914,17 +567,9 @@ export const get7 = oc
   })
   .output(zGetDatasetsMetadataBuiltInResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zGetDatasetMetadataBuiltInFieldApiError400 },
-    bad_host: { status: 400, data: zGetDatasetMetadataBuiltInFieldApiError400 },
-    bad_request: { status: 400, data: zGetDatasetMetadataBuiltInFieldApiError400 },
-    bad_request_key_error: { status: 400, data: zGetDatasetMetadataBuiltInFieldApiError400 },
-    client_disconnected: { status: 400, data: zGetDatasetMetadataBuiltInFieldApiError400 },
-    invalid_param: { status: 400, data: zGetDatasetMetadataBuiltInFieldApiError400 },
-    security_error: { status: 400, data: zGetDatasetMetadataBuiltInFieldApiError400 },
-    websocket_mismatch: { status: 400, data: zGetDatasetMetadataBuiltInFieldApiError400 },
-    not_init_validated: { status: 401, data: zGetDatasetMetadataBuiltInFieldApiError401 },
-    not_setup: { status: 401, data: zGetDatasetMetadataBuiltInFieldApiError401 },
-    unauthorized: { status: 401, data: zGetDatasetMetadataBuiltInFieldApiError401 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const builtIn = {
@@ -946,35 +591,12 @@ export const post6 = oc
   .input(z.object({ body: zPostDatasetsNotionIndexingEstimateBody }))
   .output(zPostDatasetsNotionIndexingEstimateResponse)
   .errors({
-    account_not_initialized: {
-      status: 400,
-      data: zPostDataSourceNotionIndexingEstimateApiError400,
-    },
-    bad_host: { status: 400, data: zPostDataSourceNotionIndexingEstimateApiError400 },
-    bad_request: { status: 400, data: zPostDataSourceNotionIndexingEstimateApiError400 },
-    bad_request_key_error: { status: 400, data: zPostDataSourceNotionIndexingEstimateApiError400 },
-    client_disconnected: { status: 400, data: zPostDataSourceNotionIndexingEstimateApiError400 },
-    invalid_param: { status: 400, data: zPostDataSourceNotionIndexingEstimateApiError400 },
-    provider_not_initialize: {
-      status: 400,
-      data: zPostDataSourceNotionIndexingEstimateApiError400,
-    },
-    security_error: { status: 400, data: zPostDataSourceNotionIndexingEstimateApiError400 },
-    websocket_mismatch: { status: 400, data: zPostDataSourceNotionIndexingEstimateApiError400 },
-    not_init_validated: { status: 401, data: zPostDataSourceNotionIndexingEstimateApiError401 },
-    not_setup: { status: 401, data: zPostDataSourceNotionIndexingEstimateApiError401 },
-    unauthorized: { status: 401, data: zPostDataSourceNotionIndexingEstimateApiError401 },
-    not_found: { status: 404, data: zPostDataSourceNotionIndexingEstimateApiError404 },
-    active_workspace_required: {
-      status: 500,
-      data: zPostDataSourceNotionIndexingEstimateApiError500,
-    },
-    indexing_estimate_error: {
-      status: 500,
-      data: zPostDataSourceNotionIndexingEstimateApiError500,
-    },
-    internal_server_error: { status: 500, data: zPostDataSourceNotionIndexingEstimateApiError500 },
-    unknown: { status: 500, data: zPostDataSourceNotionIndexingEstimateApiError500 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    indexing_estimate_error: { status: 500, data: zIndexingEstimateError },
+    not_found: { status: 404, data: zNotFoundError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
   })
 
 export const notionIndexingEstimate = {
@@ -996,24 +618,15 @@ export const get8 = oc
   .input(z.object({ query: zGetDatasetsProcessRuleQuery.optional() }))
   .output(zGetDatasetsProcessRuleResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zGetProcessRuleError400 },
-    bad_host: { status: 400, data: zGetProcessRuleError400 },
-    bad_request: { status: 400, data: zGetProcessRuleError400 },
-    bad_request_key_error: { status: 400, data: zGetProcessRuleError400 },
-    client_disconnected: { status: 400, data: zGetProcessRuleError400 },
-    document_indexing: { status: 400, data: zGetProcessRuleError400 },
-    invalid_action: { status: 400, data: zGetProcessRuleError400 },
-    invalid_param: { status: 400, data: zGetProcessRuleError400 },
-    model_currently_not_support: { status: 400, data: zGetProcessRuleError400 },
-    provider_not_initialize: { status: 400, data: zGetProcessRuleError400 },
-    provider_quota_exceeded: { status: 400, data: zGetProcessRuleError400 },
-    security_error: { status: 400, data: zGetProcessRuleError400 },
-    websocket_mismatch: { status: 400, data: zGetProcessRuleError400 },
-    not_init_validated: { status: 401, data: zGetProcessRuleError401 },
-    not_setup: { status: 401, data: zGetProcessRuleError401 },
-    unauthorized: { status: 401, data: zGetProcessRuleError401 },
-    archived_document_immutable: { status: 403, data: zGetProcessRuleError403 },
-    forbidden: { status: 403, data: zGetProcessRuleError403 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    archived_document_immutable: { status: 403, data: zArchivedDocumentImmutableError },
+    document_indexing: { status: 400, data: zDocumentIndexingError },
+    invalid_action: { status: 400, data: zInvalidActionError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
   })
 
 export const processRule = {
@@ -1035,17 +648,9 @@ export const get9 = oc
   .input(z.object({ params: zGetDatasetsRetrievalSettingByVectorTypePath }))
   .output(zGetDatasetsRetrievalSettingByVectorTypeResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zGetDatasetRetrievalSettingMockError400 },
-    bad_host: { status: 400, data: zGetDatasetRetrievalSettingMockError400 },
-    bad_request: { status: 400, data: zGetDatasetRetrievalSettingMockError400 },
-    bad_request_key_error: { status: 400, data: zGetDatasetRetrievalSettingMockError400 },
-    client_disconnected: { status: 400, data: zGetDatasetRetrievalSettingMockError400 },
-    invalid_param: { status: 400, data: zGetDatasetRetrievalSettingMockError400 },
-    security_error: { status: 400, data: zGetDatasetRetrievalSettingMockError400 },
-    websocket_mismatch: { status: 400, data: zGetDatasetRetrievalSettingMockError400 },
-    not_init_validated: { status: 401, data: zGetDatasetRetrievalSettingMockError401 },
-    not_setup: { status: 401, data: zGetDatasetRetrievalSettingMockError401 },
-    unauthorized: { status: 401, data: zGetDatasetRetrievalSettingMockError401 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const byVectorType = {
@@ -1066,17 +671,9 @@ export const get10 = oc
   })
   .output(zGetDatasetsRetrievalSettingResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zGetDatasetRetrievalSettingError400 },
-    bad_host: { status: 400, data: zGetDatasetRetrievalSettingError400 },
-    bad_request: { status: 400, data: zGetDatasetRetrievalSettingError400 },
-    bad_request_key_error: { status: 400, data: zGetDatasetRetrievalSettingError400 },
-    client_disconnected: { status: 400, data: zGetDatasetRetrievalSettingError400 },
-    invalid_param: { status: 400, data: zGetDatasetRetrievalSettingError400 },
-    security_error: { status: 400, data: zGetDatasetRetrievalSettingError400 },
-    websocket_mismatch: { status: 400, data: zGetDatasetRetrievalSettingError400 },
-    not_init_validated: { status: 401, data: zGetDatasetRetrievalSettingError401 },
-    not_setup: { status: 401, data: zGetDatasetRetrievalSettingError401 },
-    unauthorized: { status: 401, data: zGetDatasetRetrievalSettingError401 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const retrievalSetting = {
@@ -1095,20 +692,11 @@ export const post7 = oc
   .input(z.object({ params: zPostDatasetsByDatasetIdApiKeysByStatusPath }))
   .output(zPostDatasetsByDatasetIdApiKeysByStatusResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zPostDatasetEnableApiApiError400 },
-    bad_host: { status: 400, data: zPostDatasetEnableApiApiError400 },
-    bad_request: { status: 400, data: zPostDatasetEnableApiApiError400 },
-    bad_request_key_error: { status: 400, data: zPostDatasetEnableApiApiError400 },
-    client_disconnected: { status: 400, data: zPostDatasetEnableApiApiError400 },
-    invalid_param: { status: 400, data: zPostDatasetEnableApiApiError400 },
-    security_error: { status: 400, data: zPostDatasetEnableApiApiError400 },
-    websocket_mismatch: { status: 400, data: zPostDatasetEnableApiApiError400 },
-    not_init_validated: { status: 401, data: zPostDatasetEnableApiApiError401 },
-    not_setup: { status: 401, data: zPostDatasetEnableApiApiError401 },
-    unauthorized: { status: 401, data: zPostDatasetEnableApiApiError401 },
-    conflict: { status: 409, data: zPostDatasetEnableApiApiError409 },
-    dataset_in_use: { status: 409, data: zPostDatasetEnableApiApiError409 },
-    dataset_name_duplicate: { status: 409, data: zPostDatasetEnableApiApiError409 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    dataset_in_use: { status: 409, data: zDatasetInUseError },
+    dataset_name_duplicate: { status: 409, data: zDatasetNameDuplicateError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const byStatus = {
@@ -1134,20 +722,11 @@ export const get11 = oc
   .input(z.object({ params: zGetDatasetsByDatasetIdAutoDisableLogsPath }))
   .output(zGetDatasetsByDatasetIdAutoDisableLogsResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zGetDatasetAutoDisableLogsError400 },
-    bad_host: { status: 400, data: zGetDatasetAutoDisableLogsError400 },
-    bad_request: { status: 400, data: zGetDatasetAutoDisableLogsError400 },
-    bad_request_key_error: { status: 400, data: zGetDatasetAutoDisableLogsError400 },
-    client_disconnected: { status: 400, data: zGetDatasetAutoDisableLogsError400 },
-    invalid_param: { status: 400, data: zGetDatasetAutoDisableLogsError400 },
-    security_error: { status: 400, data: zGetDatasetAutoDisableLogsError400 },
-    websocket_mismatch: { status: 400, data: zGetDatasetAutoDisableLogsError400 },
-    not_init_validated: { status: 401, data: zGetDatasetAutoDisableLogsError401 },
-    not_setup: { status: 401, data: zGetDatasetAutoDisableLogsError401 },
-    unauthorized: { status: 401, data: zGetDatasetAutoDisableLogsError401 },
-    conflict: { status: 409, data: zGetDatasetAutoDisableLogsError409 },
-    dataset_in_use: { status: 409, data: zGetDatasetAutoDisableLogsError409 },
-    dataset_name_duplicate: { status: 409, data: zGetDatasetAutoDisableLogsError409 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    dataset_in_use: { status: 409, data: zDatasetInUseError },
+    dataset_name_duplicate: { status: 409, data: zDatasetNameDuplicateError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const autoDisableLogs = {
@@ -1165,26 +744,15 @@ export const get12 = oc
   .input(z.object({ params: zGetDatasetsByDatasetIdBatchByBatchIndexingEstimatePath }))
   .output(zGetDatasetsByDatasetIdBatchByBatchIndexingEstimateResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zGetDocumentBatchIndexingEstimateApiError400 },
-    bad_host: { status: 400, data: zGetDocumentBatchIndexingEstimateApiError400 },
-    bad_request: { status: 400, data: zGetDocumentBatchIndexingEstimateApiError400 },
-    bad_request_key_error: { status: 400, data: zGetDocumentBatchIndexingEstimateApiError400 },
-    client_disconnected: { status: 400, data: zGetDocumentBatchIndexingEstimateApiError400 },
-    document_already_finished: { status: 400, data: zGetDocumentBatchIndexingEstimateApiError400 },
-    invalid_param: { status: 400, data: zGetDocumentBatchIndexingEstimateApiError400 },
-    provider_not_initialize: { status: 400, data: zGetDocumentBatchIndexingEstimateApiError400 },
-    security_error: { status: 400, data: zGetDocumentBatchIndexingEstimateApiError400 },
-    websocket_mismatch: { status: 400, data: zGetDocumentBatchIndexingEstimateApiError400 },
-    not_init_validated: { status: 401, data: zGetDocumentBatchIndexingEstimateApiError401 },
-    not_setup: { status: 401, data: zGetDocumentBatchIndexingEstimateApiError401 },
-    unauthorized: { status: 401, data: zGetDocumentBatchIndexingEstimateApiError401 },
-    dataset_access_denied: { status: 403, data: zGetDocumentBatchIndexingEstimateApiError403 },
-    forbidden: { status: 403, data: zGetDocumentBatchIndexingEstimateApiError403 },
-    not_found: { status: 404, data: zGetDocumentBatchIndexingEstimateApiError404 },
-    active_workspace_required: { status: 500, data: zGetDocumentBatchIndexingEstimateApiError500 },
-    indexing_estimate_error: { status: 500, data: zGetDocumentBatchIndexingEstimateApiError500 },
-    internal_server_error: { status: 500, data: zGetDocumentBatchIndexingEstimateApiError500 },
-    unknown: { status: 500, data: zGetDocumentBatchIndexingEstimateApiError500 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    dataset_access_denied: { status: 403, data: zDatasetAccessDeniedError },
+    document_already_finished: { status: 400, data: zDocumentAlreadyFinishedError },
+    indexing_estimate_error: { status: 500, data: zIndexingEstimateError },
+    invalid_param: { status: 400, data: zInvalidParamError },
+    not_found: { status: 404, data: zNotFoundError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
   })
 
 export const indexingEstimate2 = {
@@ -1202,24 +770,15 @@ export const get13 = oc
   .input(z.object({ params: zGetDatasetsByDatasetIdBatchByBatchIndexingStatusPath }))
   .output(zGetDatasetsByDatasetIdBatchByBatchIndexingStatusResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zGetDocumentBatchIndexingStatusApiError400 },
-    bad_host: { status: 400, data: zGetDocumentBatchIndexingStatusApiError400 },
-    bad_request: { status: 400, data: zGetDocumentBatchIndexingStatusApiError400 },
-    bad_request_key_error: { status: 400, data: zGetDocumentBatchIndexingStatusApiError400 },
-    client_disconnected: { status: 400, data: zGetDocumentBatchIndexingStatusApiError400 },
-    document_indexing: { status: 400, data: zGetDocumentBatchIndexingStatusApiError400 },
-    invalid_action: { status: 400, data: zGetDocumentBatchIndexingStatusApiError400 },
-    invalid_param: { status: 400, data: zGetDocumentBatchIndexingStatusApiError400 },
-    model_currently_not_support: { status: 400, data: zGetDocumentBatchIndexingStatusApiError400 },
-    provider_not_initialize: { status: 400, data: zGetDocumentBatchIndexingStatusApiError400 },
-    provider_quota_exceeded: { status: 400, data: zGetDocumentBatchIndexingStatusApiError400 },
-    security_error: { status: 400, data: zGetDocumentBatchIndexingStatusApiError400 },
-    websocket_mismatch: { status: 400, data: zGetDocumentBatchIndexingStatusApiError400 },
-    not_init_validated: { status: 401, data: zGetDocumentBatchIndexingStatusApiError401 },
-    not_setup: { status: 401, data: zGetDocumentBatchIndexingStatusApiError401 },
-    unauthorized: { status: 401, data: zGetDocumentBatchIndexingStatusApiError401 },
-    archived_document_immutable: { status: 403, data: zGetDocumentBatchIndexingStatusApiError403 },
-    forbidden: { status: 403, data: zGetDocumentBatchIndexingStatusApiError403 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    archived_document_immutable: { status: 403, data: zArchivedDocumentImmutableError },
+    document_indexing: { status: 400, data: zDocumentIndexingError },
+    invalid_action: { status: 400, data: zInvalidActionError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
   })
 
 export const indexingStatus = {
@@ -1258,24 +817,15 @@ export const post8 = oc
   )
   .output(zPostDatasetsByDatasetIdDocumentsDownloadZipResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zDownloadDatasetDocumentsAsZipError400 },
-    bad_host: { status: 400, data: zDownloadDatasetDocumentsAsZipError400 },
-    bad_request: { status: 400, data: zDownloadDatasetDocumentsAsZipError400 },
-    bad_request_key_error: { status: 400, data: zDownloadDatasetDocumentsAsZipError400 },
-    client_disconnected: { status: 400, data: zDownloadDatasetDocumentsAsZipError400 },
-    document_indexing: { status: 400, data: zDownloadDatasetDocumentsAsZipError400 },
-    invalid_action: { status: 400, data: zDownloadDatasetDocumentsAsZipError400 },
-    invalid_param: { status: 400, data: zDownloadDatasetDocumentsAsZipError400 },
-    model_currently_not_support: { status: 400, data: zDownloadDatasetDocumentsAsZipError400 },
-    provider_not_initialize: { status: 400, data: zDownloadDatasetDocumentsAsZipError400 },
-    provider_quota_exceeded: { status: 400, data: zDownloadDatasetDocumentsAsZipError400 },
-    security_error: { status: 400, data: zDownloadDatasetDocumentsAsZipError400 },
-    websocket_mismatch: { status: 400, data: zDownloadDatasetDocumentsAsZipError400 },
-    not_init_validated: { status: 401, data: zDownloadDatasetDocumentsAsZipError401 },
-    not_setup: { status: 401, data: zDownloadDatasetDocumentsAsZipError401 },
-    unauthorized: { status: 401, data: zDownloadDatasetDocumentsAsZipError401 },
-    archived_document_immutable: { status: 403, data: zDownloadDatasetDocumentsAsZipError403 },
-    forbidden: { status: 403, data: zDownloadDatasetDocumentsAsZipError403 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    archived_document_immutable: { status: 403, data: zArchivedDocumentImmutableError },
+    document_indexing: { status: 400, data: zDocumentIndexingError },
+    invalid_action: { status: 400, data: zInvalidActionError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
   })
 
 export const downloadZip = {
@@ -1309,24 +859,15 @@ export const post9 = oc
   )
   .output(zPostDatasetsByDatasetIdDocumentsGenerateSummaryResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zGenerateSummaryForDocumentsError400 },
-    bad_host: { status: 400, data: zGenerateSummaryForDocumentsError400 },
-    bad_request: { status: 400, data: zGenerateSummaryForDocumentsError400 },
-    bad_request_key_error: { status: 400, data: zGenerateSummaryForDocumentsError400 },
-    client_disconnected: { status: 400, data: zGenerateSummaryForDocumentsError400 },
-    document_indexing: { status: 400, data: zGenerateSummaryForDocumentsError400 },
-    invalid_action: { status: 400, data: zGenerateSummaryForDocumentsError400 },
-    invalid_param: { status: 400, data: zGenerateSummaryForDocumentsError400 },
-    model_currently_not_support: { status: 400, data: zGenerateSummaryForDocumentsError400 },
-    provider_not_initialize: { status: 400, data: zGenerateSummaryForDocumentsError400 },
-    provider_quota_exceeded: { status: 400, data: zGenerateSummaryForDocumentsError400 },
-    security_error: { status: 400, data: zGenerateSummaryForDocumentsError400 },
-    websocket_mismatch: { status: 400, data: zGenerateSummaryForDocumentsError400 },
-    not_init_validated: { status: 401, data: zGenerateSummaryForDocumentsError401 },
-    not_setup: { status: 401, data: zGenerateSummaryForDocumentsError401 },
-    unauthorized: { status: 401, data: zGenerateSummaryForDocumentsError401 },
-    archived_document_immutable: { status: 403, data: zGenerateSummaryForDocumentsError403 },
-    forbidden: { status: 403, data: zGenerateSummaryForDocumentsError403 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    archived_document_immutable: { status: 403, data: zArchivedDocumentImmutableError },
+    document_indexing: { status: 400, data: zDocumentIndexingError },
+    invalid_action: { status: 400, data: zInvalidActionError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
   })
 
 export const generateSummary = {
@@ -1350,17 +891,9 @@ export const post10 = oc
   )
   .output(zPostDatasetsByDatasetIdDocumentsMetadataResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zPostDocumentMetadataEditApiError400 },
-    bad_host: { status: 400, data: zPostDocumentMetadataEditApiError400 },
-    bad_request: { status: 400, data: zPostDocumentMetadataEditApiError400 },
-    bad_request_key_error: { status: 400, data: zPostDocumentMetadataEditApiError400 },
-    client_disconnected: { status: 400, data: zPostDocumentMetadataEditApiError400 },
-    invalid_param: { status: 400, data: zPostDocumentMetadataEditApiError400 },
-    security_error: { status: 400, data: zPostDocumentMetadataEditApiError400 },
-    websocket_mismatch: { status: 400, data: zPostDocumentMetadataEditApiError400 },
-    not_init_validated: { status: 401, data: zPostDocumentMetadataEditApiError401 },
-    not_setup: { status: 401, data: zPostDocumentMetadataEditApiError401 },
-    unauthorized: { status: 401, data: zPostDocumentMetadataEditApiError401 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const metadata2 = {
@@ -1378,24 +911,15 @@ export const patch2 = oc
   .input(z.object({ params: zPatchDatasetsByDatasetIdDocumentsStatusByActionBatchPath }))
   .output(zPatchDatasetsByDatasetIdDocumentsStatusByActionBatchResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zPatchDocumentStatusApiError400 },
-    bad_host: { status: 400, data: zPatchDocumentStatusApiError400 },
-    bad_request: { status: 400, data: zPatchDocumentStatusApiError400 },
-    bad_request_key_error: { status: 400, data: zPatchDocumentStatusApiError400 },
-    client_disconnected: { status: 400, data: zPatchDocumentStatusApiError400 },
-    document_indexing: { status: 400, data: zPatchDocumentStatusApiError400 },
-    invalid_action: { status: 400, data: zPatchDocumentStatusApiError400 },
-    invalid_param: { status: 400, data: zPatchDocumentStatusApiError400 },
-    model_currently_not_support: { status: 400, data: zPatchDocumentStatusApiError400 },
-    provider_not_initialize: { status: 400, data: zPatchDocumentStatusApiError400 },
-    provider_quota_exceeded: { status: 400, data: zPatchDocumentStatusApiError400 },
-    security_error: { status: 400, data: zPatchDocumentStatusApiError400 },
-    websocket_mismatch: { status: 400, data: zPatchDocumentStatusApiError400 },
-    not_init_validated: { status: 401, data: zPatchDocumentStatusApiError401 },
-    not_setup: { status: 401, data: zPatchDocumentStatusApiError401 },
-    unauthorized: { status: 401, data: zPatchDocumentStatusApiError401 },
-    archived_document_immutable: { status: 403, data: zPatchDocumentStatusApiError403 },
-    forbidden: { status: 403, data: zPatchDocumentStatusApiError403 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    archived_document_immutable: { status: 403, data: zArchivedDocumentImmutableError },
+    document_indexing: { status: 400, data: zDocumentIndexingError },
+    invalid_action: { status: 400, data: zInvalidActionError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
   })
 
 export const batch2 = {
@@ -1425,24 +949,15 @@ export const get14 = oc
   .input(z.object({ params: zGetDatasetsByDatasetIdDocumentsByDocumentIdDownloadPath }))
   .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdDownloadResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zGetDatasetDocumentDownloadUrlError400 },
-    bad_host: { status: 400, data: zGetDatasetDocumentDownloadUrlError400 },
-    bad_request: { status: 400, data: zGetDatasetDocumentDownloadUrlError400 },
-    bad_request_key_error: { status: 400, data: zGetDatasetDocumentDownloadUrlError400 },
-    client_disconnected: { status: 400, data: zGetDatasetDocumentDownloadUrlError400 },
-    document_indexing: { status: 400, data: zGetDatasetDocumentDownloadUrlError400 },
-    invalid_action: { status: 400, data: zGetDatasetDocumentDownloadUrlError400 },
-    invalid_param: { status: 400, data: zGetDatasetDocumentDownloadUrlError400 },
-    model_currently_not_support: { status: 400, data: zGetDatasetDocumentDownloadUrlError400 },
-    provider_not_initialize: { status: 400, data: zGetDatasetDocumentDownloadUrlError400 },
-    provider_quota_exceeded: { status: 400, data: zGetDatasetDocumentDownloadUrlError400 },
-    security_error: { status: 400, data: zGetDatasetDocumentDownloadUrlError400 },
-    websocket_mismatch: { status: 400, data: zGetDatasetDocumentDownloadUrlError400 },
-    not_init_validated: { status: 401, data: zGetDatasetDocumentDownloadUrlError401 },
-    not_setup: { status: 401, data: zGetDatasetDocumentDownloadUrlError401 },
-    unauthorized: { status: 401, data: zGetDatasetDocumentDownloadUrlError401 },
-    archived_document_immutable: { status: 403, data: zGetDatasetDocumentDownloadUrlError403 },
-    forbidden: { status: 403, data: zGetDatasetDocumentDownloadUrlError403 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    archived_document_immutable: { status: 403, data: zArchivedDocumentImmutableError },
+    document_indexing: { status: 400, data: zDocumentIndexingError },
+    invalid_action: { status: 400, data: zInvalidActionError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
   })
 
 export const download = {
@@ -1464,26 +979,15 @@ export const get15 = oc
   .input(z.object({ params: zGetDatasetsByDatasetIdDocumentsByDocumentIdIndexingEstimatePath }))
   .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdIndexingEstimateResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zEstimateDocumentIndexingError400 },
-    bad_host: { status: 400, data: zEstimateDocumentIndexingError400 },
-    bad_request: { status: 400, data: zEstimateDocumentIndexingError400 },
-    bad_request_key_error: { status: 400, data: zEstimateDocumentIndexingError400 },
-    client_disconnected: { status: 400, data: zEstimateDocumentIndexingError400 },
-    document_already_finished: { status: 400, data: zEstimateDocumentIndexingError400 },
-    invalid_param: { status: 400, data: zEstimateDocumentIndexingError400 },
-    provider_not_initialize: { status: 400, data: zEstimateDocumentIndexingError400 },
-    security_error: { status: 400, data: zEstimateDocumentIndexingError400 },
-    websocket_mismatch: { status: 400, data: zEstimateDocumentIndexingError400 },
-    not_init_validated: { status: 401, data: zEstimateDocumentIndexingError401 },
-    not_setup: { status: 401, data: zEstimateDocumentIndexingError401 },
-    unauthorized: { status: 401, data: zEstimateDocumentIndexingError401 },
-    dataset_access_denied: { status: 403, data: zEstimateDocumentIndexingError403 },
-    forbidden: { status: 403, data: zEstimateDocumentIndexingError403 },
-    not_found: { status: 404, data: zEstimateDocumentIndexingError404 },
-    active_workspace_required: { status: 500, data: zEstimateDocumentIndexingError500 },
-    indexing_estimate_error: { status: 500, data: zEstimateDocumentIndexingError500 },
-    internal_server_error: { status: 500, data: zEstimateDocumentIndexingError500 },
-    unknown: { status: 500, data: zEstimateDocumentIndexingError500 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    dataset_access_denied: { status: 403, data: zDatasetAccessDeniedError },
+    document_already_finished: { status: 400, data: zDocumentAlreadyFinishedError },
+    indexing_estimate_error: { status: 500, data: zIndexingEstimateError },
+    invalid_param: { status: 400, data: zInvalidParamError },
+    not_found: { status: 404, data: zNotFoundError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
   })
 
 export const indexingEstimate3 = {
@@ -1505,24 +1009,15 @@ export const get16 = oc
   .input(z.object({ params: zGetDatasetsByDatasetIdDocumentsByDocumentIdIndexingStatusPath }))
   .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdIndexingStatusResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zGetDocumentIndexingStatusError400 },
-    bad_host: { status: 400, data: zGetDocumentIndexingStatusError400 },
-    bad_request: { status: 400, data: zGetDocumentIndexingStatusError400 },
-    bad_request_key_error: { status: 400, data: zGetDocumentIndexingStatusError400 },
-    client_disconnected: { status: 400, data: zGetDocumentIndexingStatusError400 },
-    document_indexing: { status: 400, data: zGetDocumentIndexingStatusError400 },
-    invalid_action: { status: 400, data: zGetDocumentIndexingStatusError400 },
-    invalid_param: { status: 400, data: zGetDocumentIndexingStatusError400 },
-    model_currently_not_support: { status: 400, data: zGetDocumentIndexingStatusError400 },
-    provider_not_initialize: { status: 400, data: zGetDocumentIndexingStatusError400 },
-    provider_quota_exceeded: { status: 400, data: zGetDocumentIndexingStatusError400 },
-    security_error: { status: 400, data: zGetDocumentIndexingStatusError400 },
-    websocket_mismatch: { status: 400, data: zGetDocumentIndexingStatusError400 },
-    not_init_validated: { status: 401, data: zGetDocumentIndexingStatusError401 },
-    not_setup: { status: 401, data: zGetDocumentIndexingStatusError401 },
-    unauthorized: { status: 401, data: zGetDocumentIndexingStatusError401 },
-    archived_document_immutable: { status: 403, data: zGetDocumentIndexingStatusError403 },
-    forbidden: { status: 403, data: zGetDocumentIndexingStatusError403 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    archived_document_immutable: { status: 403, data: zArchivedDocumentImmutableError },
+    document_indexing: { status: 400, data: zDocumentIndexingError },
+    invalid_action: { status: 400, data: zInvalidActionError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
   })
 
 export const indexingStatus2 = {
@@ -1549,24 +1044,15 @@ export const put = oc
   )
   .output(zPutDatasetsByDatasetIdDocumentsByDocumentIdMetadataResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zUpdateDocumentMetadataError400 },
-    bad_host: { status: 400, data: zUpdateDocumentMetadataError400 },
-    bad_request: { status: 400, data: zUpdateDocumentMetadataError400 },
-    bad_request_key_error: { status: 400, data: zUpdateDocumentMetadataError400 },
-    client_disconnected: { status: 400, data: zUpdateDocumentMetadataError400 },
-    document_indexing: { status: 400, data: zUpdateDocumentMetadataError400 },
-    invalid_action: { status: 400, data: zUpdateDocumentMetadataError400 },
-    invalid_param: { status: 400, data: zUpdateDocumentMetadataError400 },
-    model_currently_not_support: { status: 400, data: zUpdateDocumentMetadataError400 },
-    provider_not_initialize: { status: 400, data: zUpdateDocumentMetadataError400 },
-    provider_quota_exceeded: { status: 400, data: zUpdateDocumentMetadataError400 },
-    security_error: { status: 400, data: zUpdateDocumentMetadataError400 },
-    websocket_mismatch: { status: 400, data: zUpdateDocumentMetadataError400 },
-    not_init_validated: { status: 401, data: zUpdateDocumentMetadataError401 },
-    not_setup: { status: 401, data: zUpdateDocumentMetadataError401 },
-    unauthorized: { status: 401, data: zUpdateDocumentMetadataError401 },
-    archived_document_immutable: { status: 403, data: zUpdateDocumentMetadataError403 },
-    forbidden: { status: 403, data: zUpdateDocumentMetadataError403 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    archived_document_immutable: { status: 403, data: zArchivedDocumentImmutableError },
+    document_indexing: { status: 400, data: zDocumentIndexingError },
+    invalid_action: { status: 400, data: zInvalidActionError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
   })
 
 export const metadata3 = {
@@ -1584,20 +1070,12 @@ export const get17 = oc
   .input(z.object({ params: zGetDatasetsByDatasetIdDocumentsByDocumentIdNotionSyncPath }))
   .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdNotionSyncResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zGetDataSourceNotionDocumentSyncApiError400 },
-    bad_host: { status: 400, data: zGetDataSourceNotionDocumentSyncApiError400 },
-    bad_request: { status: 400, data: zGetDataSourceNotionDocumentSyncApiError400 },
-    bad_request_key_error: { status: 400, data: zGetDataSourceNotionDocumentSyncApiError400 },
-    client_disconnected: { status: 400, data: zGetDataSourceNotionDocumentSyncApiError400 },
-    invalid_param: { status: 400, data: zGetDataSourceNotionDocumentSyncApiError400 },
-    security_error: { status: 400, data: zGetDataSourceNotionDocumentSyncApiError400 },
-    websocket_mismatch: { status: 400, data: zGetDataSourceNotionDocumentSyncApiError400 },
-    not_init_validated: { status: 401, data: zGetDataSourceNotionDocumentSyncApiError401 },
-    not_setup: { status: 401, data: zGetDataSourceNotionDocumentSyncApiError401 },
-    unauthorized: { status: 401, data: zGetDataSourceNotionDocumentSyncApiError401 },
-    dataset_access_denied: { status: 403, data: zGetDataSourceNotionDocumentSyncApiError403 },
-    forbidden: { status: 403, data: zGetDataSourceNotionDocumentSyncApiError403 },
-    not_found: { status: 404, data: zGetDataSourceNotionDocumentSyncApiError404 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    dataset_access_denied: { status: 403, data: zDatasetAccessDeniedError },
+    invalid_param: { status: 400, data: zInvalidParamError },
+    not_found: { status: 404, data: zNotFoundError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const sync = {
@@ -1619,24 +1097,15 @@ export const get18 = oc
   .input(z.object({ params: zGetDatasetsByDatasetIdDocumentsByDocumentIdPipelineExecutionLogPath }))
   .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdPipelineExecutionLogResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zGetDocumentPipelineExecutionLogApiError400 },
-    bad_host: { status: 400, data: zGetDocumentPipelineExecutionLogApiError400 },
-    bad_request: { status: 400, data: zGetDocumentPipelineExecutionLogApiError400 },
-    bad_request_key_error: { status: 400, data: zGetDocumentPipelineExecutionLogApiError400 },
-    client_disconnected: { status: 400, data: zGetDocumentPipelineExecutionLogApiError400 },
-    document_indexing: { status: 400, data: zGetDocumentPipelineExecutionLogApiError400 },
-    invalid_action: { status: 400, data: zGetDocumentPipelineExecutionLogApiError400 },
-    invalid_param: { status: 400, data: zGetDocumentPipelineExecutionLogApiError400 },
-    model_currently_not_support: { status: 400, data: zGetDocumentPipelineExecutionLogApiError400 },
-    provider_not_initialize: { status: 400, data: zGetDocumentPipelineExecutionLogApiError400 },
-    provider_quota_exceeded: { status: 400, data: zGetDocumentPipelineExecutionLogApiError400 },
-    security_error: { status: 400, data: zGetDocumentPipelineExecutionLogApiError400 },
-    websocket_mismatch: { status: 400, data: zGetDocumentPipelineExecutionLogApiError400 },
-    not_init_validated: { status: 401, data: zGetDocumentPipelineExecutionLogApiError401 },
-    not_setup: { status: 401, data: zGetDocumentPipelineExecutionLogApiError401 },
-    unauthorized: { status: 401, data: zGetDocumentPipelineExecutionLogApiError401 },
-    archived_document_immutable: { status: 403, data: zGetDocumentPipelineExecutionLogApiError403 },
-    forbidden: { status: 403, data: zGetDocumentPipelineExecutionLogApiError403 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    archived_document_immutable: { status: 403, data: zArchivedDocumentImmutableError },
+    document_indexing: { status: 400, data: zDocumentIndexingError },
+    invalid_action: { status: 400, data: zInvalidActionError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
   })
 
 export const pipelineExecutionLog = {
@@ -1659,24 +1128,15 @@ export const patch3 = oc
   .input(z.object({ params: zPatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingPausePath }))
   .output(zPatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingPauseResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zPatchDocumentPauseApiError400 },
-    bad_host: { status: 400, data: zPatchDocumentPauseApiError400 },
-    bad_request: { status: 400, data: zPatchDocumentPauseApiError400 },
-    bad_request_key_error: { status: 400, data: zPatchDocumentPauseApiError400 },
-    client_disconnected: { status: 400, data: zPatchDocumentPauseApiError400 },
-    document_indexing: { status: 400, data: zPatchDocumentPauseApiError400 },
-    invalid_action: { status: 400, data: zPatchDocumentPauseApiError400 },
-    invalid_param: { status: 400, data: zPatchDocumentPauseApiError400 },
-    model_currently_not_support: { status: 400, data: zPatchDocumentPauseApiError400 },
-    provider_not_initialize: { status: 400, data: zPatchDocumentPauseApiError400 },
-    provider_quota_exceeded: { status: 400, data: zPatchDocumentPauseApiError400 },
-    security_error: { status: 400, data: zPatchDocumentPauseApiError400 },
-    websocket_mismatch: { status: 400, data: zPatchDocumentPauseApiError400 },
-    not_init_validated: { status: 401, data: zPatchDocumentPauseApiError401 },
-    not_setup: { status: 401, data: zPatchDocumentPauseApiError401 },
-    unauthorized: { status: 401, data: zPatchDocumentPauseApiError401 },
-    archived_document_immutable: { status: 403, data: zPatchDocumentPauseApiError403 },
-    forbidden: { status: 403, data: zPatchDocumentPauseApiError403 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    archived_document_immutable: { status: 403, data: zArchivedDocumentImmutableError },
+    document_indexing: { status: 400, data: zDocumentIndexingError },
+    invalid_action: { status: 400, data: zInvalidActionError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
   })
 
 export const pause = {
@@ -1699,24 +1159,15 @@ export const patch4 = oc
   .input(z.object({ params: zPatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingResumePath }))
   .output(zPatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingResumeResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zPatchDocumentRecoverApiError400 },
-    bad_host: { status: 400, data: zPatchDocumentRecoverApiError400 },
-    bad_request: { status: 400, data: zPatchDocumentRecoverApiError400 },
-    bad_request_key_error: { status: 400, data: zPatchDocumentRecoverApiError400 },
-    client_disconnected: { status: 400, data: zPatchDocumentRecoverApiError400 },
-    document_indexing: { status: 400, data: zPatchDocumentRecoverApiError400 },
-    invalid_action: { status: 400, data: zPatchDocumentRecoverApiError400 },
-    invalid_param: { status: 400, data: zPatchDocumentRecoverApiError400 },
-    model_currently_not_support: { status: 400, data: zPatchDocumentRecoverApiError400 },
-    provider_not_initialize: { status: 400, data: zPatchDocumentRecoverApiError400 },
-    provider_quota_exceeded: { status: 400, data: zPatchDocumentRecoverApiError400 },
-    security_error: { status: 400, data: zPatchDocumentRecoverApiError400 },
-    websocket_mismatch: { status: 400, data: zPatchDocumentRecoverApiError400 },
-    not_init_validated: { status: 401, data: zPatchDocumentRecoverApiError401 },
-    not_setup: { status: 401, data: zPatchDocumentRecoverApiError401 },
-    unauthorized: { status: 401, data: zPatchDocumentRecoverApiError401 },
-    archived_document_immutable: { status: 403, data: zPatchDocumentRecoverApiError403 },
-    forbidden: { status: 403, data: zPatchDocumentRecoverApiError403 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    archived_document_immutable: { status: 403, data: zArchivedDocumentImmutableError },
+    document_indexing: { status: 400, data: zDocumentIndexingError },
+    invalid_action: { status: 400, data: zInvalidActionError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
   })
 
 export const resume = {
@@ -1738,24 +1189,15 @@ export const patch5 = oc
   .input(z.object({ params: zPatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionPath }))
   .output(zPatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zUpdateDocumentProcessingError400 },
-    bad_host: { status: 400, data: zUpdateDocumentProcessingError400 },
-    bad_request: { status: 400, data: zUpdateDocumentProcessingError400 },
-    bad_request_key_error: { status: 400, data: zUpdateDocumentProcessingError400 },
-    client_disconnected: { status: 400, data: zUpdateDocumentProcessingError400 },
-    document_indexing: { status: 400, data: zUpdateDocumentProcessingError400 },
-    invalid_action: { status: 400, data: zUpdateDocumentProcessingError400 },
-    invalid_param: { status: 400, data: zUpdateDocumentProcessingError400 },
-    model_currently_not_support: { status: 400, data: zUpdateDocumentProcessingError400 },
-    provider_not_initialize: { status: 400, data: zUpdateDocumentProcessingError400 },
-    provider_quota_exceeded: { status: 400, data: zUpdateDocumentProcessingError400 },
-    security_error: { status: 400, data: zUpdateDocumentProcessingError400 },
-    websocket_mismatch: { status: 400, data: zUpdateDocumentProcessingError400 },
-    not_init_validated: { status: 401, data: zUpdateDocumentProcessingError401 },
-    not_setup: { status: 401, data: zUpdateDocumentProcessingError401 },
-    unauthorized: { status: 401, data: zUpdateDocumentProcessingError401 },
-    archived_document_immutable: { status: 403, data: zUpdateDocumentProcessingError403 },
-    forbidden: { status: 403, data: zUpdateDocumentProcessingError403 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    archived_document_immutable: { status: 403, data: zArchivedDocumentImmutableError },
+    document_indexing: { status: 400, data: zDocumentIndexingError },
+    invalid_action: { status: 400, data: zInvalidActionError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
   })
 
 export const byAction2 = {
@@ -1784,24 +1226,15 @@ export const post11 = oc
   )
   .output(zPostDatasetsByDatasetIdDocumentsByDocumentIdRenameResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zPostDocumentRenameApiError400 },
-    bad_host: { status: 400, data: zPostDocumentRenameApiError400 },
-    bad_request: { status: 400, data: zPostDocumentRenameApiError400 },
-    bad_request_key_error: { status: 400, data: zPostDocumentRenameApiError400 },
-    client_disconnected: { status: 400, data: zPostDocumentRenameApiError400 },
-    document_indexing: { status: 400, data: zPostDocumentRenameApiError400 },
-    invalid_action: { status: 400, data: zPostDocumentRenameApiError400 },
-    invalid_param: { status: 400, data: zPostDocumentRenameApiError400 },
-    model_currently_not_support: { status: 400, data: zPostDocumentRenameApiError400 },
-    provider_not_initialize: { status: 400, data: zPostDocumentRenameApiError400 },
-    provider_quota_exceeded: { status: 400, data: zPostDocumentRenameApiError400 },
-    security_error: { status: 400, data: zPostDocumentRenameApiError400 },
-    websocket_mismatch: { status: 400, data: zPostDocumentRenameApiError400 },
-    not_init_validated: { status: 401, data: zPostDocumentRenameApiError401 },
-    not_setup: { status: 401, data: zPostDocumentRenameApiError401 },
-    unauthorized: { status: 401, data: zPostDocumentRenameApiError401 },
-    archived_document_immutable: { status: 403, data: zPostDocumentRenameApiError403 },
-    forbidden: { status: 403, data: zPostDocumentRenameApiError403 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    archived_document_immutable: { status: 403, data: zArchivedDocumentImmutableError },
+    document_indexing: { status: 400, data: zDocumentIndexingError },
+    invalid_action: { status: 400, data: zInvalidActionError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
   })
 
 export const rename = {
@@ -1824,24 +1257,13 @@ export const patch6 = oc
   )
   .output(zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zPatchDatasetDocumentSegmentApiError400 },
-    bad_host: { status: 400, data: zPatchDatasetDocumentSegmentApiError400 },
-    bad_request: { status: 400, data: zPatchDatasetDocumentSegmentApiError400 },
-    bad_request_key_error: { status: 400, data: zPatchDatasetDocumentSegmentApiError400 },
-    client_disconnected: { status: 400, data: zPatchDatasetDocumentSegmentApiError400 },
-    invalid_action: { status: 400, data: zPatchDatasetDocumentSegmentApiError400 },
-    invalid_param: { status: 400, data: zPatchDatasetDocumentSegmentApiError400 },
-    provider_not_initialize: { status: 400, data: zPatchDatasetDocumentSegmentApiError400 },
-    security_error: { status: 400, data: zPatchDatasetDocumentSegmentApiError400 },
-    websocket_mismatch: { status: 400, data: zPatchDatasetDocumentSegmentApiError400 },
-    not_init_validated: { status: 401, data: zPatchDatasetDocumentSegmentApiError401 },
-    not_setup: { status: 401, data: zPatchDatasetDocumentSegmentApiError401 },
-    unauthorized: { status: 401, data: zPatchDatasetDocumentSegmentApiError401 },
-    active_workspace_required: { status: 500, data: zPatchDatasetDocumentSegmentApiError500 },
-    child_chunk_delete_index_error: { status: 500, data: zPatchDatasetDocumentSegmentApiError500 },
-    child_chunk_indexing_error: { status: 500, data: zPatchDatasetDocumentSegmentApiError500 },
-    internal_server_error: { status: 500, data: zPatchDatasetDocumentSegmentApiError500 },
-    unknown: { status: 500, data: zPatchDatasetDocumentSegmentApiError500 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    child_chunk_delete_index_error: { status: 500, data: zChildChunkDeleteIndexError },
+    child_chunk_indexing_error: { status: 500, data: zChildChunkIndexingError },
+    invalid_action: { status: 400, data: zInvalidActionError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
   })
 
 export const byAction3 = {
@@ -1864,27 +1286,13 @@ export const post12 = oc
   )
   .output(zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zPostDatasetDocumentSegmentAddApiError400 },
-    bad_host: { status: 400, data: zPostDatasetDocumentSegmentAddApiError400 },
-    bad_request: { status: 400, data: zPostDatasetDocumentSegmentAddApiError400 },
-    bad_request_key_error: { status: 400, data: zPostDatasetDocumentSegmentAddApiError400 },
-    client_disconnected: { status: 400, data: zPostDatasetDocumentSegmentAddApiError400 },
-    invalid_action: { status: 400, data: zPostDatasetDocumentSegmentAddApiError400 },
-    invalid_param: { status: 400, data: zPostDatasetDocumentSegmentAddApiError400 },
-    provider_not_initialize: { status: 400, data: zPostDatasetDocumentSegmentAddApiError400 },
-    security_error: { status: 400, data: zPostDatasetDocumentSegmentAddApiError400 },
-    websocket_mismatch: { status: 400, data: zPostDatasetDocumentSegmentAddApiError400 },
-    not_init_validated: { status: 401, data: zPostDatasetDocumentSegmentAddApiError401 },
-    not_setup: { status: 401, data: zPostDatasetDocumentSegmentAddApiError401 },
-    unauthorized: { status: 401, data: zPostDatasetDocumentSegmentAddApiError401 },
-    active_workspace_required: { status: 500, data: zPostDatasetDocumentSegmentAddApiError500 },
-    child_chunk_delete_index_error: {
-      status: 500,
-      data: zPostDatasetDocumentSegmentAddApiError500,
-    },
-    child_chunk_indexing_error: { status: 500, data: zPostDatasetDocumentSegmentAddApiError500 },
-    internal_server_error: { status: 500, data: zPostDatasetDocumentSegmentAddApiError500 },
-    unknown: { status: 500, data: zPostDatasetDocumentSegmentAddApiError500 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    child_chunk_delete_index_error: { status: 500, data: zChildChunkDeleteIndexError },
+    child_chunk_indexing_error: { status: 500, data: zChildChunkIndexingError },
+    invalid_action: { status: 400, data: zInvalidActionError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
   })
 
 export const segment = {
@@ -1908,39 +1316,13 @@ export const post13 = oc
   )
   .output(zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportResponse)
   .errors({
-    account_not_initialized: {
-      status: 400,
-      data: zPostDatasetDocumentSegmentBatchImportApiError400,
-    },
-    bad_host: { status: 400, data: zPostDatasetDocumentSegmentBatchImportApiError400 },
-    bad_request: { status: 400, data: zPostDatasetDocumentSegmentBatchImportApiError400 },
-    bad_request_key_error: { status: 400, data: zPostDatasetDocumentSegmentBatchImportApiError400 },
-    client_disconnected: { status: 400, data: zPostDatasetDocumentSegmentBatchImportApiError400 },
-    invalid_action: { status: 400, data: zPostDatasetDocumentSegmentBatchImportApiError400 },
-    invalid_param: { status: 400, data: zPostDatasetDocumentSegmentBatchImportApiError400 },
-    provider_not_initialize: {
-      status: 400,
-      data: zPostDatasetDocumentSegmentBatchImportApiError400,
-    },
-    security_error: { status: 400, data: zPostDatasetDocumentSegmentBatchImportApiError400 },
-    websocket_mismatch: { status: 400, data: zPostDatasetDocumentSegmentBatchImportApiError400 },
-    not_init_validated: { status: 401, data: zPostDatasetDocumentSegmentBatchImportApiError401 },
-    not_setup: { status: 401, data: zPostDatasetDocumentSegmentBatchImportApiError401 },
-    unauthorized: { status: 401, data: zPostDatasetDocumentSegmentBatchImportApiError401 },
-    active_workspace_required: {
-      status: 500,
-      data: zPostDatasetDocumentSegmentBatchImportApiError500,
-    },
-    child_chunk_delete_index_error: {
-      status: 500,
-      data: zPostDatasetDocumentSegmentBatchImportApiError500,
-    },
-    child_chunk_indexing_error: {
-      status: 500,
-      data: zPostDatasetDocumentSegmentBatchImportApiError500,
-    },
-    internal_server_error: { status: 500, data: zPostDatasetDocumentSegmentBatchImportApiError500 },
-    unknown: { status: 500, data: zPostDatasetDocumentSegmentBatchImportApiError500 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    child_chunk_delete_index_error: { status: 500, data: zChildChunkDeleteIndexError },
+    child_chunk_indexing_error: { status: 500, data: zChildChunkIndexingError },
+    invalid_action: { status: 400, data: zInvalidActionError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
   })
 
 export const batchImport = {
@@ -1967,24 +1349,13 @@ export const delete3 = oc
     zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponse,
   )
   .errors({
-    account_not_initialized: { status: 400, data: zDeleteChildChunkUpdateApiError400 },
-    bad_host: { status: 400, data: zDeleteChildChunkUpdateApiError400 },
-    bad_request: { status: 400, data: zDeleteChildChunkUpdateApiError400 },
-    bad_request_key_error: { status: 400, data: zDeleteChildChunkUpdateApiError400 },
-    client_disconnected: { status: 400, data: zDeleteChildChunkUpdateApiError400 },
-    invalid_action: { status: 400, data: zDeleteChildChunkUpdateApiError400 },
-    invalid_param: { status: 400, data: zDeleteChildChunkUpdateApiError400 },
-    provider_not_initialize: { status: 400, data: zDeleteChildChunkUpdateApiError400 },
-    security_error: { status: 400, data: zDeleteChildChunkUpdateApiError400 },
-    websocket_mismatch: { status: 400, data: zDeleteChildChunkUpdateApiError400 },
-    not_init_validated: { status: 401, data: zDeleteChildChunkUpdateApiError401 },
-    not_setup: { status: 401, data: zDeleteChildChunkUpdateApiError401 },
-    unauthorized: { status: 401, data: zDeleteChildChunkUpdateApiError401 },
-    active_workspace_required: { status: 500, data: zDeleteChildChunkUpdateApiError500 },
-    child_chunk_delete_index_error: { status: 500, data: zDeleteChildChunkUpdateApiError500 },
-    child_chunk_indexing_error: { status: 500, data: zDeleteChildChunkUpdateApiError500 },
-    internal_server_error: { status: 500, data: zDeleteChildChunkUpdateApiError500 },
-    unknown: { status: 500, data: zDeleteChildChunkUpdateApiError500 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    child_chunk_delete_index_error: { status: 500, data: zChildChunkDeleteIndexError },
+    child_chunk_indexing_error: { status: 500, data: zChildChunkIndexingError },
+    invalid_action: { status: 400, data: zInvalidActionError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
   })
 
 export const patch7 = oc
@@ -2007,24 +1378,13 @@ export const patch7 = oc
     zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponse,
   )
   .errors({
-    account_not_initialized: { status: 400, data: zPatchChildChunkUpdateApiError400 },
-    bad_host: { status: 400, data: zPatchChildChunkUpdateApiError400 },
-    bad_request: { status: 400, data: zPatchChildChunkUpdateApiError400 },
-    bad_request_key_error: { status: 400, data: zPatchChildChunkUpdateApiError400 },
-    client_disconnected: { status: 400, data: zPatchChildChunkUpdateApiError400 },
-    invalid_action: { status: 400, data: zPatchChildChunkUpdateApiError400 },
-    invalid_param: { status: 400, data: zPatchChildChunkUpdateApiError400 },
-    provider_not_initialize: { status: 400, data: zPatchChildChunkUpdateApiError400 },
-    security_error: { status: 400, data: zPatchChildChunkUpdateApiError400 },
-    websocket_mismatch: { status: 400, data: zPatchChildChunkUpdateApiError400 },
-    not_init_validated: { status: 401, data: zPatchChildChunkUpdateApiError401 },
-    not_setup: { status: 401, data: zPatchChildChunkUpdateApiError401 },
-    unauthorized: { status: 401, data: zPatchChildChunkUpdateApiError401 },
-    active_workspace_required: { status: 500, data: zPatchChildChunkUpdateApiError500 },
-    child_chunk_delete_index_error: { status: 500, data: zPatchChildChunkUpdateApiError500 },
-    child_chunk_indexing_error: { status: 500, data: zPatchChildChunkUpdateApiError500 },
-    internal_server_error: { status: 500, data: zPatchChildChunkUpdateApiError500 },
-    unknown: { status: 500, data: zPatchChildChunkUpdateApiError500 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    child_chunk_delete_index_error: { status: 500, data: zChildChunkDeleteIndexError },
+    child_chunk_indexing_error: { status: 500, data: zChildChunkIndexingError },
+    invalid_action: { status: 400, data: zInvalidActionError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
   })
 
 export const byChildChunkId = {
@@ -2049,24 +1409,13 @@ export const get19 = oc
   )
   .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zGetChildChunkAddApiError400 },
-    bad_host: { status: 400, data: zGetChildChunkAddApiError400 },
-    bad_request: { status: 400, data: zGetChildChunkAddApiError400 },
-    bad_request_key_error: { status: 400, data: zGetChildChunkAddApiError400 },
-    client_disconnected: { status: 400, data: zGetChildChunkAddApiError400 },
-    invalid_action: { status: 400, data: zGetChildChunkAddApiError400 },
-    invalid_param: { status: 400, data: zGetChildChunkAddApiError400 },
-    provider_not_initialize: { status: 400, data: zGetChildChunkAddApiError400 },
-    security_error: { status: 400, data: zGetChildChunkAddApiError400 },
-    websocket_mismatch: { status: 400, data: zGetChildChunkAddApiError400 },
-    not_init_validated: { status: 401, data: zGetChildChunkAddApiError401 },
-    not_setup: { status: 401, data: zGetChildChunkAddApiError401 },
-    unauthorized: { status: 401, data: zGetChildChunkAddApiError401 },
-    active_workspace_required: { status: 500, data: zGetChildChunkAddApiError500 },
-    child_chunk_delete_index_error: { status: 500, data: zGetChildChunkAddApiError500 },
-    child_chunk_indexing_error: { status: 500, data: zGetChildChunkAddApiError500 },
-    internal_server_error: { status: 500, data: zGetChildChunkAddApiError500 },
-    unknown: { status: 500, data: zGetChildChunkAddApiError500 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    child_chunk_delete_index_error: { status: 500, data: zChildChunkDeleteIndexError },
+    child_chunk_indexing_error: { status: 500, data: zChildChunkIndexingError },
+    invalid_action: { status: 400, data: zInvalidActionError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
   })
 
 export const patch8 = oc
@@ -2085,24 +1434,13 @@ export const patch8 = oc
   )
   .output(zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zPatchChildChunkAddApiError400 },
-    bad_host: { status: 400, data: zPatchChildChunkAddApiError400 },
-    bad_request: { status: 400, data: zPatchChildChunkAddApiError400 },
-    bad_request_key_error: { status: 400, data: zPatchChildChunkAddApiError400 },
-    client_disconnected: { status: 400, data: zPatchChildChunkAddApiError400 },
-    invalid_action: { status: 400, data: zPatchChildChunkAddApiError400 },
-    invalid_param: { status: 400, data: zPatchChildChunkAddApiError400 },
-    provider_not_initialize: { status: 400, data: zPatchChildChunkAddApiError400 },
-    security_error: { status: 400, data: zPatchChildChunkAddApiError400 },
-    websocket_mismatch: { status: 400, data: zPatchChildChunkAddApiError400 },
-    not_init_validated: { status: 401, data: zPatchChildChunkAddApiError401 },
-    not_setup: { status: 401, data: zPatchChildChunkAddApiError401 },
-    unauthorized: { status: 401, data: zPatchChildChunkAddApiError401 },
-    active_workspace_required: { status: 500, data: zPatchChildChunkAddApiError500 },
-    child_chunk_delete_index_error: { status: 500, data: zPatchChildChunkAddApiError500 },
-    child_chunk_indexing_error: { status: 500, data: zPatchChildChunkAddApiError500 },
-    internal_server_error: { status: 500, data: zPatchChildChunkAddApiError500 },
-    unknown: { status: 500, data: zPatchChildChunkAddApiError500 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    child_chunk_delete_index_error: { status: 500, data: zChildChunkDeleteIndexError },
+    child_chunk_indexing_error: { status: 500, data: zChildChunkIndexingError },
+    invalid_action: { status: 400, data: zInvalidActionError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
   })
 
 export const post14 = oc
@@ -2121,24 +1459,13 @@ export const post14 = oc
   )
   .output(zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zPostChildChunkAddApiError400 },
-    bad_host: { status: 400, data: zPostChildChunkAddApiError400 },
-    bad_request: { status: 400, data: zPostChildChunkAddApiError400 },
-    bad_request_key_error: { status: 400, data: zPostChildChunkAddApiError400 },
-    client_disconnected: { status: 400, data: zPostChildChunkAddApiError400 },
-    invalid_action: { status: 400, data: zPostChildChunkAddApiError400 },
-    invalid_param: { status: 400, data: zPostChildChunkAddApiError400 },
-    provider_not_initialize: { status: 400, data: zPostChildChunkAddApiError400 },
-    security_error: { status: 400, data: zPostChildChunkAddApiError400 },
-    websocket_mismatch: { status: 400, data: zPostChildChunkAddApiError400 },
-    not_init_validated: { status: 401, data: zPostChildChunkAddApiError401 },
-    not_setup: { status: 401, data: zPostChildChunkAddApiError401 },
-    unauthorized: { status: 401, data: zPostChildChunkAddApiError401 },
-    active_workspace_required: { status: 500, data: zPostChildChunkAddApiError500 },
-    child_chunk_delete_index_error: { status: 500, data: zPostChildChunkAddApiError500 },
-    child_chunk_indexing_error: { status: 500, data: zPostChildChunkAddApiError500 },
-    internal_server_error: { status: 500, data: zPostChildChunkAddApiError500 },
-    unknown: { status: 500, data: zPostChildChunkAddApiError500 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    child_chunk_delete_index_error: { status: 500, data: zChildChunkDeleteIndexError },
+    child_chunk_indexing_error: { status: 500, data: zChildChunkIndexingError },
+    invalid_action: { status: 400, data: zInvalidActionError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
   })
 
 export const childChunks = {
@@ -2162,33 +1489,13 @@ export const delete4 = oc
   )
   .output(zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zDeleteDatasetDocumentSegmentUpdateApiError400 },
-    bad_host: { status: 400, data: zDeleteDatasetDocumentSegmentUpdateApiError400 },
-    bad_request: { status: 400, data: zDeleteDatasetDocumentSegmentUpdateApiError400 },
-    bad_request_key_error: { status: 400, data: zDeleteDatasetDocumentSegmentUpdateApiError400 },
-    client_disconnected: { status: 400, data: zDeleteDatasetDocumentSegmentUpdateApiError400 },
-    invalid_action: { status: 400, data: zDeleteDatasetDocumentSegmentUpdateApiError400 },
-    invalid_param: { status: 400, data: zDeleteDatasetDocumentSegmentUpdateApiError400 },
-    provider_not_initialize: { status: 400, data: zDeleteDatasetDocumentSegmentUpdateApiError400 },
-    security_error: { status: 400, data: zDeleteDatasetDocumentSegmentUpdateApiError400 },
-    websocket_mismatch: { status: 400, data: zDeleteDatasetDocumentSegmentUpdateApiError400 },
-    not_init_validated: { status: 401, data: zDeleteDatasetDocumentSegmentUpdateApiError401 },
-    not_setup: { status: 401, data: zDeleteDatasetDocumentSegmentUpdateApiError401 },
-    unauthorized: { status: 401, data: zDeleteDatasetDocumentSegmentUpdateApiError401 },
-    active_workspace_required: {
-      status: 500,
-      data: zDeleteDatasetDocumentSegmentUpdateApiError500,
-    },
-    child_chunk_delete_index_error: {
-      status: 500,
-      data: zDeleteDatasetDocumentSegmentUpdateApiError500,
-    },
-    child_chunk_indexing_error: {
-      status: 500,
-      data: zDeleteDatasetDocumentSegmentUpdateApiError500,
-    },
-    internal_server_error: { status: 500, data: zDeleteDatasetDocumentSegmentUpdateApiError500 },
-    unknown: { status: 500, data: zDeleteDatasetDocumentSegmentUpdateApiError500 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    child_chunk_delete_index_error: { status: 500, data: zChildChunkDeleteIndexError },
+    child_chunk_indexing_error: { status: 500, data: zChildChunkIndexingError },
+    invalid_action: { status: 400, data: zInvalidActionError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
   })
 
 export const patch9 = oc
@@ -2207,30 +1514,13 @@ export const patch9 = oc
   )
   .output(zPatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zPatchDatasetDocumentSegmentUpdateApiError400 },
-    bad_host: { status: 400, data: zPatchDatasetDocumentSegmentUpdateApiError400 },
-    bad_request: { status: 400, data: zPatchDatasetDocumentSegmentUpdateApiError400 },
-    bad_request_key_error: { status: 400, data: zPatchDatasetDocumentSegmentUpdateApiError400 },
-    client_disconnected: { status: 400, data: zPatchDatasetDocumentSegmentUpdateApiError400 },
-    invalid_action: { status: 400, data: zPatchDatasetDocumentSegmentUpdateApiError400 },
-    invalid_param: { status: 400, data: zPatchDatasetDocumentSegmentUpdateApiError400 },
-    provider_not_initialize: { status: 400, data: zPatchDatasetDocumentSegmentUpdateApiError400 },
-    security_error: { status: 400, data: zPatchDatasetDocumentSegmentUpdateApiError400 },
-    websocket_mismatch: { status: 400, data: zPatchDatasetDocumentSegmentUpdateApiError400 },
-    not_init_validated: { status: 401, data: zPatchDatasetDocumentSegmentUpdateApiError401 },
-    not_setup: { status: 401, data: zPatchDatasetDocumentSegmentUpdateApiError401 },
-    unauthorized: { status: 401, data: zPatchDatasetDocumentSegmentUpdateApiError401 },
-    active_workspace_required: { status: 500, data: zPatchDatasetDocumentSegmentUpdateApiError500 },
-    child_chunk_delete_index_error: {
-      status: 500,
-      data: zPatchDatasetDocumentSegmentUpdateApiError500,
-    },
-    child_chunk_indexing_error: {
-      status: 500,
-      data: zPatchDatasetDocumentSegmentUpdateApiError500,
-    },
-    internal_server_error: { status: 500, data: zPatchDatasetDocumentSegmentUpdateApiError500 },
-    unknown: { status: 500, data: zPatchDatasetDocumentSegmentUpdateApiError500 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    child_chunk_delete_index_error: { status: 500, data: zChildChunkDeleteIndexError },
+    child_chunk_indexing_error: { status: 500, data: zChildChunkIndexingError },
+    invalid_action: { status: 400, data: zInvalidActionError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
   })
 
 export const bySegmentId = {
@@ -2256,27 +1546,13 @@ export const delete5 = oc
   )
   .output(zDeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zDeleteDatasetDocumentSegmentListApiError400 },
-    bad_host: { status: 400, data: zDeleteDatasetDocumentSegmentListApiError400 },
-    bad_request: { status: 400, data: zDeleteDatasetDocumentSegmentListApiError400 },
-    bad_request_key_error: { status: 400, data: zDeleteDatasetDocumentSegmentListApiError400 },
-    client_disconnected: { status: 400, data: zDeleteDatasetDocumentSegmentListApiError400 },
-    invalid_action: { status: 400, data: zDeleteDatasetDocumentSegmentListApiError400 },
-    invalid_param: { status: 400, data: zDeleteDatasetDocumentSegmentListApiError400 },
-    provider_not_initialize: { status: 400, data: zDeleteDatasetDocumentSegmentListApiError400 },
-    security_error: { status: 400, data: zDeleteDatasetDocumentSegmentListApiError400 },
-    websocket_mismatch: { status: 400, data: zDeleteDatasetDocumentSegmentListApiError400 },
-    not_init_validated: { status: 401, data: zDeleteDatasetDocumentSegmentListApiError401 },
-    not_setup: { status: 401, data: zDeleteDatasetDocumentSegmentListApiError401 },
-    unauthorized: { status: 401, data: zDeleteDatasetDocumentSegmentListApiError401 },
-    active_workspace_required: { status: 500, data: zDeleteDatasetDocumentSegmentListApiError500 },
-    child_chunk_delete_index_error: {
-      status: 500,
-      data: zDeleteDatasetDocumentSegmentListApiError500,
-    },
-    child_chunk_indexing_error: { status: 500, data: zDeleteDatasetDocumentSegmentListApiError500 },
-    internal_server_error: { status: 500, data: zDeleteDatasetDocumentSegmentListApiError500 },
-    unknown: { status: 500, data: zDeleteDatasetDocumentSegmentListApiError500 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    child_chunk_delete_index_error: { status: 500, data: zChildChunkDeleteIndexError },
+    child_chunk_indexing_error: { status: 500, data: zChildChunkIndexingError },
+    invalid_action: { status: 400, data: zInvalidActionError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
   })
 
 export const get20 = oc
@@ -2295,27 +1571,13 @@ export const get20 = oc
   )
   .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zGetDatasetDocumentSegmentListApiError400 },
-    bad_host: { status: 400, data: zGetDatasetDocumentSegmentListApiError400 },
-    bad_request: { status: 400, data: zGetDatasetDocumentSegmentListApiError400 },
-    bad_request_key_error: { status: 400, data: zGetDatasetDocumentSegmentListApiError400 },
-    client_disconnected: { status: 400, data: zGetDatasetDocumentSegmentListApiError400 },
-    invalid_action: { status: 400, data: zGetDatasetDocumentSegmentListApiError400 },
-    invalid_param: { status: 400, data: zGetDatasetDocumentSegmentListApiError400 },
-    provider_not_initialize: { status: 400, data: zGetDatasetDocumentSegmentListApiError400 },
-    security_error: { status: 400, data: zGetDatasetDocumentSegmentListApiError400 },
-    websocket_mismatch: { status: 400, data: zGetDatasetDocumentSegmentListApiError400 },
-    not_init_validated: { status: 401, data: zGetDatasetDocumentSegmentListApiError401 },
-    not_setup: { status: 401, data: zGetDatasetDocumentSegmentListApiError401 },
-    unauthorized: { status: 401, data: zGetDatasetDocumentSegmentListApiError401 },
-    active_workspace_required: { status: 500, data: zGetDatasetDocumentSegmentListApiError500 },
-    child_chunk_delete_index_error: {
-      status: 500,
-      data: zGetDatasetDocumentSegmentListApiError500,
-    },
-    child_chunk_indexing_error: { status: 500, data: zGetDatasetDocumentSegmentListApiError500 },
-    internal_server_error: { status: 500, data: zGetDatasetDocumentSegmentListApiError500 },
-    unknown: { status: 500, data: zGetDatasetDocumentSegmentListApiError500 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    child_chunk_delete_index_error: { status: 500, data: zChildChunkDeleteIndexError },
+    child_chunk_indexing_error: { status: 500, data: zChildChunkIndexingError },
+    invalid_action: { status: 400, data: zInvalidActionError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
   })
 
 export const segments = {
@@ -2353,24 +1615,15 @@ export const get21 = oc
   .input(z.object({ params: zGetDatasetsByDatasetIdDocumentsByDocumentIdSummaryStatusPath }))
   .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdSummaryStatusResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zGetDocumentSummaryStatusError400 },
-    bad_host: { status: 400, data: zGetDocumentSummaryStatusError400 },
-    bad_request: { status: 400, data: zGetDocumentSummaryStatusError400 },
-    bad_request_key_error: { status: 400, data: zGetDocumentSummaryStatusError400 },
-    client_disconnected: { status: 400, data: zGetDocumentSummaryStatusError400 },
-    document_indexing: { status: 400, data: zGetDocumentSummaryStatusError400 },
-    invalid_action: { status: 400, data: zGetDocumentSummaryStatusError400 },
-    invalid_param: { status: 400, data: zGetDocumentSummaryStatusError400 },
-    model_currently_not_support: { status: 400, data: zGetDocumentSummaryStatusError400 },
-    provider_not_initialize: { status: 400, data: zGetDocumentSummaryStatusError400 },
-    provider_quota_exceeded: { status: 400, data: zGetDocumentSummaryStatusError400 },
-    security_error: { status: 400, data: zGetDocumentSummaryStatusError400 },
-    websocket_mismatch: { status: 400, data: zGetDocumentSummaryStatusError400 },
-    not_init_validated: { status: 401, data: zGetDocumentSummaryStatusError401 },
-    not_setup: { status: 401, data: zGetDocumentSummaryStatusError401 },
-    unauthorized: { status: 401, data: zGetDocumentSummaryStatusError401 },
-    archived_document_immutable: { status: 403, data: zGetDocumentSummaryStatusError403 },
-    forbidden: { status: 403, data: zGetDocumentSummaryStatusError403 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    archived_document_immutable: { status: 403, data: zArchivedDocumentImmutableError },
+    document_indexing: { status: 400, data: zDocumentIndexingError },
+    invalid_action: { status: 400, data: zInvalidActionError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
   })
 
 export const summaryStatus = {
@@ -2392,24 +1645,15 @@ export const get22 = oc
   .input(z.object({ params: zGetDatasetsByDatasetIdDocumentsByDocumentIdWebsiteSyncPath }))
   .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdWebsiteSyncResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zGetWebsiteDocumentSyncApiError400 },
-    bad_host: { status: 400, data: zGetWebsiteDocumentSyncApiError400 },
-    bad_request: { status: 400, data: zGetWebsiteDocumentSyncApiError400 },
-    bad_request_key_error: { status: 400, data: zGetWebsiteDocumentSyncApiError400 },
-    client_disconnected: { status: 400, data: zGetWebsiteDocumentSyncApiError400 },
-    document_indexing: { status: 400, data: zGetWebsiteDocumentSyncApiError400 },
-    invalid_action: { status: 400, data: zGetWebsiteDocumentSyncApiError400 },
-    invalid_param: { status: 400, data: zGetWebsiteDocumentSyncApiError400 },
-    model_currently_not_support: { status: 400, data: zGetWebsiteDocumentSyncApiError400 },
-    provider_not_initialize: { status: 400, data: zGetWebsiteDocumentSyncApiError400 },
-    provider_quota_exceeded: { status: 400, data: zGetWebsiteDocumentSyncApiError400 },
-    security_error: { status: 400, data: zGetWebsiteDocumentSyncApiError400 },
-    websocket_mismatch: { status: 400, data: zGetWebsiteDocumentSyncApiError400 },
-    not_init_validated: { status: 401, data: zGetWebsiteDocumentSyncApiError401 },
-    not_setup: { status: 401, data: zGetWebsiteDocumentSyncApiError401 },
-    unauthorized: { status: 401, data: zGetWebsiteDocumentSyncApiError401 },
-    archived_document_immutable: { status: 403, data: zGetWebsiteDocumentSyncApiError403 },
-    forbidden: { status: 403, data: zGetWebsiteDocumentSyncApiError403 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    archived_document_immutable: { status: 403, data: zArchivedDocumentImmutableError },
+    document_indexing: { status: 400, data: zDocumentIndexingError },
+    invalid_action: { status: 400, data: zInvalidActionError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
   })
 
 export const websiteSync = {
@@ -2428,24 +1672,15 @@ export const delete6 = oc
   .input(z.object({ params: zDeleteDatasetsByDatasetIdDocumentsByDocumentIdPath }))
   .output(zDeleteDatasetsByDatasetIdDocumentsByDocumentIdResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zDeleteDocumentApiError400 },
-    bad_host: { status: 400, data: zDeleteDocumentApiError400 },
-    bad_request: { status: 400, data: zDeleteDocumentApiError400 },
-    bad_request_key_error: { status: 400, data: zDeleteDocumentApiError400 },
-    client_disconnected: { status: 400, data: zDeleteDocumentApiError400 },
-    document_indexing: { status: 400, data: zDeleteDocumentApiError400 },
-    invalid_action: { status: 400, data: zDeleteDocumentApiError400 },
-    invalid_param: { status: 400, data: zDeleteDocumentApiError400 },
-    model_currently_not_support: { status: 400, data: zDeleteDocumentApiError400 },
-    provider_not_initialize: { status: 400, data: zDeleteDocumentApiError400 },
-    provider_quota_exceeded: { status: 400, data: zDeleteDocumentApiError400 },
-    security_error: { status: 400, data: zDeleteDocumentApiError400 },
-    websocket_mismatch: { status: 400, data: zDeleteDocumentApiError400 },
-    not_init_validated: { status: 401, data: zDeleteDocumentApiError401 },
-    not_setup: { status: 401, data: zDeleteDocumentApiError401 },
-    unauthorized: { status: 401, data: zDeleteDocumentApiError401 },
-    archived_document_immutable: { status: 403, data: zDeleteDocumentApiError403 },
-    forbidden: { status: 403, data: zDeleteDocumentApiError403 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    archived_document_immutable: { status: 403, data: zArchivedDocumentImmutableError },
+    document_indexing: { status: 400, data: zDocumentIndexingError },
+    invalid_action: { status: 400, data: zInvalidActionError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
   })
 
 /**
@@ -2468,25 +1703,16 @@ export const get23 = oc
   )
   .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zGetDocumentError400 },
-    bad_host: { status: 400, data: zGetDocumentError400 },
-    bad_request: { status: 400, data: zGetDocumentError400 },
-    bad_request_key_error: { status: 400, data: zGetDocumentError400 },
-    client_disconnected: { status: 400, data: zGetDocumentError400 },
-    document_indexing: { status: 400, data: zGetDocumentError400 },
-    invalid_action: { status: 400, data: zGetDocumentError400 },
-    invalid_metadata: { status: 400, data: zGetDocumentError400 },
-    invalid_param: { status: 400, data: zGetDocumentError400 },
-    model_currently_not_support: { status: 400, data: zGetDocumentError400 },
-    provider_not_initialize: { status: 400, data: zGetDocumentError400 },
-    provider_quota_exceeded: { status: 400, data: zGetDocumentError400 },
-    security_error: { status: 400, data: zGetDocumentError400 },
-    websocket_mismatch: { status: 400, data: zGetDocumentError400 },
-    not_init_validated: { status: 401, data: zGetDocumentError401 },
-    not_setup: { status: 401, data: zGetDocumentError401 },
-    unauthorized: { status: 401, data: zGetDocumentError401 },
-    archived_document_immutable: { status: 403, data: zGetDocumentError403 },
-    forbidden: { status: 403, data: zGetDocumentError403 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    archived_document_immutable: { status: 403, data: zArchivedDocumentImmutableError },
+    document_indexing: { status: 400, data: zDocumentIndexingError },
+    invalid_action: { status: 400, data: zInvalidActionError },
+    invalid_metadata: { status: 400, data: zInvalidMetadataError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
   })
 
 export const byDocumentId = {
@@ -2518,24 +1744,15 @@ export const delete7 = oc
   .input(z.object({ params: zDeleteDatasetsByDatasetIdDocumentsPath }))
   .output(zDeleteDatasetsByDatasetIdDocumentsResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zDeleteDatasetDocumentListApiError400 },
-    bad_host: { status: 400, data: zDeleteDatasetDocumentListApiError400 },
-    bad_request: { status: 400, data: zDeleteDatasetDocumentListApiError400 },
-    bad_request_key_error: { status: 400, data: zDeleteDatasetDocumentListApiError400 },
-    client_disconnected: { status: 400, data: zDeleteDatasetDocumentListApiError400 },
-    document_indexing: { status: 400, data: zDeleteDatasetDocumentListApiError400 },
-    invalid_action: { status: 400, data: zDeleteDatasetDocumentListApiError400 },
-    invalid_param: { status: 400, data: zDeleteDatasetDocumentListApiError400 },
-    model_currently_not_support: { status: 400, data: zDeleteDatasetDocumentListApiError400 },
-    provider_not_initialize: { status: 400, data: zDeleteDatasetDocumentListApiError400 },
-    provider_quota_exceeded: { status: 400, data: zDeleteDatasetDocumentListApiError400 },
-    security_error: { status: 400, data: zDeleteDatasetDocumentListApiError400 },
-    websocket_mismatch: { status: 400, data: zDeleteDatasetDocumentListApiError400 },
-    not_init_validated: { status: 401, data: zDeleteDatasetDocumentListApiError401 },
-    not_setup: { status: 401, data: zDeleteDatasetDocumentListApiError401 },
-    unauthorized: { status: 401, data: zDeleteDatasetDocumentListApiError401 },
-    archived_document_immutable: { status: 403, data: zDeleteDatasetDocumentListApiError403 },
-    forbidden: { status: 403, data: zDeleteDatasetDocumentListApiError403 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    archived_document_immutable: { status: 403, data: zArchivedDocumentImmutableError },
+    document_indexing: { status: 400, data: zDocumentIndexingError },
+    invalid_action: { status: 400, data: zInvalidActionError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
   })
 
 /**
@@ -2558,24 +1775,15 @@ export const get24 = oc
   )
   .output(zGetDatasetsByDatasetIdDocumentsResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zGetDatasetDocumentsError400 },
-    bad_host: { status: 400, data: zGetDatasetDocumentsError400 },
-    bad_request: { status: 400, data: zGetDatasetDocumentsError400 },
-    bad_request_key_error: { status: 400, data: zGetDatasetDocumentsError400 },
-    client_disconnected: { status: 400, data: zGetDatasetDocumentsError400 },
-    document_indexing: { status: 400, data: zGetDatasetDocumentsError400 },
-    invalid_action: { status: 400, data: zGetDatasetDocumentsError400 },
-    invalid_param: { status: 400, data: zGetDatasetDocumentsError400 },
-    model_currently_not_support: { status: 400, data: zGetDatasetDocumentsError400 },
-    provider_not_initialize: { status: 400, data: zGetDatasetDocumentsError400 },
-    provider_quota_exceeded: { status: 400, data: zGetDatasetDocumentsError400 },
-    security_error: { status: 400, data: zGetDatasetDocumentsError400 },
-    websocket_mismatch: { status: 400, data: zGetDatasetDocumentsError400 },
-    not_init_validated: { status: 401, data: zGetDatasetDocumentsError401 },
-    not_setup: { status: 401, data: zGetDatasetDocumentsError401 },
-    unauthorized: { status: 401, data: zGetDatasetDocumentsError401 },
-    archived_document_immutable: { status: 403, data: zGetDatasetDocumentsError403 },
-    forbidden: { status: 403, data: zGetDatasetDocumentsError403 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    archived_document_immutable: { status: 403, data: zArchivedDocumentImmutableError },
+    document_indexing: { status: 400, data: zDocumentIndexingError },
+    invalid_action: { status: 400, data: zInvalidActionError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
   })
 
 export const post15 = oc
@@ -2594,24 +1802,15 @@ export const post15 = oc
   )
   .output(zPostDatasetsByDatasetIdDocumentsResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zPostDatasetDocumentListApiError400 },
-    bad_host: { status: 400, data: zPostDatasetDocumentListApiError400 },
-    bad_request: { status: 400, data: zPostDatasetDocumentListApiError400 },
-    bad_request_key_error: { status: 400, data: zPostDatasetDocumentListApiError400 },
-    client_disconnected: { status: 400, data: zPostDatasetDocumentListApiError400 },
-    document_indexing: { status: 400, data: zPostDatasetDocumentListApiError400 },
-    invalid_action: { status: 400, data: zPostDatasetDocumentListApiError400 },
-    invalid_param: { status: 400, data: zPostDatasetDocumentListApiError400 },
-    model_currently_not_support: { status: 400, data: zPostDatasetDocumentListApiError400 },
-    provider_not_initialize: { status: 400, data: zPostDatasetDocumentListApiError400 },
-    provider_quota_exceeded: { status: 400, data: zPostDatasetDocumentListApiError400 },
-    security_error: { status: 400, data: zPostDatasetDocumentListApiError400 },
-    websocket_mismatch: { status: 400, data: zPostDatasetDocumentListApiError400 },
-    not_init_validated: { status: 401, data: zPostDatasetDocumentListApiError401 },
-    not_setup: { status: 401, data: zPostDatasetDocumentListApiError401 },
-    unauthorized: { status: 401, data: zPostDatasetDocumentListApiError401 },
-    archived_document_immutable: { status: 403, data: zPostDatasetDocumentListApiError403 },
-    forbidden: { status: 403, data: zPostDatasetDocumentListApiError403 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    archived_document_immutable: { status: 403, data: zArchivedDocumentImmutableError },
+    document_indexing: { status: 400, data: zDocumentIndexingError },
+    invalid_action: { status: 400, data: zInvalidActionError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
   })
 
 export const documents = {
@@ -2640,20 +1839,11 @@ export const get25 = oc
   .input(z.object({ params: zGetDatasetsByDatasetIdErrorDocsPath }))
   .output(zGetDatasetsByDatasetIdErrorDocsResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zGetDatasetErrorDocsError400 },
-    bad_host: { status: 400, data: zGetDatasetErrorDocsError400 },
-    bad_request: { status: 400, data: zGetDatasetErrorDocsError400 },
-    bad_request_key_error: { status: 400, data: zGetDatasetErrorDocsError400 },
-    client_disconnected: { status: 400, data: zGetDatasetErrorDocsError400 },
-    invalid_param: { status: 400, data: zGetDatasetErrorDocsError400 },
-    security_error: { status: 400, data: zGetDatasetErrorDocsError400 },
-    websocket_mismatch: { status: 400, data: zGetDatasetErrorDocsError400 },
-    not_init_validated: { status: 401, data: zGetDatasetErrorDocsError401 },
-    not_setup: { status: 401, data: zGetDatasetErrorDocsError401 },
-    unauthorized: { status: 401, data: zGetDatasetErrorDocsError401 },
-    conflict: { status: 409, data: zGetDatasetErrorDocsError409 },
-    dataset_in_use: { status: 409, data: zGetDatasetErrorDocsError409 },
-    dataset_name_duplicate: { status: 409, data: zGetDatasetErrorDocsError409 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    dataset_in_use: { status: 409, data: zDatasetInUseError },
+    dataset_name_duplicate: { status: 409, data: zDatasetNameDuplicateError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const errorDocs = {
@@ -2680,19 +1870,10 @@ export const post16 = oc
   )
   .output(zPostDatasetsByDatasetIdExternalHitTestingResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zTestExternalKnowledgeRetrievalError400 },
-    bad_host: { status: 400, data: zTestExternalKnowledgeRetrievalError400 },
-    bad_request: { status: 400, data: zTestExternalKnowledgeRetrievalError400 },
-    bad_request_key_error: { status: 400, data: zTestExternalKnowledgeRetrievalError400 },
-    client_disconnected: { status: 400, data: zTestExternalKnowledgeRetrievalError400 },
-    invalid_param: { status: 400, data: zTestExternalKnowledgeRetrievalError400 },
-    security_error: { status: 400, data: zTestExternalKnowledgeRetrievalError400 },
-    websocket_mismatch: { status: 400, data: zTestExternalKnowledgeRetrievalError400 },
-    not_init_validated: { status: 401, data: zTestExternalKnowledgeRetrievalError401 },
-    not_setup: { status: 401, data: zTestExternalKnowledgeRetrievalError401 },
-    unauthorized: { status: 401, data: zTestExternalKnowledgeRetrievalError401 },
-    conflict: { status: 409, data: zTestExternalKnowledgeRetrievalError409 },
-    dataset_name_duplicate: { status: 409, data: zTestExternalKnowledgeRetrievalError409 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    dataset_name_duplicate: { status: 409, data: zDatasetNameDuplicateError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const externalHitTesting = {
@@ -2719,21 +1900,13 @@ export const post17 = oc
   )
   .output(zPostDatasetsByDatasetIdHitTestingResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zTestDatasetRetrievalError400 },
-    bad_host: { status: 400, data: zTestDatasetRetrievalError400 },
-    bad_request: { status: 400, data: zTestDatasetRetrievalError400 },
-    bad_request_key_error: { status: 400, data: zTestDatasetRetrievalError400 },
-    client_disconnected: { status: 400, data: zTestDatasetRetrievalError400 },
-    completion_request_error: { status: 400, data: zTestDatasetRetrievalError400 },
-    invalid_param: { status: 400, data: zTestDatasetRetrievalError400 },
-    model_currently_not_support: { status: 400, data: zTestDatasetRetrievalError400 },
-    provider_not_initialize: { status: 400, data: zTestDatasetRetrievalError400 },
-    provider_quota_exceeded: { status: 400, data: zTestDatasetRetrievalError400 },
-    security_error: { status: 400, data: zTestDatasetRetrievalError400 },
-    websocket_mismatch: { status: 400, data: zTestDatasetRetrievalError400 },
-    not_init_validated: { status: 401, data: zTestDatasetRetrievalError401 },
-    not_setup: { status: 401, data: zTestDatasetRetrievalError401 },
-    unauthorized: { status: 401, data: zTestDatasetRetrievalError401 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
   })
 
 export const hitTesting = {
@@ -2755,20 +1928,11 @@ export const get26 = oc
   .input(z.object({ params: zGetDatasetsByDatasetIdIndexingStatusPath }))
   .output(zGetDatasetsByDatasetIdIndexingStatusResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zGetDatasetIndexingStatusError400 },
-    bad_host: { status: 400, data: zGetDatasetIndexingStatusError400 },
-    bad_request: { status: 400, data: zGetDatasetIndexingStatusError400 },
-    bad_request_key_error: { status: 400, data: zGetDatasetIndexingStatusError400 },
-    client_disconnected: { status: 400, data: zGetDatasetIndexingStatusError400 },
-    invalid_param: { status: 400, data: zGetDatasetIndexingStatusError400 },
-    security_error: { status: 400, data: zGetDatasetIndexingStatusError400 },
-    websocket_mismatch: { status: 400, data: zGetDatasetIndexingStatusError400 },
-    not_init_validated: { status: 401, data: zGetDatasetIndexingStatusError401 },
-    not_setup: { status: 401, data: zGetDatasetIndexingStatusError401 },
-    unauthorized: { status: 401, data: zGetDatasetIndexingStatusError401 },
-    conflict: { status: 409, data: zGetDatasetIndexingStatusError409 },
-    dataset_in_use: { status: 409, data: zGetDatasetIndexingStatusError409 },
-    dataset_name_duplicate: { status: 409, data: zGetDatasetIndexingStatusError409 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    dataset_in_use: { status: 409, data: zDatasetInUseError },
+    dataset_name_duplicate: { status: 409, data: zDatasetNameDuplicateError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const indexingStatus3 = {
@@ -2787,20 +1951,9 @@ export const post18 = oc
   .input(z.object({ params: zPostDatasetsByDatasetIdMetadataBuiltInByActionPath }))
   .output(zPostDatasetsByDatasetIdMetadataBuiltInByActionResponse)
   .errors({
-    account_not_initialized: {
-      status: 400,
-      data: zPostDatasetMetadataBuiltInFieldActionApiError400,
-    },
-    bad_host: { status: 400, data: zPostDatasetMetadataBuiltInFieldActionApiError400 },
-    bad_request: { status: 400, data: zPostDatasetMetadataBuiltInFieldActionApiError400 },
-    bad_request_key_error: { status: 400, data: zPostDatasetMetadataBuiltInFieldActionApiError400 },
-    client_disconnected: { status: 400, data: zPostDatasetMetadataBuiltInFieldActionApiError400 },
-    invalid_param: { status: 400, data: zPostDatasetMetadataBuiltInFieldActionApiError400 },
-    security_error: { status: 400, data: zPostDatasetMetadataBuiltInFieldActionApiError400 },
-    websocket_mismatch: { status: 400, data: zPostDatasetMetadataBuiltInFieldActionApiError400 },
-    not_init_validated: { status: 401, data: zPostDatasetMetadataBuiltInFieldActionApiError401 },
-    not_setup: { status: 401, data: zPostDatasetMetadataBuiltInFieldActionApiError401 },
-    unauthorized: { status: 401, data: zPostDatasetMetadataBuiltInFieldActionApiError401 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const byAction4 = {
@@ -2823,17 +1976,9 @@ export const delete8 = oc
   .input(z.object({ params: zDeleteDatasetsByDatasetIdMetadataByMetadataIdPath }))
   .output(zDeleteDatasetsByDatasetIdMetadataByMetadataIdResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zDeleteDatasetMetadataApiError400 },
-    bad_host: { status: 400, data: zDeleteDatasetMetadataApiError400 },
-    bad_request: { status: 400, data: zDeleteDatasetMetadataApiError400 },
-    bad_request_key_error: { status: 400, data: zDeleteDatasetMetadataApiError400 },
-    client_disconnected: { status: 400, data: zDeleteDatasetMetadataApiError400 },
-    invalid_param: { status: 400, data: zDeleteDatasetMetadataApiError400 },
-    security_error: { status: 400, data: zDeleteDatasetMetadataApiError400 },
-    websocket_mismatch: { status: 400, data: zDeleteDatasetMetadataApiError400 },
-    not_init_validated: { status: 401, data: zDeleteDatasetMetadataApiError401 },
-    not_setup: { status: 401, data: zDeleteDatasetMetadataApiError401 },
-    unauthorized: { status: 401, data: zDeleteDatasetMetadataApiError401 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const patch10 = oc
@@ -2852,17 +1997,9 @@ export const patch10 = oc
   )
   .output(zPatchDatasetsByDatasetIdMetadataByMetadataIdResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zPatchDatasetMetadataApiError400 },
-    bad_host: { status: 400, data: zPatchDatasetMetadataApiError400 },
-    bad_request: { status: 400, data: zPatchDatasetMetadataApiError400 },
-    bad_request_key_error: { status: 400, data: zPatchDatasetMetadataApiError400 },
-    client_disconnected: { status: 400, data: zPatchDatasetMetadataApiError400 },
-    invalid_param: { status: 400, data: zPatchDatasetMetadataApiError400 },
-    security_error: { status: 400, data: zPatchDatasetMetadataApiError400 },
-    websocket_mismatch: { status: 400, data: zPatchDatasetMetadataApiError400 },
-    not_init_validated: { status: 401, data: zPatchDatasetMetadataApiError401 },
-    not_setup: { status: 401, data: zPatchDatasetMetadataApiError401 },
-    unauthorized: { status: 401, data: zPatchDatasetMetadataApiError401 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const byMetadataId = {
@@ -2881,17 +2018,9 @@ export const get27 = oc
   .input(z.object({ params: zGetDatasetsByDatasetIdMetadataPath }))
   .output(zGetDatasetsByDatasetIdMetadataResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zGetDatasetMetadataCreateApiError400 },
-    bad_host: { status: 400, data: zGetDatasetMetadataCreateApiError400 },
-    bad_request: { status: 400, data: zGetDatasetMetadataCreateApiError400 },
-    bad_request_key_error: { status: 400, data: zGetDatasetMetadataCreateApiError400 },
-    client_disconnected: { status: 400, data: zGetDatasetMetadataCreateApiError400 },
-    invalid_param: { status: 400, data: zGetDatasetMetadataCreateApiError400 },
-    security_error: { status: 400, data: zGetDatasetMetadataCreateApiError400 },
-    websocket_mismatch: { status: 400, data: zGetDatasetMetadataCreateApiError400 },
-    not_init_validated: { status: 401, data: zGetDatasetMetadataCreateApiError401 },
-    not_setup: { status: 401, data: zGetDatasetMetadataCreateApiError401 },
-    unauthorized: { status: 401, data: zGetDatasetMetadataCreateApiError401 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const post19 = oc
@@ -2911,17 +2040,9 @@ export const post19 = oc
   )
   .output(zPostDatasetsByDatasetIdMetadataResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zPostDatasetMetadataCreateApiError400 },
-    bad_host: { status: 400, data: zPostDatasetMetadataCreateApiError400 },
-    bad_request: { status: 400, data: zPostDatasetMetadataCreateApiError400 },
-    bad_request_key_error: { status: 400, data: zPostDatasetMetadataCreateApiError400 },
-    client_disconnected: { status: 400, data: zPostDatasetMetadataCreateApiError400 },
-    invalid_param: { status: 400, data: zPostDatasetMetadataCreateApiError400 },
-    security_error: { status: 400, data: zPostDatasetMetadataCreateApiError400 },
-    websocket_mismatch: { status: 400, data: zPostDatasetMetadataCreateApiError400 },
-    not_init_validated: { status: 401, data: zPostDatasetMetadataCreateApiError401 },
-    not_setup: { status: 401, data: zPostDatasetMetadataCreateApiError401 },
-    unauthorized: { status: 401, data: zPostDatasetMetadataCreateApiError401 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const metadata4 = {
@@ -2942,20 +2063,11 @@ export const get28 = oc
   .input(z.object({ params: zGetDatasetsByDatasetIdNotionSyncPath }))
   .output(zGetDatasetsByDatasetIdNotionSyncResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zGetDataSourceNotionDatasetSyncApiError400 },
-    bad_host: { status: 400, data: zGetDataSourceNotionDatasetSyncApiError400 },
-    bad_request: { status: 400, data: zGetDataSourceNotionDatasetSyncApiError400 },
-    bad_request_key_error: { status: 400, data: zGetDataSourceNotionDatasetSyncApiError400 },
-    client_disconnected: { status: 400, data: zGetDataSourceNotionDatasetSyncApiError400 },
-    invalid_param: { status: 400, data: zGetDataSourceNotionDatasetSyncApiError400 },
-    security_error: { status: 400, data: zGetDataSourceNotionDatasetSyncApiError400 },
-    websocket_mismatch: { status: 400, data: zGetDataSourceNotionDatasetSyncApiError400 },
-    not_init_validated: { status: 401, data: zGetDataSourceNotionDatasetSyncApiError401 },
-    not_setup: { status: 401, data: zGetDataSourceNotionDatasetSyncApiError401 },
-    unauthorized: { status: 401, data: zGetDataSourceNotionDatasetSyncApiError401 },
-    dataset_access_denied: { status: 403, data: zGetDataSourceNotionDatasetSyncApiError403 },
-    forbidden: { status: 403, data: zGetDataSourceNotionDatasetSyncApiError403 },
-    not_found: { status: 404, data: zGetDataSourceNotionDatasetSyncApiError404 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    dataset_access_denied: { status: 403, data: zDatasetAccessDeniedError },
+    not_found: { status: 404, data: zNotFoundError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const sync2 = {
@@ -2981,20 +2093,11 @@ export const get29 = oc
   .input(z.object({ params: zGetDatasetsByDatasetIdPermissionPartUsersPath }))
   .output(zGetDatasetsByDatasetIdPermissionPartUsersResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zGetDatasetPermissionUsersError400 },
-    bad_host: { status: 400, data: zGetDatasetPermissionUsersError400 },
-    bad_request: { status: 400, data: zGetDatasetPermissionUsersError400 },
-    bad_request_key_error: { status: 400, data: zGetDatasetPermissionUsersError400 },
-    client_disconnected: { status: 400, data: zGetDatasetPermissionUsersError400 },
-    invalid_param: { status: 400, data: zGetDatasetPermissionUsersError400 },
-    security_error: { status: 400, data: zGetDatasetPermissionUsersError400 },
-    websocket_mismatch: { status: 400, data: zGetDatasetPermissionUsersError400 },
-    not_init_validated: { status: 401, data: zGetDatasetPermissionUsersError401 },
-    not_setup: { status: 401, data: zGetDatasetPermissionUsersError401 },
-    unauthorized: { status: 401, data: zGetDatasetPermissionUsersError401 },
-    conflict: { status: 409, data: zGetDatasetPermissionUsersError409 },
-    dataset_in_use: { status: 409, data: zGetDatasetPermissionUsersError409 },
-    dataset_name_duplicate: { status: 409, data: zGetDatasetPermissionUsersError409 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    dataset_in_use: { status: 409, data: zDatasetInUseError },
+    dataset_name_duplicate: { status: 409, data: zDatasetNameDuplicateError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const permissionPartUsers = {
@@ -3016,20 +2119,11 @@ export const get30 = oc
   .input(z.object({ params: zGetDatasetsByDatasetIdQueriesPath }))
   .output(zGetDatasetsByDatasetIdQueriesResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zGetDatasetQueriesError400 },
-    bad_host: { status: 400, data: zGetDatasetQueriesError400 },
-    bad_request: { status: 400, data: zGetDatasetQueriesError400 },
-    bad_request_key_error: { status: 400, data: zGetDatasetQueriesError400 },
-    client_disconnected: { status: 400, data: zGetDatasetQueriesError400 },
-    invalid_param: { status: 400, data: zGetDatasetQueriesError400 },
-    security_error: { status: 400, data: zGetDatasetQueriesError400 },
-    websocket_mismatch: { status: 400, data: zGetDatasetQueriesError400 },
-    not_init_validated: { status: 401, data: zGetDatasetQueriesError401 },
-    not_setup: { status: 401, data: zGetDatasetQueriesError401 },
-    unauthorized: { status: 401, data: zGetDatasetQueriesError401 },
-    conflict: { status: 409, data: zGetDatasetQueriesError409 },
-    dataset_in_use: { status: 409, data: zGetDatasetQueriesError409 },
-    dataset_name_duplicate: { status: 409, data: zGetDatasetQueriesError409 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    dataset_in_use: { status: 409, data: zDatasetInUseError },
+    dataset_name_duplicate: { status: 409, data: zDatasetNameDuplicateError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const queries = {
@@ -3051,20 +2145,11 @@ export const get31 = oc
   .input(z.object({ params: zGetDatasetsByDatasetIdRelatedAppsPath }))
   .output(zGetDatasetsByDatasetIdRelatedAppsResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zGetDatasetRelatedAppsError400 },
-    bad_host: { status: 400, data: zGetDatasetRelatedAppsError400 },
-    bad_request: { status: 400, data: zGetDatasetRelatedAppsError400 },
-    bad_request_key_error: { status: 400, data: zGetDatasetRelatedAppsError400 },
-    client_disconnected: { status: 400, data: zGetDatasetRelatedAppsError400 },
-    invalid_param: { status: 400, data: zGetDatasetRelatedAppsError400 },
-    security_error: { status: 400, data: zGetDatasetRelatedAppsError400 },
-    websocket_mismatch: { status: 400, data: zGetDatasetRelatedAppsError400 },
-    not_init_validated: { status: 401, data: zGetDatasetRelatedAppsError401 },
-    not_setup: { status: 401, data: zGetDatasetRelatedAppsError401 },
-    unauthorized: { status: 401, data: zGetDatasetRelatedAppsError401 },
-    conflict: { status: 409, data: zGetDatasetRelatedAppsError409 },
-    dataset_in_use: { status: 409, data: zGetDatasetRelatedAppsError409 },
-    dataset_name_duplicate: { status: 409, data: zGetDatasetRelatedAppsError409 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    dataset_in_use: { status: 409, data: zDatasetInUseError },
+    dataset_name_duplicate: { status: 409, data: zDatasetNameDuplicateError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const relatedApps = {
@@ -3092,24 +2177,15 @@ export const post20 = oc
   )
   .output(zPostDatasetsByDatasetIdRetryResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zPostDocumentRetryApiError400 },
-    bad_host: { status: 400, data: zPostDocumentRetryApiError400 },
-    bad_request: { status: 400, data: zPostDocumentRetryApiError400 },
-    bad_request_key_error: { status: 400, data: zPostDocumentRetryApiError400 },
-    client_disconnected: { status: 400, data: zPostDocumentRetryApiError400 },
-    document_indexing: { status: 400, data: zPostDocumentRetryApiError400 },
-    invalid_action: { status: 400, data: zPostDocumentRetryApiError400 },
-    invalid_param: { status: 400, data: zPostDocumentRetryApiError400 },
-    model_currently_not_support: { status: 400, data: zPostDocumentRetryApiError400 },
-    provider_not_initialize: { status: 400, data: zPostDocumentRetryApiError400 },
-    provider_quota_exceeded: { status: 400, data: zPostDocumentRetryApiError400 },
-    security_error: { status: 400, data: zPostDocumentRetryApiError400 },
-    websocket_mismatch: { status: 400, data: zPostDocumentRetryApiError400 },
-    not_init_validated: { status: 401, data: zPostDocumentRetryApiError401 },
-    not_setup: { status: 401, data: zPostDocumentRetryApiError401 },
-    unauthorized: { status: 401, data: zPostDocumentRetryApiError401 },
-    archived_document_immutable: { status: 403, data: zPostDocumentRetryApiError403 },
-    forbidden: { status: 403, data: zPostDocumentRetryApiError403 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    archived_document_immutable: { status: 403, data: zArchivedDocumentImmutableError },
+    document_indexing: { status: 400, data: zDocumentIndexingError },
+    invalid_action: { status: 400, data: zInvalidActionError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
   })
 
 export const retry = {
@@ -3131,20 +2207,11 @@ export const get32 = oc
   .input(z.object({ params: zGetDatasetsByDatasetIdUseCheckPath }))
   .output(zGetDatasetsByDatasetIdUseCheckResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zCheckDatasetUseError400 },
-    bad_host: { status: 400, data: zCheckDatasetUseError400 },
-    bad_request: { status: 400, data: zCheckDatasetUseError400 },
-    bad_request_key_error: { status: 400, data: zCheckDatasetUseError400 },
-    client_disconnected: { status: 400, data: zCheckDatasetUseError400 },
-    invalid_param: { status: 400, data: zCheckDatasetUseError400 },
-    security_error: { status: 400, data: zCheckDatasetUseError400 },
-    websocket_mismatch: { status: 400, data: zCheckDatasetUseError400 },
-    not_init_validated: { status: 401, data: zCheckDatasetUseError401 },
-    not_setup: { status: 401, data: zCheckDatasetUseError401 },
-    unauthorized: { status: 401, data: zCheckDatasetUseError401 },
-    conflict: { status: 409, data: zCheckDatasetUseError409 },
-    dataset_in_use: { status: 409, data: zCheckDatasetUseError409 },
-    dataset_name_duplicate: { status: 409, data: zCheckDatasetUseError409 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    dataset_in_use: { status: 409, data: zDatasetInUseError },
+    dataset_name_duplicate: { status: 409, data: zDatasetNameDuplicateError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const useCheck2 = {
@@ -3163,20 +2230,11 @@ export const delete9 = oc
   .input(z.object({ params: zDeleteDatasetsByDatasetIdPath }))
   .output(zDeleteDatasetsByDatasetIdResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zDeleteDatasetApiError400 },
-    bad_host: { status: 400, data: zDeleteDatasetApiError400 },
-    bad_request: { status: 400, data: zDeleteDatasetApiError400 },
-    bad_request_key_error: { status: 400, data: zDeleteDatasetApiError400 },
-    client_disconnected: { status: 400, data: zDeleteDatasetApiError400 },
-    invalid_param: { status: 400, data: zDeleteDatasetApiError400 },
-    security_error: { status: 400, data: zDeleteDatasetApiError400 },
-    websocket_mismatch: { status: 400, data: zDeleteDatasetApiError400 },
-    not_init_validated: { status: 401, data: zDeleteDatasetApiError401 },
-    not_setup: { status: 401, data: zDeleteDatasetApiError401 },
-    unauthorized: { status: 401, data: zDeleteDatasetApiError401 },
-    conflict: { status: 409, data: zDeleteDatasetApiError409 },
-    dataset_in_use: { status: 409, data: zDeleteDatasetApiError409 },
-    dataset_name_duplicate: { status: 409, data: zDeleteDatasetApiError409 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    dataset_in_use: { status: 409, data: zDatasetInUseError },
+    dataset_name_duplicate: { status: 409, data: zDatasetNameDuplicateError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 /**
@@ -3194,20 +2252,11 @@ export const get33 = oc
   .input(z.object({ params: zGetDatasetsByDatasetIdPath }))
   .output(zGetDatasetsByDatasetIdResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zGetDatasetError400 },
-    bad_host: { status: 400, data: zGetDatasetError400 },
-    bad_request: { status: 400, data: zGetDatasetError400 },
-    bad_request_key_error: { status: 400, data: zGetDatasetError400 },
-    client_disconnected: { status: 400, data: zGetDatasetError400 },
-    invalid_param: { status: 400, data: zGetDatasetError400 },
-    security_error: { status: 400, data: zGetDatasetError400 },
-    websocket_mismatch: { status: 400, data: zGetDatasetError400 },
-    not_init_validated: { status: 401, data: zGetDatasetError401 },
-    not_setup: { status: 401, data: zGetDatasetError401 },
-    unauthorized: { status: 401, data: zGetDatasetError401 },
-    conflict: { status: 409, data: zGetDatasetError409 },
-    dataset_in_use: { status: 409, data: zGetDatasetError409 },
-    dataset_name_duplicate: { status: 409, data: zGetDatasetError409 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    dataset_in_use: { status: 409, data: zDatasetInUseError },
+    dataset_name_duplicate: { status: 409, data: zDatasetNameDuplicateError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 /**
@@ -3225,20 +2274,11 @@ export const patch11 = oc
   .input(z.object({ body: zPatchDatasetsByDatasetIdBody, params: zPatchDatasetsByDatasetIdPath }))
   .output(zPatchDatasetsByDatasetIdResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zUpdateDatasetError400 },
-    bad_host: { status: 400, data: zUpdateDatasetError400 },
-    bad_request: { status: 400, data: zUpdateDatasetError400 },
-    bad_request_key_error: { status: 400, data: zUpdateDatasetError400 },
-    client_disconnected: { status: 400, data: zUpdateDatasetError400 },
-    invalid_param: { status: 400, data: zUpdateDatasetError400 },
-    security_error: { status: 400, data: zUpdateDatasetError400 },
-    websocket_mismatch: { status: 400, data: zUpdateDatasetError400 },
-    not_init_validated: { status: 401, data: zUpdateDatasetError401 },
-    not_setup: { status: 401, data: zUpdateDatasetError401 },
-    unauthorized: { status: 401, data: zUpdateDatasetError401 },
-    conflict: { status: 409, data: zUpdateDatasetError409 },
-    dataset_in_use: { status: 409, data: zUpdateDatasetError409 },
-    dataset_name_duplicate: { status: 409, data: zUpdateDatasetError409 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    dataset_in_use: { status: 409, data: zDatasetInUseError },
+    dataset_name_duplicate: { status: 409, data: zDatasetNameDuplicateError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const byDatasetId = {
@@ -3278,20 +2318,11 @@ export const delete10 = oc
   .input(z.object({ params: zDeleteDatasetsByResourceIdApiKeysByApiKeyIdPath }))
   .output(zDeleteDatasetsByResourceIdApiKeysByApiKeyIdResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zDeleteDatasetApiKeyA407Edb2Error400 },
-    bad_host: { status: 400, data: zDeleteDatasetApiKeyA407Edb2Error400 },
-    bad_request: { status: 400, data: zDeleteDatasetApiKeyA407Edb2Error400 },
-    bad_request_key_error: { status: 400, data: zDeleteDatasetApiKeyA407Edb2Error400 },
-    client_disconnected: { status: 400, data: zDeleteDatasetApiKeyA407Edb2Error400 },
-    invalid_param: { status: 400, data: zDeleteDatasetApiKeyA407Edb2Error400 },
-    max_keys_exceeded: { status: 400, data: zDeleteDatasetApiKeyA407Edb2Error400 },
-    security_error: { status: 400, data: zDeleteDatasetApiKeyA407Edb2Error400 },
-    websocket_mismatch: { status: 400, data: zDeleteDatasetApiKeyA407Edb2Error400 },
-    not_init_validated: { status: 401, data: zDeleteDatasetApiKeyA407Edb2Error401 },
-    not_setup: { status: 401, data: zDeleteDatasetApiKeyA407Edb2Error401 },
-    unauthorized: { status: 401, data: zDeleteDatasetApiKeyA407Edb2Error401 },
-    agent_not_published: { status: 409, data: zDeleteDatasetApiKeyA407Edb2Error409 },
-    conflict: { status: 409, data: zDeleteDatasetApiKeyA407Edb2Error409 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    agent_not_published: { status: 409, data: zAgentNotPublishedError },
+    max_keys_exceeded: { status: 400, data: zMaxKeysExceededError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const byApiKeyId2 = {
@@ -3313,20 +2344,11 @@ export const get34 = oc
   .input(z.object({ params: zGetDatasetsByResourceIdApiKeysPath }))
   .output(zGetDatasetsByResourceIdApiKeysResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zGetDatasetApiKeys4114B8EbError400 },
-    bad_host: { status: 400, data: zGetDatasetApiKeys4114B8EbError400 },
-    bad_request: { status: 400, data: zGetDatasetApiKeys4114B8EbError400 },
-    bad_request_key_error: { status: 400, data: zGetDatasetApiKeys4114B8EbError400 },
-    client_disconnected: { status: 400, data: zGetDatasetApiKeys4114B8EbError400 },
-    invalid_param: { status: 400, data: zGetDatasetApiKeys4114B8EbError400 },
-    max_keys_exceeded: { status: 400, data: zGetDatasetApiKeys4114B8EbError400 },
-    security_error: { status: 400, data: zGetDatasetApiKeys4114B8EbError400 },
-    websocket_mismatch: { status: 400, data: zGetDatasetApiKeys4114B8EbError400 },
-    not_init_validated: { status: 401, data: zGetDatasetApiKeys4114B8EbError401 },
-    not_setup: { status: 401, data: zGetDatasetApiKeys4114B8EbError401 },
-    unauthorized: { status: 401, data: zGetDatasetApiKeys4114B8EbError401 },
-    agent_not_published: { status: 409, data: zGetDatasetApiKeys4114B8EbError409 },
-    conflict: { status: 409, data: zGetDatasetApiKeys4114B8EbError409 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    agent_not_published: { status: 409, data: zAgentNotPublishedError },
+    max_keys_exceeded: { status: 400, data: zMaxKeysExceededError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 /**
@@ -3345,20 +2367,11 @@ export const post21 = oc
   .input(z.object({ params: zPostDatasetsByResourceIdApiKeysPath }))
   .output(zPostDatasetsByResourceIdApiKeysResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zCreateDatasetApiKeyError400 },
-    bad_host: { status: 400, data: zCreateDatasetApiKeyError400 },
-    bad_request: { status: 400, data: zCreateDatasetApiKeyError400 },
-    bad_request_key_error: { status: 400, data: zCreateDatasetApiKeyError400 },
-    client_disconnected: { status: 400, data: zCreateDatasetApiKeyError400 },
-    invalid_param: { status: 400, data: zCreateDatasetApiKeyError400 },
-    max_keys_exceeded: { status: 400, data: zCreateDatasetApiKeyError400 },
-    security_error: { status: 400, data: zCreateDatasetApiKeyError400 },
-    websocket_mismatch: { status: 400, data: zCreateDatasetApiKeyError400 },
-    not_init_validated: { status: 401, data: zCreateDatasetApiKeyError401 },
-    not_setup: { status: 401, data: zCreateDatasetApiKeyError401 },
-    unauthorized: { status: 401, data: zCreateDatasetApiKeyError401 },
-    agent_not_published: { status: 409, data: zCreateDatasetApiKeyError409 },
-    conflict: { status: 409, data: zCreateDatasetApiKeyError409 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    agent_not_published: { status: 409, data: zAgentNotPublishedError },
+    max_keys_exceeded: { status: 400, data: zMaxKeysExceededError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const apiKeys3 = {
@@ -3386,18 +2399,10 @@ export const get35 = oc
   .input(z.object({ query: zGetDatasetsQuery.optional() }))
   .output(zGetDatasetsResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zGetDatasetsError400 },
-    bad_host: { status: 400, data: zGetDatasetsError400 },
-    bad_request: { status: 400, data: zGetDatasetsError400 },
-    bad_request_key_error: { status: 400, data: zGetDatasetsError400 },
-    client_disconnected: { status: 400, data: zGetDatasetsError400 },
-    invalid_param: { status: 400, data: zGetDatasetsError400 },
-    security_error: { status: 400, data: zGetDatasetsError400 },
-    websocket_mismatch: { status: 400, data: zGetDatasetsError400 },
-    not_init_validated: { status: 401, data: zGetDatasetsError401 },
-    not_setup: { status: 401, data: zGetDatasetsError401 },
-    unauthorized: { status: 401, data: zGetDatasetsError401 },
-    unauthorized_and_force_logout: { status: 401, data: zGetDatasetsError401 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    unauthorized_and_force_logout: { status: 401, data: zUnauthorizedAndForceLogoutError },
   })
 
 /**
@@ -3416,20 +2421,11 @@ export const post22 = oc
   .input(z.object({ body: zPostDatasetsBody }))
   .output(zPostDatasetsResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zCreateDatasetError400 },
-    bad_host: { status: 400, data: zCreateDatasetError400 },
-    bad_request: { status: 400, data: zCreateDatasetError400 },
-    bad_request_key_error: { status: 400, data: zCreateDatasetError400 },
-    client_disconnected: { status: 400, data: zCreateDatasetError400 },
-    invalid_param: { status: 400, data: zCreateDatasetError400 },
-    security_error: { status: 400, data: zCreateDatasetError400 },
-    websocket_mismatch: { status: 400, data: zCreateDatasetError400 },
-    not_init_validated: { status: 401, data: zCreateDatasetError401 },
-    not_setup: { status: 401, data: zCreateDatasetError401 },
-    unauthorized: { status: 401, data: zCreateDatasetError401 },
-    conflict: { status: 409, data: zCreateDatasetError409 },
-    dataset_in_use: { status: 409, data: zCreateDatasetError409 },
-    dataset_name_duplicate: { status: 409, data: zCreateDatasetError409 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    dataset_in_use: { status: 409, data: zDatasetInUseError },
+    dataset_name_duplicate: { status: 409, data: zDatasetNameDuplicateError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const datasets = {

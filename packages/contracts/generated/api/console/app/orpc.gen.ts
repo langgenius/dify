@@ -2,10 +2,7 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-import {
-  zGetAdvancedPromptTemplatesError400,
-  zGetAdvancedPromptTemplatesError401,
-} from './zod.gen.ts'
+import { zAccountNotInitializedError, zNotInitValidatedError, zNotSetupError } from './zod.gen.ts'
 import { zGetAppPromptTemplatesQuery, zGetAppPromptTemplatesResponse } from './zod.gen.ts'
 
 /**
@@ -23,17 +20,9 @@ export const get = oc
   .input(z.object({ query: zGetAppPromptTemplatesQuery }))
   .output(zGetAppPromptTemplatesResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zGetAdvancedPromptTemplatesError400 },
-    bad_host: { status: 400, data: zGetAdvancedPromptTemplatesError400 },
-    bad_request: { status: 400, data: zGetAdvancedPromptTemplatesError400 },
-    bad_request_key_error: { status: 400, data: zGetAdvancedPromptTemplatesError400 },
-    client_disconnected: { status: 400, data: zGetAdvancedPromptTemplatesError400 },
-    invalid_param: { status: 400, data: zGetAdvancedPromptTemplatesError400 },
-    security_error: { status: 400, data: zGetAdvancedPromptTemplatesError400 },
-    websocket_mismatch: { status: 400, data: zGetAdvancedPromptTemplatesError400 },
-    not_init_validated: { status: 401, data: zGetAdvancedPromptTemplatesError401 },
-    not_setup: { status: 401, data: zGetAdvancedPromptTemplatesError401 },
-    unauthorized: { status: 401, data: zGetAdvancedPromptTemplatesError401 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const promptTemplates = {

@@ -3,13 +3,12 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
-  zGetDataSourceNotionListApiError400,
-  zGetDataSourceNotionListApiError401,
-  zGetDataSourceNotionListApiError403,
-  zGetDataSourceNotionListApiError404,
-  zGetDataSourceNotionPreviewApiError400,
-  zGetDataSourceNotionPreviewApiError401,
-  zGetDataSourceNotionPreviewApiError404,
+  zAccountNotInitializedError,
+  zDatasetAccessDeniedError,
+  zInvalidParamError,
+  zNotFoundError,
+  zNotInitValidatedError,
+  zNotSetupError,
 } from './zod.gen.ts'
 import {
   zGetNotionPagesByPageIdByPageTypePreviewPath,
@@ -35,18 +34,11 @@ export const get = oc
   )
   .output(zGetNotionPagesByPageIdByPageTypePreviewResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zGetDataSourceNotionPreviewApiError400 },
-    bad_host: { status: 400, data: zGetDataSourceNotionPreviewApiError400 },
-    bad_request: { status: 400, data: zGetDataSourceNotionPreviewApiError400 },
-    bad_request_key_error: { status: 400, data: zGetDataSourceNotionPreviewApiError400 },
-    client_disconnected: { status: 400, data: zGetDataSourceNotionPreviewApiError400 },
-    invalid_param: { status: 400, data: zGetDataSourceNotionPreviewApiError400 },
-    security_error: { status: 400, data: zGetDataSourceNotionPreviewApiError400 },
-    websocket_mismatch: { status: 400, data: zGetDataSourceNotionPreviewApiError400 },
-    not_init_validated: { status: 401, data: zGetDataSourceNotionPreviewApiError401 },
-    not_setup: { status: 401, data: zGetDataSourceNotionPreviewApiError401 },
-    unauthorized: { status: 401, data: zGetDataSourceNotionPreviewApiError401 },
-    not_found: { status: 404, data: zGetDataSourceNotionPreviewApiError404 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    invalid_param: { status: 400, data: zInvalidParamError },
+    not_found: { status: 404, data: zNotFoundError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const preview = {
@@ -76,20 +68,12 @@ export const get2 = oc
   .input(z.object({ query: zGetNotionPreImportPagesQuery }))
   .output(zGetNotionPreImportPagesResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zGetDataSourceNotionListApiError400 },
-    bad_host: { status: 400, data: zGetDataSourceNotionListApiError400 },
-    bad_request: { status: 400, data: zGetDataSourceNotionListApiError400 },
-    bad_request_key_error: { status: 400, data: zGetDataSourceNotionListApiError400 },
-    client_disconnected: { status: 400, data: zGetDataSourceNotionListApiError400 },
-    invalid_param: { status: 400, data: zGetDataSourceNotionListApiError400 },
-    security_error: { status: 400, data: zGetDataSourceNotionListApiError400 },
-    websocket_mismatch: { status: 400, data: zGetDataSourceNotionListApiError400 },
-    not_init_validated: { status: 401, data: zGetDataSourceNotionListApiError401 },
-    not_setup: { status: 401, data: zGetDataSourceNotionListApiError401 },
-    unauthorized: { status: 401, data: zGetDataSourceNotionListApiError401 },
-    dataset_access_denied: { status: 403, data: zGetDataSourceNotionListApiError403 },
-    forbidden: { status: 403, data: zGetDataSourceNotionListApiError403 },
-    not_found: { status: 404, data: zGetDataSourceNotionListApiError404 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    dataset_access_denied: { status: 403, data: zDatasetAccessDeniedError },
+    invalid_param: { status: 400, data: zInvalidParamError },
+    not_found: { status: 404, data: zNotFoundError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const pages2 = {

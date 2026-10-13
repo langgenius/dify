@@ -2,23 +2,7 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-import {
-  zGetDatasourcePluginOAuthAuthorizationUrlError400,
-  zGetDatasourcePluginOAuthAuthorizationUrlError401,
-  zGetToolPluginOAuthApiError400,
-  zGetToolPluginOAuthApiError401,
-  zOauthDataSourceBindingError400,
-  zOauthDataSourceBindingError401,
-  zOauthDataSourceError400,
-  zOauthDataSourceError401,
-  zOauthDataSourceSyncError400,
-  zOauthDataSourceSyncError401,
-  zPostOAuthServerAppApiError401,
-  zPostOAuthServerUserAccountApiError401,
-  zPostOAuthServerUserAuthorizeApiError400,
-  zPostOAuthServerUserAuthorizeApiError401,
-  zPostOAuthServerUserTokenApiError401,
-} from './zod.gen.ts'
+import { zAccountNotInitializedError, zNotInitValidatedError, zNotSetupError } from './zod.gen.ts'
 import {
   zGetOauthDataSourceBindingByProviderPath,
   zGetOauthDataSourceBindingByProviderQuery,
@@ -63,17 +47,9 @@ export const get = oc
   )
   .output(zGetOauthDataSourceBindingByProviderResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zOauthDataSourceBindingError400 },
-    bad_host: { status: 400, data: zOauthDataSourceBindingError400 },
-    bad_request: { status: 400, data: zOauthDataSourceBindingError400 },
-    bad_request_key_error: { status: 400, data: zOauthDataSourceBindingError400 },
-    client_disconnected: { status: 400, data: zOauthDataSourceBindingError400 },
-    invalid_param: { status: 400, data: zOauthDataSourceBindingError400 },
-    security_error: { status: 400, data: zOauthDataSourceBindingError400 },
-    websocket_mismatch: { status: 400, data: zOauthDataSourceBindingError400 },
-    not_init_validated: { status: 401, data: zOauthDataSourceBindingError401 },
-    not_setup: { status: 401, data: zOauthDataSourceBindingError401 },
-    unauthorized: { status: 401, data: zOauthDataSourceBindingError401 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const byProvider = {
@@ -99,17 +75,9 @@ export const get2 = oc
   .input(z.object({ params: zGetOauthDataSourceByProviderByBindingIdSyncPath }))
   .output(zGetOauthDataSourceByProviderByBindingIdSyncResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zOauthDataSourceSyncError400 },
-    bad_host: { status: 400, data: zOauthDataSourceSyncError400 },
-    bad_request: { status: 400, data: zOauthDataSourceSyncError400 },
-    bad_request_key_error: { status: 400, data: zOauthDataSourceSyncError400 },
-    client_disconnected: { status: 400, data: zOauthDataSourceSyncError400 },
-    invalid_param: { status: 400, data: zOauthDataSourceSyncError400 },
-    security_error: { status: 400, data: zOauthDataSourceSyncError400 },
-    websocket_mismatch: { status: 400, data: zOauthDataSourceSyncError400 },
-    not_init_validated: { status: 401, data: zOauthDataSourceSyncError401 },
-    not_setup: { status: 401, data: zOauthDataSourceSyncError401 },
-    unauthorized: { status: 401, data: zOauthDataSourceSyncError401 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const sync = {
@@ -135,17 +103,9 @@ export const get3 = oc
   .input(z.object({ params: zGetOauthDataSourceByProviderPath }))
   .output(zGetOauthDataSourceByProviderResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zOauthDataSourceError400 },
-    bad_host: { status: 400, data: zOauthDataSourceError400 },
-    bad_request: { status: 400, data: zOauthDataSourceError400 },
-    bad_request_key_error: { status: 400, data: zOauthDataSourceError400 },
-    client_disconnected: { status: 400, data: zOauthDataSourceError400 },
-    invalid_param: { status: 400, data: zOauthDataSourceError400 },
-    security_error: { status: 400, data: zOauthDataSourceError400 },
-    websocket_mismatch: { status: 400, data: zOauthDataSourceError400 },
-    not_init_validated: { status: 401, data: zOauthDataSourceError401 },
-    not_setup: { status: 401, data: zOauthDataSourceError401 },
-    unauthorized: { status: 401, data: zOauthDataSourceError401 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const byProvider2 = {
@@ -174,20 +134,9 @@ export const get4 = oc
   )
   .output(zGetOauthPluginByProviderIdDatasourceGetAuthorizationUrlResponse)
   .errors({
-    account_not_initialized: {
-      status: 400,
-      data: zGetDatasourcePluginOAuthAuthorizationUrlError400,
-    },
-    bad_host: { status: 400, data: zGetDatasourcePluginOAuthAuthorizationUrlError400 },
-    bad_request: { status: 400, data: zGetDatasourcePluginOAuthAuthorizationUrlError400 },
-    bad_request_key_error: { status: 400, data: zGetDatasourcePluginOAuthAuthorizationUrlError400 },
-    client_disconnected: { status: 400, data: zGetDatasourcePluginOAuthAuthorizationUrlError400 },
-    invalid_param: { status: 400, data: zGetDatasourcePluginOAuthAuthorizationUrlError400 },
-    security_error: { status: 400, data: zGetDatasourcePluginOAuthAuthorizationUrlError400 },
-    websocket_mismatch: { status: 400, data: zGetDatasourcePluginOAuthAuthorizationUrlError400 },
-    not_init_validated: { status: 401, data: zGetDatasourcePluginOAuthAuthorizationUrlError401 },
-    not_setup: { status: 401, data: zGetDatasourcePluginOAuthAuthorizationUrlError401 },
-    unauthorized: { status: 401, data: zGetDatasourcePluginOAuthAuthorizationUrlError401 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const getAuthorizationUrl = {
@@ -218,17 +167,9 @@ export const get5 = oc
   )
   .output(zGetOauthPluginByProviderToolAuthorizationUrlResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zGetToolPluginOAuthApiError400 },
-    bad_host: { status: 400, data: zGetToolPluginOAuthApiError400 },
-    bad_request: { status: 400, data: zGetToolPluginOAuthApiError400 },
-    bad_request_key_error: { status: 400, data: zGetToolPluginOAuthApiError400 },
-    client_disconnected: { status: 400, data: zGetToolPluginOAuthApiError400 },
-    invalid_param: { status: 400, data: zGetToolPluginOAuthApiError400 },
-    security_error: { status: 400, data: zGetToolPluginOAuthApiError400 },
-    websocket_mismatch: { status: 400, data: zGetToolPluginOAuthApiError400 },
-    not_init_validated: { status: 401, data: zGetToolPluginOAuthApiError401 },
-    not_setup: { status: 401, data: zGetToolPluginOAuthApiError401 },
-    unauthorized: { status: 401, data: zGetToolPluginOAuthApiError401 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const authorizationUrl = {
@@ -259,9 +200,8 @@ export const post = oc
   .input(z.object({ body: zPostOauthProviderAccountBody }))
   .output(zPostOauthProviderAccountResponse)
   .errors({
-    not_init_validated: { status: 401, data: zPostOAuthServerUserAccountApiError401 },
-    not_setup: { status: 401, data: zPostOAuthServerUserAccountApiError401 },
-    unauthorized: { status: 401, data: zPostOAuthServerUserAccountApiError401 },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const account = {
@@ -279,17 +219,9 @@ export const post2 = oc
   .input(z.object({ body: zPostOauthProviderAuthorizeBody }))
   .output(zPostOauthProviderAuthorizeResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zPostOAuthServerUserAuthorizeApiError400 },
-    bad_host: { status: 400, data: zPostOAuthServerUserAuthorizeApiError400 },
-    bad_request: { status: 400, data: zPostOAuthServerUserAuthorizeApiError400 },
-    bad_request_key_error: { status: 400, data: zPostOAuthServerUserAuthorizeApiError400 },
-    client_disconnected: { status: 400, data: zPostOAuthServerUserAuthorizeApiError400 },
-    invalid_param: { status: 400, data: zPostOAuthServerUserAuthorizeApiError400 },
-    security_error: { status: 400, data: zPostOAuthServerUserAuthorizeApiError400 },
-    websocket_mismatch: { status: 400, data: zPostOAuthServerUserAuthorizeApiError400 },
-    not_init_validated: { status: 401, data: zPostOAuthServerUserAuthorizeApiError401 },
-    not_setup: { status: 401, data: zPostOAuthServerUserAuthorizeApiError401 },
-    unauthorized: { status: 401, data: zPostOAuthServerUserAuthorizeApiError401 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const authorize = {
@@ -307,9 +239,8 @@ export const post3 = oc
   .input(z.object({ body: zPostOauthProviderTokenBody }))
   .output(zPostOauthProviderTokenResponse)
   .errors({
-    not_init_validated: { status: 401, data: zPostOAuthServerUserTokenApiError401 },
-    not_setup: { status: 401, data: zPostOAuthServerUserTokenApiError401 },
-    unauthorized: { status: 401, data: zPostOAuthServerUserTokenApiError401 },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const token = {
@@ -327,9 +258,8 @@ export const post4 = oc
   .input(z.object({ body: zPostOauthProviderBody }))
   .output(zPostOauthProviderResponse)
   .errors({
-    not_init_validated: { status: 401, data: zPostOAuthServerAppApiError401 },
-    not_setup: { status: 401, data: zPostOAuthServerAppApiError401 },
-    unauthorized: { status: 401, data: zPostOAuthServerAppApiError401 },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const provider = {

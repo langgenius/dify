@@ -3,10 +3,13 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
-  zGenerateInstructionError400,
-  zGenerateInstructionError401,
-  zGetInstructionTemplateError400,
-  zGetInstructionTemplateError401,
+  zAccountNotInitializedError,
+  zCompletionRequestError,
+  zModelCurrentlyNotSupportError,
+  zNotInitValidatedError,
+  zNotSetupError,
+  zProviderNotInitializeError,
+  zProviderQuotaExceededError,
 } from './zod.gen.ts'
 import {
   zPostInstructionGenerateBody,
@@ -30,17 +33,9 @@ export const post = oc
   .input(z.object({ body: zPostInstructionGenerateTemplateBody }))
   .output(zPostInstructionGenerateTemplateResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zGetInstructionTemplateError400 },
-    bad_host: { status: 400, data: zGetInstructionTemplateError400 },
-    bad_request: { status: 400, data: zGetInstructionTemplateError400 },
-    bad_request_key_error: { status: 400, data: zGetInstructionTemplateError400 },
-    client_disconnected: { status: 400, data: zGetInstructionTemplateError400 },
-    invalid_param: { status: 400, data: zGetInstructionTemplateError400 },
-    security_error: { status: 400, data: zGetInstructionTemplateError400 },
-    websocket_mismatch: { status: 400, data: zGetInstructionTemplateError400 },
-    not_init_validated: { status: 401, data: zGetInstructionTemplateError401 },
-    not_setup: { status: 401, data: zGetInstructionTemplateError401 },
-    unauthorized: { status: 401, data: zGetInstructionTemplateError401 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const template = {
@@ -62,21 +57,13 @@ export const post2 = oc
   .input(z.object({ body: zPostInstructionGenerateBody }))
   .output(zPostInstructionGenerateResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zGenerateInstructionError400 },
-    bad_host: { status: 400, data: zGenerateInstructionError400 },
-    bad_request: { status: 400, data: zGenerateInstructionError400 },
-    bad_request_key_error: { status: 400, data: zGenerateInstructionError400 },
-    client_disconnected: { status: 400, data: zGenerateInstructionError400 },
-    completion_request_error: { status: 400, data: zGenerateInstructionError400 },
-    invalid_param: { status: 400, data: zGenerateInstructionError400 },
-    model_currently_not_support: { status: 400, data: zGenerateInstructionError400 },
-    provider_not_initialize: { status: 400, data: zGenerateInstructionError400 },
-    provider_quota_exceeded: { status: 400, data: zGenerateInstructionError400 },
-    security_error: { status: 400, data: zGenerateInstructionError400 },
-    websocket_mismatch: { status: 400, data: zGenerateInstructionError400 },
-    not_init_validated: { status: 401, data: zGenerateInstructionError401 },
-    not_setup: { status: 401, data: zGenerateInstructionError401 },
-    unauthorized: { status: 401, data: zGenerateInstructionError401 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
   })
 
 export const instructionGenerate = {

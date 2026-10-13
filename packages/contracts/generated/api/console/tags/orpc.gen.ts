@@ -2,16 +2,7 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-import {
-  zDeleteTagUpdateDeleteApiError400,
-  zDeleteTagUpdateDeleteApiError401,
-  zGetTagListApiError400,
-  zGetTagListApiError401,
-  zPatchTagUpdateDeleteApiError400,
-  zPatchTagUpdateDeleteApiError401,
-  zPostTagListApiError400,
-  zPostTagListApiError401,
-} from './zod.gen.ts'
+import { zAccountNotInitializedError, zNotInitValidatedError, zNotSetupError } from './zod.gen.ts'
 import {
   zDeleteTagsByTagIdPath,
   zDeleteTagsByTagIdResponse,
@@ -36,17 +27,9 @@ export const delete_ = oc
   .input(z.object({ params: zDeleteTagsByTagIdPath }))
   .output(zDeleteTagsByTagIdResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zDeleteTagUpdateDeleteApiError400 },
-    bad_host: { status: 400, data: zDeleteTagUpdateDeleteApiError400 },
-    bad_request: { status: 400, data: zDeleteTagUpdateDeleteApiError400 },
-    bad_request_key_error: { status: 400, data: zDeleteTagUpdateDeleteApiError400 },
-    client_disconnected: { status: 400, data: zDeleteTagUpdateDeleteApiError400 },
-    invalid_param: { status: 400, data: zDeleteTagUpdateDeleteApiError400 },
-    security_error: { status: 400, data: zDeleteTagUpdateDeleteApiError400 },
-    websocket_mismatch: { status: 400, data: zDeleteTagUpdateDeleteApiError400 },
-    not_init_validated: { status: 401, data: zDeleteTagUpdateDeleteApiError401 },
-    not_setup: { status: 401, data: zDeleteTagUpdateDeleteApiError401 },
-    unauthorized: { status: 401, data: zDeleteTagUpdateDeleteApiError401 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const patch = oc
@@ -60,17 +43,9 @@ export const patch = oc
   .input(z.object({ body: zPatchTagsByTagIdBody, params: zPatchTagsByTagIdPath }))
   .output(zPatchTagsByTagIdResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zPatchTagUpdateDeleteApiError400 },
-    bad_host: { status: 400, data: zPatchTagUpdateDeleteApiError400 },
-    bad_request: { status: 400, data: zPatchTagUpdateDeleteApiError400 },
-    bad_request_key_error: { status: 400, data: zPatchTagUpdateDeleteApiError400 },
-    client_disconnected: { status: 400, data: zPatchTagUpdateDeleteApiError400 },
-    invalid_param: { status: 400, data: zPatchTagUpdateDeleteApiError400 },
-    security_error: { status: 400, data: zPatchTagUpdateDeleteApiError400 },
-    websocket_mismatch: { status: 400, data: zPatchTagUpdateDeleteApiError400 },
-    not_init_validated: { status: 401, data: zPatchTagUpdateDeleteApiError401 },
-    not_setup: { status: 401, data: zPatchTagUpdateDeleteApiError401 },
-    unauthorized: { status: 401, data: zPatchTagUpdateDeleteApiError401 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const byTagId = {
@@ -89,17 +64,9 @@ export const get = oc
   .input(z.object({ query: zGetTagsQuery }))
   .output(zGetTagsResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zGetTagListApiError400 },
-    bad_host: { status: 400, data: zGetTagListApiError400 },
-    bad_request: { status: 400, data: zGetTagListApiError400 },
-    bad_request_key_error: { status: 400, data: zGetTagListApiError400 },
-    client_disconnected: { status: 400, data: zGetTagListApiError400 },
-    invalid_param: { status: 400, data: zGetTagListApiError400 },
-    security_error: { status: 400, data: zGetTagListApiError400 },
-    websocket_mismatch: { status: 400, data: zGetTagListApiError400 },
-    not_init_validated: { status: 401, data: zGetTagListApiError401 },
-    not_setup: { status: 401, data: zGetTagListApiError401 },
-    unauthorized: { status: 401, data: zGetTagListApiError401 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const post = oc
@@ -113,17 +80,9 @@ export const post = oc
   .input(z.object({ body: zPostTagsBody }))
   .output(zPostTagsResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zPostTagListApiError400 },
-    bad_host: { status: 400, data: zPostTagListApiError400 },
-    bad_request: { status: 400, data: zPostTagListApiError400 },
-    bad_request_key_error: { status: 400, data: zPostTagListApiError400 },
-    client_disconnected: { status: 400, data: zPostTagListApiError400 },
-    invalid_param: { status: 400, data: zPostTagListApiError400 },
-    security_error: { status: 400, data: zPostTagListApiError400 },
-    websocket_mismatch: { status: 400, data: zPostTagListApiError400 },
-    not_init_validated: { status: 401, data: zPostTagListApiError401 },
-    not_setup: { status: 401, data: zPostTagListApiError401 },
-    unauthorized: { status: 401, data: zPostTagListApiError401 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const tags = {

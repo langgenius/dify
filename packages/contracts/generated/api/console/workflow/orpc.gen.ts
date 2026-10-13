@@ -3,11 +3,11 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
-  zGetConsoleWorkflowEventsApiError400,
-  zGetConsoleWorkflowEventsApiError404,
-  zGetWorkflowPauseDetailsError400,
-  zGetWorkflowPauseDetailsError401,
-  zGetWorkflowPauseDetailsError404,
+  zAccountNotInitializedError,
+  zInvalidParamError,
+  zNotFoundError,
+  zNotInitValidatedError,
+  zNotSetupError,
 } from './zod.gen.ts'
 import {
   zGetWorkflowByWorkflowRunIdEventsPath,
@@ -37,15 +37,9 @@ export const get = oc
   .input(z.object({ params: zGetWorkflowByWorkflowRunIdEventsPath }))
   .output(zGetWorkflowByWorkflowRunIdEventsResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zGetConsoleWorkflowEventsApiError400 },
-    bad_host: { status: 400, data: zGetConsoleWorkflowEventsApiError400 },
-    bad_request: { status: 400, data: zGetConsoleWorkflowEventsApiError400 },
-    bad_request_key_error: { status: 400, data: zGetConsoleWorkflowEventsApiError400 },
-    client_disconnected: { status: 400, data: zGetConsoleWorkflowEventsApiError400 },
-    invalid_param: { status: 400, data: zGetConsoleWorkflowEventsApiError400 },
-    security_error: { status: 400, data: zGetConsoleWorkflowEventsApiError400 },
-    websocket_mismatch: { status: 400, data: zGetConsoleWorkflowEventsApiError400 },
-    not_found: { status: 404, data: zGetConsoleWorkflowEventsApiError404 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    invalid_param: { status: 400, data: zInvalidParamError },
+    not_found: { status: 404, data: zNotFoundError },
   })
 
 export const events = {
@@ -74,18 +68,10 @@ export const get2 = oc
   .input(z.object({ params: zGetWorkflowByWorkflowRunIdPauseDetailsPath }))
   .output(zGetWorkflowByWorkflowRunIdPauseDetailsResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zGetWorkflowPauseDetailsError400 },
-    bad_host: { status: 400, data: zGetWorkflowPauseDetailsError400 },
-    bad_request: { status: 400, data: zGetWorkflowPauseDetailsError400 },
-    bad_request_key_error: { status: 400, data: zGetWorkflowPauseDetailsError400 },
-    client_disconnected: { status: 400, data: zGetWorkflowPauseDetailsError400 },
-    invalid_param: { status: 400, data: zGetWorkflowPauseDetailsError400 },
-    security_error: { status: 400, data: zGetWorkflowPauseDetailsError400 },
-    websocket_mismatch: { status: 400, data: zGetWorkflowPauseDetailsError400 },
-    not_init_validated: { status: 401, data: zGetWorkflowPauseDetailsError401 },
-    not_setup: { status: 401, data: zGetWorkflowPauseDetailsError401 },
-    unauthorized: { status: 401, data: zGetWorkflowPauseDetailsError401 },
-    not_found: { status: 404, data: zGetWorkflowPauseDetailsError404 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_found: { status: 404, data: zNotFoundError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const pauseDetails = {

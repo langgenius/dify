@@ -3,13 +3,10 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
-  zGetLearnDifyAppListApiError400,
-  zGetLearnDifyAppListApiError401,
-  zGetRecommendedAppApiError400,
-  zGetRecommendedAppApiError401,
-  zGetRecommendedAppApiError404,
-  zGetRecommendedAppListApiError400,
-  zGetRecommendedAppListApiError401,
+  zAccountNotInitializedError,
+  zNotInitValidatedError,
+  zNotSetupError,
+  zRecommendedAppNotFoundError,
 } from './zod.gen.ts'
 import {
   zGetExploreAppsByAppIdPath,
@@ -33,17 +30,9 @@ export const get = oc
   .input(z.object({ query: zGetExploreAppsLearnDifyQuery.optional() }))
   .output(zGetExploreAppsLearnDifyResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zGetLearnDifyAppListApiError400 },
-    bad_host: { status: 400, data: zGetLearnDifyAppListApiError400 },
-    bad_request: { status: 400, data: zGetLearnDifyAppListApiError400 },
-    bad_request_key_error: { status: 400, data: zGetLearnDifyAppListApiError400 },
-    client_disconnected: { status: 400, data: zGetLearnDifyAppListApiError400 },
-    invalid_param: { status: 400, data: zGetLearnDifyAppListApiError400 },
-    security_error: { status: 400, data: zGetLearnDifyAppListApiError400 },
-    websocket_mismatch: { status: 400, data: zGetLearnDifyAppListApiError400 },
-    not_init_validated: { status: 401, data: zGetLearnDifyAppListApiError401 },
-    not_setup: { status: 401, data: zGetLearnDifyAppListApiError401 },
-    unauthorized: { status: 401, data: zGetLearnDifyAppListApiError401 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const learnDify = {
@@ -61,19 +50,10 @@ export const get2 = oc
   .input(z.object({ params: zGetExploreAppsByAppIdPath }))
   .output(zGetExploreAppsByAppIdResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zGetRecommendedAppApiError400 },
-    bad_host: { status: 400, data: zGetRecommendedAppApiError400 },
-    bad_request: { status: 400, data: zGetRecommendedAppApiError400 },
-    bad_request_key_error: { status: 400, data: zGetRecommendedAppApiError400 },
-    client_disconnected: { status: 400, data: zGetRecommendedAppApiError400 },
-    invalid_param: { status: 400, data: zGetRecommendedAppApiError400 },
-    security_error: { status: 400, data: zGetRecommendedAppApiError400 },
-    websocket_mismatch: { status: 400, data: zGetRecommendedAppApiError400 },
-    not_init_validated: { status: 401, data: zGetRecommendedAppApiError401 },
-    not_setup: { status: 401, data: zGetRecommendedAppApiError401 },
-    unauthorized: { status: 401, data: zGetRecommendedAppApiError401 },
-    not_found: { status: 404, data: zGetRecommendedAppApiError404 },
-    recommended_app_not_found: { status: 404, data: zGetRecommendedAppApiError404 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    recommended_app_not_found: { status: 404, data: zRecommendedAppNotFoundError },
   })
 
 export const byAppId = {
@@ -91,17 +71,9 @@ export const get3 = oc
   .input(z.object({ query: zGetExploreAppsQuery.optional() }))
   .output(zGetExploreAppsResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zGetRecommendedAppListApiError400 },
-    bad_host: { status: 400, data: zGetRecommendedAppListApiError400 },
-    bad_request: { status: 400, data: zGetRecommendedAppListApiError400 },
-    bad_request_key_error: { status: 400, data: zGetRecommendedAppListApiError400 },
-    client_disconnected: { status: 400, data: zGetRecommendedAppListApiError400 },
-    invalid_param: { status: 400, data: zGetRecommendedAppListApiError400 },
-    security_error: { status: 400, data: zGetRecommendedAppListApiError400 },
-    websocket_mismatch: { status: 400, data: zGetRecommendedAppListApiError400 },
-    not_init_validated: { status: 401, data: zGetRecommendedAppListApiError401 },
-    not_setup: { status: 401, data: zGetRecommendedAppListApiError401 },
-    unauthorized: { status: 401, data: zGetRecommendedAppListApiError401 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const apps = {

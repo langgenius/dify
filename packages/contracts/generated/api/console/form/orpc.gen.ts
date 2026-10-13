@@ -3,13 +3,13 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
-  zGetConsoleHumanInputFormApiError400,
-  zGetConsoleHumanInputFormApiError401,
-  zGetConsoleHumanInputFormApiError404,
-  zGetConsoleHumanInputFormApiError412,
-  zPostConsoleHumanInputFormApiError400,
-  zPostConsoleHumanInputFormApiError404,
-  zPostConsoleHumanInputFormApiError412,
+  zAccountNotInitializedError,
+  zHumanInputFormExpiredError,
+  zHumanInputFormSubmittedError,
+  zInvalidFormDataError,
+  zNotFoundError,
+  zNotInitValidatedError,
+  zNotSetupError,
 } from './zod.gen.ts'
 import {
   zGetFormHumanInputByFormTokenPath,
@@ -37,20 +37,11 @@ export const get = oc
   .input(z.object({ params: zGetFormHumanInputByFormTokenPath }))
   .output(zGetFormHumanInputByFormTokenResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zGetConsoleHumanInputFormApiError400 },
-    bad_host: { status: 400, data: zGetConsoleHumanInputFormApiError400 },
-    bad_request: { status: 400, data: zGetConsoleHumanInputFormApiError400 },
-    bad_request_key_error: { status: 400, data: zGetConsoleHumanInputFormApiError400 },
-    client_disconnected: { status: 400, data: zGetConsoleHumanInputFormApiError400 },
-    invalid_param: { status: 400, data: zGetConsoleHumanInputFormApiError400 },
-    security_error: { status: 400, data: zGetConsoleHumanInputFormApiError400 },
-    websocket_mismatch: { status: 400, data: zGetConsoleHumanInputFormApiError400 },
-    not_init_validated: { status: 401, data: zGetConsoleHumanInputFormApiError401 },
-    not_setup: { status: 401, data: zGetConsoleHumanInputFormApiError401 },
-    unauthorized: { status: 401, data: zGetConsoleHumanInputFormApiError401 },
-    not_found: { status: 404, data: zGetConsoleHumanInputFormApiError404 },
-    human_input_form_submitted: { status: 412, data: zGetConsoleHumanInputFormApiError412 },
-    precondition_failed: { status: 412, data: zGetConsoleHumanInputFormApiError412 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    human_input_form_submitted: { status: 412, data: zHumanInputFormSubmittedError },
+    not_found: { status: 404, data: zNotFoundError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 /**
@@ -85,19 +76,11 @@ export const post = oc
   )
   .output(zPostFormHumanInputByFormTokenResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zPostConsoleHumanInputFormApiError400 },
-    bad_host: { status: 400, data: zPostConsoleHumanInputFormApiError400 },
-    bad_request: { status: 400, data: zPostConsoleHumanInputFormApiError400 },
-    bad_request_key_error: { status: 400, data: zPostConsoleHumanInputFormApiError400 },
-    client_disconnected: { status: 400, data: zPostConsoleHumanInputFormApiError400 },
-    invalid_form_data: { status: 400, data: zPostConsoleHumanInputFormApiError400 },
-    invalid_param: { status: 400, data: zPostConsoleHumanInputFormApiError400 },
-    security_error: { status: 400, data: zPostConsoleHumanInputFormApiError400 },
-    websocket_mismatch: { status: 400, data: zPostConsoleHumanInputFormApiError400 },
-    not_found: { status: 404, data: zPostConsoleHumanInputFormApiError404 },
-    human_input_form_expired: { status: 412, data: zPostConsoleHumanInputFormApiError412 },
-    human_input_form_submitted: { status: 412, data: zPostConsoleHumanInputFormApiError412 },
-    precondition_failed: { status: 412, data: zPostConsoleHumanInputFormApiError412 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    human_input_form_expired: { status: 412, data: zHumanInputFormExpiredError },
+    human_input_form_submitted: { status: 412, data: zHumanInputFormSubmittedError },
+    invalid_form_data: { status: 400, data: zInvalidFormDataError },
+    not_found: { status: 404, data: zNotFoundError },
   })
 
 export const byFormToken = {

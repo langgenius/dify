@@ -3,13 +3,16 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
-  zCheckForgotPasswordCodeError400,
-  zCheckForgotPasswordCodeError401,
-  zCheckForgotPasswordCodeError429,
-  zResetPasswordError400,
-  zResetPasswordError401,
-  zSendForgotPasswordEmailError401,
-  zSendForgotPasswordEmailError429,
+  zAccountNotFoundError,
+  zEmailCodeError,
+  zEmailPasswordResetLimitError,
+  zEmailSendIpLimitError,
+  zInvalidEmailError,
+  zInvalidOrExpiredTokenError,
+  zNotInitValidatedError,
+  zNotSetupError,
+  zPasswordMismatchError,
+  zPasswordResetRateLimitExceededError,
 } from './zod.gen.ts'
 import {
   zPostForgotPasswordBody,
@@ -35,19 +38,11 @@ export const post = oc
   .input(z.object({ body: zPostForgotPasswordResetsBody }))
   .output(zPostForgotPasswordResetsResponse)
   .errors({
-    account_not_found: { status: 400, data: zResetPasswordError400 },
-    bad_host: { status: 400, data: zResetPasswordError400 },
-    bad_request: { status: 400, data: zResetPasswordError400 },
-    bad_request_key_error: { status: 400, data: zResetPasswordError400 },
-    client_disconnected: { status: 400, data: zResetPasswordError400 },
-    invalid_or_expired_token: { status: 400, data: zResetPasswordError400 },
-    invalid_param: { status: 400, data: zResetPasswordError400 },
-    password_mismatch: { status: 400, data: zResetPasswordError400 },
-    security_error: { status: 400, data: zResetPasswordError400 },
-    websocket_mismatch: { status: 400, data: zResetPasswordError400 },
-    not_init_validated: { status: 401, data: zResetPasswordError401 },
-    not_setup: { status: 401, data: zResetPasswordError401 },
-    unauthorized: { status: 401, data: zResetPasswordError401 },
+    account_not_found: { status: 400, data: zAccountNotFoundError },
+    invalid_or_expired_token: { status: 400, data: zInvalidOrExpiredTokenError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    password_mismatch: { status: 400, data: zPasswordMismatchError },
   })
 
 export const resets = {
@@ -69,21 +64,12 @@ export const post2 = oc
   .input(z.object({ body: zPostForgotPasswordValidityBody }))
   .output(zPostForgotPasswordValidityResponse)
   .errors({
-    bad_host: { status: 400, data: zCheckForgotPasswordCodeError400 },
-    bad_request: { status: 400, data: zCheckForgotPasswordCodeError400 },
-    bad_request_key_error: { status: 400, data: zCheckForgotPasswordCodeError400 },
-    client_disconnected: { status: 400, data: zCheckForgotPasswordCodeError400 },
-    email_code_error: { status: 400, data: zCheckForgotPasswordCodeError400 },
-    invalid_email: { status: 400, data: zCheckForgotPasswordCodeError400 },
-    invalid_or_expired_token: { status: 400, data: zCheckForgotPasswordCodeError400 },
-    invalid_param: { status: 400, data: zCheckForgotPasswordCodeError400 },
-    security_error: { status: 400, data: zCheckForgotPasswordCodeError400 },
-    websocket_mismatch: { status: 400, data: zCheckForgotPasswordCodeError400 },
-    not_init_validated: { status: 401, data: zCheckForgotPasswordCodeError401 },
-    not_setup: { status: 401, data: zCheckForgotPasswordCodeError401 },
-    unauthorized: { status: 401, data: zCheckForgotPasswordCodeError401 },
-    email_password_reset_limit: { status: 429, data: zCheckForgotPasswordCodeError429 },
-    too_many_requests: { status: 429, data: zCheckForgotPasswordCodeError429 },
+    email_code_error: { status: 400, data: zEmailCodeError },
+    email_password_reset_limit: { status: 429, data: zEmailPasswordResetLimitError },
+    invalid_email: { status: 400, data: zInvalidEmailError },
+    invalid_or_expired_token: { status: 400, data: zInvalidOrExpiredTokenError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const validity = {
@@ -105,12 +91,10 @@ export const post3 = oc
   .input(z.object({ body: zPostForgotPasswordBody }))
   .output(zPostForgotPasswordResponse)
   .errors({
-    not_init_validated: { status: 401, data: zSendForgotPasswordEmailError401 },
-    not_setup: { status: 401, data: zSendForgotPasswordEmailError401 },
-    unauthorized: { status: 401, data: zSendForgotPasswordEmailError401 },
-    email_send_ip_limit: { status: 429, data: zSendForgotPasswordEmailError429 },
-    password_reset_rate_limit_exceeded: { status: 429, data: zSendForgotPasswordEmailError429 },
-    too_many_requests: { status: 429, data: zSendForgotPasswordEmailError429 },
+    email_send_ip_limit: { status: 429, data: zEmailSendIpLimitError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    password_reset_rate_limit_exceeded: { status: 429, data: zPasswordResetRateLimitExceededError },
   })
 
 export const forgotPassword = {

@@ -2,12 +2,7 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-import {
-  zDismissNotificationError400,
-  zDismissNotificationError401,
-  zGetNotificationError400,
-  zGetNotificationError401,
-} from './zod.gen.ts'
+import { zAccountNotInitializedError, zNotInitValidatedError, zNotSetupError } from './zod.gen.ts'
 import {
   zGetNotificationQuery,
   zGetNotificationResponse,
@@ -30,17 +25,9 @@ export const post = oc
   .input(z.object({ body: zPostNotificationDismissBody }))
   .output(zPostNotificationDismissResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zDismissNotificationError400 },
-    bad_host: { status: 400, data: zDismissNotificationError400 },
-    bad_request: { status: 400, data: zDismissNotificationError400 },
-    bad_request_key_error: { status: 400, data: zDismissNotificationError400 },
-    client_disconnected: { status: 400, data: zDismissNotificationError400 },
-    invalid_param: { status: 400, data: zDismissNotificationError400 },
-    security_error: { status: 400, data: zDismissNotificationError400 },
-    websocket_mismatch: { status: 400, data: zDismissNotificationError400 },
-    not_init_validated: { status: 401, data: zDismissNotificationError401 },
-    not_setup: { status: 401, data: zDismissNotificationError401 },
-    unauthorized: { status: 401, data: zDismissNotificationError401 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const dismiss = {
@@ -63,17 +50,9 @@ export const get = oc
   .input(z.object({ query: zGetNotificationQuery.optional() }))
   .output(zGetNotificationResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zGetNotificationError400 },
-    bad_host: { status: 400, data: zGetNotificationError400 },
-    bad_request: { status: 400, data: zGetNotificationError400 },
-    bad_request_key_error: { status: 400, data: zGetNotificationError400 },
-    client_disconnected: { status: 400, data: zGetNotificationError400 },
-    invalid_param: { status: 400, data: zGetNotificationError400 },
-    security_error: { status: 400, data: zGetNotificationError400 },
-    websocket_mismatch: { status: 400, data: zGetNotificationError400 },
-    not_init_validated: { status: 401, data: zGetNotificationError401 },
-    not_setup: { status: 401, data: zGetNotificationError401 },
-    unauthorized: { status: 401, data: zGetNotificationError401 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const notification = {

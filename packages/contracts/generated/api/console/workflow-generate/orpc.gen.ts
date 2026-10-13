@@ -3,12 +3,13 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
-  zGenerateWorkflowGraphError400,
-  zGenerateWorkflowGraphError401,
-  zGenerateWorkflowGraphStreamError400,
-  zGenerateWorkflowGraphStreamError401,
-  zGenerateWorkflowInstructionSuggestionsError400,
-  zGenerateWorkflowInstructionSuggestionsError401,
+  zAccountNotInitializedError,
+  zCompletionRequestError,
+  zModelCurrentlyNotSupportError,
+  zNotInitValidatedError,
+  zNotSetupError,
+  zProviderNotInitializeError,
+  zProviderQuotaExceededError,
 } from './zod.gen.ts'
 import {
   zPostWorkflowGenerateBody,
@@ -34,17 +35,9 @@ export const post = oc
   .input(z.object({ body: zPostWorkflowGenerateStreamBody }))
   .output(zPostWorkflowGenerateStreamResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zGenerateWorkflowGraphStreamError400 },
-    bad_host: { status: 400, data: zGenerateWorkflowGraphStreamError400 },
-    bad_request: { status: 400, data: zGenerateWorkflowGraphStreamError400 },
-    bad_request_key_error: { status: 400, data: zGenerateWorkflowGraphStreamError400 },
-    client_disconnected: { status: 400, data: zGenerateWorkflowGraphStreamError400 },
-    invalid_param: { status: 400, data: zGenerateWorkflowGraphStreamError400 },
-    security_error: { status: 400, data: zGenerateWorkflowGraphStreamError400 },
-    websocket_mismatch: { status: 400, data: zGenerateWorkflowGraphStreamError400 },
-    not_init_validated: { status: 401, data: zGenerateWorkflowGraphStreamError401 },
-    not_setup: { status: 401, data: zGenerateWorkflowGraphStreamError401 },
-    unauthorized: { status: 401, data: zGenerateWorkflowGraphStreamError401 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const stream = {
@@ -66,17 +59,9 @@ export const post2 = oc
   .input(z.object({ body: zPostWorkflowGenerateSuggestionsBody }))
   .output(zPostWorkflowGenerateSuggestionsResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zGenerateWorkflowInstructionSuggestionsError400 },
-    bad_host: { status: 400, data: zGenerateWorkflowInstructionSuggestionsError400 },
-    bad_request: { status: 400, data: zGenerateWorkflowInstructionSuggestionsError400 },
-    bad_request_key_error: { status: 400, data: zGenerateWorkflowInstructionSuggestionsError400 },
-    client_disconnected: { status: 400, data: zGenerateWorkflowInstructionSuggestionsError400 },
-    invalid_param: { status: 400, data: zGenerateWorkflowInstructionSuggestionsError400 },
-    security_error: { status: 400, data: zGenerateWorkflowInstructionSuggestionsError400 },
-    websocket_mismatch: { status: 400, data: zGenerateWorkflowInstructionSuggestionsError400 },
-    not_init_validated: { status: 401, data: zGenerateWorkflowInstructionSuggestionsError401 },
-    not_setup: { status: 401, data: zGenerateWorkflowInstructionSuggestionsError401 },
-    unauthorized: { status: 401, data: zGenerateWorkflowInstructionSuggestionsError401 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const suggestions = {
@@ -98,21 +83,13 @@ export const post3 = oc
   .input(z.object({ body: zPostWorkflowGenerateBody }))
   .output(zPostWorkflowGenerateResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zGenerateWorkflowGraphError400 },
-    bad_host: { status: 400, data: zGenerateWorkflowGraphError400 },
-    bad_request: { status: 400, data: zGenerateWorkflowGraphError400 },
-    bad_request_key_error: { status: 400, data: zGenerateWorkflowGraphError400 },
-    client_disconnected: { status: 400, data: zGenerateWorkflowGraphError400 },
-    completion_request_error: { status: 400, data: zGenerateWorkflowGraphError400 },
-    invalid_param: { status: 400, data: zGenerateWorkflowGraphError400 },
-    model_currently_not_support: { status: 400, data: zGenerateWorkflowGraphError400 },
-    provider_not_initialize: { status: 400, data: zGenerateWorkflowGraphError400 },
-    provider_quota_exceeded: { status: 400, data: zGenerateWorkflowGraphError400 },
-    security_error: { status: 400, data: zGenerateWorkflowGraphError400 },
-    websocket_mismatch: { status: 400, data: zGenerateWorkflowGraphError400 },
-    not_init_validated: { status: 401, data: zGenerateWorkflowGraphError401 },
-    not_setup: { status: 401, data: zGenerateWorkflowGraphError401 },
-    unauthorized: { status: 401, data: zGenerateWorkflowGraphError401 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
   })
 
 export const workflowGenerate = {

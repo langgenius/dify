@@ -2,12 +2,7 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-import {
-  zCreateTagBindingError400,
-  zCreateTagBindingError401,
-  zRemoveTagBindingsError400,
-  zRemoveTagBindingsError401,
-} from './zod.gen.ts'
+import { zAccountNotInitializedError, zNotInitValidatedError, zNotSetupError } from './zod.gen.ts'
 import {
   zPostTagBindingsBody,
   zPostTagBindingsRemoveBody,
@@ -30,17 +25,9 @@ export const post = oc
   .input(z.object({ body: zPostTagBindingsRemoveBody }))
   .output(zPostTagBindingsRemoveResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zRemoveTagBindingsError400 },
-    bad_host: { status: 400, data: zRemoveTagBindingsError400 },
-    bad_request: { status: 400, data: zRemoveTagBindingsError400 },
-    bad_request_key_error: { status: 400, data: zRemoveTagBindingsError400 },
-    client_disconnected: { status: 400, data: zRemoveTagBindingsError400 },
-    invalid_param: { status: 400, data: zRemoveTagBindingsError400 },
-    security_error: { status: 400, data: zRemoveTagBindingsError400 },
-    websocket_mismatch: { status: 400, data: zRemoveTagBindingsError400 },
-    not_init_validated: { status: 401, data: zRemoveTagBindingsError401 },
-    not_setup: { status: 401, data: zRemoveTagBindingsError401 },
-    unauthorized: { status: 401, data: zRemoveTagBindingsError401 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const remove = {
@@ -58,17 +45,9 @@ export const post2 = oc
   .input(z.object({ body: zPostTagBindingsBody }))
   .output(zPostTagBindingsResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zCreateTagBindingError400 },
-    bad_host: { status: 400, data: zCreateTagBindingError400 },
-    bad_request: { status: 400, data: zCreateTagBindingError400 },
-    bad_request_key_error: { status: 400, data: zCreateTagBindingError400 },
-    client_disconnected: { status: 400, data: zCreateTagBindingError400 },
-    invalid_param: { status: 400, data: zCreateTagBindingError400 },
-    security_error: { status: 400, data: zCreateTagBindingError400 },
-    websocket_mismatch: { status: 400, data: zCreateTagBindingError400 },
-    not_init_validated: { status: 401, data: zCreateTagBindingError401 },
-    not_setup: { status: 401, data: zCreateTagBindingError401 },
-    unauthorized: { status: 401, data: zCreateTagBindingError401 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const tagBindings = {

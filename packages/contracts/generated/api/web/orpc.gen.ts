@@ -3,165 +3,61 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
-  zAudioToTextError400,
-  zAudioToTextError401,
-  zAudioToTextError404,
-  zAudioToTextError413,
-  zAudioToTextError415,
-  zAudioToTextError503,
-  zCheckAppPermissionError401,
-  zCheckAppPermissionError503,
-  zCheckForgotPasswordTokenError400,
-  zCheckForgotPasswordTokenError401,
-  zCheckForgotPasswordTokenError429,
-  zCreateChatMessageError400,
-  zCreateChatMessageError401,
-  zCreateChatMessageError404,
-  zCreateChatMessageError429,
-  zCreateChatMessageError503,
-  zCreateCompletionMessageError400,
-  zCreateCompletionMessageError401,
-  zCreateCompletionMessageError404,
-  zCreateCompletionMessageError503,
-  zCreateHumanInputFormUploadTokenError404,
-  zCreateHumanInputFormUploadTokenError429,
-  zCreateMessageFeedbackError401,
-  zCreateMessageFeedbackError404,
-  zCreateMessageFeedbackError503,
-  zDeleteConversationError400,
-  zDeleteConversationError401,
-  zDeleteConversationError404,
-  zDeleteConversationError503,
-  zDeleteSavedMessageError400,
-  zDeleteSavedMessageError401,
-  zDeleteSavedMessageError404,
-  zDeleteSavedMessageError503,
-  zGenerateMoreLikeThisError400,
-  zGenerateMoreLikeThisError401,
-  zGenerateMoreLikeThisError403,
-  zGenerateMoreLikeThisError404,
-  zGenerateMoreLikeThisError503,
-  zGetAppAccessModeError400,
-  zGetAppAccessModeError404,
-  zGetAppAccessModeError503,
-  zGetAppMetaError400,
-  zGetAppMetaError401,
-  zGetAppMetaError404,
-  zGetAppMetaError503,
-  zGetAppParametersError400,
-  zGetAppParametersError401,
-  zGetAppParametersError404,
-  zGetAppParametersError503,
-  zGetAppSiteInfoError401,
-  zGetAppSiteInfoError404,
-  zGetAppSiteInfoError503,
-  zGetConversationListError400,
-  zGetConversationListError401,
-  zGetConversationListError404,
-  zGetConversationListError503,
-  zGetHumanInputFormError404,
-  zGetHumanInputFormError412,
-  zGetHumanInputFormError429,
-  zGetMessageListError400,
-  zGetMessageListError401,
-  zGetMessageListError404,
-  zGetMessageListError503,
-  zGetPassportError401,
-  zGetRemoteFileInfoError400,
-  zGetRemoteFileInfoError401,
-  zGetRemoteFileInfoError404,
-  zGetRemoteFileInfoError502,
-  zGetRemoteFileInfoError503,
-  zGetSavedMessagesError400,
-  zGetSavedMessagesError401,
-  zGetSavedMessagesError404,
-  zGetSavedMessagesError503,
-  zGetSuggestedQuestionsError400,
-  zGetSuggestedQuestionsError401,
-  zGetSuggestedQuestionsError403,
-  zGetSuggestedQuestionsError404,
-  zGetSuggestedQuestionsError503,
-  zGetWorkflowEventsApiError400,
-  zGetWorkflowEventsApiError401,
-  zGetWorkflowEventsApiError404,
-  zGetWorkflowEventsApiError503,
-  zPinConversationError400,
-  zPinConversationError401,
-  zPinConversationError404,
-  zPinConversationError503,
-  zPostHumanInputFileUploadApiError400,
-  zPostHumanInputFileUploadApiError401,
-  zPostHumanInputFileUploadApiError403,
-  zPostHumanInputFileUploadApiError404,
-  zPostHumanInputFileUploadApiError413,
-  zPostHumanInputFileUploadApiError415,
-  zPostHumanInputFileUploadApiError502,
-  zRenameConversationError400,
-  zRenameConversationError401,
-  zRenameConversationError404,
-  zRenameConversationError503,
-  zResetPasswordError400,
-  zResetPasswordError401,
-  zRunWorkflowError400,
-  zRunWorkflowError401,
-  zRunWorkflowError403,
-  zRunWorkflowError404,
-  zRunWorkflowError429,
-  zRunWorkflowError503,
-  zSaveMessageError400,
-  zSaveMessageError401,
-  zSaveMessageError404,
-  zSaveMessageError503,
-  zSendEmailCodeLoginError401,
-  zSendForgotPasswordEmailError401,
-  zSendForgotPasswordEmailError429,
-  zStopChatMessageError400,
-  zStopChatMessageError401,
-  zStopChatMessageError404,
-  zStopChatMessageError503,
-  zStopCompletionMessageError400,
-  zStopCompletionMessageError401,
-  zStopCompletionMessageError404,
-  zStopCompletionMessageError503,
-  zStopWorkflowTaskError400,
-  zStopWorkflowTaskError401,
-  zStopWorkflowTaskError404,
-  zStopWorkflowTaskError503,
-  zSubmitHumanInputFormError400,
-  zSubmitHumanInputFormError404,
-  zSubmitHumanInputFormError412,
-  zSubmitHumanInputFormError429,
-  zTextToAudioError400,
-  zTextToAudioError401,
-  zTextToAudioError404,
-  zTextToAudioError413,
-  zTextToAudioError415,
-  zTextToAudioError503,
-  zUnpinConversationError400,
-  zUnpinConversationError401,
-  zUnpinConversationError404,
-  zUnpinConversationError503,
-  zUploadFileError400,
-  zUploadFileError401,
-  zUploadFileError404,
-  zUploadFileError413,
-  zUploadFileError415,
-  zUploadFileError503,
-  zUploadRemoteFileError400,
-  zUploadRemoteFileError401,
-  zUploadRemoteFileError404,
-  zUploadRemoteFileError413,
-  zUploadRemoteFileError415,
-  zUploadRemoteFileError502,
-  zUploadRemoteFileError503,
-  zVerifyEmailCodeLoginError400,
-  zVerifyEmailCodeLoginError401,
-  zWebAppLoginError400,
-  zWebAppLoginError401,
-  zWebAppLoginStatusError401,
-  zWebAppLoginStatusError404,
-  zWebAppLoginStatusError503,
-  zWebAppLogoutError401,
+  zAccountBannedError,
+  zAgentNotPublishedError,
+  zAgentVersionNotFoundError,
+  zAppMoreLikeThisDisabledError,
+  zAppNotFoundError,
+  zAppSuggestedQuestionsAfterAnswerDisabledError,
+  zAppUnavailableError,
+  zAudioTooLargeError,
+  zAuthenticationFailedError,
+  zCompletionRequestError,
+  zEmailCodeError,
+  zEmailPasswordResetLimitError,
+  zEmailSendIpLimitError,
+  zFileExtensionBlockedError,
+  zFileTooLargeError,
+  zFilenameNotExistsError,
+  zHumanInputFormExpiredError,
+  zHumanInputFormSubmittedError,
+  zInvalidEmailError,
+  zInvalidFormDataError,
+  zInvalidOrExpiredTokenError,
+  zInvalidParamError,
+  zInvalidUploadTokenError,
+  zMalformedUploadTokenError,
+  zModelCurrentlyNotSupportError,
+  zNoAudioUploadedError,
+  zNoFileUploadedError,
+  zNotChatAppError,
+  zNotCompletionAppError,
+  zNotFoundError,
+  zNotInitValidatedError,
+  zNotSetupError,
+  zNotWorkflowAppError,
+  zPasswordMismatchError,
+  zPasswordResetRateLimitExceededError,
+  zProviderNotInitializeError,
+  zProviderNotSupportSpeechToTextError,
+  zProviderQuotaExceededError,
+  zRateLimitError,
+  zRemoteFileAccessDeniedError,
+  zRemoteFileInvalidResponseError,
+  zRemoteFileInvalidUrlError,
+  zRemoteFileNotFoundError,
+  zRemoteFileUnavailableError,
+  zRemoteFileUrlBlockedError,
+  zSpeechToTextDisabledError,
+  zTooManyFilesError,
+  zTriggerWorkflowServiceModeUnavailableError,
+  zUnsupportedAudioTypeError,
+  zUnsupportedFileTypeError,
+  zUploadTokenRequiredError,
+  zWebAppAccessDeniedError,
+  zWebAppAccessUnavailableError,
+  zWebFormRateLimitExceededError,
+  zWebSsoAuthRequiredError,
 } from './zod.gen.ts'
 import {
   zDeleteConversationsByCIdPath,
@@ -268,33 +164,24 @@ export const post = oc
   })
   .output(zPostAudioToTextResponse)
   .errors({
-    app_unavailable: { status: 400, data: zAudioToTextError400 },
-    bad_host: { status: 400, data: zAudioToTextError400 },
-    bad_request: { status: 400, data: zAudioToTextError400 },
-    bad_request_key_error: { status: 400, data: zAudioToTextError400 },
-    client_disconnected: { status: 400, data: zAudioToTextError400 },
-    completion_request_error: { status: 400, data: zAudioToTextError400 },
-    invalid_param: { status: 400, data: zAudioToTextError400 },
-    model_currently_not_support: { status: 400, data: zAudioToTextError400 },
-    no_audio_uploaded: { status: 400, data: zAudioToTextError400 },
-    provider_not_initialize: { status: 400, data: zAudioToTextError400 },
-    provider_not_support_speech_to_text: { status: 400, data: zAudioToTextError400 },
-    provider_quota_exceeded: { status: 400, data: zAudioToTextError400 },
-    security_error: { status: 400, data: zAudioToTextError400 },
-    speech_to_text_disabled: { status: 400, data: zAudioToTextError400 },
-    websocket_mismatch: { status: 400, data: zAudioToTextError400 },
-    unauthorized: { status: 401, data: zAudioToTextError401 },
-    web_app_access_denied: { status: 401, data: zAudioToTextError401 },
-    web_sso_auth_required: { status: 401, data: zAudioToTextError401 },
-    agent_version_not_found_error: { status: 404, data: zAudioToTextError404 },
-    app_not_found: { status: 404, data: zAudioToTextError404 },
-    not_found: { status: 404, data: zAudioToTextError404 },
-    audio_too_large: { status: 413, data: zAudioToTextError413 },
-    request_entity_too_large: { status: 413, data: zAudioToTextError413 },
-    unsupported_audio_type: { status: 415, data: zAudioToTextError415 },
-    unsupported_media_type: { status: 415, data: zAudioToTextError415 },
-    service_unavailable: { status: 503, data: zAudioToTextError503 },
-    web_app_access_unavailable: { status: 503, data: zAudioToTextError503 },
+    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    audio_too_large: { status: 413, data: zAudioTooLargeError },
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    no_audio_uploaded: { status: 400, data: zNoAudioUploadedError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_not_support_speech_to_text: {
+      status: 400,
+      data: zProviderNotSupportSpeechToTextError,
+    },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+    speech_to_text_disabled: { status: 400, data: zSpeechToTextDisabledError },
+    unsupported_audio_type: { status: 415, data: zUnsupportedAudioTypeError },
+    web_app_access_denied: { status: 401, data: zWebAppAccessDeniedError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+    web_sso_auth_required: { status: 401, data: zWebSsoAuthRequiredError },
   })
 
 export const audioToText = {
@@ -316,21 +203,11 @@ export const post2 = oc
   .input(z.object({ params: zPostChatMessagesByTaskIdStopPath }))
   .output(zPostChatMessagesByTaskIdStopResponse)
   .errors({
-    bad_host: { status: 400, data: zStopChatMessageError400 },
-    bad_request: { status: 400, data: zStopChatMessageError400 },
-    bad_request_key_error: { status: 400, data: zStopChatMessageError400 },
-    client_disconnected: { status: 400, data: zStopChatMessageError400 },
-    invalid_param: { status: 400, data: zStopChatMessageError400 },
-    not_chat_app: { status: 400, data: zStopChatMessageError400 },
-    security_error: { status: 400, data: zStopChatMessageError400 },
-    websocket_mismatch: { status: 400, data: zStopChatMessageError400 },
-    unauthorized: { status: 401, data: zStopChatMessageError401 },
-    web_app_access_denied: { status: 401, data: zStopChatMessageError401 },
-    web_sso_auth_required: { status: 401, data: zStopChatMessageError401 },
-    app_not_found: { status: 404, data: zStopChatMessageError404 },
-    not_found: { status: 404, data: zStopChatMessageError404 },
-    service_unavailable: { status: 503, data: zStopChatMessageError503 },
-    web_app_access_unavailable: { status: 503, data: zStopChatMessageError503 },
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+    web_app_access_denied: { status: 401, data: zWebAppAccessDeniedError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+    web_sso_auth_required: { status: 401, data: zWebSsoAuthRequiredError },
   })
 
 export const stop = {
@@ -356,29 +233,18 @@ export const post3 = oc
   .input(z.object({ body: zPostChatMessagesBody }))
   .output(zPostChatMessagesResponse)
   .errors({
-    agent_not_published: { status: 400, data: zCreateChatMessageError400 },
-    app_unavailable: { status: 400, data: zCreateChatMessageError400 },
-    bad_host: { status: 400, data: zCreateChatMessageError400 },
-    bad_request: { status: 400, data: zCreateChatMessageError400 },
-    bad_request_key_error: { status: 400, data: zCreateChatMessageError400 },
-    client_disconnected: { status: 400, data: zCreateChatMessageError400 },
-    completion_request_error: { status: 400, data: zCreateChatMessageError400 },
-    invalid_param: { status: 400, data: zCreateChatMessageError400 },
-    model_currently_not_support: { status: 400, data: zCreateChatMessageError400 },
-    not_chat_app: { status: 400, data: zCreateChatMessageError400 },
-    provider_not_initialize: { status: 400, data: zCreateChatMessageError400 },
-    provider_quota_exceeded: { status: 400, data: zCreateChatMessageError400 },
-    security_error: { status: 400, data: zCreateChatMessageError400 },
-    websocket_mismatch: { status: 400, data: zCreateChatMessageError400 },
-    unauthorized: { status: 401, data: zCreateChatMessageError401 },
-    web_app_access_denied: { status: 401, data: zCreateChatMessageError401 },
-    web_sso_auth_required: { status: 401, data: zCreateChatMessageError401 },
-    app_not_found: { status: 404, data: zCreateChatMessageError404 },
-    not_found: { status: 404, data: zCreateChatMessageError404 },
-    rate_limit_error: { status: 429, data: zCreateChatMessageError429 },
-    too_many_requests: { status: 429, data: zCreateChatMessageError429 },
-    service_unavailable: { status: 503, data: zCreateChatMessageError503 },
-    web_app_access_unavailable: { status: 503, data: zCreateChatMessageError503 },
+    agent_not_published: { status: 400, data: zAgentNotPublishedError },
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+    rate_limit_error: { status: 429, data: zRateLimitError },
+    web_app_access_denied: { status: 401, data: zWebAppAccessDeniedError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+    web_sso_auth_required: { status: 401, data: zWebSsoAuthRequiredError },
   })
 
 export const chatMessages = {
@@ -401,21 +267,11 @@ export const post4 = oc
   .input(z.object({ params: zPostCompletionMessagesByTaskIdStopPath }))
   .output(zPostCompletionMessagesByTaskIdStopResponse)
   .errors({
-    bad_host: { status: 400, data: zStopCompletionMessageError400 },
-    bad_request: { status: 400, data: zStopCompletionMessageError400 },
-    bad_request_key_error: { status: 400, data: zStopCompletionMessageError400 },
-    client_disconnected: { status: 400, data: zStopCompletionMessageError400 },
-    invalid_param: { status: 400, data: zStopCompletionMessageError400 },
-    not_completion_app: { status: 400, data: zStopCompletionMessageError400 },
-    security_error: { status: 400, data: zStopCompletionMessageError400 },
-    websocket_mismatch: { status: 400, data: zStopCompletionMessageError400 },
-    unauthorized: { status: 401, data: zStopCompletionMessageError401 },
-    web_app_access_denied: { status: 401, data: zStopCompletionMessageError401 },
-    web_sso_auth_required: { status: 401, data: zStopCompletionMessageError401 },
-    app_not_found: { status: 404, data: zStopCompletionMessageError404 },
-    not_found: { status: 404, data: zStopCompletionMessageError404 },
-    service_unavailable: { status: 503, data: zStopCompletionMessageError503 },
-    web_app_access_unavailable: { status: 503, data: zStopCompletionMessageError503 },
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    not_completion_app: { status: 400, data: zNotCompletionAppError },
+    web_app_access_denied: { status: 401, data: zWebAppAccessDeniedError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+    web_sso_auth_required: { status: 401, data: zWebSsoAuthRequiredError },
   })
 
 export const stop2 = {
@@ -441,27 +297,17 @@ export const post5 = oc
   .input(z.object({ body: zPostCompletionMessagesBody }))
   .output(zPostCompletionMessagesResponse)
   .errors({
-    agent_not_published: { status: 400, data: zCreateCompletionMessageError400 },
-    app_unavailable: { status: 400, data: zCreateCompletionMessageError400 },
-    bad_host: { status: 400, data: zCreateCompletionMessageError400 },
-    bad_request: { status: 400, data: zCreateCompletionMessageError400 },
-    bad_request_key_error: { status: 400, data: zCreateCompletionMessageError400 },
-    client_disconnected: { status: 400, data: zCreateCompletionMessageError400 },
-    completion_request_error: { status: 400, data: zCreateCompletionMessageError400 },
-    invalid_param: { status: 400, data: zCreateCompletionMessageError400 },
-    model_currently_not_support: { status: 400, data: zCreateCompletionMessageError400 },
-    not_completion_app: { status: 400, data: zCreateCompletionMessageError400 },
-    provider_not_initialize: { status: 400, data: zCreateCompletionMessageError400 },
-    provider_quota_exceeded: { status: 400, data: zCreateCompletionMessageError400 },
-    security_error: { status: 400, data: zCreateCompletionMessageError400 },
-    websocket_mismatch: { status: 400, data: zCreateCompletionMessageError400 },
-    unauthorized: { status: 401, data: zCreateCompletionMessageError401 },
-    web_app_access_denied: { status: 401, data: zCreateCompletionMessageError401 },
-    web_sso_auth_required: { status: 401, data: zCreateCompletionMessageError401 },
-    app_not_found: { status: 404, data: zCreateCompletionMessageError404 },
-    not_found: { status: 404, data: zCreateCompletionMessageError404 },
-    service_unavailable: { status: 503, data: zCreateCompletionMessageError503 },
-    web_app_access_unavailable: { status: 503, data: zCreateCompletionMessageError503 },
+    agent_not_published: { status: 400, data: zAgentNotPublishedError },
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    not_completion_app: { status: 400, data: zNotCompletionAppError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+    web_app_access_denied: { status: 401, data: zWebAppAccessDeniedError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+    web_sso_auth_required: { status: 401, data: zWebSsoAuthRequiredError },
   })
 
 export const completionMessages = {
@@ -490,21 +336,11 @@ export const post6 = oc
   )
   .output(zPostConversationsByCIdNameResponse)
   .errors({
-    bad_host: { status: 400, data: zRenameConversationError400 },
-    bad_request: { status: 400, data: zRenameConversationError400 },
-    bad_request_key_error: { status: 400, data: zRenameConversationError400 },
-    client_disconnected: { status: 400, data: zRenameConversationError400 },
-    invalid_param: { status: 400, data: zRenameConversationError400 },
-    not_chat_app: { status: 400, data: zRenameConversationError400 },
-    security_error: { status: 400, data: zRenameConversationError400 },
-    websocket_mismatch: { status: 400, data: zRenameConversationError400 },
-    unauthorized: { status: 401, data: zRenameConversationError401 },
-    web_app_access_denied: { status: 401, data: zRenameConversationError401 },
-    web_sso_auth_required: { status: 401, data: zRenameConversationError401 },
-    app_not_found: { status: 404, data: zRenameConversationError404 },
-    not_found: { status: 404, data: zRenameConversationError404 },
-    service_unavailable: { status: 503, data: zRenameConversationError503 },
-    web_app_access_unavailable: { status: 503, data: zRenameConversationError503 },
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+    web_app_access_denied: { status: 401, data: zWebAppAccessDeniedError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+    web_sso_auth_required: { status: 401, data: zWebSsoAuthRequiredError },
   })
 
 export const name = {
@@ -526,21 +362,11 @@ export const patch = oc
   .input(z.object({ params: zPatchConversationsByCIdPinPath }))
   .output(zPatchConversationsByCIdPinResponse)
   .errors({
-    bad_host: { status: 400, data: zPinConversationError400 },
-    bad_request: { status: 400, data: zPinConversationError400 },
-    bad_request_key_error: { status: 400, data: zPinConversationError400 },
-    client_disconnected: { status: 400, data: zPinConversationError400 },
-    invalid_param: { status: 400, data: zPinConversationError400 },
-    not_chat_app: { status: 400, data: zPinConversationError400 },
-    security_error: { status: 400, data: zPinConversationError400 },
-    websocket_mismatch: { status: 400, data: zPinConversationError400 },
-    unauthorized: { status: 401, data: zPinConversationError401 },
-    web_app_access_denied: { status: 401, data: zPinConversationError401 },
-    web_sso_auth_required: { status: 401, data: zPinConversationError401 },
-    app_not_found: { status: 404, data: zPinConversationError404 },
-    not_found: { status: 404, data: zPinConversationError404 },
-    service_unavailable: { status: 503, data: zPinConversationError503 },
-    web_app_access_unavailable: { status: 503, data: zPinConversationError503 },
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+    web_app_access_denied: { status: 401, data: zWebAppAccessDeniedError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+    web_sso_auth_required: { status: 401, data: zWebSsoAuthRequiredError },
   })
 
 export const pin = {
@@ -562,21 +388,11 @@ export const patch2 = oc
   .input(z.object({ params: zPatchConversationsByCIdUnpinPath }))
   .output(zPatchConversationsByCIdUnpinResponse)
   .errors({
-    bad_host: { status: 400, data: zUnpinConversationError400 },
-    bad_request: { status: 400, data: zUnpinConversationError400 },
-    bad_request_key_error: { status: 400, data: zUnpinConversationError400 },
-    client_disconnected: { status: 400, data: zUnpinConversationError400 },
-    invalid_param: { status: 400, data: zUnpinConversationError400 },
-    not_chat_app: { status: 400, data: zUnpinConversationError400 },
-    security_error: { status: 400, data: zUnpinConversationError400 },
-    websocket_mismatch: { status: 400, data: zUnpinConversationError400 },
-    unauthorized: { status: 401, data: zUnpinConversationError401 },
-    web_app_access_denied: { status: 401, data: zUnpinConversationError401 },
-    web_sso_auth_required: { status: 401, data: zUnpinConversationError401 },
-    app_not_found: { status: 404, data: zUnpinConversationError404 },
-    not_found: { status: 404, data: zUnpinConversationError404 },
-    service_unavailable: { status: 503, data: zUnpinConversationError503 },
-    web_app_access_unavailable: { status: 503, data: zUnpinConversationError503 },
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+    web_app_access_denied: { status: 401, data: zWebAppAccessDeniedError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+    web_sso_auth_required: { status: 401, data: zWebSsoAuthRequiredError },
   })
 
 export const unpin = {
@@ -599,21 +415,11 @@ export const delete_ = oc
   .input(z.object({ params: zDeleteConversationsByCIdPath }))
   .output(zDeleteConversationsByCIdResponse)
   .errors({
-    bad_host: { status: 400, data: zDeleteConversationError400 },
-    bad_request: { status: 400, data: zDeleteConversationError400 },
-    bad_request_key_error: { status: 400, data: zDeleteConversationError400 },
-    client_disconnected: { status: 400, data: zDeleteConversationError400 },
-    invalid_param: { status: 400, data: zDeleteConversationError400 },
-    not_chat_app: { status: 400, data: zDeleteConversationError400 },
-    security_error: { status: 400, data: zDeleteConversationError400 },
-    websocket_mismatch: { status: 400, data: zDeleteConversationError400 },
-    unauthorized: { status: 401, data: zDeleteConversationError401 },
-    web_app_access_denied: { status: 401, data: zDeleteConversationError401 },
-    web_sso_auth_required: { status: 401, data: zDeleteConversationError401 },
-    app_not_found: { status: 404, data: zDeleteConversationError404 },
-    not_found: { status: 404, data: zDeleteConversationError404 },
-    service_unavailable: { status: 503, data: zDeleteConversationError503 },
-    web_app_access_unavailable: { status: 503, data: zDeleteConversationError503 },
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+    web_app_access_denied: { status: 401, data: zWebAppAccessDeniedError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+    web_sso_auth_required: { status: 401, data: zWebSsoAuthRequiredError },
   })
 
 export const byCId = {
@@ -638,21 +444,11 @@ export const get = oc
   .input(z.object({ query: zGetConversationsQuery.optional() }))
   .output(zGetConversationsResponse)
   .errors({
-    bad_host: { status: 400, data: zGetConversationListError400 },
-    bad_request: { status: 400, data: zGetConversationListError400 },
-    bad_request_key_error: { status: 400, data: zGetConversationListError400 },
-    client_disconnected: { status: 400, data: zGetConversationListError400 },
-    invalid_param: { status: 400, data: zGetConversationListError400 },
-    not_chat_app: { status: 400, data: zGetConversationListError400 },
-    security_error: { status: 400, data: zGetConversationListError400 },
-    websocket_mismatch: { status: 400, data: zGetConversationListError400 },
-    unauthorized: { status: 401, data: zGetConversationListError401 },
-    web_app_access_denied: { status: 401, data: zGetConversationListError401 },
-    web_sso_auth_required: { status: 401, data: zGetConversationListError401 },
-    app_not_found: { status: 404, data: zGetConversationListError404 },
-    not_found: { status: 404, data: zGetConversationListError404 },
-    service_unavailable: { status: 503, data: zGetConversationListError503 },
-    web_app_access_unavailable: { status: 503, data: zGetConversationListError503 },
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+    web_app_access_denied: { status: 401, data: zWebAppAccessDeniedError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+    web_sso_auth_required: { status: 401, data: zWebSsoAuthRequiredError },
   })
 
 export const conversations = {
@@ -675,20 +471,12 @@ export const post7 = oc
   .input(z.object({ body: zPostEmailCodeLoginValidityBody }))
   .output(zPostEmailCodeLoginValidityResponse)
   .errors({
-    account_banned: { status: 400, data: zVerifyEmailCodeLoginError400 },
-    bad_host: { status: 400, data: zVerifyEmailCodeLoginError400 },
-    bad_request: { status: 400, data: zVerifyEmailCodeLoginError400 },
-    bad_request_key_error: { status: 400, data: zVerifyEmailCodeLoginError400 },
-    client_disconnected: { status: 400, data: zVerifyEmailCodeLoginError400 },
-    email_code_error: { status: 400, data: zVerifyEmailCodeLoginError400 },
-    invalid_email: { status: 400, data: zVerifyEmailCodeLoginError400 },
-    invalid_param: { status: 400, data: zVerifyEmailCodeLoginError400 },
-    security_error: { status: 400, data: zVerifyEmailCodeLoginError400 },
-    websocket_mismatch: { status: 400, data: zVerifyEmailCodeLoginError400 },
-    authentication_failed: { status: 401, data: zVerifyEmailCodeLoginError401 },
-    not_init_validated: { status: 401, data: zVerifyEmailCodeLoginError401 },
-    not_setup: { status: 401, data: zVerifyEmailCodeLoginError401 },
-    unauthorized: { status: 401, data: zVerifyEmailCodeLoginError401 },
+    account_banned: { status: 400, data: zAccountBannedError },
+    authentication_failed: { status: 401, data: zAuthenticationFailedError },
+    email_code_error: { status: 400, data: zEmailCodeError },
+    invalid_email: { status: 400, data: zInvalidEmailError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const validity = {
@@ -710,10 +498,9 @@ export const post8 = oc
   .input(z.object({ body: zPostEmailCodeLoginBody }))
   .output(zPostEmailCodeLoginResponse)
   .errors({
-    authentication_failed: { status: 401, data: zSendEmailCodeLoginError401 },
-    not_init_validated: { status: 401, data: zSendEmailCodeLoginError401 },
-    not_setup: { status: 401, data: zSendEmailCodeLoginError401 },
-    unauthorized: { status: 401, data: zSendEmailCodeLoginError401 },
+    authentication_failed: { status: 401, data: zAuthenticationFailedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const emailCodeLogin = {
@@ -762,28 +549,16 @@ export const post9 = oc
   })
   .output(zPostFilesUploadResponse)
   .errors({
-    bad_host: { status: 400, data: zUploadFileError400 },
-    bad_request: { status: 400, data: zUploadFileError400 },
-    bad_request_key_error: { status: 400, data: zUploadFileError400 },
-    client_disconnected: { status: 400, data: zUploadFileError400 },
-    file_extension_blocked: { status: 400, data: zUploadFileError400 },
-    filename_not_exists_error: { status: 400, data: zUploadFileError400 },
-    invalid_param: { status: 400, data: zUploadFileError400 },
-    no_file_uploaded: { status: 400, data: zUploadFileError400 },
-    security_error: { status: 400, data: zUploadFileError400 },
-    too_many_files: { status: 400, data: zUploadFileError400 },
-    websocket_mismatch: { status: 400, data: zUploadFileError400 },
-    unauthorized: { status: 401, data: zUploadFileError401 },
-    web_app_access_denied: { status: 401, data: zUploadFileError401 },
-    web_sso_auth_required: { status: 401, data: zUploadFileError401 },
-    app_not_found: { status: 404, data: zUploadFileError404 },
-    not_found: { status: 404, data: zUploadFileError404 },
-    file_too_large: { status: 413, data: zUploadFileError413 },
-    request_entity_too_large: { status: 413, data: zUploadFileError413 },
-    unsupported_file_type: { status: 415, data: zUploadFileError415 },
-    unsupported_media_type: { status: 415, data: zUploadFileError415 },
-    service_unavailable: { status: 503, data: zUploadFileError503 },
-    web_app_access_unavailable: { status: 503, data: zUploadFileError503 },
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    file_extension_blocked: { status: 400, data: zFileExtensionBlockedError },
+    file_too_large: { status: 413, data: zFileTooLargeError },
+    filename_not_exists_error: { status: 400, data: zFilenameNotExistsError },
+    no_file_uploaded: { status: 400, data: zNoFileUploadedError },
+    too_many_files: { status: 400, data: zTooManyFilesError },
+    unsupported_file_type: { status: 415, data: zUnsupportedFileTypeError },
+    web_app_access_denied: { status: 401, data: zWebAppAccessDeniedError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+    web_sso_auth_required: { status: 401, data: zWebSsoAuthRequiredError },
   })
 
 export const upload = {
@@ -809,19 +584,11 @@ export const post10 = oc
   .input(z.object({ body: zPostForgotPasswordResetsBody }))
   .output(zPostForgotPasswordResetsResponse)
   .errors({
-    bad_host: { status: 400, data: zResetPasswordError400 },
-    bad_request: { status: 400, data: zResetPasswordError400 },
-    bad_request_key_error: { status: 400, data: zResetPasswordError400 },
-    client_disconnected: { status: 400, data: zResetPasswordError400 },
-    invalid_or_expired_token: { status: 400, data: zResetPasswordError400 },
-    invalid_param: { status: 400, data: zResetPasswordError400 },
-    password_mismatch: { status: 400, data: zResetPasswordError400 },
-    security_error: { status: 400, data: zResetPasswordError400 },
-    websocket_mismatch: { status: 400, data: zResetPasswordError400 },
-    authentication_failed: { status: 401, data: zResetPasswordError401 },
-    not_init_validated: { status: 401, data: zResetPasswordError401 },
-    not_setup: { status: 401, data: zResetPasswordError401 },
-    unauthorized: { status: 401, data: zResetPasswordError401 },
+    authentication_failed: { status: 401, data: zAuthenticationFailedError },
+    invalid_or_expired_token: { status: 400, data: zInvalidOrExpiredTokenError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    password_mismatch: { status: 400, data: zPasswordMismatchError },
   })
 
 export const resets = {
@@ -843,21 +610,12 @@ export const post11 = oc
   .input(z.object({ body: zPostForgotPasswordValidityBody }))
   .output(zPostForgotPasswordValidityResponse)
   .errors({
-    bad_host: { status: 400, data: zCheckForgotPasswordTokenError400 },
-    bad_request: { status: 400, data: zCheckForgotPasswordTokenError400 },
-    bad_request_key_error: { status: 400, data: zCheckForgotPasswordTokenError400 },
-    client_disconnected: { status: 400, data: zCheckForgotPasswordTokenError400 },
-    email_code_error: { status: 400, data: zCheckForgotPasswordTokenError400 },
-    invalid_email: { status: 400, data: zCheckForgotPasswordTokenError400 },
-    invalid_or_expired_token: { status: 400, data: zCheckForgotPasswordTokenError400 },
-    invalid_param: { status: 400, data: zCheckForgotPasswordTokenError400 },
-    security_error: { status: 400, data: zCheckForgotPasswordTokenError400 },
-    websocket_mismatch: { status: 400, data: zCheckForgotPasswordTokenError400 },
-    not_init_validated: { status: 401, data: zCheckForgotPasswordTokenError401 },
-    not_setup: { status: 401, data: zCheckForgotPasswordTokenError401 },
-    unauthorized: { status: 401, data: zCheckForgotPasswordTokenError401 },
-    email_password_reset_limit: { status: 429, data: zCheckForgotPasswordTokenError429 },
-    too_many_requests: { status: 429, data: zCheckForgotPasswordTokenError429 },
+    email_code_error: { status: 400, data: zEmailCodeError },
+    email_password_reset_limit: { status: 429, data: zEmailPasswordResetLimitError },
+    invalid_email: { status: 400, data: zInvalidEmailError },
+    invalid_or_expired_token: { status: 400, data: zInvalidOrExpiredTokenError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const validity2 = {
@@ -879,13 +637,11 @@ export const post12 = oc
   .input(z.object({ body: zPostForgotPasswordBody }))
   .output(zPostForgotPasswordResponse)
   .errors({
-    authentication_failed: { status: 401, data: zSendForgotPasswordEmailError401 },
-    not_init_validated: { status: 401, data: zSendForgotPasswordEmailError401 },
-    not_setup: { status: 401, data: zSendForgotPasswordEmailError401 },
-    unauthorized: { status: 401, data: zSendForgotPasswordEmailError401 },
-    email_send_ip_limit: { status: 429, data: zSendForgotPasswordEmailError429 },
-    password_reset_rate_limit_exceeded: { status: 429, data: zSendForgotPasswordEmailError429 },
-    too_many_requests: { status: 429, data: zSendForgotPasswordEmailError429 },
+    authentication_failed: { status: 401, data: zAuthenticationFailedError },
+    email_send_ip_limit: { status: 429, data: zEmailSendIpLimitError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    password_reset_rate_limit_exceeded: { status: 429, data: zPasswordResetRateLimitExceededError },
   })
 
 export const forgotPassword = {
@@ -914,9 +670,8 @@ export const post13 = oc
   .input(z.object({ params: zPostFormHumanInputByFormTokenUploadTokenPath }))
   .output(zPostFormHumanInputByFormTokenUploadTokenResponse)
   .errors({
-    not_found: { status: 404, data: zCreateHumanInputFormUploadTokenError404 },
-    too_many_requests: { status: 429, data: zCreateHumanInputFormUploadTokenError429 },
-    web_form_rate_limit_exceeded: { status: 429, data: zCreateHumanInputFormUploadTokenError429 },
+    not_found: { status: 404, data: zNotFoundError },
+    web_form_rate_limit_exceeded: { status: 429, data: zWebFormRateLimitExceededError },
   })
 
 export const uploadToken = {
@@ -943,12 +698,10 @@ export const get2 = oc
   .input(z.object({ params: zGetFormHumanInputByFormTokenPath }))
   .output(zGetFormHumanInputByFormTokenResponse)
   .errors({
-    not_found: { status: 404, data: zGetHumanInputFormError404 },
-    human_input_form_expired: { status: 412, data: zGetHumanInputFormError412 },
-    human_input_form_submitted: { status: 412, data: zGetHumanInputFormError412 },
-    precondition_failed: { status: 412, data: zGetHumanInputFormError412 },
-    too_many_requests: { status: 429, data: zGetHumanInputFormError429 },
-    web_form_rate_limit_exceeded: { status: 429, data: zGetHumanInputFormError429 },
+    human_input_form_expired: { status: 412, data: zHumanInputFormExpiredError },
+    human_input_form_submitted: { status: 412, data: zHumanInputFormSubmittedError },
+    not_found: { status: 404, data: zNotFoundError },
+    web_form_rate_limit_exceeded: { status: 429, data: zWebFormRateLimitExceededError },
   })
 
 /**
@@ -984,20 +737,11 @@ export const post14 = oc
   )
   .output(zPostFormHumanInputByFormTokenResponse)
   .errors({
-    bad_host: { status: 400, data: zSubmitHumanInputFormError400 },
-    bad_request: { status: 400, data: zSubmitHumanInputFormError400 },
-    bad_request_key_error: { status: 400, data: zSubmitHumanInputFormError400 },
-    client_disconnected: { status: 400, data: zSubmitHumanInputFormError400 },
-    invalid_form_data: { status: 400, data: zSubmitHumanInputFormError400 },
-    invalid_param: { status: 400, data: zSubmitHumanInputFormError400 },
-    security_error: { status: 400, data: zSubmitHumanInputFormError400 },
-    websocket_mismatch: { status: 400, data: zSubmitHumanInputFormError400 },
-    not_found: { status: 404, data: zSubmitHumanInputFormError404 },
-    human_input_form_expired: { status: 412, data: zSubmitHumanInputFormError412 },
-    human_input_form_submitted: { status: 412, data: zSubmitHumanInputFormError412 },
-    precondition_failed: { status: 412, data: zSubmitHumanInputFormError412 },
-    too_many_requests: { status: 429, data: zSubmitHumanInputFormError429 },
-    web_form_rate_limit_exceeded: { status: 429, data: zSubmitHumanInputFormError429 },
+    human_input_form_expired: { status: 412, data: zHumanInputFormExpiredError },
+    human_input_form_submitted: { status: 412, data: zHumanInputFormSubmittedError },
+    invalid_form_data: { status: 400, data: zInvalidFormDataError },
+    not_found: { status: 404, data: zNotFoundError },
+    web_form_rate_limit_exceeded: { status: 429, data: zWebFormRateLimitExceededError },
   })
 
 export const byFormToken = {
@@ -1029,32 +773,21 @@ export const post15 = oc
   })
   .output(zPostHumanInputFormsFilesResponse)
   .errors({
-    bad_host: { status: 400, data: zPostHumanInputFileUploadApiError400 },
-    bad_request: { status: 400, data: zPostHumanInputFileUploadApiError400 },
-    bad_request_key_error: { status: 400, data: zPostHumanInputFileUploadApiError400 },
-    client_disconnected: { status: 400, data: zPostHumanInputFileUploadApiError400 },
-    file_extension_blocked: { status: 400, data: zPostHumanInputFileUploadApiError400 },
-    filename_not_exists_error: { status: 400, data: zPostHumanInputFileUploadApiError400 },
-    invalid_param: { status: 400, data: zPostHumanInputFileUploadApiError400 },
-    no_file_uploaded: { status: 400, data: zPostHumanInputFileUploadApiError400 },
-    remote_file_access_denied: { status: 400, data: zPostHumanInputFileUploadApiError400 },
-    remote_file_invalid_url: { status: 400, data: zPostHumanInputFileUploadApiError400 },
-    remote_file_url_blocked: { status: 400, data: zPostHumanInputFileUploadApiError400 },
-    security_error: { status: 400, data: zPostHumanInputFileUploadApiError400 },
-    too_many_files: { status: 400, data: zPostHumanInputFileUploadApiError400 },
-    websocket_mismatch: { status: 400, data: zPostHumanInputFileUploadApiError400 },
-    unauthorized: { status: 401, data: zPostHumanInputFileUploadApiError401 },
-    forbidden: { status: 403, data: zPostHumanInputFileUploadApiError403 },
-    not_found: { status: 404, data: zPostHumanInputFileUploadApiError404 },
-    remote_file_not_found: { status: 404, data: zPostHumanInputFileUploadApiError404 },
-    file_too_large: { status: 413, data: zPostHumanInputFileUploadApiError413 },
-    request_entity_too_large: { status: 413, data: zPostHumanInputFileUploadApiError413 },
-    unsupported_file_type: { status: 415, data: zPostHumanInputFileUploadApiError415 },
-    unsupported_media_type: { status: 415, data: zPostHumanInputFileUploadApiError415 },
-    bad_gateway: { status: 502, data: zPostHumanInputFileUploadApiError502 },
-    plugin_runtime_error: { status: 502, data: zPostHumanInputFileUploadApiError502 },
-    remote_file_invalid_response: { status: 502, data: zPostHumanInputFileUploadApiError502 },
-    remote_file_unavailable: { status: 502, data: zPostHumanInputFileUploadApiError502 },
+    file_extension_blocked: { status: 400, data: zFileExtensionBlockedError },
+    file_too_large: { status: 413, data: zFileTooLargeError },
+    filename_not_exists_error: { status: 400, data: zFilenameNotExistsError },
+    invalid_upload_token: { status: 403, data: zInvalidUploadTokenError },
+    malformed_upload_token: { status: 400, data: zMalformedUploadTokenError },
+    no_file_uploaded: { status: 400, data: zNoFileUploadedError },
+    remote_file_access_denied: { status: 400, data: zRemoteFileAccessDeniedError },
+    remote_file_invalid_response: { status: 502, data: zRemoteFileInvalidResponseError },
+    remote_file_invalid_url: { status: 400, data: zRemoteFileInvalidUrlError },
+    remote_file_not_found: { status: 404, data: zRemoteFileNotFoundError },
+    remote_file_unavailable: { status: 502, data: zRemoteFileUnavailableError },
+    remote_file_url_blocked: { status: 400, data: zRemoteFileUrlBlockedError },
+    too_many_files: { status: 400, data: zTooManyFilesError },
+    unsupported_file_type: { status: 415, data: zUnsupportedFileTypeError },
+    upload_token_required: { status: 401, data: zUploadTokenRequiredError },
   })
 
 export const files2 = {
@@ -1080,13 +813,10 @@ export const get3 = oc
   .input(z.object({ query: zGetLoginStatusQuery.optional() }))
   .output(zGetLoginStatusResponse)
   .errors({
-    not_init_validated: { status: 401, data: zWebAppLoginStatusError401 },
-    not_setup: { status: 401, data: zWebAppLoginStatusError401 },
-    unauthorized: { status: 401, data: zWebAppLoginStatusError401 },
-    app_not_found: { status: 404, data: zWebAppLoginStatusError404 },
-    not_found: { status: 404, data: zWebAppLoginStatusError404 },
-    service_unavailable: { status: 503, data: zWebAppLoginStatusError503 },
-    web_app_access_unavailable: { status: 503, data: zWebAppLoginStatusError503 },
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
   })
 
 export const status = {
@@ -1111,18 +841,10 @@ export const post16 = oc
   .input(z.object({ body: zPostLoginBody }))
   .output(zPostLoginResponse)
   .errors({
-    account_banned: { status: 400, data: zWebAppLoginError400 },
-    bad_host: { status: 400, data: zWebAppLoginError400 },
-    bad_request: { status: 400, data: zWebAppLoginError400 },
-    bad_request_key_error: { status: 400, data: zWebAppLoginError400 },
-    client_disconnected: { status: 400, data: zWebAppLoginError400 },
-    invalid_param: { status: 400, data: zWebAppLoginError400 },
-    security_error: { status: 400, data: zWebAppLoginError400 },
-    websocket_mismatch: { status: 400, data: zWebAppLoginError400 },
-    authentication_failed: { status: 401, data: zWebAppLoginError401 },
-    not_init_validated: { status: 401, data: zWebAppLoginError401 },
-    not_setup: { status: 401, data: zWebAppLoginError401 },
-    unauthorized: { status: 401, data: zWebAppLoginError401 },
+    account_banned: { status: 400, data: zAccountBannedError },
+    authentication_failed: { status: 401, data: zAuthenticationFailedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const login = {
@@ -1144,9 +866,8 @@ export const post17 = oc
   })
   .output(zPostLogoutResponse)
   .errors({
-    not_init_validated: { status: 401, data: zWebAppLogoutError401 },
-    not_setup: { status: 401, data: zWebAppLogoutError401 },
-    unauthorized: { status: 401, data: zWebAppLogoutError401 },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const logout = {
@@ -1174,13 +895,10 @@ export const post18 = oc
   )
   .output(zPostMessagesByMessageIdFeedbacksResponse)
   .errors({
-    unauthorized: { status: 401, data: zCreateMessageFeedbackError401 },
-    web_app_access_denied: { status: 401, data: zCreateMessageFeedbackError401 },
-    web_sso_auth_required: { status: 401, data: zCreateMessageFeedbackError401 },
-    app_not_found: { status: 404, data: zCreateMessageFeedbackError404 },
-    not_found: { status: 404, data: zCreateMessageFeedbackError404 },
-    service_unavailable: { status: 503, data: zCreateMessageFeedbackError503 },
-    web_app_access_unavailable: { status: 503, data: zCreateMessageFeedbackError503 },
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    web_app_access_denied: { status: 401, data: zWebAppAccessDeniedError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+    web_sso_auth_required: { status: 401, data: zWebSsoAuthRequiredError },
   })
 
 export const feedbacks = {
@@ -1207,27 +925,16 @@ export const get4 = oc
   )
   .output(zGetMessagesByMessageIdMoreLikeThisResponse)
   .errors({
-    bad_host: { status: 400, data: zGenerateMoreLikeThisError400 },
-    bad_request: { status: 400, data: zGenerateMoreLikeThisError400 },
-    bad_request_key_error: { status: 400, data: zGenerateMoreLikeThisError400 },
-    client_disconnected: { status: 400, data: zGenerateMoreLikeThisError400 },
-    completion_request_error: { status: 400, data: zGenerateMoreLikeThisError400 },
-    invalid_param: { status: 400, data: zGenerateMoreLikeThisError400 },
-    model_currently_not_support: { status: 400, data: zGenerateMoreLikeThisError400 },
-    not_completion_app: { status: 400, data: zGenerateMoreLikeThisError400 },
-    provider_not_initialize: { status: 400, data: zGenerateMoreLikeThisError400 },
-    provider_quota_exceeded: { status: 400, data: zGenerateMoreLikeThisError400 },
-    security_error: { status: 400, data: zGenerateMoreLikeThisError400 },
-    websocket_mismatch: { status: 400, data: zGenerateMoreLikeThisError400 },
-    unauthorized: { status: 401, data: zGenerateMoreLikeThisError401 },
-    web_app_access_denied: { status: 401, data: zGenerateMoreLikeThisError401 },
-    web_sso_auth_required: { status: 401, data: zGenerateMoreLikeThisError401 },
-    app_more_like_this_disabled: { status: 403, data: zGenerateMoreLikeThisError403 },
-    forbidden: { status: 403, data: zGenerateMoreLikeThisError403 },
-    app_not_found: { status: 404, data: zGenerateMoreLikeThisError404 },
-    not_found: { status: 404, data: zGenerateMoreLikeThisError404 },
-    service_unavailable: { status: 503, data: zGenerateMoreLikeThisError503 },
-    web_app_access_unavailable: { status: 503, data: zGenerateMoreLikeThisError503 },
+    app_more_like_this_disabled: { status: 403, data: zAppMoreLikeThisDisabledError },
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    not_completion_app: { status: 400, data: zNotCompletionAppError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+    web_app_access_denied: { status: 401, data: zWebAppAccessDeniedError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+    web_sso_auth_required: { status: 401, data: zWebSsoAuthRequiredError },
   })
 
 export const moreLikeThis = {
@@ -1249,30 +956,19 @@ export const get5 = oc
   .input(z.object({ params: zGetMessagesByMessageIdSuggestedQuestionsPath }))
   .output(zGetMessagesByMessageIdSuggestedQuestionsResponse)
   .errors({
-    bad_host: { status: 400, data: zGetSuggestedQuestionsError400 },
-    bad_request: { status: 400, data: zGetSuggestedQuestionsError400 },
-    bad_request_key_error: { status: 400, data: zGetSuggestedQuestionsError400 },
-    client_disconnected: { status: 400, data: zGetSuggestedQuestionsError400 },
-    completion_request_error: { status: 400, data: zGetSuggestedQuestionsError400 },
-    invalid_param: { status: 400, data: zGetSuggestedQuestionsError400 },
-    model_currently_not_support: { status: 400, data: zGetSuggestedQuestionsError400 },
-    not_chat_app: { status: 400, data: zGetSuggestedQuestionsError400 },
-    provider_not_initialize: { status: 400, data: zGetSuggestedQuestionsError400 },
-    provider_quota_exceeded: { status: 400, data: zGetSuggestedQuestionsError400 },
-    security_error: { status: 400, data: zGetSuggestedQuestionsError400 },
-    websocket_mismatch: { status: 400, data: zGetSuggestedQuestionsError400 },
-    unauthorized: { status: 401, data: zGetSuggestedQuestionsError401 },
-    web_app_access_denied: { status: 401, data: zGetSuggestedQuestionsError401 },
-    web_sso_auth_required: { status: 401, data: zGetSuggestedQuestionsError401 },
+    app_not_found: { status: 404, data: zAppNotFoundError },
     app_suggested_questions_after_answer_disabled: {
       status: 403,
-      data: zGetSuggestedQuestionsError403,
+      data: zAppSuggestedQuestionsAfterAnswerDisabledError,
     },
-    forbidden: { status: 403, data: zGetSuggestedQuestionsError403 },
-    app_not_found: { status: 404, data: zGetSuggestedQuestionsError404 },
-    not_found: { status: 404, data: zGetSuggestedQuestionsError404 },
-    service_unavailable: { status: 503, data: zGetSuggestedQuestionsError503 },
-    web_app_access_unavailable: { status: 503, data: zGetSuggestedQuestionsError503 },
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+    web_app_access_denied: { status: 401, data: zWebAppAccessDeniedError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+    web_sso_auth_required: { status: 401, data: zWebSsoAuthRequiredError },
   })
 
 export const suggestedQuestions = {
@@ -1300,21 +996,11 @@ export const get6 = oc
   .input(z.object({ query: zGetMessagesQuery }))
   .output(zGetMessagesResponse)
   .errors({
-    bad_host: { status: 400, data: zGetMessageListError400 },
-    bad_request: { status: 400, data: zGetMessageListError400 },
-    bad_request_key_error: { status: 400, data: zGetMessageListError400 },
-    client_disconnected: { status: 400, data: zGetMessageListError400 },
-    invalid_param: { status: 400, data: zGetMessageListError400 },
-    not_chat_app: { status: 400, data: zGetMessageListError400 },
-    security_error: { status: 400, data: zGetMessageListError400 },
-    websocket_mismatch: { status: 400, data: zGetMessageListError400 },
-    unauthorized: { status: 401, data: zGetMessageListError401 },
-    web_app_access_denied: { status: 401, data: zGetMessageListError401 },
-    web_sso_auth_required: { status: 401, data: zGetMessageListError401 },
-    app_not_found: { status: 404, data: zGetMessageListError404 },
-    not_found: { status: 404, data: zGetMessageListError404 },
-    service_unavailable: { status: 503, data: zGetMessageListError503 },
-    web_app_access_unavailable: { status: 503, data: zGetMessageListError503 },
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+    web_app_access_denied: { status: 401, data: zWebAppAccessDeniedError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+    web_sso_auth_required: { status: 401, data: zWebSsoAuthRequiredError },
   })
 
 export const messages = {
@@ -1339,21 +1025,11 @@ export const get7 = oc
   })
   .output(zGetMetaResponse)
   .errors({
-    app_unavailable: { status: 400, data: zGetAppMetaError400 },
-    bad_host: { status: 400, data: zGetAppMetaError400 },
-    bad_request: { status: 400, data: zGetAppMetaError400 },
-    bad_request_key_error: { status: 400, data: zGetAppMetaError400 },
-    client_disconnected: { status: 400, data: zGetAppMetaError400 },
-    invalid_param: { status: 400, data: zGetAppMetaError400 },
-    security_error: { status: 400, data: zGetAppMetaError400 },
-    websocket_mismatch: { status: 400, data: zGetAppMetaError400 },
-    unauthorized: { status: 401, data: zGetAppMetaError401 },
-    web_app_access_denied: { status: 401, data: zGetAppMetaError401 },
-    web_sso_auth_required: { status: 401, data: zGetAppMetaError401 },
-    app_not_found: { status: 404, data: zGetAppMetaError404 },
-    not_found: { status: 404, data: zGetAppMetaError404 },
-    service_unavailable: { status: 503, data: zGetAppMetaError503 },
-    web_app_access_unavailable: { status: 503, data: zGetAppMetaError503 },
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    web_app_access_denied: { status: 401, data: zWebAppAccessDeniedError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+    web_sso_auth_required: { status: 401, data: zWebSsoAuthRequiredError },
   })
 
 export const meta = {
@@ -1377,22 +1053,12 @@ export const get8 = oc
   })
   .output(zGetParametersResponse)
   .errors({
-    agent_not_published: { status: 400, data: zGetAppParametersError400 },
-    app_unavailable: { status: 400, data: zGetAppParametersError400 },
-    bad_host: { status: 400, data: zGetAppParametersError400 },
-    bad_request: { status: 400, data: zGetAppParametersError400 },
-    bad_request_key_error: { status: 400, data: zGetAppParametersError400 },
-    client_disconnected: { status: 400, data: zGetAppParametersError400 },
-    invalid_param: { status: 400, data: zGetAppParametersError400 },
-    security_error: { status: 400, data: zGetAppParametersError400 },
-    websocket_mismatch: { status: 400, data: zGetAppParametersError400 },
-    unauthorized: { status: 401, data: zGetAppParametersError401 },
-    web_app_access_denied: { status: 401, data: zGetAppParametersError401 },
-    web_sso_auth_required: { status: 401, data: zGetAppParametersError401 },
-    app_not_found: { status: 404, data: zGetAppParametersError404 },
-    not_found: { status: 404, data: zGetAppParametersError404 },
-    service_unavailable: { status: 503, data: zGetAppParametersError503 },
-    web_app_access_unavailable: { status: 503, data: zGetAppParametersError503 },
+    agent_not_published: { status: 400, data: zAgentNotPublishedError },
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    web_app_access_denied: { status: 401, data: zWebAppAccessDeniedError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+    web_sso_auth_required: { status: 401, data: zWebSsoAuthRequiredError },
   })
 
 export const parameters = {
@@ -1413,10 +1079,7 @@ export const get9 = oc
   })
   .input(z.object({ query: zGetPassportQuery.optional() }))
   .output(zGetPassportResponse)
-  .errors({
-    unauthorized: { status: 401, data: zGetPassportError401 },
-    web_sso_auth_required: { status: 401, data: zGetPassportError401 },
-  })
+  .errors({ web_sso_auth_required: { status: 401, data: zWebSsoAuthRequiredError } })
 
 export const passport = {
   get: get9,
@@ -1465,33 +1128,19 @@ export const post19 = oc
   .input(z.object({ body: zPostRemoteFilesUploadBody }))
   .output(zPostRemoteFilesUploadResponse)
   .errors({
-    bad_host: { status: 400, data: zUploadRemoteFileError400 },
-    bad_request: { status: 400, data: zUploadRemoteFileError400 },
-    bad_request_key_error: { status: 400, data: zUploadRemoteFileError400 },
-    client_disconnected: { status: 400, data: zUploadRemoteFileError400 },
-    file_extension_blocked: { status: 400, data: zUploadRemoteFileError400 },
-    invalid_param: { status: 400, data: zUploadRemoteFileError400 },
-    remote_file_access_denied: { status: 400, data: zUploadRemoteFileError400 },
-    remote_file_invalid_url: { status: 400, data: zUploadRemoteFileError400 },
-    remote_file_url_blocked: { status: 400, data: zUploadRemoteFileError400 },
-    security_error: { status: 400, data: zUploadRemoteFileError400 },
-    websocket_mismatch: { status: 400, data: zUploadRemoteFileError400 },
-    unauthorized: { status: 401, data: zUploadRemoteFileError401 },
-    web_app_access_denied: { status: 401, data: zUploadRemoteFileError401 },
-    web_sso_auth_required: { status: 401, data: zUploadRemoteFileError401 },
-    app_not_found: { status: 404, data: zUploadRemoteFileError404 },
-    not_found: { status: 404, data: zUploadRemoteFileError404 },
-    remote_file_not_found: { status: 404, data: zUploadRemoteFileError404 },
-    file_too_large: { status: 413, data: zUploadRemoteFileError413 },
-    request_entity_too_large: { status: 413, data: zUploadRemoteFileError413 },
-    unsupported_file_type: { status: 415, data: zUploadRemoteFileError415 },
-    unsupported_media_type: { status: 415, data: zUploadRemoteFileError415 },
-    bad_gateway: { status: 502, data: zUploadRemoteFileError502 },
-    plugin_runtime_error: { status: 502, data: zUploadRemoteFileError502 },
-    remote_file_invalid_response: { status: 502, data: zUploadRemoteFileError502 },
-    remote_file_unavailable: { status: 502, data: zUploadRemoteFileError502 },
-    service_unavailable: { status: 503, data: zUploadRemoteFileError503 },
-    web_app_access_unavailable: { status: 503, data: zUploadRemoteFileError503 },
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    file_extension_blocked: { status: 400, data: zFileExtensionBlockedError },
+    file_too_large: { status: 413, data: zFileTooLargeError },
+    remote_file_access_denied: { status: 400, data: zRemoteFileAccessDeniedError },
+    remote_file_invalid_response: { status: 502, data: zRemoteFileInvalidResponseError },
+    remote_file_invalid_url: { status: 400, data: zRemoteFileInvalidUrlError },
+    remote_file_not_found: { status: 404, data: zRemoteFileNotFoundError },
+    remote_file_unavailable: { status: 502, data: zRemoteFileUnavailableError },
+    remote_file_url_blocked: { status: 400, data: zRemoteFileUrlBlockedError },
+    unsupported_file_type: { status: 415, data: zUnsupportedFileTypeError },
+    web_app_access_denied: { status: 401, data: zWebAppAccessDeniedError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+    web_sso_auth_required: { status: 401, data: zWebSsoAuthRequiredError },
   })
 
 export const upload2 = {
@@ -1530,28 +1179,16 @@ export const get10 = oc
   .input(z.object({ params: zGetRemoteFilesByUrlPath }))
   .output(zGetRemoteFilesByUrlResponse)
   .errors({
-    bad_host: { status: 400, data: zGetRemoteFileInfoError400 },
-    bad_request: { status: 400, data: zGetRemoteFileInfoError400 },
-    bad_request_key_error: { status: 400, data: zGetRemoteFileInfoError400 },
-    client_disconnected: { status: 400, data: zGetRemoteFileInfoError400 },
-    invalid_param: { status: 400, data: zGetRemoteFileInfoError400 },
-    remote_file_access_denied: { status: 400, data: zGetRemoteFileInfoError400 },
-    remote_file_invalid_url: { status: 400, data: zGetRemoteFileInfoError400 },
-    remote_file_url_blocked: { status: 400, data: zGetRemoteFileInfoError400 },
-    security_error: { status: 400, data: zGetRemoteFileInfoError400 },
-    websocket_mismatch: { status: 400, data: zGetRemoteFileInfoError400 },
-    unauthorized: { status: 401, data: zGetRemoteFileInfoError401 },
-    web_app_access_denied: { status: 401, data: zGetRemoteFileInfoError401 },
-    web_sso_auth_required: { status: 401, data: zGetRemoteFileInfoError401 },
-    app_not_found: { status: 404, data: zGetRemoteFileInfoError404 },
-    not_found: { status: 404, data: zGetRemoteFileInfoError404 },
-    remote_file_not_found: { status: 404, data: zGetRemoteFileInfoError404 },
-    bad_gateway: { status: 502, data: zGetRemoteFileInfoError502 },
-    plugin_runtime_error: { status: 502, data: zGetRemoteFileInfoError502 },
-    remote_file_invalid_response: { status: 502, data: zGetRemoteFileInfoError502 },
-    remote_file_unavailable: { status: 502, data: zGetRemoteFileInfoError502 },
-    service_unavailable: { status: 503, data: zGetRemoteFileInfoError503 },
-    web_app_access_unavailable: { status: 503, data: zGetRemoteFileInfoError503 },
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    remote_file_access_denied: { status: 400, data: zRemoteFileAccessDeniedError },
+    remote_file_invalid_response: { status: 502, data: zRemoteFileInvalidResponseError },
+    remote_file_invalid_url: { status: 400, data: zRemoteFileInvalidUrlError },
+    remote_file_not_found: { status: 404, data: zRemoteFileNotFoundError },
+    remote_file_unavailable: { status: 502, data: zRemoteFileUnavailableError },
+    remote_file_url_blocked: { status: 400, data: zRemoteFileUrlBlockedError },
+    web_app_access_denied: { status: 401, data: zWebAppAccessDeniedError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+    web_sso_auth_required: { status: 401, data: zWebSsoAuthRequiredError },
   })
 
 export const byUrl = {
@@ -1579,21 +1216,11 @@ export const delete2 = oc
   .input(z.object({ params: zDeleteSavedMessagesByMessageIdPath }))
   .output(zDeleteSavedMessagesByMessageIdResponse)
   .errors({
-    bad_host: { status: 400, data: zDeleteSavedMessageError400 },
-    bad_request: { status: 400, data: zDeleteSavedMessageError400 },
-    bad_request_key_error: { status: 400, data: zDeleteSavedMessageError400 },
-    client_disconnected: { status: 400, data: zDeleteSavedMessageError400 },
-    invalid_param: { status: 400, data: zDeleteSavedMessageError400 },
-    not_completion_app: { status: 400, data: zDeleteSavedMessageError400 },
-    security_error: { status: 400, data: zDeleteSavedMessageError400 },
-    websocket_mismatch: { status: 400, data: zDeleteSavedMessageError400 },
-    unauthorized: { status: 401, data: zDeleteSavedMessageError401 },
-    web_app_access_denied: { status: 401, data: zDeleteSavedMessageError401 },
-    web_sso_auth_required: { status: 401, data: zDeleteSavedMessageError401 },
-    app_not_found: { status: 404, data: zDeleteSavedMessageError404 },
-    not_found: { status: 404, data: zDeleteSavedMessageError404 },
-    service_unavailable: { status: 503, data: zDeleteSavedMessageError503 },
-    web_app_access_unavailable: { status: 503, data: zDeleteSavedMessageError503 },
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    not_completion_app: { status: 400, data: zNotCompletionAppError },
+    web_app_access_denied: { status: 401, data: zWebAppAccessDeniedError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+    web_sso_auth_required: { status: 401, data: zWebSsoAuthRequiredError },
   })
 
 export const byMessageId2 = {
@@ -1615,21 +1242,11 @@ export const get11 = oc
   .input(z.object({ query: zGetSavedMessagesQuery.optional() }))
   .output(zGetSavedMessagesResponse)
   .errors({
-    bad_host: { status: 400, data: zGetSavedMessagesError400 },
-    bad_request: { status: 400, data: zGetSavedMessagesError400 },
-    bad_request_key_error: { status: 400, data: zGetSavedMessagesError400 },
-    client_disconnected: { status: 400, data: zGetSavedMessagesError400 },
-    invalid_param: { status: 400, data: zGetSavedMessagesError400 },
-    not_completion_app: { status: 400, data: zGetSavedMessagesError400 },
-    security_error: { status: 400, data: zGetSavedMessagesError400 },
-    websocket_mismatch: { status: 400, data: zGetSavedMessagesError400 },
-    unauthorized: { status: 401, data: zGetSavedMessagesError401 },
-    web_app_access_denied: { status: 401, data: zGetSavedMessagesError401 },
-    web_sso_auth_required: { status: 401, data: zGetSavedMessagesError401 },
-    app_not_found: { status: 404, data: zGetSavedMessagesError404 },
-    not_found: { status: 404, data: zGetSavedMessagesError404 },
-    service_unavailable: { status: 503, data: zGetSavedMessagesError503 },
-    web_app_access_unavailable: { status: 503, data: zGetSavedMessagesError503 },
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    not_completion_app: { status: 400, data: zNotCompletionAppError },
+    web_app_access_denied: { status: 401, data: zWebAppAccessDeniedError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+    web_sso_auth_required: { status: 401, data: zWebSsoAuthRequiredError },
   })
 
 /**
@@ -1647,21 +1264,11 @@ export const post20 = oc
   .input(z.object({ body: zPostSavedMessagesBody, query: zPostSavedMessagesQuery }))
   .output(zPostSavedMessagesResponse)
   .errors({
-    bad_host: { status: 400, data: zSaveMessageError400 },
-    bad_request: { status: 400, data: zSaveMessageError400 },
-    bad_request_key_error: { status: 400, data: zSaveMessageError400 },
-    client_disconnected: { status: 400, data: zSaveMessageError400 },
-    invalid_param: { status: 400, data: zSaveMessageError400 },
-    not_completion_app: { status: 400, data: zSaveMessageError400 },
-    security_error: { status: 400, data: zSaveMessageError400 },
-    websocket_mismatch: { status: 400, data: zSaveMessageError400 },
-    unauthorized: { status: 401, data: zSaveMessageError401 },
-    web_app_access_denied: { status: 401, data: zSaveMessageError401 },
-    web_sso_auth_required: { status: 401, data: zSaveMessageError401 },
-    app_not_found: { status: 404, data: zSaveMessageError404 },
-    not_found: { status: 404, data: zSaveMessageError404 },
-    service_unavailable: { status: 503, data: zSaveMessageError503 },
-    web_app_access_unavailable: { status: 503, data: zSaveMessageError503 },
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    not_completion_app: { status: 400, data: zNotCompletionAppError },
+    web_app_access_denied: { status: 401, data: zWebAppAccessDeniedError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+    web_sso_auth_required: { status: 401, data: zWebSsoAuthRequiredError },
   })
 
 export const savedMessages = {
@@ -1687,13 +1294,10 @@ export const get12 = oc
   })
   .output(zGetSiteResponse)
   .errors({
-    unauthorized: { status: 401, data: zGetAppSiteInfoError401 },
-    web_app_access_denied: { status: 401, data: zGetAppSiteInfoError401 },
-    web_sso_auth_required: { status: 401, data: zGetAppSiteInfoError401 },
-    app_not_found: { status: 404, data: zGetAppSiteInfoError404 },
-    not_found: { status: 404, data: zGetAppSiteInfoError404 },
-    service_unavailable: { status: 503, data: zGetAppSiteInfoError503 },
-    web_app_access_unavailable: { status: 503, data: zGetAppSiteInfoError503 },
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    web_app_access_denied: { status: 401, data: zWebAppAccessDeniedError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+    web_sso_auth_required: { status: 401, data: zWebSsoAuthRequiredError },
   })
 
 export const site = {
@@ -1744,31 +1348,22 @@ export const post21 = oc
   .input(z.object({ body: zPostTextToAudioBody }))
   .output(zPostTextToAudioResponse)
   .errors({
-    app_unavailable: { status: 400, data: zTextToAudioError400 },
-    bad_host: { status: 400, data: zTextToAudioError400 },
-    bad_request: { status: 400, data: zTextToAudioError400 },
-    bad_request_key_error: { status: 400, data: zTextToAudioError400 },
-    client_disconnected: { status: 400, data: zTextToAudioError400 },
-    completion_request_error: { status: 400, data: zTextToAudioError400 },
-    invalid_param: { status: 400, data: zTextToAudioError400 },
-    model_currently_not_support: { status: 400, data: zTextToAudioError400 },
-    no_audio_uploaded: { status: 400, data: zTextToAudioError400 },
-    provider_not_initialize: { status: 400, data: zTextToAudioError400 },
-    provider_not_support_speech_to_text: { status: 400, data: zTextToAudioError400 },
-    provider_quota_exceeded: { status: 400, data: zTextToAudioError400 },
-    security_error: { status: 400, data: zTextToAudioError400 },
-    websocket_mismatch: { status: 400, data: zTextToAudioError400 },
-    unauthorized: { status: 401, data: zTextToAudioError401 },
-    web_app_access_denied: { status: 401, data: zTextToAudioError401 },
-    web_sso_auth_required: { status: 401, data: zTextToAudioError401 },
-    app_not_found: { status: 404, data: zTextToAudioError404 },
-    not_found: { status: 404, data: zTextToAudioError404 },
-    audio_too_large: { status: 413, data: zTextToAudioError413 },
-    request_entity_too_large: { status: 413, data: zTextToAudioError413 },
-    unsupported_audio_type: { status: 415, data: zTextToAudioError415 },
-    unsupported_media_type: { status: 415, data: zTextToAudioError415 },
-    service_unavailable: { status: 503, data: zTextToAudioError503 },
-    web_app_access_unavailable: { status: 503, data: zTextToAudioError503 },
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    audio_too_large: { status: 413, data: zAudioTooLargeError },
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    no_audio_uploaded: { status: 400, data: zNoAudioUploadedError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_not_support_speech_to_text: {
+      status: 400,
+      data: zProviderNotSupportSpeechToTextError,
+    },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+    unsupported_audio_type: { status: 415, data: zUnsupportedAudioTypeError },
+    web_app_access_denied: { status: 401, data: zWebAppAccessDeniedError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+    web_sso_auth_required: { status: 401, data: zWebSsoAuthRequiredError },
   })
 
 export const textToAudio = {
@@ -1790,17 +1385,9 @@ export const get14 = oc
   .input(z.object({ query: zGetWebappAccessModeQuery.optional() }))
   .output(zGetWebappAccessModeResponse)
   .errors({
-    bad_host: { status: 400, data: zGetAppAccessModeError400 },
-    bad_request: { status: 400, data: zGetAppAccessModeError400 },
-    bad_request_key_error: { status: 400, data: zGetAppAccessModeError400 },
-    client_disconnected: { status: 400, data: zGetAppAccessModeError400 },
-    invalid_param: { status: 400, data: zGetAppAccessModeError400 },
-    security_error: { status: 400, data: zGetAppAccessModeError400 },
-    websocket_mismatch: { status: 400, data: zGetAppAccessModeError400 },
-    app_not_found: { status: 404, data: zGetAppAccessModeError404 },
-    not_found: { status: 404, data: zGetAppAccessModeError404 },
-    service_unavailable: { status: 503, data: zGetAppAccessModeError503 },
-    web_app_access_unavailable: { status: 503, data: zGetAppAccessModeError503 },
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    invalid_param: { status: 400, data: zInvalidParamError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
   })
 
 export const accessMode = {
@@ -1822,10 +1409,8 @@ export const get15 = oc
   .input(z.object({ query: zGetWebappPermissionQuery }))
   .output(zGetWebappPermissionResponse)
   .errors({
-    unauthorized: { status: 401, data: zCheckAppPermissionError401 },
-    web_sso_auth_required: { status: 401, data: zCheckAppPermissionError401 },
-    service_unavailable: { status: 503, data: zCheckAppPermissionError503 },
-    web_app_access_unavailable: { status: 503, data: zCheckAppPermissionError503 },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+    web_sso_auth_required: { status: 401, data: zWebSsoAuthRequiredError },
   })
 
 export const permission = {
@@ -1857,20 +1442,12 @@ export const get16 = oc
   .input(z.object({ params: zGetWorkflowByTaskIdEventsPath }))
   .output(zGetWorkflowByTaskIdEventsResponse)
   .errors({
-    bad_host: { status: 400, data: zGetWorkflowEventsApiError400 },
-    bad_request: { status: 400, data: zGetWorkflowEventsApiError400 },
-    bad_request_key_error: { status: 400, data: zGetWorkflowEventsApiError400 },
-    client_disconnected: { status: 400, data: zGetWorkflowEventsApiError400 },
-    invalid_param: { status: 400, data: zGetWorkflowEventsApiError400 },
-    security_error: { status: 400, data: zGetWorkflowEventsApiError400 },
-    websocket_mismatch: { status: 400, data: zGetWorkflowEventsApiError400 },
-    unauthorized: { status: 401, data: zGetWorkflowEventsApiError401 },
-    web_app_access_denied: { status: 401, data: zGetWorkflowEventsApiError401 },
-    web_sso_auth_required: { status: 401, data: zGetWorkflowEventsApiError401 },
-    app_not_found: { status: 404, data: zGetWorkflowEventsApiError404 },
-    not_found: { status: 404, data: zGetWorkflowEventsApiError404 },
-    service_unavailable: { status: 503, data: zGetWorkflowEventsApiError503 },
-    web_app_access_unavailable: { status: 503, data: zGetWorkflowEventsApiError503 },
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    invalid_param: { status: 400, data: zInvalidParamError },
+    not_found: { status: 404, data: zNotFoundError },
+    web_app_access_denied: { status: 401, data: zWebAppAccessDeniedError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+    web_sso_auth_required: { status: 401, data: zWebSsoAuthRequiredError },
   })
 
 export const events = {
@@ -1903,29 +1480,20 @@ export const post22 = oc
   .input(z.object({ body: zPostWorkflowsRunBody }))
   .output(zPostWorkflowsRunResponse)
   .errors({
-    bad_host: { status: 400, data: zRunWorkflowError400 },
-    bad_request: { status: 400, data: zRunWorkflowError400 },
-    bad_request_key_error: { status: 400, data: zRunWorkflowError400 },
-    client_disconnected: { status: 400, data: zRunWorkflowError400 },
-    completion_request_error: { status: 400, data: zRunWorkflowError400 },
-    invalid_param: { status: 400, data: zRunWorkflowError400 },
-    model_currently_not_support: { status: 400, data: zRunWorkflowError400 },
-    not_workflow_app: { status: 400, data: zRunWorkflowError400 },
-    provider_not_initialize: { status: 400, data: zRunWorkflowError400 },
-    provider_quota_exceeded: { status: 400, data: zRunWorkflowError400 },
-    security_error: { status: 400, data: zRunWorkflowError400 },
-    websocket_mismatch: { status: 400, data: zRunWorkflowError400 },
-    unauthorized: { status: 401, data: zRunWorkflowError401 },
-    web_app_access_denied: { status: 401, data: zRunWorkflowError401 },
-    web_sso_auth_required: { status: 401, data: zRunWorkflowError401 },
-    forbidden: { status: 403, data: zRunWorkflowError403 },
-    trigger_workflow_service_mode_unavailable: { status: 403, data: zRunWorkflowError403 },
-    app_not_found: { status: 404, data: zRunWorkflowError404 },
-    not_found: { status: 404, data: zRunWorkflowError404 },
-    rate_limit_error: { status: 429, data: zRunWorkflowError429 },
-    too_many_requests: { status: 429, data: zRunWorkflowError429 },
-    service_unavailable: { status: 503, data: zRunWorkflowError503 },
-    web_app_access_unavailable: { status: 503, data: zRunWorkflowError503 },
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    not_workflow_app: { status: 400, data: zNotWorkflowAppError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+    rate_limit_error: { status: 429, data: zRateLimitError },
+    trigger_workflow_service_mode_unavailable: {
+      status: 403,
+      data: zTriggerWorkflowServiceModeUnavailableError,
+    },
+    web_app_access_denied: { status: 401, data: zWebAppAccessDeniedError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+    web_sso_auth_required: { status: 401, data: zWebSsoAuthRequiredError },
   })
 
 export const run = {
@@ -1950,21 +1518,11 @@ export const post23 = oc
   .input(z.object({ params: zPostWorkflowsTasksByTaskIdStopPath }))
   .output(zPostWorkflowsTasksByTaskIdStopResponse)
   .errors({
-    bad_host: { status: 400, data: zStopWorkflowTaskError400 },
-    bad_request: { status: 400, data: zStopWorkflowTaskError400 },
-    bad_request_key_error: { status: 400, data: zStopWorkflowTaskError400 },
-    client_disconnected: { status: 400, data: zStopWorkflowTaskError400 },
-    invalid_param: { status: 400, data: zStopWorkflowTaskError400 },
-    not_workflow_app: { status: 400, data: zStopWorkflowTaskError400 },
-    security_error: { status: 400, data: zStopWorkflowTaskError400 },
-    websocket_mismatch: { status: 400, data: zStopWorkflowTaskError400 },
-    unauthorized: { status: 401, data: zStopWorkflowTaskError401 },
-    web_app_access_denied: { status: 401, data: zStopWorkflowTaskError401 },
-    web_sso_auth_required: { status: 401, data: zStopWorkflowTaskError401 },
-    app_not_found: { status: 404, data: zStopWorkflowTaskError404 },
-    not_found: { status: 404, data: zStopWorkflowTaskError404 },
-    service_unavailable: { status: 503, data: zStopWorkflowTaskError503 },
-    web_app_access_unavailable: { status: 503, data: zStopWorkflowTaskError503 },
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    not_workflow_app: { status: 400, data: zNotWorkflowAppError },
+    web_app_access_denied: { status: 401, data: zWebAppAccessDeniedError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+    web_sso_auth_required: { status: 401, data: zWebSsoAuthRequiredError },
   })
 
 export const stop3 = {

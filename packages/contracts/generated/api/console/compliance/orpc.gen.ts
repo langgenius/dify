@@ -3,11 +3,12 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
-  zDownloadComplianceDocumentError400,
-  zDownloadComplianceDocumentError401,
-  zDownloadComplianceDocumentError429,
-  zDownloadComplianceDocumentError502,
-  zDownloadComplianceDocumentError503,
+  zAccountNotInitializedError,
+  zBillingOperationFailedError,
+  zBillingUnavailableError,
+  zComplianceRateLimitError,
+  zNotInitValidatedError,
+  zNotSetupError,
 } from './zod.gen.ts'
 import { zGetComplianceDownloadQuery, zGetComplianceDownloadResponse } from './zod.gen.ts'
 
@@ -26,24 +27,12 @@ export const get = oc
   .input(z.object({ query: zGetComplianceDownloadQuery }))
   .output(zGetComplianceDownloadResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zDownloadComplianceDocumentError400 },
-    bad_host: { status: 400, data: zDownloadComplianceDocumentError400 },
-    bad_request: { status: 400, data: zDownloadComplianceDocumentError400 },
-    bad_request_key_error: { status: 400, data: zDownloadComplianceDocumentError400 },
-    client_disconnected: { status: 400, data: zDownloadComplianceDocumentError400 },
-    invalid_param: { status: 400, data: zDownloadComplianceDocumentError400 },
-    security_error: { status: 400, data: zDownloadComplianceDocumentError400 },
-    websocket_mismatch: { status: 400, data: zDownloadComplianceDocumentError400 },
-    not_init_validated: { status: 401, data: zDownloadComplianceDocumentError401 },
-    not_setup: { status: 401, data: zDownloadComplianceDocumentError401 },
-    unauthorized: { status: 401, data: zDownloadComplianceDocumentError401 },
-    compliance_rate_limit: { status: 429, data: zDownloadComplianceDocumentError429 },
-    too_many_requests: { status: 429, data: zDownloadComplianceDocumentError429 },
-    bad_gateway: { status: 502, data: zDownloadComplianceDocumentError502 },
-    billing_operation_failed: { status: 502, data: zDownloadComplianceDocumentError502 },
-    plugin_runtime_error: { status: 502, data: zDownloadComplianceDocumentError502 },
-    billing_unavailable: { status: 503, data: zDownloadComplianceDocumentError503 },
-    service_unavailable: { status: 503, data: zDownloadComplianceDocumentError503 },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    billing_operation_failed: { status: 502, data: zBillingOperationFailedError },
+    billing_unavailable: { status: 503, data: zBillingUnavailableError },
+    compliance_rate_limit: { status: 429, data: zComplianceRateLimitError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const download = {
