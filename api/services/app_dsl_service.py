@@ -595,6 +595,18 @@ class AppDslService:
         if any(node.get("data", {}).get("type") in invalid_types for node in nodes):
             raise ValueError("Workflow contains node types incompatible with the target App")
 
+    def _lock_draft_matching(self, *, app: App | None, draft_hash: str) -> Workflow:
+        """Lock the draft the caller exported, or raise DraftChangedError when it has moved on.
+
+        The row lock holds until commit, so the draft stays the one the caller exported.
+        """
+        if app is None:
+            raise DraftChangedError()
+        draft = WorkflowService().get_draft_workflow_for_update(app_model=app, session=self._session)
+        if draft is None or draft_token(draft) != draft_hash:
+            raise DraftChangedError()
+        return draft
+
     def _create_or_update_app(
         self,
         *,
@@ -618,6 +630,8 @@ class AppDslService:
         if not app_mode:
             raise ValueError("loss app mode")
         app_mode = AppMode(app_mode)
+        # Check the draft before any write so a refused import leaves the app and its cached dependencies alone.
+        locked_draft = self._lock_draft_matching(app=app, draft_hash=draft_hash) if draft_hash is not None else None
         site_data = SiteDsl.model_validate(data["site"]) if data.get("site") is not None else None
         if app_mode == AppMode.AGENT:
             self._ensure_agent_import_permission(account, app=app)
@@ -708,15 +722,9 @@ class AppDslService:
                 ]
 
                 workflow_service = WorkflowService()
-                if draft_hash is None:
-                    current_draft_workflow = workflow_service.get_draft_workflow(app_model=app, session=self._session)
-                else:
-                    # The row lock holds until commit, so the draft stays the one the caller exported.
-                    current_draft_workflow = workflow_service.get_draft_workflow_for_update(
-                        app_model=app, session=self._session
-                    )
-                    if current_draft_workflow is None or draft_token(current_draft_workflow) != draft_hash:
-                        raise DraftChangedError()
+                current_draft_workflow = locked_draft or workflow_service.get_draft_workflow(
+                    app_model=app, session=self._session
+                )
                 if current_draft_workflow:
                     unique_hash = current_draft_workflow.unique_hash
                 else:

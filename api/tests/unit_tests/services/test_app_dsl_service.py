@@ -10,6 +10,7 @@ from sqlalchemy import event, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from constants.dsl_version import CURRENT_APP_DSL_VERSION
+from core.plugin.entities.plugin import PluginDependency, PluginDependencyType
 from core.rbac import RBACPermission, RBACResourceScope
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable
 from models import Account, App, AppMode
@@ -1117,6 +1118,32 @@ def test_guarded_overwrite_refuses_a_draft_that_no_longer_matches(
     with pytest.raises(DraftChangedError):
         overwrite("exported")
 
+    workflow_service.sync_draft_workflow.assert_not_called()
+
+
+def test_refused_overwrite_leaves_the_app_and_cached_dependencies_alone(monkeypatch: pytest.MonkeyPatch) -> None:
+    service, workflow_service, _ = _guarded_overwrite(
+        monkeypatch, SimpleNamespace(token="edited-since", unique_hash="graph-hash")
+    )
+    cached = Mock()
+    monkeypatch.setattr("services.app_dsl_service.redis_client.setex", cached)
+    app = SimpleNamespace(id="app-1", tenant_id="tenant-1", name="Before", description="")
+    dependency = PluginDependency(
+        type=PluginDependencyType.Package,
+        value=PluginDependency.Package(plugin_unique_identifier="langgenius/openai:1.0.0@abc"),
+    )
+
+    with pytest.raises(DraftChangedError):
+        service._create_or_update_app(
+            app=cast(App, app),
+            data={"app": {"mode": AppMode.WORKFLOW.value, "name": "After"}, "workflow": {"graph": {}}},
+            account=Mock(id="account-1"),
+            dependencies=[dependency],
+            draft_hash="exported",
+        )
+
+    cached.assert_not_called()
+    assert app.name == "Before"
     workflow_service.sync_draft_workflow.assert_not_called()
 
 
