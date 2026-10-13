@@ -14,6 +14,7 @@ from core.evaluation.entities.evaluation_entity import (
 )
 from core.evaluation.runners.base_evaluation_runner import BaseEvaluationRunner
 from graphon.node_events import NodeRunResult
+from graphon.nodes.llm.reasoning import split_reasoning
 
 logger = logging.getLogger(__name__)
 
@@ -118,14 +119,21 @@ def _prompt_content_to_text(content: Any) -> str:
 
 
 def _extract_llm_output(outputs: Mapping[str, Any]) -> str:
-    """Extract the LLM output text from NodeRunResult.outputs."""
+    """Extract user-visible LLM output without inline reasoning blocks."""
     if "text" in outputs:
-        return _prompt_content_to_text(outputs["text"])
+        return _strip_inline_reasoning(_prompt_content_to_text(outputs["text"]))
     if "structured_output" in outputs:
         return json.dumps(outputs["structured_output"], ensure_ascii=False, sort_keys=True, default=str)
     if "answer" in outputs:
-        return str(outputs["answer"])
+        return _strip_inline_reasoning(str(outputs["answer"]))
     return ""
+
+
+def _strip_inline_reasoning(output: str) -> str:
+    if "<think" not in output.lower():
+        return output
+    clean_output, _reasoning = split_reasoning(output, "separated")
+    return clean_output
 
 
 def _extract_context_blocks(prompts: list[dict[str, Any]]) -> list[str] | None:
