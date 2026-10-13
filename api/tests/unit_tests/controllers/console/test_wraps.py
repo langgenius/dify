@@ -491,7 +491,7 @@ class TestRbacPermissionRequired:
         guarded = rbac_permission_required(RBACCheck(RBACPermission.APP_DELETE, PlainApp()))(view)
 
         assert guarded.__apidoc__ == view.__apidoc__  # type: ignore[attr-defined]
-        assert getattr(guarded, RBAC_CHECKS_ATTR) != inner_checks
+        assert guarded.__dict__[RBAC_CHECKS_ATTR] != inner_checks
 
     def test_resource_scoped_check_uses_resource_id(self):
         current_user = make_account("account-1")

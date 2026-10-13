@@ -1,3 +1,5 @@
+from types import FunctionType
+
 from controllers.web.flask_admission import web_anonymous_admission
 from enums import DeploymentEdition
 
@@ -5,11 +7,10 @@ from enums import DeploymentEdition
 def _wrapper_chain(view: object) -> list[str]:
     """The defining function of each layer; ``functools.wraps`` copies ``__qualname__`` but not the code."""
     chain: list[str] = []
-    current: object | None = view
-    while current is not None:
-        code = getattr(current, "__code__", None)
-        chain.append(code.co_qualname if code is not None else repr(current))
-        current = getattr(current, "__wrapped__", None)
+    current: object = view
+    while isinstance(current, FunctionType):
+        chain.append(current.__code__.co_qualname)
+        current = current.__dict__.get("__wrapped__")
     return chain
 
 
