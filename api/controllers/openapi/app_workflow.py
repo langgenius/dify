@@ -118,7 +118,7 @@ class AppRunListApi(Resource):
                 input={"app_id": "<app_id>", "status": "failed", "triggered_from": "app-run"},
             ),
             Example(
-                title="My latest draft test run",
+                title="The latest draft test run of this app, by anyone",
                 input={"app_id": "<app_id>", "triggered_from": "debugging", "limit": 1},
             ),
         ),

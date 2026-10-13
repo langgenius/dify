@@ -36,7 +36,7 @@ MAX_PAGE_LIMIT = 100
 
 
 class SupportedAppType(StrEnum):
-    """App types the ``app`` usage face (``get app``) lists and filters.
+    """App types the app list ops list and filter by.
 
     A curated subset of :class:`AppMode`: the real, user-facing app categories.
     Excludes runtime-only mode tags that are not standalone apps
@@ -45,8 +45,7 @@ class SupportedAppType(StrEnum):
 
     Members reference ``AppMode.*.value`` so the subset relationship is
     type-checked: dropping a member from ``AppMode`` breaks this at import.
-    This is the single source for the listable set — params, filters, and the
-    generated CLI whitelist all derive from it.
+    This is the single source for the listable set — params and filters derive from it.
     """
 
     COMPLETION = AppMode.COMPLETION.value
@@ -71,7 +70,7 @@ class MessageMetadata(BaseModel):
 
 
 class Hint(BaseModel):
-    """A next step the caller can hand straight to `call <op> --input <input>`."""
+    """A next step: the op id to call and its ready input."""
 
     summary: str
     op: str
@@ -142,7 +141,7 @@ class AppInfo(BaseModel):
 class AppDescribeInfo(AppInfo):
     updated_at: str | None = None
     service_api_enabled: bool
-    is_agent: bool = False
+    is_agent: bool = Field(False, description="True for agent-chat and advanced-chat apps")
 
 
 class AppDescribeResponse(Hinted):
@@ -330,7 +329,11 @@ class AppListQuery(PageQuery):
 
     workspace_id: UUIDStr
     mode: SupportedAppType | None = None
-    name: str | None = Field(None, max_length=200)
+    name: str | None = Field(
+        None,
+        max_length=200,
+        description="Filter by a name substring; an app id returns that one app and ignores `mode`",
+    )
 
 
 class _ConversationFields(BaseModel):

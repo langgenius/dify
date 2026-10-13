@@ -104,7 +104,9 @@ class AppDslImportApi(Resource):
 
     Returns 202 when the DSL version requires an explicit confirmation step
     (major version mismatch).  Callers must then POST to the imports :confirm method.
-    Returns 400 when the import failed due to invalid DSL or a business error.
+    Returns 400 with the ``Import`` body when the import failed (an unreachable URL,
+    unparsable DSL or a business error), 409 ``draft_changed`` when ``draft_hash`` no
+    longer matches the draft, and 422 ``dsl_invalid`` when the graph has errors.
     """
 
     @endpoint(
@@ -163,7 +165,7 @@ class AppDslImportApi(Resource):
 class AppDslCheckApi(Resource):
     """Check a DSL without importing it.
 
-    Errors are what the import refuses; warnings (missing credentials or models) are what publish refuses.
+    Errors are what the import refuses; warnings (missing credentials or models) are what the release check refuses.
     Pass ``app_id`` to check against an existing app's mode, as an overwrite import would.
     """
 

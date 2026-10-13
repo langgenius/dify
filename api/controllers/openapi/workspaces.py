@@ -118,12 +118,7 @@ class WorkspaceByIdApi(Resource):
 
 @openapi_ns.route("/workspaces/<string:workspace_id>:switch")
 class WorkspaceSwitchApi(Resource):
-    """Server-side switch — equivalent to the console's POST /workspaces/switch.
-
-    CLI `difyctl use workspace <id>` calls this; it does NOT mutate
-    ``hosts.yml`` on its own. Failure here must abort the local write so
-    that ``hosts.yml`` never diverges from the server's ``current`` state.
-    """
+    """Server-side switch — equivalent to the console's POST /workspaces/switch."""
 
     @endpoint(
         op="switch.workspace",
