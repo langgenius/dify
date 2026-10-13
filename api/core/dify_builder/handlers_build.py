@@ -423,11 +423,8 @@ def _graph_not_applied(
     """apply_repair refused the generated graph and wrote nothing: say why and
     keep the plan approvable (re-approving regenerates the graph).
 
-    apply_repair streams a canvas marker per applied intent BEFORE it raises
-    (on_canvas=env.emit_canvas), so the client has already seen add_*/apply_*
-    markers for mutations that were never written. The draft is still the
-    checkpoint taken at plan approval (create_checkpoint), so tell the client
-    to revert to it, same signal perform_revert uses."""
+    Refresh the client's canvas from the unchanged draft using the same
+    signal as perform_revert."""
     emit_canvas(env, "revert_checkpoint")
     progress.fail_step("build-apply-graph")
     execution = progress.finish(status="error")
@@ -478,7 +475,6 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
         ],
     )
     progress.activate("build-generate-graph")
-    emit_canvas(env, "create_checkpoint")
     # Pass the user's selected resources so a chosen model resource grounds the
     # built nodes (not the Builder's session model). resource_ids were already
     # string-filtered when stored (handle_resource_recommendation).
@@ -711,7 +707,6 @@ def handle_execution(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -
                 cards=["form"],
             )
             return StepResult(next=PcState.BUILD_AWAIT_TESTDATA, context=fc, items=[*form_items, *turn_items])
-        emit_canvas(env, "start_test_run")
         items = append_card(fc, DecisionItem(text="Run tests"))
         return StepResult(next=PcState.BUILD_TEST_AND_REPAIR, context=fc, items=items)
     return StepResult(next=PcState.BUILD_EXECUTION, context=fc)
@@ -867,7 +862,6 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
         fc.diagnosis = None
         fc.staged_repair = []
         run.culprit_node_id = dead_end_branch_node_id(graph, per_node)
-        emit_canvas(env, "mark_test_error", dify_run_id=run.dify_run_id)
         test_items = append_card(
             fc,
             result_card(run)
@@ -893,12 +887,10 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
         )
 
     if status == "succeeded":
-        emit_canvas(env, "mark_test_success", dify_run_id=run.dify_run_id)
         test_items = append_card(
             fc,
             result_card(run),
         )
-        emit_canvas(env, "mark_review_ready")
         execution = progress.finish()
         turn_items = append_assistant(
             env,
@@ -965,7 +957,6 @@ def handle_test_and_repair(env: Env, turn: Turn, s: Session, fc: DifyBuilderCont
     # failure: real diagnosis + proposed repair, staged for the approval gate
     run.culprit_node_id = first_failed_node(per_node)
     fc.verify_run_id = run.id
-    emit_canvas(env, "mark_test_error", dify_run_id=run.dify_run_id)
 
     if is_input_failure(run):
         # The attempted run failed on its inputs. Keep it as the latest
@@ -1239,7 +1230,6 @@ def handle_review(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
         items = append_card(fc, DecisionItem(text="Chose to publish"))
         return StepResult(next=PcState.BUILD_PUBLISH, context=fc, items=items)
     if kind == "keep_draft":
-        emit_canvas(env, "cancel_publish")
         decision_items = append_card(fc, DecisionItem(text="Kept the draft"))
         turn_items = append_assistant(
             env,
@@ -1266,7 +1256,6 @@ def handle_review(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
         plan = env.agent.propose_plan_v1(fc.requirements, goal_text=fc.goal_text)
         if not plan:
             return _planning_failed(env, s, fc, progress, "build-revise-plan", PcState.BUILD_REVIEW)
-        emit_canvas(env, "cancel_publish")
         fc.plan_items = plan
         fc.test_input_ref = ""
         fc.verify_run_id = ""

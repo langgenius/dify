@@ -186,7 +186,8 @@ describe('useDifyBuilderSessionController lifecycle', () => {
             operation_id: 'stale-operation',
             at_version: 1,
             revision: 1,
-            event: 'focus_workflow',
+            event: 'highlight_edit_target',
+            node_id: 'llm-1',
           },
         },
         {
@@ -218,7 +219,8 @@ describe('useDifyBuilderSessionController lifecycle', () => {
             operation_id: 'operation-2',
             at_version: 3,
             revision: 1,
-            event: 'focus_workflow',
+            event: 'highlight_edit_target',
+            node_id: 'llm-1',
           },
         },
         {
@@ -267,7 +269,8 @@ describe('useDifyBuilderSessionController lifecycle', () => {
       operation_id: 'operation-2',
       at_version: 3,
       revision: 1,
-      event: 'focus_workflow',
+      event: 'highlight_edit_target',
+      node_id: 'llm-1',
     })
     expect(store.get(difyBuilderSessionViewAtom)).toEqual(terminal)
     expect(store.get(difyBuilderConversationAtom)).toEqual([initial, notice])

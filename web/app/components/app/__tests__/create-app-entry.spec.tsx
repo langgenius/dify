@@ -2,7 +2,7 @@ import type { CreateAppPayload } from '@dify/contracts/api/console/apps/types.ge
 import type { WorkflowInstructionImprovePayload } from '@dify/contracts/api/console/workflow-generate/types.gen'
 import type { consoleClient } from '@/service/console'
 import type { ConsoleQueryTestOptions } from '@/test/console/query-data'
-import { act, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/console'
 import { renderWithConsoleQuery, seedFeatures } from '@/test/console/query-data'
@@ -219,6 +219,58 @@ describe('Create app entry', () => {
       mode,
       prompt: 'Improved: Summarize support tickets',
     })
+  })
+
+  it.each([
+    ['MacIntel', 'Meta'],
+    ['Win32', 'Control'],
+  ])(
+    'keeps Enter for newlines and submits with the platform shortcut on %s',
+    async (platform, modifier) => {
+      vi.spyOn(navigator, 'platform', 'get').mockReturnValue(platform)
+      vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue(platform)
+      const user = userEvent.setup()
+      renderEntry({ features: { dify_builder_enabled: true } })
+      await openMenu(user)
+      await user.click(screen.getByRole('menuitem', { name: 'app.types.workflow' }))
+      const input = await screen.findByRole('textbox', { name: 'app.newApp.starter.workflowTitle' })
+
+      await user.click(input)
+      await user.keyboard(`{${modifier}>}{Enter}{/${modifier}}`)
+      expect(mocks.createApp).not.toHaveBeenCalled()
+
+      await user.clear(input)
+      await user.type(input, 'Read receipts{Enter}Export amounts')
+      expect(input).toHaveValue('Read receipts\nExport amounts')
+      expect(mocks.createApp).not.toHaveBeenCalled()
+      await user.keyboard(`{${modifier}>}{Enter}{/${modifier}}`)
+
+      await waitFor(() => expect(mocks.push).toHaveBeenCalledWith('/app/created-app/workflow'))
+      expect(mocks.createApp.mock.calls[0]?.[0].body).toMatchObject({
+        prompt: 'Read receipts\nExport amounts',
+      })
+      expect(mocks.createApp).toHaveBeenCalledOnce()
+    },
+  )
+
+  it('does not submit while an IME is composing or confirming a candidate', async () => {
+    vi.spyOn(navigator, 'platform', 'get').mockReturnValue('Win32')
+    vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue('Windows')
+    const user = userEvent.setup()
+    renderEntry({ features: { dify_builder_enabled: true } })
+    await openMenu(user)
+    await user.click(screen.getByRole('menuitem', { name: 'app.types.workflow' }))
+    const input = await screen.findByRole('textbox', { name: 'app.newApp.starter.workflowTitle' })
+    await user.type(input, '整理发票')
+
+    fireEvent.keyDown(input, { key: 'Enter', ctrlKey: true, isComposing: true })
+    fireEvent.compositionStart(input)
+    fireEvent.keyDown(input, { key: 'Enter', ctrlKey: true })
+    fireEvent.compositionEnd(input)
+    fireEvent.keyDown(input, { key: 'Enter', ctrlKey: true })
+
+    expect(mocks.createApp).not.toHaveBeenCalled()
+    expect(input).toHaveValue('整理发票')
   })
 
   it('disables optimization without a default model, offers guidance on hover, and enables after configuration', async () => {

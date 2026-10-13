@@ -214,7 +214,6 @@ _ACTIONS_FOR: dict[PcState, list[UiAction]] = {
             label="Approve plan",
             kind=ActionKind.PRIMARY,
             next_state="build.execution",
-            canvas_event="create_checkpoint",
         ),
     ],
     PcState.BUILD_EXECUTION: [
@@ -223,7 +222,6 @@ _ACTIONS_FOR: dict[PcState, list[UiAction]] = {
             label="Run test",
             kind=ActionKind.PRIMARY,
             next_state="build.test_and_repair",
-            canvas_event="start_test_run",
         ),
         UiAction(
             id="revert",
@@ -260,14 +258,12 @@ _ACTIONS_FOR: dict[PcState, list[UiAction]] = {
             label="Keep draft",
             kind=ActionKind.SECONDARY,
             next_state="build.governance_feedback",
-            canvas_event="cancel_publish",
         ),
         UiAction(
             id="continue_adjusting",
             label="Continue adjusting",
             kind=ActionKind.SECONDARY,
             next_state="build.initial_plan",
-            canvas_event="cancel_publish",
         ),
         UiAction(
             id="revert",
@@ -299,7 +295,6 @@ _ACTIONS_FOR: dict[PcState, list[UiAction]] = {
             label="Approve changes",
             kind=ActionKind.PRIMARY,
             next_state="edit.apply_changes",
-            canvas_event="create_checkpoint",
         ),
         UiAction(
             id="continue_adjusting",
@@ -325,7 +320,6 @@ _ACTIONS_FOR: dict[PcState, list[UiAction]] = {
             label="Run affected tests",
             kind=ActionKind.PRIMARY,
             next_state="edit.test_affected_paths",
-            canvas_event="start_test_run",
         ),
         UiAction(
             id="revert",
@@ -362,14 +356,12 @@ _ACTIONS_FOR: dict[PcState, list[UiAction]] = {
             label="Keep draft",
             kind=ActionKind.SECONDARY,
             next_state="edit.complete",
-            canvas_event="cancel_publish",
         ),
         UiAction(
             id="continue_adjusting",
             label="Continue adjusting",
             kind=ActionKind.SECONDARY,
             next_state="edit.impact_analysis",
-            canvas_event="cancel_publish",
         ),
         UiAction(
             id="revert",

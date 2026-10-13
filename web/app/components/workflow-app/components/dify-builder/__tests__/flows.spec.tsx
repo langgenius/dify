@@ -20,7 +20,6 @@ const mocks = vi.hoisted(() => ({
   action: vi.fn(),
   create: vi.fn(),
   conversation: vi.fn(),
-  focusCanvas: vi.fn(),
   get: vi.fn(),
   message: vi.fn(),
   stream: vi.fn(),
@@ -320,7 +319,6 @@ const renderFlow = (edgeCount = 0, reactStrictMode = false) => {
       appId="app-1"
       canEdit
       getCanvasSnapshot={() => ({ nodes: [], edgeCount })}
-      onFocusCanvas={mocks.focusCanvas}
       onRefreshCanvas={mocks.refreshCanvas}
       onSyncDraft={mocks.syncDraft}
       tenantId="workspace-1"

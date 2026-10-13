@@ -166,8 +166,7 @@ describe('Builder run event handlers', () => {
       result.current.events.onWorkflowEvent(workflowEvent(nodeFinished()))
       result.current.events.onWorkflowEvent(workflowEvent(runFinished()))
       result.current.events.restoreRun('session-1', [resultCard])
-      result.current.events.onCanvasEvent(canvasEvent('mark_test_success', 2))
-      result.current.events.onCanvasEvent(canvasEvent('mark_review_ready', 3))
+      result.current.events.onCanvasEvent(canvasEvent('apply_edit_plan', 2))
       result.current.events.finishCommand()
     })
     expect(workflow.getState().workflowRunningData?.result.status).toBe('succeeded')
@@ -461,13 +460,13 @@ describe('Builder run event handlers', () => {
   })
 
   it.each(['failed', 'partial-succeeded', 'stopped'] as const)(
-    'preserves the native %s result through Builder markers and result cards',
+    'preserves the native %s result through canvas events and result cards',
     (status) => {
       const { result, workflow } = setup()
       act(() => {
         result.current.events.onWorkflowEvent(workflowEvent(runStarted()))
         result.current.events.onWorkflowEvent(workflowEvent(runFinished(status)))
-        result.current.events.onCanvasEvent(canvasEvent('mark_test_error'))
+        result.current.events.onCanvasEvent(canvasEvent('apply_edit_plan'))
         result.current.events.restoreRun('session-1', [
           { ...resultCard, payload: { ...resultCard.payload, status: 'failed' } },
         ])
@@ -565,7 +564,7 @@ describe('Builder run event handlers', () => {
     },
   )
 
-  it('retains a human-input pause instead of projecting the Builder validation failure', () => {
+  it('retains a human-input pause through Builder result cards and canvas refreshes', () => {
     const { result, workflow, nodeStatus } = setup()
     act(() => {
       const send = result.current.events.onWorkflowEvent
@@ -603,7 +602,6 @@ describe('Builder run event handlers', () => {
           },
         }),
       )
-      result.current.events.onCanvasEvent(canvasEvent('mark_test_error'))
       result.current.events.restoreRun('session-1', [resultCard])
       result.current.events.finishCommand()
       result.current.events.onCanvasRefreshed()

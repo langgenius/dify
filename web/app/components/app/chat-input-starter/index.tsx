@@ -1,11 +1,15 @@
 'use client'
 
 import type { CreateAppPayload } from '@dify/contracts/api/console/apps/types.gen'
+import type { Hotkey } from '@tanstack/react-hotkeys'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { memo, useId, useRef, useState } from 'react'
+import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
+import { formatForDisplay, matchesKeyboardEvent } from '@tanstack/react-hotkeys'
+import { memo, useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import TextareaAutosize from 'react-textarea-autosize'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { AgentBuildGridTexture } from '@/features/agent-v2/agent-detail/configure/components/build-grid-texture'
 import { BuilderPromptModelGuide } from '../builder-prompt-model-guide'
@@ -14,6 +18,10 @@ import { useImproveBuilderPrompt } from '../use-improve-builder-prompt'
 import { StarterTemplateEntry } from './template-entry'
 
 const StarterGridTexture = memo(AgentBuildGridTexture)
+const COMPOSITION_END_DELAY = 50
+const DEFAULT_APP_KEYBINDINGS = {
+  submitPrompt: 'Mod+Enter',
+} satisfies Record<string, Hotkey>
 
 export type StarterAppMode = Extract<CreateAppPayload['mode'], 'workflow' | 'advanced-chat'>
 
@@ -48,6 +56,8 @@ function StarterContent({
     ...modelState
   } = useImproveBuilderPrompt(mode, setPrompt)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  const isComposingRef = useRef(false)
+  const compositionEndTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const titleId = useId()
   const errorId = useId()
   const errorMessage = error || optimizeError
@@ -58,11 +68,37 @@ function StarterContent({
     { label: t(($) => $['newApp.starter.translate'], { ns: 'app' }), icon: 'i-ri-translate-2' },
   ]
 
+  useEffect(
+    () => () => {
+      if (compositionEndTimerRef.current) clearTimeout(compositionEndTimerRef.current)
+    },
+    [],
+  )
+
   return (
     <div className="flex min-h-128 flex-1 items-center justify-center px-4 pt-16 pb-22 sm:px-8">
       <div className="w-160 max-w-full">
+        {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- The native form owns the submit shortcut shared by its controls. */}
         <form
           aria-labelledby={titleId}
+          onKeyDown={(event) => {
+            if (
+              disabled ||
+              isCreating ||
+              !prompt.trim() ||
+              event.defaultPrevented ||
+              event.nativeEvent.isComposing ||
+              isComposingRef.current ||
+              !(event.target instanceof Node) ||
+              !event.currentTarget.contains(event.target) ||
+              !matchesKeyboardEvent(event.nativeEvent, DEFAULT_APP_KEYBINDINGS.submitPrompt)
+            )
+              return
+            event.preventDefault()
+            event.stopPropagation()
+            if (event.repeat) return
+            event.currentTarget.requestSubmit()
+          }}
           onSubmit={(event) => {
             event.preventDefault()
             if (prompt.trim() && !disabled && !isCreating) {
@@ -85,9 +121,15 @@ function StarterContent({
               className="i-custom-public-app-builder-builder-mark size-7.5 shrink-0"
             />
           </div>
-          <div className="overflow-hidden rounded-[14px] bg-background-section-burn p-1">
-            <div className="overflow-hidden rounded-xl bg-components-panel-bg-blur p-1.5 shadow-[0_4px_6px_-2px_var(--color-shadow-shadow-1),0_12px_16px_-4px_var(--color-shadow-shadow-5)] inset-ring inset-ring-components-chat-input-border backdrop-blur-[5px] focus-within:ring-2 focus-within:ring-components-input-border-active">
-              <textarea
+          <div className="group overflow-hidden rounded-[14px] bg-background-section-burn p-1 focus-within:bg-state-accent-active">
+            {/* Keep the frame above the toolbar background so its border stays continuous. */}
+            <div
+              className={cn(
+                'relative overflow-hidden rounded-xl bg-components-panel-bg-blur shadow-[0_4px_6px_-2px_var(--color-shadow-shadow-1),0_12px_16px_-4px_var(--color-shadow-shadow-5)] backdrop-blur-[5px]',
+                "after:pointer-events-none after:absolute after:inset-0 after:z-1 after:rounded-xl after:border after:border-transparent after:content-[''] group-focus-within:after:border-text-accent/15",
+              )}
+            >
+              <TextareaAutosize
                 ref={inputRef}
                 name="prompt"
                 aria-labelledby={titleId}
@@ -99,17 +141,29 @@ function StarterContent({
                   resetFeedback()
                   setPrompt(event.currentTarget.value)
                 }}
+                onCompositionStart={() => {
+                  if (compositionEndTimerRef.current) clearTimeout(compositionEndTimerRef.current)
+                  compositionEndTimerRef.current = null
+                  isComposingRef.current = true
+                }}
+                onCompositionEnd={() => {
+                  compositionEndTimerRef.current = setTimeout(() => {
+                    compositionEndTimerRef.current = null
+                    isComposingRef.current = false
+                  }, COMPOSITION_END_DELAY)
+                }}
                 disabled={isCreating}
-                rows={2}
-                className="block max-h-60 min-h-15 w-full resize-none bg-transparent px-2 py-1 body-md-regular tracking-[-0.07px] text-text-primary outline-none placeholder:text-text-placeholder"
+                minRows={4}
+                maxRows={16}
+                className="block min-h-26 w-full resize-none overflow-y-auto overscroll-contain border-0 bg-transparent p-3 body-md-regular tracking-[-0.07px] text-text-secondary caret-text-accent outline-hidden placeholder:text-text-placeholder"
               />
-              <div className="flex items-center justify-between pl-1">
+              <div className="flex h-12 shrink-0 items-center justify-between gap-2 bg-background-section p-2">
                 {/* The Chat Input design uses 6px padding around the icon and 3px around the label. */}
                 <BuilderPromptModelGuide {...modelState}>
                   <Button
                     type="button"
                     size="small"
-                    variant="ghost"
+                    variant="ghost-accent"
                     className="gap-px px-1.5 leading-4"
                     disabled={
                       disabled || isCreating || !prompt.trim() || modelState.modelStatus !== 'ready'
@@ -125,22 +179,31 @@ function StarterContent({
                     </span>
                   </Button>
                 </BuilderPromptModelGuide>
-                <IconButton
-                  type="submit"
-                  variant="primary"
-                  size="lg"
-                  aria-label={t(($) => $['difyBuilder.messageSend'], { ns: 'workflow' })}
-                  disabled={disabled || isCreating || !prompt.trim()}
-                >
-                  <span
-                    aria-hidden
-                    className={
-                      isCreating
-                        ? 'i-ri-loader-4-line size-4 animate-spin'
-                        : 'i-ri-send-plane-2-fill size-4'
-                    }
-                  />
-                </IconButton>
+                <div className="flex shrink-0 items-center gap-3">
+                  <KbdGroup className="hidden sm:inline-flex">
+                    {formatForDisplay(DEFAULT_APP_KEYBINDINGS.submitPrompt, { parts: true }).map(
+                      (key) => (
+                        <Kbd key={key}>{key}</Kbd>
+                      ),
+                    )}
+                  </KbdGroup>
+                  <IconButton
+                    type="submit"
+                    variant="primary"
+                    size="lg"
+                    aria-label={t(($) => $['difyBuilder.messageSend'], { ns: 'workflow' })}
+                    disabled={disabled || isCreating || !prompt.trim()}
+                  >
+                    <span
+                      aria-hidden
+                      className={
+                        isCreating
+                          ? 'i-ri-loader-4-line size-4 animate-spin'
+                          : 'i-ri-send-plane-2-fill size-4'
+                      }
+                    />
+                  </IconButton>
+                </div>
               </div>
             </div>
           </div>
