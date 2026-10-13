@@ -76,6 +76,15 @@ class SecurityConfig(BaseSettings):
         default=None,
     )
 
+    PASSWORD_PEPPER: str = Field(
+        description="Server-side secret mixed into account password hashes. "
+        "Leave empty to keep the legacy unpeppered hashing. "
+        "Use a high-entropy random value, e.g. `openssl rand -base64 32`. "
+        "WARNING: setting, changing, or removing this value changes every password hash, "
+        "so existing passwords will no longer verify. Do not change it casually.",
+        default="",
+    )
+
 
 class AppExecutionConfig(BaseSettings):
     """
