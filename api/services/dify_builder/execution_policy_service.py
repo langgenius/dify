@@ -1107,13 +1107,14 @@ class BuilderExecutionPolicyService:
                 return False
             end_outputs = _raw_object(ordered[2].outputs, "invalid_native_outputs")
             run_outputs = _raw_object(native.outputs, "invalid_native_outputs")
-            if end_outputs != run_outputs:
-                return False
             end_data = next(node["data"] for node in graph["nodes"] if node["id"] == ids[2])
+            expected_outputs: dict[str, Any] = {}
             for output in end_data["outputs"]:
-                if output["value_selector"] == [ids[1], "text"] and end_outputs.get(output["variable"]) != text:
-                    return False
-            return True
+                selector = output["value_selector"]
+                expected_outputs[output["variable"]] = (
+                    text if selector == [ids[1], "text"] else owned_effective[selector[1]]
+                )
+            return end_outputs == expected_outputs and run_outputs == expected_outputs
         except (
             BuilderExecutionPolicyError,
             ValidationError,
