@@ -24,11 +24,6 @@ function getSkillErrorDetails(error: unknown): Record<string, unknown> | undefin
   return undefined
 }
 
-export function getSkillErrorDetailNumber(error: unknown, key: string): number | undefined {
-  const value = getSkillErrorDetails(error)?.[key]
-  return typeof value === 'number' ? value : undefined
-}
-
 export function getSkillErrorDetailString(error: unknown, key: string): string | undefined {
   const value = getSkillErrorDetails(error)?.[key]
   if (typeof value === 'string') return value

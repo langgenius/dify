@@ -638,8 +638,17 @@ export const Filterable: Story = {
     await userEvent.clear(input)
     await userEvent.type(input, 'move')
     await expect(body.getByRole('menuitem', { name: 'Move to' })).toBeInTheDocument()
-    await userEvent.keyboard('{ArrowDown}{ArrowRight}')
-    await expect(await body.findByRole('menuitem', { name: 'Team space' })).toBeInTheDocument()
+    await userEvent.keyboard('{ArrowDown}')
+    await waitFor(async () => {
+      await expect(body.getByRole('menuitem', { name: 'Move to' })).toHaveAttribute(
+        'data-highlighted',
+      )
+    })
+    await userEvent.keyboard('{ArrowRight}')
+    const personalSpace = await body.findByRole('menuitem', { name: 'Personal space' })
+    await waitFor(async () => {
+      await expect(personalSpace).toHaveFocus()
+    })
     await userEvent.keyboard('{ArrowLeft}')
     await waitFor(async () => {
       await expect(body.queryByRole('menuitem', { name: 'Team space' })).not.toBeInTheDocument()
