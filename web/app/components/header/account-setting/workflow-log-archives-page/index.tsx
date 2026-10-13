@@ -502,12 +502,14 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
                     variant="tertiary"
                     tone="destructive"
                     className="shrink-0"
-                    disabled={isDeleting}
+                    loading={isDeleting}
                     aria-labelledby={`${deleteActionLabelId} ${archiveMonthLabelId}`}
                   />
                 }
               >
-                <span className="i-ri-delete-bin-line size-3.5" aria-hidden="true" />
+                {!isDeleting && (
+                  <span className="i-ri-delete-bin-line size-3.5" aria-hidden="true" />
+                )}
                 <span id={deleteActionLabelId}>
                   {isDeleting
                     ? t(($) => $['archives.delete.deleting'], { ns: 'appLog' })
@@ -538,7 +540,7 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
                     {t(($) => $['operation.cancel'], { ns: 'common' })}
                   </AlertDialogCancelButton>
                   <AlertDialogConfirmButton
-                    loading={deleteArchiveMutation.isPending}
+                    loading={isDeleting}
                     disabled={isDeletionActive && !canRetryDeletion}
                     aria-labelledby={confirmDeleteLabelId}
                     onClick={deleteArchive}

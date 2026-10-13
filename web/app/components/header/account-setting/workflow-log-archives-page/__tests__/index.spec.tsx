@@ -158,7 +158,7 @@ describe('WorkflowLogArchivesPage', () => {
       await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
       expect(
         screen.getByRole('button', { name: 'appLog.archives.delete.deleting 2026-08' }),
-      ).toBeDisabled()
+      ).toHaveAttribute('aria-disabled', 'true')
       expect(
         screen.getByRole('button', { name: 'appLog.archives.action.prepareDownload 2026-08' }),
       ).toHaveAttribute('aria-disabled', 'true')
@@ -178,7 +178,7 @@ describe('WorkflowLogArchivesPage', () => {
           name: 'appLog.archives.delete.deleting 2025-03',
         })
         expect(download).toHaveAttribute('aria-disabled', 'true')
-        expect(deletion).toBeDisabled()
+        expect(deletion).toHaveAttribute('aria-disabled', 'true')
         await user.click(download)
         await user.click(deletion)
         expect(archiveRequests.prepareDownload).not.toHaveBeenCalled()
@@ -348,7 +348,7 @@ describe('WorkflowLogArchivesPage', () => {
         await act(async () => vi.advanceTimersByTimeAsync(59_999))
         expect(
           screen.getByRole('button', { name: 'appLog.archives.delete.deleting 2025-03' }),
-        ).toBeDisabled()
+        ).toHaveAttribute('aria-disabled', 'true')
         await act(async () => vi.advanceTimersByTimeAsync(1))
       } finally {
         vi.useRealTimers()
@@ -366,7 +366,7 @@ describe('WorkflowLogArchivesPage', () => {
       expect(archiveRequests.delete).toHaveBeenCalledWith({ params: { year: 2025, month: 3 } })
       expect(
         screen.getByRole('button', { name: 'appLog.archives.delete.deleting 2025-03' }),
-      ).toBeDisabled()
+      ).toHaveAttribute('aria-disabled', 'true')
       expect(
         screen.getByRole('button', { name: 'appLog.archives.action.prepareDownload 2025-03' }),
       ).toHaveAttribute('aria-disabled', 'true')
@@ -394,7 +394,7 @@ describe('WorkflowLogArchivesPage', () => {
       )
       expect(
         within(dialog).getByRole('button', { name: 'appLog.archives.delete.deleting' }),
-      ).toBeDisabled()
+      ).toHaveAttribute('aria-disabled', 'true')
       await user.click(within(dialog).getByRole('button', { name: 'common.operation.cancel' }))
       await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
       expect(
