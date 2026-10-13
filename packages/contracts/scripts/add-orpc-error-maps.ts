@@ -44,14 +44,37 @@ const exportedNames = (source: string): Set<string> => {
   return names
 }
 
+/**
+ * The generator re-cases schema names (`A709B7A1` can become `A709b7a1`), so look the zod
+ * export up case-insensitively. A missing or ambiguous name fails generation instead of
+ * silently dropping the error body from the contract.
+ */
+const zodNameResolver = (zodNames: Set<string>, zodPath: string) => {
+  const byLowerName = new Map<string, string[]>()
+  for (const name of zodNames) {
+    const key = name.toLowerCase()
+    byLowerName.set(key, [...(byLowerName.get(key) ?? []), name])
+  }
+  return (schemaName: string): string => {
+    const wanted = `z${schemaName}`
+    if (zodNames.has(wanted)) return wanted
+    const candidates = byLowerName.get(wanted.toLowerCase()) ?? []
+    if (candidates.length === 1 && candidates[0]) return candidates[0]
+    throw new Error(
+      candidates.length === 0
+        ? `${zodPath} exports no zod schema for error component ${schemaName}`
+        : `${zodPath} exports several zod schemas for error component ${schemaName}: ${candidates.join(', ')}`,
+    )
+  }
+}
+
 const renderErrors = (
   entries: OrpcErrorEntry[],
-  zodNames: Set<string>,
+  resolveZodName: (schemaName: string) => string,
   used: Set<string>,
 ): string => {
   const props = entries.map(({ code, schemaName, status }) => {
-    const zodName = `z${schemaName}`
-    if (!zodNames.has(zodName)) return `${JSON.stringify(code)}: { status: ${status} }`
+    const zodName = resolveZodName(schemaName)
     used.add(zodName)
     return `${JSON.stringify(code)}: { status: ${status}, data: ${zodName} }`
   })
@@ -65,7 +88,7 @@ const patchContractFile = (directory: string, errorMaps: Map<string, OrpcErrorEn
 
   let source = fs.readFileSync(orpcPath, 'utf8')
   const file = ts.createSourceFile(orpcPath, source, ts.ScriptTarget.Latest, true)
-  const zodNames = exportedNames(fs.readFileSync(zodPath, 'utf8'))
+  const resolveZodName = zodNameResolver(exportedNames(fs.readFileSync(zodPath, 'utf8')), zodPath)
   const used = new Set<string>()
   const insertions: { at: number; text: string }[] = []
 
@@ -78,7 +101,7 @@ const patchContractFile = (directory: string, errorMaps: Map<string, OrpcErrorEn
       if (entries)
         insertions.push({
           at: declaration.initializer.end,
-          text: renderErrors(entries, zodNames, used),
+          text: renderErrors(entries, resolveZodName, used),
         })
     }
   }
