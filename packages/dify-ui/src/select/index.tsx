@@ -249,7 +249,7 @@ function SelectItem<Value = unknown>({ className, ...props }: SelectItemProps<Va
     <BaseSelect.Item
       className={(state) =>
         cn(
-          'flex h-8 cursor-pointer items-center rounded-lg px-2 system-sm-medium text-text-secondary outline-hidden',
+          'flex h-8 items-center rounded-lg px-2 system-sm-medium text-text-secondary outline-hidden',
           'data-disabled:cursor-not-allowed data-disabled:opacity-50 data-highlighted:bg-state-base-hover',
           resolveClassName(className, state),
         )

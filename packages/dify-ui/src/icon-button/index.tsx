@@ -9,10 +9,7 @@ import { focusRingClassName } from '../internal/focus'
 import { resolveClassName } from '../internal/resolve-class-name'
 
 const iconButtonVariants = cva(
-  [
-    focusRingClassName,
-    'inline-flex cursor-pointer items-center justify-center data-disabled:cursor-not-allowed',
-  ],
+  [focusRingClassName, 'inline-flex items-center justify-center data-disabled:cursor-not-allowed'],
   {
     variants: {
       variant: {

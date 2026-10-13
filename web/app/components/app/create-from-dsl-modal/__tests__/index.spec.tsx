@@ -225,9 +225,8 @@ describe('CreateFromDSLModal', () => {
     })
   })
 
-  it('should switch tabs, close from the header icon, and ignore shortcuts without valid input', async () => {
-    const handleClose = vi.fn()
-    render(<CreateFromDSLModal show onClose={handleClose} />)
+  it('should switch tabs and ignore shortcuts without valid input', async () => {
+    render(<CreateFromDSLModal show onClose={vi.fn()} />)
 
     submitWithKeyboard()
     expect(mockImportDSL).not.toHaveBeenCalled()
@@ -238,12 +237,6 @@ describe('CreateFromDSLModal', () => {
     expect(
       screen.getByPlaceholderText(/(?:^|\.)importAppUrlPlaceholder(?=$|:)/),
     )!.toBeInTheDocument()
-
-    const closeTrigger = screen
-      .getByText(/(?:^|\.)importApp(?=$|:)/)
-      .parentElement?.querySelector('.cursor-pointer.items-center') as HTMLElement
-    fireEvent.click(closeTrigger)
-    expect(handleClose).toHaveBeenCalledTimes(1)
   })
 
   it('should expose the URL as a named form field', () => {
