@@ -1,13 +1,11 @@
 import type { FileEntity } from '../types'
-import type { ImageInfo } from '@/app/components/datasets/common/image-previewer'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ImagePreviewer from '@/app/components/datasets/common/image-previewer'
+import { ImagePreviewer } from '@/app/components/datasets/common/image-previewer'
 import { useUpload } from '../hooks/use-upload'
 import { FileContextProvider, useFileStoreWithSelector } from '../store'
 import ImageInput from './image-input'
-import ImageItem from './image-item'
+import { ImageItem } from './image-item'
 
 type ImageUploaderInRetrievalTestingProps = {
   textArea: React.ReactNode
@@ -16,7 +14,7 @@ type ImageUploaderInRetrievalTestingProps = {
   className?: string
   actionAreaClassName?: string
 }
-const ImageUploaderInRetrievalTesting = ({
+const ImageUploaderInRetrievalTestingContent = ({
   textArea,
   actionButton,
   showUploader = true,
@@ -25,71 +23,58 @@ const ImageUploaderInRetrievalTesting = ({
 }: ImageUploaderInRetrievalTestingProps) => {
   const { t } = useTranslation(['datasetHitTesting'])
   const files = useFileStoreWithSelector((s) => s.files)
-  const [previewIndex, setPreviewIndex] = useState(0)
-  const [previewImages, setPreviewImages] = useState<ImageInfo[]>([])
   const { dragging, dragRef, dropRef, handleRemoveFile, handleReUploadFile } = useUpload()
 
-  const handleImagePreview = useCallback(
-    (fileId: string) => {
-      const index = files.findIndex((item) => item.id === fileId)
-      if (index === -1) return
-      setPreviewIndex(index)
-      setPreviewImages(
-        files.map((item) => ({
-          url: item.base64Url || item.sourceUrl || '',
-          name: item.name,
-          size: item.size,
-        })),
-      )
-    },
-    [files],
-  )
-
-  const handleClosePreview = useCallback(() => {
-    setPreviewImages([])
-  }, [])
+  const previewFiles = files.filter((file) => file.base64Url || file.sourceUrl)
+  const previewImages = previewFiles.map((file) => ({
+    url: file.base64Url || file.sourceUrl || '',
+    name: file.name,
+    size: file.size,
+  }))
 
   return (
-    <div ref={dropRef} className={cn('relative flex w-full flex-col', className)}>
-      {dragging && (
-        <div className="absolute inset-0.5 z-10 flex items-center justify-center rounded-lg border-[1.5px] border-dashed border-components-dropzone-border-accent bg-components-dropzone-bg-accent">
-          <div>{t(($) => $['imageUploader.dropZoneTip'], { ns: 'datasetHitTesting' })}</div>
-          <div ref={dragRef} className="absolute inset-0" />
-        </div>
-      )}
-      {textArea}
-      {showUploader && !!files.length && (
-        <div className="flex flex-wrap gap-1 bg-background-default px-4 py-2">
-          {files.map((file) => (
-            <ImageItem
-              key={file.id}
-              file={file}
-              showDeleteAction
-              onRemove={handleRemoveFile}
-              onReUpload={handleReUploadFile}
-              onPreview={handleImagePreview}
-            />
-          ))}
-        </div>
-      )}
-      <div
-        className={cn(
-          'flex',
-          showUploader ? 'justify-between' : 'justify-end',
-          actionAreaClassName,
+    <ImagePreviewer>
+      <div ref={dropRef} className={cn('relative flex w-full flex-col', className)}>
+        {dragging && (
+          <div className="absolute inset-0.5 z-10 flex items-center justify-center rounded-lg border-[1.5px] border-dashed border-components-dropzone-border-accent bg-components-dropzone-bg-accent">
+            <div>{t(($) => $['imageUploader.dropZoneTip'], { ns: 'datasetHitTesting' })}</div>
+            <div ref={dragRef} className="absolute inset-0" />
+          </div>
         )}
-      >
-        {showUploader && <ImageInput />}
-        {actionButton}
+        {textArea}
+        {showUploader && !!files.length && (
+          <div className="flex flex-wrap gap-1 bg-background-default px-4 py-2">
+            {files.map((file) => (
+              <ImageItem
+                key={file.id}
+                file={file}
+                showDeleteAction
+                onRemove={handleRemoveFile}
+                onReUpload={handleReUploadFile}
+                previewPayload={
+                  file.base64Url || file.sourceUrl
+                    ? {
+                        images: previewImages,
+                        initialIndex: previewFiles.findIndex((item) => item.id === file.id),
+                      }
+                    : undefined
+                }
+              />
+            ))}
+          </div>
+        )}
+        <div
+          className={cn(
+            'flex',
+            showUploader ? 'justify-between' : 'justify-end',
+            actionAreaClassName,
+          )}
+        >
+          {showUploader && <ImageInput />}
+          {actionButton}
+        </div>
       </div>
-      {previewImages.length > 0 && (
-        <ImagePreviewer
-          images={previewImages}
-          initialIndex={previewIndex}
-          onClose={handleClosePreview}
-        />
-      )}
-    </div>
+    </ImagePreviewer>
   )
 }
 
@@ -98,16 +83,14 @@ type ImageUploaderInRetrievalTestingWrapperProps = {
   onChange: (files: FileEntity[]) => void
 } & ImageUploaderInRetrievalTestingProps
 
-const ImageUploaderInRetrievalTestingWrapper = ({
+export function ImageUploaderInRetrievalTesting({
   value,
   onChange,
   ...props
-}: ImageUploaderInRetrievalTestingWrapperProps) => {
+}: ImageUploaderInRetrievalTestingWrapperProps) {
   return (
     <FileContextProvider value={value} onChange={onChange}>
-      <ImageUploaderInRetrievalTesting {...props} />
+      <ImageUploaderInRetrievalTestingContent {...props} />
     </FileContextProvider>
   )
 }
-
-export default ImageUploaderInRetrievalTestingWrapper
