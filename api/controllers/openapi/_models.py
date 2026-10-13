@@ -639,7 +639,7 @@ class AppDslImportPayload(BaseModel):
 class AppDslExportQuery(BaseModel):
     """Query parameters for GET /apps/<app_id>/dsl."""
 
-    include_secret: bool = Field(False, description="Include encrypted secret values in the exported DSL")
+    include_secret: bool = Field(False, description="Include secret values in plaintext in the exported DSL")
     workflow_id: UUIDStr | None = Field(
         None, description="Export a specific workflow version instead of the current draft"
     )

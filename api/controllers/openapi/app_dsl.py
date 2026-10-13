@@ -228,8 +228,8 @@ class AppDslExportApi(Resource):
     """Export an app's current draft configuration as a DSL YAML string.
 
     The auth pipeline resolves the app and its tenant from ``app_id``.  Pass
-    ``include_secret=true`` to embed encrypted credential values (e.g. tool
-    node secrets); omit it to produce a portable, sharable DSL safe to share.
+    ``include_secret=true`` to embed secret environment variable values in
+    plaintext and keep tool credential ids; omit it to produce a DSL safe to share.
 
     Note: the pipeline enforces ``app.enable_api`` for all ``/apps/<app_id>``
     routes in the openapi group.  Apps with the service API disabled will
