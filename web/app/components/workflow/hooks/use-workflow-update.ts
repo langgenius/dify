@@ -17,6 +17,7 @@ export const useWorkflowUpdate = () => {
       options?: {
         syncToCollaboration?: boolean
         features?: FetchWorkflowDraftResponse['features']
+        preserveViewport?: boolean
       },
     ) => {
       const { nodes, edges, viewport } = payload
@@ -28,6 +29,7 @@ export const useWorkflowUpdate = () => {
           nodes: initialNodes(nodes, edges),
           edges: initialEdges(edges, nodes),
           viewport:
+            !options?.preserveViewport &&
             viewport &&
             typeof viewport.x === 'number' &&
             typeof viewport.y === 'number' &&

@@ -34,6 +34,7 @@ const mocks = vi.hoisted(() => ({
   runAction: vi.fn(async () => true),
   sendMessage: vi.fn(async () => true),
   setCanvasReadOnly: vi.fn(),
+  setBuilderViewportManuallyChanged: vi.fn(),
   setShowPanel: vi.fn(),
   selectWorkflowNode: vi.fn(),
   startBuild: vi.fn(async () => true),
@@ -83,6 +84,12 @@ vi.mock('../session/use-session-controller', () => ({
 }))
 
 vi.mock('@/app/components/workflow/store', () => ({
+  useWorkflowStore: () => ({
+    getState: () => ({
+      builderViewportManuallyChanged: false,
+      setBuilderViewportManuallyChanged: mocks.setBuilderViewportManuallyChanged,
+    }),
+  }),
   useStore: <T,>(
     selector: (state: {
       setCanvasReadOnly: typeof mocks.setCanvasReadOnly
@@ -634,7 +641,7 @@ describe('DifyBuilderProvider', () => {
 
     await user.click(screen.getByRole('button', { name: 'Focus event node' }))
 
-    expect(mocks.selectWorkflowNode).toHaveBeenCalledWith('llm-1', true)
+    expect(mocks.selectWorkflowNode).toHaveBeenCalledWith('llm-1', true, expect.any(Function))
     expect(mocks.refreshCanvas).not.toHaveBeenCalled()
   })
 })

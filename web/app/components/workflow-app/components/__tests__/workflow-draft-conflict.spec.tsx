@@ -9,7 +9,9 @@ import {
 import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { useNodesReadOnlyByCanEdit } from '@/app/components/workflow/hooks/use-workflow'
 import { useStore } from '@/app/components/workflow/store'
+import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, seedSystemFeatures } from '@/test/console/query-data'
+import { createAppDetailFixture } from '@/test/fixtures/app'
 import { useNodesSyncDraftByCanEdit } from '../../hooks/use-nodes-sync-draft'
 import WorkflowDraftConflict from '../workflow-draft-conflict'
 
@@ -60,6 +62,10 @@ const DraftEditor = () => {
 const renderDraftEditor = () => {
   const queryClient = createConsoleQueryClient()
   seedSystemFeatures(queryClient, { enable_collaboration_mode: false })
+  queryClient.setQueryData(
+    consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'app-1' } } }),
+    createAppDetailFixture({ id: 'app-1', mode: 'workflow' }),
+  )
   return renderWorkflowComponent(<DraftEditor />, {
     queryClient,
     initialStoreState: {
