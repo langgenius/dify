@@ -1585,6 +1585,7 @@ Create a new application
 | ---- | ----------- | ------ |
 | 200 | Import confirmed | **application/json**: [Import](#import)<br> |
 | 400 | Import failed | **application/json**: [Import](#import)<br> |
+| 409 | The draft changed after the export the import is based on |  |
 
 ### [GET] /apps/recent
 Get recently modified apps for the home Continue Work section

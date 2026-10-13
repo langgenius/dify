@@ -4279,6 +4279,7 @@ export type PostAppsImportsByImportIdConfirmData = {
 
 export type PostAppsImportsByImportIdConfirmErrors = {
   400: Import
+  409: unknown
 }
 
 export type PostAppsImportsByImportIdConfirmError =
