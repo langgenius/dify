@@ -81,6 +81,10 @@ jobs:
         if: inputs.run-python-style
         run: uv run --project api --dev python api/dev/lint_response_contracts.py --fail-on-mismatch
 
+      - name: Run API Error Linter
+        if: inputs.run-python-style
+        run: uv run --project api --dev python api/dev/lint_error_responses.py
+
       - name: Run No New Getattr Guard
         if: inputs.run-python-style
         run: uv run --project api python scripts/check_no_new_getattr.py --base-rev "${{ inputs.base-rev }}"

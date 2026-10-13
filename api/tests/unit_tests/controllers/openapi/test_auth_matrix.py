@@ -1293,9 +1293,11 @@ EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
     # The catalog and the five device-flow rows document their 200 with a raw
     # `openapi_ns.response` rather than `@returns`; `ExternalApi` still gives them the
     # `default` error every operation documents, with the same `ErrorBody` schema.
-    ("post", "/oauth/device/approve"): frozenset({"200", "default"}),
+    # Approve and deny run Console account admission, whose setup (401) and
+    # account-initialization (400) errors are documented by those guards.
+    ("post", "/oauth/device/approve"): frozenset({"200", "400", "401", "default"}),
     ("post", "/oauth/device/code"): frozenset({"200", "default"}),
-    ("post", "/oauth/device/deny"): frozenset({"200", "default"}),
+    ("post", "/oauth/device/deny"): frozenset({"200", "400", "401", "default"}),
     ("get", "/oauth/device/lookup"): frozenset({"200", "default"}),
     ("post", "/oauth/device/token"): frozenset({"200", "default"}),
     ("get", "/permitted-external-apps"): frozenset({"200", "422", "default"}),

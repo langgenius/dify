@@ -6,6 +6,7 @@ from typing import Concatenate
 
 from controllers.console.explore.error import TrialAppFeatureDisabledError, TrialAppLimitExceeded, TrialAppNotAllowed
 from extensions.ext_application_services import application_services
+from libs.external_api import document_errors
 from machinery.context import RequestContext
 from services.trial_app_access_service import (
     TrialAppRef,
@@ -23,7 +24,7 @@ def trial_feature_enable[**P, R](view: Callable[P, R]) -> Callable[P, R]:
             raise TrialAppFeatureDisabledError()
         return view(*args, **kwargs)
 
-    return decorated
+    return document_errors(decorated, TrialAppFeatureDisabledError)
 
 
 def get_trial_app[T, **P, R](
@@ -48,7 +49,7 @@ def get_trial_app[T, **P, R](
             raise TrialAppLimitExceeded() from error
         return view(self, request_context, trial_app, *args, **kwargs)
 
-    return trial_feature_enable(decorated)
+    return trial_feature_enable(document_errors(decorated, TrialAppNotAllowed, TrialAppLimitExceeded))
 
 
 def get_trial_app_for_stop[T, **P, R](

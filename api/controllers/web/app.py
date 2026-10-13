@@ -21,6 +21,7 @@ from controllers.web.error import (
 )
 from controllers.web.wraps import WebApiResource
 from extensions.ext_application_services import application_services
+from libs.external_api import error_responses
 from libs.helper import dump_response
 from libs.passport import PassportService
 from libs.token import extract_webapp_passport
@@ -70,6 +71,7 @@ register_response_schema_models(
 class AppParameterApi(WebApiResource):
     """Resource for app variables."""
 
+    @error_responses(AgentNotPublishedError, AppUnavailableError)
     @web_ns.doc("Get App Parameters")
     @web_ns.doc(description="Retrieve the parameters for a specific app.")
     @web_ns.doc(
@@ -97,6 +99,7 @@ class AppParameterApi(WebApiResource):
 
 @web_ns.route("/meta")
 class AppMeta(WebApiResource):
+    @error_responses(AppUnavailableError)
     @web_ns.doc("Get App Meta")
     @web_ns.doc(description="Retrieve the metadata for a specific app.")
     @web_ns.doc(
@@ -122,6 +125,7 @@ class AppMeta(WebApiResource):
 
 @web_ns.route("/webapp/access-mode")
 class AppAccessMode(Resource):
+    @error_responses(InvalidArgumentError, WebAppAccessServiceUnavailableError, WebAppNotFoundError)
     @web_ns.doc("Get App Access Mode")
     @web_ns.doc(description="Retrieve the access mode for a web application (public or restricted).")
     @web_ns.doc(params=query_params_from_model(AppAccessModeQuery))
@@ -153,6 +157,7 @@ class AppAccessMode(Resource):
 
 @web_ns.route("/webapp/permission")
 class AppWebAuthPermission(Resource):
+    @error_responses(WebAppAccessServiceUnavailableError, WebAppAuthRequiredError)
     @web_ns.doc("Check App Permission")
     @web_ns.doc(description="Check if user has permission to access a web application.")
     @web_ns.doc(params=query_params_from_model(AppPermissionQuery))

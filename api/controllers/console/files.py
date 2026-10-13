@@ -31,6 +31,7 @@ from controllers.console.wraps import (
 )
 from extensions.ext_application_services import application_services
 from fields.file_fields import FileResponse, UploadConfig
+from libs.external_api import error_responses
 from libs.helper import dump_response
 from libs.login import current_account_with_tenant, login_required
 from machinery.context import RequestContext
@@ -163,6 +164,7 @@ class FileApi(Resource):
         )
         return dump_response(UploadConfig, config), 200
 
+    @error_responses(FilenameNotExistsError, NoFileUploadedError, TooManyFilesError)
     @setup_required
     @login_required
     @account_initialization_required

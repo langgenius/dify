@@ -71,6 +71,7 @@ from fields.document_fields import (
     DocumentStatusListResponse,
     normalize_enum,
 )
+from libs.external_api import error_responses
 from libs.helper import dump_response
 from libs.login import current_user
 from libs.pagination import clamp_pagination, paginate_query
@@ -537,6 +538,7 @@ def _update_document_by_text(
 class DocumentAddByTextApi(DatasetApiResource):
     """Resource for the canonical text document creation route."""
 
+    @error_responses(ProviderNotInitializeError)
     @service_api_ns.doc(
         summary="Create Document by Text",
         description=(
@@ -584,6 +586,7 @@ class DocumentAddByTextApi(DatasetApiResource):
 class DeprecatedDocumentAddByTextApi(DatasetApiResource):
     """Deprecated resource alias for text document creation."""
 
+    @error_responses(ProviderNotInitializeError)
     @service_api_ns.expect(service_api_ns.models[DocumentTextCreatePayload.__name__])
     @service_api_ns.doc("create_document_by_text_deprecated")
     @service_api_ns.doc(deprecated=True)
@@ -619,6 +622,7 @@ class DeprecatedDocumentAddByTextApi(DatasetApiResource):
 class DocumentUpdateByTextApi(DatasetApiResource):
     """Resource for the canonical text document update route."""
 
+    @error_responses(ProviderNotInitializeError)
     @service_api_ns.doc(
         summary="Update Document by Text",
         description=(
@@ -667,6 +671,7 @@ class DocumentUpdateByTextApi(DatasetApiResource):
 class DeprecatedDocumentUpdateByTextApi(DatasetApiResource):
     """Deprecated resource alias for text document updates."""
 
+    @error_responses(ProviderNotInitializeError)
     @service_api_ns.expect(service_api_ns.models[DocumentTextUpdate.__name__])
     @service_api_ns.doc("update_document_by_text_deprecated")
     @service_api_ns.doc(deprecated=True)
@@ -714,6 +719,9 @@ class DeprecatedDocumentUpdateByTextApi(DatasetApiResource):
 class DocumentAddByFileApi(DatasetApiResource):
     """Resource for documents."""
 
+    @error_responses(
+        FilenameNotExistsError, FileTooLargeError, NoFileUploadedError, ProviderNotInitializeError, TooManyFilesError
+    )
     @service_api_ns.doc(
         summary="Create Document by File",
         description=(
@@ -942,6 +950,13 @@ def _update_document_by_file(
 class DeprecatedDocumentUpdateByFileApi(DatasetApiResource):
     """Deprecated resource aliases for file document updates."""
 
+    @error_responses(
+        FilenameNotExistsError,
+        FileTooLargeError,
+        ProviderNotInitializeError,
+        TooManyFilesError,
+        UnsupportedFileTypeError,
+    )
     @service_api_ns.doc(
         summary="Update Document by File",
         description=(
@@ -1412,6 +1427,13 @@ class DocumentApi(DatasetApiResource):
             exclude=response_exclude,
         )
 
+    @error_responses(
+        FilenameNotExistsError,
+        FileTooLargeError,
+        ProviderNotInitializeError,
+        TooManyFilesError,
+        UnsupportedFileTypeError,
+    )
     @service_api_ns.doc(
         summary="Update Document by File",
         description=(
@@ -1459,6 +1481,8 @@ class DocumentApi(DatasetApiResource):
         )
         return _document_and_batch_response(document, batch, session=session), 200
 
+    # DocumentService.delete_document does not enforce indexing state; the except below is defensive.
+    @error_responses(ArchivedDocumentImmutableError, unreachable=(DocumentIndexingError,))
     @service_api_ns.doc(
         summary="Delete Document",
         description="Permanently delete a document and all its chunks from the knowledge base.",

@@ -43,6 +43,7 @@ from fields.workflow_draft_variable_fields import (
     WorkflowDraftVariableWithoutValueResponse,
 )
 from graphon.variables.types import SegmentType
+from libs.external_api import error_responses
 from libs.helper import dump_response
 from libs.login import login_required
 from models import Account, App, AppMode
@@ -204,6 +205,7 @@ def _api_prerequisite[T, **P, R](
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/variables")
 class WorkflowVariableCollectionApi(Resource):
+    @error_responses(DraftWorkflowNotExist)
     @console_ns.doc(params=query_params_from_model(WorkflowDraftVariableListQuery))
     @console_ns.doc("get_workflow_variables")
     @console_ns.doc(description="Get draft workflow variables")
@@ -274,6 +276,7 @@ def validate_node_id(node_id: str) -> None:
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/variables")
 class NodeVariableCollectionApi(Resource):
+    @error_responses(InvalidArgumentError)
     @console_ns.doc("get_node_variables")
     @console_ns.doc(description="Get variables for a specific node")
     @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
@@ -294,6 +297,7 @@ class NodeVariableCollectionApi(Resource):
 
         return dump_response(WorkflowDraftVariableListResponse, node_vars)
 
+    @error_responses(InvalidArgumentError)
     @console_ns.doc("delete_node_variables")
     @console_ns.doc(description="Delete all variables for a specific node")
     @console_ns.response(204, "Node variables deleted successfully")
@@ -311,6 +315,7 @@ class VariableApi(Resource):
     _PATCH_NAME_FIELD = "name"
     _PATCH_VALUE_FIELD = "value"
 
+    @error_responses(NotFoundError)
     @console_ns.doc("get_variable")
     @console_ns.doc(description="Get a specific workflow variable")
     @console_ns.doc(params={"app_id": "Application ID", "variable_id": "Variable ID"})
@@ -335,6 +340,7 @@ class VariableApi(Resource):
         )
         return dump_response(WorkflowDraftVariableResponse, variable)
 
+    @error_responses(InvalidArgumentError, NotFoundError)
     @console_ns.doc("update_variable")
     @console_ns.doc(description="Update a workflow variable")
     @console_ns.expect(console_ns.models[WorkflowDraftVariableUpdatePayload.__name__])
@@ -419,6 +425,7 @@ class VariableApi(Resource):
         db.session.commit()
         return dump_response(WorkflowDraftVariableResponse, variable)
 
+    @error_responses(NotFoundError)
     @console_ns.doc("delete_variable")
     @console_ns.doc(description="Delete a workflow variable")
     @console_ns.response(204, "Variable deleted successfully")
@@ -442,6 +449,7 @@ class VariableApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/variables/<uuid:variable_id>/reset")
 class VariableResetApi(Resource):
+    @error_responses(NotFoundError)
     @console_ns.doc("reset_variable")
     @console_ns.doc(description="Reset a workflow variable to its default value")
     @console_ns.doc(params={"app_id": "Application ID", "variable_id": "Variable ID"})
@@ -499,6 +507,7 @@ def _get_variable_list(app_model: App, node_id: str, current_user_id: str) -> Wo
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/conversation-variables")
 class ConversationVariableCollectionApi(Resource):
+    @error_responses(NotFoundError)
     @console_ns.doc("get_conversation_variables")
     @console_ns.doc(description="Get conversation variables for workflow")
     @console_ns.doc(params={"app_id": "Application ID"})
@@ -584,6 +593,7 @@ class SystemVariableCollectionApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/environment-variables")
 class EnvironmentVariableCollectionApi(Resource):
+    @error_responses(DraftWorkflowNotExist)
     @console_ns.doc("get_environment_variables")
     @console_ns.doc(description="Get environment variables for workflow")
     @console_ns.doc(params={"app_id": "Application ID"})

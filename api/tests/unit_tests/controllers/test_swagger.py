@@ -288,8 +288,7 @@ def test_console_segment_mutation_contracts_survive_admission(openapi_json: Open
         }
 
     delete_operation = paths[f"{document_path}/segments"]["delete"]
-    # Every operation documents the open ``default`` error beside its own responses.
-    assert set(delete_operation["responses"]) == {"204", "default"}
+    assert {status for status in delete_operation["responses"] if status.startswith("2")} == {"204"}
     parameters = _parameters_by_name(delete_operation)
     assert parameters["segment_id"]["in"] == "query"
     assert parameters["segment_id"]["schema"]["type"] == "array"
@@ -701,9 +700,9 @@ def test_console_member_invite_documents_bad_request_response(openapi_json: Open
     operation = payload["paths"]["/workspaces/current/members/invite-email"]["post"]
     response_schema = operation["responses"]["400"]["content"]["application/json"]["schema"]
 
-    # The declared invite body and the standard error body can both answer 400.
+    # The declared invite body and the operation's documented business errors can both answer 400.
     assert response_schema["anyOf"][0] == {"$ref": "#/components/schemas/MemberInviteErrorResponse"}
-    assert response_schema["anyOf"][1] == {"$ref": "#/components/schemas/ErrorResponse"}
+    assert response_schema["anyOf"][1]["$ref"].endswith("Error400")
     assert payload["components"]["schemas"]["MemberInviteErrorResponse"] == {
         "properties": {
             "code": {

@@ -38,6 +38,7 @@ from fields.segment_fields import (
     SegmentDetailResponse,
     SegmentResponse,
 )
+from libs.external_api import error_responses
 from libs.helper import dump_response
 from machinery.context import RequestContext
 from models.account import TenantAccountRole
@@ -197,6 +198,9 @@ def _raise_segment_error(error: Exception) -> Never:
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments")
 class DatasetDocumentSegmentListApi(Resource):
+    @error_responses(
+        ChildChunkDeleteIndexError, ChildChunkIndexingError, InvalidActionError, ProviderNotInitializeError
+    )
     @console_ns.doc(params=SegmentDocParams.DATASET_DOCUMENT)
     @console_ns.doc(params=query_params_from_model(SegmentListQuery))
     @console_ns.response(200, "Segments retrieved successfully", console_ns.models[ConsoleSegmentListResponse.__name__])
@@ -230,6 +234,9 @@ class DatasetDocumentSegmentListApi(Resource):
         }
         return dump_response(ConsoleSegmentListResponse, response), 200
 
+    @error_responses(
+        ChildChunkDeleteIndexError, ChildChunkIndexingError, InvalidActionError, ProviderNotInitializeError
+    )
     @console_account_admission(
         allowed_roles=_DATASET_EDIT_ROLES,
         rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),),
@@ -259,6 +266,9 @@ class DatasetDocumentSegmentListApi(Resource):
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segment/<string:action>")
 class DatasetDocumentSegmentApi(Resource):
+    @error_responses(
+        ChildChunkDeleteIndexError, ChildChunkIndexingError, InvalidActionError, ProviderNotInitializeError
+    )
     @console_ns.doc(params=SegmentDocParams.DATASET_DOCUMENT_ACTION)
     @console_ns.doc(params=query_params_from_model(SegmentIdListQuery))
     @console_account_admission(
@@ -293,6 +303,9 @@ class DatasetDocumentSegmentApi(Resource):
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segment")
 class DatasetDocumentSegmentAddApi(Resource):
+    @error_responses(
+        ChildChunkDeleteIndexError, ChildChunkIndexingError, InvalidActionError, ProviderNotInitializeError
+    )
     @console_ns.doc(params=SegmentDocParams.DATASET_DOCUMENT)
     @console_account_admission(
         allowed_roles=_DATASET_EDIT_ROLES,
@@ -329,6 +342,9 @@ class DatasetDocumentSegmentAddApi(Resource):
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/<uuid:segment_id>")
 class DatasetDocumentSegmentUpdateApi(Resource):
+    @error_responses(
+        ChildChunkDeleteIndexError, ChildChunkIndexingError, InvalidActionError, ProviderNotInitializeError
+    )
     @console_ns.doc(params=SegmentDocParams.DATASET_DOCUMENT_SEGMENT)
     @console_account_admission(
         allowed_roles=_DATASET_EDIT_ROLES,
@@ -363,6 +379,9 @@ class DatasetDocumentSegmentUpdateApi(Resource):
         }
         return dump_response(SegmentDetailResponse, response), 200
 
+    @error_responses(
+        ChildChunkDeleteIndexError, ChildChunkIndexingError, InvalidActionError, ProviderNotInitializeError
+    )
     @console_account_admission(
         allowed_roles=_DATASET_EDIT_ROLES,
         rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),),
@@ -391,6 +410,9 @@ class DatasetDocumentSegmentUpdateApi(Resource):
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/batch_import")
 class DatasetDocumentSegmentBatchImportApi(Resource):
+    @error_responses(
+        ChildChunkDeleteIndexError, ChildChunkIndexingError, InvalidActionError, ProviderNotInitializeError
+    )
     @console_ns.response(200, "Batch import started", console_ns.models[SegmentBatchImportStatusResponse.__name__])
     @console_ns.response(500, "Batch import failed", console_ns.models[ErrorMessageResponse.__name__])
     @console_account_admission(
@@ -436,6 +458,9 @@ class DatasetDocumentSegmentBatchImportStatusApi(Resource):
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/<uuid:segment_id>/child_chunks")
 class ChildChunkAddApi(Resource):
+    @error_responses(
+        ChildChunkDeleteIndexError, ChildChunkIndexingError, InvalidActionError, ProviderNotInitializeError
+    )
     @console_ns.doc(params=SegmentDocParams.DATASET_DOCUMENT_PARENT_SEGMENT)
     @console_account_admission(
         allowed_roles=_DATASET_EDIT_ROLES,
@@ -467,6 +492,9 @@ class ChildChunkAddApi(Resource):
             _raise_segment_error(error)
         return dump_response(ChildChunkDetailResponse, {"data": child_chunk}), 200
 
+    @error_responses(
+        ChildChunkDeleteIndexError, ChildChunkIndexingError, InvalidActionError, ProviderNotInitializeError
+    )
     @console_ns.doc(params=SegmentDocParams.DATASET_DOCUMENT_PARENT_SEGMENT)
     @console_ns.doc(params=query_params_from_model(ChildChunkListQuery))
     @console_ns.response(200, "Child chunks retrieved successfully", console_ns.models[ChildChunkListResponse.__name__])
@@ -494,6 +522,9 @@ class ChildChunkAddApi(Resource):
         }
         return dump_response(ChildChunkListResponse, response), 200
 
+    @error_responses(
+        ChildChunkDeleteIndexError, ChildChunkIndexingError, InvalidActionError, ProviderNotInitializeError
+    )
     @console_account_admission(
         allowed_roles=_DATASET_EDIT_ROLES,
         rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),),
@@ -533,6 +564,9 @@ class ChildChunkAddApi(Resource):
     "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/<uuid:segment_id>/child_chunks/<uuid:child_chunk_id>"
 )
 class ChildChunkUpdateApi(Resource):
+    @error_responses(
+        ChildChunkDeleteIndexError, ChildChunkIndexingError, InvalidActionError, ProviderNotInitializeError
+    )
     @console_account_admission(
         allowed_roles=_DATASET_EDIT_ROLES,
         rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),),
@@ -560,6 +594,9 @@ class ChildChunkUpdateApi(Resource):
             _raise_segment_error(error)
         return "", 204
 
+    @error_responses(
+        ChildChunkDeleteIndexError, ChildChunkIndexingError, InvalidActionError, ProviderNotInitializeError
+    )
     @console_account_admission(
         allowed_roles=_DATASET_EDIT_ROLES,
         rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),),

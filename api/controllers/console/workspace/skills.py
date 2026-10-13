@@ -24,6 +24,7 @@ from controllers.console.wraps import (
 from fields.base import ResponseModel
 from libs import helper
 from libs.exception import RelayedHTTPError
+from libs.external_api import error_responses
 from libs.helper import dump_response
 from machinery.context import RequestContext
 from services.skill_management_service import (
@@ -320,6 +321,7 @@ class WorkspaceSkillsApi(Resource):
         )
         return dump_response(SkillListResponse, result)
 
+    @error_responses(SkillRequestError)
     @console_ns.expect(console_ns.models[SkillCreatePayload.__name__])
     @console_ns.response(201, "Skill created", console_ns.models[SkillDetailResponse.__name__])
     @console_account_admission(
@@ -346,6 +348,7 @@ class WorkspaceSkillsApi(Resource):
 
 @console_ns.route("/workspaces/current/skills/files/upload")
 class WorkspaceSkillFileUploadApi(Resource):
+    @error_responses(NoFileUploadedError, SkillFilenameMissingError)
     @console_ns.doc(consumes=["multipart/form-data"], params=_FILE_UPLOAD_PARAMS)
     @console_ns.response(201, "Skill draft file uploaded", console_ns.models[SkillFileUploadResponse.__name__])
     @console_account_admission()
@@ -384,6 +387,7 @@ class WorkspaceSkillTagsApi(Resource):
 
 @console_ns.route("/workspaces/current/skills/import")
 class WorkspaceSkillImportApi(Resource):
+    @error_responses(SkillRequestError)
     @console_ns.doc(description="Import a Skill zip package from multipart form field `file`.")
     @console_ns.response(201, "Skill imported", console_ns.models[SkillDetailResponse.__name__])
     @console_account_admission(
@@ -425,6 +429,7 @@ class WorkspaceSkillApi(Resource):
         except SkillManagementServiceError as exc:
             raise _relayed_error(exc) from exc
 
+    @error_responses(SkillRequestError)
     @console_ns.expect(console_ns.models[SkillMetadataPayload.__name__])
     @console_ns.response(200, "Skill updated", console_ns.models[SkillResponse.__name__])
     @console_account_admission(
@@ -543,6 +548,7 @@ class WorkspaceSkillAssistMessageApi(Resource):
 
 @console_ns.route("/workspaces/current/skills/<string:skill_id>/files/check")
 class WorkspaceSkillFilesCheckApi(Resource):
+    @error_responses(SkillRequestError)
     @console_ns.expect(console_ns.models[SkillDraftFileCheckPayload.__name__])
     @console_ns.response(200, "Draft files checked", console_ns.models[SkillFileCheckResponse.__name__])
     @console_account_admission()
@@ -567,6 +573,7 @@ class WorkspaceSkillFilesCheckApi(Resource):
 
 @console_ns.route("/workspaces/current/skills/<string:skill_id>/files")
 class WorkspaceSkillFilesApi(Resource):
+    @error_responses(SkillRequestError)
     @console_ns.expect(console_ns.models[SkillDraftFileOperationPayload.__name__])
     @console_ns.response(200, "Draft file operation applied", console_ns.models[SkillDetailResponse.__name__])
     @console_account_admission()
@@ -589,6 +596,7 @@ class WorkspaceSkillFilesApi(Resource):
         except SkillManagementServiceError as exc:
             raise _relayed_error(exc) from exc
 
+    @error_responses(SkillRequestError)
     @console_ns.expect(console_ns.models[SkillDraftTreePayload.__name__])
     @console_ns.response(200, "Draft files replaced", console_ns.models[SkillDetailResponse.__name__])
     @console_account_admission()
@@ -614,6 +622,7 @@ class WorkspaceSkillFilesApi(Resource):
 
 @console_ns.route("/workspaces/current/skills/<string:skill_id>/files/preview")
 class WorkspaceSkillFilePreviewApi(Resource):
+    @error_responses(SkillRequestError)
     @console_ns.doc(params=query_params_from_model(SkillFileQuery))
     @console_ns.response(200, "Skill file text preview", console_ns.models[SkillFilePreviewResponse.__name__])
     @console_account_admission()
@@ -643,6 +652,7 @@ class WorkspaceSkillFilePreviewApi(Resource):
 
 @console_ns.route("/workspaces/current/skills/<string:skill_id>/files/content")
 class WorkspaceSkillFileContentApi(Resource):
+    @error_responses(SkillRequestError)
     @console_ns.doc(params={**query_params_from_model(SkillFileQuery), "download": "Return as an attachment when 1."})
     @console_ns.response(200, "Skill file content", console_ns.models[BinaryFileResponse.__name__])
     @console_account_admission()

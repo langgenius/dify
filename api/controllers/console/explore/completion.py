@@ -33,6 +33,7 @@ from core.errors.error import (
 from extensions.ext_application_services import application_services
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
+from libs.external_api import error_responses
 from machinery.context import RequestContext
 from models.model import AppMode
 from services.account_errors import AccountNotFoundError
@@ -87,6 +88,17 @@ register_response_schema_models(console_ns, SimpleResultResponse)
     endpoint="installed_app_completion",
 )
 class CompletionApi(Resource):
+    @error_responses(
+        AppUnavailableError,
+        CompletionRequestError,
+        InternalServerError,
+        NotCompletionAppError,
+        NotFoundError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+        UnauthorizedError,
+    )
     @console_ns.expect(console_ns.models[CompletionMessageExplorePayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success")
     @console_account_admission()
@@ -142,6 +154,7 @@ class CompletionApi(Resource):
     endpoint="installed_app_stop_completion",
 )
 class CompletionStopApi(Resource):
+    @error_responses(NotCompletionAppError)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultResponse.__name__])
     @console_account_admission()
     @get_installed_app
@@ -167,6 +180,18 @@ class CompletionStopApi(Resource):
     endpoint="installed_app_chat_completion",
 )
 class ChatApi(Resource):
+    @error_responses(
+        AppUnavailableError,
+        CompletionRequestError,
+        InternalServerError,
+        InvokeRateLimitHttpError,
+        NotChatAppError,
+        NotFoundError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+        UnauthorizedError,
+    )
     @console_ns.expect(console_ns.models[ChatMessagePayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success")
     @console_account_admission()
@@ -224,6 +249,7 @@ class ChatApi(Resource):
     endpoint="installed_app_stop_chat_completion",
 )
 class ChatStopApi(Resource):
+    @error_responses(NotChatAppError)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultResponse.__name__])
     @console_account_admission()
     @get_installed_app

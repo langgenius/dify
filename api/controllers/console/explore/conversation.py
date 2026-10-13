@@ -24,6 +24,7 @@ from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import model_validate
 from extensions.ext_application_services import application_services
 from fields.conversation_fields import ConversationInfiniteScrollPagination, ResultResponse, SimpleConversation
+from libs.external_api import document_errors
 from libs.helper import UUIDStrOrEmpty, dump_response
 from machinery.context import RequestContext
 from services.errors.conversation import ConversationNotExistsError, LastConversationNotExistsError
@@ -79,7 +80,15 @@ def _conversation_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
         except ConversationNameRequiredError as error:
             raise ConversationNameRequiredHTTPError() from error
 
-    return decorated
+    return document_errors(
+        decorated,
+        InstalledAppNotFoundHTTPError,
+        NotChatAppError,
+        ConversationNotFoundHTTPError,
+        ConversationCursorNotFoundHTTPError,
+        ConversationFirstMessageNotFoundHTTPError,
+        ConversationNameRequiredHTTPError,
+    )
 
 
 @console_ns.route("/installed-apps/<uuid:installed_app_id>/conversations", endpoint="installed_app_conversations")

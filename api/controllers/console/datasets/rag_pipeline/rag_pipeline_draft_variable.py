@@ -42,6 +42,7 @@ from fields.workflow_draft_variable_fields import (
     WorkflowDraftVariableResponse,
 )
 from graphon.variables.types import SegmentType
+from libs.external_api import error_responses
 from libs.helper import dump_response
 from libs.login import login_required
 from models import Account
@@ -95,6 +96,7 @@ def _api_prerequisite[T, **P, R](
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/variables")
 class RagPipelineVariableCollectionApi(Resource):
+    @error_responses(DraftWorkflowNotExist)
     @console_ns.doc(params=query_params_from_model(PaginationQuery))
     @console_ns.response(
         200,
@@ -159,6 +161,7 @@ def validate_node_id(node_id: str) -> NoReturn | None:
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/nodes/<string:node_id>/variables")
 class RagPipelineNodeVariableCollectionApi(Resource):
+    @error_responses(InvalidArgumentError)
     @console_ns.response(
         200,
         "Node variables retrieved successfully",
@@ -175,6 +178,7 @@ class RagPipelineNodeVariableCollectionApi(Resource):
 
         return dump_response(WorkflowDraftVariableListResponse, node_vars)
 
+    @error_responses(InvalidArgumentError)
     @console_ns.response(204, "Node variables deleted successfully")
     @_api_prerequisite
     def delete(self, current_user: Account, pipeline: Pipeline, node_id: str):
@@ -190,6 +194,7 @@ class RagPipelineVariableApi(Resource):
     _PATCH_NAME_FIELD = "name"
     _PATCH_VALUE_FIELD = "value"
 
+    @error_responses(NotFoundError)
     @console_ns.response(
         200,
         "Variable retrieved successfully",
@@ -209,6 +214,7 @@ class RagPipelineVariableApi(Resource):
         )
         return dump_response(WorkflowDraftVariableResponse, variable)
 
+    @error_responses(InvalidArgumentError, NotFoundError)
     @console_ns.response(
         200,
         "Variable updated successfully",
@@ -291,6 +297,7 @@ class RagPipelineVariableApi(Resource):
         db.session.commit()
         return dump_response(WorkflowDraftVariableResponse, variable)
 
+    @error_responses(NotFoundError)
     @console_ns.response(204, "Variable deleted successfully")
     @_api_prerequisite
     def delete(self, current_user: Account, pipeline: Pipeline, variable_id: UUID):
@@ -311,6 +318,7 @@ class RagPipelineVariableApi(Resource):
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/variables/<uuid:variable_id>/reset")
 class RagPipelineVariableResetApi(Resource):
+    @error_responses(NotFoundError)
     @console_ns.response(
         200,
         "Variable reset successfully",
@@ -375,6 +383,7 @@ class RagPipelineSystemVariableCollectionApi(Resource):
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/environment-variables")
 class RagPipelineEnvironmentVariableCollectionApi(Resource):
+    @error_responses(DraftWorkflowNotExist)
     @console_ns.response(
         200,
         "Environment variables retrieved successfully",

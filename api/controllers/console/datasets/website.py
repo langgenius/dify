@@ -8,6 +8,7 @@ from controllers.console import console_ns
 from controllers.console.datasets.error import WebsiteCrawlError
 from controllers.console.wraps import account_initialization_required, model_validate, setup_required
 from extensions.ext_application_services import application_services
+from libs.external_api import error_responses
 from libs.login import login_required
 from services.data_source.website_service import WebsiteCrawlApiRequest, WebsiteCrawlStatusApiRequest, WebsiteService
 
@@ -32,6 +33,7 @@ register_response_schema_models(console_ns, WebsiteCrawlResponse)
 
 @console_ns.route("/website/crawl")
 class WebsiteCrawlApi(Resource):
+    @error_responses(WebsiteCrawlError)
     @console_ns.doc("crawl_website")
     @console_ns.doc(description="Crawl website content")
     @console_ns.expect(console_ns.models[WebsiteCrawlPayload.__name__])
@@ -58,6 +60,7 @@ class WebsiteCrawlApi(Resource):
 
 @console_ns.route("/website/crawl/status/<string:job_id>")
 class WebsiteCrawlStatusApi(Resource):
+    @error_responses(WebsiteCrawlError)
     @console_ns.doc("get_crawl_status")
     @console_ns.doc(description="Get website crawl status")
     @console_ns.doc(params={"job_id": "Crawl job ID", "provider": "Crawl provider (firecrawl/watercrawl/jinareader)"})

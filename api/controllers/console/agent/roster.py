@@ -68,6 +68,7 @@ from fields.agent_fields import (
 from fields.api_key_fields import ApiKeyItem, ApiKeyList
 from fields.base import ResponseModel
 from libs.datetime_utils import parse_time_range
+from libs.external_api import error_responses
 from libs.helper import dump_response
 from libs.login import login_required
 from machinery.context import RequestContext
@@ -77,7 +78,14 @@ from models.agent_config_entities import AgentSoulConfig
 from models.enums import ApiTokenType
 from models.model import ApiToken, App, IconType
 from services.agent.composer_service import AgentComposerService
-from services.agent.errors import AgentNotFoundError
+from services.agent.errors import (
+    AgentBuildSandboxNotFoundError,
+    AgentModelNotConfiguredError,
+    AgentNotFoundError,
+    AgentSoulLockedError,
+    AgentVersionNotFoundError,
+    InvalidComposerConfigError,
+)
 from services.agent.observability_service import (
     AgentLogQueryParams,
     AgentObservabilityService,
@@ -698,6 +706,7 @@ class AgentAppListApi(Resource):
             agent_permissions=permissions.agent,
         )
 
+    @error_responses(AgentNotFoundError)
     @console_ns.expect(console_ns.models[AgentAppCreatePayload.__name__])
     @console_ns.response(201, "Agent app created successfully", console_ns.models[AgentAppDetailWithSite.__name__])
     @console_ns.response(409, "Agent name already exists")
@@ -729,6 +738,7 @@ class AgentAppListApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>")
 class AgentAppApi(Resource):
+    @error_responses(AgentNotFoundError)
     @console_ns.response(200, "Agent app detail", console_ns.models[AgentAppDetailWithSite.__name__])
     @setup_required
     @login_required
@@ -742,6 +752,7 @@ class AgentAppApi(Resource):
         app_model = _resolve_agent_runtime_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
         return _serialize_agent_app_detail(session, app_model, current_user=current_user, agent_id=str(agent_id))
 
+    @error_responses(AgentNotFoundError)
     @console_ns.expect(console_ns.models[AgentAppUpdatePayload.__name__])
     @console_ns.response(200, "Agent app updated successfully", console_ns.models[AgentAppDetailWithSite.__name__])
     @console_ns.response(403, "Insufficient permissions")
@@ -823,6 +834,9 @@ class AgentDebugConversationRefreshApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/publish")
 class AgentPublishApi(Resource):
+    @error_responses(
+        AgentModelNotConfiguredError, AgentNotFoundError, AgentVersionNotFoundError, InvalidComposerConfigError
+    )
     @console_ns.expect(console_ns.models[AgentPublishPayload.__name__])
     @console_ns.response(200, "Agent draft published", console_ns.models[AgentPublishResponse.__name__])
     @console_ns.response(403, "Insufficient permissions")
@@ -854,6 +868,7 @@ class AgentPublishApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/build-draft/checkout")
 class AgentBuildDraftCheckoutApi(Resource):
+    @error_responses(AgentBuildSandboxNotFoundError, AgentNotFoundError, AgentVersionNotFoundError)
     @console_ns.expect(console_ns.models[AgentBuildDraftCheckoutPayload.__name__])
     @console_ns.response(200, "Agent build draft checked out", console_ns.models[AgentBuildDraftResponse.__name__])
     @setup_required
@@ -884,6 +899,7 @@ class AgentBuildDraftCheckoutApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/build-draft")
 class AgentBuildDraftApi(Resource):
+    @error_responses(AgentVersionNotFoundError)
     @console_ns.response(200, "Agent build draft", console_ns.models[AgentBuildDraftResponse.__name__])
     @console_ns.response(404, "Agent build draft not found")
     @setup_required
@@ -902,6 +918,7 @@ class AgentBuildDraftApi(Resource):
             account_id=current_user.id,
         )
 
+    @error_responses(AgentNotFoundError, AgentSoulLockedError)
     @console_ns.expect(console_ns.models[ComposerSavePayload.__name__])
     @console_ns.response(200, "Agent build draft saved", console_ns.models[AgentBuildDraftResponse.__name__])
     @setup_required
@@ -929,6 +946,7 @@ class AgentBuildDraftApi(Resource):
             payload=req_data,
         )
 
+    @error_responses(AgentBuildSandboxNotFoundError, AgentNotFoundError)
     @console_ns.response(200, "Agent build draft discarded", console_ns.models[AgentSimpleResultResponse.__name__])
     @setup_required
     @login_required
@@ -949,6 +967,9 @@ class AgentBuildDraftApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/build-draft/apply")
 class AgentBuildDraftApplyApi(Resource):
+    @error_responses(
+        AgentBuildSandboxNotFoundError, AgentNotFoundError, AgentVersionNotFoundError, InvalidComposerConfigError
+    )
     @console_ns.response(200, "Agent build draft applied", console_ns.models[AgentBuildDraftApplyResponse.__name__])
     @setup_required
     @login_required
@@ -969,6 +990,7 @@ class AgentBuildDraftApplyApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/copy")
 class AgentAppCopyApi(Resource):
+    @error_responses(AgentNotFoundError)
     @console_ns.expect(console_ns.models[AgentAppCopyPayload.__name__])
     @console_ns.response(201, "Agent app copied successfully", console_ns.models[AgentAppDetailWithSite.__name__])
     @console_ns.response(403, "Insufficient permissions")

@@ -26,6 +26,7 @@ from controllers.web.wraps import WebApiResource
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from fields.base import ResponseModel
 from graphon.model_runtime.errors.invoke import InvokeError
+from libs.external_api import error_responses
 from libs.helper import dump_response, uuid_value
 from models.model import App, EndUser
 from services.app_ref_service import AppRefService
@@ -62,6 +63,18 @@ logger = logging.getLogger(__name__)
 
 @web_ns.route("/audio-to-text")
 class AudioApi(WebApiResource):
+    @error_responses(
+        AppUnavailableError,
+        AudioTooLargeError,
+        CompletionRequestError,
+        NoAudioUploadedError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderNotSupportSpeechToTextError,
+        ProviderQuotaExceededError,
+        SpeechToTextDisabledError,
+        UnsupportedAudioTypeError,
+    )
     @web_ns.doc("Audio to Text")
     @web_ns.doc(description="Convert audio file to text using speech-to-text service.")
     @web_ns.doc(
@@ -120,6 +133,17 @@ class AudioApi(WebApiResource):
 
 @web_ns.route("/text-to-audio")
 class TextApi(WebApiResource):
+    @error_responses(
+        AppUnavailableError,
+        AudioTooLargeError,
+        CompletionRequestError,
+        NoAudioUploadedError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderNotSupportSpeechToTextError,
+        ProviderQuotaExceededError,
+        UnsupportedAudioTypeError,
+    )
     @web_ns.expect(web_ns.models[TextToAudioPayload.__name__])
     @web_ns.doc("Text to Audio")
     @web_ns.doc(description="Convert text to audio using text-to-speech service.")

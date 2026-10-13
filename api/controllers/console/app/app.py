@@ -48,6 +48,7 @@ from fields.app_fields import (
     WorkflowPartial,
 )
 from graphon.enums import WorkflowExecutionStatus
+from libs.external_api import error_responses
 from libs.flask_restx_compat import BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY
 from libs.helper import dump_response
 from libs.url_utils import normalize_api_base_url
@@ -658,6 +659,7 @@ class AppTraceApi(AppResource):
     def get(self, context: RequestContext, app_id: uuid.UUID):
         return dump_response(AppTraceResponse, application_services().apps.console.get_trace(context, str(app_id)))
 
+    @error_responses(TracingProviderUnavailableError)
     @console_ns.doc("update_app_trace")
     @console_ns.doc(description="Update app tracing configuration")
     @console_ns.doc(params={"app_id": "Application ID"})

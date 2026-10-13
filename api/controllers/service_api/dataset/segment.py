@@ -37,6 +37,7 @@ from fields.segment_fields import (
     SegmentResponse,
 )
 from graphon.model_runtime.entities.model_entities import ModelType
+from libs.external_api import error_responses
 from libs.helper import dump_response
 from libs.login import current_account_with_tenant
 from models.dataset import Dataset, Document, DocumentSegment
@@ -150,6 +151,7 @@ def _get_segment_for_document(
 class SegmentApi(DatasetApiResource):
     """Resource for segments."""
 
+    @error_responses(ProviderNotInitializeError)
     @service_api_ns.doc(
         summary="Create Chunks",
         description=(
@@ -258,6 +260,7 @@ class SegmentApi(DatasetApiResource):
         }
         return dump_response(SegmentCreateListResponse, response), 200
 
+    @error_responses(ProviderNotInitializeError)
     @service_api_ns.doc(
         summary="List Chunks",
         description="Returns a paginated list of chunks within a document. Supports filtering by keyword and status.",
@@ -398,6 +401,7 @@ class DatasetSegmentApi(DatasetApiResource):
         )
         return "", 204
 
+    @error_responses(ProviderNotInitializeError)
     @service_api_ns.doc(
         summary="Update Chunk",
         description="Update a chunk's content, keywords, or answer. Re-triggers indexing for the modified chunk.",
@@ -547,6 +551,7 @@ class DatasetSegmentApi(DatasetApiResource):
 class ChildChunkApi(DatasetApiResource):
     """Resource for child chunks."""
 
+    @error_responses(ProviderNotInitializeError)
     @service_api_ns.doc(
         summary="Create Child Chunk",
         description="Create a child chunk under the specified segment.",

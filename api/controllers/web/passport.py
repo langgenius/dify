@@ -10,6 +10,7 @@ from controllers.web import web_ns
 from controllers.web.error import WebAppAuthRequiredError
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
+from libs.external_api import error_responses
 from libs.helper import dump_response
 from libs.token import extract_webapp_access_token
 from services.entities.passport_entities import WebPassportRequest
@@ -38,6 +39,7 @@ register_response_schema_models(web_ns, PassportAccessTokenResponse)
 class PassportResource(Resource):
     """Issue an authentication passport for a deployed web application."""
 
+    @error_responses(WebAppAuthRequiredError)
     @web_ns.doc("get_passport")
     @web_ns.doc(description="Get authentication passport for web application access")
     @web_ns.doc(params=query_params_from_model(PassportQuery))

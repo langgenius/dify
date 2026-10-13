@@ -50,6 +50,7 @@ from fields.workflow_draft_variable_fields import (
     WorkflowDraftVariableResponse,
 )
 from graphon.variables.types import SegmentType
+from libs.external_api import error_responses
 from libs.helper import dump_response
 from libs.login import login_required
 from models import Account
@@ -98,6 +99,7 @@ def _snippet_draft_var_prerequisite[T, **P, R](
 
 @console_ns.route("/snippets/<uuid:snippet_id>/workflows/draft/variables")
 class SnippetWorkflowVariableCollectionApi(Resource):
+    @error_responses(DraftWorkflowNotExist)
     @console_ns.doc(params=query_params_from_model(WorkflowDraftVariableListQuery))
     @console_ns.doc("get_snippet_workflow_variables")
     @console_ns.doc(description="List draft workflow variables without values (paginated, snippet scope)")
@@ -144,6 +146,7 @@ class SnippetWorkflowVariableCollectionApi(Resource):
 
 @console_ns.route("/snippets/<uuid:snippet_id>/workflows/draft/nodes/<string:node_id>/variables")
 class SnippetNodeVariableCollectionApi(Resource):
+    @error_responses(InvalidArgumentError)
     @console_ns.doc("get_snippet_node_variables")
     @console_ns.doc(description="Get variables for a specific node (snippet draft workflow)")
     @console_ns.response(
@@ -160,6 +163,7 @@ class SnippetNodeVariableCollectionApi(Resource):
 
         return dump_response(WorkflowDraftVariableListResponse, node_vars)
 
+    @error_responses(InvalidArgumentError)
     @console_ns.doc("delete_snippet_node_variables")
     @console_ns.doc(description="Delete all variables for a specific node (snippet draft workflow)")
     @console_ns.response(204, "Node variables deleted successfully")
@@ -174,6 +178,7 @@ class SnippetNodeVariableCollectionApi(Resource):
 
 @console_ns.route("/snippets/<uuid:snippet_id>/workflows/draft/variables/<uuid:variable_id>")
 class SnippetVariableApi(Resource):
+    @error_responses(NotFoundError)
     @console_ns.doc("get_snippet_workflow_variable")
     @console_ns.doc(description="Get a specific draft workflow variable (snippet scope)")
     @console_ns.response(
@@ -197,6 +202,7 @@ class SnippetVariableApi(Resource):
         _ensure_snippet_draft_variable_row_allowed(variable=variable, variable_id=variable_id)
         return dump_response(WorkflowDraftVariableResponse, variable)
 
+    @error_responses(InvalidArgumentError, NotFoundError)
     @console_ns.doc("update_snippet_workflow_variable")
     @console_ns.doc(description="Update a draft workflow variable (snippet scope)")
     @console_ns.expect(console_ns.models[WorkflowDraftVariableUpdatePayload.__name__])
@@ -256,6 +262,7 @@ class SnippetVariableApi(Resource):
         draft_var_srv.update_variable(variable, name=new_name, value=new_value)
         return dump_response(WorkflowDraftVariableResponse, variable)
 
+    @error_responses(NotFoundError)
     @console_ns.doc("delete_snippet_workflow_variable")
     @console_ns.doc(description="Delete a draft workflow variable (snippet scope)")
     @console_ns.response(204, "Variable deleted successfully")
@@ -277,6 +284,7 @@ class SnippetVariableApi(Resource):
 
 @console_ns.route("/snippets/<uuid:snippet_id>/workflows/draft/variables/<uuid:variable_id>/reset")
 class SnippetVariableResetApi(Resource):
+    @error_responses(NotFoundError)
     @console_ns.doc("reset_snippet_workflow_variable")
     @console_ns.doc(description="Reset a draft workflow variable to its default value (snippet scope)")
     @console_ns.response(
@@ -346,6 +354,7 @@ class SnippetSystemVariableCollectionApi(Resource):
 
 @console_ns.route("/snippets/<uuid:snippet_id>/workflows/draft/environment-variables")
 class SnippetEnvironmentVariableCollectionApi(Resource):
+    @error_responses(DraftWorkflowNotExist)
     @console_ns.doc("get_snippet_environment_variables")
     @console_ns.doc(description="Get environment variables from snippet draft workflow graph")
     @console_ns.response(

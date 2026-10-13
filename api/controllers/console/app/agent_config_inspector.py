@@ -44,6 +44,7 @@ from extensions.ext_application_services import application_services
 from fields.agent_fields import AgentAppComposerResponse
 from fields.base import ResponseModel
 from libs.exception import RelayedHTTPError
+from libs.external_api import document_errors, error_responses
 from libs.flask_restx_compat import BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY
 from libs.helper import dump_response
 from libs.login import login_required
@@ -302,7 +303,7 @@ def _with_trial_config[T, Q: TrialAgentConfigQuery, **P](
         response.headers["Cache-Control"] = "no-store"
         return response
 
-    return decorated
+    return document_errors(decorated, AppUnavailableError)
 
 
 def _service() -> AgentConfigService:
@@ -749,6 +750,7 @@ class AgentConfigManifestByAgentApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/agent/config/manifest")
 class AgentConfigManifestApi(Resource):
+    @error_responses(AgentNotBoundError)
     @console_ns.doc("get_agent_config_manifest")
     @console_ns.doc(params={"app_id": "Application ID", **query_params_from_model(AgentConfigQuery)})
     @console_ns.response(200, "Agent config manifest", console_ns.models[AgentConfigManifestResponse.__name__])
@@ -795,6 +797,7 @@ class AgentConfigSkillUploadByAgentApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/agent/config/skills/upload")
 class AgentConfigSkillUploadApi(Resource):
+    @error_responses(AgentNotBoundError)
     @console_ns.doc("upload_agent_config_skill")
     @console_ns.doc(
         consumes=["multipart/form-data"],
@@ -843,6 +846,7 @@ class AgentConfigSkillsByAgentApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/agent/config/skills")
 class AgentConfigSkillsApi(Resource):
+    @error_responses(AgentNotBoundError)
     @console_ns.doc("get_agent_config_skills")
     @console_ns.doc(params={"app_id": "Application ID", **query_params_from_model(AgentConfigQuery)})
     @console_ns.response(200, "Config skills", console_ns.models[AgentConfigSkillListResponse.__name__])
@@ -910,6 +914,7 @@ class AgentConfigFilesByAgentApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/agent/config/files")
 class AgentConfigFilesApi(Resource):
+    @error_responses(AgentNotBoundError)
     @console_ns.doc("get_agent_config_files")
     @console_ns.doc(params={"app_id": "Application ID", **query_params_from_model(AgentConfigQuery)})
     @console_ns.response(200, "Config files", console_ns.models[AgentConfigFileListResponse.__name__])
@@ -924,6 +929,7 @@ class AgentConfigFilesApi(Resource):
             session=session, app_model=app_model, current_user=current_user, action=_file_list_response
         )
 
+    @error_responses(AgentNotBoundError)
     @console_ns.doc("upload_agent_config_file")
     @console_ns.doc(params={"app_id": "Application ID", **query_params_from_model(AgentConfigQuery)})
     @console_ns.expect(console_ns.models[AgentConfigFileUploadPayload.__name__])
@@ -972,6 +978,7 @@ class AgentConfigSkillInspectByAgentApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/agent/config/skills/<string:name>/inspect")
 class AgentConfigSkillInspectApi(Resource):
+    @error_responses(AgentNotBoundError)
     @console_ns.doc("inspect_agent_config_skill")
     @console_ns.doc(
         params={"app_id": "Application ID", "name": "Config skill name", **query_params_from_model(AgentConfigQuery)}
@@ -1029,6 +1036,7 @@ class AgentConfigSkillFilePreviewByAgentApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/agent/config/skills/<string:name>/files/preview")
 class AgentConfigSkillFilePreviewApi(Resource):
+    @error_responses(AgentNotBoundError)
     @console_ns.doc("preview_agent_config_skill_file")
     @console_ns.doc(
         params={
@@ -1083,6 +1091,7 @@ class AgentConfigSkillDownloadByAgentApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/agent/config/skills/<string:name>/download")
 class AgentConfigSkillDownloadApi(Resource):
+    @error_responses(AgentNotBoundError)
     @console_ns.doc("download_agent_config_skill")
     @console_ns.doc(
         params={"app_id": "Application ID", "name": "Config skill name", **query_params_from_model(AgentConfigQuery)}
@@ -1144,6 +1153,7 @@ class AgentConfigSkillFileDownloadByAgentApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/agent/config/skills/<string:name>/files/download")
 class AgentConfigSkillFileDownloadApi(Resource):
+    @error_responses(AgentNotBoundError)
     @console_ns.doc("download_agent_config_skill_file")
     @console_ns.doc(
         params={
@@ -1209,6 +1219,7 @@ class AgentConfigSkillFileDownloadContentByAgentApi(Resource):
     endpoint="agent_config_skill_file_download_content_api",
 )
 class AgentConfigSkillFileDownloadContentApi(Resource):
+    @error_responses(AgentNotBoundError)
     @setup_required
     @login_required
     @account_initialization_required
@@ -1252,6 +1263,7 @@ class AgentConfigSkillByAgentApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/agent/config/skills/<string:name>")
 class AgentConfigSkillApi(Resource):
+    @error_responses(AgentNotBoundError)
     @console_ns.doc("delete_agent_config_skill")
     @console_ns.doc(
         params={"app_id": "Application ID", "name": "Config skill name", **query_params_from_model(AgentConfigQuery)}
@@ -1300,6 +1312,7 @@ class AgentConfigFilePreviewByAgentApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/agent/config/files/<string:name>/preview")
 class AgentConfigFilePreviewApi(Resource):
+    @error_responses(AgentNotBoundError)
     @console_ns.doc("preview_agent_config_file")
     @console_ns.doc(
         params={"app_id": "Application ID", "name": "Config file name", **query_params_from_model(AgentConfigQuery)}
@@ -1346,6 +1359,7 @@ class AgentConfigFileDownloadByAgentApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/agent/config/files/<string:name>/download")
 class AgentConfigFileDownloadApi(Resource):
+    @error_responses(AgentNotBoundError)
     @console_ns.doc("download_agent_config_file")
     @console_ns.doc(
         params={"app_id": "Application ID", "name": "Config file name", **query_params_from_model(AgentConfigQuery)}
@@ -1392,6 +1406,7 @@ class AgentConfigFileByAgentApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/agent/config/files/<string:name>")
 class AgentConfigFileApi(Resource):
+    @error_responses(AgentNotBoundError)
     @console_ns.doc("delete_agent_config_file")
     @console_ns.doc(
         params={"app_id": "Application ID", "name": "Config file name", **query_params_from_model(AgentConfigQuery)}

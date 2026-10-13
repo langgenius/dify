@@ -14,6 +14,7 @@ from controllers.console.wraps import model_validate
 from extensions.ext_application_services import application_services
 from fields.app_export_fields import AppExportResponse
 from fields.base import ResponseModel
+from libs.external_api import error_responses
 from libs.flask_restx_compat import BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY
 from libs.helper import build_icon_url, dump_response
 from machinery.context import RequestContext
@@ -140,6 +141,7 @@ class LearnDifyAppListApi(Resource):
 
 @console_ns.route("/explore/apps/<uuid:app_id>")
 class RecommendedAppApi(Resource):
+    @error_responses(RecommendedAppNotFoundError)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[RecommendedAppDetailResponse.__name__])
     @console_ns.response(HTTPStatus.NOT_FOUND, "Recommended app not found")
     @console_account_admission()
@@ -153,6 +155,7 @@ class RecommendedAppApi(Resource):
 
 @console_ns.route("/trial-apps/<uuid:app_id>/export")
 class RecommendedAgentExportApi(Resource):
+    @error_responses(RecommendedAppNotFoundError)
     @console_ns.doc(params=query_params_from_model(RecommendedAgentExportQuery))
     @console_ns.doc(
         produces=["application/json", "application/zip"],

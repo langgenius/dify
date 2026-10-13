@@ -31,6 +31,7 @@ from controllers.console.app.workflow import (
     WorkflowResponseSource,
 )
 from controllers.console.app.wraps import with_session
+from controllers.console.datasets.error import PipelineNotFoundError
 from controllers.console.datasets.wraps import get_rag_pipeline, load_rag_pipeline
 from controllers.console.wraps import (
     RBACPermission,
@@ -61,6 +62,7 @@ from fields.workflow_run_fields import (
     workflow_run_response_source,
 )
 from libs import helper
+from libs.external_api import error_responses
 from libs.helper import TimestampField, UUIDStrOrEmpty, dump_response
 from libs.login import login_required
 from models import Account
@@ -201,6 +203,7 @@ register_response_schema_models(
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft")
 class DraftRagPipelineApi(Resource):
+    @error_responses(DraftWorkflowNotExist)
     @console_ns.response(
         200,
         "Draft workflow retrieved successfully",
@@ -228,6 +231,7 @@ class DraftRagPipelineApi(Resource):
         # return workflow, if not found, return 404
         return dump_response(WorkflowResponse, WorkflowResponseSource(workflow, session=session))
 
+    @error_responses(DraftWorkflowNotSync, InvalidArgumentError)
     @setup_required
     @login_required
     @account_initialization_required
@@ -369,6 +373,7 @@ class RagPipelineDraftRunLoopNodeApi(Resource):
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/run")
 class DraftRagPipelineRunApi(Resource):
+    @error_responses(InvokeRateLimitHttpError, PipelineNotFoundError)
     @console_ns.expect(console_ns.models[DraftWorkflowRunPayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[RagPipelineOpaqueResponse.__name__])
     @setup_required
@@ -404,6 +409,7 @@ class DraftRagPipelineRunApi(Resource):
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/published/run")
 class PublishedRagPipelineRunApi(Resource):
+    @error_responses(InvokeRateLimitHttpError, PipelineNotFoundError)
     @console_ns.expect(console_ns.models[PublishedWorkflowRunPayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[RagPipelineOpaqueResponse.__name__])
     @setup_required
@@ -760,6 +766,7 @@ class RagPipelineDraftWorkflowRestoreApi(Resource):
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/<string:workflow_id>")
 class RagPipelineByIdApi(Resource):
+    @error_responses(InvalidArgumentError)
     @console_ns.response(200, "Workflow updated successfully", console_ns.models[WorkflowResponse.__name__])
     @console_ns.response(400, "No valid fields to update")
     @console_ns.response(403, "Permission denied")

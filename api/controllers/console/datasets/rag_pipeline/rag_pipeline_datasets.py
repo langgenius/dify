@@ -20,6 +20,7 @@ from extensions.ext_database import db
 from fields.dataset_fields import (
     DatasetDetailResponse,
 )
+from libs.external_api import error_responses
 from libs.helper import dump_response
 from libs.login import login_required
 from models import Account
@@ -42,6 +43,7 @@ register_response_schema_models(console_ns, DatasetDetailResponse, RagPipelineIm
 
 @console_ns.route("/rag/pipeline/dataset")
 class CreateRagPipelineDatasetApi(Resource):
+    @error_responses(DatasetNameDuplicateError)
     @console_ns.expect(console_ns.models[RagPipelineDatasetImportPayload.__name__])
     @console_ns.response(
         201,

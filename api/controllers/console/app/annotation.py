@@ -35,6 +35,7 @@ from fields.annotation_fields import (
     AnnotationList,
 )
 from fields.base import ResponseModel
+from libs.external_api import error_responses
 from libs.helper import dump_response, uuid_value
 from libs.login import current_account_with_tenant, login_required
 from libs.pagination import clamp_pagination
@@ -444,6 +445,7 @@ class AnnotationUpdateDeleteApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/annotations/batch-import")
 class AnnotationBatchImportApi(Resource):
+    @error_responses(NoFileUploadedError, TooManyFilesError)
     @console_ns.doc("batch_import_annotations")
     @console_ns.doc(description="Batch import annotations from CSV file with rate limiting and security checks")
     @console_ns.doc(params={"app_id": "Application ID"})
