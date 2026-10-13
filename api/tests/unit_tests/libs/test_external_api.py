@@ -255,7 +255,7 @@ def _no_implicit_codes(_status: int) -> set[str]:
     return set()
 
 
-def test_attach_error_response_schema_fills_only_schemaless_error_responses():
+def test_attach_error_response_schema_documents_the_error_body_on_every_error_status():
     explicit = {"application/json": {"schema": {"$ref": "#/components/schemas/Custom"}}}
     document: dict[str, object] = {
         "paths": {
@@ -279,7 +279,10 @@ def test_attach_error_response_schema_fills_only_schemaless_error_responses():
     ref = {"$ref": "#/components/schemas/ErrorResponse"}
     assert responses["400"]["content"] == {"application/json": {"schema": ref}}
     assert responses["404"]["content"] == {"application/json": {"schema": ref}}
-    assert responses["409"]["content"] == explicit
+    # A declared body never replaces the error body the handlers can still send.
+    assert responses["409"]["content"] == {
+        "application/json": {"schema": {"anyOf": [{"$ref": "#/components/schemas/Custom"}, ref]}}
+    }
     assert "content" not in responses["200"]
     assert "content" not in responses["302"]
     schema = document["components"]["schemas"]["ErrorResponse"]  # type: ignore[index]
@@ -458,3 +461,14 @@ def test_narrowed_error_schema_names_must_not_collide():
         attach_error_response_schema(
             document, ErrorResponse, lambda _e: (409, "documented_conflict"), _no_implicit_codes
         )
+
+
+def test_resolves_errors_in_flask_restx_dispatch_order():
+    """Flask-RESTX picks the first registered handler that matches, not the most specific one."""
+    from core.errors.error import AppInvokeQuotaExceededError
+
+    api = ExternalApi(Blueprint("dispatch_order", __name__))
+
+    # ValueError is registered before AppInvokeQuotaExceededError (a ValueError), so it wins.
+    assert api.resolve_error(AppInvokeQuotaExceededError) == (400, "invalid_param")
+    assert api.resolve_error(_DocumentedError) == (400, "documented_error")

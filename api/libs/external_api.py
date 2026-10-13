@@ -73,15 +73,22 @@ def _snake_case(name: str) -> str:
     return re.sub(r"(?<!^)(?=[A-Z])", "_", name).lower()
 
 
-def _error_spec(exception: type[Exception], handled: Mapping[type[Exception], tuple[int, str]]) -> ErrorSpec:
+def _error_spec(
+    exception: type[Exception],
+    handled: Mapping[type[Exception], tuple[int, str]],
+    dispatch_order: Iterable[type[BaseException]],
+) -> ErrorSpec:
     declared = _class_attribute(exception, "error_code")
     error_code = str(declared) if isinstance(declared, str) else None
-    # Flask-RESTX dispatches to the most specific registered handler, so walk the MRO.
-    for base in exception.__mro__:
-        if base in handled:
-            status, default_code = handled[base]
+    # Flask-RESTX dispatches to the first registered handler whose type matches, in
+    # registration order (not the most specific one), so resolve the same way.
+    for handler_type in dispatch_order:
+        if not issubclass(exception, handler_type):
+            continue
+        if handler_type in handled:
+            status, default_code = handled[handler_type]
             return {"status": status, "error_code": error_code, "default_code": default_code}
-        if base is HTTPException and issubclass(exception, HTTPException):
+        if handler_type is HTTPException and issubclass(exception, HTTPException):
             if exception.code is None:
                 raise ValueError(f"{exception.__name__} declares no HTTP status")
             if issubclass(exception, BaseHTTPException):
@@ -89,6 +96,7 @@ def _error_spec(exception: type[Exception], handled: Mapping[type[Exception], tu
             else:
                 default_code = _snake_case(exception.__name__)
             return {"status": exception.code, "error_code": error_code, "default_code": default_code}
+        break
     raise ValueError(f"{exception.__name__} has no dedicated error handler; its status and code are not stable")
 
 
@@ -201,9 +209,9 @@ def attach_error_response_schema(
 
     Statuses documented with ``error_responses`` narrow ``code`` to the listed values plus
     the surface's implicit codes, as a named ``{OperationId}Error{status}`` component.
-    A status that also declares its own body schema documents both, as ``anyOf``.
-    Other error responses that declare a schema keep it; empty JSON media and responses
-    without content get the open error body.
+    Other error statuses get the open error body. A status that also declares its own
+    body schema documents both, as ``anyOf``, since the surface's handlers can still
+    answer it with the error body.
     """
 
     paths = document.get("paths")
@@ -263,8 +271,16 @@ def attach_error_response_schema(
                     used = True
                     continue
                 media = content.get("application/json")
-                if isinstance(media, dict) and "schema" not in media:
+                if not isinstance(media, dict):
+                    continue
+                declared = media.get("schema")
+                if declared is None:
                     media["schema"] = dict(ref)
+                    used = True
+                elif declared != ref:
+                    # A declared body never replaces the error body: the surface's handlers can
+                    # still answer this status with it (validation, auth, unexpected errors).
+                    media["schema"] = {"anyOf": [declared, dict(ref)]}
                     used = True
 
     if not used:
@@ -465,8 +481,15 @@ class ExternalApi(Api):
 
         Raises ``ValueError`` when no handler gives it a stable status and code.
         """
-        spec = _error_spec(exception, self._handled_errors)
+        spec = _error_spec(exception, self._handled_errors, self._error_dispatch_order())
         return spec["status"], self.error_code_for(spec)
+
+    def _error_dispatch_order(self) -> list[type[BaseException]]:
+        """Handler types in the order Flask-RESTX tries them: the API's own, then new namespace ones."""
+        order: list[type[BaseException]] = list(self.error_handlers)
+        for namespace in self.namespaces:
+            order.extend(exception for exception in namespace.error_handlers if exception not in order)
+        return order
 
     def error_code_for(self, spec: ErrorSpec) -> str:
         """The ``code`` this surface emits for a documented exception."""
