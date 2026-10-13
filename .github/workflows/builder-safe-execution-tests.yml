@@ -309,6 +309,7 @@ jobs:
               "api/tests/unit_tests/core/workflow/test_restricted_execution.py",
               "api/tests/unit_tests/core/workflow/graph_engine/test_builder_restricted_native.py",
               "api/tests/unit_tests/services/dify_builder/test_execution_policy_service.py",
+              "api/tests/unit_tests/services/dify_builder/test_json_tool_execution_admission.py",
               "api/tests/unit_tests/core/dify_builder/test_verification.py",
               "api/tests/unit_tests/core/dify_builder/test_handlers_build.py",
               "api/tests/unit_tests/services/dify_builder/test_localize.py",
@@ -349,6 +350,17 @@ jobs:
               print(f"COLLECTED {module}: {count} unit cases", flush=True)
               if count == 0:
                   problems.append(f"missing unit module {module}")
+          json_admission_module = "tests.unit_tests.services.dify_builder.test_json_tool_execution_admission"
+          expected_json_admission = {
+              f"test_owned_json_parse_prepare_persists_restricted_request[{variant}]"
+              for variant in ("raw-true", "raw-false", "constant-true", "constant-false")
+          }
+          actual_json_admission = {
+              name for classname, name in identities
+              if classname.removeprefix("api.") == json_admission_module
+          }
+          if actual_json_admission != expected_json_admission:
+              problems.append("JSON admission case identities differ from the reviewed four variants")
           print(f"COLLECTED total: {len(identities)} unit cases", flush=True)
           for problem in problems:
               print(f"COMPLETENESS {problem}", flush=True)
