@@ -254,8 +254,8 @@ calls, signals or other dynamic dispatch, so add errors raised that way by hand.
 
 Controller unit tests also check every 4xx/5xx JSON response an `ExternalApi` serves against that API's generated
 document (`tests/unit_tests/controllers/error_contract.py`): the body must be the standard error body, unless the
-status declares its own model, and its `code` must be documented for the status. This covers the dynamic paths static
-inference cannot follow, on every path a test exercises.
+status declares its own model, and its `code` must be one the operation documents for that status or one of the
+surface's generic codes. This covers the dynamic paths static inference cannot follow, on every path a test exercises.
 
 Each documented code is one shared component, `{Code}Error` (`draft_workflow_not_sync` documents as
 `DraftWorkflowNotSyncError`): the error body with `code` and `status` fixed, plus the class's `details_model` (a

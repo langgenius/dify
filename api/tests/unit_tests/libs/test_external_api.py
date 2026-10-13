@@ -619,12 +619,14 @@ def test_documenting_relayed_errors_adds_nothing_beyond_the_default_error():
 
     attach_error_response_schema(document, ErrorResponse, _resolve_by_class)
 
-    responses = document["paths"]["/items"]["post"]["responses"]  # type: ignore[index]
+    operation = document["paths"]["/items"]["post"]  # type: ignore[index]
+    responses = operation["responses"]
     assert responses["400"]["content"] == {"application/json": {"schema": _ERROR_BODY_REF}}
     assert responses["default"]["content"] == {"application/json": {"schema": _ERROR_BODY_REF}}
     assert responses["409"]["content"]["application/json"]["schema"] == {
         "$ref": "#/components/schemas/DocumentedConflictError"
     }
+    assert operation["x-dify-relays-errors"] is True
 
 
 def test_keeps_placeholder_error_code_spots_undeclared_business_errors():

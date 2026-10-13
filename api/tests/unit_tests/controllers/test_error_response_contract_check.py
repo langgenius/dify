@@ -4,8 +4,9 @@ from flask_restx import Namespace, Resource
 from pydantic import BaseModel
 
 from controllers.common.schema import register_response_schema_models
-from libs.exception import BaseHTTPException
+from libs.exception import BaseHTTPException, RelayedHTTPError
 from libs.external_api import ExternalApi, error_responses
+from tests.unit_tests.controllers import error_contract
 from tests.unit_tests.controllers.error_contract import check_response, violation
 
 
@@ -32,14 +33,20 @@ def _api() -> tuple[Flask, ExternalApi]:
         def get(self) -> dict[str, str]:
             return {}
 
+    @ns.route("/relayed")
+    class Relayed(Resource):
+        @error_responses(_ItemGoneError, RelayedHTTPError)
+        def get(self) -> dict[str, str]:
+            return {}
+
     api.add_namespace(ns)
     app.register_blueprint(blueprint)
     return app, api
 
 
-def _check(body: object, status: int) -> str | None:
+def _check(body: object, status: int, path: str = "/check/items") -> str | None:
     app, api = _api()
-    with app.test_request_context("/check/items"):
+    with app.test_request_context(path):
         return violation(api, Response(json.dumps(body), status=status, mimetype="application/json"))
 
 
@@ -62,6 +69,29 @@ def test_accepts_documented_and_implied_codes() -> None:
 
 def test_accepts_a_body_matching_a_legacy_model_the_status_declares() -> None:
     assert _check({"error": "legacy"}, 409) is None
+    assert _check({"code": "conflict", "message": "m", "status": 409}, 409) is None
+
+
+def test_rejects_a_documented_code_served_with_another_status(monkeypatch: pytest.MonkeyPatch) -> None:
+    # On the surfaces the lint covers every served code must be documented or generic.
+    monkeypatch.setattr(error_contract, "_documents_business_errors", lambda _api: True)
+    found = _check({"code": "item_gone", "message": "m", "status": 409}, 409)
+    assert found is not None
+    assert "'item_gone' is not documented" in found
+
+
+def test_accepts_any_code_from_an_operation_that_relays_errors(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(error_contract, "_documents_business_errors", lambda _api: True)
+    assert _check({"code": "downstream_busy", "message": "m", "status": 503}, 503, "/check/relayed") is None
+    assert _check({"code": "item_gone", "message": "m", "status": 404}, 404, "/check/relayed") is None
+    # Relaying never excuses a body that is not the error body.
+    found = _check({"error": "x"}, 503, "/check/relayed")
+    assert found is not None
+    assert "lacks" in found
+
+
+def test_only_checks_documented_statuses_on_apis_without_business_errors() -> None:
+    # A test-built API (like /openapi/v1) documents nothing, so an undocumented status stays open.
     assert _check({"code": "item_gone", "message": "m", "status": 409}, 409) is None
 
 
