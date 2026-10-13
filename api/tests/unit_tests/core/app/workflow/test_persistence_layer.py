@@ -8,7 +8,7 @@ import pytest
 from core.app.entities.app_invoke_entities import WorkflowAppGenerateEntity
 from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from core.ops.ops_trace_manager import TraceTask, TraceTaskName
-from core.workflow.system_variables import SystemVariableKey, build_system_variables
+from core.workflow.system_variables import SystemVariableKey, build_system_variables, system_variable_selector
 from graphon.entities import WorkflowNodeExecution, WorkflowStartReason
 from graphon.entities.pause_reason import SchedulingPause
 from graphon.enums import (
@@ -18,6 +18,8 @@ from graphon.enums import (
     WorkflowNodeExecutionStatus,
     WorkflowType,
 )
+from graphon.graph_engine import GraphEngine, GraphEngineConfig
+from graphon.graph_engine.command_channels import InMemoryChannel
 from graphon.graph_events import (
     GraphRunAbortedEvent,
     GraphRunFailedEvent,
@@ -633,10 +635,81 @@ class TestWorkflowPersistenceLayer:
         assert layer._next_node_sequence() == 1
         assert layer._next_node_sequence() == 2
 
-    def test_on_graph_end_is_noop(self):
-        layer, _, _, _ = _make_layer()
+    def test_on_graph_end_fails_execution_without_terminal_event(self):
+        layer, execution_repo, _, _ = _make_layer()
+        layer._handle_graph_run_started()
 
-        assert layer.on_graph_end(error=None) is None
+        layer.on_graph_end(error=None)
+
+        execution = execution_repo.saved[-1]
+        assert execution.status == WorkflowExecutionStatus.FAILED
+        assert execution.error_message == "Workflow execution ended before a terminal event"
+
+    def test_graph_engine_iterator_close_finalizes_execution(self):
+        from tests.unit_tests.core.workflow.graph_engine.test_table_runner import WorkflowRunner
+
+        workflow_runner = WorkflowRunner()
+        fixture = workflow_runner.load_fixture("simple_passthrough_workflow")
+        graph, graph_runtime_state = workflow_runner.create_graph_from_fixture(fixture, query="test")
+        graph_runtime_state.variable_pool.add(
+            system_variable_selector(SystemVariableKey.WORKFLOW_EXECUTION_ID), "run-id"
+        )
+
+        layer, execution_repo, _, _ = _make_layer()
+        engine = GraphEngine(
+            workflow_id="workflow-id",
+            graph=graph,
+            graph_runtime_state=graph_runtime_state,
+            command_channel=InMemoryChannel(),
+            config=GraphEngineConfig(min_workers=1, max_workers=1),
+        )
+        engine.layer(layer)
+        events = engine.run()
+
+        next(events)
+        events.close()
+
+        execution = execution_repo.saved[-1]
+        assert execution.status == WorkflowExecutionStatus.FAILED
+        assert execution.error_message == "Workflow execution ended before a terminal event"
+
+    def test_on_graph_end_fails_execution_when_engine_reports_error(self):
+        layer, execution_repo, _, _ = _make_layer()
+        layer._handle_graph_run_started()
+
+        layer.on_graph_end(error=RuntimeError("engine failed"))
+
+        execution = execution_repo.saved[-1]
+        assert execution.status == WorkflowExecutionStatus.FAILED
+        assert execution.error_message == "engine failed"
+
+    def test_on_graph_end_keeps_failure_reason_for_empty_exception(self):
+        layer, execution_repo, _, _ = _make_layer()
+        layer._handle_graph_run_started()
+
+        layer.on_graph_end(error=RuntimeError())
+
+        execution = execution_repo.saved[-1]
+        assert execution.status == WorkflowExecutionStatus.FAILED
+        assert execution.error_message == "RuntimeError"
+
+    def test_on_graph_end_ignores_uninitialized_execution(self):
+        layer, execution_repo, _, _ = _make_layer()
+
+        layer.on_graph_end(error=None)
+
+        assert execution_repo.saved == []
+
+    def test_on_graph_end_preserves_terminal_execution(self):
+        layer, execution_repo, _, _ = _make_layer()
+        layer._handle_graph_run_started()
+        layer._handle_graph_run_succeeded(GraphRunSucceededEvent(outputs={}))
+        saved_count = len(execution_repo.saved)
+
+        layer.on_graph_end(error=None)
+
+        assert len(execution_repo.saved) == saved_count
+        assert execution_repo.saved[-1].status == WorkflowExecutionStatus.SUCCEEDED
 
     def test_on_event_dispatches_to_all_known_handlers(self):
         layer, _, _, _ = _make_layer()
