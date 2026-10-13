@@ -3,7 +3,10 @@
 Static checks (``dev/lint_error_responses.py``) cannot follow instance calls, signals or
 other dynamic dispatch. This catches what they miss on every path a test exercises: each
 4xx/5xx JSON response served by an ``ExternalApi`` must carry the standard error body,
-and its ``code`` must be one the operation documents for that status.
+and its ``code`` must be one the operation documents for that status or one of the
+surface's generic codes (``ExternalApi.implicit_error_codes``). Operations that relay
+downstream errors admit any code. On APIs that do not document business errors
+(``/openapi/v1``, test-built APIs) only statuses that document a code are checked.
 """
 
 import sys
@@ -15,10 +18,13 @@ from flask import Flask, Response, current_app, request
 from flask_restx.swagger import Swagger, extract_path
 from jsonschema import Draft202012Validator
 
-from libs.external_api import ExternalApi
+from libs.external_api import RELAYS_ERRORS_EXTENSION, ExternalApi
 
 STANDARD_KEYS = frozenset({"code", "message", "status"})
 _MODULE_APIS = ("controllers.console", "controllers.web", "controllers.service_api", "controllers.openapi")
+# Surfaces whose operations document their business errors (the error lint covers them): a code
+# they serve must be documented or generic. Other APIs only have the codes a status documents checked.
+_DOCUMENTED_APIS = ("controllers.console", "controllers.web", "controllers.service_api")
 
 _created: WeakSet[ExternalApi] = WeakSet()
 _documents: WeakKeyDictionary[ExternalApi, dict[str, object]] = WeakKeyDictionary()
@@ -54,12 +60,16 @@ def _serving_api(app: Flask) -> ExternalApi | None:
     return None
 
 
-def _module_apis() -> Iterator[ExternalApi]:
-    for name in _MODULE_APIS:
+def _module_apis(names: tuple[str, ...] = _MODULE_APIS) -> Iterator[ExternalApi]:
+    for name in names:
         module = sys.modules.get(name)
         api = vars(module).get("api") if module is not None else None
         if isinstance(api, ExternalApi):
             yield api
+
+
+def _documents_business_errors(api: ExternalApi) -> bool:
+    return any(api is surface for surface in _module_apis(_DOCUMENTED_APIS))
 
 
 def _document(api: ExternalApi) -> dict[str, object]:
@@ -81,14 +91,14 @@ def _resolve(schema: object, components: Mapping[str, object]) -> Mapping[str, o
     return schema if isinstance(schema, Mapping) else {}
 
 
-def _documented_codes(schema: Mapping[str, object]) -> set[str] | None:
-    """The ``code`` enum a narrowed error component declares, or ``None`` for an open body."""
+def _documented_code(schema: Mapping[str, object]) -> str | None:
+    """The fixed ``code`` a per-code error component declares, or ``None`` for the open body."""
     parts = schema.get("allOf")
     for part in parts if isinstance(parts, list) else []:
         if isinstance(part, Mapping):
             code = (part.get("properties") or {}).get("code")
-            if isinstance(code, Mapping) and isinstance(code.get("enum"), list):
-                return {str(value) for value in code["enum"]}
+            if isinstance(code, Mapping) and isinstance(code.get("const"), str):
+                return code["const"]
     return None
 
 
@@ -151,12 +161,18 @@ def violation(api: ExternalApi, response: Response) -> str | None:
         return f"{where}: error body does not match {error_model} ({'; '.join(problems)}): {body!r}"
     if body["status"] != response.status_code:
         return f"{where}: body status {body['status']!r} differs from the HTTP status"
-    codes = next(
-        (codes for option in error_options if (codes := _documented_codes(_resolve(option, components))) is not None),
-        None,
-    )
-    if codes is not None and body["code"] not in codes:
-        return f"{where}: code {body['code']!r} is not documented for this status (documented: {sorted(codes)})"
+    documented = {code for option in error_options if (code := _documented_code(_resolve(option, components)))}
+    if operation.get(RELAYS_ERRORS_EXTENSION) is True and body["code"] not in documented:
+        # The operation relays downstream errors, whose codes the document cannot know.
+        return None
+    if not documented and not _documents_business_errors(api):
+        return None
+    generic = api.implicit_error_codes(response.status_code)
+    if body["code"] not in documented | generic:
+        return (
+            f"{where}: code {body['code']!r} is not documented for this status "
+            f"(documented: {sorted(documented)}, generic: {sorted(generic)})"
+        )
     return None
 
 

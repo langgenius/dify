@@ -42,6 +42,8 @@ class ErrorResponse(BaseModel):
 _ERROR_SCHEMA_REF_TEMPLATE = "#/components/schemas/{model}"
 ERROR_CODES_VENDOR_KEY = "dify-error-codes"
 _ERROR_CODES_EXTENSION = f"x-{ERROR_CODES_VENDOR_KEY}"
+# Marks an operation that relays downstream errors: any code may answer it with the error body.
+RELAYS_ERRORS_EXTENSION = "x-dify-relays-errors"
 # ``BaseHTTPException`` ships this placeholder; a documented business error must replace it.
 _UNDECLARED_ERROR_CODE = BaseHTTPException.error_code
 
@@ -297,7 +299,8 @@ def attach_error_response_schema(
     it; several codes on one status are an ``anyOf``, and a status that also declares its
     own body schema keeps that schema beside them. A code maps to exactly one status in a
     document, and two classes may share a code only when they agree on it. A documented
-    ``RelayedHTTPError`` adds nothing: its status and code are only known at runtime.
+    ``RelayedHTTPError`` adds no component, since its status and code are only known at
+    runtime; it marks the operation with ``x-dify-relays-errors`` instead.
     """
 
     paths = document.get("paths")
@@ -324,7 +327,9 @@ def attach_error_response_schema(
                 exception = pkgutil.resolve_name(exception_name)
                 if issubclass(exception, RelayedHTTPError):
                     # Its status and code come from a downstream service at runtime; the open
-                    # ``default`` error already documents it.
+                    # ``default`` error already documents it. The marker lets checks that compare
+                    # served bodies with the document admit any code here.
+                    operation[RELAYS_ERRORS_EXTENSION] = True
                     continue
                 status, code = resolve_error(exception)
                 name = error_component_name(code)
