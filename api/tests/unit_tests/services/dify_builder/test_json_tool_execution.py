@@ -69,6 +69,26 @@ def test_string_source_variants(json_graph, source_kind, parameter):
     assert resolve_json_parameters(snapshot_for(json_graph), _inputs())[parameter] == expected
 
 
+def test_constant_json_parameters_need_no_start_declarations_or_inputs(json_graph):
+    json_graph["nodes"][0]["data"]["variables"] = []
+    _tool(json_graph)["tool_parameters"] = {
+        "content": {"type": "constant", "value": '{"x":1}'},
+        "json_filter": {"type": "constant", "value": "$.x"},
+    }
+    assert resolve_json_parameters(snapshot_for(json_graph), {}) == {
+        "content": '{"x":1}',
+        "json_filter": "$.x",
+        "ensure_ascii": True,
+    }
+
+
+def test_empty_start_declarations_still_refuse_variable_selector(json_graph):
+    json_graph["nodes"][0]["data"]["variables"] = []
+    _tool(json_graph)["tool_parameters"]["content"] = {"type": "variable", "value": ["node1", "payload"]}
+    with pytest.raises(BuilderExecutionPolicyError):
+        admit_json_workflow(snapshot_for(json_graph))
+
+
 @pytest.mark.parametrize("ascii_value", [True, False], ids=["true", "false"])
 @pytest.mark.parametrize("wrapped", [True, False], ids=["wrapped", "raw"])
 def test_final_parameters_keep_native_boolean(json_graph, ascii_value, wrapped):
@@ -435,6 +455,41 @@ def test_native_jsonpath_constant_cannot_read_non_start_value(json_graph):
 def test_admitted_jsonpath_grammar(json_graph, path):
     _tool(json_graph)["tool_parameters"]["json_filter"] = {"type": "constant", "value": path}
     assert resolve_json_parameters(snapshot_for(json_graph), _inputs())["json_filter"] == path
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "$." + "a" * 64,
+        "$[00000]",
+        "$." + ".".join(["a" * 64] * 15 + ["a" * 47]),
+    ],
+    ids=["identifier-64", "index-five-digits", "filter-1024-bounded-segments"],
+)
+def test_jsonpath_detailed_grammar_boundaries_admit(json_graph, path):
+    _tool(json_graph)["tool_parameters"]["json_filter"] = {"type": "constant", "value": path}
+    assert resolve_json_parameters(snapshot_for(json_graph), _inputs())["json_filter"] == path
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "$." + "a" * 65,
+        "$[000000]",
+        "$.*.name",
+        "$." + ".".join(["a" * 64] * 15 + ["a" * 48]),
+    ],
+    ids=["identifier-65", "index-six-digits", "dot-wildcard", "filter-1025-bounded-segments"],
+)
+@pytest.mark.parametrize("source_kind", ["constant", "variable"])
+def test_jsonpath_detailed_grammar_boundaries_refuse(json_graph, path, source_kind):
+    inputs = _inputs()
+    if source_kind == "constant":
+        _tool(json_graph)["tool_parameters"]["json_filter"] = {"type": "constant", "value": path}
+    else:
+        inputs["json_path"] = path
+    with pytest.raises(BuilderExecutionPolicyError):
+        resolve_json_parameters(snapshot_for(json_graph), inputs)
 
 
 @pytest.mark.parametrize(
