@@ -85,7 +85,6 @@ export default function OAuthAuthorize() {
       input: hasOAuthParams
         ? { body: { client_id: clientId, redirect_uri: redirectUri } }
         : skipToken,
-      context: { silent: true },
     }),
   )
   const { mutateAsync: authorize, isPending: authorizing } = useMutation(
@@ -122,8 +121,8 @@ export default function OAuthAuthorize() {
     try {
       if (isLoggedIn) await logout()
       else router.push(signInUrl)
-    } catch {
-      // The request layer reports logout failures; keep the current session on this page.
+    } catch (error) {
+      if (error instanceof Error && error.name !== 'AbortError') toast.error(error.message)
     }
   }
 

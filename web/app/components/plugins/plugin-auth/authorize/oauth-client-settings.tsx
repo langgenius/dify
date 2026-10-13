@@ -72,7 +72,7 @@ const OAuthClientSettings = ({
         needCheckValidatedValues: true,
         needTransformWhenSecretFieldIsPristine: true,
       }) || { isCheckValidated: false, values: {} }
-      if (!isCheckValidated) throw new Error('error')
+      if (!isCheckValidated) return false
       const { __oauth_client__, ...restValues } = values
 
       handleSetDoingAction(true)
@@ -104,9 +104,8 @@ const OAuthClientSettings = ({
     try {
       const isSaved = await handleConfirm()
       if (isSaved) await onRequestAuthorization?.()
-    } catch {
-      // The request layer reports the save error. Keep settings open and stop
-      // before opening the permission dialog.
+    } catch (error) {
+      if (error instanceof Error && error.name !== 'AbortError') toast.error(error.message)
     }
   }, [handleConfirm, onRequestAuthorization])
   const { mutateAsync: deletePluginOAuthCustomClient } =

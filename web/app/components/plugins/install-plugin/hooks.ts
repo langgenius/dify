@@ -1,6 +1,5 @@
 import type { ToastType } from '@langgenius/dify-ui/toast'
 import type { GitHubRepoReleaseResponse } from '../types'
-import { toast } from '@/app/notifications'
 import { uploadGitHub } from '@/service/plugins'
 import { compareVersion, getLatestVersion } from '@/utils/semver'
 
@@ -20,20 +19,11 @@ const formatReleases = (releases: any) => {
 }
 
 export const fetchReleases = async (owner: string, repo: string) => {
-  try {
-    // Fetch releases without authentication from client
-    const res = await fetch(`https://ungh.cc/repos/${owner}/${repo}/releases`)
-    if (!res.ok) throw new Error('Failed to fetch repository releases')
-    const data = await res.json()
-    return formatReleases(data.releases)
-  } catch (error) {
-    if (error instanceof Error) {
-      toast.error(error.message)
-    } else {
-      toast.error('Failed to fetch repository releases')
-    }
-    return []
-  }
+  // The install dialog owns feedback, including distinguishing failure from an empty release list.
+  const res = await fetch(`https://ungh.cc/repos/${owner}/${repo}/releases`)
+  if (!res.ok) throw new Error('Failed to fetch repository releases')
+  const data = await res.json()
+  return formatReleases(data.releases)
 }
 
 export const checkForUpdates = (
@@ -69,16 +59,11 @@ export const handleUpload = async (
   selectedPackage: string,
   onSuccess?: (GitHubPackage: { manifest: any; unique_identifier: string }) => void,
 ) => {
-  try {
-    const response = await uploadGitHub(repoUrl, selectedVersion, selectedPackage)
-    const GitHubPackage = {
-      manifest: response.manifest,
-      unique_identifier: response.unique_identifier,
-    }
-    if (onSuccess) onSuccess(GitHubPackage)
-    return GitHubPackage
-  } catch (error) {
-    toast.error('Error uploading package')
-    throw error
+  const response = await uploadGitHub(repoUrl, selectedVersion, selectedPackage)
+  const GitHubPackage = {
+    manifest: response.manifest,
+    unique_identifier: response.unique_identifier,
   }
+  if (onSuccess) onSuccess(GitHubPackage)
+  return GitHubPackage
 }

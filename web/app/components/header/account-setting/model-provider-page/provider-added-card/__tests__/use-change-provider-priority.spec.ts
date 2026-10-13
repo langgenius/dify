@@ -195,7 +195,7 @@ describe('useChangeProviderPriority', () => {
       await waitFor(() => {
         expect(mockNotify).toHaveBeenCalledWith({
           type: 'error',
-          message: 'common.actionMsg.modifiedUnsuccessfully',
+          message: 'network error',
         })
       })
 

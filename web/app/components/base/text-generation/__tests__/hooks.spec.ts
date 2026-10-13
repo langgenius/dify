@@ -82,7 +82,6 @@ describe('useTextGeneration', () => {
           onMessageReplace: expect.any(Function),
           onCompleted: expect.any(Function),
           onError: expect.any(Function),
-          onNotifyError,
         }),
       )
     })
@@ -163,6 +162,24 @@ describe('useTextGeneration', () => {
 
       expect(result.current.isResponding).toBe(false)
     })
+
+    it.each(['Permission denied', 'AbortError: Cancelled'])(
+      'lets the business callback handle %s while clearing the responding state',
+      async (message) => {
+        const { result } = renderHook(() => useTextGeneration())
+        const onNotifyError = vi.fn()
+        await act(async () => {
+          await result.current.handleSend('/console/api', { query: 'hello' }, { onNotifyError })
+        })
+
+        act(() => getLatestStreamOptions().onError?.(message, 'forbidden'))
+
+        expect(result.current.isResponding).toBe(false)
+        if (message.startsWith('AbortError')) expect(onNotifyError).not.toHaveBeenCalled()
+        else expect(onNotifyError).toHaveBeenCalledExactlyOnceWith(message, 'forbidden')
+        expect(mockNotify).not.toHaveBeenCalled()
+      },
+    )
 
     it('should notify and return false when called while already responding', async () => {
       const { result } = renderHook(() => useTextGeneration())

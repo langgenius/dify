@@ -31,7 +31,6 @@ import type {
 import { ORPCError } from '@orpc/client'
 import Cookies from 'js-cookie'
 import { discardRegistrationSessionState } from '@/app/components/base/amplitude/registration-session-state'
-import { toast } from '@/app/notifications'
 import {
   API_PREFIX,
   CSRF_COOKIE_NAME,
@@ -96,17 +95,6 @@ const handleWebAppAuthorizationError = (
   return recoverEnvironmentWebAppAuthorization(error, url)
 }
 
-const isAbortError = (error: unknown) => {
-  if (typeof error === 'string') return error === 'AbortError' || error.startsWith('AbortError:')
-
-  return (
-    typeof error === 'object' && error !== null && 'name' in error && error.name === 'AbortError'
-  )
-}
-
-const shouldNotifyStreamError = (error: unknown) =>
-  !isAbortError(error) && !String(error).includes('TypeError: Cannot assign to read only property')
-
 export type IOnDataMoreInfo = {
   event?: string
   conversationId?: string
@@ -124,11 +112,7 @@ export type IOnMessageReplace = (messageReplace: MessageReplace) => void
 export type IOnCompleted = (hasError?: boolean, errorMessage?: string) => void
 export type IOnError = (msg: string, code?: string) => void
 
-const reportStreamResponseError = async (
-  response: Response,
-  onError: IOnError | undefined,
-  onNotifyError?: IOnError,
-) => {
+const reportStreamResponseError = async (response: Response, onError: IOnError | undefined) => {
   let errorMessage = 'Server Error'
   let errorCode: string | undefined
   try {
@@ -145,18 +129,14 @@ const reportStreamResponseError = async (
 
   if (errorCode) {
     onError?.(errorMessage, errorCode)
-    onNotifyError?.(errorMessage, errorCode)
   } else {
     onError?.(errorMessage)
-    onNotifyError?.(errorMessage)
   }
 }
 
 const handlePublicStreamResponseError = async (
   response: Response,
   onError: IOnError | undefined,
-  onNotifyError: IOnError | undefined,
-  silent: boolean | undefined,
 ) => {
   let data: { code?: string; message?: string; reason?: unknown } | undefined
   try {
@@ -171,10 +151,7 @@ const handlePublicStreamResponseError = async (
     }
   }
 
-  if (onNotifyError && !silent) await reportStreamResponseError(response, onError, onNotifyError)
-  else if (!silent)
-    await reportStreamResponseError(response, onError, (message) => toast.error(message))
-  else await reportStreamResponseError(response, onError)
+  await reportStreamResponseError(response, onError)
 }
 
 type UnhandledEventError = {
@@ -221,7 +198,6 @@ export type IOtherOptions = {
   bodyStringify?: boolean
   needAllResponseContent?: boolean
   deleteContentType?: boolean
-  silent?: boolean
 
   /** If true, behaves like standard fetch: no URL prefix, returns raw Response */
   fetchCompat?: boolean
@@ -234,8 +210,6 @@ export type IOtherOptions = {
   onMessageEnd?: IOnMessageEnd
   onMessageReplace?: IOnMessageReplace
   onError?: IOnError
-  /** Replaces the default global error notification for this request. */
-  onNotifyError?: IOnError
   onUnhandledEvent?: IOnUnhandledEvent
   onCompleted?: IOnCompleted // for stream
   getAbortController?: (abortController: AbortController) => void
@@ -693,7 +667,6 @@ export const ssePost = async (
     onTextReplace,
     onAgentLog,
     onError,
-    onNotifyError,
     getAbortController,
     onLoopStart,
     onLoopNext,
@@ -706,7 +679,6 @@ export const ssePost = async (
     onDataSourceNodeCompleted,
     onDataSourceNodeError,
     onUnhandledEvent,
-    silent,
   } = otherOptions
   const abortController = new AbortController()
 
@@ -746,7 +718,7 @@ export const ssePost = async (
       if (!/^[23]\d{2}$/.test(String(res.status))) {
         if (res.status === 401 || (res.status === 403 && isPublicAPI)) {
           if (isPublicAPI) {
-            void handlePublicStreamResponseError(res, onError, onNotifyError, silent)
+            void handlePublicStreamResponseError(res, onError)
           } else {
             refreshAccessTokenOrReLogin(TIME_OUT)
               .then(() => {
@@ -759,10 +731,7 @@ export const ssePost = async (
               })
           }
         } else {
-          if (onNotifyError && !silent) void reportStreamResponseError(res, onError, onNotifyError)
-          else if (!silent)
-            void reportStreamResponseError(res, onError, (message) => toast.error(message))
-          else void reportStreamResponseError(res, onError)
+          void reportStreamResponseError(res, onError)
         }
         return
       }
@@ -771,11 +740,6 @@ export const ssePost = async (
         (str: string, isFirstMessage: boolean, moreInfo: IOnDataMoreInfo) => {
           if (moreInfo.errorMessage) {
             onError?.(moreInfo.errorMessage, moreInfo.errorCode)
-            // These errors can happen when a stream is intentionally stopped or its page is left.
-            if (!silent && shouldNotifyStreamError(moreInfo.errorMessage)) {
-              if (onNotifyError) onNotifyError(moreInfo.errorMessage, moreInfo.errorCode)
-              else toast.error(moreInfo.errorMessage)
-            }
             return
           }
           onData?.(str, isFirstMessage, moreInfo)
@@ -816,10 +780,6 @@ export const ssePost = async (
     })
     .catch((e) => {
       const errorMessage = String(e)
-      if (!silent && shouldNotifyStreamError(e)) {
-        if (onNotifyError) onNotifyError(errorMessage)
-        else toast.error(errorMessage)
-      }
       onError?.(errorMessage)
     })
 }
@@ -854,7 +814,6 @@ export const sseGet = async (
     onTextReplace,
     onAgentLog,
     onError,
-    onNotifyError,
     getAbortController,
     onLoopStart,
     onLoopNext,
@@ -867,7 +826,6 @@ export const sseGet = async (
     onDataSourceNodeCompleted,
     onDataSourceNodeError,
     onUnhandledEvent,
-    silent,
   } = otherOptions
   const abortController = new AbortController()
 
@@ -901,7 +859,7 @@ export const sseGet = async (
       if (!/^[23]\d{2}$/.test(String(res.status))) {
         if (res.status === 401 || (res.status === 403 && isPublicAPI)) {
           if (isPublicAPI) {
-            void handlePublicStreamResponseError(res, onError, onNotifyError, silent)
+            void handlePublicStreamResponseError(res, onError)
           } else {
             refreshAccessTokenOrReLogin(TIME_OUT)
               .then(() => {
@@ -914,10 +872,7 @@ export const sseGet = async (
               })
           }
         } else {
-          if (onNotifyError && !silent) void reportStreamResponseError(res, onError, onNotifyError)
-          else if (!silent)
-            void reportStreamResponseError(res, onError, (message) => toast.error(message))
-          else void reportStreamResponseError(res, onError)
+          void reportStreamResponseError(res, onError)
         }
         return
       }
@@ -926,11 +881,6 @@ export const sseGet = async (
         (str: string, isFirstMessage: boolean, moreInfo: IOnDataMoreInfo) => {
           if (moreInfo.errorMessage) {
             onError?.(moreInfo.errorMessage, moreInfo.errorCode)
-            // These errors can happen when a stream is intentionally stopped or its page is left.
-            if (!silent && shouldNotifyStreamError(moreInfo.errorMessage)) {
-              if (onNotifyError) onNotifyError(moreInfo.errorMessage, moreInfo.errorCode)
-              else toast.error(moreInfo.errorMessage)
-            }
             return
           }
           onData?.(str, isFirstMessage, moreInfo)
@@ -971,10 +921,6 @@ export const sseGet = async (
     })
     .catch((e) => {
       const errorMessage = String(e)
-      if (!silent && shouldNotifyStreamError(e)) {
-        if (onNotifyError) onNotifyError(errorMessage)
-        else toast.error(errorMessage)
-      }
       onError?.(errorMessage)
     })
 }
@@ -1090,13 +1036,17 @@ export const sseGeneratorPost = (
 export const request = async <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
   try {
     const otherOptionsForBaseFetch = otherOptions || {}
-    const { isPublicAPI = false, silent } = otherOptionsForBaseFetch
+    const { isPublicAPI = false } = otherOptionsForBaseFetch
     const [err, resp] = await asyncRunSafe<T>(baseFetch(url, options, otherOptionsForBaseFetch))
     if (err === null) {
       const address = resolveWebAppAddress()
       if (isPublicAPI && address?.kind === 'environment' && !isWebAppAuthorizationEndpoint(url))
         completeWebAppAuthorizationRecovery(address)
       return resp
+    }
+    if (err instanceof ORPCError && err.status === 403 && err.code === 'already_setup') {
+      if (isClient) window.location.href = `${window.location.origin}/signin`
+      return Promise.reject(err)
     }
     if (err instanceof ORPCError && (err.status === 401 || (err.status === 403 && isPublicAPI))) {
       if (!isClient) return Promise.reject(err)
@@ -1112,7 +1062,7 @@ export const request = async <T>(url: string, options = {}, otherOptions?: IOthe
       if (/\/login/.test(url)) return Promise.reject(err)
       if (handleWebAppAuthorizationError(errRespData, url)) return Promise.reject(err)
       // special code
-      const { code, message } = errRespData
+      const { code } = errRespData
       if (code === 'web_sso_auth_required') {
         requiredWebSSOLogin()
         return Promise.reject(err)
@@ -1128,10 +1078,7 @@ export const request = async <T>(url: string, options = {}, otherOptions?: IOthe
         requiredWebSSOLogin()
         return Promise.reject(err)
       }
-      if (code === 'init_validate_failed' && !silent) {
-        toast.error(message, { timeout: 4000 })
-        return Promise.reject(err)
-      }
+      if (code === 'init_validate_failed') return Promise.reject(err)
       if (code === 'not_init_validated') {
         jumpTo(`${window.location.origin}${basePath}/init`)
         return Promise.reject(err)
@@ -1153,11 +1100,6 @@ export const request = async <T>(url: string, options = {}, otherOptions?: IOthe
         jumpTo(buildSigninUrlWithRedirect())
         return Promise.reject(err)
       }
-      if (!silent) {
-        toast.error(message)
-        return Promise.reject(err)
-      }
-      jumpTo(buildSigninUrlWithRedirect())
       return Promise.reject(err)
     } else {
       return Promise.reject(err)

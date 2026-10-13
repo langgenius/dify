@@ -63,16 +63,14 @@ describe('install-plugin/hooks', () => {
       ])
     })
 
-    it('returns no releases and reports a failed response', async () => {
+    it('rejects a failed response so the dialog can distinguish it from no releases', async () => {
       mockFetch.mockResolvedValue(new Response(null, { status: 500 }))
 
-      const releases = await fetchReleases('owner', 'repo')
-
+      await expect(fetchReleases('owner', 'repo')).rejects.toThrow(
+        'Failed to fetch repository releases',
+      )
       expect(mockFetch).toHaveBeenCalledOnce()
-      expect(mockFetch).toHaveBeenCalledWith('https://ungh.cc/repos/owner/repo/releases')
-      expect(releases).toEqual([])
-      expect(mockToastError).toHaveBeenCalledOnce()
-      expect(mockToastError).toHaveBeenCalledWith('Failed to fetch repository releases')
+      expect(mockToastError).not.toHaveBeenCalled()
     })
   })
 
@@ -132,12 +130,11 @@ describe('install-plugin/hooks', () => {
       expect(pkg).toEqual(expectedPackage)
     })
 
-    it('shows toast on upload error', async () => {
+    it('propagates upload errors without duplicating request feedback', async () => {
       mockUploadGitHub.mockRejectedValue(new Error('Upload failed'))
 
       await expect(handleUpload('url', 'v1', 'pkg')).rejects.toThrow('Upload failed')
-      expect(mockToastError).toHaveBeenCalledOnce()
-      expect(mockToastError).toHaveBeenCalledWith('Error uploading package')
+      expect(mockToastError).not.toHaveBeenCalled()
     })
   })
 })

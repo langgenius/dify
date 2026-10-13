@@ -394,7 +394,6 @@ describe('useFile', () => {
       expect(mockUploadRemoteFileInfo).toHaveBeenCalledWith(
         'https://example.com/file.txt',
         false,
-        undefined,
         '/trial-apps/app-id/remote-files/upload',
       )
     })

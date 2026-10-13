@@ -167,9 +167,6 @@ export function useAgentConfigureBuildDraftData({
     input: {
       params: buildDraftQueryInput.params,
     },
-    context: {
-      silent: true,
-    },
   })
   const buildDraftQuery = useQuery(
     queryOptions({
@@ -442,8 +439,8 @@ export function useAgentConfigureBuildDraftActions({
       })
       await exitBuildDraftMode(true)
       toast.success(tCommon(($) => $['api.actionSuccess']))
-    } catch {
-      // Each failed request already surfaces its backend error through the console client.
+    } catch (error) {
+      if (error instanceof Error && error.name !== 'AbortError') toast.error(error.message)
     } finally {
       setIsApplyingBuildDraftWorkflow(false)
     }

@@ -1,8 +1,19 @@
-import { renderHook } from '@testing-library/react'
-import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
+import { act, renderHook, waitFor } from '@testing-library/react'
+import { trackEvent } from '@/app/components/base/amplitude'
+import {
+  BlockEnum,
+  InputVarType,
+  NodeRunningStatus,
+  VarType,
+} from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
+// oxlint-disable-next-line no-restricted-imports -- Exercise the existing stream transport through its business owner.
+import { ssePost } from '@/service/base'
+import { getIterationSingleNodeRunUrl, getLoopSingleNodeRunUrl } from '@/service/workflow'
 import { FlowType } from '@/types/common'
 import useOneStepRun from '../use-one-step-run'
 
+const mockNodeDataUpdate = vi.fn()
 const mockWorkflowState = {
   conversationVariables: [],
   dataSourceList: [],
@@ -32,7 +43,7 @@ vi.mock('../../../../hooks/use-node-data-update', async (importOriginal) => {
   return {
     ...actual,
     useNodeDataUpdate: () => ({
-      handleNodeDataUpdate: vi.fn(),
+      handleNodeDataUpdate: mockNodeDataUpdate,
     }),
   }
 })
@@ -180,14 +191,14 @@ vi.mock('@/app/components/workflow/nodes/variable-assigner/default', () => ({
   default: {},
 }))
 
-const renderUseOneStepRun = () =>
+const renderUseOneStepRun = (type: BlockEnum = BlockEnum.IfElse) =>
   renderHook(() =>
     useOneStepRun({
       id: 'if-else-node',
       flowId: 'app-id',
       flowType: FlowType.appFlow,
       data: {
-        type: BlockEnum.IfElse,
+        type,
         title: 'IF/ELSE',
         desc: '',
       },
@@ -197,7 +208,7 @@ const renderUseOneStepRun = () =>
     }),
   )
 
-describe('useOneStepRun single-run input vars', () => {
+describe('useOneStepRun', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     Object.defineProperty(globalThis, 'location', {
@@ -206,6 +217,10 @@ describe('useOneStepRun single-run input vars', () => {
       },
       configurable: true,
     })
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
   })
 
   it('uses value_type when the variable cannot be resolved from output vars', () => {
@@ -239,4 +254,75 @@ describe('useOneStepRun single-run input vars', () => {
       },
     ])
   })
+
+  it.each([BlockEnum.Iteration, BlockEnum.Loop])(
+    'reports a %s connection failure once and marks the run failed',
+    async (type) => {
+      const transport = await vi.importActual<typeof import('@/service/base')>('@/service/base')
+      vi.mocked(ssePost).mockImplementation(transport.ssePost)
+      vi.mocked(getIterationSingleNodeRunUrl).mockReturnValue('/apps/app-id/iteration/run')
+      vi.mocked(getLoopSingleNodeRunUrl).mockReturnValue('/apps/app-id/loop/run')
+      vi.stubGlobal(
+        'fetch',
+        vi
+          .fn()
+          .mockResolvedValue(
+            Response.json(
+              { code: 'unavailable', message: 'Workflow runner is unavailable.' },
+              { status: 503 },
+            ),
+          ),
+      )
+      const { result } = renderUseOneStepRun(type)
+
+      await act(async () => {
+        await result.current.handleRun({})
+      })
+
+      await waitFor(() =>
+        expect(toast.error).toHaveBeenCalledExactlyOnceWith('Workflow runner is unavailable.'),
+      )
+      expect(mockNodeDataUpdate).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ _singleRunningStatus: NodeRunningStatus.Failed }),
+        }),
+      )
+      if (type === BlockEnum.Loop) {
+        expect(trackEvent).toHaveBeenCalledWith(
+          'workflow_run_failed',
+          expect.objectContaining({
+            reason: 'Workflow runner is unavailable.',
+          }),
+        )
+      }
+    },
+  )
+
+  it.each([BlockEnum.Iteration, BlockEnum.Loop])(
+    'keeps cancellation of a %s connection quiet while clearing the running state',
+    async (type) => {
+      const transport = await vi.importActual<typeof import('@/service/base')>('@/service/base')
+      vi.mocked(ssePost).mockImplementation(transport.ssePost)
+      vi.mocked(getIterationSingleNodeRunUrl).mockReturnValue('/apps/app-id/iteration/run')
+      vi.mocked(getLoopSingleNodeRunUrl).mockReturnValue('/apps/app-id/loop/run')
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockRejectedValue(new DOMException('Run stopped', 'AbortError')),
+      )
+      const { result } = renderUseOneStepRun(type)
+
+      await act(async () => {
+        await result.current.handleRun({})
+      })
+
+      await waitFor(() =>
+        expect(mockNodeDataUpdate).toHaveBeenLastCalledWith(
+          expect.objectContaining({
+            data: expect.objectContaining({ _singleRunningStatus: NodeRunningStatus.Failed }),
+          }),
+        ),
+      )
+      expect(toast.error).not.toHaveBeenCalled()
+    },
+  )
 })

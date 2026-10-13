@@ -30,14 +30,8 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
             readme: {
               get: {
                 queryOptions: {
-                  context: { silent: true },
                   retry: false,
                 },
-              },
-            },
-            asset: {
-              get: {
-                queryOptions: { context: { silent: true } },
               },
             },
           },
@@ -282,7 +276,6 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           get: {
             queryOptions: {
               // Passive probe: every callsite degrades to "not a student", so no toast.
-              context: { silent: true },
               retry: false,
             },
           },

@@ -89,8 +89,8 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
     try {
       await sendEmail()
       setStep(STEP.verify)
-    } catch {
-      // The base service layer already surfaces the backend error (e.g. rate-limit) as a toast.
+    } catch (error) {
+      if (error instanceof Error && error.name !== 'AbortError') toast.error(error.message)
     }
   }
   const handleVerifyOriginEmail = async () => {

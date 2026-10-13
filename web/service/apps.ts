@@ -26,11 +26,9 @@ export const fetchWebhookUrl = ({
   appId: string
   nodeId: string
 }): Promise<WebhookTriggerResponse> => {
-  return get<WebhookTriggerResponse>(
-    `apps/${appId}/workflows/triggers/webhook`,
-    { params: { node_id: nodeId } },
-    { silent: true },
-  )
+  return get<WebhookTriggerResponse>(`apps/${appId}/workflows/triggers/webhook`, {
+    params: { node_id: nodeId },
+  })
 }
 
 export const fetchTracingConfig = ({

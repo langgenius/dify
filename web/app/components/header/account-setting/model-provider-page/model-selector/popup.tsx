@@ -20,6 +20,7 @@ import checkTaskStatus from '@/app/components/plugins/install-plugin/base/check-
 import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
 import useWorkspacePluginInstallPermission from '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
+import { toast } from '@/app/notifications'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { renderI18nObject } from '@/i18n/metadata'
 import { consoleQuery } from '@/service/console'
@@ -160,7 +161,8 @@ function Popup({
           await check({ taskId: task_id, pluginUniqueIdentifier: uniqueIdentifier })
         }
         refreshPluginList({ category: PluginCategoryEnum.model })
-      } catch {
+      } catch (error) {
+        if (error instanceof Error && error.name !== 'AbortError') toast.error(error.message)
       } finally {
         setInstallingProvider(null)
       }

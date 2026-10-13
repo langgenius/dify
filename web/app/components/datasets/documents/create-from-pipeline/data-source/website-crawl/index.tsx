@@ -141,6 +141,10 @@ const WebsiteCrawl = ({
             setCrawlErrorMessage('')
             setStep(CrawlStep.finished)
           },
+          onError: (message) => {
+            setCrawlErrorMessage(message.startsWith('AbortError') ? '' : message)
+            setStep(CrawlStep.finished)
+          },
           onDataSourceNodeError: (error: DataSourceNodeErrorResponse) => {
             setCrawlErrorMessage(
               error.error || t(($) => $[`${I18N_PREFIX}.unknownError`], { ns: 'datasetCreation' }),

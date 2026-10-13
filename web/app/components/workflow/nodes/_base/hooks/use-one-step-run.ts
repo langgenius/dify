@@ -877,8 +877,9 @@ const useOneStepRun = <T>({
               _iterationResult = newIterationRunResult
               setIterationRunResult(newIterationRunResult)
             },
-            onError: () => {
+            onError: (message) => {
               if (isPausedRef.current) return
+              if (!message.startsWith('AbortError')) toast.error(message)
               handleNodeDataUpdate({
                 id,
                 data: {
@@ -977,8 +978,9 @@ const useOneStepRun = <T>({
               _loopResult = newLoopRunResult
               setLoopRunResult(newLoopRunResult)
             },
-            onError: () => {
+            onError: (message) => {
               if (isPausedRef.current) return
+              if (!message.startsWith('AbortError')) toast.error(message)
               handleNodeDataUpdate({
                 id,
                 data: {
@@ -990,7 +992,7 @@ const useOneStepRun = <T>({
               trackEvent('workflow_run_failed', {
                 workflow_id: flowId,
                 node_id: id,
-                reason: res.error,
+                reason: message,
                 node_type: data?.type,
               })
             },

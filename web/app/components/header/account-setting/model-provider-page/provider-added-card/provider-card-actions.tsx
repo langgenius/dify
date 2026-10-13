@@ -28,6 +28,7 @@ import { OperationDropdown } from '@/app/components/plugins/plugin-detail-panel/
 import { usePluginSettingsAccess } from '@/app/components/plugins/plugin-page/use-reference-setting'
 import { PluginSource } from '@/app/components/plugins/types'
 import PluginVersionPicker from '@/app/components/plugins/update-plugin/plugin-version-picker'
+import { toast } from '@/app/notifications'
 import useTheme from '@/hooks/use-theme'
 import { consoleQuery } from '@/service/console'
 import { uninstallPlugin } from '@/service/plugins'
@@ -138,7 +139,8 @@ function SummaryProviderCardActions({ summary, providerLabel, onUpdate }: Summar
           : normalizedDetail
       setDetail(detailWithLatestVersion)
       setDetailAction(action)
-    } catch {
+    } catch (error) {
+      if (error instanceof Error && error.name !== 'AbortError') toast.error(error.message)
     } finally {
       setLoadingAction(undefined)
     }

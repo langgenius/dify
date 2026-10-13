@@ -1779,7 +1779,7 @@ describe('AppDeploy', () => {
     ).toHaveLength(1)
   })
 
-  it('shows deploy API failures through the fetch toast without an inline configuration error', async () => {
+  it('reports an HTTP deployment failure once from the deploy action and keeps configuration open', async () => {
     const user = userEvent.setup()
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
       const request = input instanceof Request ? input : new Request(input, init)
@@ -1810,7 +1810,7 @@ describe('AppDeploy', () => {
     )
 
     await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith('Deployment service unavailable')
+      expect(toast.error).toHaveBeenCalledExactlyOnceWith('Deployment service unavailable')
     })
     expect(configurationDialog).toBeInTheDocument()
     expect(within(configurationDialog).queryByRole('alert')).not.toBeInTheDocument()

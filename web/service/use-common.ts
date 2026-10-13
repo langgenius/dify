@@ -190,18 +190,6 @@ export const useVerifyForgotPasswordToken = (token?: string | null) => {
   })
 }
 
-type OneMoreStepPayload = {
-  invitation_code: string
-  interface_language: string
-  timezone: string
-}
-export const useOneMoreStep = () => {
-  return useMutation({
-    mutationKey: [NAME_SPACE, 'one-more-step'],
-    mutationFn: (body: OneMoreStepPayload) => post<CommonResponse>('/account/init', { body }),
-  })
-}
-
 export const modelProviderDetailsQueryOptions = () =>
   queryOptions({
     queryKey: commonQueryKeys.modelProviderDetails,
@@ -260,7 +248,7 @@ export const useModelParameterRules = (provider?: string, model?: string, enable
     queryFn: () =>
       get<{ data: ModelParameterRule[] }>(
         `/workspaces/current/model-providers/${provider}/models/parameter-rules`,
-        { params: { model }, silent: true },
+        { params: { model } },
       ),
     enabled: !!provider && !!model && (enabled ?? true),
   })

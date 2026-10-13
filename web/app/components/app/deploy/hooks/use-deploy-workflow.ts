@@ -2,6 +2,7 @@
 
 import type { DeployWorkflowResponse } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 
 export function useDeployWorkflow({
@@ -19,6 +20,9 @@ export function useDeployWorkflow({
 
   return useMutation({
     ...mutationOptions,
+    onError: (error) => {
+      if (error.name !== 'AbortError') toast.error(error.message)
+    },
     onSuccess: async (response, variables, onMutateResult, context) => {
       await mutationOptions.onSuccess?.(response, variables, onMutateResult, context)
       if (!appId) return

@@ -261,6 +261,31 @@ const resetStoreState = () => {
 }
 
 describe('OnlineDrive', () => {
+  it('reports an HTTP stream connection failure through the business owner', async () => {
+    const { ssePost } = await vi.importActual<typeof import('@/service/base')>('@/service/base')
+    mocks.ssePost.mockImplementationOnce(ssePost)
+    mockStoreState.currentCredentialId = 'credential-1'
+    const fetch = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      Response.json(
+        {
+          code: 'service_unavailable',
+          message: 'Data source unavailable',
+        },
+        { status: 503 },
+      ),
+    )
+    try {
+      renderOnlineDrive()
+      await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1))
+      await waitFor(() => {
+        expect(screen.getByTestId('file-list-loading')).toHaveTextContent('false')
+        expect(mocks.toastError).toHaveBeenCalledExactlyOnceWith('Data source unavailable')
+      })
+    } finally {
+      fetch.mockRestore()
+    }
+  })
+
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.pipelineId = 'pipeline-123'

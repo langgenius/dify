@@ -158,7 +158,7 @@ const usePipelineRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
             if (onWorkflowFinished) onWorkflowFinished(params)
           },
           onError: (params) => {
-            handleWorkflowFailed()
+            handleWorkflowFailed(params)
             invalidateRunHistory(runHistoryUrl)
 
             if (onError) onError(params)

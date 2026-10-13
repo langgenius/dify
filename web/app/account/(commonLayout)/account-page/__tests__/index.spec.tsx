@@ -1,5 +1,4 @@
 import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
-import { ORPCError } from '@orpc/client'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { toast } from '@/app/notifications'
@@ -378,9 +377,8 @@ describe('AccountPage', () => {
   })
 
   it.each(['name', 'password'])(
-    'leaves a server-reported %s failure to the request layer',
+    'reports a server-reported %s failure once and keeps the dialog open',
     async (field) => {
-      // The request layer reports the server message and rejects with an ORPCError.
       const error = vi.spyOn(toast, 'error')
       const user = userEvent.setup()
       mocks.request.mockRejectedValueOnce(
@@ -424,7 +422,7 @@ describe('AccountPage', () => {
         name: field === 'name' ? 'common.operation.save' : 'common.operation.reset',
       })
       await waitFor(() => expect(submit).not.toHaveAttribute('aria-disabled', 'true'))
-      expect(error).not.toHaveBeenCalled()
+      expect(error).toHaveBeenCalledExactlyOnceWith('Rejected')
     },
   )
 

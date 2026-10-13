@@ -121,8 +121,8 @@ export function EnvironmentRowActions({
     try {
       await onUndeploy(row)
       setShowUndeployConfirm(false)
-    } catch {
-      // The request layer reports the error; keep the dialog open so the user can retry.
+    } catch (error) {
+      if (error instanceof Error && error.name !== 'AbortError') toast.error(error.message)
     } finally {
       setIsUndeploying(false)
     }

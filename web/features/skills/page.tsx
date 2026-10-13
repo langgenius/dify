@@ -1014,15 +1014,9 @@ export default function SkillsPage() {
   const [keyword] = useQueryState(skillQueryParamNames.keyword, skillKeywordQueryParser)
   const [selectedTags] = useQueryState(skillQueryParamNames.tag, skillTagQueryParser)
   const debouncedKeyword = useDebounce(keyword.trim(), { wait: 300 })
-  const createMutation = useMutation(
-    consoleQuery.workspaces.current.skills.post.mutationOptions({
-      context: { silent: true },
-    }),
-  )
+  const createMutation = useMutation(consoleQuery.workspaces.current.skills.post.mutationOptions())
   const importMutation = useMutation(
-    consoleQuery.workspaces.current.skills.import.post.mutationOptions({
-      context: { silent: true },
-    }),
+    consoleQuery.workspaces.current.skills.import.post.mutationOptions(),
   )
   const skillsQuery = useInfiniteQuery({
     ...consoleQuery.workspaces.current.skills.get.infiniteOptions({

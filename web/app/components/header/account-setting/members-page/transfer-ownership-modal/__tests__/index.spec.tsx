@@ -211,7 +211,7 @@ describe('TransferOwnershipModal', () => {
     })
   })
 
-  it('should not show a modal-level toast and should stay on start step when sending verification email fails', async () => {
+  it('reports the send failure once and stays on the start step', async () => {
     const user = userEvent.setup()
     vi.mocked(sendOwnerEmail).mockRejectedValue(new Error('network error'))
     renderModal()
@@ -219,12 +219,10 @@ describe('TransferOwnershipModal', () => {
       screen.getByRole('button', { name: /members\.transferModal\.sendVerifyCode/i }),
     )
 
-    // The base service layer surfaces the real backend error. The modal itself
-    // must NOT show an additional toast (e.g. "Error sending verification code: undefined").
     await waitFor(() => {
       expect(sendOwnerEmail).toHaveBeenCalled()
     })
-    expect(mockNotify).not.toHaveBeenCalled()
+    expect(mockNotify).toHaveBeenCalledExactlyOnceWith({ type: 'error', message: 'network error' })
     // Should remain on the start step instead of advancing to the verify step.
     expect(
       screen.getByRole('button', { name: /members\.transferModal\.sendVerifyCode/i }),

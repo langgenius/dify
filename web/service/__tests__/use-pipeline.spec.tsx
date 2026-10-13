@@ -39,7 +39,7 @@ describe('use-pipeline imports', () => {
     })
   })
 
-  it('should import pipeline DSL silently so callers can own error toasts', async () => {
+  it('should import pipeline DSL without presentation options', async () => {
     const { result } = renderHook(() => useImportPipelineDSL(), { wrapper: createWrapper() })
     const request = {
       mode: DSLImportMode.YAML_CONTENT,
@@ -50,7 +50,7 @@ describe('use-pipeline imports', () => {
       await result.current.mutateAsync(request)
     })
 
-    expect(post).toHaveBeenCalledWith('/rag/pipelines/imports', { body: request }, { silent: true })
+    expect(post).toHaveBeenCalledWith('/rag/pipelines/imports', { body: request })
   })
 
   it('should confirm pipeline DSL import silently so callers can own error toasts', async () => {
@@ -60,10 +60,6 @@ describe('use-pipeline imports', () => {
       await result.current.mutateAsync('import-id')
     })
 
-    expect(post).toHaveBeenCalledWith(
-      '/rag/pipelines/imports/import-id/confirm',
-      {},
-      { silent: true },
-    )
+    expect(post).toHaveBeenCalledWith('/rag/pipelines/imports/import-id/confirm')
   })
 })

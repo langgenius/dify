@@ -70,6 +70,9 @@ export default function PreferencePage() {
   const { theme, setTheme } = useTheme()
   const updateProfile = useMutation(
     consoleQuery.account.profile.patch.mutationOptions({
+      onError: (error) => {
+        toast.error(error.message || t(($) => $['api.actionFailed'], { ns: 'common' }))
+      },
       onSuccess: async (data, variables, onMutateResult, context) => {
         const language = variables.body.interface_language
         await Promise.all([

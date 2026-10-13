@@ -99,7 +99,7 @@ function CreateFromDSLModal({
   const [currentTab, setCurrentTab] = useState(activeTab)
   const [pendingImport, setPendingImport] = useState<PendingImport | null>(null)
   const { mutateAsync: requestImport } = useMutation(
-    consoleQuery.apps.imports.post.mutationOptions({ context: { silent: true } }),
+    consoleQuery.apps.imports.post.mutationOptions(),
   )
   const importMutation = useMutation({
     mutationFn: async (source: ImportSource) => {
@@ -124,9 +124,7 @@ function CreateFromDSLModal({
     },
   })
   const confirmImportMutation = useMutation(
-    consoleQuery.apps.imports.byImportId.confirm.post.mutationOptions({
-      context: { silent: true },
-    }),
+    consoleQuery.apps.imports.byImportId.confirm.post.mutationOptions(),
   )
   const { handleCheckPluginDependencies } = usePluginDependencies()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())

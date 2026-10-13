@@ -68,7 +68,7 @@ type SendCallback = {
   onConversationComplete?: (conversationId: string, workflowRunId?: string) => void
   onUnhandledEvent?: IOtherOptions['onUnhandledEvent']
   onSendSettled?: (hasError?: boolean) => void
-  onNotifyError?: IOtherOptions['onNotifyError']
+  onNotifyError?: IOtherOptions['onError']
   isPublicAPI?: boolean
 }
 
@@ -609,7 +609,6 @@ export const useChat = (
       }
       const otherOptions: IOtherOptions = {
         isPublicAPI,
-        onNotifyError,
         getAbortController: (abortController) => {
           workflowEventsAbortControllerRef.current = abortController
         },
@@ -784,9 +783,13 @@ export const useChat = (
             responseItem.content = messageReplace.answer
           })
         },
-        onError() {
+        onError(message, code) {
           if (requestGeneration !== workflowRequestGenerationRef.current) return
 
+          if (!message.startsWith('AbortError')) {
+            if (onNotifyError) onNotifyError(message, code)
+            else toast.error(message)
+          }
           handleResponding(false)
           settleSend(true)
         },
@@ -1197,7 +1200,6 @@ export const useChat = (
 
       const otherOptions: IOtherOptions = {
         isPublicAPI,
-        onNotifyError,
         onUnhandledEvent,
         getAbortController: (abortController) => {
           workflowEventsAbortControllerRef.current = abortController
@@ -1485,9 +1487,13 @@ export const useChat = (
         onMessageReplace: (messageReplace) => {
           responseItem.content = messageReplace.answer
         },
-        onError() {
+        onError(message, code) {
           if (requestGeneration !== workflowRequestGenerationRef.current) return
 
+          if (!message.startsWith('AbortError')) {
+            if (onNotifyError) onNotifyError(message, code)
+            else toast.error(message)
+          }
           handleResponding(false)
           settleSend(true)
           updateCurrentQAOnTree({

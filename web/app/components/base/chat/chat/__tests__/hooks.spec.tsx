@@ -452,7 +452,7 @@ describe('useChat', () => {
       expect(ssePost).toHaveBeenCalledWith(
         'test-url',
         expect.any(Object),
-        expect.objectContaining({ onNotifyError }),
+        expect.objectContaining({ onError: expect.any(Function) }),
       )
       expect(result.current.isResponding).toBe(true)
 
@@ -544,7 +544,7 @@ describe('useChat', () => {
       })
 
       act(() => {
-        callbacks.onError()
+        callbacks.onError('Stream failed')
         callbacks.onCompleted(true)
       })
 
@@ -677,7 +677,7 @@ describe('useChat', () => {
         })
         callbacks.onMessageReplace({ answer: 'Replaced content' })
 
-        callbacks.onError()
+        callbacks.onError('Stream failed')
       })
 
       const lastResponse = result.current.chatList[1]
@@ -1497,7 +1497,7 @@ describe('useChat', () => {
       expect(sseGet).toHaveBeenCalledWith(
         '/workflow/wr-1/events?include_state_snapshot=true&continue_on_pause=true',
         expect.any(Object),
-        expect.objectContaining({ onNotifyError }),
+        expect.objectContaining({ onError: expect.any(Function) }),
       )
 
       act(() => {
@@ -1551,7 +1551,7 @@ describe('useChat', () => {
         callbacks.onWorkflowPaused({ data: { workflow_run_id: 'wr-1' } })
         callbacks.onWorkflowPaused({ data: { workflow_run_id: 'wr-1' } })
 
-        callbacks.onError()
+        callbacks.onError('Stream failed')
 
         // Remove the callbacks.onWorkflowFinished({ data: { status: 'succeeded' } }) call to leave it paused
 
@@ -1845,7 +1845,7 @@ describe('useChat', () => {
       })
 
       act(() => {
-        callbacks.onError()
+        callbacks.onError('Stream failed')
         callbacks.onCompleted(true)
       })
 

@@ -131,7 +131,6 @@ describe('useExportAppDsl', () => {
     await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1))
     expect(mocks.exportAppDsl).toHaveBeenLastCalledWith(
       expect.objectContaining({ query: expect.objectContaining({ include_secret: true }) }),
-      { context: { silent: true } },
     )
     expect(mocks.downloadBlob).toHaveBeenCalledTimes(1)
   })
@@ -157,10 +156,10 @@ describe('useExportAppDsl', () => {
     })
 
     expect(mocks.toastSuccess).toHaveBeenCalledWith('app.exportAppSuccess')
-    expect(mocks.exportAppDsl).toHaveBeenCalledWith(
-      { params: { app_id: 'agent-app-id' }, query: { include_secret: false, format: 'ifpkg' } },
-      { context: { silent: true } },
-    )
+    expect(mocks.exportAppDsl).toHaveBeenCalledWith({
+      params: { app_id: 'agent-app-id' },
+      query: { include_secret: false, format: 'ifpkg' },
+    })
     expect(mocks.downloadBlob).toHaveBeenCalledWith({ data: archive, fileName })
     const [{ data }] = mocks.downloadBlob.mock.calls[0] as [{ data: Blob }]
     expect(new Uint8Array(await data.arrayBuffer())).toEqual(
@@ -185,17 +184,14 @@ describe('useExportAppDsl', () => {
       ).resolves.toEqual({ status: 'downloaded' })
     })
 
-    expect(mocks.exportAppDsl).toHaveBeenCalledWith(
-      {
-        params: { app_id: 'agent-app-id' },
-        query: {
-          include_secret: false,
-          version_id: '11111111-1111-4111-8111-111111111111',
-          format: 'ifpkg',
-        },
+    expect(mocks.exportAppDsl).toHaveBeenCalledWith({
+      params: { app_id: 'agent-app-id' },
+      query: {
+        include_secret: false,
+        version_id: '11111111-1111-4111-8111-111111111111',
+        format: 'ifpkg',
       },
-      { context: { silent: true } },
-    )
+    })
     expect(mocks.downloadBlob).toHaveBeenCalledWith({
       data: archive,
       fileName: 'Support Agent.ifpkg',
@@ -227,13 +223,10 @@ describe('useExportAppDsl', () => {
     await waitFor(() => expect(result.current.isExporting).toBe(false))
 
     expect(mocks.exportAppDsl).toHaveBeenCalledTimes(2)
-    expect(mocks.exportAppDsl).toHaveBeenLastCalledWith(
-      {
-        params: { app_id: input.appId },
-        query: { include_secret: false, version_id: input.versionId },
-      },
-      { context: { silent: true } },
-    )
+    expect(mocks.exportAppDsl).toHaveBeenLastCalledWith({
+      params: { app_id: input.appId },
+      query: { include_secret: false, version_id: input.versionId },
+    })
     expect(mocks.downloadBlob).toHaveBeenCalledTimes(1)
     expect(mocks.downloadBlob).toHaveBeenCalledWith({
       data: archive,
@@ -266,13 +259,10 @@ describe('useExportAppDsl', () => {
       })
     })
 
-    expect(mocks.exportAppDsl).toHaveBeenCalledWith(
-      {
-        params: { app_id: '4f6ae8f8-86c8-4ec8-82ef-e27f5932692b' },
-        query: { include_secret: false },
-      },
-      { context: { silent: true } },
-    )
+    expect(mocks.exportAppDsl).toHaveBeenCalledWith({
+      params: { app_id: '4f6ae8f8-86c8-4ec8-82ef-e27f5932692b' },
+      query: { include_secret: false },
+    })
     expect(mocks.toastPromise).toHaveBeenCalledTimes(1)
     expect(mocks.getEnvironmentVariables).not.toHaveBeenCalled()
     expect(mocks.downloadBlob).toHaveBeenCalledWith({
@@ -318,7 +308,6 @@ describe('useExportAppDsl', () => {
     })
     expect(mocks.exportAppDsl).toHaveBeenCalledWith(
       expect.objectContaining({ query: { include_secret: true } }),
-      expect.anything(),
     )
   })
 
@@ -379,10 +368,9 @@ describe('useExportWorkflowAppDsl', () => {
       })
     })
 
-    expect(mocks.getEnvironmentVariables).toHaveBeenCalledWith(
-      { params: { app_id: 'workflow-app-id' } },
-      { context: { silent: true } },
-    )
+    expect(mocks.getEnvironmentVariables).toHaveBeenCalledWith({
+      params: { app_id: 'workflow-app-id' },
+    })
     expect(mocks.getEnvironmentVariables.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.exportAppDsl.mock.invocationCallOrder[0]!,
     )

@@ -9,6 +9,7 @@ import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import { FormTypeEnum } from '@/app/components/base/form/types'
+import { toast } from '@/app/notifications'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import { openOAuthPopup } from '@/hooks/use-oauth'
 import { PermissionLevel } from '@/models/permission'
@@ -101,9 +102,8 @@ const AddOAuthButton = ({
 
       openOAuthPopup(authorization_url, () => onUpdate?.())
       return true
-    } catch {
-      // The request layer surfaces the error. Keep the current UI state so the
-      // user can retry without losing their visibility selection.
+    } catch (error) {
+      if (error instanceof Error && error.name !== 'AbortError') toast.error(error.message)
       return false
     }
   }, [getPluginOAuthUrl, onUpdate, pendingVisibility, isVisibilityPickerSupported])

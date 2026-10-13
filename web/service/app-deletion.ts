@@ -36,14 +36,3 @@ export const markAppDeletionFailed = (appId: string) => {
 }
 
 export const isAppDeletingOrDeleted = (appId: string) => appDeletionStates.has(appId)
-
-export const shouldSuppressAppDeletionErrorToast = (requestUrl: string, status: number) => {
-  if (status !== 404) return false
-
-  const match = new URL(requestUrl, globalThis.location?.origin).pathname.match(
-    /\/apps\/([^/]+)\/workflows(?:\/|$)/,
-  )
-  if (!match?.[1]) return false
-
-  return isAppDeletingOrDeleted(decodeURIComponent(match[1]))
-}

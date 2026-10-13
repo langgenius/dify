@@ -1,6 +1,7 @@
 import type { CreateSnippetDialogPayload } from '@/app/components/snippets/create-snippet-dialog'
 import { useAtomValue } from 'jotai'
 import { useState } from 'react'
+import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useRouter } from '@/next/navigation'
 import { consoleClient } from '@/service/console'
@@ -55,8 +56,8 @@ export const useCreateSnippet = () => {
 
       handleCloseCreateSnippetDialog()
       push(`/snippets/${snippet.id}/orchestrate`)
-    } catch {
-      // The API client surfaces the response message. Avoid showing a second generic create-failed toast here.
+    } catch (error) {
+      if (error instanceof Error && error.name !== 'AbortError') toast.error(error.message)
     } finally {
       setIsCreatingSnippet(false)
     }

@@ -20,7 +20,6 @@ function createBrowserLink(contract: AnyContractRouter): ClientLink<ConsoleClien
       return request(normalizedURL, requestInit, {
         fetchCompat: true,
         request: normalizedRequest,
-        silent: options.context.silent,
       })
     },
     interceptors: [onError((error) => console.error(error))],

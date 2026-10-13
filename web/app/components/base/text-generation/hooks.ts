@@ -42,10 +42,12 @@ export const useTextGeneration = () => {
         onCompleted() {
           setIsResponding(false)
         },
-        onError() {
+        onError(message, code) {
           setIsResponding(false)
+          if (message.startsWith('AbortError')) return
+          if (onNotifyError) onNotifyError(message, code)
+          else toast.error(message)
         },
-        onNotifyError,
       },
     )
     return true

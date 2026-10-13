@@ -1127,6 +1127,33 @@ describe('WebsiteCrawl', () => {
 
   // Error Display
   describe('Error Display', () => {
+    it('shows an HTTP connection failure inline and finishes the crawl', async () => {
+      const { ssePost } = await vi.importActual<typeof import('@/service/base')>('@/service/base')
+      mockSsePost.mockImplementationOnce(ssePost)
+      mockStoreState.currentCredentialId = 'cred-1'
+      mockStoreState.setStep.mockImplementation((step: CrawlStep) => {
+        mockStoreState.step = step
+      })
+      const fetch = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+        Response.json(
+          {
+            code: 'service_unavailable',
+            message: 'Crawler unavailable',
+          },
+          { status: 503 },
+        ),
+      )
+      try {
+        const props = createDefaultProps()
+        render(<WebsiteCrawl {...props} />)
+        fireEvent.click(screen.getByTestId('options-submit-btn'))
+        await waitFor(() => expect(mockStoreState.setStep).toHaveBeenCalledWith(CrawlStep.finished))
+        expect(screen.getByTestId('error-message')).toHaveTextContent('Crawler unavailable')
+      } finally {
+        fetch.mockRestore()
+      }
+    })
+
     it('should show ErrorMessage when crawl finishes with error', async () => {
       // Arrange - Need to create a scenario where error message is set
       mockStoreState.currentCredentialId = 'cred-1'

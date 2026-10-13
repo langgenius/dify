@@ -18,7 +18,7 @@ vi.mock('@/service/console', () => ({
         byAppId: {
           checkDependencies: {
             get: {
-              mutationOptions: ({ context }: { context: { silent: boolean } }) => ({
+              mutationOptions: ({ context }: { context?: unknown } = {}) => ({
                 mutationFn: (input: unknown) => mocks.request(input, context),
               }),
             },
@@ -43,7 +43,10 @@ function renderDependencies() {
 }
 
 describe('usePluginDependencies', () => {
-  beforeEach(() => vi.clearAllMocks())
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.request.mockReset()
+  })
 
   it('stores generated dependencies with nullable versions and clears an omitted dependency list', async () => {
     const dependency = {
@@ -60,7 +63,7 @@ describe('usePluginDependencies', () => {
     expect(useStore.getState().dependencies).toEqual([
       { ...dependency, value: { ...dependency.value, version: undefined } },
     ])
-    expect(mocks.request).toHaveBeenCalledWith({ params: { app_id: 'app-1' } }, { silent: true })
+    expect(mocks.request).toHaveBeenCalledWith({ params: { app_id: 'app-1' } }, undefined)
     await act(async () => result.current.handleCheckPluginDependencies('app-1'))
     expect(useStore.getState().dependencies).toEqual([])
   })

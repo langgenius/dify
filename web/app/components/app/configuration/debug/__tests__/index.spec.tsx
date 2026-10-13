@@ -859,7 +859,7 @@ describe('Debug', () => {
             onData: (chunk: string, isFirst: boolean, payload: { messageId: string }) => void
             onMessageReplace: (payload: { answer: string }) => void
             onCompleted: () => void
-            onError: () => void
+            onError: (message: string) => void
           },
         ) => {
           handlers.onData('hello', true, { messageId: 'msg-1' })
@@ -898,7 +898,7 @@ describe('Debug', () => {
 
       await waitFor(() => expect(mockState.mockSendCompletionMessage).toHaveBeenCalledTimes(1))
       const [, requestData, handlers] = (mockState.mockSendCompletionMessage.mock.calls[0] ??
-        []) as [unknown, unknown, { onNotifyError: (message: string) => void }]
+        []) as [unknown, unknown, { onError: (message: string) => void }]
       expect(requestData).toMatchObject({
         inputs: { question: 'hello' },
         model_config: {
@@ -913,7 +913,7 @@ describe('Debug', () => {
       expect(screen.getByTestId('text-generation'))!.toHaveAttribute('data-message-id', 'msg-1')
       expect(screen.getByTestId('text-generation'))!.toHaveAttribute('data-tts', 'true')
 
-      handlers.onNotifyError('Base model not found')
+      handlers.onError('Base model not found')
       expect(mockState.mockToastCall).toHaveBeenCalledWith({
         type: 'error',
         message: 'Base model not found',
@@ -960,7 +960,7 @@ describe('Debug', () => {
           _appId,
           data,
           handlers: {
-            onError: () => void
+            onError: (message: string) => void
           },
         ) => {
           expect(data.files).toEqual([
@@ -969,7 +969,7 @@ describe('Debug', () => {
               url: 'https://example.com/file.png',
             },
           ])
-          handlers.onError()
+          handlers.onError('Completion failed')
         },
       )
 
@@ -991,6 +991,10 @@ describe('Debug', () => {
 
       await waitFor(() => expect(mockState.mockSendCompletionMessage).toHaveBeenCalledTimes(1))
       expect(screen.getByText('appDebug.noResult'))!.toBeInTheDocument()
+      expect(mockState.mockToastCall).toHaveBeenCalledWith({
+        type: 'error',
+        message: 'Completion failed',
+      })
     })
 
     it('opens and closes the completion result log from its action', async () => {

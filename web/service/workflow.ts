@@ -30,7 +30,7 @@ type EnvironmentVariablePatchPayload = {
 }
 
 export const fetchWorkflowDraft = (url: string) => {
-  return get(url, {}, { silent: true }) as Promise<FetchWorkflowDraftResponse>
+  return get(url) as Promise<FetchWorkflowDraftResponse>
 }
 
 export const syncWorkflowDraft = ({
@@ -44,11 +44,7 @@ export const syncWorkflowDraft = ({
       force?: boolean
     }
 }) => {
-  return post<CommonResponse & { updated_at: number; hash: string }>(
-    url,
-    { body: params },
-    { silent: true },
-  )
+  return post<CommonResponse & { updated_at: number; hash: string }>(url, { body: params })
 }
 
 export const fetchNodesDefaultConfigs = (url: string) => {
@@ -157,7 +153,9 @@ export const updateEnvironmentVariables = ({
 }: {
   appId: string
 } & EnvironmentVariablePatch) => {
-  return post<CommonResponse>(`apps/${appId}/workflows/draft/environment-variables`, {
+  // EnvPanel owns recovery through a draft sync and reports only if both paths fail.
+  return consoleClient.apps.byAppId.workflows.draft.environmentVariables.post({
+    params: { app_id: appId },
     body: {
       environment_variables: environmentVariables,
       patch: true,

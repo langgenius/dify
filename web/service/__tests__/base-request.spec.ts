@@ -137,6 +137,25 @@ describe('request 401 handling', () => {
     expect(mocks.refreshAccessTokenOrReLogin).not.toHaveBeenCalled()
   })
 
+  it('redirects an already configured setup to sign-in and preserves the HTTP error', async () => {
+    arrangeClientRequest({
+      response: Response.json(
+        { code: 'already_setup', message: 'Already configured.' },
+        { status: 403 },
+      ),
+    })
+
+    await expect(request('/setup')).rejects.toMatchObject({
+      defined: false,
+      status: 403,
+      code: 'already_setup',
+      message: 'Already configured.',
+    })
+
+    expect(globalThis.location.href).toBe('https://example.com/signin')
+    expect(mocks.refreshAccessTokenOrReLogin).not.toHaveBeenCalled()
+  })
+
   it('should preserve the current URL when a 401 response cannot be parsed', async () => {
     const response = new Response('not-json', { status: 401 })
     arrangeClientRequest({ response })

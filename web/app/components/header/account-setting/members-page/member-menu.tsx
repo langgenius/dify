@@ -96,7 +96,8 @@ const MemberMenu = ({
       await deleteMemberOrCancelInvitation({ url: `/workspaces/current/members/${member.id}` })
       void queryClient.invalidateQueries({ queryKey: commonQueryKeys.members })
       setRemoveConfirmOpen(false)
-    } catch {
+    } catch (error) {
+      if (error instanceof Error && error.name !== 'AbortError') toast.error(error.message)
     } finally {
       setRemoving(false)
     }

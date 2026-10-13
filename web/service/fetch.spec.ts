@@ -1,11 +1,6 @@
 import { ORPCError } from '@orpc/client'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { PUBLIC_API_PREFIX } from '@/config'
-import {
-  markAppDeletionFailed,
-  markAppDeletionStarted,
-  markAppDeletionSucceeded,
-} from './app-deletion'
 // oxlint-disable-next-line no-restricted-imports
 import { base } from './fetch'
 
@@ -143,7 +138,7 @@ describe('base', () => {
       })
     })
 
-    it('should display the response error field when message is absent', async () => {
+    it('should expose the response error field when message is absent', async () => {
       const errorResponse = new Response(
         JSON.stringify({
           code: 'invalid_param',
@@ -160,12 +155,14 @@ describe('base', () => {
 
       vi.spyOn(globalThis, 'fetch').mockResolvedValue(errorResponse)
 
-      await expect(base('/imports')).rejects.toBeInstanceOf(ORPCError)
-
-      expect(toast.error).toHaveBeenCalledWith('Invalid DSL kind')
+      await expect(base('/imports')).rejects.toMatchObject({
+        message: 'Invalid DSL kind',
+        status: 400,
+      })
+      expect(toast.error).not.toHaveBeenCalled()
     })
 
-    it('should not display an empty error toast when message and error are absent', async () => {
+    it('should expose the HTTP fallback when message and error are absent', async () => {
       const errorResponse = new Response(
         JSON.stringify({
           code: 'invalid_param',
@@ -181,125 +178,48 @@ describe('base', () => {
 
       vi.spyOn(globalThis, 'fetch').mockResolvedValue(errorResponse)
 
-      await expect(base('/imports')).rejects.toBeInstanceOf(ORPCError)
-
+      await expect(base('/imports')).rejects.toMatchObject({ message: 'HTTP 400', status: 400 })
       expect(toast.error).not.toHaveBeenCalled()
     })
 
-    it('should suppress a late workflow 404 for the app being deleted', async () => {
-      const appId = 'deleting-app'
-      markAppDeletionStarted(appId)
-      vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-        new Response(
-          JSON.stringify({
-            code: 'not_found',
-            message: 'App not found',
-            status: 404,
-          }),
-          {
-            status: 404,
-            headers: { 'Content-Type': 'application/json' },
-          },
-        ),
-      )
+    it.each([400, 401, 403, 404, 409, 429, 500, 502, 503])(
+      'rejects HTTP %s without presenting an error',
+      async (status) => {
+        vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+          new Response('<html>Proxy failure</html>', { status }),
+        )
 
-      try {
-        await expect(
-          base(`/apps/${appId}/workflows/draft/system-variables`),
-        ).rejects.toBeInstanceOf(ORPCError)
+        await expect(base('/apps')).rejects.toMatchObject({ status, message: `HTTP ${status}` })
         expect(toast.error).not.toHaveBeenCalled()
-      } finally {
-        markAppDeletionFailed(appId)
-      }
-    })
+      },
+    )
 
-    it('should suppress a workflow 404 that settles after app deletion succeeds', async () => {
-      const appId = 'deleted-app'
-      markAppDeletionStarted(appId)
-      markAppDeletionSucceeded(appId)
-      vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-        new Response(
-          JSON.stringify({
-            code: 'not_found',
-            message: 'App not found',
-            status: 404,
-          }),
-          {
-            status: 404,
-            headers: { 'Content-Type': 'application/json' },
-          },
-        ),
-      )
+    it('propagates network failure without presenting an error', async () => {
+      vi.spyOn(globalThis, 'fetch').mockRejectedValue(new TypeError('Failed to fetch'))
 
-      await expect(
-        base(`/apps/${appId}/workflows/draft/conversation-variables`),
-      ).rejects.toBeInstanceOf(ORPCError)
+      await expect(base('/apps')).rejects.toBeInstanceOf(Error)
       expect(toast.error).not.toHaveBeenCalled()
     })
 
-    it('should restore workflow 404 notifications when app deletion fails', async () => {
-      const appId = 'failed-deletion-app'
-      markAppDeletionStarted(appId)
-      markAppDeletionFailed(appId)
-      vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-        new Response(
-          JSON.stringify({
-            code: 'not_found',
-            message: 'Visible error',
-            status: 404,
-          }),
-          {
-            status: 404,
-            headers: { 'Content-Type': 'application/json' },
-          },
-        ),
-      )
+    it('propagates cancellation without presenting an error', async () => {
+      const controller = new AbortController()
+      controller.abort()
+      vi.spyOn(globalThis, 'fetch').mockRejectedValue(controller.signal.reason)
 
-      await expect(base(`/apps/${appId}/workflows/draft/variables`)).rejects.toBeInstanceOf(
-        ORPCError,
-      )
-      expect(toast.error).toHaveBeenCalledWith('Visible error')
+      await expect(base('/apps', { signal: controller.signal })).rejects.toMatchObject({
+        name: 'AbortError',
+      })
+      expect(toast.error).not.toHaveBeenCalled()
     })
 
-    it.each([
-      {
-        title: 'another app workflow 404',
-        path: '/apps/another-app/workflows/draft/system-variables',
-        status: 404,
-      },
-      {
-        title: 'a non-workflow 404',
-        path: '/apps/deleting-app',
-        status: 404,
-      },
-      {
-        title: 'a workflow 500',
-        path: '/apps/deleting-app/workflows/draft/system-variables',
-        status: 500,
-      },
-    ])('should still display $title while an app is being deleted', async ({ path, status }) => {
-      const appId = 'deleting-app'
-      markAppDeletionStarted(appId)
+    it('leaves setup navigation to the authentication owner', async () => {
       vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-        new Response(
-          JSON.stringify({
-            code: 'request_failed',
-            message: 'Visible error',
-            status,
-          }),
-          {
-            status,
-            headers: { 'Content-Type': 'application/json' },
-          },
-        ),
+        Response.json({ code: 'already_setup', message: 'Already set up' }, { status: 403 }),
       )
 
-      try {
-        await expect(base(path)).rejects.toBeInstanceOf(ORPCError)
-        expect(toast.error).toHaveBeenCalledWith('Visible error')
-      } finally {
-        markAppDeletionFailed(appId)
-      }
+      await expect(base('/setup')).rejects.toMatchObject({ code: 'already_setup', status: 403 })
+      expect(window.location.pathname).toBe('/')
+      expect(toast.error).not.toHaveBeenCalled()
     })
   })
 })

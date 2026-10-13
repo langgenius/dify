@@ -29,7 +29,7 @@ type MailAndPasswordAuthProps = {
 }
 
 export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAuthProps) {
-  const { t } = useTranslation(['login'])
+  const { t } = useTranslation(['login', 'common'])
   const router = useRouter()
   const searchParams = useSearchParams()
   const [showPassword, setShowPassword] = useState(false)
@@ -92,12 +92,10 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
         toast.error(res.data)
       }
     } catch (error: unknown) {
-      const authenticationError = error as { code?: unknown; message?: unknown }
-      if (
-        authenticationError.code === 'authentication_failed' &&
-        typeof authenticationError.message === 'string'
+      if (error instanceof Error && error.name === 'AbortError') return
+      toast.error(
+        error instanceof Error ? error.message : t(($) => $['api.actionFailed'], { ns: 'common' }),
       )
-        toast.error(authenticationError.message)
     } finally {
       setIsLoading(false)
     }

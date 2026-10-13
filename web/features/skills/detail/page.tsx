@@ -98,9 +98,7 @@ export function SkillDetailPage({ skillId }: { skillId: string }) {
     enabled: !!activeVersionId,
   })
   const publishMutation = useMutation(
-    consoleQuery.workspaces.current.skills.bySkillId.publish.post.mutationOptions({
-      context: { silent: true },
-    }),
+    consoleQuery.workspaces.current.skills.bySkillId.publish.post.mutationOptions(),
   )
   const queriedDetail = detailQuery.data
   const baseDetail = draftDetailOverride ?? queriedDetail

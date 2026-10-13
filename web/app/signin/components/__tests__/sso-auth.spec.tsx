@@ -82,7 +82,7 @@ describe('SSOAuth', () => {
 
     await waitFor(() => expect(button).toBeEnabled())
     expect(mocks.toastError).toHaveBeenCalledTimes(1)
-    expect(mocks.toastError).toHaveBeenCalledWith('login.error.ssoFailed')
+    expect(mocks.toastError).toHaveBeenCalledWith('HTTP 502')
   })
 
   it('should only show the server message when the error response carries one', async () => {

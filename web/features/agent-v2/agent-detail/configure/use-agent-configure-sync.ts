@@ -103,26 +103,17 @@ export function useAgentConfigureSync({
   }, [store])
 
   const { mutateAsync: saveComposerDraft } = useMutation(
-    consoleQuery.agent.byAgentId.composer.put.mutationOptions({
-      context: {
-        silent: true,
-      },
-    }),
+    consoleQuery.agent.byAgentId.composer.put.mutationOptions(),
   )
   const { mutateAsync: saveComposerDraftOnPageClose } = useMutation(
     consoleQuery.agent.byAgentId.composer.put.mutationOptions({
       context: {
         keepalive: true,
-        silent: true,
       },
     }),
   )
   const { mutateAsync: publishAgent } = useMutation(
-    consoleQuery.agent.byAgentId.publish.post.mutationOptions({
-      context: {
-        silent: true,
-      },
-    }),
+    consoleQuery.agent.byAgentId.publish.post.mutationOptions(),
   )
 
   const applySavedDraft = useCallback(

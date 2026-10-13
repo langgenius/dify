@@ -37,9 +37,6 @@ describe('SkillDetailPage publishing', () => {
 
     renderSkillDetailPage()
 
-    expect(mocks.publishSkillMutationOptions).toHaveBeenCalledWith({
-      context: { silent: true },
-    })
     await user.click(
       await screen.findByRole('button', {
         name: 'skill.skillManagement.detail.publishUpdate',

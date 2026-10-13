@@ -181,9 +181,7 @@ export function FileEditor({
   const liveBodyEditorRef = useRef<HTMLDivElement>(null)
   const sourceTextareaRef = useRef<HTMLTextAreaElement>(null)
   const { isPending: isSavingDraft, mutateAsync: saveDraftFile } = useMutation(
-    consoleQuery.workspaces.current.skills.bySkillId.files.patch.mutationOptions({
-      context: { silent: true },
-    }),
+    consoleQuery.workspaces.current.skills.bySkillId.files.patch.mutationOptions(),
   )
   const filePath = file?.path
   const codeLanguage = getSkillCodeLanguage(file)

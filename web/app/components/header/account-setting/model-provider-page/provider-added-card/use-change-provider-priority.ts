@@ -38,8 +38,11 @@ export function useChangeProviderPriority(
               provider?.supported_model_types.forEach((modelType) => updateModelList(modelType))
           })
         },
-        onError: () => {
-          toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+        onError: (error) => {
+          if (error.name === 'AbortError') return
+          toast.error(
+            error.message || t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
+          )
         },
       },
     ),

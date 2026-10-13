@@ -103,6 +103,9 @@ const OnlineDocuments = ({
           const { setDocumentsData } = dataSourceStore.getState()
           setDocumentsData(documentsData.data as DataSourceNotionWorkspace[])
         },
+        onError: (message) => {
+          if (!message.startsWith('AbortError')) toast.error(message)
+        },
         onDataSourceNodeError: (error: DataSourceNodeErrorResponse) => {
           toast.error(error.error)
         },

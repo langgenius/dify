@@ -5,6 +5,7 @@ import { Form } from '@langgenius/dify-ui/form'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
+import { ORPCError } from '@orpc/client'
 import { useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -26,12 +27,8 @@ type MailAndPasswordAuthProps = {
   isEmailSetup: boolean
 }
 
-function hasErrorCode(error: unknown, code: string) {
-  return typeof error === 'object' && error !== null && 'code' in error && error.code === code
-}
-
 export default function MailAndPasswordAuth({ isInvite, isEmailSetup }: MailAndPasswordAuthProps) {
-  const { t } = useTranslation(['login'])
+  const { t } = useTranslation(['login', 'common'])
   const router = useRouter()
   const queryClient = useQueryClient()
   const searchParams = useSearchParams()
@@ -76,8 +73,15 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup }: MailAndP
         toast.error(res.data)
       }
     } catch (error) {
-      if (hasErrorCode(error, 'authentication_failed'))
+      if (error instanceof Error && error.name === 'AbortError') return
+      if (error instanceof ORPCError && error.code === 'authentication_failed')
         toast.error(t(($) => $['error.invalidEmailOrPassword'], { ns: 'login' }))
+      else
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : t(($) => $['api.actionFailed'], { ns: 'common' }),
+        )
     } finally {
       setIsLoading(false)
     }

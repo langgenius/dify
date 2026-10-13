@@ -430,62 +430,10 @@ describe('ssePost and sseGet', () => {
     await waitFor(() => {
       expect(onError).toHaveBeenCalledWith('TypeError: Network failed')
     })
-    expect(toast.error).toHaveBeenCalledWith('TypeError: Network failed')
-  })
-
-  it('should route fetch failures through a custom notifier', async () => {
-    const onError = vi.fn()
-    const onNotifyError = vi.fn()
-    vi.spyOn(globalThis, 'fetch').mockRejectedValueOnce(new TypeError('Network failed'))
-
-    await ssePost('/chat-messages', { body: { query: 'hello' } }, { onError, onNotifyError })
-
-    await waitFor(() => {
-      expect(onError).toHaveBeenCalledWith('TypeError: Network failed')
-    })
-    expect(onNotifyError).toHaveBeenCalledWith('TypeError: Network failed')
     expect(toast.error).not.toHaveBeenCalled()
   })
 
-  it('should route the response error through a custom notifier', async () => {
-    const onError = vi.fn()
-    const onNotifyError = vi.fn()
-    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
-      new Response(JSON.stringify({ message: 'Base model not found' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      }),
-    )
-
-    await ssePost('/chat-messages', { body: { query: 'hello' } }, { onError, onNotifyError })
-
-    await waitFor(() => {
-      expect(onError).toHaveBeenCalledWith('Base model not found')
-    })
-    expect(onNotifyError).toHaveBeenCalledWith('Base model not found')
-    expect(toast.error).not.toHaveBeenCalled()
-  })
-
-  it('should route event stream response errors through a custom notifier', async () => {
-    const onError = vi.fn()
-    const onNotifyError = vi.fn()
-    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
-      new Response(JSON.stringify({ message: 'Workflow resume failed' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      }),
-    )
-
-    await sseGet('/workflow/workflow-run-1/events', {}, { onError, onNotifyError })
-
-    await waitFor(() => {
-      expect(onError).toHaveBeenCalledWith('Workflow resume failed')
-    })
-    expect(onNotifyError).toHaveBeenCalledWith('Workflow resume failed')
-    expect(toast.error).not.toHaveBeenCalled()
-  })
-
-  it('should preserve the default response error notification', async () => {
+  it('should route the response error through onError without presenting them', async () => {
     const onError = vi.fn()
     vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
       new Response(JSON.stringify({ message: 'Base model not found' }), {
@@ -497,12 +445,29 @@ describe('ssePost and sseGet', () => {
     await ssePost('/chat-messages', { body: { query: 'hello' } }, { onError })
 
     await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith('Base model not found')
+      expect(onError).toHaveBeenCalledWith('Base model not found')
     })
-    expect(onError).toHaveBeenCalledWith('Base model not found')
+    expect(toast.error).not.toHaveBeenCalled()
   })
 
-  it('should preserve the response error for silent requests without notifying', async () => {
+  it('should route event stream response errors through onError without presenting them', async () => {
+    const onError = vi.fn()
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      new Response(JSON.stringify({ message: 'Workflow resume failed' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+
+    await sseGet('/workflow/workflow-run-1/events', {}, { onError })
+
+    await waitFor(() => {
+      expect(onError).toHaveBeenCalledWith('Workflow resume failed')
+    })
+    expect(toast.error).not.toHaveBeenCalled()
+  })
+
+  it('should preserve the response error without presenting it', async () => {
     const onError = vi.fn()
     vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
       new Response(JSON.stringify({ code: 'model_not_found', message: 'Base model not found' }), {
@@ -511,7 +476,7 @@ describe('ssePost and sseGet', () => {
       }),
     )
 
-    await ssePost('/chat-messages', { body: { query: 'hello' } }, { onError, silent: true })
+    await ssePost('/chat-messages', { body: { query: 'hello' } }, { onError })
 
     await waitFor(() => {
       expect(onError).toHaveBeenCalledWith('Base model not found', 'model_not_found')
@@ -519,9 +484,8 @@ describe('ssePost and sseGet', () => {
     expect(toast.error).not.toHaveBeenCalled()
   })
 
-  it('should route the stream error through a custom notifier', async () => {
+  it('should route the stream error through onError without presenting them', async () => {
     const onError = vi.fn()
-    const onNotifyError = vi.fn()
     const body = new ReadableStream({
       start(controller) {
         controller.enqueue(
@@ -534,12 +498,11 @@ describe('ssePost and sseGet', () => {
     })
     vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(body, { status: 200 }))
 
-    await ssePost('/chat-messages', { body: { query: 'hello' } }, { onError, onNotifyError })
+    await ssePost('/chat-messages', { body: { query: 'hello' } }, { onError })
 
     await waitFor(() => {
       expect(onError).toHaveBeenCalledWith('Base model not found', 'model_not_found')
     })
-    expect(onNotifyError).toHaveBeenCalledWith('Base model not found', 'model_not_found')
     expect(toast.error).not.toHaveBeenCalled()
   })
 
@@ -616,49 +579,11 @@ describe('ssePost and sseGet', () => {
       expect(onError).toHaveBeenCalledWith('Error: stream lost', 'stream_read_error')
     })
     expect(onCompleted).toHaveBeenCalledWith(true, 'Error: stream lost')
-    expect(toast.error).toHaveBeenCalledWith('Error: stream lost')
-  })
-
-  it('should not notify stream reader failures when silent', async () => {
-    const onError = vi.fn()
-    const onCompleted = vi.fn()
-    const mockReader = {
-      read: vi.fn().mockRejectedValueOnce(new Error('stream lost')),
-    }
-    const response = {
-      status: 200,
-      ok: true,
-      body: {
-        getReader: () => mockReader,
-      },
-    } as unknown as Response
-
-    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(response)
-
-    await ssePost(
-      '/chat-messages',
-      {
-        body: {
-          query: 'hello',
-        },
-      },
-      {
-        onError,
-        onCompleted,
-        silent: true,
-      },
-    )
-
-    await waitFor(() => {
-      expect(onError).toHaveBeenCalledWith('Error: stream lost', 'stream_read_error')
-    })
-    expect(onCompleted).toHaveBeenCalledWith(true, 'Error: stream lost')
     expect(toast.error).not.toHaveBeenCalled()
   })
 
   it('should not notify when the stream reader is aborted', async () => {
     const onError = vi.fn()
-    const onNotifyError = vi.fn()
     const onCompleted = vi.fn()
     const mockReader = {
       read: vi
@@ -684,7 +609,6 @@ describe('ssePost and sseGet', () => {
       },
       {
         onError,
-        onNotifyError,
         onCompleted,
       },
     )
@@ -696,7 +620,6 @@ describe('ssePost and sseGet', () => {
       )
     })
     expect(onCompleted).toHaveBeenCalledWith(true, 'AbortError: BodyStreamBuffer was aborted')
-    expect(onNotifyError).not.toHaveBeenCalled()
     expect(toast.error).not.toHaveBeenCalled()
   })
 

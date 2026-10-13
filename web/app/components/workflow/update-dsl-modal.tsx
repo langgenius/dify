@@ -135,7 +135,7 @@ const UpdateDSLModal = ({ appId, appMode, onCancel, onBackup, onImport }: Update
   }
 
   const { mutateAsync: requestImport } = useMutation(
-    consoleQuery.apps.imports.post.mutationOptions({ context: { silent: true } }),
+    consoleQuery.apps.imports.post.mutationOptions(),
   )
   const importMutation = useMutation({
     mutationFn: async (file: File) => {
@@ -162,7 +162,6 @@ const UpdateDSLModal = ({ appId, appMode, onCancel, onBackup, onImport }: Update
   })
   const confirmImportMutation = useMutation(
     consoleQuery.apps.imports.byImportId.confirm.post.mutationOptions({
-      context: { silent: true },
       onError: (error) => notifyImportError(error),
       onSettled: async (response) => {
         if (response) await handleImportResponse(response)

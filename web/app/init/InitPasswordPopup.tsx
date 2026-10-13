@@ -7,7 +7,8 @@ import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { toast } from '@/app/notifications'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter } from '@/next/navigation'
-import { fetchInitValidateStatus, initValidate } from '@/service/common'
+import { fetchInitValidateStatus } from '@/service/common'
+import { consoleClient } from '@/service/console'
 import { basePath } from '@/utils/var'
 
 const InitPasswordPopup = () => {
@@ -23,7 +24,7 @@ const InitPasswordPopup = () => {
   const handleValidation = async () => {
     setLoading(true)
     try {
-      const response = await initValidate({ body: { password } })
+      const response = await consoleClient.init.post({ body: { password } })
       if (response.result === 'success') {
         setValidated(true)
         router.push('/install') // or render setup form

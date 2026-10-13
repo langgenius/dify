@@ -359,9 +359,7 @@ export const fetchSavedMessage = async (appSourceType: AppSourceType, installedA
   return getAction('get', appSourceType)(
     getUrl('/saved-messages', appSourceType, installedAppId),
     {},
-    {
-      silent: true,
-    },
+    {},
   )
 }
 

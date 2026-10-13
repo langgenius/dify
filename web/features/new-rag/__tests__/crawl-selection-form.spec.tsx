@@ -215,9 +215,7 @@ describe('CrawlSelectionForm', () => {
     renderSelectionForm()
     await screen.findByRole('checkbox', { name: 'Getting started' })
 
-    expect(policyQueryOptionsMock).toHaveBeenCalledWith(
-      expect.objectContaining({ context: { silent: true } }),
-    )
+    expect(policyQueryOptionsMock).toHaveBeenCalledWith(expect.objectContaining({}))
   })
 
   it('preserves the sync policy selected in the creation flow', async () => {

@@ -231,7 +231,6 @@ describe('AddSourcePage', () => {
     render(<AddSourcePage knowledgeSpaceId="space-1" />)
 
     expect(providerQueryOptionsMock).toHaveBeenCalledWith({
-      context: { silent: true },
       enabled: true,
       input: {},
       retry: false,

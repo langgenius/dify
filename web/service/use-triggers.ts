@@ -663,9 +663,6 @@ export const useVerifyAndUpdateTriggerSubscriptionBuilder = () => {
           params: { provider, subscription_builder_id: subscriptionBuilderId },
           body: credentials === undefined ? {} : { credentials },
         },
-        {
-          context: { silent: true },
-        },
       )
     },
   })
@@ -685,9 +682,6 @@ export const useVerifyTriggerSubscription = () => {
         {
           params: { provider, subscription_id: subscriptionId },
           body: { credentials: credentials ?? {} },
-        },
-        {
-          context: { silent: true },
         },
       )
     },
@@ -846,9 +840,6 @@ export const useInitiateTriggerOAuth = () => {
           {
             params: { provider },
           },
-          {
-            context: { silent: true },
-          },
         )
       return {
         authorization_url: response.authorization_url,
@@ -897,29 +888,21 @@ export const useTriggerPluginDynamicOptions = (
                 provider: payload.provider,
               },
             },
-            {
-              context: { silent: true },
-            },
           ),
         )
       }
 
       return normalizeDynamicOptionsResponse(
-        await consoleClient.workspaces.current.plugin.parameters.dynamicOptions.get(
-          {
-            query: {
-              action: payload.action,
-              credential_id: payload.credential_id,
-              parameter: payload.parameter,
-              plugin_id: payload.plugin_id,
-              provider: payload.provider,
-              provider_type: 'trigger',
-            },
+        await consoleClient.workspaces.current.plugin.parameters.dynamicOptions.get({
+          query: {
+            action: payload.action,
+            credential_id: payload.credential_id,
+            parameter: payload.parameter,
+            plugin_id: payload.plugin_id,
+            provider: payload.provider,
+            provider_type: 'trigger',
           },
-          {
-            context: { silent: true },
-          },
-        ),
+        }),
       )
     },
     enabled:

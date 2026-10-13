@@ -98,7 +98,6 @@ export const useDatasetCardState = ({ dataset, onSuccess }: UseDatasetCardStateO
           },
           staleTime: 0,
           retry: false,
-          context: { silent: true },
         }),
       )
       const message = isUsedByApp

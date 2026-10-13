@@ -113,7 +113,6 @@ describe('file supported formats across upload and document extraction', () => {
       expect.objectContaining({
         fetchCompat: true,
         request: expect.objectContaining({ method: 'GET' }),
-        silent: undefined,
       }),
     )
 
