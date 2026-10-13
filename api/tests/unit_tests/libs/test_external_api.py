@@ -373,7 +373,8 @@ def test_error_responses_merge_handler_wrapper_and_class_errors_with_implicit_co
         ExternalApi(Blueprint("documented", __name__)), _DocumentedError, _ItemMissingError
     )
 
-    assert _codes(document, "400") == ["bad_request", "documented_error", "invalid_param"]
+    framework = {"bad_request", "bad_request_key_error", "client_disconnected", "security_error"}
+    assert framework | {"documented_error", "invalid_param"} <= set(_codes(document, "400"))
     assert _codes(document, "404") == ["item_missing", "not_found"]
     assert _responses(document)["404"]["description"] == "Item missing"
     assert _codes(document, "401") == ["unauthorized", "wrapper_denied"]
@@ -472,3 +473,25 @@ def test_resolves_errors_in_flask_restx_dispatch_order():
     # ValueError is registered before AppInvokeQuotaExceededError (a ValueError), so it wins.
     assert api.resolve_error(AppInvokeQuotaExceededError) == (400, "invalid_param")
     assert api.resolve_error(_DocumentedError) == (400, "documented_error")
+
+
+def test_framework_error_subclasses_are_implicit_codes():
+    from flask import request
+
+    app = Flask(__name__)
+    blueprint = Blueprint("missing_upload", __name__)
+    api = ExternalApi(blueprint)
+
+    @api.route("/upload")
+    class Upload(Resource):
+        def post(self):
+            request.files["pkg"]  # a missing field raises BadRequestKeyError
+            return {}
+
+    app.register_blueprint(blueprint)
+    response = app.test_client().post("/upload", data={})
+
+    body = response.get_json()
+    assert response.status_code == 400
+    assert body["code"] == "bad_request_key_error"
+    assert body["code"] in api.implicit_error_codes(400)

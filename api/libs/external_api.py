@@ -8,7 +8,7 @@ from flask.typing import ResponseReturnValue
 from flask_restx import Api
 from pydantic import BaseModel
 from pydantic.json_schema import SkipJsonSchema
-from werkzeug.exceptions import HTTPException, default_exceptions
+from werkzeug.exceptions import HTTPException
 from werkzeug.http import HTTP_STATUS_CODES
 
 from configs import dify_config
@@ -71,6 +71,22 @@ def _class_attribute(cls: type, name: str) -> object:
 
 def _snake_case(name: str) -> str:
     return re.sub(r"(?<!^)(?=[A-Z])", "_", name).lower()
+
+
+def _framework_error_codes() -> dict[int, set[str]]:
+    """The codes Werkzeug's own HTTP exceptions produce, by status.
+
+    The HTTP handler names the code after the raised class, so subclasses such as
+    ``BadRequestKeyError`` (a missing form or file field) answer with their own code.
+    """
+    by_status: dict[int, set[str]] = {}
+    pending: list[type[HTTPException]] = [HTTPException]
+    while pending:
+        exception = pending.pop()
+        pending.extend(exception.__subclasses__())
+        if exception.__module__.startswith("werkzeug.") and isinstance(exception.code, int) and exception.code >= 400:
+            by_status.setdefault(exception.code, set()).add(_snake_case(exception.__name__))
+    return by_status
 
 
 def _error_spec(
@@ -497,10 +513,7 @@ class ExternalApi(Api):
 
     def implicit_error_codes(self, status: int) -> set[str]:
         """Generic codes any operation may emit at ``status`` without listing them."""
-        codes = set()
-        framework_error = default_exceptions.get(status)
-        if framework_error is not None:
-            codes.add(_snake_case(framework_error.__name__))
+        codes = set(_framework_error_codes().get(status, ()))
         codes.update(code for handled_status, code in self._handled_errors.values() if handled_status == status)
         if status == 500:
             # Unhandled exceptions reach the catch-all handler.
