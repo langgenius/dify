@@ -106,6 +106,7 @@ export class DifyWorld extends World {
   shareURL: string | undefined
   sharedAppPage: Page | undefined
   workflowPreview: WorkflowPreviewFixture | undefined
+  skillConflict: { id: string; localContent: string; serverContent: string } | undefined
 
   constructor(options: IWorldOptions) {
     super(options)
@@ -114,6 +115,7 @@ export class DifyWorld extends World {
 
   resetScenarioState() {
     this.workflowPreview = undefined
+    this.skillConflict = undefined
     this.consoleErrors = []
     this.pageErrors = []
     this.lastCreatedAppName = undefined
