@@ -1,13 +1,23 @@
+from collections.abc import Callable
+from functools import wraps
+
 import pytest
 from flask import Blueprint, Flask
-from flask_restx import Api, Resource
-from werkzeug.exceptions import BadRequest, Unauthorized
+from flask_restx import Api, Namespace, Resource
+from flask_restx.swagger import Swagger
+from werkzeug.exceptions import BadRequest, NotFound, Unauthorized
 
 from constants import COOKIE_NAME_ACCESS_TOKEN, COOKIE_NAME_CSRF_TOKEN, COOKIE_NAME_REFRESH_TOKEN
 from core.errors.error import AppInvokeQuotaExceededError
 from core.plugin.impl.exc import PluginRuntimeError
 from libs.exception import BaseHTTPException
-from libs.external_api import ExternalApi
+from libs.external_api import (
+    ErrorResponse,
+    ExternalApi,
+    attach_error_response_schema,
+    document_errors,
+    error_responses,
+)
 from libs.rate_limit import _BearerRateLimited
 
 
@@ -235,3 +245,216 @@ def test_missing_flask_restx_private_hook_fails_at_startup(monkeypatch: pytest.M
 
     with pytest.raises(RuntimeError, match="_should_use_fr_error_handler"):
         ExternalApi(Blueprint("guard", __name__), error_body_formatter=_PassthroughFormatter())
+
+
+def _unused_resolver(exception: type[Exception]) -> tuple[int, str]:
+    raise AssertionError(f"no documented exceptions expected, got {exception}")
+
+
+def _no_implicit_codes(_status: int) -> set[str]:
+    return set()
+
+
+def test_attach_error_response_schema_fills_only_schemaless_error_responses():
+    explicit = {"application/json": {"schema": {"$ref": "#/components/schemas/Custom"}}}
+    document: dict[str, object] = {
+        "paths": {
+            "/items": {
+                "get": {
+                    "responses": {
+                        "200": {"description": "OK"},
+                        "302": {"description": "Redirect"},
+                        "400": {"description": "Bad", "content": {"application/json": {}}},
+                        "404": {"description": "Missing"},
+                        "409": {"description": "Conflict", "content": explicit},
+                    }
+                }
+            }
+        }
+    }
+
+    attach_error_response_schema(document, ErrorResponse, _unused_resolver, _no_implicit_codes)
+
+    responses = document["paths"]["/items"]["get"]["responses"]  # type: ignore[index]
+    ref = {"$ref": "#/components/schemas/ErrorResponse"}
+    assert responses["400"]["content"] == {"application/json": {"schema": ref}}
+    assert responses["404"]["content"] == {"application/json": {"schema": ref}}
+    assert responses["409"]["content"] == explicit
+    assert "content" not in responses["200"]
+    assert "content" not in responses["302"]
+    schema = document["components"]["schemas"]["ErrorResponse"]  # type: ignore[index]
+    assert schema["required"] == ["code", "message", "status"]
+
+
+def test_attach_error_response_schema_skips_component_when_unused():
+    document: dict[str, object] = {"paths": {"/items": {"get": {"responses": {"200": {"description": "OK"}}}}}}
+
+    attach_error_response_schema(document, ErrorResponse, _unused_resolver, _no_implicit_codes)
+
+    assert "components" not in document
+
+
+class _DocumentedError(BaseHTTPException):
+    error_code = "documented_error"
+    code = 400
+
+
+class _ItemMissingError(BaseHTTPException):
+    error_code = "item_missing"
+    code = 404
+
+
+class _WrapperDeniedError(BaseHTTPException):
+    error_code = "wrapper_denied"
+    code = 401
+
+
+class _GuardDeniedError(BaseHTTPException):
+    error_code = "guard_denied"
+    code = 403
+
+
+class _ConflictError(BaseHTTPException):
+    error_code = "documented_conflict"
+    code = 409
+
+
+def _guarded[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+    @wraps(view)
+    def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
+        return view(*args, **kwargs)
+
+    return document_errors(decorated, _WrapperDeniedError)
+
+
+def _documented_operation(api: ExternalApi, *exceptions: type[Exception]) -> dict:
+    app = Flask(__name__)
+    ns = Namespace("documented", path="/")
+
+    class GuardedResource(Resource):
+        pass
+
+    document_errors(GuardedResource, _GuardDeniedError)
+
+    @ns.route("/documented")
+    class Documented(GuardedResource):
+        @ns.doc("get_documented")
+        @ns.response(404, "Item missing")
+        @error_responses(*exceptions)
+        @_guarded
+        def get(self):
+            return {}
+
+    api.add_namespace(ns)
+    app.register_blueprint(api.blueprint)
+    with app.test_request_context("/"):
+        return Swagger(api).as_dict()
+
+
+def _responses(document: dict) -> dict:
+    return document["paths"]["/documented"]["get"]["responses"]
+
+
+def _codes(document: dict, status: str, model: str = "ErrorResponse") -> list[str]:
+    name = f"GetDocumentedError{status}"
+    assert _responses(document)[status]["content"]["application/json"]["schema"] == {
+        "$ref": f"#/components/schemas/{name}"
+    }
+    schema = document["components"]["schemas"][name]
+    assert schema["allOf"][0] == {"$ref": f"#/components/schemas/{model}"}
+    return schema["allOf"][1]["properties"]["code"]["enum"]
+
+
+def test_error_responses_merge_handler_wrapper_and_class_errors_with_implicit_codes():
+    document = _documented_operation(
+        ExternalApi(Blueprint("documented", __name__)), _DocumentedError, _ItemMissingError
+    )
+
+    assert _codes(document, "400") == ["bad_request", "documented_error", "invalid_param"]
+    assert _codes(document, "404") == ["item_missing", "not_found"]
+    assert _responses(document)["404"]["description"] == "Item missing"
+    assert _codes(document, "401") == ["unauthorized", "wrapper_denied"]
+    assert _responses(document)["401"]["description"] == "Unauthorized"
+    assert _codes(document, "403") == ["forbidden", "guard_denied"]
+
+
+def test_openapi_surface_resolves_codes_like_its_formatter():
+    from controllers.openapi import _OpenApi
+    from controllers.openapi._errors import OpenApiErrorFormatter
+
+    document = _documented_operation(
+        _OpenApi(Blueprint("documented_openapi", __name__), error_body_formatter=OpenApiErrorFormatter()),
+        _DocumentedError,
+    )
+
+    assert _codes(document, "400", "ErrorBody") == ["bad_request", "documented_error"]
+
+
+@pytest.mark.parametrize("exception", [ValueError, NotFound, Unauthorized])
+def test_error_responses_rejects_generic_errors(exception: type[Exception]):
+    with pytest.raises(ValueError, match="generic errors are implied"):
+        error_responses(exception)
+
+
+class _SurfaceOnlyError(Exception):
+    pass
+
+
+def test_surface_specific_handlers_are_implicit_codes():
+    api = ExternalApi(Blueprint("surface_handlers", __name__))
+    api.document_error_handler(_SurfaceOnlyError, status=409, code="surface_conflict")
+
+    document = _documented_operation(api, _ConflictError)
+
+    assert _codes(document, "409") == ["conflict", "documented_conflict", "surface_conflict"]
+
+
+def test_error_responses_union_explicit_schema_with_narrowed_codes():
+    explicit = {"application/json": {"schema": {"$ref": "#/components/schemas/Custom"}}}
+    document: dict[str, object] = {
+        "paths": {
+            "/items": {
+                "get": {
+                    "operationId": "get_items",
+                    "responses": {"409": {"description": "Conflict", "content": explicit}},
+                }
+            }
+        }
+    }
+    document["paths"]["/items"]["get"]["x-dify-error-codes"] = {  # type: ignore[index]
+        f"{_ConflictError.__module__}:{_ConflictError.__qualname__}": True
+    }
+
+    attach_error_response_schema(document, ErrorResponse, lambda _e: (409, "documented_conflict"), _no_implicit_codes)
+
+    assert document["paths"]["/items"]["get"]["responses"]["409"]["content"] == {  # type: ignore[index]
+        "application/json": {
+            "schema": {
+                "anyOf": [
+                    {"$ref": "#/components/schemas/Custom"},
+                    {"$ref": "#/components/schemas/GetItemsError409"},
+                ]
+            }
+        }
+    }
+
+
+def test_narrowed_error_schema_names_must_not_collide():
+    name = f"{_ConflictError.__module__}:{_ConflictError.__qualname__}"
+    document: dict[str, object] = {
+        "components": {"schemas": {"GetItemsError409": {"type": "object"}}},
+        "paths": {
+            "/items": {
+                "get": {
+                    "operationId": "get_items",
+                    "responses": {},
+                    "x-dify-error-codes": {name: True},
+                }
+            }
+        },
+    }
+
+    with pytest.raises(ValueError, match="GetItemsError409 collides"):
+        attach_error_response_schema(
+            document, ErrorResponse, lambda _e: (409, "documented_conflict"), _no_implicit_codes
+        )

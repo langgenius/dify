@@ -36,6 +36,11 @@ def _handle_active_workspace_required_error(error: ActiveWorkspaceRequiredError)
 # Flask-RESTX dispatches in registration order; the shared Exception handler
 # must not shadow this Console-specific error mapping.
 cast(OrderedDict[type[Exception], object], api.error_handlers).move_to_end(ActiveWorkspaceRequiredError, last=False)
+api.document_error_handler(
+    ActiveWorkspaceRequiredError,
+    status=HTTPStatus.INTERNAL_SERVER_ERROR,
+    code=ActiveWorkspaceRequiredError.error_code,
+)
 
 
 console_ns = Namespace("console", description="Console management API operations", path="/")

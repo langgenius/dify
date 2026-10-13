@@ -748,7 +748,8 @@ def test_console_billing_routes_document_error_responses(openapi_json: OpenAPIJS
         if path.startswith("/billing/"):
             forbidden_response = operation["responses"]["403"]
             assert forbidden_response["description"] == "Forbidden"
-            assert "content" not in forbidden_response
+            forbidden_schema = forbidden_response["content"]["application/json"]["schema"]
+            assert forbidden_schema == {"$ref": "#/components/schemas/ErrorResponse"}
 
     expected_error_contracts = {
         "BillingUnprocessableEntityErrorResponse": ("unprocessable_entity", 422),
