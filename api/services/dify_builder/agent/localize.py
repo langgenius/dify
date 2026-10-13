@@ -11,10 +11,10 @@ is translated once.
 import json
 import logging
 import re
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 
 from core.dify_builder import strings
-from core.dify_builder.models import ConversationItem
+from core.dify_builder.models import ConversationItem, DifyBuilderContext
 from services.dify_builder.agent import llm
 from services.dify_builder.execution_messages import STATIC_COPY as EXECUTION_COPY
 from services.dify_builder.repair_gate import STATIC_COPY
@@ -42,7 +42,18 @@ _LANG_CODE_RE = re.compile(r"^[A-Za-z]{2,3}(-[A-Za-z0-9]{1,8})*$")
 # concurrent duplicate translation of the same key is harmless and idempotent
 # -- no lock needed.
 _TRANSLATION_CACHE: dict[tuple[str, str], str] = {}
-_PLAIN = strings.PLAIN | STATIC_COPY | EXECUTION_COPY
+_CURRENT_HANDLER_COPY = frozenset(
+    {
+        "Goal",
+        "I filled in sensible defaults. Review the requirements and adjust them if needed.",
+        "The final plan is ready for approval.",
+        "The final change plan is ready for approval.",
+        "I didn't apply anything: the canvas already has nodes with these ids. "
+        "Clear it or start from a new app, then approve again.",
+    }
+)
+_PLAIN = strings.PLAIN | STATIC_COPY | EXECUTION_COPY | _CURRENT_HANDLER_COPY
+_MAX_TRANSLATION_CHARS = 4096
 
 
 class Localizer:
@@ -71,6 +82,44 @@ class Localizer:
             return "en"
         return code
 
+    def localize_ui_copy(self, language: str, *, existing_copy: Mapping[str, str] | None = None) -> dict[str, str]:
+        """Translate only finite UI literals missing from persisted same-language copy."""
+        if not language or language == "en":
+            return {}
+        # Late import keeps the service-owned presentation catalog out of the
+        # pure core engine and avoids a service/localizer import cycle.
+        from services.dify_builder.service import UI_COPY_SOURCES, filter_ui_copy
+
+        def discard_invalid_ui_cache() -> None:
+            for source in UI_COPY_SOURCES:
+                cached = _TRANSLATION_CACHE.get((source, language))
+                if cached is not None and (not cached.strip() or len(cached) > _MAX_TRANSLATION_CHARS):
+                    _TRANSLATION_CACHE.pop((source, language), None)
+
+        retained = filter_ui_copy(existing_copy)
+        discard_invalid_ui_cache()
+        for source, translated in retained.items():
+            _TRANSLATION_CACHE.setdefault((source, language), translated)
+        self._fill_cache(sorted(UI_COPY_SOURCES - retained.keys()), language)
+        discard_invalid_ui_cache()
+        return filter_ui_copy(
+            {source: retained.get(source) or _TRANSLATION_CACHE.get((source, language)) for source in UI_COPY_SOURCES}
+        )
+
+    def prepare_ui_copy(self, context: DifyBuilderContext) -> None:
+        """Refresh context copy for the detected language without blocking a commit."""
+        language = context.reply_language
+        prior = context.ui_copy if context.ui_copy_language == language else {}
+        try:
+            translated = self.localize_ui_copy(language, existing_copy=prior)
+        except Exception:
+            logger.exception("dify_builder: UI copy preparation failed; leaving strings in English")
+            from services.dify_builder.service import filter_ui_copy
+
+            translated = filter_ui_copy(prior)
+        context.ui_copy_language = language
+        context.ui_copy = translated
+
     # -- localization -------------------------------------------------------
     def localize_items(self, items: list[ConversationItem], language: str) -> list[ConversationItem]:
         if not language or language == "en":
@@ -82,6 +131,11 @@ class Localizer:
                 # Evidence and protocol IDs are facts, even when a value matches
                 # catalog prose. Only presentation fields may be translated.
                 for key in ("failure_reason", "review_note"):
+                    self._collect(item.payload.get(key), language, needed)
+            elif item.kind == "resource_select":
+                # Resource names/metadata/ids are tenant facts, even when a
+                # name happens to equal a static UI literal such as "Goal".
+                for key in ("title", "description"):
                     self._collect(item.payload.get(key), language, needed)
             elif item.kind == "form":
                 # Form inputs and constraints are facts in every variant. Only
@@ -100,6 +154,11 @@ class Localizer:
             if item.kind == "test_result":
                 item.payload = {
                     key: self._apply(value, language) if key in ("failure_reason", "review_note") else value
+                    for key, value in item.payload.items()
+                }
+            elif item.kind == "resource_select":
+                item.payload = {
+                    key: self._apply(value, language) if key in ("title", "description") else value
                     for key, value in item.payload.items()
                 }
             elif item.kind == "form":
