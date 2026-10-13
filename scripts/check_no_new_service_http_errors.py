@@ -35,15 +35,11 @@ from ast_grep_guard import (
 RULE_ID = "no-new-service-http-error"
 API_ROOT = Path("api")
 SCANNED_ROOTS = (API_ROOT / "services", API_ROOT / "core")
-VIOLATION_MESSAGE = (
-    "no-new-service-http-error net-new HTTP exception in service or core code"
-)
+VIOLATION_MESSAGE = "no-new-service-http-error net-new HTTP exception in service or core code"
 
 WERKZEUG_EXCEPTIONS = "werkzeug.exceptions"
 HTTP_BASES = frozenset({"libs.exception.BaseHTTPException"})
-ABORT_FUNCTIONS = frozenset(
-    {"flask.abort", "flask_restx.abort", f"{WERKZEUG_EXCEPTIONS}.abort"}
-)
+ABORT_FUNCTIONS = frozenset({"flask.abort", "flask_restx.abort", f"{WERKZEUG_EXCEPTIONS}.abort"})
 
 # A name binds either to a dotted target or to an expression evaluated in its scope.
 Binding = str | ast.expr
@@ -53,16 +49,12 @@ ModuleLoader = Callable[[], "ModuleSource | None"]
 
 def is_api_python_path(path: str) -> bool:
     source_path = Path(path)
-    return source_path.suffix in {".py", ".pyi"} and source_path.is_relative_to(
-        API_ROOT
-    )
+    return source_path.suffix in {".py", ".pyi"} and source_path.is_relative_to(API_ROOT)
 
 
 def is_service_python_source_path(path: str) -> bool:
     source_path = Path(path)
-    return source_path.suffix in {".py", ".pyi"} and any(
-        source_path.is_relative_to(root) for root in SCANNED_ROOTS
-    )
+    return source_path.suffix in {".py", ".pyi"} and any(source_path.is_relative_to(root) for root in SCANNED_ROOTS)
 
 
 def module_name(path: Path) -> str:
@@ -150,9 +142,7 @@ class ModuleSource:
             for child in node.body:
                 self._visit(child, inner)
             return
-        if isinstance(node, ast.Assign | ast.AnnAssign) and isinstance(
-            node.value, ast.Name | ast.Attribute
-        ):
+        if isinstance(node, ast.Assign | ast.AnnAssign) and isinstance(node.value, ast.Name | ast.Attribute):
             targets = node.targets if isinstance(node, ast.Assign) else [node.target]
             for target in targets:
                 if isinstance(target, ast.Name):
@@ -162,23 +152,16 @@ class ModuleSource:
         for child in ast.iter_child_nodes(node):
             self._visit(child, scope)
 
-    def resolve(
-        self, node: ast.expr, scope: Scope, seen: frozenset[int] = frozenset()
-    ) -> set[str]:
+    def resolve(self, node: ast.expr, scope: Scope, seen: frozenset[int] = frozenset()) -> set[str]:
         if isinstance(node, ast.Call):
             return self.resolve(node.func, scope, seen)
         if isinstance(node, ast.Name):
             return self.resolve_name(node.id, scope, seen)
         if isinstance(node, ast.Attribute):
-            return {
-                f"{owner}.{node.attr}"
-                for owner in self.resolve(node.value, scope, seen)
-            }
+            return {f"{owner}.{node.attr}" for owner in self.resolve(node.value, scope, seen)}
         return set()
 
-    def resolve_name(
-        self, name: str, scope: Scope, seen: frozenset[int] = frozenset()
-    ) -> set[str]:
+    def resolve_name(self, name: str, scope: Scope, seen: frozenset[int] = frozenset()) -> set[str]:
         """Every target ``name`` can be bound to in ``scope``, following Python's scoping rules."""
         current: Scope | None = scope
         while current is not None:
@@ -189,9 +172,7 @@ class ModuleSource:
                     if isinstance(binding, str):
                         targets.add(binding)
                     elif id(binding) not in seen:
-                        targets |= self.resolve(
-                            binding, current, seen | {id(binding)}
-                        )
+                        targets |= self.resolve(binding, current, seen | {id(binding)})
                 return targets
             if current.parent is None:
                 stars = {f"{star}.{name}" for star in current.star_imports}
@@ -240,11 +221,7 @@ class HttpErrorIndex:
         module, path = found
         if path in module.classes:
             bases, scope = module.classes[path]
-            return any(
-                self.is_http_class(target)
-                for base in bases
-                for target in module.resolve(base, scope)
-            )
+            return any(self.is_http_class(target) for base in bases for target in module.resolve(base, scope))
         head, _, tail = path.partition(".")
         if head not in module.scope.names:
             return False
@@ -260,9 +237,7 @@ class Match:
     line_number: int
 
 
-def site_key(
-    site: Site, module: ModuleSource, index: HttpErrorIndex
-) -> tuple[str, ...] | None:
+def site_key(site: Site, module: ModuleSource, index: HttpErrorIndex) -> tuple[str, ...] | None:
     node = site.node
     if isinstance(node, ast.ClassDef):
         if index.is_http_class(f"{module.module}.{site.scope.qualname}"):
@@ -274,11 +249,7 @@ def site_key(
         return None
     if node.exc is None:
         return None
-    targets = sorted(
-        target
-        for target in module.resolve(node.exc, site.scope)
-        if index.is_http_class(target)
-    )
+    targets = sorted(target for target in module.resolve(node.exc, site.scope) if index.is_http_class(target))
     return ("raise", site.scope.qualname, *targets) if targets else None
 
 
@@ -306,9 +277,7 @@ def net_new(old: list[Match], new: list[Match]) -> list[Match]:
 
 def changed_api_paths(args: argparse.Namespace) -> set[str]:
     revision = ["--cached"] if args.staged else [f"{args.base_rev}..HEAD"]
-    output = git_output(
-        "diff", "--name-only", "--no-renames", "--no-ext-diff", *revision
-    )
+    output = git_output("diff", "--name-only", "--no-renames", "--no-ext-diff", *revision)
     return {path for path in output.splitlines() if is_api_python_path(path)}
 
 
@@ -329,9 +298,7 @@ def parse_module(path: str, source: str | None) -> ModuleSource | None:
         return None
     source_path = Path(path)
     try:
-        return ModuleSource(
-            module_name(source_path), source, is_package=source_path.stem == "__init__"
-        )
+        return ModuleSource(module_name(source_path), source, is_package=source_path.stem == "__init__")
     except SyntaxError:
         return None
 
@@ -369,11 +336,7 @@ def find_violations(args: argparse.Namespace) -> list[Violation]:
     if not changed:
         return []
     tracked = git_output("ls-files", "--", f"{API_ROOT}/*.py").splitlines()
-    unchanged = {
-        path: disk_loader(path)
-        for path in tracked
-        if path not in changed and Path(path).is_file()
-    }
+    unchanged = {path: disk_loader(path) for path in tracked if path not in changed and Path(path).is_file()}
     read_old, read_new = revision_readers(args)
     old_files = revision_modules(unchanged, changed, read_old)
     new_files = revision_modules(unchanged, changed, read_new)
@@ -390,9 +353,7 @@ def find_violations(args: argparse.Namespace) -> list[Violation]:
         if new_module is None:
             continue
         old_module = old_files[path]()
-        old_matches = (
-            list(http_error_matches(old_module, old_index)) if old_module else []
-        )
+        old_matches = list(http_error_matches(old_module, old_index)) if old_module else []
         new_matches = list(http_error_matches(new_module, new_index))
         violations.extend(
             Violation(path=path, line_number=match.line_number, message=VIOLATION_MESSAGE)
