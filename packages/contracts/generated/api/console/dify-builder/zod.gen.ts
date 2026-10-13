@@ -589,7 +589,9 @@ export const zTestResultCard = z.object({
       'required_output_unresolved',
     ])
     .nullish(),
-  policy_version: z.enum(['builder-confirmed-gmail-read-v1', 'builder-restricted-v1']).nullish(),
+  policy_version: z
+    .enum(['builder-confirmed-gmail-read-v1', 'builder-json-parse-v1', 'builder-restricted-v1'])
+    .nullish(),
   review_note: z.string().nullish(),
   safety_outcome: z
     .enum([
