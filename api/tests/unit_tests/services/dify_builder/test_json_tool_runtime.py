@@ -2,6 +2,7 @@
 
 import json
 from copy import deepcopy
+from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -582,6 +583,40 @@ def test_post_dispatch_metadata_change_prevents_receipt(monkeypatch, sqlite_engi
     )
     with pytest.raises(ToolRuntimeInvocationError):
         list(runtime.invoke(tool_runtime=handle, tool_parameters=EXPECTED, workflow_call_depth=0, provider_name="json"))
+    assert len(reads) == 2
+    assert recorder.receipts == []
+
+
+def test_post_dispatch_runtime_variant_change_prevents_receipt(monkeypatch, sqlite_engine):
+    reads = []
+    installed = _installation()
+
+    def metadata_reader(_tenant):
+        reads.append(True)
+        if len(reads) == 1:
+            return installed
+        return replace(
+            installed,
+            runtime_type="serverless",
+            qualification_digest="b3728bbec6b6fcb4c9bd4677fb519994ebd4666c182c542a8acd0c0e5ef89c03",
+        )
+
+    class Manager:
+        def invoke(self, **_kwargs):
+            yield _message("native text")
+
+    monkeypatch.setattr(plugin_tool_module, "PluginToolManager", Manager)
+    runtime, recorder = _runtime(monkeypatch, sqlite_engine, metadata_reader=metadata_reader)
+    handle = runtime.get_runtime(
+        node_id="node2",
+        node_data=_node_data(ascii_value=False, wrapped=False),
+        variable_pool=VariablePool(),
+        node_execution_id="node-execution",
+    )
+    with pytest.raises(ToolRuntimeInvocationError):
+        list(
+            runtime.invoke(tool_runtime=handle, tool_parameters=EXPECTED, workflow_call_depth=0, provider_name="json")
+        )
     assert len(reads) == 2
     assert recorder.receipts == []
 
