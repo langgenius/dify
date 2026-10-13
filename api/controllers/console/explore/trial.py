@@ -824,6 +824,20 @@ def _trial_audio_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     endpoint="trial_app_audio",
 )
 class TrialChatAudioApi(Resource):
+    @error_responses(
+        AgentVersionNotFoundHTTPError,
+        AppUnavailableError,
+        AudioTooLargeError,
+        CompletionRequestError,
+        InternalServerError,
+        NoAudioUploadedError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderNotSupportSpeechToTextError,
+        ProviderQuotaExceededError,
+        SpeechToTextDisabledError,
+        UnsupportedAudioTypeError,
+    )
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AudioTranscriptResponse.__name__])
     @console_account_admission()
     @get_trial_app
