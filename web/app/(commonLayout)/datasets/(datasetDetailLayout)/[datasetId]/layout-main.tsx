@@ -3,7 +3,6 @@
 import type { FC } from 'react'
 import type { DataSet } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
-import { ORPCError } from '@orpc/client'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
@@ -20,6 +19,7 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { usePathname, useRouter } from '@/next/navigation'
+import { getHttpErrorStatus } from '@/service/http-error'
 import { useDatasetDetail } from '@/service/knowledge/use-dataset'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 
@@ -28,11 +28,8 @@ type IAppDetailLayoutProps = {
   datasetId: string
 }
 
-const getResponseStatus = (error: unknown) =>
-  error instanceof ORPCError ? error.status : undefined
-
 const shouldRedirectToDatasetList = (error: unknown) => {
-  const status = getResponseStatus(error)
+  const status = getHttpErrorStatus(error)
   return status === 403 || status === 404
 }
 

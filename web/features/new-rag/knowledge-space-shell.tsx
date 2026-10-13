@@ -10,7 +10,6 @@ import {
 } from '@langgenius/dify-ui/breadcrumb'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { ORPCError } from '@orpc/client'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
@@ -19,11 +18,8 @@ import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
 import { usePathname } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
+import { getHttpErrorStatus } from '@/service/http-error'
 import { newKnowledgeDetailPath, newKnowledgeDocumentsPath, newKnowledgeListPath } from './routes'
-
-function responseStatus(error: unknown): number | undefined {
-  return error instanceof ORPCError ? error.status : undefined
-}
 
 const knowledgeSpacePageTitle = (
   pathname: string,
@@ -60,7 +56,7 @@ export function KnowledgeSpaceShell({
       input: { params: { id: knowledgeSpaceId } },
     }),
     retry: (failureCount, error) => {
-      const status = responseStatus(error)
+      const status = getHttpErrorStatus(error)
       if (status === 403 || status === 404) return false
 
       return failureCount < 3
@@ -88,7 +84,7 @@ export function KnowledgeSpaceShell({
     )
 
   if (knowledgeSpaceQuery.error || !knowledgeSpaceQuery.data) {
-    const status = responseStatus(knowledgeSpaceQuery.error)
+    const status = getHttpErrorStatus(knowledgeSpaceQuery.error)
     const notFound = status === 403 || status === 404
     return (
       <>
