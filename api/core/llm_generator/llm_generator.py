@@ -238,11 +238,18 @@ class LLMGenerator:
     def generate_conversation_name(
         cls,
         tenant_id: str,
-        query,
+        query: str,
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
-    ):
+        *,
+        model_instance: ModelInstance | None = None,
+    ) -> str:
+        """Generate with a resolved model, or resolve it for legacy background callers.
+
+        Passing a model lets the caller close its preparation session before invocation.
+        ``None`` retains inline resolution for the first-message naming worker.
+        """
         prompt = CONVERSATION_TITLE_PROMPT
 
         if len(query) > 2000:
@@ -252,11 +259,12 @@ class LLMGenerator:
 
         prompt += query + "\n"
 
-        model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
-        model_instance = model_manager.get_default_model_instance(
-            tenant_id=tenant_id,
-            model_type=ModelType.LLM,
-        )
+        if model_instance is None:
+            model_manager = ModelManager.for_tenant(tenant_id=tenant_id)
+            model_instance = model_manager.get_default_model_instance(
+                tenant_id=tenant_id,
+                model_type=ModelType.LLM,
+            )
         prompts: list[PromptMessage] = [UserPromptMessage(content=prompt)]
 
         with measure_time() as timer:
