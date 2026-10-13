@@ -61,12 +61,20 @@ _SHARED_HANDLED_ERRORS: Mapping[type[Exception], tuple[int, str]] = {
 }
 
 
+def _class_attribute(cls: type, name: str) -> object:
+    """``name`` as the class or its nearest base defines it, without instance or ``__getattr__`` lookups."""
+    for klass in cls.__mro__:
+        if name in klass.__dict__:
+            return klass.__dict__[name]
+    return None
+
+
 def _snake_case(name: str) -> str:
     return re.sub(r"(?<!^)(?=[A-Z])", "_", name).lower()
 
 
 def _error_spec(exception: type[Exception], handled: Mapping[type[Exception], tuple[int, str]]) -> ErrorSpec:
-    declared = getattr(exception, "error_code", None)
+    declared = _class_attribute(exception, "error_code")
     error_code = str(declared) if isinstance(declared, str) else None
     # Flask-RESTX dispatches to the most specific registered handler, so walk the MRO.
     for base in exception.__mro__:
@@ -123,7 +131,8 @@ def document_errors[T](target: T, *exceptions: type[Exception]) -> T:
     """
 
     names = _documented_names(exceptions)
-    doc: Mapping[str, Any] = getattr(target, "__apidoc__", None) or {}
+    existing = _class_attribute(target, "__apidoc__") if isinstance(target, type) else vars(target).get("__apidoc__")
+    doc: Mapping[str, Any] = existing if isinstance(existing, Mapping) else {}
     if isinstance(target, type):
         # Class-level docs only reach operations through their per-method entries.
         doc = {
