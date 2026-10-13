@@ -19,13 +19,13 @@ import {
 } from '@langgenius/dify-ui/drawer'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useRefWithInit } from '@langgenius/dify-ui/use-ref-with-init'
-import { ORPCError } from '@orpc/client'
 import { useMutation } from '@tanstack/react-query'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { consoleQuery } from '@/service/console'
+import { getHttpErrorStatus } from '@/service/http-error'
 import { taskCanRetry, taskIsActive, taskVersionIsAfter } from './document-model'
 
 type TaskAction = 'cancel' | 'retry'
@@ -39,10 +39,6 @@ function taskTime(task: DocumentProcessingTask) {
 
 function taskLifecycle(task: DocumentProcessingTask) {
   return `${task.updatedAt}:${task.state}`
-}
-
-function responseStatus(error: unknown): number | undefined {
-  return error instanceof ORPCError ? error.status : undefined
 }
 
 function compareTaskRecency(left: DocumentProcessingTask, right: DocumentProcessingTask) {
@@ -346,7 +342,7 @@ export function ProcessingTasksDrawer({
       )
         drawerCloseButtonRef.current?.focus()
     } catch (error) {
-      const permissionDenied = responseStatus(error) === 403
+      const permissionDenied = getHttpErrorStatus(error) === 403
       if (permissionDenied) onWritePermissionDenied()
       if (
         !permissionDenied &&
