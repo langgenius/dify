@@ -58,6 +58,7 @@ import {
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { ORPCError } from '@orpc/client'
 import { formatForDisplay, matchesKeyboardEvent, useHotkey } from '@tanstack/react-hotkeys'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import copy from 'copy-to-clipboard'
@@ -72,7 +73,6 @@ import HelpMenu from '@/app/components/main-nav/components/help-menu'
 import { toast } from '@/app/notifications'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
-import { getErrorMessage } from '@/utils/error-message'
 import { fetchSkillFileBlob, uploadSkillFile } from '../client'
 import { SkillDropDestinationHint, SkillUploadStatusPanel } from './file-tree-dnd'
 import { FileTreeItem, FileTreeNameInput, RootFileActionMenuItems } from './file-tree-items'
@@ -568,8 +568,12 @@ export function FileTree({
 
         const errorCode = getErrorCode(error)
         let failureKind: SkillUploadQueueItem['failureKind'] = 'network'
-        let errorMessage =
-          getErrorMessage(error) ?? t(($) => $['skillManagement.detail.uploadNetworkFailure'])
+        // Transport failures and cancellation carry browser text, not a user-facing message.
+        let errorMessage = cancelUploadRef.current
+          ? tCommon(($) => $['operation.cancel'])
+          : error instanceof ORPCError
+            ? error.message
+            : t(($) => $['skillManagement.detail.uploadNetworkFailure'])
         let suggestedPath: string | undefined
         if (errorCode === 'skill_conflict') {
           failureKind = 'conflict'

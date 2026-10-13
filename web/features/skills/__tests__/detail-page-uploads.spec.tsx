@@ -240,7 +240,7 @@ describe('SkillDetailPage uploads', () => {
       ],
     })
     mocks.uploadSkillFile
-      .mockRejectedValueOnce(new Error('network timeout'))
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
       .mockResolvedValueOnce({
         id: 'tool-file-retry',
         name: 'guide.md',
@@ -263,6 +263,10 @@ describe('SkillDetailPage uploads', () => {
     })
 
     await user.click(screen.getByRole('button', { name: /viewUploadErrors/ }))
+    expect(
+      screen.getByText('skill.skillManagement.detail.uploadNetworkFailure'),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('Failed to fetch')).not.toBeInTheDocument()
     await user.click(screen.getAllByRole('button', { name: 'common.operation.retry' })[0]!)
 
     await waitFor(() => {

@@ -166,6 +166,17 @@ describe('Uploading', () => {
       })
     })
 
+    it('should use the localized failure when the upload never reaches the server', async () => {
+      mockUploadFile.mockRejectedValue(new TypeError('Failed to fetch'))
+
+      const onFailed = vi.fn()
+      render(<Uploading {...defaultProps} onFailed={onFailed} />)
+
+      await waitFor(() => {
+        expect(onFailed).toHaveBeenCalledWith('plugin.installModal.uploadFailed')
+      })
+    })
+
     it('should call onPackageUploaded when upload resolves with package response', async () => {
       const mockResult = {
         unique_identifier: 'test-uid',
