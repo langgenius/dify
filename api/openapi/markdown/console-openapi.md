@@ -2212,7 +2212,7 @@ Update annotation settings for an app
 
 | Code | Description |
 | ---- | ----------- |
-| 200 | Success |
+| 204 | Annotations deleted successfully |
 
 ### [GET] /apps/{app_id}/annotations
 Get annotations for an app with pagination
@@ -2334,7 +2334,7 @@ Export all annotations for an app with CSV injection protection
 
 | Code | Description |
 | ---- | ----------- |
-| 200 | Success |
+| 204 | Annotation deleted successfully |
 
 ### [POST] /apps/{app_id}/annotations/{annotation_id}
 Update or delete an annotation
@@ -3340,9 +3340,9 @@ Create a new tracing configuration for an application
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [WorkflowTriggerResponse](#workflowtriggerresponse)<br> |
 
 ### [GET] /apps/{app_id}/triggers
 **Get app triggers list**
@@ -4729,7 +4729,7 @@ Full value for one declared output of a published run.
 
 | Code | Description |
 | ---- | ----------- |
-| 200 | Success |
+| 204 | Workflow deleted successfully |
 
 ### [PATCH] /apps/{app_id}/workflows/{workflow_id}
 **Update workflow attributes**
@@ -4877,9 +4877,9 @@ Delete an API key for an app
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [POST] /auth/plugin/datasource/{provider_id}/custom-client
 #### Parameters
@@ -7785,11 +7785,17 @@ Update account-level Step-by-step Tour state
 | ---- | ---------- | ----------- | -------- | ------ |
 | pipeline_id | path |  | Yes | string (uuid) |
 
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [DraftWorkflowSyncPayload](#draftworkflowsyncpayload)<br> |
+
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [RagPipelineWorkflowSyncResponse](#ragpipelineworkflowsyncresponse)<br> |
 
 ### [POST] /rag/pipelines/{pipeline_id}/workflows/draft/datasource/nodes/{node_id}/run
 **Run rag pipeline datasource**
@@ -8089,6 +8095,12 @@ Update account-level Step-by-step Tour state
 | pipeline_id | path |  | Yes | string (uuid) |
 | variable_id | path |  | Yes | string (uuid) |
 
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [WorkflowDraftVariablePatchPayload](#workflowdraftvariablepatchpayload)<br> |
+
 #### Responses
 
 | Code | Description | Schema |
@@ -8262,6 +8274,12 @@ Update account-level Step-by-step Tour state
 | ---- | ---------- | ----------- | -------- | ------ |
 | pipeline_id | path |  | Yes | string (uuid) |
 | workflow_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [WorkflowUpdatePayload](#workflowupdatepayload)<br> |
 
 #### Responses
 
