@@ -101,6 +101,7 @@ from services.errors.app import TriggerNodeLimitExceededError as TriggerNodeLimi
 from services.errors.evaluation import EvaluationEntitlementUnavailableError, EvaluationPlanRequiredError
 from services.errors.llm import InvokeRateLimitError
 from services.trigger.debug_service import TriggerDebugEvent
+from services.errors.workflow_service import EmptyWorkflowConfirmationRequiredError
 from services.workflow_ref_service import WorkflowRefService
 from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError, WorkflowService
 from services.workflow_variable_reference_validator import advisory_variable_reference_warning
@@ -667,7 +668,8 @@ class DraftWorkflowApi(Resource):
     @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
     def post(self, current_user: Account, app_model: App):
         """
-        Sync draft workflow
+        Sync draft workflow. Empty initialization or clearing requires force=true;
+        an already-empty draft may be saved with its current hash without force.
         """
         content_type = request.headers.get("Content-Type", "")
 
@@ -683,11 +685,6 @@ class DraftWorkflowApi(Resource):
                 raise InvalidArgumentError("Invalid JSON data") from caught_error
         else:
             abort(415)
-
-        # Empty autosaves can otherwise replace a populated draft, even with a matching hash.
-        # Require explicit confirmation for both regular saves and text/plain unload beacons.
-        if args_model.graph.get("nodes") == [] and args_model.graph.get("edges") == [] and not args_model.force:
-            raise InvalidArgumentError(description="Saving an empty workflow requires force=true.")
 
         workflow_service = WorkflowService()
 
@@ -721,10 +718,11 @@ class DraftWorkflowApi(Resource):
                 deleted_environment_variable_ids=deleted_environment_variable_ids,
                 preserve_environment_variables=True,
                 graph_only=args_model.is_collaborative,
+                require_empty_graph_confirmation=not args_model.force,
             )
         except WorkflowHashNotEqualError as caught_error:
             raise DraftWorkflowNotSync() from caught_error
-        except VariableError as e:
+        except (VariableError, EmptyWorkflowConfirmationRequiredError) as e:
             raise InvalidArgumentError(description=str(e)) from e
 
         return dump_response(
