@@ -12,6 +12,7 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
 from core.repositories.factory import WorkflowExecutionRepository
+from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
 from graphon.entities import WorkflowExecution
 from models import Account, CreatorUserRole, EndUser
 from models.enums import WorkflowRunTriggeredFrom
@@ -42,6 +43,7 @@ class CeleryWorkflowExecutionRepository(WorkflowExecutionRepository):
     _triggered_from: WorkflowRunTriggeredFrom | None
     _creator_user_id: str
     _creator_user_role: CreatorUserRole
+    _synchronous_repository: SQLAlchemyWorkflowExecutionRepository
 
     def __init__(
         self,
@@ -85,6 +87,13 @@ class CeleryWorkflowExecutionRepository(WorkflowExecutionRepository):
 
         # Determine user role based on user type
         self._creator_user_role = CreatorUserRole.ACCOUNT if isinstance(user, Account) else CreatorUserRole.END_USER
+        self._synchronous_repository = SQLAlchemyWorkflowExecutionRepository(
+            session_factory=self._session_factory,
+            tenant_id=self._tenant_id,
+            user=user,
+            app_id=self._app_id,
+            triggered_from=self._triggered_from,
+        )
 
         logger.info(
             "Initialized CeleryWorkflowExecutionRepository for tenant %s, app %s, triggered_from %s",
@@ -125,3 +134,8 @@ class CeleryWorkflowExecutionRepository(WorkflowExecutionRepository):
             # In case of Celery failure, we could implement a fallback to synchronous save
             # For now, we'll re-raise the exception
             raise
+
+    @override
+    def save_synchronously(self, execution: WorkflowExecution) -> None:
+        """Persist an execution before dependent synchronous state is written."""
+        self._synchronous_repository.save_synchronously(execution)
