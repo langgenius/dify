@@ -1,3 +1,4 @@
+// Some labels render as divs, which do not get the native label's default arrow cursor.
 export const formLabelClassName =
   'w-fit cursor-default py-1 text-text-secondary system-sm-medium data-disabled:cursor-not-allowed'
 
