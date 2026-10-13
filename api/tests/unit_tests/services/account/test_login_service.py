@@ -208,7 +208,7 @@ class FakeWorkspaceProvisioning:
 @dataclass
 class FakeEmailCodes:
     status: EmailCodeChallengeStatus = EmailCodeChallengeStatus.VERIFIED
-    sent: list[tuple[str | None, str, str, str]] = field(default_factory=list)
+    sent: list[tuple[str | None, str, str, str, bool]] = field(default_factory=list)
 
     def send(
         self,
@@ -217,8 +217,9 @@ class FakeEmailCodes:
         normalized_email: str,
         recipient_email: str,
         language: str,
+        registration_allowed: bool,
     ) -> str:
-        self.sent.append((account_id, normalized_email, recipient_email, language))
+        self.sent.append((account_id, normalized_email, recipient_email, language, registration_allowed))
         return "email-token"
 
     def verify(self, *, normalized_email: str, code: str, token: str) -> EmailCodeChallengeStatus:
@@ -557,22 +558,56 @@ def test_send_email_code_normalizes_identity_and_preserves_account_recipient_add
 
     assert token == "email-token"
     assert dependencies.human.calls == [("turnstile", "127.0.0.1", "signin_code")]
-    assert dependencies.email_codes.sent == [("account-1", "user@example.com", "User@Example.COM", "zh-Hans")]
+    assert dependencies.email_codes.sent == [("account-1", "user@example.com", "User@Example.COM", "zh-Hans", True)]
 
 
-def test_send_email_code_rejects_unknown_account_when_registration_is_disabled() -> None:
+@pytest.mark.parametrize("account_exists", [False, True])
+@pytest.mark.parametrize("registration_allowed", [False, True])
+def test_send_email_code_returns_challenge_regardless_of_account_existence(
+    account_exists: bool, registration_allowed: bool
+) -> None:
     dependencies = Dependencies()
-    dependencies.policies.registration_allowed = False
+    dependencies.policies.registration_allowed = registration_allowed
+    if account_exists:
+        dependencies.accounts.candidates = [_account()]
 
-    with pytest.raises(account_errors.AccountNotFoundError):
-        dependencies.service().send_email_code(
-            EmailCodeSendCommand(
-                email="user@example.com",
-                language=None,
-                turnstile_token=None,
-                ip_address="127.0.0.1",
-            )
+    token = dependencies.service().send_email_code(
+        EmailCodeSendCommand(
+            email="user@example.com",
+            language=None,
+            turnstile_token=None,
+            ip_address="127.0.0.1",
         )
+    )
+
+    assert token == "email-token"
+    assert dependencies.email_codes.sent == [
+        (
+            "account-1" if account_exists else None,
+            "user@example.com",
+            "user@example.com",
+            "en-US",
+            account_exists or registration_allowed,
+        )
+    ]
+
+
+def test_send_email_code_for_existing_account_does_not_load_registration_policy(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    dependencies = Dependencies()
+    dependencies.accounts.candidates = [_account()]
+
+    def unavailable_policy() -> bool:
+        raise AssertionError("Registration policy is irrelevant to an existing account")
+
+    monkeypatch.setattr(dependencies.policies, "is_registration_allowed", unavailable_policy)
+
+    token = dependencies.service().send_email_code(
+        EmailCodeSendCommand(email="user@example.com", language=None, turnstile_token=None, ip_address="127.0.0.1")
+    )
+
+    assert token == "email-token"
 
 
 def test_send_email_code_rejects_ip_rate_limit_before_human_verification() -> None:

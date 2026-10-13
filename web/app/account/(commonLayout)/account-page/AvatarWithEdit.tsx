@@ -3,7 +3,7 @@
 import type { AvatarProps } from '@langgenius/dify-ui/avatar'
 import type { ImageIconInputValue } from '@/app/components/base/icon-picker/image-input'
 import type { ImageFile } from '@/types/app'
-import { Avatar } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Separator } from '@langgenius/dify-ui/separator'
@@ -16,9 +16,16 @@ import { useLocalFileUploader } from '@/app/components/base/image-uploader/hooks
 import { toast } from '@/app/notifications'
 import { DISABLE_UPLOAD_IMAGE_AS_ICON } from '@/config'
 import { consoleQuery } from '@/service/console'
+import { getAvatarInitial } from '@/utils/avatar'
 import { createAvatarImageFile, createCroppedAvatarImage } from './avatar-image'
 
-const AvatarWithEdit = (props: AvatarProps) => {
+type AvatarWithEditProps = {
+  avatar: string | null
+  name: string
+  size?: AvatarProps['size']
+}
+
+const AvatarWithEdit = ({ avatar, name, size }: AvatarWithEditProps) => {
   const { t } = useTranslation(['app', 'common'])
   const { mutateAsync: updateProfile } = useMutation(
     consoleQuery.account.profile.patch.mutationOptions(),
@@ -29,8 +36,7 @@ const AvatarWithEdit = (props: AvatarProps) => {
   const [uploading, setUploading] = useState(false)
   const [isShowDeleteConfirm, setIsShowDeleteConfirm] = useState(false)
 
-  const [onAvatarError, setOnAvatarError] = useState(false)
-  const canDeleteAvatar = !!props.avatar && !onAvatarError
+  const canDeleteAvatar = !!avatar
 
   const handleSaveAvatar = useCallback(
     async (uploadedFileId: string) => {
@@ -89,7 +95,14 @@ const AvatarWithEdit = (props: AvatarProps) => {
     handleLocalFileUpload(file)
   }, [handleLocalFileUpload, inputImageInfo])
 
-  if (DISABLE_UPLOAD_IMAGE_AS_ICON) return <Avatar {...props} />
+  if (DISABLE_UPLOAD_IMAGE_AS_ICON) {
+    return (
+      <Avatar size={size} aria-hidden="true">
+        <AvatarFallback>{getAvatarInitial(name)}</AvatarFallback>
+        <AvatarImage src={avatar || undefined} alt="" />
+      </Avatar>
+    )
+  }
 
   return (
     <>
@@ -103,10 +116,10 @@ const AvatarWithEdit = (props: AvatarProps) => {
             setIsShowAvatarPicker(true)
           }}
         >
-          <Avatar
-            {...props}
-            onLoadingStatusChange={(status) => setOnAvatarError(status === 'error')}
-          />
+          <Avatar size={size} aria-hidden="true">
+            <AvatarFallback>{getAvatarInitial(name)}</AvatarFallback>
+            <AvatarImage src={avatar || undefined} alt="" />
+          </Avatar>
           <span className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-full bg-black/50 text-white opacity-0 group-hover:opacity-100 motion-safe:transition-opacity">
             <span aria-hidden="true" className="i-ri-pencil-line size-5" />
           </span>

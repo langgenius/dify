@@ -14,6 +14,7 @@ import {
   floatingItemIndicatorClassName,
   floatingPopupAnimationClassName,
   floatingSeparatorClassName,
+  positionerClassName,
 } from '../internal/overlay'
 import { parsePlacement } from '../internal/placement'
 import { resolveClassName } from '../internal/resolve-class-name'
@@ -176,7 +177,7 @@ function SelectPositioner({
       sideOffset={sideOffset}
       alignOffset={alignOffset}
       alignItemWithTrigger={alignItemWithTrigger}
-      className={(state) => cn('z-50 outline-hidden', resolveClassName(className, state))}
+      className={(state) => cn(positionerClassName, resolveClassName(className, state))}
       {...props}
     />
   )

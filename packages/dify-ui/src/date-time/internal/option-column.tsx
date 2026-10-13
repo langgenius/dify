@@ -121,14 +121,11 @@ function OptionColumn({
     if (selected) scrollToOption(selected)
   }, [scrollRequest, cancelGesture, scrollToOption])
 
-  React.useEffect(() => {
+  React.useLayoutEffect(() => {
     if (!focusOnMount) return
-    const frame = requestAnimationFrame(() =>
-      ref.current
-        ?.querySelector<HTMLElement>('[aria-selected="true"]')
-        ?.focus({ preventScroll: true }),
-    )
-    return () => cancelAnimationFrame(frame)
+    ref.current
+      ?.querySelector<HTMLElement>('[aria-selected="true"]')
+      ?.focus({ preventScroll: true })
   }, [focusOnMount])
 
   function focusValue(next: number, smooth = false) {

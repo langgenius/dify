@@ -765,7 +765,8 @@ class HttpConfig(BaseSettings):
 
     RESPECT_XFORWARD_HEADERS_ENABLED: bool = Field(
         description="Enable handling of X-Forwarded-For, X-Forwarded-Proto, and X-Forwarded-Port headers"
-        " when the app is behind a single trusted reverse proxy.",
+        " when the app is behind a single trusted reverse proxy. Restrict API access to trusted callers"
+        " and have the proxy overwrite X-Forwarded-For with the verified client IP.",
         default=False,
     )
 
