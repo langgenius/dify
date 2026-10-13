@@ -175,3 +175,20 @@ it.skipIf(process.platform === 'win32')(
     expect(r.stderr).toMatch(/use install-r2\.ps1 on Windows/)
   },
 )
+
+describe.skipIf(process.platform === 'win32')('install-r2.sh install_binary', () => {
+  it('installs a 0600 temp file as mode 0755 next to and then over the target', () => {
+    const r = lib(
+      [
+        'd="$(mktemp -d)"',
+        'src="$(mktemp)"; chmod 0600 "$src"; printf new > "$src"',
+        'printf old > "$d/difyctl"',
+        'install_binary "$src" "$d/difyctl"',
+        'ls -l "$d/difyctl" | cut -c1-10; cat "$d/difyctl"; echo; ls -A "$d"',
+        'rm -rf "$d" "$src"',
+      ].join('\n'),
+    )
+    expect(r.code).toBe(0)
+    expect(r.stdout.split('\n')).toEqual(['-rwxr-xr-x', 'new', 'difyctl'])
+  })
+})

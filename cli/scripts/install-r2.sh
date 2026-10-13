@@ -31,6 +31,17 @@ bin_dir_for() {
   printf '%s' "${DIFYCTL_INSTALL_DIR:-${DIFYCTL_PREFIX:-${HOME}/.local}/bin}"
 }
 
+# install_binary SRC DEST: stage the copy next to DEST, then rename it over DEST, so a
+# running difyctl keeps its old file and DEST is never half written.
+install_binary() {
+  _stage="$(dirname "$2")/.difyctl.install.$$"
+  if cp "$1" "$_stage" && chmod 0755 "$_stage" && mv -f "$_stage" "$2"; then
+    return 0
+  fi
+  rm -f "$_stage"
+  die "cannot write $2"
+}
+
 detect_target() {
   case "$(uname -s)" in
     Linux*)  _os=linux ;;
@@ -99,8 +110,7 @@ fetch_verify_install() {
   sha256_check "$tmp_b" "$2"
 
   mkdir -p "$install_dir"
-  chmod +x "$tmp_b"
-  mv "$tmp_b" "${install_dir}/difyctl" 2>/dev/null || { cp "$tmp_b" "${install_dir}/difyctl"; rm -f "$tmp_b"; }
+  install_binary "$tmp_b" "${install_dir}/difyctl"
 
   printf 'difyctl %s (channel %s) installed: %s\n' "$3" "$4" "${install_dir}/difyctl"
   case ":${PATH}:" in

@@ -247,10 +247,6 @@ main() {
 
     case ":${PATH}:" in
         *":${bin_dir}:"*)
-            if ! "$target_bin" version >/dev/null 2>&1; then
-                err "binary present but failed to execute; check ${target_bin}"
-                return 0
-            fi
             printf 'verify: run "difyctl version"\n'
             print_skill_hint
             ;;

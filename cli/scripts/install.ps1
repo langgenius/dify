@@ -162,7 +162,16 @@ function Invoke-Main {
         $binDir = Resolve-BinDir
         New-Item -ItemType Directory -Path $binDir -Force | Out-Null
         $targetBin = Join-Path $binDir 'difyctl.exe'
-        Copy-Item -Path $assetPath -Destination $targetBin -Force
+        # Stage next to the target, then rename over it, so difyctl.exe is never half written.
+        $stage = Join-Path $binDir ('.difyctl.install.' + [guid]::NewGuid().ToString('N') + '.exe')
+        try {
+            Copy-Item -Path $assetPath -Destination $stage -Force
+            Move-Item -Path $stage -Destination $targetBin -Force
+        }
+        catch {
+            Remove-Item -Path $stage -Force -ErrorAction SilentlyContinue
+            throw "cannot replace $targetBin — close any running difyctl and re-run."
+        }
 
         Write-Host ""
         Write-Host "difyctl v$ver installed (from Dify $difyTag): $targetBin"
