@@ -20,8 +20,8 @@ import {
   fetchSuggestedQuestions,
   getUrl,
   stopChatMessageResponding,
-  submitHumanInputForm,
 } from '@/service/share'
+import { submitWebAppHumanInputForm } from '@/service/webapp-human-input'
 import { submitHumanInputForm as submitHumanInputFormService } from '@/service/workflow'
 import { TransferMethod } from '@/types/app'
 import { formatBooleanInputs } from '@/utils/model-config'
@@ -292,7 +292,7 @@ const ChatWrapper = () => {
         .flatMap((item) => item.humanInputFormDataList ?? [])
         .find((item) => item.form_token === formToken)
       if (isInstalledApp) await submitHumanInputFormService(formToken, formData, form?.form_version)
-      else await submitHumanInputForm(formToken, formData, form?.form_version)
+      else await submitWebAppHumanInputForm(formToken, formData)
     },
     [chatList, isInstalledApp, prepareHumanInputSubmission],
   )

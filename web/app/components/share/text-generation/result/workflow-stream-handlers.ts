@@ -22,6 +22,7 @@ type CreateWorkflowStreamHandlersParams = {
   markEnded: () => void
   notify: Notify
   onCompleted: (completionRes: string, taskId?: number, success?: boolean) => void
+  onPaused?: (workflowRunId: string, handlers: IOtherOptions) => void
   resetRunState: () => void
   setCompletionRes: (res: string) => void
   setCurrentTaskId: Dispatch<SetStateAction<string | null>>
@@ -274,6 +275,7 @@ export const createWorkflowStreamHandlers = ({
   markEnded,
   notify,
   onCompleted,
+  onPaused,
   resetRunState,
   setCompletionRes,
   setCurrentTaskId,
@@ -426,6 +428,11 @@ export const createWorkflowStreamHandlers = ({
     },
     onWorkflowPaused: ({ data }) => {
       tempMessageId = data.workflow_run_id
+      if (onPaused) {
+        setWorkflowProcessData(applyWorkflowPaused(getWorkflowProcessData()))
+        onPaused(data.workflow_run_id, otherOptions)
+        return
+      }
       if (!hasStartedResumeStream) {
         hasStartedResumeStream = true
         void sseGet(

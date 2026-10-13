@@ -5,8 +5,10 @@ import type { EmbeddedChatbotContextValue } from '../context'
 import type { ConversationItem } from '@/models/share'
 import type { HumanInputFormData } from '@/types/workflow'
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { InputVarType } from '@/app/components/workflow/types'
 import { AppSourceType, fetchSuggestedQuestions, submitHumanInputForm } from '@/service/share'
+import { submitWebAppHumanInputForm } from '@/service/webapp-human-input'
 import { submitHumanInputForm as submitHumanInputFormService } from '@/service/workflow'
 import { useChat } from '../../chat/hooks'
 import ChatWrapper from '../chat-wrapper'
@@ -140,6 +142,10 @@ vi.mock('@/service/share', async (importOriginal) => {
 
 vi.mock('@/service/workflow', () => ({
   submitHumanInputForm: vi.fn(),
+}))
+
+vi.mock('@/service/webapp-human-input', () => ({
+  submitWebAppHumanInputForm: vi.fn(),
 }))
 
 const mockIsDify = vi.fn(() => false)
@@ -640,6 +646,20 @@ describe('EmbeddedChatbot chat-wrapper', () => {
         expect(screen.getByText('inputs form')).toBeInTheDocument()
       },
     )
+
+    it('should submit web app approvals through the passport-aware service', async () => {
+      const user = userEvent.setup()
+      render(<ChatWrapper />)
+
+      await user.click(screen.getByRole('button', { name: 'submit human input' }))
+
+      expect(submitWebAppHumanInputForm).toHaveBeenCalledWith('form-token', {
+        inputs: { answer: 'ok' },
+        action: 'approve',
+      })
+      expect(submitHumanInputForm).not.toHaveBeenCalled()
+      expect(submitHumanInputFormService).not.toHaveBeenCalled()
+    })
 
     it('should not disable sending when a required checkbox is not checked', () => {
       vi.mocked(useEmbeddedChatbotContext).mockReturnValue(
