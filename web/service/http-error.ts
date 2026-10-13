@@ -4,6 +4,10 @@ export function getHttpErrorStatus(error: unknown): number | undefined {
   return error instanceof ORPCError ? error.status : undefined
 }
 
+export function isUnauthorizedError(error: unknown): boolean {
+  return getHttpErrorStatus(error) === 401
+}
+
 export function isNotFoundError(error: unknown): boolean {
   return getHttpErrorStatus(error) === 404
 }
