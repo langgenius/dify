@@ -422,7 +422,7 @@ jobs:
               "tests.unit_tests.services.dify_builder.test_json_tool_metadata": {
                   "test_reviewed_normalized_declaration_matches_frozen_digests": 1,
                   "test_zero_or_multiple_installations_refuse": 2,
-                  "test_installation_identity_or_runtime_drift_refuses": 7,
+                  "test_installation_identity_or_runtime_drift_refuses": 11,
                   "test_provider_identity_drift_refuses": 3,
                   "test_schema_credential_oauth_dynamic_or_default_drift_refuses": 5,
                   "test_transport_failure_is_sanitized": 1,
