@@ -1,4 +1,5 @@
 from typing import Any
+from urllib.parse import urlsplit
 
 import pytest
 
@@ -89,7 +90,7 @@ def test_transform_tool_invoke_messages_mimetype_key_present_but_none():
     o = out[0]
     assert o.type == ToolInvokeMessage.MessageType.BINARY_LINK
     assert isinstance(o.message, ToolInvokeMessage.TextMessage)
-    assert o.message.text.endswith(".bin")
+    assert urlsplit(o.message.text).path.endswith(".bin")
     # meta is preserved (still contains mime_type: None)
     assert "mime_type" in (o.meta or {})
     assert o.meta["mime_type"] is None
@@ -116,7 +117,7 @@ def test_transform_tool_invoke_messages_prefers_filename_extension_over_mimetype
     assert _FakeToolFileManager.last_call["filename"] == "report.docx"
     assert len(out) == 1
     assert isinstance(out[0].message, ToolInvokeMessage.TextMessage)
-    assert out[0].message.text.endswith(".docx")
+    assert urlsplit(out[0].message.text).path.endswith(".docx")
 
 
 def test_transform_tool_invoke_messages_parses_existing_tool_file_link_meta():
@@ -170,7 +171,7 @@ def test_transform_tool_invoke_messages_grants_tool_file_to_current_end_user_sco
 
 def test_get_tool_file_url_returns_signed_url():
     """get_tool_file_url must sign the URL with timestamp/nonce/sign (#39222)."""
-    from urllib.parse import parse_qs, urlsplit
+    from urllib.parse import parse_qs
 
     from core.tools.signature import verify_tool_file_signature
 
