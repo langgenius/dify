@@ -7,6 +7,7 @@ import { toast } from '@/app/notifications'
 import { DSLImportMode, DSLImportStatus } from '@/models/app'
 import { useRouter } from '@/next/navigation'
 import { useImportPipelineDSL, useImportPipelineDSLConfirm } from '@/service/use-pipeline'
+import { getErrorMessage } from '@/utils/error-message'
 
 export const CreateFromDSLModalTab = {
   FROM_FILE: 'from-file',
@@ -24,17 +25,6 @@ type UseDSLImportOptions = {
 type DSLVersions = {
   importedVersion: string
   systemVersion: string
-}
-const getNonEmptyString = (value: unknown): string | undefined => {
-  if (typeof value !== 'string') return undefined
-
-  const trimmedValue = value.trim()
-  return trimmedValue || undefined
-}
-const getImportErrorMessage = async (error: unknown): Promise<string | undefined> => {
-  if (error instanceof Error) return getNonEmptyString(error.message)
-
-  return undefined
 }
 export const useDSLImport = ({
   activeTab = CreateFromDSLModalTab.FROM_FILE,
@@ -138,7 +128,7 @@ export const useDSLImport = ({
         notifyError(response.error)
       }
     } catch (error) {
-      notifyError(await getImportErrorMessage(error))
+      notifyError(getErrorMessage(error)?.trim() || undefined)
     } finally {
       isCreatingRef.current = false
     }
@@ -175,7 +165,7 @@ export const useDSLImport = ({
         notifyError(error)
       }
     } catch (error) {
-      notifyError(await getImportErrorMessage(error))
+      notifyError(getErrorMessage(error)?.trim() || undefined)
     } finally {
       setIsConfirming(false)
     }
