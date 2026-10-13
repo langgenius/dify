@@ -6,7 +6,6 @@ import logging
 from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import UTC, datetime
-from unittest.mock import MagicMock, patch
 
 import pytest
 from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter as RealGRPCMetricExporter
@@ -15,6 +14,9 @@ from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExp
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter as RealHTTPSpanExporter
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import InMemoryMetricReader
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 
 import enterprise.telemetry.exporter as exporter_module
 from configs import DifyConfig
@@ -330,39 +332,33 @@ def test_grpc_exporter_empty_endpoint_passes_none(monkeypatch: pytest.MonkeyPatc
 # ---------------------------------------------------------------------------
 
 
-def _make_exporter_with_mock_tracer() -> tuple[EnterpriseExporter, MagicMock, MagicMock]:
-    """Return (exporter, mock_tracer, mock_span) with OTEL internals fully mocked."""
-    mock_span = MagicMock()
-    mock_span.__enter__ = MagicMock(return_value=mock_span)
-    mock_span.__exit__ = MagicMock(return_value=False)
-
-    mock_tracer = MagicMock()
-    mock_tracer.start_as_current_span.return_value = mock_span
-
-    with (
-        patch("enterprise.telemetry.exporter.GRPCSpanExporter"),
-        patch("enterprise.telemetry.exporter.GRPCMetricExporter"),
-    ):
-        exporter = EnterpriseExporter(_make_grpc_config())
-
-    exporter._tracer = mock_tracer
-    return exporter, mock_tracer, mock_span
+@contextmanager
+def _exporter_with_in_memory_tracer() -> Iterator[tuple[EnterpriseExporter, InMemorySpanExporter]]:
+    span_exporter = InMemorySpanExporter()
+    provider = TracerProvider()
+    provider.add_span_processor(SimpleSpanProcessor(span_exporter))
+    with _running_exporter(_make_grpc_config()) as exporter:
+        exporter._tracer = provider.get_tracer("test.enterprise")
+        try:
+            yield exporter, span_exporter
+        finally:
+            provider.shutdown()
 
 
 def test_export_span_sets_and_clears_context(monkeypatch: pytest.MonkeyPatch) -> None:
     """export_span sets correlation/span context before the span and clears them in finally."""
-    exporter, mock_tracer, mock_span = _make_exporter_with_mock_tracer()
     correlation_ids: list[str | None] = []
     span_id_sources: list[str | None] = []
     monkeypatch.setattr(exporter_module, "set_correlation_id", correlation_ids.append)
     monkeypatch.setattr(exporter_module, "set_span_id_source", span_id_sources.append)
 
-    exporter.export_span(
-        name="test.span",
-        attributes={"k": "v"},
-        correlation_id="corr-1",
-        span_id_source="span-src-1",
-    )
+    with _exporter_with_in_memory_tracer() as (exporter, _):
+        exporter.export_span(
+            name="test.span",
+            attributes={"k": "v"},
+            correlation_id="corr-1",
+            span_id_source="span-src-1",
+        )
 
     assert correlation_ids == ["corr-1", None]
     assert span_id_sources == ["span-src-1", None]
@@ -370,54 +366,48 @@ def test_export_span_sets_and_clears_context(monkeypatch: pytest.MonkeyPatch) ->
 
 def test_export_span_sets_attributes_on_span() -> None:
     """All non-None attribute values are set on the span via set_attribute."""
-    exporter, mock_tracer, mock_span = _make_exporter_with_mock_tracer()
+    with _exporter_with_in_memory_tracer() as (exporter, span_exporter):
+        exporter.export_span(
+            name="test.span",
+            attributes={"key1": "value1", "key2": None, "key3": 42},
+        )
+        attributes = span_exporter.get_finished_spans()[0].attributes
 
-    exporter.export_span(
-        name="test.span",
-        attributes={"key1": "value1", "key2": None, "key3": 42},
-    )
-
-    # set_attribute should be called for non-None values only
-    calls = list(mock_span.set_attribute.call_args_list)
-    keys_set = {c[0][0] for c in calls}
-    assert "key1" in keys_set
-    assert "key3" in keys_set
-    assert "key2" not in keys_set
+    assert attributes is not None
+    assert attributes["key1"] == "value1"
+    assert attributes["key3"] == 42
+    assert "key2" not in attributes
 
 
 def test_export_span_no_end_time_uses_end_on_exit() -> None:
     """When end_time is None, end_on_exit=True is passed to start_as_current_span."""
-    exporter, mock_tracer, mock_span = _make_exporter_with_mock_tracer()
+    with _exporter_with_in_memory_tracer() as (exporter, span_exporter):
+        exporter.export_span(name="test.span", attributes={})
+        span = span_exporter.get_finished_spans()[0]
 
-    exporter.export_span(name="test.span", attributes={})
-
-    _, kwargs = mock_tracer.start_as_current_span.call_args
-    assert kwargs["end_on_exit"] is True
+    assert span.end_time is not None
 
 
 def test_export_span_with_end_time_calls_span_end() -> None:
     """When end_time is provided, span.end() is called with the converted ns timestamp."""
-    exporter, mock_tracer, mock_span = _make_exporter_with_mock_tracer()
-
     start = datetime(2024, 1, 1, 0, 0, 0, tzinfo=UTC)
     end = datetime(2024, 1, 1, 0, 0, 5, tzinfo=UTC)
 
-    exporter.export_span(name="test.span", attributes={}, start_time=start, end_time=end)
+    with _exporter_with_in_memory_tracer() as (exporter, span_exporter):
+        exporter.export_span(name="test.span", attributes={}, start_time=start, end_time=end)
+        span = span_exporter.get_finished_spans()[0]
 
-    mock_span.end.assert_called_once()
-    end_ns = mock_span.end.call_args.kwargs["end_time"]
-    assert end_ns == _datetime_to_ns(end)
+    assert span.end_time == _datetime_to_ns(end)
 
 
 def test_export_span_with_start_time_passed_to_start_as_current_span() -> None:
     """When start_time is provided it is converted to ns and passed to start_as_current_span."""
-    exporter, mock_tracer, mock_span = _make_exporter_with_mock_tracer()
-
     start = datetime(2024, 3, 1, 12, 0, 0, tzinfo=UTC)
-    exporter.export_span(name="test.span", attributes={}, start_time=start)
+    with _exporter_with_in_memory_tracer() as (exporter, span_exporter):
+        exporter.export_span(name="test.span", attributes={}, start_time=start)
+        span = span_exporter.get_finished_spans()[0]
 
-    _, kwargs = mock_tracer.start_as_current_span.call_args
-    assert kwargs["start_time"] == _datetime_to_ns(start)
+    assert span.start_time == _datetime_to_ns(start)
 
 
 def test_export_span_root_span_no_parent_context() -> None:
@@ -426,68 +416,63 @@ def test_export_span_root_span_no_parent_context() -> None:
     An explicit empty ``Context`` is passed (not ``None``) so the root span never
     implicitly inherits an ambient active span from the surrounding context.
     """
-    from opentelemetry.context import Context
-
-    exporter, mock_tracer, mock_span = _make_exporter_with_mock_tracer()
-
     uid = "123e4567-e89b-12d3-a456-426614174000"
-    exporter.export_span(
-        name="root.span",
-        attributes={},
-        correlation_id=uid,
-        span_id_source=uid,
-    )
+    with _exporter_with_in_memory_tracer() as (exporter, span_exporter):
+        exporter.export_span(
+            name="root.span",
+            attributes={},
+            correlation_id=uid,
+            span_id_source=uid,
+        )
+        span = span_exporter.get_finished_spans()[0]
 
-    _, kwargs = mock_tracer.start_as_current_span.call_args
-    assert isinstance(kwargs["context"], Context)
-    # An empty context carries no active span, guaranteeing a deterministic root trace_id.
-    assert len(kwargs["context"]) == 0
+    assert span.parent is None
 
 
 def test_export_span_child_span_has_parent_context() -> None:
     """When correlation_id != span_id_source the child span gets a parent context."""
-    exporter, mock_tracer, mock_span = _make_exporter_with_mock_tracer()
-
     corr_uid = "123e4567-e89b-12d3-a456-426614174000"
     node_uid = "987fbc97-4bed-5078-9f07-9141ba07c9f3"
 
-    exporter.export_span(
-        name="child.span",
-        attributes={},
-        correlation_id=corr_uid,
-        span_id_source=node_uid,
-    )
+    with _exporter_with_in_memory_tracer() as (exporter, span_exporter):
+        exporter.export_span(
+            name="child.span",
+            attributes={},
+            correlation_id=corr_uid,
+            span_id_source=node_uid,
+        )
+        span = span_exporter.get_finished_spans()[0]
 
-    _, kwargs = mock_tracer.start_as_current_span.call_args
-    assert kwargs["context"] is not None
+    assert span.parent is not None
 
 
 def test_export_span_cross_workflow_parent_context() -> None:
     """When parent_span_id_source is set, the cross-workflow parent context is built."""
-    exporter, mock_tracer, mock_span = _make_exporter_with_mock_tracer()
-
     corr_uid = "123e4567-e89b-12d3-a456-426614174000"
     parent_uid = "987fbc97-4bed-5078-9f07-9141ba07c9f3"
 
-    exporter.export_span(
-        name="cross.span",
-        attributes={},
-        correlation_id=corr_uid,
-        parent_span_id_source=parent_uid,
-    )
+    with _exporter_with_in_memory_tracer() as (exporter, span_exporter):
+        exporter.export_span(
+            name="cross.span",
+            attributes={},
+            correlation_id=corr_uid,
+            parent_span_id_source=parent_uid,
+        )
+        span = span_exporter.get_finished_spans()[0]
 
-    _, kwargs = mock_tracer.start_as_current_span.call_args
-    assert kwargs["context"] is not None
+    assert span.parent is not None
 
 
-def test_export_span_logs_exception_on_error(caplog: pytest.LogCaptureFixture) -> None:
+def test_export_span_logs_exception_on_error(caplog: pytest.LogCaptureFixture, monkeypatch: pytest.MonkeyPatch) -> None:
     """If the span block raises, the exception is logged and context is still cleared."""
-    exporter, mock_tracer, mock_span = _make_exporter_with_mock_tracer()
 
-    mock_tracer.start_as_current_span.side_effect = RuntimeError("boom")
+    def raise_error(*args: object, **kwargs: object) -> None:
+        raise RuntimeError("boom")
 
-    with caplog.at_level(logging.ERROR, logger="enterprise.telemetry.exporter"):
-        exporter.export_span(name="bad.span", attributes={})  # must not raise
+    with _exporter_with_in_memory_tracer() as (exporter, _):
+        monkeypatch.setattr(exporter._tracer, "start_as_current_span", raise_error)
+        with caplog.at_level(logging.ERROR, logger="enterprise.telemetry.exporter"):
+            exporter.export_span(name="bad.span", attributes={})  # must not raise
 
     assert "Failed to export span" in caplog.text
     assert "bad.span" in caplog.text
@@ -495,16 +480,15 @@ def test_export_span_logs_exception_on_error(caplog: pytest.LogCaptureFixture) -
 
 def test_export_span_invalid_trace_correlation_logs_warning(caplog: pytest.LogCaptureFixture) -> None:
     """Invalid UUID for trace_correlation_override triggers a warning log."""
-    exporter, mock_tracer, mock_span = _make_exporter_with_mock_tracer()
-
     parent_uid = "987fbc97-4bed-5078-9f07-9141ba07c9f3"
-    with caplog.at_level(logging.WARNING, logger="enterprise.telemetry.exporter"):
-        exporter.export_span(
-            name="link.span",
-            attributes={},
-            correlation_id="not-a-valid-uuid",
-            parent_span_id_source=parent_uid,
-        )
+    with _exporter_with_in_memory_tracer() as (exporter, _):
+        with caplog.at_level(logging.WARNING, logger="enterprise.telemetry.exporter"):
+            exporter.export_span(
+                name="link.span",
+                attributes={},
+                correlation_id="not-a-valid-uuid",
+                parent_span_id_source=parent_uid,
+            )
 
     assert "Invalid trace correlation UUID for cross-workflow link" in caplog.text
 
@@ -546,21 +530,23 @@ def test_increment_counter_unknown_name_is_noop() -> None:
 # ---------------------------------------------------------------------------
 
 
-@patch("enterprise.telemetry.exporter.GRPCSpanExporter")
-@patch("enterprise.telemetry.exporter.GRPCMetricExporter")
-def test_record_histogram_calls_record_on_histogram(
-    mock_metric_exporter: MagicMock, mock_span_exporter: MagicMock
-) -> None:
+def test_record_histogram_calls_record_on_histogram() -> None:
     """record_histogram calls .record() on the matching histogram instrument."""
-    exporter = EnterpriseExporter(_make_grpc_config())
-
-    mock_histogram = MagicMock()
-    exporter._histograms[EnterpriseTelemetryHistogram.WORKFLOW_DURATION] = mock_histogram
+    reader = InMemoryMetricReader()
+    provider = MeterProvider(metric_readers=[reader])
+    histogram = provider.get_meter("test").create_histogram("test.workflow.duration")
 
     labels = {"tenant_id": "t1"}
-    exporter.record_histogram(EnterpriseTelemetryHistogram.WORKFLOW_DURATION, 3.14, labels)
+    with _running_exporter(_make_grpc_config()) as exporter:
+        exporter._histograms[EnterpriseTelemetryHistogram.WORKFLOW_DURATION] = histogram
+        exporter.record_histogram(EnterpriseTelemetryHistogram.WORKFLOW_DURATION, 3.14, labels)
 
-    mock_histogram.record.assert_called_once_with(3.14, labels)
+    metrics = reader.get_metrics_data().resource_metrics[0].scope_metrics[0].metrics
+    data_point = metrics[0].data.data_points[0]
+    assert data_point.count == 1
+    assert data_point.sum == 3.14
+    assert dict(data_point.attributes) == labels
+    provider.shutdown()
 
 
 def test_record_histogram_unknown_name_is_noop() -> None:
