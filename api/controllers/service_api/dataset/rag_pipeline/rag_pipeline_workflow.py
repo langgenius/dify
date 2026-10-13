@@ -337,7 +337,9 @@ class PipelineRunApi(DatasetApiResource):
 class KnowledgebasePipelineFileUploadApi(DatasetApiResource):
     """Resource for uploading a file to a knowledgebase pipeline."""
 
-    @error_responses(FilenameNotExistsError, FileTooLargeError, NoFileUploadedError, TooManyFilesError)
+    @error_responses(
+        FilenameNotExistsError, FileTooLargeError, NoFileUploadedError, TooManyFilesError, UnsupportedFileTypeError
+    )
     @service_api_ns.doc(
         summary="Upload Pipeline File",
         description="Upload a file for use in a knowledge pipeline. Accepts a single file via `multipart/form-data`.",
