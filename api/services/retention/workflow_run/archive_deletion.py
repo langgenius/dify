@@ -56,7 +56,19 @@ class WorkflowRunArchiveDeleter:
                 return self._delete_locked(tenant_id=tenant_id, year=year, month=month, lease=lease)
         except Exception as exc:
             logger.exception(
-                "Failed to delete workflow run archive month: tenant=%s year=%s month=%s", tenant_id, year, month
+                "audit: workflow_run_archive.deletion_failed tenant_id=%s year=%s month=%s",
+                tenant_id,
+                year,
+                month,
+                extra={
+                    "attributes": {
+                        "audit": True,
+                        "event": "workflow_run_archive.deletion_failed",
+                        "tenant_id": tenant_id,
+                        "year": year,
+                        "month": month,
+                    }
+                },
             )
             self._bundles.set_deletion_status(
                 tenant_id, year=year, month=month, status=WorkflowRunArchiveDeletionStatus.FAILED
@@ -97,7 +109,23 @@ class WorkflowRunArchiveDeleter:
 
         lease.assert_owned()
         self._bundles.remove_deleted_bundles(tenant_id, catalog_ids=[record.catalog_id for record in requested])
-        logger.info("Deleted workflow run archive month: tenant=%s year=%s month=%s", tenant_id, year, month)
+        logger.info(
+            "audit: workflow_run_archive.deletion_completed tenant_id=%s year=%s month=%s bundle_count=%s",
+            tenant_id,
+            year,
+            month,
+            len(requested),
+            extra={
+                "attributes": {
+                    "audit": True,
+                    "event": "workflow_run_archive.deletion_completed",
+                    "tenant_id": tenant_id,
+                    "year": year,
+                    "month": month,
+                    "bundle_count": len(requested),
+                }
+            },
+        )
         return WorkflowRunArchiveDeletionTask(year, month, WorkflowRunArchiveDeletionStatus.COMPLETED)
 
     @staticmethod

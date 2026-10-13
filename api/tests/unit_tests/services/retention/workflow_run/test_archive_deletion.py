@@ -2,6 +2,7 @@
 
 import datetime
 import json
+import logging
 import threading
 from collections.abc import Generator
 from contextlib import contextmanager, nullcontext
@@ -114,7 +115,9 @@ def _deleter(
 
 def test_archive_deletion_removes_only_requested_files_indexes_and_downloads(
     sqlite_session_factory: sessionmaker[Session],
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
+    caplog.set_level(logging.INFO, logger="services.retention.workflow_run.archive_deletion")
     archive, downloads = MemoryStorage(), MemoryStorage()
     target, other_tenant, other_month = _bundle(), _bundle(tenant_id=OTHER_TENANT_ID), _bundle(month=2)
     target_prefix = _put_bundle(archive, target)
@@ -176,13 +179,30 @@ def test_archive_deletion_removes_only_requested_files_indexes_and_downloads(
             other_tenant.id,
             other_month.id,
         }
+    completed = [
+        getattr(record, "attributes", {})
+        for record in caplog.records
+        if getattr(record, "attributes", {}).get("event") == "workflow_run_archive.deletion_completed"
+    ]
+    assert completed == [
+        {
+            "audit": True,
+            "event": "workflow_run_archive.deletion_completed",
+            "tenant_id": TENANT_ID,
+            "year": 2025,
+            "month": 3,
+            "bundle_count": 1,
+        }
+    ]
 
 
 @pytest.mark.parametrize("failure_stage", ["archive", "download"])
 def test_failed_storage_delete_keeps_indexes_and_can_retry_partial_deletion(
     sqlite_session_factory: sessionmaker[Session],
     failure_stage: str,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
+    caplog.set_level(logging.INFO, logger="services.retention.workflow_run.archive_deletion")
     archive, downloads = MemoryStorage(), MemoryStorage()
     target = _bundle()
     prefix = _put_bundle(archive, target)
@@ -205,6 +225,16 @@ def test_failed_storage_delete_keeps_indexes_and_can_retry_partial_deletion(
     if failure_stage == "archive":
         assert prefix + "manifest.json" in archive.objects
     assert download_key in downloads.objects
+    assert not any(
+        getattr(record, "attributes", {}).get("event") == "workflow_run_archive.deletion_completed"
+        for record in caplog.records
+    )
+    failed = next(
+        getattr(record, "attributes", {})
+        for record in caplog.records
+        if getattr(record, "attributes", {}).get("event") == "workflow_run_archive.deletion_failed"
+    )
+    assert (failed["tenant_id"], failed["year"], failed["month"]) == (TENANT_ID, 2025, 3)
 
     archive.fail_key = downloads.fail_key = None
     repository.request_deletion(TENANT_ID, year=2025, month=3)
@@ -213,6 +243,13 @@ def test_failed_storage_delete_keeps_indexes_and_can_retry_partial_deletion(
     assert not archive.list_objects(prefix)
     assert not downloads.objects
     assert deleter.delete(tenant_id=TENANT_ID, year=2025, month=3).status == WorkflowRunArchiveDeletionStatus.COMPLETED
+    assert (
+        sum(
+            getattr(record, "attributes", {}).get("event") == "workflow_run_archive.deletion_completed"
+            for record in caplog.records
+        )
+        == 1
+    )
 
 
 def test_deletion_requires_durable_request_and_never_deletes_new_active_bundles(
