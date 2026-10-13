@@ -57,6 +57,7 @@ export type DifyBuilderSessionViewResponse = {
   model?: SessionModel | null
   phase: Phase
   recovery?: RecoveryRef | null
+  reply_language: string
   run_status: RunStatus
   session_id: string
   version: number
@@ -680,6 +681,7 @@ export type DifyBuilderCommandFinishedEventData = {
   phase: Phase
   post_canvas_action_id?: string | null
   recovery?: RecoveryRef | null
+  reply_language: string
   run_status: RunStatus
   session_id: string
   version: number
