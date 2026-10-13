@@ -15,7 +15,7 @@ from controllers.openapi._models import (
     ReleaseState,
 )
 from controllers.openapi.app_dsl import AppDslExportApi
-from controllers.openapi.app_run import DRAFT_TEST_OPS
+from controllers.openapi.app_run import draft_test_hint
 from controllers.openapi.app_workflow import VERSION_READ_GUARDS, require_draft
 from controllers.openapi.auth.context import Context
 from extensions.ext_application_services import application_services
@@ -97,13 +97,7 @@ class ReleaseCheckApi(Resource):
                 )
             )
         if not tested:
-            hints.append(
-                Hint(
-                    summary="Run the draft on the acceptance cases",
-                    op=DRAFT_TEST_OPS[mode],
-                    input={"app_id": ctx.app.id},
-                )
-            )
+            hints.append(draft_test_hint(mode, app_id=ctx.app.id, summary="Run the draft on the acceptance cases"))
         return ReleaseCheckResponse(
             ready=all(c.passed for c in checks),
             checks=checks,

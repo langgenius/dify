@@ -400,7 +400,14 @@ _RUN_ROUTES: Final = (
     ),
 )
 
-DRAFT_TEST_OPS: Final = {mode: route.op for route in _RUN_ROUTES if route.draft for mode in route.modes}
+_DRAFT_TEST_ROUTES: Final = {mode: route for route in _RUN_ROUTES if route.draft for mode in route.modes}
+
+
+def draft_test_hint(mode: AppMode, *, app_id: str, summary: str) -> Hint:
+    """Test-run the draft of an app in `mode`, every required field of that route's payload null."""
+    route = _DRAFT_TEST_ROUTES[mode]
+    required = {name: None for name, field in route.payload.model_fields.items() if field.is_required()}
+    return Hint(summary=summary, op=route.op, input={"app_id": app_id} | required)
 
 
 def _run_api(route: _RunRoute) -> type[Resource]:
