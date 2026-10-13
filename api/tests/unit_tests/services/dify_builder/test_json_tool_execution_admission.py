@@ -13,6 +13,7 @@ import pytest
 from core.dify_builder.execution_policy import scalar_inputs_digest
 from models.dify_builder import DifyBuilderExecutionRequest, DifyBuilderTestInput
 from models.workflow import Workflow
+from services.dify_builder.execution_contracts import BuilderExecutionPolicyError
 from services.dify_builder.execution_policy_service import BuilderExecutionPolicyService
 from tests.unit_tests.services.dify_builder.test_execution_policy_service import owned as owned  # noqa: PLC0414
 
@@ -24,8 +25,13 @@ GRAPH_FIXTURE = Path(__file__).parents[3] / "fixtures/workflow/builder_restricte
     [(True, False), (False, False), (True, True), (False, True)],
     ids=["raw-true", "raw-false", "constant-true", "constant-false"],
 )
-def test_owned_json_parse_prepare_persists_restricted_request(owned, ensure_ascii: bool, wrapped: bool) -> None:
+def test_owned_json_parse_prepare_persists_restricted_request(
+    owned, monkeypatch, ensure_ascii: bool, wrapped: bool
+) -> None:
+    from tests.unit_tests.services.dify_builder.test_json_tool_metadata import _installation, _owners
+
     factory, actor, app, workflow, session_id, test_input_id = owned
+    metadata_calls = _owners(monkeypatch, installations=[_installation(tenant_id=actor.tenant_id)])
     graph = json.loads(GRAPH_FIXTURE.read_text())
     graph["nodes"][1]["data"]["tool_configurations"]["ensure_ascii"] = (
         {"type": "constant", "value": ensure_ascii} if wrapped else ensure_ascii
@@ -52,6 +58,10 @@ def test_owned_json_parse_prepare_persists_restricted_request(owned, ensure_asci
     assert context.sandbox_profile == "disabled"
     assert context.submitted_inputs_digest == scalar_inputs_digest(submitted)
     assert context.effective_inputs_digest == scalar_inputs_digest(submitted)
+    assert metadata_calls == [
+        ("install", actor.tenant_id, ["langgenius/json_process"]),
+        ("provider", actor.tenant_id, "langgenius/json_process/json_process"),
+    ]
     assert [(node.node_id, node.implementation, node.node_version) for node in context.admitted_nodes] == [
         ("node1", "graphon.nodes.start.start_node.StartNode", "1"),
         ("node2", "graphon.nodes.tool.tool_node.ToolNode", "1"),
@@ -70,3 +80,49 @@ def test_owned_json_parse_prepare_persists_restricted_request(owned, ensure_asci
         assert request.context == context.model_dump(mode="json")
         assert request.context_digest == context.context_digest
         assert db.get(DifyBuilderTestInput, test_input_id).inputs == submitted
+
+
+def test_json_prepare_reloads_owner_and_inputs_after_metadata(owned, monkeypatch) -> None:
+    from services.dify_builder import execution_policy_service as service_module
+    from tests.unit_tests.services.dify_builder.test_json_tool_metadata import _installation, _owners
+
+    factory, actor, app, workflow, session_id, test_input_id = owned
+    _owners(monkeypatch, installations=[_installation(tenant_id=actor.tenant_id)])
+    graph_json = GRAPH_FIXTURE.read_text()
+    submitted = {"payload": '{"x":"y"}', "json_path": "$.x"}
+    workflow.graph = graph_json
+    with factory.begin() as db:
+        db.get(Workflow, workflow.id).graph = graph_json
+        db.get(DifyBuilderTestInput, test_input_id).inputs = submitted
+    original = service_module.resolve_installed_json_parse
+
+    def change_saved_input(*, tenant_id):
+        with factory.begin() as db:
+            db.get(DifyBuilderTestInput, test_input_id).inputs = {**submitted, "payload": "{}"}
+        return original(tenant_id=tenant_id)
+
+    monkeypatch.setattr(service_module, "resolve_installed_json_parse", change_saved_input)
+    with pytest.raises(BuilderExecutionPolicyError, match="stale_execution_revision"):
+        BuilderExecutionPolicyService(factory).prepare(
+            session_id=session_id,
+            test_input_id=test_input_id,
+            app_id=app.id,
+            actor=actor,
+            workflow=workflow,
+            submitted_inputs=submitted,
+            effective_inputs=submitted,
+        )
+    with factory() as db:
+        assert db.query(DifyBuilderExecutionRequest).count() == 0
+
+
+def test_existing_restricted_policies_skip_json_metadata(owned, monkeypatch) -> None:
+    from services.dify_builder import execution_policy_service as service_module
+    from tests.unit_tests.services.dify_builder.test_execution_policy_service import prepare_inputs
+
+    def forbidden(*, tenant_id):
+        raise AssertionError(f"unexpected JSON metadata read for {tenant_id}")
+
+    monkeypatch.setattr(service_module, "resolve_installed_json_parse", forbidden)
+    context = prepare_inputs(owned)
+    assert context.policy_version == "builder-restricted-v1"
