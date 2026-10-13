@@ -9,6 +9,7 @@ from uuid import uuid4
 import pytest
 from flask import Flask
 from sqlalchemy.orm import Session
+from werkzeug.exceptions import HTTPException
 
 import services.errors.base
 import services.errors.workspace
