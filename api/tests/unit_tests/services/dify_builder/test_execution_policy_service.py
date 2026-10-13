@@ -2,6 +2,7 @@
 
 import importlib
 import json
+from copy import deepcopy
 from datetime import datetime
 from uuid import uuid4
 
@@ -18,6 +19,137 @@ from models.dify_builder import DifyBuilderSession, DifyBuilderTestInput
 from models.model import App
 from models.workflow import Workflow, WorkflowKind, WorkflowNodeExecutionModel, WorkflowRun, WorkflowType
 from tests.unit_tests.core.dify_builder.test_execution_policy import fixture, graph, policy
+
+
+def _stored_context_values():
+    return {
+        "request_id": "request-1",
+        "tenant_id": "tenant-1",
+        "app_id": "app-1",
+        "workflow_id": "workflow-1",
+        "actor_id": "actor-1",
+        "session_id": "session-1",
+        "test_input_id": "input-1",
+        "execution_revision": "a" * 64,
+        "graph_revision": "b" * 64,
+        "submitted_inputs_digest": "c" * 64,
+        "effective_inputs_digest": "d" * 64,
+        "mode": "restricted",
+        "sandbox_profile": "disabled",
+        "admitted_nodes": (),
+    }
+
+
+def _json_context():
+    p = policy()
+    values = _stored_context_values()
+    nodes = tuple(
+        p.AdmittedNodeBinding(
+            node_id=node_id,
+            implementation=implementation,
+            node_version="1",
+            normalized_config_digest="e" * 64,
+        )
+        for node_id, implementation in (
+            ("node1", "graphon.nodes.start.start_node.StartNode"),
+            ("node2", "graphon.nodes.tool.tool_node.ToolNode"),
+            ("node3", "graphon.nodes.end.end_node.EndNode"),
+        )
+    )
+    qualified = p.QualifiedJsonToolBinding(
+        node_id="node2",
+        tenant_id="tenant-1",
+        installation_id="installation-1",
+        plugin_id="langgenius/json_process",
+        provider_id="langgenius/json_process/json_process",
+        tool_name="parse",
+        unique_identifier="langgenius/json_process:0.0.8@" + "f" * 64,
+        version="0.0.8",
+        checksum="1" * 64,
+        provider_schema_digest="2" * 64,
+        tool_schema_digest="3" * 64,
+        runtime_type="local",
+        qualification_digest="4" * 64,
+        final_parameters_digest="5" * 64,
+    )
+    initial = p.JsonToolExecutionContext.model_validate(
+        {
+            **values,
+            "policy_version": "builder-json-parse-v1",
+            "admitted_nodes": nodes,
+            "qualified_tool": qualified,
+            "context_digest": "0" * 64,
+        }
+    )
+    return initial.model_copy(update={"context_digest": p.context_digest(initial)})
+
+
+def test_historical_restricted_context_tag_and_absence_decode_identically():
+    p = policy()
+    initial = p.BuilderExecutionContext.model_validate(
+        {
+            **_stored_context_values(),
+            "fixture_digest": "f" * 64,
+            "http_fixtures": (),
+            "context_digest": "0" * 64,
+        }
+    )
+    stored = initial.model_copy(update={"context_digest": p.context_digest(initial)}).model_dump(mode="json")
+    tagged = p.validate_execution_context(stored)
+    untagged = p.validate_execution_context({key: value for key, value in stored.items() if key != "policy_version"})
+    assert tagged.model_dump(mode="json") == untagged.model_dump(mode="json") == stored
+    assert p.context_digest(tagged) == p.context_digest(untagged) == stored["context_digest"]
+    for forged in ({**stored, "qualified_tool": {}}, {**stored, "policy_version": "unknown-v9"}):
+        with pytest.raises(p.BuilderExecutionPolicyError):
+            p.validate_execution_context(forged)
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "installation_id",
+        "tenant_id",
+        "plugin_id",
+        "provider_id",
+        "tool_name",
+        "unique_identifier",
+        "version",
+        "checksum",
+        "provider_schema_digest",
+        "tool_schema_digest",
+        "runtime_type",
+        "qualification_digest",
+        "final_parameters_digest",
+    ],
+)
+def test_json_context_digest_covers_qualified_binding(field):
+    p = policy()
+    raw = _json_context().model_dump(mode="json")
+    changed = deepcopy(raw)
+    changed["qualified_tool"][field] = "changed"
+    with pytest.raises(p.BuilderExecutionPolicyError):
+        p.validate_execution_context(changed)
+
+
+def test_json_context_decodes_through_completion_and_requires_explicit_tag():
+    p = policy()
+    context = _json_context()
+    assert isinstance(p.validate_execution_context(context.model_dump(mode="json")), p.JsonToolExecutionContext)
+    completion = p.TrustedExecutionCompletion(
+        context=context,
+        native_run_id="run",
+        task_id="task",
+        worker_finished=True,
+        worker_exit="returned",
+        recorder_healthy=True,
+        response_completed=True,
+    )
+    decoded = p.TrustedExecutionCompletion.model_validate(completion.model_dump(mode="json"))
+    assert isinstance(decoded.context, p.JsonToolExecutionContext)
+    without_tag = context.model_dump(mode="json")
+    del without_tag["policy_version"]
+    with pytest.raises(p.BuilderExecutionPolicyError):
+        p.validate_execution_context(without_tag)
 
 
 def service_module():
