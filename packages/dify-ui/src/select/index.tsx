@@ -206,7 +206,10 @@ function SelectList({ className, ...props }: SelectListProps) {
   return (
     <BaseSelect.List
       className={(state) =>
-        cn('max-h-80 overflow-auto p-1 outline-hidden', resolveClassName(className, state))
+        cn(
+          'max-h-80 scroll-py-1 overflow-auto p-1 outline-hidden',
+          resolveClassName(className, state),
+        )
       }
       {...props}
     />
