@@ -36,6 +36,7 @@ const canContinueConversation = (status?: string) =>
   status === 'waiting_input' || status === 'waiting_confirmation'
 
 export const difyBuilderRuntimeAtom = atom<DifyBuilderRuntime | null>(null)
+export const difyBuilderAppIdAtom = atom((get) => get(difyBuilderRuntimeAtom)?.appId)
 const difyBuilderFixMutationKeyAtom = atom((get) => [
   'dify-builder',
   'start-fix',
