@@ -9,5 +9,7 @@ export const menuItemDestructiveClassName =
 export const menuPopupBaseClassName =
   'max-h-(--available-height) overflow-y-auto overflow-x-hidden text-sm text-text-secondary outline-hidden focus:outline-hidden focus-visible:outline-hidden'
 
+// The popup scrolls through `menuPopupBaseClassName`, so its vertical padding scrolls away with the
+// items. The scroll padding repeats that padding; change both together.
 export const menuPopupSurfaceClassName =
-  'rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur py-1 shadow-lg backdrop-blur-[5px]'
+  'rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur py-1 scroll-py-1 shadow-lg backdrop-blur-[5px]'
