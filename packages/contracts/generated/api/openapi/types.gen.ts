@@ -543,7 +543,7 @@ export type FileUploadPayload = {
 }
 
 export type FormSubmitResponse = {
-  [key: string]: never
+  hints?: Array<Hint>
 }
 
 export type Github = {

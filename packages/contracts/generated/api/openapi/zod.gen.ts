@@ -648,15 +648,6 @@ export const zFileUploadPayload = z.object({
 })
 
 /**
- * FormSubmitResponse
- *
- * Empty 200 body for POST /apps/<id>/human-input-forms/<token>:submit. `extra='forbid'`
- * pins `additionalProperties: false` so the generated contract is an exact `{}` rather
- * than an under-annotated open object.
- */
-export const zFormSubmitResponse = z.record(z.string(), z.never())
-
-/**
  * Github
  */
 export const zGithub = z.object({
@@ -678,7 +669,7 @@ export const zHealthResponse = z.object({
 /**
  * Hint
  *
- * A next step the caller can hand straight to `call <op> --input <input>`.
+ * A next step: the op id to call and its ready input.
  */
 export const zHint = z.object({
   form: z.array(z.record(z.string(), z.unknown())).nullish(),
@@ -742,6 +733,17 @@ export const zErrorBody = z.object({
   hints: z.array(zHint).nullish(),
   message: z.string(),
   status: z.int(),
+})
+
+/**
+ * FormSubmitResponse
+ *
+ * 200 body for POST /apps/<id>/human-input-forms/<token>:submit: the hint to follow the
+ * resumed run. `extra='forbid'` pins `additionalProperties: false` so the generated contract
+ * is exact rather than an under-annotated open object.
+ */
+export const zFormSubmitResponse = z.object({
+  hints: z.array(zHint).optional(),
 })
 
 /**
@@ -1532,7 +1534,7 @@ export const zSubjectType = z.enum(['account', 'external_sso', 'resource_access'
 /**
  * SupportedAppType
  *
- * App types the ``app`` usage face (``get app``) lists and filters.
+ * App types the app list ops list and filter by.
  *
  * A curated subset of :class:`AppMode`: the real, user-facing app categories.
  * Excludes runtime-only mode tags that are not standalone apps
@@ -1541,8 +1543,7 @@ export const zSubjectType = z.enum(['account', 'external_sso', 'resource_access'
  *
  * Members reference ``AppMode.*.value`` so the subset relationship is
  * type-checked: dropping a member from ``AppMode`` breaks this at import.
- * This is the single source for the listable set — params, filters, and the
- * generated CLI whitelist all derive from it.
+ * This is the single source for the listable set — params and filters derive from it.
  */
 export const zSupportedAppType = z.enum([
   'advanced-chat',
