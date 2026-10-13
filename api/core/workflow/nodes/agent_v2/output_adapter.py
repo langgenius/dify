@@ -19,7 +19,7 @@ from graphon.file import File, FileTransferMethod, FileType
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.node_events import NodeRunResult
 from graphon.variables.segments import ArrayFileSegment, FileSegment
-from models.agent_config_entities import DeclaredOutputConfig, DeclaredOutputType
+from models.agent_config_entities import SYSTEM_DECLARED_OUTPUTS, DeclaredOutputConfig, DeclaredOutputType
 
 
 class ToolFileRebacker(Protocol):
@@ -34,9 +34,11 @@ class WorkflowAgentOutputAdapter:
     treating normal object fields as files. Plain runs provide a free-form
     string, which is mapped directly to the system ``text`` output. Older Agent
     backend builds may still return bare ToolFile ids (``{"id": "..."}``); when
-    a ``ToolFileRebacker`` is provided, those ids are treated as a
+    a ``ToolFileRebacker`` is provided, those ids in undeclared outputs or in
+    declared ``FILE`` / ``ARRAY[FILE]`` outputs are treated as a
     backwards-compatible fallback and hydrated from the server-side ToolFile
-    row instead of trusted from the sandbox payload.
+    row instead of trusted from the sandbox payload. Declared non-file types
+    such as ``OBJECT`` and ``ARRAY[OBJECT]`` keep their object shape.
     """
 
     _tool_file_rebacker: ToolFileRebacker | None
@@ -154,7 +156,12 @@ class WorkflowAgentOutputAdapter:
         DB-backed file factory.
         """
         if isinstance(output, dict):
-            declared_outputs_by_name = {declared.name: declared for declared in declared_outputs or ()}
+            # System ``text`` is never in custom declarations; include it so a
+            # bare ``{"id": ...}`` string-shaped system field is not inferred as
+            # an undeclared ToolFile reference.
+            declared_outputs_by_name = {
+                declared.name: declared for declared in (*SYSTEM_DECLARED_OUTPUTS, *(declared_outputs or ()))
+            }
             return {
                 key: self._normalize_output_value(
                     value,
@@ -176,7 +183,11 @@ class WorkflowAgentOutputAdapter:
     ) -> Any:
         if isinstance(value, File | FileSegment | ArrayFileSegment):
             return value
-        legacy_tool_file_value = self._normalize_legacy_tool_file_value(value, tenant_id=tenant_id)
+        legacy_tool_file_value = self._normalize_legacy_tool_file_value(
+            value,
+            declared_output=declared_output,
+            tenant_id=tenant_id,
+        )
         if legacy_tool_file_value is not None:
             return legacy_tool_file_value
         if declared_output is not None:
@@ -212,8 +223,11 @@ class WorkflowAgentOutputAdapter:
         self,
         value: Any,
         *,
+        declared_output: DeclaredOutputConfig | None,
         tenant_id: str | None,
     ) -> FileSegment | ArrayFileSegment | None:
+        if not self._allows_legacy_tool_file_conversion(declared_output):
+            return None
         if isinstance(value, Mapping):
             file = self._legacy_tool_file_from_payload(value, tenant_id=tenant_id)
             return FileSegment(value=file) if file is not None else None
@@ -222,6 +236,25 @@ class WorkflowAgentOutputAdapter:
             if all(file is not None for file in files):
                 return ArrayFileSegment(value=[file for file in files if file is not None])
         return None
+
+    @staticmethod
+    def _allows_legacy_tool_file_conversion(declared_output: DeclaredOutputConfig | None) -> bool:
+        """Legacy ``{id}`` hydration for undeclared or declared file outputs only.
+
+        Undeclared fields keep the older Agent backend fallback. Declared
+        ``FILE`` / ``ARRAY[FILE]`` fields may still receive bare ToolFile ids.
+        Any other declaration (including ``OBJECT`` / ``ARRAY[OBJECT]``) must
+        keep the object shape and must not trigger ToolFile lookup.
+        """
+        if declared_output is None:
+            return True
+        if declared_output.type == DeclaredOutputType.FILE:
+            return True
+        return (
+            declared_output.type == DeclaredOutputType.ARRAY
+            and declared_output.array_item is not None
+            and declared_output.array_item.type == DeclaredOutputType.FILE
+        )
 
     def _legacy_tool_file_from_payload(self, value: Mapping[str, Any], *, tenant_id: str | None) -> File | None:
         if self._tool_file_rebacker is None or tenant_id is None or set(value) != {"id"}:
