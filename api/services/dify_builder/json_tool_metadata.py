@@ -1,7 +1,7 @@
-"""Exact installed metadata for the qualified local JSON Process parse action.
+"""Exact installed metadata for the qualified JSON Process parse action.
 
-The fixed qualification describes the reviewed administrator-installed runtime,
-not an atomic lease on daemon bytes. Callers read it before and after dispatch.
+The fixed qualifications describe reviewed administrator-installed runtimes,
+not atomic leases on daemon bytes. Callers read metadata before and after dispatch.
 """
 
 from __future__ import annotations
@@ -40,6 +40,17 @@ QUALIFICATION_DIGEST = canonical_digest(
         "tool_schema_digest": TOOL_SCHEMA_DIGEST,
         "archive_sha256": "a43cbcb37762c512285f0b9ce2a5eb239e205e0b3a2c0fa2d9dba23a5aff6944",
         "runtime_type": "local",
+    }
+)
+SERVERLESS_QUALIFICATION_REVISION = "serverless-json-process-0.0.8-sdk-0.10.2-jsonpath-ng-1.8.0-python-3.12.14-v1"
+SERVERLESS_QUALIFICATION_DIGEST = canonical_digest(
+    {
+        "revision": SERVERLESS_QUALIFICATION_REVISION,
+        "identifier": UNIQUE_IDENTIFIER,
+        "provider_schema_digest": PROVIDER_SCHEMA_DIGEST,
+        "tool_schema_digest": TOOL_SCHEMA_DIGEST,
+        "archive_sha256": "a43cbcb37762c512285f0b9ce2a5eb239e205e0b3a2c0fa2d9dba23a5aff6944",
+        "runtime_type": "serverless",
     }
 )
 
@@ -132,12 +143,17 @@ def resolve_installed_json_parse(*, tenant_id: str) -> InstalledJsonParse:
             or installation.plugin_unique_identifier != UNIQUE_IDENTIFIER
             or installation.version != VERSION
             or installation.checksum != CHECKSUM
-            or installation.runtime_type != "local"
             or installation.source != PluginInstallationSource.Marketplace
             or provider.provider != NATIVE_PROVIDER_NAME
             or provider.plugin_id != PLUGIN_ID
             or provider.plugin_unique_identifier != UNIQUE_IDENTIFIER
         ):
+            raise BuilderExecutionPolicyError("unsupported_json_tool_installation")
+        if installation.runtime_type == "local":
+            qualification_digest = QUALIFICATION_DIGEST
+        elif installation.runtime_type == "serverless":
+            qualification_digest = SERVERLESS_QUALIFICATION_DIGEST
+        else:
             raise BuilderExecutionPolicyError("unsupported_json_tool_installation")
         _validate_declaration(provider.declaration)
         return InstalledJsonParse(
@@ -151,8 +167,8 @@ def resolve_installed_json_parse(*, tenant_id: str) -> InstalledJsonParse:
             checksum=CHECKSUM,
             provider_schema_digest=PROVIDER_SCHEMA_DIGEST,
             tool_schema_digest=TOOL_SCHEMA_DIGEST,
-            runtime_type="local",
-            qualification_digest=QUALIFICATION_DIGEST,
+            runtime_type=installation.runtime_type,
+            qualification_digest=qualification_digest,
         )
     except BuilderExecutionPolicyError:
         raise

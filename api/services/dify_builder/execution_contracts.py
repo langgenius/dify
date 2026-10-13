@@ -219,7 +219,7 @@ class ConfirmedToolExecutionContext(_TrustedModel):
 
 
 class QualifiedJsonToolBinding(_TrustedModel):
-    """Installed, locally qualified parse action and its expected scalar call."""
+    """Installed, runtime-qualified parse action and its expected scalar call."""
 
     node_id: BoundedID
     tenant_id: BoundedID
@@ -232,7 +232,7 @@ class QualifiedJsonToolBinding(_TrustedModel):
     checksum: Digest
     provider_schema_digest: Digest
     tool_schema_digest: Digest
-    runtime_type: Literal["local"]
+    runtime_type: Literal["local", "serverless"]
     qualification_digest: Digest
     final_parameters_digest: Digest
 
