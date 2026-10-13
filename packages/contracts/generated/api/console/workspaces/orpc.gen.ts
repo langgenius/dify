@@ -2,6 +2,7 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
+import * as errorSchemas from './zod.gen.ts'
 import {
   zDeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdPath,
   zDeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdResponse,
@@ -3688,6 +3689,10 @@ export const patch5 = oc
     }),
   )
   .output(zPatchWorkspacesCurrentSkillsBySkillIdFilesResponse)
+  .errors({
+    skill_not_found: { status: 404, data: errorSchemas.zSkillNotFoundResponse },
+    skill_conflict: { status: 409, data: errorSchemas.zSkillDraftConflictResponse },
+  })
 
 export const put19 = oc
   .route({

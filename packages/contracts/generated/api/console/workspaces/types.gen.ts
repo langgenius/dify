@@ -782,6 +782,17 @@ export type SkillDraftFileOperationPayload = {
   tool_file_id?: string | null
 }
 
+export type SkillNotFoundResponse = {
+  code: 'skill_not_found'
+  message: string
+}
+
+export type SkillDraftConflictResponse = {
+  code: 'skill_conflict'
+  details: SkillDraftConflictDetails
+  message: string
+}
+
 export type SkillDraftTreePayload = {
   expected_updated_at?: number | null
   files?: Array<SkillDraftTreeItemPayload>
@@ -1841,6 +1852,15 @@ export type SkillDraftFileOperation =
   | 'rename'
   | 'upsert_text'
   | 'upsert_tool_file'
+
+export type SkillDraftConflictDetails = {
+  current_file_content?: string | null
+  current_file_hash?: string | null
+  current_file_path?: string | null
+  current_file_updated_at?: number | null
+  current_updated_at: number
+  expected_updated_at: number
+}
 
 export type SkillDraftTreeItemPayload = {
   content?: string | null
@@ -5641,6 +5661,14 @@ export type PatchWorkspacesCurrentSkillsBySkillIdFilesData = {
   query?: never
   url: '/workspaces/current/skills/{skill_id}/files'
 }
+
+export type PatchWorkspacesCurrentSkillsBySkillIdFilesErrors = {
+  404: SkillNotFoundResponse
+  409: SkillDraftConflictResponse
+}
+
+export type PatchWorkspacesCurrentSkillsBySkillIdFilesError =
+  PatchWorkspacesCurrentSkillsBySkillIdFilesErrors[keyof PatchWorkspacesCurrentSkillsBySkillIdFilesErrors]
 
 export type PatchWorkspacesCurrentSkillsBySkillIdFilesResponses = {
   200: SkillDetailResponse

@@ -4,6 +4,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { $, defineConfig } from '@hey-api/openapi-ts'
 import ts from 'typescript'
+import { errorContractsFor } from './scripts/generate-error-contracts.mjs'
 
 type JsonObject = Record<string, unknown>
 
@@ -627,6 +628,19 @@ const createApiConfig = (job: ApiJob): UserConfig => ({
       suffix: '.gen',
     },
     path: job.outputPath,
+    postProcess:
+      job.plugins === undefined && Object.keys(errorContractsFor(job.document)).length
+        ? [
+            {
+              command: process.execPath,
+              args: [
+                path.join(currentDir, 'scripts/generate-error-contracts.mjs'),
+                '{{path}}',
+                JSON.stringify(errorContractsFor(job.document)),
+              ],
+            },
+          ]
+        : [],
     ...(job.source ? { source: job.source } : {}),
   },
   plugins: job.plugins ?? [

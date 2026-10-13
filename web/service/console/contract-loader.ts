@@ -2,6 +2,8 @@ import type { ClientContext, ClientLink } from '@orpc/client'
 import type { AnyContractRouter } from '@orpc/contract'
 import { contractLoaders } from '@dify/contracts/api/console/orpc.gen'
 import { DynamicLink } from '@orpc/client'
+import { getContractRouter, isContractProcedure } from '@orpc/contract'
+import { parseDefinedError } from './defined-error'
 
 const generatedConsoleContractLoaders: Partial<Record<string, () => Promise<AnyContractRouter>>> =
   contractLoaders
@@ -35,7 +37,21 @@ export function createConsoleContractLink<TContext extends ClientContext>(
     let routerLinkPromise = routerLinkPromises.get(segment)
     if (!routerLinkPromise) {
       routerLinkPromise = loadConsoleContractForSegment(segment)
-        .then(createLink)
+        .then((contract): ClientLink<TContext> => {
+          const link = createLink(contract)
+          return {
+            async call(path, input, options) {
+              try {
+                return await link.call(path, input, options)
+              } catch (error) {
+                const procedure = getContractRouter(contract, path)
+                if (isContractProcedure(procedure))
+                  throw (await parseDefinedError(procedure, error)) ?? error
+                throw error
+              }
+            },
+          }
+        })
         .catch((error) => {
           routerLinkPromises.delete(segment)
           throw error

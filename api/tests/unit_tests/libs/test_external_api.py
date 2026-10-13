@@ -69,8 +69,7 @@ def _create_api_app():
             e.description = {"field": "is required"}
             raise e
 
-    # The per-token rate limit raises this; ExternalApi must carry its Retry-After header to the
-    # wire (it reads getattr(e, "headers"), not werkzeug's get_headers()).
+    # The per-token rate limit must carry Retry-After to the wire.
     @api.route("/rate-limited")
     class RateLimited(Resource):
         def get(self):
@@ -146,14 +145,11 @@ def test_external_api_param_mapping_and_quota():
     assert data["code"] == "invalid_param"
     assert data["params"] == "field"
 
-    # Quota path — depending on Flask-RESTX internals it may be handled
     res = client.get("/api/quota")
-    assert res.status_code in (400, 429)
+    assert res.status_code == 429
 
 
 def test_external_api_carries_exception_headers_to_429_response():
-    # Locks the coupling enforce_bearer_rate_limit relies on: handle_error reads getattr(e,
-    # "headers") and puts it on the response, so Retry-After reaches the wire.
     app = _create_api_app()
     res = app.test_client().get("/api/rate-limited")
     assert res.status_code == 429
@@ -235,3 +231,156 @@ def test_missing_flask_restx_private_hook_fails_at_startup(monkeypatch: pytest.M
 
     with pytest.raises(RuntimeError, match="_should_use_fr_error_handler"):
         ExternalApi(Blueprint("guard", __name__), error_body_formatter=_PassthroughFormatter())
+
+
+def _error_response(error: Exception):
+    app = Flask(__name__)
+    bp = Blueprint("errors", __name__)
+    api = ExternalApi(bp)
+
+    @api.route("/failure")
+    class Failure(Resource):
+        def get(self):
+            raise error
+
+    app.register_blueprint(bp, url_prefix="/api")
+    return app.test_client().get("/api/failure")
+
+
+def test_restx_validation_data_keeps_the_error_envelope():
+    from flask_restx import abort
+
+    try:
+        abort(400, message="Input payload validation failed", errors={"name": "Required"})
+    except BadRequest as error:
+        response = _error_response(error)
+
+    assert response.status_code == 400
+    assert response.get_json() == {
+        "code": "bad_request",
+        "message": "Input payload validation failed",
+        "status": 400,
+        "errors": {"name": "Required"},
+    }
+
+
+def test_business_error_preserves_extensions_but_uses_the_http_status():
+    from werkzeug.exceptions import Conflict
+
+    error = Conflict("Draft changed")
+    original_data = {
+        "code": "draft_version_mismatch",
+        "message": "Reload the draft",
+        "status": 200,
+        "reason": "outdated",
+        "hint": "Reload before saving",
+        "details": {"latest_version": "v2"},
+    }
+
+    error.data = dict(original_data)
+    response = _error_response(error)
+
+    assert response.status_code == 409
+    assert response.get_json() == {**original_data, "status": 409}
+    assert response.get_json()["code"] == "draft_version_mismatch"
+
+
+@pytest.mark.parametrize("data", [None, [], "invalid", {"code": None, "message": []}, {"code": " ", "message": ""}])
+def test_malformed_error_data_does_not_replace_the_envelope(data):
+    error = BadRequest("Invalid input")
+    error.data = data
+
+    response = _error_response(error)
+
+    assert response.status_code == 400
+    assert response.get_json() == {"code": "bad_request", "message": "Invalid input", "status": 400}
+
+
+@pytest.mark.parametrize(
+    "data", [None, "secret database details", {"message": "secret database details", "status": 200}]
+)
+def test_unexpected_exception_data_does_not_leak_internal_details(data):
+    error = RuntimeError("secret database details")
+    error.data = data
+
+    response = _error_response(error)
+
+    assert response.status_code == 500
+    assert response.get_json() == {"code": "unknown", "message": "Internal Server Error", "status": 500}
+
+
+def test_werkzeug_retry_after_and_allow_headers_reach_the_wire():
+    from werkzeug.exceptions import MethodNotAllowed, TooManyRequests
+
+    response = _error_response(TooManyRequests(retry_after=23))
+    assert response.status_code == 429
+    assert response.headers["Retry-After"] == "23"
+    assert response.mimetype == "application/json"
+
+    response = _error_response(MethodNotAllowed(valid_methods=["POST"]))
+    assert response.status_code == 405
+    assert response.headers["Allow"] == "POST"
+
+
+def test_prebuilt_protocol_response_is_preserved():
+    from flask import Response
+    from werkzeug.exceptions import HTTPException
+
+    protocol_response = Response('{"error":"authorization_pending"}', status=400, mimetype="application/json")
+    response = _error_response(HTTPException(response=protocol_response))
+
+    assert response.status_code == 400
+    assert response.get_json() == {"error": "authorization_pending"}
+
+
+def test_empty_value_error_uses_the_http_status_message():
+    response = _error_response(ValueError(""))
+
+    assert response.status_code == 400
+    assert response.get_json() == {"code": "invalid_param", "message": "Bad Request", "status": 400}
+
+
+def test_explicit_authentication_challenge_is_preserved():
+    from werkzeug.datastructures import WWWAuthenticate
+
+    response = _error_response(Unauthorized(www_authenticate=WWWAuthenticate("basic", {"realm": "private"})))
+
+    assert response.status_code == 401
+    assert response.www_authenticate.type == "basic"
+    assert response.www_authenticate.realm == "private"
+
+
+@pytest.mark.parametrize("status", [400, 401, 403, 404, 409, 413, 422, 429, 500, 502, 503])
+def test_http_error_status_is_authoritative(status):
+    from werkzeug.exceptions import default_exceptions
+
+    response = _error_response(default_exceptions[status]())
+
+    assert response.status_code == status
+    data = response.get_json()
+    assert data["status"] == status
+    assert isinstance(data["code"], str)
+    assert data["code"]
+    assert isinstance(data["message"], str)
+    assert data["message"]
+
+
+def test_legacy_permission_handler_keeps_its_status_and_code():
+    from controllers.common.errors import register_permission_error_handler
+    from services.errors.base import NoPermissionError
+
+    app = Flask(__name__)
+    bp = Blueprint("permission", __name__)
+    api = ExternalApi(bp)
+    register_permission_error_handler(api)
+
+    @api.route("/denied")
+    class Denied(Resource):
+        def get(self):
+            raise NoPermissionError("Permission denied")
+
+    app.register_blueprint(bp, url_prefix="/api")
+    response = app.test_client().get("/api/denied")
+
+    assert response.status_code == 400
+    assert response.get_json() == {"code": "invalid_param", "message": "Permission denied", "status": 400}

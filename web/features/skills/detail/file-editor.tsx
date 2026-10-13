@@ -7,6 +7,7 @@ import type {
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ChangeEvent, FormEvent, KeyboardEvent } from 'react'
 import type { SkillFileMutationCoordinator } from './shared'
+import { workspaces } from '@dify/contracts/api/console/workspaces/orpc.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -19,6 +20,7 @@ import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/
 import { toast } from '@/app/notifications'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { consoleQuery } from '@/service/console'
+import { parseDefinedError } from '@/service/console/defined-error'
 import { downloadBlob } from '@/utils/download'
 import { fetchSkillFileBlob } from '../client'
 import { FileTabs } from './file-tabs'
@@ -41,7 +43,6 @@ import {
   findMarkdownReferenceRangeAtCaret,
   getContentEditableCaretAnchor,
   getErrorCode,
-  getErrorDetailNumber,
   getErrorDetailString,
   getMarkdownBodyPrefix,
   getMarkdownLiveEditorSelectionOffset,
@@ -376,10 +377,16 @@ export function FileEditor({
           setSaveStatus('error')
           return false
         }
-        if (getErrorCode(error) === 'skill_conflict') {
+        const definedError = await parseDefinedError(
+          workspaces.current.skills.bySkillId.files.patch,
+          error,
+        )
+        if (definedError?.code === 'skill_conflict') {
           try {
-            const currentUpdatedAt = getErrorDetailNumber(error, 'current_updated_at')
-            const currentFileContent = getErrorDetailString(error, 'current_file_content')
+            const {
+              current_updated_at: currentUpdatedAt,
+              current_file_content: currentFileContent,
+            } = definedError.data.details
             let latestDetail: SkillDetailResponse | undefined
             try {
               latestDetail = await refreshSkillDetailAfterConflict(queryClient, skillId, {

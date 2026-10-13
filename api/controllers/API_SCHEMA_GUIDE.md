@@ -12,6 +12,55 @@ parameters, response schemas, and Swagger documentation.
 - Do not add new Flask-RESTX `fields.*` dictionaries, `Namespace.model(...)` exports, or `@marshal_with(...)` for migrated or new endpoints.
 - Do not use `@ns.expect(...)` for GET query parameters. Flask-RESTX documents that as a request body.
 
+## Error Responses
+
+`ExternalApi` serializes handled HTTP failures with a non-empty string `code`, a non-empty string
+`message`, and an integer `status` equal to the response's actual HTTP status. Clients must use the
+HTTP status for transport decisions and `code` for domain-specific recovery; never infer success
+from a body field. Raise the existing domain exception at the controller boundary instead of
+returning an error body with HTTP 200.
+
+The default serializer preserves domain extensions such as `reason`, `hint`, `details`, RESTX
+validation `errors`, and legacy `params`. It normalizes malformed exception `data` and prevents
+RESTX from replacing the envelope with a partial validation payload. Unexpected exceptions return
+HTTP 500 with a generic message; their internal exception text and attached data stay out of the
+response. Dedicated domain handlers, including plugin runtime failures with request IDs, retain
+their explicitly public diagnostics.
+
+Preserve HTTP headers as part of the error contract: `Retry-After`, `Allow`, explicit
+`WWW-Authenticate` challenges, and separate `Set-Cookie` headers for forced logout. JSON response
+serialization owns `Content-Type`.
+
+Quota exhaustion uses its dedicated HTTP 429 handler, registered before the general `ValueError`
+handler so it cannot accidentally become HTTP 400.
+
+Compatibility boundaries:
+
+- `/openapi/v1` retains its Pydantic `ErrorBody` formatter, validation details, and safe 5xx messages.
+- Existing Console and Service API `NoPermissionError` handlers retain HTTP 400 and `invalid_param`.
+  Endpoints already returning explicit HTTP 403 keep that behavior; do not silently change a legacy
+  permission status as part of envelope normalization.
+- OAuth and other protocol-specific responses retain their protocol body and status. An
+  `HTTPException` carrying a prepared response bypasses the generic envelope.
+- This handler does not rewrite successful responses, legacy HTTP 200 business results, routing
+  outside an API's existing error-handler scope, or error events after a streaming response begins.
+
+### Operation-specific error pilot
+
+The Skill draft file PATCH operation opts into generated oRPC errors with
+`@console_ns.vendor({"dify-typed-errors": True})`. Its non-2xx response models declare a
+literal `code` and typed details, and the controller serializes those same Pydantic models.
+The contracts generator adds `.errors()` for referenced JSON response models with a single
+literal code. Generic error bodies remain undeclared fallbacks. This is a partial list of
+recoverable failures, not a guarantee that every possible failure has been enumerated.
+
+At the Console client boundary, only matching codes, HTTP statuses, and validated payloads
+become defined `ORPCError` instances. All other HTTP failures remain `ORPCError` with
+`defined: false`, the backend envelope in `data`, and response headers in `cause.headers`.
+Network failures and cancellation retain their original error types. Use `safe()` and
+`isDefined` to narrow an operation's declared errors, and keep a fallback for undeclared
+failures. Keep feedback and recovery in the business owner.
+
 ## Public System Features Contract
 
 The Console and Web `/system-features` endpoints share `SystemFeatureModel`. They are unauthenticated and may be

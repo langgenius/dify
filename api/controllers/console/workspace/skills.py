@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+from typing import ClassVar, Literal
 
 from flask import request, send_file
 from flask_restx import Resource
@@ -286,10 +287,42 @@ register_response_schema_models(
 )
 
 
+class SkillDraftConflictDetails(ResponseModel):
+    current_updated_at: int
+    expected_updated_at: int
+    current_file_hash: str | None = None
+    current_file_path: str | None = None
+    current_file_updated_at: int | None = None
+    current_file_content: str | None = None
+
+
+class SkillDraftConflictResponse(ResponseModel):
+    http_status: ClassVar[int] = 409
+    code: Literal["skill_conflict"]
+    message: str
+    details: SkillDraftConflictDetails
+
+
+class SkillNotFoundResponse(ResponseModel):
+    http_status: ClassVar[int] = 404
+    code: Literal["skill_not_found"]
+    message: str
+
+
+register_response_schema_models(console_ns, SkillDraftConflictResponse, SkillNotFoundResponse)
+
+
 def _error_response(exc: SkillManagementServiceError) -> tuple[dict[str, object], int]:
     body: dict[str, object] = {"code": exc.code, "message": exc.message}
     if exc.details:
         body["details"] = exc.details
+    # The same models own the public response and the generated error contract.
+    if exc.code == "skill_conflict":
+        return SkillDraftConflictResponse.model_validate(body).model_dump(
+            exclude_none=True
+        ), SkillDraftConflictResponse.http_status
+    if exc.code == "skill_not_found":
+        return SkillNotFoundResponse.model_validate(body).model_dump(), SkillNotFoundResponse.http_status
     return body, exc.status_code
 
 
@@ -567,8 +600,15 @@ class WorkspaceSkillFilesCheckApi(Resource):
 
 @console_ns.route("/workspaces/current/skills/<string:skill_id>/files")
 class WorkspaceSkillFilesApi(Resource):
+    @console_ns.vendor({"dify-typed-errors": True})
     @console_ns.expect(console_ns.models[SkillDraftFileOperationPayload.__name__])
     @console_ns.response(200, "Draft file operation applied", console_ns.models[SkillDetailResponse.__name__])
+    @console_ns.response(
+        SkillDraftConflictResponse.http_status, "Draft changed", console_ns.models[SkillDraftConflictResponse.__name__]
+    )
+    @console_ns.response(
+        SkillNotFoundResponse.http_status, "Skill not found", console_ns.models[SkillNotFoundResponse.__name__]
+    )
     @console_account_admission()
     @edit_permission_required
     @with_session

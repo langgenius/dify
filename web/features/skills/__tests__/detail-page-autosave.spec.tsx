@@ -77,6 +77,7 @@ describe('SkillDetailPage autosave', () => {
 
     const conflict = createHttpError(new Response(null, { status: 409 }), {
       code: 'skill_conflict',
+      message: 'skill has been modified by another user',
       details: {
         current_file_hash: 'hash-2',
         current_updated_at: 1784638499,
@@ -152,6 +153,7 @@ describe('SkillDetailPage autosave', () => {
     mocks.saveDraftFileMutationFn.mockRejectedValueOnce(
       createHttpError(new Response(null, { status: 409 }), {
         code: 'skill_conflict',
+        message: 'skill has been modified by another user',
         details: {
           current_file_content: latestDetail.files?.[0]?.content ?? '',
           current_updated_at: latestDetail.updated_at,

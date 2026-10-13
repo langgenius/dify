@@ -568,6 +568,14 @@ export const zSkillListResponse = z.object({
 })
 
 /**
+ * SkillNotFoundResponse
+ */
+export const zSkillNotFoundResponse = z.object({
+  code: z.literal('skill_not_found'),
+  message: z.string(),
+})
+
+/**
  * SkillFilePreviewResponse
  */
 export const zSkillFilePreviewResponse = z.object({
@@ -1573,6 +1581,27 @@ export const zSkillDraftFileOperationPayload = z.object({
   size: z.int().gte(0).nullish(),
   target_path: z.string().nullish(),
   tool_file_id: z.string().nullish(),
+})
+
+/**
+ * SkillDraftConflictDetails
+ */
+export const zSkillDraftConflictDetails = z.object({
+  current_file_content: z.string().nullish(),
+  current_file_hash: z.string().nullish(),
+  current_file_path: z.string().nullish(),
+  current_file_updated_at: z.int().nullish(),
+  current_updated_at: z.int(),
+  expected_updated_at: z.int(),
+})
+
+/**
+ * SkillDraftConflictResponse
+ */
+export const zSkillDraftConflictResponse = z.object({
+  code: z.literal('skill_conflict'),
+  details: zSkillDraftConflictDetails,
+  message: z.string(),
 })
 
 /**

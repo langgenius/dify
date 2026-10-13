@@ -5,6 +5,7 @@ from typing import Any, Protocol, override
 from flask import Blueprint, Flask, current_app, got_request_exception, request
 from flask.typing import ResponseReturnValue
 from flask_restx import Api
+from werkzeug.datastructures import Headers
 from werkzeug.exceptions import HTTPException
 from werkzeug.http import HTTP_STATUS_CODES
 
@@ -28,16 +29,37 @@ class ErrorBodyFormatter(Protocol):
 
 def register_external_error_handlers(api: Api, body_formatter: ErrorBodyFormatter | None = None):
     def _finalize(e: Exception, data: dict[str, Any], status_code: int) -> dict[str, Any]:
-        if body_formatter is None:
-            return data
-        return body_formatter.finalize(e, data, status_code)
+        if body_formatter is not None:
+            return body_formatter.finalize(e, data, status_code)
+
+        # RESTX abort attaches validation details to e.data and handle_error
+        # prefers that attribute over the registered handler's return value.
+        # Preserve domain fields while making the actual HTTP status authoritative.
+        try:
+            attached_data = e.data  # type: ignore[attr-defined]
+        except AttributeError:
+            attached_data = None
+        wire = {**data, **attached_data} if isinstance(attached_data, Mapping) else dict(data)
+        for field in ("code", "message"):
+            value = wire.get(field)
+            if not isinstance(value, str) or not value.strip():
+                fallback = data[field]
+                wire[field] = (
+                    fallback
+                    if isinstance(fallback, str) and fallback.strip()
+                    else "unknown"
+                    if field == "code"
+                    else http_status_message(status_code)
+                )
+        wire["status"] = status_code
+        e.data = wire  # type: ignore[attr-defined]
+        return wire
 
     def handle_http_exception(e: HTTPException):
         got_request_exception.send(current_app, exception=e)
 
         # If Werkzeug already prepared a Response, just use it. This bypasses
-        # body_formatter entirely — surfaces with a formatter must not raise
-        # exceptions carrying a pre-built response.
+        # the generic error envelope for protocol-specific response contracts.
         if e.response is not None:
             return e.response
 
@@ -52,8 +74,10 @@ def register_external_error_handlers(api: Api, body_formatter: ErrorBodyFormatte
         if default_data["message"] == "Failed to decode JSON object: Expecting value: line 1 column 1 (char 0)":
             default_data["message"] = "Invalid JSON payload received or JSON payload is empty."
 
-        # Use headers on the exception if present; otherwise none.
-        headers = {}
+        # Keep protocol headers such as Retry-After and Allow. RESTX owns the
+        # JSON content type; Werkzeug's default HTML content type does not apply.
+        headers = Headers(e.get_headers())
+        headers.pop("Content-Type", None)
         exc_headers = getattr(e, "headers", None)
         if exc_headers:
             headers.update(exc_headers)
@@ -82,12 +106,13 @@ def register_external_error_handlers(api: Api, body_formatter: ErrorBodyFormatte
             data.setdefault("code", "unknown")
             # If you need WWW-Authenticate for 401, add it to headers
             if status_code == 401:
-                headers["WWW-Authenticate"] = 'Bearer realm="api"'
+                headers.setdefault("WWW-Authenticate", 'Bearer realm="api"')
                 # Check if this is a forced logout error - clear cookies
                 error_code = getattr(e, "error_code", None)
                 if error_code == "unauthorized_and_force_logout":
                     # Add Set-Cookie headers to clear auth cookies
-                    headers["Set-Cookie"] = build_force_logout_cookie_headers()
+                    for cookie in build_force_logout_cookie_headers():
+                        headers.add("Set-Cookie", cookie)
             return _finalize(e, data, status_code), status_code, headers
 
     def handle_value_error(e: ValueError):
@@ -121,14 +146,10 @@ def register_external_error_handlers(api: Api, body_formatter: ErrorBodyFormatte
         got_request_exception.send(current_app, exception=e)
 
         status_code = 500
-        data: dict[str, Any] = getattr(e, "data", {"message": http_status_message(status_code)})
-
-        # 🔒 Normalize non-mapping data (e.g., if someone set e.data = Response)
-        if not isinstance(data, dict):
-            data = {"message": str(e)}
-
-        data.setdefault("code", "unknown")
-        data.setdefault("status", status_code)
+        # Unexpected exceptions are not public error messages, even if a library
+        # attaches data. Known domain exceptions use their dedicated handlers.
+        data = {"code": "unknown", "message": http_status_message(status_code), "status": status_code}
+        e.data = data  # type: ignore[attr-defined]
 
         # Note: Exception logging is handled by Flask/Flask-RESTX framework automatically
         # Explicit log_exception call removed to avoid duplicate log entries
@@ -136,8 +157,9 @@ def register_external_error_handlers(api: Api, body_formatter: ErrorBodyFormatte
         return _finalize(e, data, status_code), status_code
 
     api.errorhandler(HTTPException)(handle_http_exception)
-    api.errorhandler(ValueError)(handle_value_error)
+    # RESTX uses registration order, so this ValueError subclass must come first.
     api.errorhandler(AppInvokeQuotaExceededError)(handle_quota_exceeded)
+    api.errorhandler(ValueError)(handle_value_error)
     api.errorhandler(PluginRuntimeError)(handle_plugin_runtime_error)
     api.errorhandler(Exception)(handle_general_exception)
 
@@ -178,6 +200,14 @@ class ExternalApi(Api):
         super().__init__(app=None, *args, **kwargs)
         self.init_app(app, **kwargs)
         register_external_error_handlers(self, body_formatter=error_body_formatter)
+
+    @override
+    def handle_error(self, e: Exception):
+        # A prepared protocol response must bypass RESTX's JSON error builder,
+        # which otherwise treats Response as a dict and raises a second error.
+        if isinstance(e, HTTPException) and e.response is not None:
+            return e.response
+        return super().handle_error(e)
 
     def finish_document(self, document: dict[str, object]) -> dict[str, object]:
         """A surface overrides this to rewrite its finished OpenAPI document (see

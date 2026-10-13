@@ -392,7 +392,12 @@ def test_update_skill_metadata_validates_payload(app: Flask, request_context: Re
 
 @pytest.mark.parametrize(
     "side_effect",
-    [ValueError("bad metadata"), SkillManagementServiceError("skill_conflict", "conflict", status_code=409)],
+    [
+        ValueError("bad metadata"),
+        SkillManagementServiceError(
+            "skill_conflict", "conflict", status_code=409, details={"current_updated_at": 2, "expected_updated_at": 1}
+        ),
+    ],
 )
 def test_update_skill_metadata_maps_service_errors(
     app: Flask,
@@ -1164,6 +1169,7 @@ def test_skill_file_write_methods_map_conflicts(
         "skill_conflict",
         "skill has been modified by another user",
         status_code=409,
+        details={"current_updated_at": 2, "expected_updated_at": 1, "current_file_content": "# Newer draft"},
     )
     if method_name == "patch":
         method = unwrap(api.patch)
@@ -1181,6 +1187,7 @@ def test_skill_file_write_methods_map_conflicts(
 
     assert status == 409
     assert response_body["code"] == "skill_conflict"
+    assert response_body["details"] == conflict.details
 
 
 def test_replace_skill_draft_tree_maps_value_error(app: Flask, request_context: RequestContext) -> None:
