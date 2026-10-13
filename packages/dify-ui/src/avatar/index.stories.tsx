@@ -267,9 +267,12 @@ export const Collaborators: Story = {
     trigger.focus()
     await userEvent.keyboard('{Enter}')
     const body = within(canvasElement.ownerDocument.body)
-    await expect(await body.findByRole('menuitem', { name: 'Emma' })).toBeVisible()
+    const firstCollaborator = await body.findByRole('menuitem', { name: 'Emma' })
+    await waitFor(() => expect(firstCollaborator).toBeVisible())
+    await waitFor(() => expect(firstCollaborator).toHaveFocus())
     await expect(trigger).toHaveAttribute('aria-expanded', 'true')
     await userEvent.keyboard('{Escape}')
+    await waitFor(() => expect(firstCollaborator).not.toBeVisible())
     await waitFor(() => expect(trigger).toHaveFocus())
     await expect(trigger).toHaveAttribute('aria-expanded', 'false')
   },
