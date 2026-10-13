@@ -12,7 +12,7 @@ Run an app with the op for its mode: `run console_app workflow`, `run console_ap
 
 ## Reading results
 
-Streaming ops fold to `{status, text, outputs?, total_tokens?, message_id?, conversation_id?, run_id?, error?, hints}`. `text.answer` is the reply; `text.by_source` appears only while `status` is `incomplete`. `status` is `ended`, `failed` (exit 1), `suspended` (a form is waiting; follow `hints`) or `incomplete` (stream broke early; exit 0, so check `status`). Any response may carry `hints: [{summary, op, input, form?}]`, the server's next steps: next page, confirm step, reply op, form submit. Fill any `null` in `input` and pass it back with `difyctl <op, dots as spaces> --input '<input>'`.
+Streaming ops fold to `{status, text, outputs?, total_tokens?, message_id?, conversation_id?, run_id?, error?, hints}`. `text.answer` is the reply; `text.by_source` appears only while `status` is `incomplete`. `status` is `ended`, `failed` (exit 1), `suspended` (a form is waiting; follow `hints`) or `incomplete` (stream broke early; exit 0, so check `status`). Any response may carry `hints: [{summary, op, input, form?}]`, the server's next steps: next page, confirm step, reply op, form submit. Errors can carry them too, at `error.server.hints`. Fill any `null` in `input` and pass it back with `difyctl <op, dots as spaces> --input '<input>'`.
 
 After `submit.run.form`, run its `get.run.event` hint to follow the run; repeat if it suspends again.
 
@@ -20,6 +20,6 @@ After `submit.run.form`, run its `get.run.event` hint to follow the run; repeat 
 
 Stderr envelope: `{"error":{"code","message","hint"?,"details"?,"schema"?,"http_status"?,"server"?}}`. `code` is difyctl's (`server_error` for server rejections); the server's code is `error.server.code` (e.g. `dsl_invalid`). `details`: `[{loc,msg}]`.
 
-Exit: 2 bad input caught locally (incl. near-miss command); 1 server rejection or other failure; 4 not logged in (incl. unknown word while logged out), 401, 403; 6 catalog unavailable or `unknown_op`; 7 rate limited.
+Exit: 2 bad input caught locally (incl. near-miss command); 1 server rejection or other failure; 4 not logged in (incl. unknown word while logged out), 401, 403 (a domain `error.server.code` such as `webapp_public_access_disabled`, `service_api_disabled` or `plugin_install_forbidden` is not a login problem: read the code and its hint); 6 catalog unavailable or `unknown_op`; 7 rate limited.
 
 PowerShell: use `--input @file.json`, and `$env:VAR='v'; difyctl ...`.

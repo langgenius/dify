@@ -32,7 +32,7 @@ Start when every slice in `plan.md` is ticked. `<mode>` is `workflow` or `advanc
      difyctl set service_api --app-id <app_id> --enabled --json
      ```
 
-   - Who may open the web app (Enterprise): `public`, `private_all` or `sso_verified`. Picking members or groups (`private`) is done in the Dify console. `difyctl run` obeys this too, so the logged-in account must be allowed for the smoke test.
+   - Who may open the web app (Enterprise): `public`, `private_all` or `sso_verified`. Picking members or groups (`private`) is done in the Dify console. `difyctl run` obeys this too, so the logged-in account must be allowed for the smoke test. `public` exits 4 with `webapp_public_access_disabled` when the server disables public web apps; offer the human `private_all` or `sso_verified`.
 
      ```bash
      difyctl set webapp_access --app-id <app_id> --access-mode <access_mode> --json

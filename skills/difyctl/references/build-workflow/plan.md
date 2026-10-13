@@ -13,7 +13,7 @@ Start only when the human has approved `spec.md`. The plan phase ends when the h
    - Code: the code itself.
    - Variable references, written as `{{#node_id.var#}}`.
 3. Draw the node-level Mermaid graph with real node ids, every edge, and a label on every branch.
-4. Cut the build into slices. Each slice is small and connected, and imports and runs on its own. Slice 1 is the skeleton: start → end (Chatflow: start → answer) with the final inputs and outputs.
+4. Cut the build into slices. Each slice is small and connected, and imports and runs on its own. Slice 1 is the skeleton: start → end (Chatflow: start → answer; set the starter `llm` node's model or remove it and rewrite `answer`) with the final inputs and outputs.
 5. Map the tests: a `difyctl test node <mode>` call with inputs for each new node, and a full draft run (`difyctl test console_app <mode>`) at the end of each slice on the cases it can pass. `<mode>` is `workflow` or `advanced_chat`.
 6. Check coverage. Every requirement maps to a node and a test. Every resource is confirmed, and each chosen plugin is installed and configured. An open resource blocks approval.
 7. Ask the human to review the plan, and to choose how to build:
