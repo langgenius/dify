@@ -2,6 +2,7 @@
 
 import pytest
 
+from core.dify_builder.contract import AssistantTurnItem, ExecutionActivity, ExecutionProgress, UserItem
 from core.dify_builder.models import ConversationItem
 from services.dify_builder.agent import localize as localize_mod
 from services.dify_builder.agent.localize import Localizer
@@ -90,6 +91,46 @@ def test_localize_current_goal_and_default_recovery_copy(monkeypatch):
     localized = loc.localize_items(items, "zh-Hans")
     assert localized[0].payload["label"] == "目标"
     assert localized[1].payload["reply_text"] == "我已填入合理的默认值。请检查并调整需求。"
+
+
+def test_localize_never_rewrites_user_text_or_turn_identity(monkeypatch):
+    loc, _ = _localizer(monkeypatch, table={"Goal": "目标"})
+    item = UserItem(text="Goal", turn_id="Goal").to_item(seq=0, at_version=1)
+
+    localized = loc.localize_items([item], "zh-Hans")[0]
+
+    assert localized.payload == {"text": "Goal", "turn_id": "Goal"}
+
+
+def test_localize_assistant_reply_without_rewriting_protocol_and_execution_fields(monkeypatch):
+    loc, _ = _localizer(monkeypatch, table={"Goal": "目标"})
+    item = AssistantTurnItem(
+        turn_id="Goal",
+        stage_id="Goal",
+        execution=ExecutionProgress(
+            status="completed",
+            activities=[ExecutionActivity(id="Goal", label="Goal", state="done", parent_id="Goal")],
+        ),
+        reasoning_text="Goal",
+        reply_text="Goal",
+        cards=["Goal"],
+        card_state="invalidated",
+    ).to_item(seq=0, at_version=1)
+
+    localized = loc.localize_items([item], "zh-Hans")[0]
+
+    assert localized.payload == {
+        "turn_id": "Goal",
+        "stage_id": "Goal",
+        "execution": {
+            "status": "completed",
+            "activities": [{"id": "Goal", "label": "Goal", "state": "done", "kind": "stage", "parent_id": "Goal"}],
+        },
+        "reasoning_text": "Goal",
+        "reply_text": "目标",
+        "cards": ["Goal"],
+        "card_state": "invalidated",
+    }
 
 
 @pytest.mark.parametrize(
