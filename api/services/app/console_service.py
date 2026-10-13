@@ -269,7 +269,7 @@ class ConsoleAppService:
     ) -> Import:
         self._access.require_import(context, "dsl")
         result = self._transfers.import_dsl(context, params, package=package)
-        self._set_import_permissions(context, result, created=params.app_id is None)
+        self._set_import_permissions(context, result, created=result.app_created)
         if result.app_id:
             self._access.initialize_import_access(result.app_id)
         return result
