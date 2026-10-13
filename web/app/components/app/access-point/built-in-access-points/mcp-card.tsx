@@ -2,6 +2,7 @@
 
 import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { PublishedWorkflow } from '../shared/utils'
+import type { AccessPointAvailability } from '@/app/components/base/access-point/status'
 import {
   AlertDialog,
   AlertDialogCancelButton,
@@ -26,7 +27,6 @@ import {
   useMCPServerDetail,
   useRefreshMCPServerCode,
 } from '@/service/use-tools'
-import { AppModeEnum } from '@/types/app'
 import { useAccessPointStatusLabel } from '../shared/use-access-point-status-label'
 import { getPublishedWorkflowNodes, isAdvancedApp } from '../shared/utils'
 
@@ -34,23 +34,20 @@ type MCPAccessPointCardProps = {
   appInfo: AppDetailWithSite
   canManageAccessPoint: boolean
   highlighted?: boolean
-  triggerModeDisabled: boolean
+  availability: AccessPointAvailability
   workflow: PublishedWorkflow
-  workflowLoading: boolean
 }
 
 export function MCPAccessPointCard({
   appInfo,
   canManageAccessPoint,
   highlighted,
-  triggerModeDisabled,
+  availability,
   workflow,
-  workflowLoading,
 }: MCPAccessPointCardProps) {
   const { t } = useTranslation(['appOverview', 'common', 'deployments', 'tools'])
   const advancedApp = isAdvancedApp(appInfo)
   const basicApp = !advancedApp
-  const workflowApp = appInfo.mode === AppModeEnum.WORKFLOW
   const [showServerModal, setShowServerModal] = useState(false)
   const [showRegenerate, setShowRegenerate] = useState(false)
   const basicConfig = appInfo.model_config
@@ -84,11 +81,8 @@ export function MCPAccessPointCard({
     ? `${appInfo.api_base_url.replace(/\/v1$/, '')}/mcp/server/${detail?.server_code}/mcp`
     : '***********'
   const workflowNodes = getPublishedWorkflowNodes(workflow)
-  const missingStartNode =
-    workflowApp && !workflowNodes.some((node) => node.data.type === BlockEnum.Start)
-  const appUnpublished = advancedApp ? !workflow?.graph : !basicConfig?.updated_at
-  const loading = serverDetailLoading || (advancedApp && workflowLoading)
-  const unavailable = !loading && (appUnpublished || missingStartNode || triggerModeDisabled)
+  const loading = serverDetailLoading || availability === 'loading'
+  const unavailable = !loading && availability === 'unavailable'
 
   const basicAppInputs = useMemo(() => {
     if (!basicApp || !basicAppInputForm) return []
