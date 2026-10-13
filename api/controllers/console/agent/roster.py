@@ -87,6 +87,7 @@ from services.agent.errors import (
     AgentSoulLockedError,
     AgentVersionNotFoundError,
     InvalidComposerConfigError,
+    PlaintextSecretNotAllowedError,
 )
 from services.agent.observability_service import (
     AgentLogQueryParams,
@@ -842,6 +843,7 @@ class AgentPublishApi(Resource):
         AgentSoulLockedError,
         AgentVersionNotFoundError,
         InvalidComposerConfigError,
+        PlaintextSecretNotAllowedError,
     )
     @console_ns.expect(console_ns.models[AgentPublishPayload.__name__])
     @console_ns.response(200, "Agent draft published", console_ns.models[AgentPublishResponse.__name__])
@@ -974,7 +976,12 @@ class AgentBuildDraftApi(Resource):
 @console_ns.route("/agent/<uuid:agent_id>/build-draft/apply")
 class AgentBuildDraftApplyApi(Resource):
     @error_responses(
-        AgentBuildSandboxNotFoundError, AgentNotFoundError, AgentVersionNotFoundError, InvalidComposerConfigError
+        AgentBuildSandboxNotFoundError,
+        AgentNotFoundError,
+        AgentSoulLockedError,
+        AgentVersionNotFoundError,
+        InvalidComposerConfigError,
+        PlaintextSecretNotAllowedError,
     )
     @console_ns.response(200, "Agent build draft applied", console_ns.models[AgentBuildDraftApplyResponse.__name__])
     @setup_required

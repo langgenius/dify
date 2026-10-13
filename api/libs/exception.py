@@ -21,8 +21,8 @@ class BaseHTTPException(HTTPException):
 class RelayedHTTPError(BaseHTTPException):
     """An error whose ``code`` and status are relayed from a downstream service at runtime.
 
-    Emits the standard error body, but its codes cannot be listed per class, so it is
-    never documented through ``error_responses``.
+    Emits the standard error body, but its codes cannot be listed per class. Declaring it
+    with ``error_responses`` keeps the operation's error codes and statuses open.
     """
 
     def __init__(self, *, status: int, error_code: str, message: str, details: Mapping[str, Any] | None = None) -> None:

@@ -55,7 +55,7 @@ if str(API_ROOT) not in sys.path:
     sys.path.insert(0, str(API_ROOT))
 
 DECORATOR_NAME = "error_responses"
-DEFAULT_MAX_DEPTH = 3
+DEFAULT_MAX_DEPTH = 6
 RECURSE_PREFIXES = ("controllers.", "libs.", "services.", "core.", "machinery.")
 VALIDATE_ATTRS = frozenset({"model_validate", "model_validate_json", "validate_python", "validate_json"})
 ABORTS = (restx_abort, flask_abort, werkzeug_abort)
@@ -604,6 +604,7 @@ def _source_location(fn: Callable[..., object]) -> str:
 
 
 def lint(apis: Mapping[str, Any], analyzer: RaiseAnalyzer) -> LintResult:
+    from libs.exception import RelayedHTTPError
     from libs.external_api import is_business_error
 
     result = LintResult()
@@ -613,6 +614,10 @@ def lint(apis: Mapping[str, Any], analyzer: RaiseAnalyzer) -> LintResult:
             documentable = set()
             for exception in exceptions:
                 if not is_business_error(exception):
+                    continue
+                if issubclass(exception, RelayedHTTPError):
+                    # Documented to keep the operation's codes open; it has no static status.
+                    documentable.add(exception)
                     continue
                 try:
                     api.resolve_error(exception)
