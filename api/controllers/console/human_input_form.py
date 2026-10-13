@@ -39,7 +39,13 @@ from models.enums import CreatorUserRole
 from models.model import AppMode
 from models.workflow import WorkflowRun
 from repositories.factory import DifyAPIRepositoryFactory
-from services.human_input_service import Form, HumanInputService
+from services.human_input_service import (
+    Form,
+    FormExpiredError,
+    FormSubmittedError,
+    HumanInputService,
+    InvalidFormDataError,
+)
 from services.workflow_event_snapshot_service import build_workflow_event_stream
 
 logger = logging.getLogger(__name__)
@@ -83,7 +89,7 @@ class ConsoleHumanInputFormApi(Resource):
         if not is_recipient_type_allowed_for_surface(form.recipient_type, HumanInputSurface.CONSOLE):
             raise NotFoundError("form not found")
 
-    @error_responses(NotFoundError)
+    @error_responses(FormSubmittedError, NotFoundError)
     @setup_required
     @login_required
     @account_initialization_required
@@ -104,7 +110,7 @@ class ConsoleHumanInputFormApi(Resource):
 
         return _jsonify_form_definition(form)
 
-    @error_responses(NotFoundError)
+    @error_responses(FormExpiredError, FormSubmittedError, InvalidFormDataError, NotFoundError)
     @account_initialization_required
     @login_required
     @with_current_user

@@ -295,3 +295,22 @@ class _HelperResource:
 
 def test_follows_the_decorators_of_called_helpers(analyzer: lint.RaiseAnalyzer) -> None:
     assert _OtherGuardError in analyzer.raises_of_function(_HelperResource.get, _HelperResource, 0)
+
+
+class _InstanceService:
+    def run(self) -> None:
+        raise _MissingError()
+
+
+def _instance_handler() -> None:
+    service = _InstanceService()
+    service.run()
+
+
+def _chained_instance_handler() -> None:
+    _InstanceService().run()
+
+
+def test_follows_methods_called_on_instances(analyzer: lint.RaiseAnalyzer) -> None:
+    assert _MissingError in analyzer.raises_of_function(_instance_handler, None, 0)
+    assert _MissingError in analyzer.raises_of_function(_chained_instance_handler, None, 0)

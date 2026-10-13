@@ -360,6 +360,7 @@ class ChatMessageStopApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/chat-messages/<string:task_id>/stop")
 class AgentChatMessageStopApi(Resource):
+    @error_responses(AgentNotFoundError)
     @console_ns.doc("stop_agent_chat_message")
     @console_ns.doc(description="Stop a running Agent App chat message generation")
     @console_ns.doc(params={"agent_id": "Agent ID", "task_id": "Task ID to stop"})

@@ -380,6 +380,7 @@ class ChatMessageTextApi(Resource):
 @console_ns.route("/agent/<uuid:agent_id>/text-to-audio")
 class AgentChatMessageTextApi(Resource):
     @error_responses(
+        AgentNotFoundError,
         AppUnavailableError,
         AudioTooLargeError,
         CompletionRequestError,
@@ -500,6 +501,7 @@ class TextModesApi(Resource):
 @console_ns.route("/agent/<uuid:agent_id>/text-to-audio/voices")
 class AgentTextToSpeechVoicesApi(Resource):
     @error_responses(
+        AgentNotFoundError,
         AudioTooLargeError,
         CompletionRequestError,
         NoAudioUploadedError,

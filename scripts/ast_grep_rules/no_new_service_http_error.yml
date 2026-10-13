@@ -1,0 +1,12 @@
+id: no-new-service-http-error
+language: python
+rule:
+  any:
+    - pattern: raise $ERROR($$$ARGS)
+    - pattern: raise $ERROR
+    - pattern: abort($$$ARGS)
+    - pattern: |
+        class $NAME($$$BASES):
+          $$$BODY
+message: net-new HTTP exception in service or core code
+severity: error

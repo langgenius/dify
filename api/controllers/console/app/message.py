@@ -156,6 +156,7 @@ class ChatMessageListApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/chat-messages")
 class AgentChatMessageListApi(Resource):
+    @error_responses(AgentNotFoundError)
     @console_ns.doc("list_agent_chat_messages")
     @console_ns.doc(description="Get Agent App chat messages for a conversation with pagination")
     @console_ns.doc(params={"agent_id": "Agent ID"})
@@ -218,6 +219,7 @@ class MessageFeedbackApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/feedbacks")
 class AgentMessageFeedbackApi(Resource):
+    @error_responses(AgentNotFoundError)
     @console_ns.doc("create_agent_message_feedback")
     @console_ns.doc(description="Create or update Agent App message feedback")
     @console_ns.doc(params={"agent_id": "Agent ID"})
@@ -368,6 +370,7 @@ class MessageApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/messages/<uuid:message_id>")
 class AgentMessageApi(Resource):
+    @error_responses(AgentNotFoundError)
     @console_ns.doc("get_agent_message")
     @console_ns.doc(description="Get Agent App message details by ID")
     @console_ns.doc(params={"agent_id": "Agent ID", "message_id": "Message ID"})

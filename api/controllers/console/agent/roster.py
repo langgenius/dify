@@ -1056,6 +1056,7 @@ class AgentApiAccessApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/api-enable")
 class AgentApiStatusApi(Resource):
+    @error_responses(AgentAccessNotReadyError)
     @console_ns.expect(console_ns.models[AgentApiStatusPayload.__name__])
     @console_ns.response(200, "Agent service API status updated", console_ns.models[AgentApiAccessResponse.__name__])
     @console_ns.response(403, "Insufficient permissions")
