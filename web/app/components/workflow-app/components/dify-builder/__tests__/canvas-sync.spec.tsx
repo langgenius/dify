@@ -86,7 +86,7 @@ const setup = (
       </WorkflowContext>
     </Provider>,
   )
-  return { store, refresh, refreshed, user: userEvent.setup() }
+  return { store, workflow, refresh, refreshed, user: userEvent.setup() }
 }
 
 describe('Builder canvas commands', () => {
@@ -113,11 +113,15 @@ describe('Builder canvas commands', () => {
     expect(selection).toHaveBeenCalledTimes(2)
     expect(selection).toHaveBeenNthCalledWith(
       1,
-      expect.objectContaining({ detail: { nodeId: 'start', focus: true } }),
+      expect.objectContaining({
+        detail: expect.objectContaining({ nodeId: 'start', focus: true }),
+      }),
     )
     expect(selection).toHaveBeenNthCalledWith(
       2,
-      expect.objectContaining({ detail: { nodeId: 'answer', focus: true } }),
+      expect.objectContaining({
+        detail: expect.objectContaining({ nodeId: 'answer', focus: true }),
+      }),
     )
     expect(refresh).not.toHaveBeenCalled()
     expect(store.get(difyBuilderCanvasReadyAtom)).toBe(false)
@@ -151,7 +155,9 @@ describe('Builder canvas commands', () => {
 
     await waitFor(() => expect(refreshed).toHaveBeenCalledOnce())
     expect(selection).toHaveBeenCalledExactlyOnceWith(
-      expect.objectContaining({ detail: { nodeId: 'answer', focus: true } }),
+      expect.objectContaining({
+        detail: expect.objectContaining({ nodeId: 'answer', focus: true }),
+      }),
     )
     expect(refresh).toHaveBeenCalledTimes(2)
     expect(store.get(difyBuilderCanvasReadyAtom)).toBe(true)
@@ -177,5 +183,42 @@ describe('Builder canvas commands', () => {
     expect(selection).not.toHaveBeenCalled()
     expect(refreshed).not.toHaveBeenCalled()
     expect(store.get(difyBuilderCanvasPendingRefreshAtom)).toBeNull()
+  })
+
+  it('keeps highlighting Builder targets without taking over a manually moved viewport', async () => {
+    const { user, workflow, refreshed } = setup([
+      canvasEvent('highlight_edit_target', 'start'),
+      canvasEvent('add_llm_node', 'answer'),
+    ])
+    act(() => workflow.setState({ builderViewportManuallyChanged: true }))
+
+    await user.click(screen.getByRole('button', { name: 'Apply changes' }))
+    expect(selection).toHaveBeenCalledWith(
+      expect.objectContaining({
+        detail: expect.objectContaining({ nodeId: 'start', focus: false }),
+      }),
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Finish command' }))
+    await waitFor(() => expect(refreshed).toHaveBeenCalledOnce())
+    expect(selection).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        detail: expect.objectContaining({ nodeId: 'answer', focus: false }),
+      }),
+    )
+  })
+
+  it('retains user navigation when session startup resets the canvas event state', async () => {
+    const { user, workflow } = setup([canvasEvent('highlight_edit_target', 'start')])
+    act(() => workflow.setState({ builderViewportManuallyChanged: true }))
+
+    await user.click(screen.getByRole('button', { name: 'Reset session' }))
+    await user.click(screen.getByRole('button', { name: 'Apply changes' }))
+
+    expect(selection).toHaveBeenCalledWith(
+      expect.objectContaining({
+        detail: expect.objectContaining({ nodeId: 'start', focus: false }),
+      }),
+    )
   })
 })
