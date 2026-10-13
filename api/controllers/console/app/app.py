@@ -484,6 +484,7 @@ class AppCopyApi(AppResource):
     @console_ns.response(
         HTTPStatus.ACCEPTED, "App copy requires confirmation", console_ns.models[AppImportResponse.__name__]
     )
+    @console_ns.response(HTTPStatus.BAD_REQUEST, "App copy failed", console_ns.models[AppImportResponse.__name__])
     @console_ns.response(HTTPStatus.FORBIDDEN, "Insufficient permissions")
     @console_account_admission(
         allowed_roles=_EDIT_ROLES, rbac_checks=[RBACCheck(RBACPermission.APP_CREATE_AND_MANAGEMENT, PlainApp())]

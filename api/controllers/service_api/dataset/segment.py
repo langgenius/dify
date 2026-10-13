@@ -8,6 +8,7 @@ from werkzeug.exceptions import NotFound
 
 from configs import dify_config
 from controllers.common.controller_schemas import ChildChunkCreatePayload, ChildChunkUpdatePayload
+from controllers.common.fields import ErrorMessageResponse
 from controllers.common.schema import (
     query_params_from_model,
     query_params_from_request,
@@ -121,6 +122,7 @@ register_schema_models(
 )
 register_response_schema_models(
     service_api_ns,
+    ErrorMessageResponse,
     SegmentResponse,
     SegmentCreateListResponse,
     SegmentListResponse,
@@ -176,6 +178,11 @@ class SegmentApi(DatasetApiResource):
         200,
         "Segments created successfully",
         service_api_ns.models[SegmentCreateListResponse.__name__],
+    )
+    @service_api_ns.response(
+        400,
+        "Bad request - segments data is missing",
+        service_api_ns.models[ErrorMessageResponse.__name__],
     )
     @cloud_edition_billing_resource_check("vector_space", "dataset")
     @cloud_edition_billing_knowledge_limit_check("add_segment", "dataset")

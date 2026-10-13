@@ -8,7 +8,7 @@ import json
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from functools import wraps
-from typing import Any, Concatenate, Literal
+from typing import Any, Concatenate, Literal, NoReturn
 from uuid import UUID
 
 from flask import Response, make_response, request, send_file, url_for
@@ -27,7 +27,7 @@ from controllers.common.schema import (
 from controllers.common.session import with_session
 from controllers.console import console_ns
 from controllers.console.agent.app_helpers import resolve_agent_runtime_app_model
-from controllers.console.app.error import AppUnavailableError
+from controllers.console.app.error import AgentNotBoundError, AppUnavailableError
 from controllers.console.app.preview_admission import get_preview_app
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
@@ -43,6 +43,7 @@ from controllers.console.wraps import (
 from extensions.ext_application_services import application_services
 from fields.agent_fields import AgentAppComposerResponse
 from fields.base import ResponseModel
+from libs.exception import RelayedHTTPError
 from libs.flask_restx_compat import BINARY_RESPONSE_MEDIA_TYPES_VENDOR_KEY
 from libs.helper import dump_response
 from libs.login import login_required
@@ -296,7 +297,8 @@ def _with_trial_config[T, Q: TrialAgentConfigQuery, **P](
         except AppDefinitionUnavailableError:
             raise AppUnavailableError() from None
         except AgentConfigServiceError as exc:
-            response = make_response(_handle(exc))
+            error = _relayed_error(exc)
+            response = make_response(error.data, error.code)
         response.headers["Cache-Control"] = "no-store"
         return response
 
@@ -318,12 +320,12 @@ def _resolve_agent_id(session: Session, app_model: App, node_id: str | None) -> 
     return app_model.bound_agent_id_with_session(session=session)
 
 
-def _agent_not_bound() -> tuple[dict[str, object], int]:
-    return {"code": "agent_not_bound", "message": "no agent is bound for this app/node"}, 400
+def _relayed_error(exc: AgentConfigServiceError) -> RelayedHTTPError:
+    return RelayedHTTPError(status=exc.status_code, error_code=exc.code, message=exc.message)
 
 
-def _handle(exc: AgentConfigServiceError) -> tuple[dict[str, object], int]:
-    return {"code": exc.code, "message": exc.message}, exc.status_code
+def _handle(exc: AgentConfigServiceError) -> NoReturn:
+    raise _relayed_error(exc) from exc
 
 
 def _json_response(data: Mapping[str, Any]) -> Response:
@@ -444,10 +446,10 @@ def _resolve_app_route_target(
     app_model: App,
     current_user: Account,
     query: AgentConfigQuery,
-) -> _ResolvedConsoleTarget | tuple[dict[str, object], int]:
+) -> _ResolvedConsoleTarget:
     agent_id = _resolve_agent_id(session, app_model, query.node_id)
     if not agent_id:
-        return _agent_not_bound()
+        raise AgentNotBoundError()
     return _resolve_target(
         session=session,
         tenant_id=app_model.tenant_id,
@@ -477,7 +479,7 @@ def _with_agent_route_target(
         )
         return action(target)
     except AgentConfigServiceError as exc:
-        return _handle(exc)
+        _handle(exc)
 
 
 def _with_app_route_target(
@@ -490,11 +492,9 @@ def _with_app_route_target(
     query = query_params_from_request(AgentConfigQuery)
     try:
         target = _resolve_app_route_target(session=session, app_model=app_model, current_user=current_user, query=query)
-        if isinstance(target, tuple):
-            return target
         return action(target)
     except AgentConfigServiceError as exc:
-        return _handle(exc)
+        _handle(exc)
 
 
 def _manifest_response(target: _ResolvedConsoleTarget) -> dict[str, object]:
@@ -1024,7 +1024,7 @@ class AgentConfigSkillFilePreviewByAgentApi(Resource):
             )
             return _skill_file_preview_response(target, name, query.path)
         except AgentConfigServiceError as exc:
-            return _handle(exc)
+            _handle(exc)
 
 
 @console_ns.route("/apps/<uuid:app_id>/agent/config/skills/<string:name>/files/preview")
@@ -1052,11 +1052,9 @@ class AgentConfigSkillFilePreviewApi(Resource):
             target = _resolve_app_route_target(
                 session=session, app_model=app_model, current_user=current_user, query=query
             )
-            if isinstance(target, tuple):
-                return target
             return _skill_file_preview_response(target, name, query.path)
         except AgentConfigServiceError as exc:
-            return _handle(exc)
+            _handle(exc)
 
 
 @console_ns.route("/agent/<uuid:agent_id>/config/skills/<string:name>/download")
@@ -1141,7 +1139,7 @@ class AgentConfigSkillFileDownloadByAgentApi(Resource):
                 route_params={"agent_id": str(agent_id)},
             )
         except AgentConfigServiceError as exc:
-            return _handle(exc)
+            _handle(exc)
 
 
 @console_ns.route("/apps/<uuid:app_id>/agent/config/skills/<string:name>/files/download")
@@ -1167,8 +1165,6 @@ class AgentConfigSkillFileDownloadApi(Resource):
             target = _resolve_app_route_target(
                 session=session, app_model=app_model, current_user=current_user, query=query
             )
-            if isinstance(target, tuple):
-                return target
             return _skill_file_download_response(
                 target,
                 name=name,
@@ -1178,7 +1174,7 @@ class AgentConfigSkillFileDownloadApi(Resource):
                 extra_query_params={"node_id": query.node_id} if query.node_id else None,
             )
         except AgentConfigServiceError as exc:
-            return _handle(exc)
+            _handle(exc)
 
 
 @console_ns.route(
@@ -1205,7 +1201,7 @@ class AgentConfigSkillFileDownloadContentByAgentApi(Resource):
             )
             return _skill_file_raw_download_response(target, name, query.path)
         except AgentConfigServiceError as exc:
-            return _handle(exc)
+            _handle(exc)
 
 
 @console_ns.route(
@@ -1225,11 +1221,9 @@ class AgentConfigSkillFileDownloadContentApi(Resource):
             target = _resolve_app_route_target(
                 session=session, app_model=app_model, current_user=current_user, query=query
             )
-            if isinstance(target, tuple):
-                return target
             return _skill_file_raw_download_response(target, name, query.path)
         except AgentConfigServiceError as exc:
-            return _handle(exc)
+            _handle(exc)
 
 
 @console_ns.route("/agent/<uuid:agent_id>/config/skills/<string:name>")

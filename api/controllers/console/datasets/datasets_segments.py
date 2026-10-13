@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 from werkzeug.exceptions import Forbidden, NotFound
 
 from controllers.common.controller_schemas import ChildChunkCreatePayload, ChildChunkUpdatePayload
-from controllers.common.fields import SimpleResultResponse
+from controllers.common.fields import ErrorMessageResponse, SimpleResultResponse
 from controllers.common.rbac import DatasetId, RBACCheck
 from controllers.common.schema import (
     query_params_from_model,
@@ -155,6 +155,7 @@ register_schema_models(
 )
 register_response_schema_models(
     console_ns,
+    ErrorMessageResponse,
     SegmentResponse,
     ConsoleSegmentListResponse,
     SegmentDetailResponse,
@@ -391,6 +392,7 @@ class DatasetDocumentSegmentUpdateApi(Resource):
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/batch_import")
 class DatasetDocumentSegmentBatchImportApi(Resource):
     @console_ns.response(200, "Batch import started", console_ns.models[SegmentBatchImportStatusResponse.__name__])
+    @console_ns.response(500, "Batch import failed", console_ns.models[ErrorMessageResponse.__name__])
     @console_account_admission(
         rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),),
     )

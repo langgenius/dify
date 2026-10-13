@@ -590,3 +590,12 @@ def test_framework_error_subclasses_are_implicit_codes():
     assert response.status_code == 400
     assert body["code"] == "bad_request_key_error"
     assert body["code"] in api.implicit_error_codes(400)
+
+
+def test_relayed_http_error_emits_the_standard_body_with_runtime_code_and_status():
+    from libs.exception import RelayedHTTPError
+
+    error = RelayedHTTPError(status=409, error_code="downstream_conflict", message="busy", details={"retry": 3})
+
+    assert error.code == 409
+    assert error.data == {"code": "downstream_conflict", "message": "busy", "status": 409, "details": {"retry": 3}}

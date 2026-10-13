@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field, field_validator
 from werkzeug.exceptions import Forbidden, NotFound
 
 from configs import dify_config
+from controllers.common.errors import ForbiddenError
 from controllers.common.fields import SimpleResultDataResponse, SimpleResultResponse, VerificationTokenResponse
 from controllers.common.rbac import rbac_language
 from controllers.common.schema import register_enum_models, register_response_schema_models, register_schema_models
@@ -25,7 +26,13 @@ from controllers.console.auth.error import (
 )
 from controllers.console.error import EmailSendIpLimitError, SeatsLimitExceeded, WorkspaceMembersLimitExceeded
 from controllers.console.flask_admission import console_account_admission
-from controllers.console.workspace.error import InvalidMemberRoleError
+from controllers.console.workspace.error import (
+    InvalidMemberRoleError,
+    MemberCannotOperateSelfError,
+    MemberNotFoundError,
+    MemberRoleAlreadyAssignedError,
+    MemberRoleInvalidError,
+)
 from enums.account import TenantAccountRole
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
@@ -232,7 +239,7 @@ class MemberCancelInviteApi(Resource):
                 request_context.active_workspace_id, str(member_id), request_context.account_id
             )
         except (WorkspaceApplicationError, AccountNotFoundError, NoPermissionError) as error:
-            return _member_mutation_error_response(error)
+            _raise_member_mutation_error(error)
 
         return MemberActionResponse(
             result="success",
@@ -255,7 +262,7 @@ class MemberUpdateRoleApi(Resource):
                 request_context.active_workspace_id, str(member_id), args.role, request_context.account_id
             )
         except (WorkspaceApplicationError, AccountNotFoundError, NoPermissionError) as error:
-            return _member_mutation_error_response(error)
+            _raise_member_mutation_error(error)
 
         return SimpleResultResponse(result="success").model_dump(mode="json")
 
@@ -325,21 +332,21 @@ class OwnerTransfer(Resource):
         return SimpleResultResponse(result="success").model_dump(mode="json")
 
 
-def _member_mutation_error_response(
+def _raise_member_mutation_error(
     error: WorkspaceApplicationError | AccountNotFoundError | NoPermissionError,
-) -> tuple[dict[str, str], HTTPStatus]:
+) -> NoReturn:
     if isinstance(error, (AccountNotFoundError, workspace_errors.WorkspaceNotFoundError)):
         raise NotFound() from error
     if isinstance(error, InvalidWorkspaceMemberRoleError):
-        return {"code": "invalid-role", "message": "Invalid role"}, HTTPStatus.BAD_REQUEST
+        raise MemberRoleInvalidError() from error
     if isinstance(error, workspace_errors.CannotOperateSelfError):
-        return {"code": "cannot-operate-self", "message": str(error)}, HTTPStatus.BAD_REQUEST
+        raise MemberCannotOperateSelfError(str(error)) from error
     if isinstance(error, NoPermissionError):
-        return {"code": "forbidden", "message": str(error)}, HTTPStatus.FORBIDDEN
+        raise ForbiddenError(str(error)) from error
     if isinstance(error, workspace_errors.MemberNotInTenantError):
-        return {"code": "member-not-found", "message": str(error)}, HTTPStatus.NOT_FOUND
+        raise MemberNotFoundError(str(error)) from error
     if isinstance(error, workspace_errors.RoleAlreadyAssignedError):
-        return {"code": "role-already-assigned", "message": str(error)}, HTTPStatus.BAD_REQUEST
+        raise MemberRoleAlreadyAssignedError(str(error)) from error
     raise error
 
 

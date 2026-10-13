@@ -12,6 +12,7 @@ from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotF
 import services.errors.base
 from configs import dify_config
 from controllers.common.controller_schemas import DefaultBlockConfigQuery, WorkflowListQuery, WorkflowUpdatePayload
+from controllers.common.errors import InvalidArgumentError
 from controllers.common.fields import SimpleResultResponse
 from controllers.common.rbac import DatasetByPipeline, DatasetId, RBACCheck
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
@@ -249,7 +250,7 @@ class DraftRagPipelineApi(Resource):
             try:
                 payload = DraftWorkflowSyncPayload.model_validate_json(request.data)
             except (ValueError, ValidationError):
-                return {"message": "Invalid JSON data"}, 400
+                raise InvalidArgumentError("Invalid JSON data")
         else:
             abort(415)
         rag_pipeline_service = RagPipelineService(db.session())
@@ -779,7 +780,7 @@ class RagPipelineByIdApi(Resource):
         update_data = req_data.model_dump(exclude_unset=True)
 
         if not update_data:
-            return {"message": "No valid fields to update"}, 400
+            raise InvalidArgumentError("No valid fields to update")
 
         rag_pipeline_service = RagPipelineService(db.session())
         workflow_ref = WorkflowRefService.create_pipeline_workflow_ref(pipeline, workflow_id)

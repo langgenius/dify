@@ -6,7 +6,7 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field, TypeAdapter, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import NotFound
+from werkzeug.exceptions import BadRequest, NotFound
 
 from controllers.common.errors import NoFileUploadedError, TooManyFilesError
 from controllers.common.rbac import PlainApp, RBACCheck
@@ -359,10 +359,7 @@ class AnnotationApi(Resource):
         if annotation_ids:
             # Check if any annotation_ids contain empty strings or invalid values
             if not all(annotation_id.strip() for annotation_id in annotation_ids if annotation_id):
-                return {
-                    "code": "bad_request",
-                    "message": "annotation_ids are required if the parameter is provided.",
-                }, 400
+                raise BadRequest("annotation_ids are required if the parameter is provided.")
 
             app_ref = _get_app_ref(session, str(app_id))
             AppAnnotationService.delete_app_annotations_in_batch(app_ref, annotation_ids, session)

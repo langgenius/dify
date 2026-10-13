@@ -7,7 +7,7 @@ Execution locators and proxies list/read/download to the agent backend's
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Literal, NoReturn
 from uuid import UUID
 
 from dify_agent.client import DifyAgentClientError, DifyAgentHTTPError
@@ -23,11 +23,18 @@ from controllers.common.schema import (
     register_schema_models,
 )
 from controllers.console import console_ns
-from controllers.console.app.error import AppNotFoundError
+from controllers.console.app.error import (
+    AgentBackendUnreachableError,
+    AgentSandboxBindingNotFoundHTTPError,
+    AgentSandboxDownloadUnavailableHTTPError,
+    AgentSandboxUnavailableHTTPError,
+    AppNotFoundError,
+)
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import RBACPermission, validate_request
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
+from libs.exception import RelayedHTTPError
 from libs.helper import dump_response
 from machinery.context import RequestContext
 from services.agent.errors import AgentNotFoundError
@@ -129,22 +136,22 @@ register_response_schema_models(
 )
 
 
-def _handle(exc: Exception) -> tuple[dict[str, object], int]:
+def _handle(exc: Exception) -> NoReturn:
     if isinstance(exc, AgentAppNotFoundError):
         raise AgentNotFoundError from exc
     if isinstance(exc, WorkflowSandboxAppNotFoundError):
         raise AppNotFoundError from exc
     if isinstance(exc, AgentSandboxBindingNotFoundError):
-        return {"code": "no_active_binding", "message": str(exc)}, 404
+        raise AgentSandboxBindingNotFoundHTTPError(str(exc)) from exc
     if isinstance(exc, AgentSandboxUnavailableError):
-        return {"code": "inspector_unavailable", "message": str(exc)}, 503
+        raise AgentSandboxUnavailableHTTPError(str(exc)) from exc
     if isinstance(exc, AgentSandboxDownloadUnavailableError):
-        return {"code": "binding_file_download_unavailable", "message": str(exc)}, 502
+        raise AgentSandboxDownloadUnavailableHTTPError(str(exc)) from exc
     if isinstance(exc, DifyAgentHTTPError) and backend_reported_failure(exc):
         code, message = backend_error_detail(exc)
-        return {"code": code, "message": message}, exc.status_code
+        raise RelayedHTTPError(status=exc.status_code, error_code=code, message=message) from exc
     if isinstance(exc, DifyAgentClientError):
-        return {"code": "agent_backend_unreachable", "message": str(exc)}, 502
+        raise AgentBackendUnreachableError(str(exc)) from exc
     raise exc
 
 
@@ -162,7 +169,7 @@ class AgentAppSandboxInfoResource(Resource):
                 context, AgentSandboxCaller(str(agent_id), query.caller_type, query.caller_id)
             )
         except Exception as exc:
-            return _handle(exc)
+            _handle(exc)
         return dump_response(SandboxInfoResponse, result)
 
 
@@ -180,7 +187,7 @@ class AgentAppSandboxListResource(Resource):
                 context, AgentSandboxCaller(str(agent_id), query.caller_type, query.caller_id), query.path
             )
         except Exception as exc:
-            return _handle(exc)
+            _handle(exc)
         return dump_response(SandboxListResponse, result)
 
 
@@ -198,7 +205,7 @@ class AgentAppSandboxReadResource(Resource):
                 context, AgentSandboxCaller(str(agent_id), query.caller_type, query.caller_id), query.path
             )
         except Exception as exc:
-            return _handle(exc)
+            _handle(exc)
         return dump_response(SandboxReadResponse, result)
 
 
@@ -216,7 +223,7 @@ class AgentAppSandboxDownloadResource(Resource):
                 context, AgentSandboxCaller(str(agent_id), query.caller_type, query.caller_id), query.path
             )
         except Exception as exc:
-            return _handle(exc)
+            _handle(exc)
         return dump_response(SandboxDownloadResponse, result)
 
 
@@ -243,7 +250,7 @@ class WorkflowAgentSandboxListResource(Resource):
                 query.path,
             )
         except Exception as exc:
-            return _handle(exc)
+            _handle(exc)
         return dump_response(SandboxListResponse, result)
 
 
@@ -272,7 +279,7 @@ class WorkflowAgentSandboxReadResource(Resource):
                 query.path,
             )
         except Exception as exc:
-            return _handle(exc)
+            _handle(exc)
         return dump_response(SandboxReadResponse, result)
 
 
@@ -294,5 +301,5 @@ class WorkflowAgentSandboxDownloadResource(Resource):
                 query.path,
             )
         except Exception as exc:
-            return _handle(exc)
+            _handle(exc)
         return dump_response(SandboxDownloadResponse, result)
