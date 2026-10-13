@@ -1768,6 +1768,15 @@ export const zKnowledgebasePipelineFileUploadError413 = zErrorResponse.and(
 )
 
 /**
+ * KnowledgebasePipelineFileUploadError415
+ */
+export const zKnowledgebasePipelineFileUploadError415 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['unsupported_file_type', 'unsupported_media_type']),
+  }),
+)
+
+/**
  * ListConversationVariablesError400
  */
 export const zListConversationVariablesError400 = zErrorResponse.and(
