@@ -23,7 +23,7 @@ from core.app.layers.pause_state_persist_layer import (
 )
 from core.workflow.human_input_policy import FormDisposition, HumanInputSurface
 from core.workflow.nodes.human_input.entities import SelectInputConfig, StringListSource
-from core.workflow.nodes.human_input.enums import ValueSourceType
+from core.workflow.nodes.human_input.enums import HumanInputFormStatus, ValueSourceType
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from graphon.runtime import GraphRuntimeState, VariablePool
@@ -319,10 +319,12 @@ def _persist_human_input_form(
     session_maker: sessionmaker[Session],
     *,
     recipients: Sequence[HumanInputFormRecipient] = (),
+    form_id: str = "form-1",
+    status: HumanInputFormStatus = HumanInputFormStatus.WAITING,
 ) -> datetime:
     expiration_time = datetime(2024, 1, 1)
     form = HumanInputForm(
-        id="form-1",
+        id=form_id,
         tenant_id="tenant-1",
         app_id="app-1",
         workflow_run_id="run-1",
@@ -331,6 +333,7 @@ def _persist_human_input_form(
         form_definition='{"display_in_ui": true}',
         rendered_content="content",
         expiration_time=expiration_time,
+        status=status,
     )
     with session_maker.begin() as session:
         session.add(form)
@@ -1313,3 +1316,137 @@ def test_build_workflow_event_stream_loads_pause_tokens_without_flask_app_contex
     assert pause_event["event"] == StreamEvent.WORKFLOW_PAUSED
     assert pause_event["data"]["reasons"][0]["form_token"] == "wtok"
     assert pause_event["data"]["reasons"][0]["expiration_time"] == to_utc_timestamp(expiration_time)
+
+
+def _human_input_reason(form_id: str) -> HumanInputRequired:
+    return HumanInputRequired(
+        form_id=form_id,
+        form_content="content",
+        node_id=f"node-{form_id}",
+        node_title="Human Input",
+    )
+
+
+def _build_paused_snapshot_events(
+    session_maker: sessionmaker[Session],
+    forms: Mapping[str, HumanInputFormStatus],
+    *,
+    pause_reason_form_ids: Sequence[str] | None = None,
+) -> list[Mapping[str, Any]]:
+    for form_id, status in forms.items():
+        _persist_human_input_form(session_maker, form_id=form_id, status=status)
+    reason_form_ids = list(forms) if pause_reason_form_ids is None else pause_reason_form_ids
+    pause_entity = _FakePauseEntity(
+        pause_id="pause-1",
+        workflow_run_id="run-1",
+        paused_at_value=datetime(2024, 1, 1, tzinfo=UTC),
+        pause_reasons=[_human_input_reason(form_id) for form_id in reason_form_ids],
+    )
+    return _build_snapshot_events(
+        workflow_run=_build_workflow_run(WorkflowExecutionStatus.PAUSED),
+        node_snapshots=[_build_snapshot(WorkflowNodeExecutionStatus.PAUSED)],
+        task_id="task-ctx",
+        message_context=None,
+        pause_entity=pause_entity,
+        resumption_context=_build_resumption_context("task-ctx"),
+        session_maker=session_maker,
+    )
+
+
+def _event_types(events: Sequence[Mapping[str, Any]]) -> list[str]:
+    return [event["event"] for event in events]
+
+
+@pytest.mark.parametrize(
+    "closed_status",
+    [HumanInputFormStatus.SUBMITTED, HumanInputFormStatus.TIMEOUT, HumanInputFormStatus.EXPIRED],
+)
+def test_snapshot_omits_forms_that_are_no_longer_waiting(
+    sqlite_session_factory: sessionmaker[Session],
+    closed_status: HumanInputFormStatus,
+) -> None:
+    events = _build_paused_snapshot_events(sqlite_session_factory, {"form-1": closed_status})
+
+    assert StreamEvent.HUMAN_INPUT_REQUIRED not in _event_types(events)
+    assert StreamEvent.WORKFLOW_PAUSED not in _event_types(events)
+
+
+def test_snapshot_omits_pause_when_form_row_is_missing(sqlite_session_factory: sessionmaker[Session]) -> None:
+    events = _build_paused_snapshot_events(sqlite_session_factory, {}, pause_reason_form_ids=["form-unknown"])
+
+    assert _event_types(events) == ["workflow_started", "node_started", "node_finished"]
+
+
+def test_snapshot_replays_waiting_form_and_pause(sqlite_session_factory: sessionmaker[Session]) -> None:
+    events = _build_paused_snapshot_events(sqlite_session_factory, {"form-1": HumanInputFormStatus.WAITING})
+
+    assert _event_types(events)[-2:] == [StreamEvent.HUMAN_INPUT_REQUIRED, StreamEvent.WORKFLOW_PAUSED]
+    assert events[-2]["data"]["form_id"] == "form-1"
+    assert [reason["form_id"] for reason in events[-1]["data"]["reasons"]] == ["form-1"]
+
+
+def test_snapshot_replays_only_waiting_forms_when_mixed(sqlite_session_factory: sessionmaker[Session]) -> None:
+    events = _build_paused_snapshot_events(
+        sqlite_session_factory,
+        {"form-1": HumanInputFormStatus.SUBMITTED, "form-2": HumanInputFormStatus.WAITING},
+    )
+
+    human_input_events = [event for event in events if event["event"] == StreamEvent.HUMAN_INPUT_REQUIRED]
+    assert [event["data"]["form_id"] for event in human_input_events] == ["form-2"]
+    pause_data = events[-1]["data"]
+    assert events[-1]["event"] == StreamEvent.WORKFLOW_PAUSED
+    assert [reason["form_id"] for reason in pause_data["reasons"]] == ["form-2"]
+    assert pause_data["paused_nodes"] == ["node-form-2"]
+
+
+def test_stream_continues_with_live_events_when_all_forms_submitted(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    workflow_run = _build_workflow_run_additional(status=WorkflowExecutionStatus.PAUSED)
+    pause_entity = _FakePauseEntity(
+        pause_id="pause-1",
+        workflow_run_id="run-1",
+        paused_at_value=datetime(2024, 1, 1, tzinfo=UTC),
+        pause_reasons=[_human_input_reason("form-1")],
+    )
+    workflow_run_repo = SimpleNamespace(get_workflow_pause=MagicMock(return_value=pause_entity))
+    node_repo = SimpleNamespace(get_execution_snapshots_by_workflow_run=MagicMock(return_value=[]))
+    factory = SimpleNamespace(
+        create_api_workflow_run_repository=MagicMock(return_value=workflow_run_repo),
+        create_api_workflow_node_execution_repository=MagicMock(return_value=node_repo),
+    )
+    monkeypatch.setattr(service_module, "DifyAPIRepositoryFactory", factory)
+    monkeypatch.setattr(
+        service_module.MessageGenerator, "get_response_topic", MagicMock(return_value=_Topic(_StaticSubscription()))
+    )
+    monkeypatch.setattr(
+        service_module, "_load_resumption_context", MagicMock(return_value=_build_resumption_context("task-1"))
+    )
+    live_finished = {"event": StreamEvent.WORKFLOW_FINISHED.value, "task_id": "task-1"}
+    buffer_state = BufferState(
+        queue=queue.Queue(),
+        stop_event=Event(),
+        done_event=Event(),
+        task_id_ready=Event(),
+        task_id_hint="task-1",
+    )
+    buffer_state.queue.put(live_finished)
+    monkeypatch.setattr(service_module, "_start_buffering", MagicMock(return_value=buffer_state))
+    _persist_human_input_form(sqlite_session_factory, status=HumanInputFormStatus.SUBMITTED)
+
+    events = list(
+        build_workflow_event_stream(
+            app_mode=AppMode.WORKFLOW,
+            workflow_run=workflow_run,
+            tenant_id="tenant-1",
+            app_id="app-1",
+            session_maker=sqlite_session_factory,
+            close_on_pause=True,
+        )
+    )
+
+    assert events[-1] == live_finished
+    snapshot_types = [event["event"] for event in events if isinstance(event, Mapping)]
+    assert StreamEvent.WORKFLOW_PAUSED not in snapshot_types
+    assert StreamEvent.HUMAN_INPUT_REQUIRED not in snapshot_types
