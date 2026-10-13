@@ -4,9 +4,10 @@ import type { OrpcErrorEntry } from '../openapi-ts.api.config.ts'
  *
  * `@hey-api/openapi-ts` emits `oc.route(...).input(...).output(...)` but has no option or
  * hook for error maps, so this runs after generation (and before formatting). For every
- * code of an operation's narrowed `{OperationId}Error{status}` components it declares
- * `{ status, data: z{OperationId}Error{status} }`, so clients can narrow errors with
- * `isDefinedError` once the link validates them against the contract.
+ * per-code `{Code}Error` component an operation's error responses reference it declares
+ * `{ status, data: z{Code}Error }`, so clients can narrow errors with `isDefinedError`
+ * once the link validates them against the contract. Generic errors are not declared:
+ * the open `default` error covers them and they stay undefined errors.
  */
 import fs from 'node:fs'
 import path from 'node:path'
@@ -117,16 +118,9 @@ const patchContractFile = (directory: string, errorMaps: Map<string, OrpcErrorEn
   return insertions.length
 }
 
-const ambiguous: string[] = []
 let patched = 0
 for (const job of apiJobs) {
   if (job.plugins) continue // the console entry job writes loaders, not contracts
-  const { ambiguous: jobAmbiguous, errorMaps } = orpcErrorMaps(job.document)
-  ambiguous.push(...jobAmbiguous)
-  patched += patchContractFile(path.join(contractsDir, job.outputPath), errorMaps)
+  patched += patchContractFile(path.join(contractsDir, job.outputPath), orpcErrorMaps(job.document))
 }
 process.stdout.write(`declared error maps on ${patched} contracts\n`)
-if (ambiguous.length > 0)
-  process.stdout.write(
-    `codes left undefined because one operation documents them under several statuses:\n  ${ambiguous.join('\n  ')}\n`,
-  )

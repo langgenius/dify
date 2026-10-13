@@ -620,35 +620,45 @@ export type OrpcErrorEntry = {
   status: number
 }
 
-const narrowedErrorCodes = (schema: SwaggerSchema | undefined): string[] => {
+/**
+ * The fixed `code` and `status` a per-code error component (`{Code}Error`, an `allOf` over the
+ * error body) declares, or `undefined` for the open error body and other schemas.
+ */
+const errorComponentIdentity = (
+  schema: SwaggerSchema | undefined,
+): { code: string; status: number } | undefined => {
   const parts = Array.isArray(schema?.allOf) ? schema.allOf : []
   for (const part of parts) {
     if (!isObject(part) || !isObject(part.properties)) continue
     const code = part.properties.code
-    if (isObject(code) && Array.isArray(code.enum))
-      return code.enum.filter((value): value is string => typeof value === 'string')
+    const status = part.properties.status
+    if (
+      isObject(code) &&
+      typeof code.const === 'string' &&
+      isObject(status) &&
+      typeof status.const === 'number'
+    )
+      return { code: code.const, status: status.const }
   }
-  return []
+  return undefined
 }
 
 /**
- * The oRPC `errorMap` each operation can declare, keyed by generated operationId. Every
- * code of a narrowed `{OperationId}Error{status}` component becomes `{ status, data }`.
- * oRPC keys errors by code, so a code documented under more than one status is left out
- * (it stays an undefined error) and reported in `ambiguous`.
+ * The oRPC `errorMap` each operation declares, keyed by generated operationId: one
+ * `{ status, data }` entry per error component its 4xx/5xx responses reference. The
+ * backend documents each code as one component with one status per surface, so a code
+ * that still reaches an operation under two statuses fails generation.
  */
-export const orpcErrorMaps = (document: SwaggerDocument) => {
+export const orpcErrorMaps = (document: SwaggerDocument): Map<string, OrpcErrorEntry[]> => {
   const schemas = getDocumentSchemas(document)
   const errorMaps = new Map<string, OrpcErrorEntry[]>()
-  const ambiguous: string[] = []
-  for (const pathItem of Object.values(document.paths ?? {})) {
+  for (const [pathKey, pathItem] of Object.entries(document.paths ?? {})) {
     for (const [method, operation] of Object.entries(pathItem)) {
       if (!operationMethods.has(method) || !isObject(operation)) continue
       const { operationId, responses } = operation as SwaggerOperation
       if (!operationId) continue
 
-      const statusesByCode = new Map<string, Set<number>>()
-      const entries: OrpcErrorEntry[] = []
+      const entries = new Map<string, OrpcErrorEntry>()
       for (const [status, response] of Object.entries(responses ?? {})) {
         if (!/^[45]\d\d$/.test(status) || !isObject(response) || !isObject(response.content))
           continue
@@ -661,22 +671,24 @@ export const orpcErrorMaps = (document: SwaggerDocument) => {
               ? schemaNameFromRef(option.$ref)
               : undefined
           if (!schemaName) continue
-          for (const code of narrowedErrorCodes(schemas[schemaName])) {
-            const statuses = statusesByCode.get(code) ?? new Set<number>()
-            statuses.add(Number(status))
-            statusesByCode.set(code, statuses)
-            entries.push({ code, schemaName, status: Number(status) })
-          }
+          const identity = errorComponentIdentity(schemas[schemaName])
+          if (!identity) continue
+          const known = entries.get(identity.code)
+          if (known && known.status !== identity.status)
+            throw new Error(
+              `${method.toUpperCase()} ${pathKey} documents ${identity.code} under ${known.status} and ${identity.status}; oRPC keys errors by code`,
+            )
+          entries.set(identity.code, { code: identity.code, schemaName, status: identity.status })
         }
       }
-      const unique = entries.filter((entry) => statusesByCode.get(entry.code)?.size === 1)
-      for (const [code, statuses] of statusesByCode)
-        if (statuses.size > 1)
-          ambiguous.push(`${operationId}: ${code} (${[...statuses].join(', ')})`)
-      if (unique.length > 0) errorMaps.set(operationId, unique)
+      if (entries.size > 0)
+        errorMaps.set(
+          operationId,
+          [...entries.values()].sort((left, right) => left.code.localeCompare(right.code)),
+        )
     }
   }
-  return { ambiguous, errorMaps }
+  return errorMaps
 }
 
 const createApiConfig = (job: ApiJob): UserConfig => ({
