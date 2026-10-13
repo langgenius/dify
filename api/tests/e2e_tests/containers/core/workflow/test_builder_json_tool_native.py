@@ -86,18 +86,24 @@ def test_json_caller_explicit_read_session_closes_before_native_spawn(native_own
     assert at_spawn == [False]
 
 
-def _external_json_transport(monkeypatch, tenant_id: str, *, text: str = "café") -> list[dict]:
+def _external_json_transport(
+    monkeypatch, tenant_id: str, *, text: str = "café", metadata_calls: list[str] | None = None
+) -> list[dict]:
     """Return the reviewed declaration from daemon owners and count native calls."""
     provider = _provider()
     calls: list[dict] = []
 
     class Installer:
         def fetch_plugin_installation_by_ids(self, actual_tenant, plugin_ids):
+            if metadata_calls is not None:
+                metadata_calls.append("installation")
             assert (actual_tenant, plugin_ids) == (tenant_id, [metadata.PLUGIN_ID])
             return [_installation(tenant_id=tenant_id)]
 
     class Manager:
         def fetch_tool_provider(self, actual_tenant, provider_id):
+            if metadata_calls is not None:
+                metadata_calls.append("provider")
             assert (actual_tenant, provider_id) == (tenant_id, metadata.PROVIDER_ID)
             return provider
 
@@ -183,6 +189,133 @@ def test_json_native_port_worker_graphon_run_and_end_seal(native_owner, monkeypa
         assert nodes[1].outputs_dict["text"] == "café"
         assert nodes[2].outputs_dict["result"] == "café"
         assert native.outputs_dict["result"] == "café"
+
+
+@pytest.mark.parametrize("ui_identifier", ["missing", "null"], ids=["missing", "null"])
+def test_json_optional_graph_plugin_identifier_seals_without_saved_graph_rewrite(
+    native_owner, monkeypatch, ui_identifier
+):
+    factory, actor, app, workflow, session_id, test_input_id = native_owner
+    inputs = _configure(native_owner, ensure_ascii=False, wrapped=True)
+    graph = json.loads(FIXTURE.read_text())
+    tool = graph["nodes"][1]["data"]
+    if ui_identifier == "missing":
+        del tool["plugin_unique_identifier"]
+    else:
+        tool["plugin_unique_identifier"] = None
+    saved_graph = json.dumps(graph, ensure_ascii=False)
+    with factory.begin() as db:
+        db.get(Workflow, workflow.id).graph = saved_graph
+    calls = _external_json_transport(monkeypatch, actor.tenant_id)
+
+    result = WorkflowServiceDifyPort().run_draft(
+        app.id, actor, inputs, lambda _: None, session_id=session_id, test_input_id=test_input_id
+    )
+
+    assert result.execution_refusal is None
+    assert result.status == "succeeded"
+    assert result.verification is not None
+    summary = result.verification.execution_evidence
+    assert summary is not None
+    assert summary.safety_outcome == "restricted_execution_completed"
+    assert calls == [{"content": inputs["payload"], "json_filter": inputs["json_path"], "ensure_ascii": False}]
+    with factory() as db:
+        assert db.get(Workflow, workflow.id).graph == saved_graph
+        request = db.scalar(select(DifyBuilderExecutionRequest).where(DifyBuilderExecutionRequest.app_id == app.id))
+        assert request is not None
+        assert request.state == "sealed"
+        assert len(request.observations) == 1
+        assert BuilderExecutionObservation.model_validate(request.observations[0]).kind == "qualified_json_completed"
+        native = db.get(WorkflowRun, summary.native_run_id)
+        assert native is not None
+        nodes = list(
+            db.scalars(
+                select(WorkflowNodeExecutionModel)
+                .where(WorkflowNodeExecutionModel.workflow_run_id == native.id)
+                .order_by(WorkflowNodeExecutionModel.index)
+            )
+        )
+        assert [(node.node_id, node.status) for node in nodes] == [
+            ("node1", "succeeded"),
+            ("node2", "succeeded"),
+            ("node3", "succeeded"),
+        ]
+        assert nodes[2].outputs_dict == {"result": "café"}
+
+
+def test_json_supplied_mismatched_graph_plugin_identifier_refuses_before_allocation(native_owner, monkeypatch):
+    factory, actor, app, workflow, session_id, test_input_id = native_owner
+    inputs = _configure(native_owner, ensure_ascii=False, wrapped=True)
+    graph = json.loads(FIXTURE.read_text())
+    graph["nodes"][1]["data"]["plugin_unique_identifier"] = "different-installation"
+    with factory.begin() as db:
+        db.get(Workflow, workflow.id).graph = json.dumps(graph, ensure_ascii=False)
+    metadata_calls: list[str] = []
+    calls = _external_json_transport(monkeypatch, actor.tenant_id, metadata_calls=metadata_calls)
+
+    result = WorkflowServiceDifyPort().run_draft(
+        app.id, actor, inputs, lambda _: None, session_id=session_id, test_input_id=test_input_id
+    )
+
+    assert result.execution_refusal is not None
+    assert result.execution_refusal.reason_code == "unsupported_json_tool_configuration"
+    assert calls == []
+    assert metadata_calls == []
+    with factory() as db:
+        assert (
+            db.scalar(select(DifyBuilderExecutionRequest).where(DifyBuilderExecutionRequest.app_id == app.id)) is None
+        )
+        assert db.scalar(select(WorkflowRun).where(WorkflowRun.app_id == app.id)) is None
+
+
+def test_json_constant_only_graph_without_start_inputs_seals_native_completion(native_owner, monkeypatch):
+    factory, actor, app, workflow, session_id, test_input_id = native_owner
+    graph = json.loads(FIXTURE.read_text())
+    graph["nodes"][0]["data"]["variables"] = []
+    graph["nodes"][1]["data"]["tool_parameters"] = {
+        "content": {"type": "constant", "value": '{"x":1}'},
+        "json_filter": {"type": "constant", "value": "$.x"},
+    }
+    graph["nodes"][1]["data"]["tool_configurations"]["ensure_ascii"] = False
+    saved_graph = json.dumps(graph, ensure_ascii=False)
+    with factory.begin() as db:
+        db.get(Workflow, workflow.id).graph = saved_graph
+        db.get(DifyBuilderTestInput, test_input_id).inputs = {}
+    calls = _external_json_transport(monkeypatch, actor.tenant_id, text="1")
+
+    result = WorkflowServiceDifyPort().run_draft(
+        app.id, actor, {}, lambda _: None, session_id=session_id, test_input_id=test_input_id
+    )
+
+    assert result.execution_refusal is None
+    assert result.status == "succeeded"
+    assert result.verification is not None
+    summary = result.verification.execution_evidence
+    assert summary is not None
+    assert summary.safety_outcome == "restricted_execution_completed"
+    assert calls == [{"content": '{"x":1}', "json_filter": "$.x", "ensure_ascii": False}]
+    with factory() as db:
+        assert db.get(Workflow, workflow.id).graph == saved_graph
+        request = db.scalar(select(DifyBuilderExecutionRequest).where(DifyBuilderExecutionRequest.app_id == app.id))
+        assert request is not None
+        assert request.state == "sealed"
+        assert len(request.observations) == 1
+        native = db.get(WorkflowRun, summary.native_run_id)
+        assert native is not None
+        nodes = list(
+            db.scalars(
+                select(WorkflowNodeExecutionModel)
+                .where(WorkflowNodeExecutionModel.workflow_run_id == native.id)
+                .order_by(WorkflowNodeExecutionModel.index)
+            )
+        )
+        assert [(node.node_id, node.status) for node in nodes] == [
+            ("node1", "succeeded"),
+            ("node2", "succeeded"),
+            ("node3", "succeeded"),
+        ]
+        assert nodes[2].outputs_dict == {"result": "1"}
+        assert native.outputs_dict == {"result": "1"}
 
 
 @pytest.mark.parametrize(
