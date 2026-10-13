@@ -234,10 +234,10 @@ class MemberCancelInviteApi(Resource):
 
     @error_responses(
         ForbiddenError,
+        InvalidMemberRoleError,
         MemberCannotOperateSelfError,
         MemberNotFoundError,
         MemberRoleAlreadyAssignedError,
-        MemberRoleInvalidError,
     )
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[MemberActionResponse.__name__])
     @console_account_admission()
@@ -261,10 +261,10 @@ class MemberUpdateRoleApi(Resource):
 
     @error_responses(
         ForbiddenError,
+        InvalidMemberRoleError,
         MemberCannotOperateSelfError,
         MemberNotFoundError,
         MemberRoleAlreadyAssignedError,
-        MemberRoleInvalidError,
     )
     @console_ns.expect(console_ns.models[MemberRoleUpdatePayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultResponse.__name__])
