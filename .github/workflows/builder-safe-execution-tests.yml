@@ -107,6 +107,8 @@ jobs:
                   "test_composed_template_cumulative_output_overflow_is_native_failure": 1,
                   "test_composed_template_text_without_complete_sql_proof_cannot_publish": 4,
                   "test_composed_template_seal_replay_rejects_changed_output": 1,
+                  "test_composed_template_normal_workflow_citation_defaults_are_preserved": 1,
+                  "test_composed_citation_display_change_invalidates_reserved_template_context": 2,
               },
               "test_builder_execution_policy_persistence": {
                   "test_postgres_duplicate_claim_has_one_winner": 1,
