@@ -1266,10 +1266,11 @@ ERROR_DEFAULT_RESPONSE: dict[str, object] = {
     "description": "Error",
     "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorBody"}}},
 }
-"""Exactly what `@returns` registers as `("default", "Error", ErrorBody)`."""
+"""Exactly what `@returns` registers as `("default", "Error", ErrorBody)`, and what
+`ExternalApi` adds to every other operation."""
 
 EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
-    ("get", "/_catalog"): frozenset({"200"}),
+    ("get", "/_catalog"): frozenset({"200", "default"}),
     ("get", "/_health"): frozenset({"200", "default"}),
     ("get", "/_version"): frozenset({"200", "default"}),
     ("get", "/account"): frozenset({"200", "default"}),
@@ -1289,14 +1290,14 @@ EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
     ("post", "/apps/{app_id}/chat:run"): frozenset({"200", "422", "default"}),
     ("post", "/apps/{app_id}/advanced-chat:run"): frozenset({"200", "422", "default"}),
     ("post", "/apps/{app_id}/completion:run"): frozenset({"200", "422", "default"}),
-    # The five device-flow rows are the only operations with no `default`: they
-    # document their 200 with a raw `openapi_ns.response` rather than `@returns`,
-    # so no `ErrorBody` schema is registered for them.
-    ("post", "/oauth/device/approve"): frozenset({"200"}),
-    ("post", "/oauth/device/code"): frozenset({"200"}),
-    ("post", "/oauth/device/deny"): frozenset({"200"}),
-    ("get", "/oauth/device/lookup"): frozenset({"200"}),
-    ("post", "/oauth/device/token"): frozenset({"200"}),
+    # The catalog and the five device-flow rows document their 200 with a raw
+    # `openapi_ns.response` rather than `@returns`; `ExternalApi` still gives them the
+    # `default` error every operation documents, with the same `ErrorBody` schema.
+    ("post", "/oauth/device/approve"): frozenset({"200", "default"}),
+    ("post", "/oauth/device/code"): frozenset({"200", "default"}),
+    ("post", "/oauth/device/deny"): frozenset({"200", "default"}),
+    ("get", "/oauth/device/lookup"): frozenset({"200", "default"}),
+    ("post", "/oauth/device/token"): frozenset({"200", "default"}),
     ("get", "/permitted-external-apps"): frozenset({"200", "422", "default"}),
     ("get", "/permitted-external-apps/{app_id}"): frozenset({"200", "422", "default"}),
     ("get", "/workspaces"): frozenset({"200", "422", "default"}),

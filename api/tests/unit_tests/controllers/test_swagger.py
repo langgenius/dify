@@ -288,7 +288,8 @@ def test_console_segment_mutation_contracts_survive_admission(openapi_json: Open
         }
 
     delete_operation = paths[f"{document_path}/segments"]["delete"]
-    assert set(delete_operation["responses"]) == {"204"}
+    # Every operation documents the open ``default`` error beside its own responses.
+    assert set(delete_operation["responses"]) == {"204", "default"}
     parameters = _parameters_by_name(delete_operation)
     assert parameters["segment_id"]["in"] == "query"
     assert parameters["segment_id"]["schema"]["type"] == "array"
