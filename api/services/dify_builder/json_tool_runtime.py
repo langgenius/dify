@@ -300,7 +300,7 @@ class QualifiedJsonToolNodeRuntime(DifyToolNodeRuntime):
             node_data.provider_type.value != ToolProviderType.BUILT_IN.value
             or node_data.provider_id != PROVIDER_ID
             or node_data.provider_name != PROVIDER_ID
-            or node_data.plugin_unique_identifier != UNIQUE_IDENTIFIER
+            or node_data.plugin_unique_identifier not in (None, UNIQUE_IDENTIFIER)
             or node_data.tool_name != TOOL_NAME
             or node_data.tool_node_version != "2"
             or node_data.credential_id is not None
