@@ -5,6 +5,7 @@ import type { AppConversationData, AppData, AppMeta, ConversationItem } from '@/
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { AppToastHost } from '@/app/notifications/host'
+import { httpErrorFromResponse } from '@/service/http-error'
 import {
   AppSourceType,
   delConversation,
@@ -306,9 +307,11 @@ describe('useChatWithHistory', () => {
       setConversationIdInfo('environment:environment-code', 'conversation-1')
       mockFetchConversations.mockResolvedValue(createConversationData())
       mockFetchChatList.mockRejectedValue(
-        new Response(JSON.stringify({ reason: 'APPDEPLOY_CONVERSATION_NOT_FOUND' }), {
-          status: 404,
-        }),
+        await httpErrorFromResponse(
+          new Response(JSON.stringify({ reason: 'APPDEPLOY_CONVERSATION_NOT_FOUND' }), {
+            status: 404,
+          }),
+        ),
       )
 
       const { result } = await renderWithClient(() => useChatWithHistory())

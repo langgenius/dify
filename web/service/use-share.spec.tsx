@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import type { AppConversationData, ConversationItem } from '@/models/share'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
+import { httpErrorFromResponse } from '@/service/http-error'
 import {
   AppSourceType,
   fetchChatList,
@@ -218,7 +219,8 @@ describe('useShareChatList', () => {
     const response = new Response(JSON.stringify({ reason: 'APPDEPLOY_CONVERSATION_NOT_FOUND' }), {
       status: 404,
     })
-    mockFetchChatList.mockRejectedValue(response)
+    const apiError = await httpErrorFromResponse(response)
+    mockFetchChatList.mockRejectedValue(apiError)
 
     const { result } = renderShareHook(() => useShareChatList(params))
 
@@ -236,12 +238,13 @@ describe('useShareChatList', () => {
       appSourceType: AppSourceType.webApp,
     }
     const response = new Response(JSON.stringify({ reason: 'OTHER_ERROR' }), { status: 404 })
-    mockFetchChatList.mockRejectedValue(response)
+    const apiError = await httpErrorFromResponse(response)
+    mockFetchChatList.mockRejectedValue(apiError)
 
     const { result } = renderShareHook(() => useShareChatList(params))
 
     await waitFor(() => {
-      expect(result.current.error).toBe(response)
+      expect(result.current.error).toBe(apiError)
     })
     expect(mockFetchChatList).toHaveBeenCalledTimes(1)
   })
@@ -255,12 +258,13 @@ describe('useShareChatList', () => {
     const response = new Response(JSON.stringify({ reason: 'APPDEPLOY_CONVERSATION_NOT_FOUND' }), {
       status: 404,
     })
-    mockFetchChatList.mockRejectedValue(response)
+    const apiError = await httpErrorFromResponse(response)
+    mockFetchChatList.mockRejectedValue(apiError)
 
     const { result } = renderShareHook(() => useShareChatList(params))
 
     await waitFor(() => {
-      expect(result.current.error).toBe(response)
+      expect(result.current.error).toBe(apiError)
     })
     expect(mockFetchChatList).toHaveBeenCalledTimes(1)
   })

@@ -100,7 +100,7 @@ vi.mock('@/app/notifications', () => ({
   },
 }))
 
-const mockParsePluginErrorMessage = vi.fn().mockResolvedValue(null)
+const mockParsePluginErrorMessage = vi.fn().mockReturnValue(null)
 vi.mock('@/utils/error-parser', () => ({
   parsePluginErrorMessage: (...args: unknown[]) => mockParsePluginErrorMessage(...args),
 }))

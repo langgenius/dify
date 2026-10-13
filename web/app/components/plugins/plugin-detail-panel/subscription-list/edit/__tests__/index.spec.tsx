@@ -577,11 +577,9 @@ describe('Edit Modal Components', () => {
         })
       })
 
-      it('should use error.message from object when available', async () => {
+      it('should use error.message when available', async () => {
         formValuesMap.set('main', { values: { subscription_name: 'Name' }, isCheckValidated: true })
-        mockUpdateSubscription.mockImplementation((_p, cb) =>
-          cb.onError({ message: 'Object error' }),
-        )
+        mockUpdateSubscription.mockImplementation((_p, cb) => cb.onError(new Error('Object error')))
         render(<ManualEditModal {...createProps()} />)
         fireEvent.click(getConfirmButton())
         await waitFor(() => {
@@ -1099,7 +1097,7 @@ describe('Edit Modal Components', () => {
 
       it('should show error toast on verification failure', async () => {
         formValuesMap.set('credentials', { values: { api_key: 'bad-key' }, isCheckValidated: true })
-        mockParsePluginErrorMessage.mockResolvedValue('Invalid API key')
+        mockParsePluginErrorMessage.mockReturnValue('Invalid API key')
         mockVerifyCredentials.mockImplementation((_p, cb) => cb.onError(new Error('Invalid')))
         render(<ApiKeyEditModal {...createProps()} />)
         fireEvent.click(getConfirmButton())
@@ -1115,7 +1113,7 @@ describe('Edit Modal Components', () => {
 
       it('should use fallback error message when parsePluginErrorMessage returns null', async () => {
         formValuesMap.set('credentials', { values: { api_key: 'bad-key' }, isCheckValidated: true })
-        mockParsePluginErrorMessage.mockResolvedValue(null)
+        mockParsePluginErrorMessage.mockReturnValue(null)
         mockVerifyCredentials.mockImplementation((_p, cb) => cb.onError(new Error('Invalid')))
         render(<ApiKeyEditModal {...createProps()} />)
         fireEvent.click(getConfirmButton())
@@ -1326,7 +1324,7 @@ describe('Edit Modal Components', () => {
           values: { subscription_name: 'Name' },
           isCheckValidated: true,
         })
-        mockParsePluginErrorMessage.mockResolvedValue('Update failed')
+        mockParsePluginErrorMessage.mockReturnValue('Update failed')
         mockUpdateSubscription.mockImplementation((_p, cb) => cb.onError(new Error('Failed')))
         render(<ApiKeyEditModal {...createProps()} />)
 

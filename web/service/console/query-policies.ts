@@ -9,6 +9,7 @@ import type { RouterUtils } from '@orpc/tanstack-query'
 import type { InfiniteData, QueryClient, QueryKey } from '@tanstack/react-query'
 import type { ConsoleClient } from './index'
 import { createTanstackQueryUtils } from '@orpc/tanstack-query'
+import { isNotFoundError } from '@/service/http-error'
 
 export function createConsoleQuery(consoleClient: ConsoleClient) {
   const consoleQuery: RouterUtils<ConsoleClient> = createTanstackQueryUtils(consoleClient, {
@@ -796,7 +797,7 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           get: {
             queryOptions: {
               retry: (failureCount, error) => {
-                if (error instanceof Response && error.status === 404) return false
+                if (isNotFoundError(error)) return false
 
                 return failureCount < 3
               },
@@ -837,7 +838,7 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           get: {
             queryOptions: {
               retry: (failureCount, error) => {
-                if (error instanceof Response && error.status === 404) return false
+                if (isNotFoundError(error)) return false
 
                 return failureCount < 3
               },

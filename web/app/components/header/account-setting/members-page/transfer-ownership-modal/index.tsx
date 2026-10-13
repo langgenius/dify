@@ -10,6 +10,7 @@ import { toast } from '@/app/notifications'
 import { currentWorkspaceAtom } from '@/context/workspace-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { ownershipTransfer, sendOwnerEmail, verifyOwnerEmail } from '@/service/common'
+import { getErrorMessage } from '@/utils/error-message'
 import MemberSelector from './member-selector'
 
 type Props = Readonly<{
@@ -22,10 +23,6 @@ const STEP = {
   transfer: 'transfer',
 }
 type Step = (typeof STEP)[keyof typeof STEP]
-
-const getErrorMessage = (error: unknown) => {
-  return error instanceof Error ? error.message : ''
-}
 
 const TransferOwnershipModal = ({ onClose, show }: Props) => {
   const { t } = useTranslation(['common', 'workspaceMembers'])
@@ -82,7 +79,7 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
         toast.error('Verifying email failed')
       }
     } catch (error) {
-      toast.error(`Error verifying email: ${getErrorMessage(error)}`)
+      toast.error(`Error verifying email: ${getErrorMessage(error) ?? ''}`)
     }
   }
   const sendCodeToOriginEmail = async () => {
@@ -105,7 +102,7 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
       })
       globalThis.location.reload()
     } catch (error) {
-      toast.error(`Error ownership transfer: ${getErrorMessage(error)}`)
+      toast.error(`Error ownership transfer: ${getErrorMessage(error) ?? ''}`)
     } finally {
       setIsTransfer(false)
     }
