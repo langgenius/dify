@@ -47,8 +47,6 @@ export function ApiKeyModal({ open, canManage, scope, onOpenChange }: ApiKeyModa
   const { t } = useTranslation(['appApi', 'common'])
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
   const deleteActionsRef = useRef<AlertDialogActions>(null)
-  const createButtonRef = useRef<HTMLButtonElement>(null)
-  const finalFocusRef = useRef<HTMLElement>(null)
   const [createdApiKey, setCreatedApiKey] = useState<CreatedApiKey>()
   const [scopeDialogOpen, setScopeDialogOpen] = useState(false)
   // Bumped on each open so the scope dialog remounts with fresh selection state.
@@ -163,7 +161,6 @@ export function ApiKeyModal({ open, canManage, scope, onOpenChange }: ApiKeyModa
     if (!deleteKeyId || !canManage || deleteMutation.isPending) return
 
     const onSuccess = () => {
-      finalFocusRef.current = createButtonRef.current
       deleteActionsRef.current?.close()
     }
     switch (scope.type) {
@@ -224,9 +221,7 @@ export function ApiKeyModal({ open, canManage, scope, onOpenChange }: ApiKeyModa
             onOpenChange={(nextOpen, details) => {
               if (!nextOpen && deleteMutation.isPending && details.reason !== 'imperative-action') {
                 details.cancel()
-                return
               }
-              if (nextOpen) finalFocusRef.current = null
             }}
           >
             {({ payload }) => (
@@ -238,10 +233,7 @@ export function ApiKeyModal({ open, canManage, scope, onOpenChange }: ApiKeyModa
                     showScope={scope.type === 'dataset'}
                   />
                 )}
-                <AlertDialogContent
-                  backdropProps={{ forceRender: true }}
-                  finalFocus={() => finalFocusRef.current ?? true}
-                >
+                <AlertDialogContent backdropProps={{ forceRender: true }}>
                   <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
                     <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
                       {t(($) => $['actionMsg.deleteConfirmTitle'], { ns: 'appApi' })}
@@ -267,12 +259,7 @@ export function ApiKeyModal({ open, canManage, scope, onOpenChange }: ApiKeyModa
             )}
           </AlertDialog>
           <div className="flex shrink-0 px-6 py-4">
-            <Button
-              ref={createButtonRef}
-              disabled={createDisabled}
-              loading={isCreating}
-              onClick={handleCreate}
-            >
+            <Button disabled={createDisabled} loading={isCreating} onClick={handleCreate}>
               <span aria-hidden className="i-ri-add-line size-4 shrink-0" />
               {t(($) => $['apiKeyModal.createNewSecretKey'], { ns: 'appApi' })}
             </Button>
