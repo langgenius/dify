@@ -252,6 +252,11 @@ Service API operation statically raises, and CI runs it. `--fix` adds what handl
 decorator and fixed there. Stale entries are warnings; `--fix --prune` removes them. Inference cannot see instance
 calls, signals or other dynamic dispatch, so add errors raised that way by hand.
 
+Controller unit tests also check every 4xx/5xx JSON response an `ExternalApi` serves against that API's generated
+document (`tests/unit_tests/controllers/error_contract.py`): the body must be the standard error body, unless the
+status declares its own model, and its `code` must be documented for the status. This covers the dynamic paths static
+inference cannot follow, on every path a test exercises.
+
 Each documented code is one shared component, `{Code}Error` (`draft_workflow_not_sync` documents as
 `DraftWorkflowNotSyncError`): the error body with `code` and `status` fixed, plus the class's `details_model` (a
 Pydantic model) when it declares one. The response of its status references it; several codes on one status are an

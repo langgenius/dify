@@ -1294,12 +1294,14 @@ EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
     # `openapi_ns.response` rather than `@returns`; `ExternalApi` still gives them the
     # `default` error every operation documents, with the same `ErrorBody` schema.
     # Approve and deny run Console account admission, whose setup (401) and
-    # account-initialization (400) errors are documented by those guards.
-    ("post", "/oauth/device/approve"): frozenset({"200", "400", "401", "default"}),
-    ("post", "/oauth/device/code"): frozenset({"200", "default"}),
-    ("post", "/oauth/device/deny"): frozenset({"200", "400", "401", "default"}),
+    # account-initialization (400) errors are documented by those guards. Code, token,
+    # approve and deny also declare the RFC 8628-style `DeviceFlowErrorResponse` for the
+    # statuses their flow errors use.
+    ("post", "/oauth/device/approve"): frozenset({"200", "400", "401", "404", "409", "503", "default"}),
+    ("post", "/oauth/device/code"): frozenset({"200", "400", "default"}),
+    ("post", "/oauth/device/deny"): frozenset({"200", "400", "401", "404", "409", "503", "default"}),
     ("get", "/oauth/device/lookup"): frozenset({"200", "default"}),
-    ("post", "/oauth/device/token"): frozenset({"200", "default"}),
+    ("post", "/oauth/device/token"): frozenset({"200", "400", "default"}),
     ("get", "/permitted-external-apps"): frozenset({"200", "422", "default"}),
     ("get", "/permitted-external-apps/{app_id}"): frozenset({"200", "422", "default"}),
     ("get", "/workspaces"): frozenset({"200", "422", "default"}),
