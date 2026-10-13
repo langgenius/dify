@@ -577,11 +577,9 @@ describe('Edit Modal Components', () => {
         })
       })
 
-      it('should use error.message from object when available', async () => {
+      it('should use error.message when available', async () => {
         formValuesMap.set('main', { values: { subscription_name: 'Name' }, isCheckValidated: true })
-        mockUpdateSubscription.mockImplementation((_p, cb) =>
-          cb.onError({ message: 'Object error' }),
-        )
+        mockUpdateSubscription.mockImplementation((_p, cb) => cb.onError(new Error('Object error')))
         render(<ManualEditModal {...createProps()} />)
         fireEvent.click(getConfirmButton())
         await waitFor(() => {

@@ -1340,82 +1340,12 @@ function getDraftSkillName(parsedSkillMd: ParsedMarkdownContent, displayName: st
   return generatedName || undefined
 }
 
-function parseServerMessage(message: string) {
-  const trimmedMessage = message.trim()
-  if (!trimmedMessage.startsWith('{')) return trimmedMessage
-
-  try {
-    const parsed: unknown = JSON.parse(trimmedMessage)
-    if (parsed && typeof parsed === 'object') {
-      const parsedMessage = (parsed as Record<string, unknown>).message
-      if (typeof parsedMessage === 'string' && parsedMessage.trim()) return parsedMessage.trim()
-    }
-  } catch {
-    return trimmedMessage
-  }
-
-  return trimmedMessage
-}
-
-async function readSkillResponseErrorMessage(response: Response) {
-  try {
-    const data: unknown = await response.clone().json()
-    return getSkillErrorMessage(data)
-  } catch {
-    try {
-      const text = await response.clone().text()
-      if (text.trim()) return parseServerMessage(text)
-    } catch {}
-  }
-}
-
-async function readSkillResponseErrorPayload(response: Response) {
-  try {
-    const data: unknown = await response.clone().json()
-    return isRecord(data) ? data : undefined
-  } catch {
-    return undefined
-  }
-}
-
-function getSkillErrorMessage(error: unknown, visited = new Set<unknown>()): string | undefined {
-  if (error instanceof Response) return undefined
-  if (!error || visited.has(error)) return undefined
-  if (typeof error === 'string') return parseServerMessage(error)
-  if (typeof error !== 'object') return undefined
-
-  visited.add(error)
-  const record = error as Record<string, unknown>
-
-  for (const key of ['data', 'body', 'error', 'cause', 'response']) {
-    const nestedMessage = getSkillErrorMessage(record[key], visited)
-    if (nestedMessage) return nestedMessage
-  }
-
-  const message = record.message
-  if (typeof message === 'string' && message.trim()) return parseServerMessage(message)
-
-  return undefined
-}
-
-export async function getAsyncSkillErrorMessage(error: unknown) {
-  if (error instanceof Response) return readSkillResponseErrorMessage(error)
-
-  return getSkillErrorMessage(error)
-}
-
-export async function getAsyncSkillErrorPayload(error: unknown) {
-  if (error instanceof Response) return readSkillResponseErrorPayload(error)
-
-  return isRecord(error) ? error : undefined
+export function getSkillErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message || undefined : undefined
 }
 
 export function showSkillErrorToast(error: unknown, fallbackMessage: string) {
-  void showSkillErrorToastAsync(error, fallbackMessage)
-}
-
-async function showSkillErrorToastAsync(error: unknown, fallbackMessage: string) {
-  toast.error((await getAsyncSkillErrorMessage(error)) ?? fallbackMessage)
+  toast.error(getSkillErrorMessage(error) ?? fallbackMessage)
 }
 
 export function getSkillCodeLanguage(file: SkillFileResponse | undefined) {

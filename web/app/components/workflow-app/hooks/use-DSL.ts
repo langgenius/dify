@@ -61,7 +61,7 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       } catch (error) {
         toast.error(
           t(($) => $.exportAppFailed, { ns: 'app' }),
-          { description: await getAppTransferErrorMessage(error) },
+          { description: getAppTransferErrorMessage(error) },
         )
         return false
       }
@@ -91,7 +91,7 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       toast.error(
         t(($) => $.exportAppFailed, { ns: 'app' }),
         {
-          description: await getAppTransferErrorMessage(error),
+          description: getAppTransferErrorMessage(error),
         },
       )
     }

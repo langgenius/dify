@@ -79,14 +79,13 @@ import {
   createUploadItemId,
   findFileByPath,
   flattenFileTree,
-  getAsyncSkillErrorMessage,
-  getAsyncSkillErrorPayload,
   getCopyTargetPath,
   getCreatedSkillFileMimeType,
   getDraggedSkillPaths,
   getErrorCode,
   getPathBaseName,
   getPathDirName,
+  getSkillErrorMessage,
   getUploadFileName,
   getUploadPath,
   invalidateSkillDetail,
@@ -570,12 +569,11 @@ export function FileTree({
       } catch (error) {
         activeUploadXhrRef.current = undefined
         failedCount += 1
-        const errorPayload = await getAsyncSkillErrorPayload(error)
-        const errorCode = getErrorCode(errorPayload ?? error)
+
+        const errorCode = getErrorCode(error)
         let failureKind: SkillUploadQueueItem['failureKind'] = 'network'
         let errorMessage =
-          (await getAsyncSkillErrorMessage(error)) ??
-          t(($) => $['skillManagement.detail.uploadNetworkFailure'])
+          getSkillErrorMessage(error) ?? t(($) => $['skillManagement.detail.uploadNetworkFailure'])
         let suggestedPath: string | undefined
         if (errorCode === 'skill_conflict') {
           failureKind = 'conflict'
@@ -908,9 +906,7 @@ export function FileTree({
             copiedTargetPaths.push(targetPath)
             break
           } catch (error) {
-            const errorPayload = await getAsyncSkillErrorPayload(error)
-            if (hasRetriedConflict || getErrorCode(errorPayload ?? error) !== 'skill_conflict')
-              throw error
+            if (hasRetriedConflict || getErrorCode(error) !== 'skill_conflict') throw error
 
             latestDetail = await refreshSkillDetailAfterConflict(queryClient, skillId)
             fileMutationCoordinator.latestDetail = latestDetail

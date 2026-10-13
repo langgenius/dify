@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
+import { ORPCError } from '@orpc/client'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
@@ -15,7 +16,7 @@ type AgentDetailLayoutProps = {
   children: ReactNode
 }
 
-const isNotFoundResponse = (error: unknown) => error instanceof Response && error.status === 404
+const isNotFoundResponse = (error: unknown) => error instanceof ORPCError && error.status === 404
 
 export function AgentDetailLayout({ agentId, children }: AgentDetailLayoutProps) {
   const { t } = useTranslation(['agentV2', 'agentRoster'])

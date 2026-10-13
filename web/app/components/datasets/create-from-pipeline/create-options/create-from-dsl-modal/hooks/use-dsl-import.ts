@@ -25,10 +25,6 @@ type DSLVersions = {
   importedVersion: string
   systemVersion: string
 }
-type ImportErrorResponse = {
-  message?: unknown
-  error?: unknown
-}
 const getNonEmptyString = (value: unknown): string | undefined => {
   if (typeof value !== 'string') return undefined
 
@@ -36,13 +32,6 @@ const getNonEmptyString = (value: unknown): string | undefined => {
   return trimmedValue || undefined
 }
 const getImportErrorMessage = async (error: unknown): Promise<string | undefined> => {
-  if (error instanceof Response && !error.bodyUsed) {
-    try {
-      const errorData = (await error.clone().json()) as ImportErrorResponse
-      return getNonEmptyString(errorData.message) ?? getNonEmptyString(errorData.error)
-    } catch {}
-  }
-
   if (error instanceof Error) return getNonEmptyString(error.message)
 
   return undefined

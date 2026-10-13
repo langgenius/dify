@@ -1,6 +1,8 @@
 'use client'
+
 import type { AppMode } from '@dify/contracts/api/console/installed-apps/types.gen'
 import type { AppData } from '@/models/share'
+import { ORPCError } from '@orpc/client'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import dynamic from 'next/dynamic'
 import * as React from 'react'
@@ -192,7 +194,7 @@ const InstalledApp = ({ id }: { id: string }) => {
     )
   }
   if (installedAppError) {
-    const isNotFound = installedAppError instanceof Response && installedAppError.status === 404
+    const isNotFound = installedAppError instanceof ORPCError && installedAppError.status === 404
     return (
       <InstalledAppFrame>
         <div className="flex h-full items-center justify-center">

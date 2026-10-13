@@ -3,6 +3,7 @@
 import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
+import { ORPCError } from '@orpc/client'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
@@ -30,8 +31,7 @@ type IAppDetailLayoutProps = {
   appId: string
 }
 
-const isNotFoundError = (error: unknown) =>
-  typeof error === 'object' && error !== null && 'status' in error && error.status === 404
+const isNotFoundError = (error: unknown) => error instanceof ORPCError && error.status === 404
 
 const appDetailPageTitle = (pathname: string, t: ReturnType<typeof useTranslation>['t']) => {
   if (pathname.endsWith('/workflow') || pathname.endsWith('/configuration'))

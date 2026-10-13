@@ -1,7 +1,9 @@
 'use client'
+
 import type { FC } from 'react'
 import type { ResultPanelProps } from '@/app/components/workflow/run/result-panel'
 import type { NodeTracing } from '@/types/workflow'
+import { ORPCError } from '@orpc/client'
 import { RiLoader2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
@@ -80,7 +82,7 @@ const LastRun: FC<Props> = ({
       ? !hasAuthoritativeLastRun && activeStatuses.includes(oneStepRunRunningStatus!)
       : isFetching)
 
-  const noLastRun = (error as any)?.status === 404
+  const noLastRun = error instanceof ORPCError && error.status === 404
   const runResult = (canRunLastRun ? lastRunResult : singleRunResult) || lastRunResult || {}
 
   let resolvedStatus = (runResult as any).status || otherResultPanelProps.status

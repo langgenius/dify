@@ -119,8 +119,8 @@ describe('getErrorMessage', () => {
     expect(getErrorMessage(error, 'fallback')).toBe('Test error message')
   })
 
-  it('should extract message from object with message property', () => {
-    const error = { message: 'Object error message' }
+  it('should extract message from an Error', () => {
+    const error = new Error('Object error message')
     expect(getErrorMessage(error, 'fallback')).toBe('Object error message')
   })
 

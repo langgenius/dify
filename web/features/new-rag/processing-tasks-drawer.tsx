@@ -19,6 +19,7 @@ import {
 } from '@langgenius/dify-ui/drawer'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useRefWithInit } from '@langgenius/dify-ui/use-ref-with-init'
+import { ORPCError } from '@orpc/client'
 import { useMutation } from '@tanstack/react-query'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -41,14 +42,7 @@ function taskLifecycle(task: DocumentProcessingTask) {
 }
 
 function responseStatus(error: unknown): number | undefined {
-  if (error instanceof Response) return error.status
-  if (error && typeof error === 'object' && 'status' in error)
-    return typeof error.status === 'number' ? error.status : undefined
-  if (error && typeof error === 'object' && 'data' in error) {
-    const data = error.data
-    if (data && typeof data === 'object' && 'status' in data)
-      return typeof data.status === 'number' ? data.status : undefined
-  }
+  return error instanceof ORPCError ? error.status : undefined
 }
 
 function compareTaskRecency(left: DocumentProcessingTask, right: DocumentProcessingTask) {

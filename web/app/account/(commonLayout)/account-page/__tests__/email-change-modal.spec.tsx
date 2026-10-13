@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { checkEmailExisted, resetEmail, sendVerifyCode, verifyEmail } from '@/service/common'
+import { createHttpError } from '@/service/http-error'
 import EmailChangeModal from '../email-change-modal'
 
 const mockLogout = vi.fn()
@@ -77,10 +78,9 @@ describe('EmailChangeModal', () => {
   })
 
   it('associates an unavailable-email error and clears it when the user edits the address', async () => {
-    vi.mocked(checkEmailExisted).mockRejectedValue({
-      status: 400,
-      json: async () => ({ code: 'email_already_in_use' }),
-    })
+    vi.mocked(checkEmailExisted).mockRejectedValue(
+      createHttpError(new Response(null, { status: 400 }), { code: 'email_already_in_use' }),
+    )
     const user = userEvent.setup()
     render(<EmailChangeModal email="old@example.com" onClose={vi.fn()} />)
 

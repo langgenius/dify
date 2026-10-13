@@ -14,6 +14,7 @@ import type { AgentFileNode } from '@/features/agent-v2/agent-composer/form-stat
 import { Dialog } from '@langgenius/dify-ui/dialog'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Tabs, TabsIndicator, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
+import { ORPCError } from '@orpc/client'
 import { skipToken, useMutation, useQueries, useQuery } from '@tanstack/react-query'
 import { useCallback, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -48,10 +49,6 @@ export type AgentWorkingDirectorySource =
       nodeExecutionId: string
       workflowRunId: string
     }
-
-type SandboxErrorPayload = {
-  code?: string
-}
 
 const getSandboxRootPath = (path: string): AgentWorkingDirectoryRootPath =>
   path === AGENT_SAVED_FILES_ROOT_PATH || path.startsWith(`${AGENT_SAVED_FILES_ROOT_PATH}/`)
@@ -227,17 +224,12 @@ function countReadableFiles(files: AgentFileNode[]): number {
 }
 
 async function isNoActiveBindingError(error: unknown) {
-  if (!(error instanceof Response) || error.status !== 404) return false
+  if (!(error instanceof ORPCError) || error.status !== 404) return false
 
-  try {
-    const payload = (await error.clone().json()) as SandboxErrorPayload
-    return payload.code === 'no_active_binding'
-  } catch {
-    return false
-  }
+  return error.code === 'no_active_binding'
 }
 
-const isNotFoundResponse = (error: unknown) => error instanceof Response && error.status === 404
+const isNotFoundResponse = (error: unknown) => error instanceof ORPCError && error.status === 404
 
 export function AgentWorkingDirectoryPanel({
   source,

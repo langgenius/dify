@@ -19,6 +19,7 @@ import {
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useRefWithInit } from '@langgenius/dify-ui/use-ref-with-init'
+import { ORPCError } from '@orpc/client'
 import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from '@/next/navigation'
@@ -104,13 +105,8 @@ function workflowAttemptKey(run: SourceWorkflowRun) {
   return `${run.id}:${run.executionAttempts}`
 }
 
-function responseStatus(error: unknown) {
-  if (error instanceof Response) return error.status
-  if (!error || typeof error !== 'object') return undefined
-  if ('status' in error && typeof error.status === 'number') return error.status
-  if ('data' in error && error.data && typeof error.data === 'object' && 'status' in error.data) {
-    return typeof error.data.status === 'number' ? error.data.status : undefined
-  }
+function responseStatus(error: unknown): number | undefined {
+  return error instanceof ORPCError ? error.status : undefined
 }
 
 function isDefinitiveRequestFailure(error: unknown) {

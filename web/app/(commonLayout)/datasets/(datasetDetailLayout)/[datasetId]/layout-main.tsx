@@ -1,7 +1,9 @@
 'use client'
+
 import type { FC } from 'react'
 import type { DataSet } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
+import { ORPCError } from '@orpc/client'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
@@ -26,12 +28,8 @@ type IAppDetailLayoutProps = {
   datasetId: string
 }
 
-const getResponseStatus = (error: unknown) => {
-  if (error instanceof Response) return error.status
-
-  if (typeof error === 'object' && error && 'status' in error && typeof error.status === 'number')
-    return error.status
-}
+const getResponseStatus = (error: unknown) =>
+  error instanceof ORPCError ? error.status : undefined
 
 const shouldRedirectToDatasetList = (error: unknown) => {
   const status = getResponseStatus(error)

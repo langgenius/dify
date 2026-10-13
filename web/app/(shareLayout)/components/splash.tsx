@@ -1,5 +1,7 @@
 'use client'
+
 import type { PropsWithChildren } from 'react'
+import { ORPCError } from '@orpc/client'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -121,13 +123,13 @@ function Splash({ children }: PropsWithChildren) {
           setWebAppPassport(address, access_token)
           redirectOrFinish()
         } catch (error) {
-          if (error instanceof Response && error.status === 404) {
+          if (error instanceof ORPCError && error.status === 404) {
             setUnavailableShareCode(effectiveShareCode)
             await webAppLogout(address)
             return
           }
           await webAppLogout(address)
-          proceedToAuth(error instanceof Response && error.status === 401)
+          proceedToAuth(error instanceof ORPCError && error.status === 401)
         }
       }
     })()

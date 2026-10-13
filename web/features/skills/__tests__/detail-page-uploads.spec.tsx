@@ -1,6 +1,7 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { httpErrorFromResponse } from '@/service/http-error'
 import {
   confirmUploadReview,
   createDataTransfer,
@@ -317,12 +318,14 @@ describe('SkillDetailPage uploads', () => {
             },
           ],
         })
-        throw new Response(
-          JSON.stringify({
-            code: 'skill_conflict',
-            message: 'skill has been modified by another user',
-          }),
-          { status: 409 },
+        throw await httpErrorFromResponse(
+          new Response(
+            JSON.stringify({
+              code: 'skill_conflict',
+              message: 'skill has been modified by another user',
+            }),
+            { status: 409 },
+          ),
         )
       })
       .mockImplementationOnce(async () => {

@@ -41,6 +41,33 @@ beforeEach(() => {
 })
 
 describe('server console oRPC client', () => {
+  it('preserves HTTP status and server error details through the server transport', async () => {
+    const { ORPCError } = await import('@orpc/client')
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        Response.json(
+          {
+            code: 'forbidden',
+            message: 'Workspace access denied',
+            details: { request_id: 'server-123' },
+          },
+          { status: 403 },
+        ),
+      ),
+    )
+    await import('./server')
+    const { consoleClient } = await import('@/service/console')
+    const error = await consoleClient.systemFeatures.get().catch((error: unknown) => error)
+    expect(error).toBeInstanceOf(ORPCError)
+    expect(error).toMatchObject({
+      status: 403,
+      code: 'forbidden',
+      message: 'Workspace access denied',
+      data: { details: { request_id: 'server-123' } },
+    })
+  })
+
   it('should resolve server console API URLs only from configured or absolute prefixes', async () => {
     const { resolveServerConsoleApiPrefix, resolveServerConsoleApiUrl } = await import('./server')
 

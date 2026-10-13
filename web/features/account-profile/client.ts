@@ -1,4 +1,5 @@
 import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
+import { ORPCError } from '@orpc/client'
 import { queryOptions } from '@tanstack/react-query'
 import { IS_DEV } from '@/config'
 // oxlint-disable-next-line no-restricted-imports
@@ -14,7 +15,7 @@ export type UserProfileWithMeta = {
 }
 
 export const isLegacyBase401 = (err: unknown): boolean =>
-  err instanceof Response && err.status === 401
+  err instanceof ORPCError && err.status === 401
 
 export const userProfileQueryOptions = () =>
   queryOptions<UserProfileWithMeta>({

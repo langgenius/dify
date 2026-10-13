@@ -37,11 +37,7 @@ import {
   removeAgentSkillAtom,
   upsertAgentSkillAtom,
 } from '@/features/agent-v2/agent-composer/store-modules/skills'
-import {
-  getSkillErrorCode,
-  getSkillErrorDetailString,
-  normalizeSkillError,
-} from '@/features/skills/error'
+import { getSkillErrorCode, getSkillErrorDetailString } from '@/features/skills/error'
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
@@ -526,7 +522,7 @@ export function AgentSkills() {
         },
         {
           onError: async (error) => {
-            const normalizedError = await normalizeSkillError(error)
+            const normalizedError = error
             const errorCode = getSkillErrorCode(normalizedError)
             if (errorCode === 'too_many_agent_skills') {
               toast.error(

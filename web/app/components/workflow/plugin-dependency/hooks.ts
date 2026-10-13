@@ -40,7 +40,7 @@ export const usePluginDependencies = () => {
         toast.error(
           t(($) => $.error, { ns: 'common' }),
           {
-            description: await getAppTransferErrorMessage(error),
+            description: getAppTransferErrorMessage(error),
           },
         )
         return false

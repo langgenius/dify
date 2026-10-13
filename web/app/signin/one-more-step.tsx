@@ -1,4 +1,5 @@
 'use client'
+
 import type { Reducer } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
@@ -14,6 +15,7 @@ import {
   SelectLabel,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
+import { ORPCError } from '@orpc/client'
 import { useQueryClient } from '@tanstack/react-query'
 import { useReducer } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -64,15 +66,6 @@ const TIMEZONE_OPTIONS: SelectOption[] = timezones.map((item) => ({
   name: item.name,
 }))
 
-const hasStatus = (error: unknown): error is { status: number } => {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'status' in error &&
-    typeof error.status === 'number'
-  )
-}
-
 const OneMoreStep = () => {
   const { t } = useTranslation(['common', 'login'])
   const router = useRouter()
@@ -109,7 +102,7 @@ const OneMoreStep = () => {
       await queryClient.resetQueries({ queryKey: consoleQuery.account.profile.get.key() })
       replaceLoginRedirect(resolvePostLoginRedirect(searchParams), router.replace, basePath)
     } catch (error: unknown) {
-      if (hasStatus(error) && error.status === 400)
+      if (error instanceof ORPCError && error.status === 400)
         toast.error(t(($) => $.invalidInvitationCode, { ns: 'login' }))
     }
   }

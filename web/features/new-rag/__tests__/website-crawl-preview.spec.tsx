@@ -1,6 +1,7 @@
 import type { Source, SourceWorkflowRun } from '@dify/contracts/knowledge-fs/types.gen'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { createHttpError } from '@/service/http-error'
 import { render } from '@/test/console/render'
 import { WebsiteCrawlPreview } from '../website-crawl-preview'
 
@@ -435,7 +436,9 @@ describe('WebsiteCrawlPreview', () => {
   it('keeps the started run available when discard cancellation must be retried', async () => {
     clientMock.getRun.mockReturnValue(new Promise<SourceWorkflowRun>(() => {}))
     clientMock.cancel
-      .mockRejectedValueOnce(Object.assign(new Error('conflict'), { status: 409 }))
+      .mockRejectedValueOnce(
+        createHttpError(new Response(null, { status: 409 }), { message: 'conflict' }),
+      )
       .mockResolvedValueOnce(run('canceled'))
     render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
     const user = await fillValidForm()
@@ -486,7 +489,9 @@ describe('WebsiteCrawlPreview', () => {
       })
       .mockResolvedValueOnce({ items: [] })
     clientMock.retry.mockReturnValue(retryRequest.promise)
-    clientMock.cancel.mockRejectedValue(Object.assign(new Error('conflict'), { status: 409 }))
+    clientMock.cancel.mockRejectedValue(
+      createHttpError(new Response(null, { status: 409 }), { message: 'conflict' }),
+    )
     render(
       <>
         <a href="/datasets/new/space-1/documents">Documents navigation</a>
@@ -784,7 +789,7 @@ describe('WebsiteCrawlPreview', () => {
   it('only reconciles Stop while an ambiguous cancel response remains stale', async () => {
     clientMock.getRun.mockResolvedValue(run('running', { progressCompleted: 1 }))
     clientMock.cancel.mockRejectedValue(
-      Object.assign(new Error('proxy connection lost'), { status: 502 }),
+      createHttpError(new Response(null, { status: 502 }), { message: 'proxy connection lost' }),
     )
 
     render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
@@ -793,7 +798,9 @@ describe('WebsiteCrawlPreview', () => {
     await screen.findByText('Getting started')
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.stopCrawl' }))
     clientMock.getRun.mockRejectedValueOnce(
-      Object.assign(new Error('reconciliation unavailable'), { status: 503 }),
+      createHttpError(new Response(null, { status: 503 }), {
+        message: 'reconciliation unavailable',
+      }),
     )
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.stopCrawl' }))
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.stopCrawl' }))
@@ -805,7 +812,9 @@ describe('WebsiteCrawlPreview', () => {
   it('allows Stop to be retried after a definitive HTTP rejection', async () => {
     clientMock.getRun.mockResolvedValue(run('running', { progressCompleted: 1 }))
     clientMock.cancel
-      .mockRejectedValueOnce(Object.assign(new Error('rate limited'), { status: 429 }))
+      .mockRejectedValueOnce(
+        createHttpError(new Response(null, { status: 429 }), { message: 'rate limited' }),
+      )
       .mockResolvedValueOnce(run('canceled', { progressCompleted: 1 }))
 
     render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
@@ -943,11 +952,15 @@ describe('WebsiteCrawlPreview', () => {
       .mockResolvedValueOnce(failedRun)
       .mockResolvedValueOnce(failedRun)
       .mockRejectedValueOnce(
-        Object.assign(new Error('reconciliation unavailable'), { status: 503 }),
+        createHttpError(new Response(null, { status: 503 }), {
+          message: 'reconciliation unavailable',
+        }),
       )
       .mockResolvedValue(failedRun)
     clientMock.getPages.mockResolvedValue({ items: [] })
-    clientMock.retry.mockRejectedValue(Object.assign(new Error('proxy timeout'), { status: 504 }))
+    clientMock.retry.mockRejectedValue(
+      createHttpError(new Response(null, { status: 504 }), { message: 'proxy timeout' }),
+    )
 
     render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
     const user = await fillValidForm()
@@ -969,7 +982,9 @@ describe('WebsiteCrawlPreview', () => {
     )
     clientMock.getPages.mockResolvedValue({ items: [] })
     clientMock.retry
-      .mockRejectedValueOnce(Object.assign(new Error('rate limited'), { status: 429 }))
+      .mockRejectedValueOnce(
+        createHttpError(new Response(null, { status: 429 }), { message: 'rate limited' }),
+      )
       .mockResolvedValueOnce(run('running', { executionAttempts: 2 }))
 
     render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
@@ -1115,7 +1130,7 @@ describe('WebsiteCrawlPreview', () => {
 
   it('never repeats source creation while an ambiguous result remains unreconciled', async () => {
     clientMock.createSource.mockRejectedValue(
-      Object.assign(new Error('proxy timeout'), { status: 504 }),
+      createHttpError(new Response(null, { status: 504 }), { message: 'proxy timeout' }),
     )
     clientMock.listSources.mockResolvedValue({ items: [] })
 
@@ -1154,7 +1169,9 @@ describe('WebsiteCrawlPreview', () => {
 
   it('retries source creation after a definitive HTTP rejection', async () => {
     clientMock.createSource
-      .mockRejectedValueOnce(Object.assign(new Error('rate limited'), { status: 429 }))
+      .mockRejectedValueOnce(
+        createHttpError(new Response(null, { status: 429 }), { message: 'rate limited' }),
+      )
       .mockResolvedValueOnce(source())
 
     render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)

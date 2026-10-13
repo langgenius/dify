@@ -10,6 +10,7 @@ import {
 } from '@langgenius/dify-ui/breadcrumb'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { ORPCError } from '@orpc/client'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
@@ -20,13 +21,8 @@ import { usePathname } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { newKnowledgeDetailPath, newKnowledgeDocumentsPath, newKnowledgeListPath } from './routes'
 
-function responseStatus(error: unknown) {
-  if (error instanceof Response) return error.status
-  if (error && typeof error === 'object' && 'status' in error) return error.status
-  if (error && typeof error === 'object' && 'data' in error) {
-    const data = error.data
-    if (data && typeof data === 'object' && 'status' in data) return data.status
-  }
+function responseStatus(error: unknown): number | undefined {
+  return error instanceof ORPCError ? error.status : undefined
 }
 
 const knowledgeSpacePageTitle = (

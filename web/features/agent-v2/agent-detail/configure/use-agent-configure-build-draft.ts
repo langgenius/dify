@@ -11,6 +11,7 @@ import type {
   AgentFileNode,
   AgentSoulConfigFormState,
 } from '@/features/agent-v2/agent-composer/form-state'
+import { ORPCError } from '@orpc/client'
 import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import isEqual from 'fast-deep-equal'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -20,7 +21,7 @@ import { agentSoulConfigToFormState } from '@/features/agent-v2/agent-composer/c
 import { consoleQuery } from '@/service/console'
 import { usePrepareAgentBuildDraftBeforeRun } from './use-agent-build-draft-run'
 
-const isNotFoundResponse = (error: unknown) => error instanceof Response && error.status === 404
+const isNotFoundResponse = (error: unknown) => error instanceof ORPCError && error.status === 404
 const BUILD_NOTE_FILE_ID = '__agent_config_build_note__'
 const BUILD_NOTE_FILE_NAME = 'build_note.md'
 

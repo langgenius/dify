@@ -3,6 +3,7 @@
 import type { AccessPoint } from '@/app/components/app/deploy/utils/access-point'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { ORPCError } from '@orpc/client'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
@@ -46,7 +47,7 @@ export function BuiltInAccessPoints({
     isPending: workflowLoading,
   } = useAppWorkflow(shouldFetchWorkflow ? appId : '', {
     retry: (failureCount, error) => {
-      if (error instanceof Response && error.status === 403) return false
+      if (error instanceof ORPCError && error.status === 403) return false
 
       return failureCount < 3
     },

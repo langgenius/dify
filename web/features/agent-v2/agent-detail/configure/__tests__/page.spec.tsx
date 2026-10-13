@@ -7,6 +7,7 @@ import { useState } from 'react'
 import { AgentPermission } from '@/features/agent-v2/acl'
 import { AgentScope } from '@/features/agent-v2/analytics'
 import { consoleQuery } from '@/service/console'
+import { createHttpError } from '@/service/http-error'
 import { renderWithNuqs as render } from '@/test/nuqs-testing'
 import { AgentConfigureComposerScope } from '../components/composer-session'
 import { useAgentConfigureData } from '../hooks'
@@ -1913,7 +1914,7 @@ describe('AgentConfigurePage', () => {
       mocks.queryState.buildDraft = {
         data: undefined as unknown,
         dataUpdatedAt: 0,
-        error: new Response(null, { status: 404 }),
+        error: createHttpError(new Response(null, { status: 404 })),
         isFetching: false,
         isError: true,
         isPending: false,
@@ -2287,7 +2288,7 @@ describe('AgentConfigurePage', () => {
       mocks.queryState.buildDraft = {
         data: undefined as unknown,
         dataUpdatedAt: 0,
-        error: new Response(null, { status: 404 }),
+        error: createHttpError(new Response(null, { status: 404 })),
         isFetching: false,
         isError: true,
         isPending: false,
@@ -2359,7 +2360,7 @@ describe('AgentConfigurePage', () => {
       mocks.queryState.buildDraft = {
         data: undefined as unknown,
         dataUpdatedAt: 0,
-        error: new Response(null, { status: 404 }),
+        error: createHttpError(new Response(null, { status: 404 })),
         isFetching: false,
         isError: true,
         isPending: false,

@@ -96,7 +96,7 @@ const UpdateDSLModal = ({ appId, appMode, onCancel, onBackup, onImport }: Update
         toast.error(
           t(($) => $.error, { ns: 'common' }),
           {
-            description: await getAppTransferErrorMessage(error),
+            description: getAppTransferErrorMessage(error),
           },
         )
         // Reload the committed graph before the old canvas can resume autosaving.
@@ -129,7 +129,7 @@ const UpdateDSLModal = ({ appId, appMode, onCancel, onBackup, onImport }: Update
     toast.error(
       t(($) => $['common.importFailure'], { ns: 'workflow' }),
       {
-        description: await getAppTransferErrorMessage(error),
+        description: getAppTransferErrorMessage(error),
       },
     )
   }

@@ -8,6 +8,7 @@ import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.
 import type { RouterUtils } from '@orpc/tanstack-query'
 import type { InfiniteData, QueryClient, QueryKey } from '@tanstack/react-query'
 import type { ConsoleClient } from './index'
+import { ORPCError } from '@orpc/client'
 import { createTanstackQueryUtils } from '@orpc/tanstack-query'
 
 export function createConsoleQuery(consoleClient: ConsoleClient) {
@@ -796,7 +797,7 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           get: {
             queryOptions: {
               retry: (failureCount, error) => {
-                if (error instanceof Response && error.status === 404) return false
+                if (error instanceof ORPCError && error.status === 404) return false
 
                 return failureCount < 3
               },
@@ -837,7 +838,7 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           get: {
             queryOptions: {
               retry: (failureCount, error) => {
-                if (error instanceof Response && error.status === 404) return false
+                if (error instanceof ORPCError && error.status === 404) return false
 
                 return failureCount < 3
               },

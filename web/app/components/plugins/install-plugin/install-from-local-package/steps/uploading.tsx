@@ -14,10 +14,6 @@ type PackageUploadResponse = {
   manifest: PluginDeclaration
 }
 
-type UploadFailureResponse = {
-  message?: string
-}
-
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
 }
@@ -26,18 +22,6 @@ function isPackageUploadResponse(value: unknown): value is PackageUploadResponse
   if (!isObject(value)) return false
 
   return typeof value.unique_identifier === 'string' && isObject(value.manifest)
-}
-
-function getRejectedResponse(error: unknown): unknown {
-  if (!isObject(error) || !('response' in error)) return undefined
-
-  return error.response
-}
-
-function getUploadFailureMessage(response: unknown): string | undefined {
-  if (!isObject(response)) return undefined
-
-  return (response as UploadFailureResponse).message
 }
 
 type Props = Readonly<{
@@ -87,15 +71,14 @@ const Uploading: FC<Props> = ({
     try {
       handleUploadedResponse(await uploadFile(file, isBundle))
     } catch (error: unknown) {
-      const response = getRejectedResponse(error)
-      const message = getUploadFailureMessage(response)
+      const message = error instanceof Error ? error.message : undefined
       if (message) {
         onFailed(message)
         return
       }
-      handleUploadedResponse(response)
+      onFailed(t(($) => $[`${i18nPrefix}.uploadFailed`], { ns: 'plugin' }))
     }
-  }, [file, handleUploadedResponse, isBundle, onFailed])
+  }, [file, handleUploadedResponse, isBundle, onFailed, t])
 
   React.useEffect(() => {
     handleUpload()

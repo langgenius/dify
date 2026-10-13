@@ -126,7 +126,7 @@ export const useImportDSL = () => {
         toast.error(
           t(($) => $['newApp.appCreateFailed'], { ns: 'app' }),
           {
-            description: await getAppTransferErrorMessage(error),
+            description: getAppTransferErrorMessage(error),
           },
         )
         onFailed?.()
@@ -215,7 +215,7 @@ export const useImportDSL = () => {
         toast.error(
           t(($) => $['newApp.appCreateFailed'], { ns: 'app' }),
           {
-            description: await getAppTransferErrorMessage(error),
+            description: getAppTransferErrorMessage(error),
           },
         )
         onFailed?.()

@@ -10,6 +10,7 @@ import type {
 import type { FormEvent } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
+import { ORPCError } from '@orpc/client'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -45,11 +46,7 @@ const TERMINAL_IMPORT_STATES = new Set([
 type PageSkipReason = 'failed' | 'off-domain'
 
 function requestStatus(error: unknown) {
-  if (error instanceof Response) return error.status
-  if (!error || typeof error !== 'object') return undefined
-  if ('status' in error && typeof error.status === 'number') return error.status
-  if ('data' in error && error.data && typeof error.data === 'object' && 'status' in error.data)
-    return typeof error.data.status === 'number' ? error.data.status : undefined
+  return error instanceof ORPCError ? error.status : undefined
 }
 
 function isDefinitiveRequestFailure(error: unknown) {

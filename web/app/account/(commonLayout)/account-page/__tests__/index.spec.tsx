@@ -1,9 +1,11 @@
 import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
+import { ORPCError } from '@orpc/client'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { toast } from '@/app/notifications'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { consoleQuery } from '@/service/console'
+import { httpErrorFromResponse } from '@/service/http-error'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import AccountPage from '../index'
 
@@ -378,13 +380,18 @@ describe('AccountPage', () => {
   it.each(['name', 'password'])(
     'leaves a server-reported %s failure to the request layer',
     async (field) => {
-      // The request layer reports the server message and rejects with the Response.
+      // The request layer reports the server message and rejects with an ORPCError.
       const error = vi.spyOn(toast, 'error')
       const user = userEvent.setup()
       mocks.request.mockRejectedValueOnce(
-        new Response(JSON.stringify({ code: 'invalid_param', message: 'Rejected', status: 400 }), {
-          status: 400,
-        }),
+        await httpErrorFromResponse(
+          new Response(
+            JSON.stringify({ code: 'invalid_param', message: 'Rejected', status: 400 }),
+            {
+              status: 400,
+            },
+          ),
+        ),
       )
       renderPage({ isPasswordSet: true })
 

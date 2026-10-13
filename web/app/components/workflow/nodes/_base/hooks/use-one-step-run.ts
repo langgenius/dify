@@ -8,6 +8,7 @@ import type {
 } from '@/app/components/workflow/types'
 import type { FlowType } from '@/types/common'
 import type { NodeRunResult, NodeTracing } from '@/types/workflow'
+import { ORPCError } from '@orpc/client'
 import { unionBy } from 'es-toolkit/compat'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
@@ -584,12 +585,10 @@ const useOneStepRun = <T>({
         body: JSON.stringify({}),
         signal: controller.signal,
       })
-        .catch(async (error: Response) => {
-          const data = (await error.clone().json()) as Record<string, any>
-          const { error: respError, status } = data || {}
+        .catch((error: unknown) => {
           requestError = {
-            message: respError,
-            status,
+            message: error instanceof Error ? error.message : 'Unknown error',
+            status: error instanceof ORPCError ? String(error.status) : '0',
           }
           return null
         })

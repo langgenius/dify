@@ -241,7 +241,7 @@ function CreateFromDSLModal({
       toast.error(
         t(($) => $['newApp.appCreateFailed'], { ns: 'app' }),
         {
-          description: await getAppTransferErrorMessage(error),
+          description: getAppTransferErrorMessage(error),
         },
       )
       return
@@ -261,7 +261,7 @@ function CreateFromDSLModal({
       toast.error(
         t(($) => $['newApp.appCreateFailed'], { ns: 'app' }),
         {
-          description: await getAppTransferErrorMessage(error),
+          description: getAppTransferErrorMessage(error),
         },
       )
       return

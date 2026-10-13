@@ -87,7 +87,7 @@ export async function exportAppDslFile({
 
 async function downloadAppDsl(input: ExportAppDslInput, messages: ExportAppDslMessages) {
   const exportPromise = exportAppDslFile(input).catch(async (error: unknown) => {
-    throw new Error(await getAppTransferErrorMessage(error), { cause: error })
+    throw new Error(getAppTransferErrorMessage(error), { cause: error })
   })
   await toast.promise(exportPromise, {
     loading: {
@@ -153,7 +153,7 @@ export function useExportWorkflowAppDsl() {
       try {
         secretEnvList = await getSecretEnvironmentVariables(input.appId)
       } catch (error) {
-        toast.error(messages.packageError, { description: await getAppTransferErrorMessage(error) })
+        toast.error(messages.packageError, { description: getAppTransferErrorMessage(error) })
         throw error
       }
 

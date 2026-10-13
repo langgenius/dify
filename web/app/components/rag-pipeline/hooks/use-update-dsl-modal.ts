@@ -15,10 +15,6 @@ type VersionInfo = {
   importedVersion: string
   systemVersion: string
 }
-type ImportErrorResponse = {
-  message?: unknown
-  error?: unknown
-}
 type UseUpdateDSLModalParams = {
   onCancel: () => void
   onImport?: () => void
@@ -32,13 +28,6 @@ const getNonEmptyString = (value: unknown): string | undefined => {
   return trimmedValue || undefined
 }
 const getImportErrorMessage = async (error: unknown): Promise<string | undefined> => {
-  if (error instanceof Response && !error.bodyUsed) {
-    try {
-      const errorData = (await error.clone().json()) as ImportErrorResponse
-      return getNonEmptyString(errorData.message) ?? getNonEmptyString(errorData.error)
-    } catch {}
-  }
-
   if (error instanceof Error) return getNonEmptyString(error.message)
 
   return undefined

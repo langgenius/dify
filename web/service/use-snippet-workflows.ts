@@ -1,9 +1,10 @@
 import type { PublishSnippetWorkflowResponse, SnippetWorkflow } from '@/types/snippet'
+import { ORPCError } from '@orpc/client'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { consoleClient, consoleQuery } from '@/service/console'
 
 const isNotFoundError = (error: unknown) => {
-  return !!error && typeof error === 'object' && 'status' in error && error.status === 404
+  return error instanceof ORPCError && error.status === 404
 }
 
 export const fetchSnippetDraftWorkflow = async (snippetId: string) => {

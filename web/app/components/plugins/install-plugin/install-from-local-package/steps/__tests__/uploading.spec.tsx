@@ -2,6 +2,7 @@ import type { Dependency, PluginDeclaration } from '../../../../types'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { createHttpError } from '@/service/http-error'
 import { PluginCategoryEnum } from '../../../../types'
 import Uploading from '../uploading'
 
@@ -153,39 +154,15 @@ describe('Uploading', () => {
 
     it('should call onFailed when upload fails with error message', async () => {
       const errorMessage = 'Upload failed: file too large'
-      mockUploadFile.mockRejectedValue({
-        response: { message: errorMessage },
-      })
+      mockUploadFile.mockRejectedValue(
+        createHttpError(new Response(null, { status: 413 }), { message: errorMessage }),
+      )
 
       const onFailed = vi.fn()
       render(<Uploading {...defaultProps} onFailed={onFailed} />)
 
       await waitFor(() => {
         expect(onFailed).toHaveBeenCalledWith(errorMessage)
-      })
-    })
-
-    // NOTE: Some upload endpoints have historically returned successful plugin upload
-    // payloads through rejected XHR objects, so the component accepts both resolved
-    // responses and rejected responses without an error message.
-
-    it('should call onPackageUploaded when upload rejects without error message (success case)', async () => {
-      const mockResult = {
-        unique_identifier: 'test-uid',
-        manifest: createMockManifest(),
-      }
-      mockUploadFile.mockRejectedValue({
-        response: mockResult,
-      })
-
-      const onPackageUploaded = vi.fn()
-      render(<Uploading {...defaultProps} isBundle={false} onPackageUploaded={onPackageUploaded} />)
-
-      await waitFor(() => {
-        expect(onPackageUploaded).toHaveBeenCalledWith({
-          uniqueIdentifier: mockResult.unique_identifier,
-          manifest: mockResult.manifest,
-        })
       })
     })
 
@@ -204,20 +181,6 @@ describe('Uploading', () => {
           uniqueIdentifier: mockResult.unique_identifier,
           manifest: mockResult.manifest,
         })
-      })
-    })
-
-    it('should call onBundleUploaded when upload rejects without error message (success case)', async () => {
-      const mockDependencies = createMockDependencies()
-      mockUploadFile.mockRejectedValue({
-        response: mockDependencies,
-      })
-
-      const onBundleUploaded = vi.fn()
-      render(<Uploading {...defaultProps} isBundle onBundleUploaded={onBundleUploaded} />)
-
-      await waitFor(() => {
-        expect(onBundleUploaded).toHaveBeenCalledWith(mockDependencies)
       })
     })
 
