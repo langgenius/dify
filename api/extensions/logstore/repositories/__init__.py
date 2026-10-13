@@ -23,7 +23,15 @@ def safe_int(value: Any, default: int = 0) -> int:
     """
     if value is None or value in {"null", ""}:
         return default
+    # Try int() first to preserve precision for large integers.
+    # int(float("25227143063332189585438")) silently truncates because
+    # float64 only carries ~15-17 significant digits. int() on a
+    # string handles arbitrary precision. Fall back to int(float())
+    # only for float-like strings such as "3.14". See #34405.
     try:
-        return int(float(value))
+        return int(value)
     except (ValueError, TypeError):
-        return default
+        try:
+            return int(float(value))
+        except (ValueError, TypeError):
+            return default
