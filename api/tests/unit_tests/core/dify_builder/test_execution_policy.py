@@ -403,6 +403,58 @@ def test_trusted_completion_accepts_either_context_variant_and_rejects_unknown_t
         p.TrustedExecutionCompletion.model_validate(raw)
 
 
+def test_json_evidence_variant_and_receipt_are_strict() -> None:
+    p = policy()
+    summary = p.ExecutionEvidenceSummary(
+        request_id="request-1",
+        policy_version="builder-json-parse-v1",
+        mode="restricted",
+        sealed=True,
+        safety_outcome="restricted_execution_completed",
+        sandbox_profile="disabled",
+        native_run_id="run-1",
+    )
+    assert summary.policy_version == "builder-json-parse-v1"
+    for mutation in (
+        {"fixture_digest": "a" * 64},
+        {"consent_id": "consent-1"},
+        {"mode": "mock"},
+        {"sandbox_profile": "network-disabled-v1"},
+        {"native_run_id": None},
+    ):
+        with pytest.raises(ValidationError):
+            p.ExecutionEvidenceSummary.model_validate({**summary.model_dump(mode="json"), **mutation})
+
+    receipt = p.BuilderExecutionObservation(
+        observation_id="receipt-1",
+        invocation_id="invocation-1",
+        request_id="request-1",
+        node_id="node2",
+        kind="qualified_json_completed",
+        implementation_version="graphon.nodes.tool.tool_node.ToolNode:1",
+        reason_code="json_parse_completed",
+        native_node_execution_id="execution-1",
+        qualification_digest="a" * 64,
+        installed_binding_digest="b" * 64,
+        final_parameters_digest="c" * 64,
+        pre_binding_digest="b" * 64,
+        post_binding_digest="b" * 64,
+        native_text_output_digest="d" * 64,
+        text_bytes=65536,
+        text_messages=8,
+    )
+    assert receipt.kind == "qualified_json_completed"
+    for mutation in (
+        {"text_bytes": 65537},
+        {"text_messages": 9},
+        {"fixture_digest": "e" * 64},
+        {"native_node_execution_id": None},
+        {"kind": "fixture_served"},
+    ):
+        with pytest.raises(ValidationError):
+            p.BuilderExecutionObservation.model_validate({**receipt.model_dump(mode="json"), **mutation})
+
+
 def normal_workflow_features(*, citation=True):
     """Literal metadata produced by ordinary Workflow creation/save."""
     return {
