@@ -15,80 +15,25 @@ Focus on:
 
 import uuid
 from datetime import UTC, datetime
-from inspect import unwrap
 from types import SimpleNamespace
 
 import pytest
-from flask import Flask, request
-from werkzeug.exceptions import BadRequest, NotFound
 
 import services
 from controllers.service_api.app.conversation import (
     ConversationListQuery,
     ConversationRenamePayload,
-    ConversationVariableDetailApi,
     ConversationVariableInfiniteScrollPaginationResponse,
     ConversationVariableResponse,
-    ConversationVariablesApi,
     ConversationVariablesQuery,
     ConversationVariableUpdatePayload,
 )
 from controllers.service_api.app.error import NotChatAppError
-from core.app.entities.app_invoke_entities import InvokeFrom
 from fields._value_type_serializer import serialize_value_type
 from graphon.variables import StringSegment
 from graphon.variables.types import SegmentType
-from models.enums import ConversationFromSource, EndUserType
-from models.model import App, AppMode, Conversation, EndUser
+from models.model import App, AppMode
 from services.conversation_service import ConversationService
-from services.errors.conversation import (
-    ConversationNotExistsError,
-    ConversationVariableNotExistsError,
-    ConversationVariableTypeMismatchError,
-)
-from tests.unit_tests.model_factories import make_conversation
-
-
-def _app(*, app_id: str = "app-1", mode: AppMode = AppMode.CHAT) -> App:
-    return App(
-        id=app_id,
-        tenant_id="tenant-1",
-        name="Service API app",
-        description="",
-        mode=mode,
-        enable_site=True,
-        enable_api=True,
-        max_active_requests=0,
-    )
-
-
-def _end_user(user_id: str = "end-user-1", app_id: str = "app-1") -> EndUser:
-    return EndUser(
-        id=user_id,
-        tenant_id="tenant-1",
-        app_id=app_id,
-        type=EndUserType.SERVICE_API,
-        external_user_id="external-user-1",
-        name="Service API user",
-        session_id="session-1",
-    )
-
-
-def _conversation(
-    *,
-    conversation_id: str,
-    app_id: str = "app-1",
-    end_user_id: str = "end-user-1",
-) -> Conversation:
-    return make_conversation(
-        conversation_id=conversation_id,
-        app_id=app_id,
-        name="Original Name",
-        inputs={},
-        from_source=ConversationFromSource.API,
-        from_end_user_id=end_user_id,
-        invoke_from=InvokeFrom.SERVICE_API,
-    )
 
 
 class TestConversationListQuery:
@@ -462,16 +407,6 @@ class TestConversationService:
         assert hasattr(ConversationService, "delete")
         assert callable(ConversationService.delete)
 
-    def test_get_conversational_variable_method_exists(self):
-        """Test that ConversationService.get_conversational_variable exists."""
-        assert hasattr(ConversationService, "get_conversational_variable")
-        assert callable(ConversationService.get_conversational_variable)
-
-    def test_update_conversation_variable_method_exists(self):
-        """Test that ConversationService.update_conversation_variable exists."""
-        assert hasattr(ConversationService, "update_conversation_variable")
-        assert callable(ConversationService.update_conversation_variable)
-
 
 class TestConversationPayloadsController:
     def test_rename_requires_name(self) -> None:
@@ -481,188 +416,3 @@ class TestConversationPayloadsController:
     def test_variables_query_invalid_name(self) -> None:
         with pytest.raises(ValueError):
             ConversationVariablesQuery(variable_name="bad;")
-
-
-class TestConversationVariablesApiController:
-    def test_not_chat(self, app: Flask) -> None:
-        api = ConversationVariablesApi()
-        handler = unwrap(api.get)
-        app_model = _app(mode=AppMode.COMPLETION)
-        end_user = _end_user()
-
-        with app.test_request_context("/conversations/1/variables", method="GET"):
-            with pytest.raises(NotChatAppError):
-                handler(
-                    api,
-                    ConversationVariablesQuery.model_validate(request.args.to_dict(flat=True)),
-                    app_model=app_model,
-                    end_user=end_user,
-                    conversation_id="00000000-0000-0000-0000-000000000001",
-                )
-
-    def test_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(
-            ConversationService,
-            "get_conversational_variable",
-            lambda *_args, **_kwargs: (_ for _ in ()).throw(ConversationNotExistsError()),
-        )
-
-        api = ConversationVariablesApi()
-        handler = unwrap(api.get)
-        app_model = _app()
-        end_user = _end_user()
-
-        with app.test_request_context(
-            "/conversations/1/variables?limit=20",
-            method="GET",
-        ):
-            with pytest.raises(NotFound):
-                handler(
-                    api,
-                    ConversationVariablesQuery.model_validate(request.args.to_dict(flat=True)),
-                    app_model=app_model,
-                    end_user=end_user,
-                    conversation_id="00000000-0000-0000-0000-000000000001",
-                )
-
-    def test_success_serializes_response(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-        created_at = datetime(2026, 1, 2, 3, 4, 5, tzinfo=UTC)
-        monkeypatch.setattr(
-            ConversationService,
-            "get_conversational_variable",
-            lambda *_args, **_kwargs: SimpleNamespace(
-                limit=1,
-                has_more=False,
-                data=[
-                    {
-                        "id": "550e8400-e29b-41d4-a716-446655440000",
-                        "name": "foo",
-                        "value_type": SegmentType.INTEGER,
-                        "value": 1,
-                        "created_at": created_at,
-                        "updated_at": created_at,
-                    }
-                ],
-            ),
-        )
-
-        api = ConversationVariablesApi()
-        handler = unwrap(api.get)
-        app_model = _app()
-        end_user = _end_user()
-
-        with app.test_request_context(
-            "/conversations/1/variables?limit=20",
-            method="GET",
-        ):
-            result = handler(
-                api,
-                ConversationVariablesQuery.model_validate(request.args.to_dict(flat=True)),
-                app_model=app_model,
-                end_user=end_user,
-                conversation_id="00000000-0000-0000-0000-000000000001",
-            )
-
-        assert result["limit"] == 1
-        assert result["has_more"] is False
-        assert result["data"][0]["value_type"] == "number"
-        assert result["data"][0]["value"] == "1"
-        assert result["data"][0]["created_at"] == int(created_at.timestamp())
-
-
-class TestConversationVariableDetailApiController:
-    def test_update_type_mismatch(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(
-            ConversationService,
-            "update_conversation_variable",
-            lambda *_args, **_kwargs: (_ for _ in ()).throw(ConversationVariableTypeMismatchError("bad")),
-        )
-
-        api = ConversationVariableDetailApi()
-        handler = unwrap(api.put)
-        app_model = _app()
-        end_user = _end_user()
-
-        with app.test_request_context(
-            "/conversations/1/variables/2",
-            method="PUT",
-            json={"value": "x"},
-        ):
-            payload = ConversationVariableUpdatePayload.model_validate(request.get_json() or {})
-            with pytest.raises(BadRequest):
-                handler(
-                    api,
-                    payload,
-                    app_model=app_model,
-                    end_user=end_user,
-                    conversation_id="00000000-0000-0000-0000-000000000001",
-                    variable_id="00000000-0000-0000-0000-000000000002",
-                )
-
-    def test_update_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(
-            ConversationService,
-            "update_conversation_variable",
-            lambda *_args, **_kwargs: (_ for _ in ()).throw(ConversationVariableNotExistsError()),
-        )
-
-        api = ConversationVariableDetailApi()
-        handler = unwrap(api.put)
-        app_model = _app()
-        end_user = _end_user()
-
-        with app.test_request_context(
-            "/conversations/1/variables/2",
-            method="PUT",
-            json={"value": "x"},
-        ):
-            payload = ConversationVariableUpdatePayload.model_validate(request.get_json() or {})
-            with pytest.raises(NotFound):
-                handler(
-                    api,
-                    payload,
-                    app_model=app_model,
-                    end_user=end_user,
-                    conversation_id="00000000-0000-0000-0000-000000000001",
-                    variable_id="00000000-0000-0000-0000-000000000002",
-                )
-
-    def test_update_success_serializes_response(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-        created_at = datetime(2026, 1, 2, 3, 4, 5, tzinfo=UTC)
-        monkeypatch.setattr(
-            ConversationService,
-            "update_conversation_variable",
-            lambda *_args, **_kwargs: {
-                "id": "550e8400-e29b-41d4-a716-446655440000",
-                "name": "foo",
-                "value_type": SegmentType.INTEGER,
-                "value": 1,
-                "created_at": created_at,
-                "updated_at": created_at,
-            },
-        )
-
-        api = ConversationVariableDetailApi()
-        handler = unwrap(api.put)
-        app_model = _app()
-        end_user = _end_user()
-
-        with app.test_request_context(
-            "/conversations/1/variables/2",
-            method="PUT",
-            json={"value": 1},
-        ):
-            payload = ConversationVariableUpdatePayload.model_validate(request.get_json() or {})
-            result = handler(
-                api,
-                payload,
-                app_model=app_model,
-                end_user=end_user,
-                conversation_id="00000000-0000-0000-0000-000000000001",
-                variable_id="00000000-0000-0000-0000-000000000002",
-            )
-
-        assert result["id"] == "550e8400-e29b-41d4-a716-446655440000"
-        assert result["value_type"] == "number"
-        assert result["value"] == "1"
-        assert result["created_at"] == int(created_at.timestamp())

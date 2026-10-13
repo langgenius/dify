@@ -545,21 +545,6 @@ export const zConversationVariableInfiniteScrollPaginationResponse = z.object({
 })
 
 /**
- * ConversationVariableUpdatePayload
- */
-export const zConversationVariableUpdatePayload = z.object({
-  value: z.unknown(),
-})
-
-/**
- * ConversationVariableUpdatePayload
- */
-export const zConversationVariableUpdatePayloadWithUser = z.object({
-  user: z.string().optional(),
-  value: z.unknown(),
-})
-
-/**
  * ConversationVariablesQuery
  */
 export const zConversationVariablesQuery = z.object({
@@ -1372,6 +1357,21 @@ export const zAgentThought = z.object({
 export const zJsonValueType = z.unknown()
 
 export const zJsonValue2 = z.unknown()
+
+/**
+ * ConversationVariableUpdatePayload
+ */
+export const zConversationVariableUpdatePayload = z.object({
+  value: zJsonValue2,
+})
+
+/**
+ * ConversationVariableUpdatePayload
+ */
+export const zConversationVariableUpdatePayloadWithUser = z.object({
+  user: z.string().optional(),
+  value: zJsonValue2,
+})
 
 /**
  * HumanInputFormSubmissionData
@@ -3303,7 +3303,7 @@ export const zGetConversationsByConversationIdVariablesQuery = z.object({
 })
 
 /**
- * Successfully retrieved conversation variables.
+ * Conversation variables retrieved successfully.
  */
 export const zGetConversationsByConversationIdVariablesResponse =
   zConversationVariableInfiniteScrollPaginationResponse

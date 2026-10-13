@@ -514,12 +514,12 @@ export type ConversationVariableResponse = {
 }
 
 export type ConversationVariableUpdatePayload = {
-  value: unknown
+  value: JsonValue2
 }
 
 export type ConversationVariableUpdatePayloadWithUser = {
   user?: string
-  value: unknown
+  value: JsonValue2
 }
 
 export type ConversationVariablesQuery = {
@@ -2801,6 +2801,7 @@ export type GetConversationsByConversationIdVariablesErrors = {
   401: unknown
   403: unknown
   404: unknown
+  422: unknown
 }
 
 export type GetConversationsByConversationIdVariablesResponses = {
@@ -2825,6 +2826,7 @@ export type PutConversationsByConversationIdVariablesByVariableIdErrors = {
   401: unknown
   403: unknown
   404: unknown
+  422: unknown
 }
 
 export type PutConversationsByConversationIdVariablesByVariableIdResponses = {

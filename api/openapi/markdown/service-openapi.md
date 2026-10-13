@@ -690,11 +690,12 @@ Retrieve variables from a specific conversation.
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Successfully retrieved conversation variables. | **application/json**: [ConversationVariableInfiniteScrollPaginationResponse](#conversationvariableinfinitescrollpaginationresponse)<br> |
-| 400 | `not_chat_app` : App mode does not match the API route. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
-| 404 | `not_found` : Conversation does not exist. |  |
+| 200 | Conversation variables retrieved successfully. | **application/json**: [ConversationVariableInfiniteScrollPaginationResponse](#conversationvariableinfinitescrollpaginationresponse)<br> |
+| 400 | Invalid app selection or app mode does not match the API route. |  |
+| 401 | Invalid API credentials. |  |
+| 403 | API credential, app or workspace access is unavailable. |  |
+| 404 | `conversation_not_found`: Conversation does not exist for this user and app. `conversation_variable_not_found`: Cursor variable is outside the current list. |  |
+| 422 | Invalid conversation variables query. |  |
 
 ### [PUT] /conversations/{conversation_id}/variables/{variable_id}
 **Update Conversation Variable**
@@ -719,10 +720,11 @@ Update the value of a specific conversation variable. The value must match the e
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Variable updated successfully. | **application/json**: [ConversationVariableResponse](#conversationvariableresponse)<br> |
-| 400 | - `not_chat_app` : App mode does not match the API route. - `bad_request` : Variable value type mismatch. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
-| 404 | - `not_found` : Conversation does not exist. - `not_found` : Conversation variable does not exist. |  |
+| 400 | Invalid app selection or app mode does not match the API route. `conversation_variable_type_mismatch`: Value does not match the variable's expected type. `invalid_param`: Value violates variable constraints, including the size limit. |  |
+| 401 | Invalid API credentials. |  |
+| 403 | API credential, app or workspace access is unavailable. |  |
+| 404 | `conversation_not_found`: Conversation does not exist for this user and app. `conversation_variable_not_found`: Variable does not exist for this conversation. |  |
+| 422 | Invalid conversation variable update payload. |  |
 
 ### [GET] /messages
 **List Conversation Messages**
@@ -2745,14 +2747,14 @@ Condition detail
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| value |  | The new value for the variable. Must match the variable's expected type. | Yes |
+| value | [JsonValue](#jsonvalue) | The new value for the variable. Must match the variable's expected type. | Yes |
 
 #### ConversationVariableUpdatePayloadWithUser
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | user | string | End-user identifier, defined by your app and unique within it. Identifies the end user for this request. See [End User Identity](/api-reference/guides/end-user-identity) for endpoint-specific access rules. | No |
-| value |  | The new value for the variable. Must match the variable's expected type. | Yes |
+| value | [JsonValue](#jsonvalue) | The new value for the variable. Must match the variable's expected type. | Yes |
 
 #### ConversationVariablesQuery
 
