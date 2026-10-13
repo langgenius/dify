@@ -209,6 +209,9 @@ vi.mock('@/app/components/base/chat/chat', () => ({
         chat-edit-annotation
       </button>
       <button onClick={() => void onAnnotationRemoved(1)}>chat-remove-annotation</button>
+      <button onClick={() => void onAnnotationRemoved(chatList.length - 1)}>
+        chat-remove-last-annotation
+      </button>
       <button onClick={() => switchSibling('message-2')}>chat-switch-sibling</button>
     </div>
   ),
@@ -666,6 +669,50 @@ describe('ConversationList', () => {
     expect(screen.getByText('2 Failures')).toBeInTheDocument()
     expect(screen.getByText('2')).toBeInTheDocument()
     expect(screen.getAllByText('1').length).toBeGreaterThan(0)
+  })
+
+  it('should remove the annotation of the displayed answer when the conversation has regenerated branches', async () => {
+    mockChatConversationDetail = {
+      id: 'conversation-1',
+      created_at: 1710000000,
+      model_config: {
+        model: 'gpt-4o',
+        configs: {},
+        user_input_form: [],
+      },
+      message: {
+        inputs: {},
+      },
+    }
+    mockFetchChatMessages.mockResolvedValueOnce({
+      data: [
+        createChatMessage('message-1'),
+        createChatMessage('message-2', { parent_message_id: 'message-1' }),
+        createChatMessage('message-3', {
+          parent_message_id: 'message-1',
+          annotation: {
+            id: 'annotation-3',
+            content: 'Annotated answer',
+            account: { name: 'Admin' },
+          },
+        }),
+      ],
+      has_more: false,
+    })
+
+    renderConversationList({
+      searchParams: '?page=2&conversation_id=conversation-1',
+    })
+
+    await waitFor(() => {
+      expect(screen.getByTestId('chat-panel')).toHaveTextContent('4')
+    })
+
+    fireEvent.click(screen.getByText('chat-remove-last-annotation'))
+
+    await waitFor(() => {
+      expect(mockDelAnnotation).toHaveBeenCalledWith('app-1', 'annotation-3')
+    })
   })
 
   it('should support annotation changes and paginated scroll loading in the detail drawer', async () => {
