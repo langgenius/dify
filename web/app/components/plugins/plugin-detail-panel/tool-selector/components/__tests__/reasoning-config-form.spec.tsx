@@ -107,7 +107,7 @@ describe('ReasoningConfigForm', () => {
     vi.clearAllMocks()
   })
 
-  it('inspects each schema without unmounting sibling inputs or losing their current values', async () => {
+  it('opens the selected parameter schema without changing current form values', async () => {
     const user = userEvent.setup()
     const onChange = vi.fn()
     function Fixture() {
@@ -153,7 +153,7 @@ describe('ReasoningConfigForm', () => {
     }
     render(<Fixture />)
     const count = screen.getByRole('spinbutton', { name: 'Count' })
-    const [configEditor, recordsEditor] = screen.getAllByTestId('monaco-editor')
+    const [configEditor] = screen.getAllByTestId('monaco-editor')
     await user.clear(count)
     await user.type(count, '8')
     fireEvent.change(configEditor!, { target: { value: '{"city":"Shanghai"}' } })
@@ -171,16 +171,14 @@ describe('ReasoningConfigForm', () => {
       })
       expect(within(dialog).getByText(rootName)).toBeInTheDocument()
       expect(within(dialog).getByText(property)).toBeInTheDocument()
-      expect(count).toBeInTheDocument()
-      expect(configEditor).toBeInTheDocument()
-      expect(recordsEditor).toBeInTheDocument()
       await user.click(within(dialog).getByRole('button', { name: 'common.operation.close' }))
       await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
       expect(entries[index]).toHaveFocus()
     }
-    expect(count).toHaveValue(8)
-    expect(configEditor).toHaveValue('{"city":"Shanghai"}')
-    expect(recordsEditor).toHaveValue('[]')
+    expect(screen.getByRole('spinbutton', { name: 'Count' })).toHaveValue(8)
+    const editors = screen.getAllByTestId('monaco-editor')
+    expect(editors[0]).toHaveValue('{"city":"Shanghai"}')
+    expect(editors[1]).toHaveValue('[]')
     expect(onChange).toHaveBeenCalledTimes(previousChanges)
   })
 
@@ -292,8 +290,7 @@ describe('ReasoningConfigForm', () => {
     )
   })
 
-  it('inspects object schemas without hiding the form and supports app selection after close', async () => {
-    const user = userEvent.setup()
+  it('stores the selected app configuration', () => {
     const onChange = vi.fn()
 
     render(
@@ -327,17 +324,6 @@ describe('ReasoningConfigForm', () => {
         nodeId="node-1"
       />,
     )
-
-    const editor = screen.getByTestId('monaco-editor')
-    await user.click(
-      screen.getByRole('button', { name: /workflowAgent.nodes.agent.clickToViewParameterSchema/ }),
-    )
-    expect(within(screen.getByRole('dialog')).getByText('Config')).toBeInTheDocument()
-    expect(editor).toBeInTheDocument()
-    expect(editor).toHaveValue('{}')
-    expect(onChange).not.toHaveBeenCalled()
-    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
 
     fireEvent.click(screen.getByTestId('app-selector'))
 

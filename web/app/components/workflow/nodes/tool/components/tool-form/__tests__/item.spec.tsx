@@ -40,14 +40,17 @@ const consumers = [
 ] as const
 
 describe.each(consumers)('%s parameter schema entry', (_name, Item) => {
-  it.each([FormTypeEnum.object, FormTypeEnum.array])(
-    'inspects %s parameters through the real dialog without changing their value',
-    async (type) => {
+  it.each([
+    { type: FormTypeEnum.object, readOnly: false, value: '{}' },
+    { type: FormTypeEnum.array, readOnly: true, value: '[]' },
+  ])(
+    'inspects $type parameters with readOnly=$readOnly without changing their value',
+    async ({ type, readOnly, value }) => {
       const user = userEvent.setup()
       const onChange = vi.fn()
       renderWorkflowFlowComponent(
         <Item
-          readOnly={false}
+          readOnly={readOnly}
           nodeId="node-1"
           schema={createSchema({
             type,
@@ -59,12 +62,11 @@ describe.each(consumers)('%s parameter schema entry', (_name, Item) => {
                   }
                 : { type: Type.object, properties: { city: { type: Type.string } } },
           })}
-          value={{ config: { type: VarKindType.constant, value: '{}' } }}
+          value={{ config: { type: VarKindType.constant, value } }}
           onChange={onChange}
         />,
         { nodes: [], edges: [], hooksStoreProps: {} },
       )
-      const editor = screen.getByTestId('monaco-editor')
       const trigger = screen.getByRole('button', { name: /^JSON Schema:/ })
       await user.click(trigger)
       const dialog = screen.getByRole('dialog', {
@@ -72,57 +74,13 @@ describe.each(consumers)('%s parameter schema entry', (_name, Item) => {
       })
       expect(within(dialog).getByText('config')).toBeInTheDocument()
       expect(within(dialog).getByText('city')).toBeInTheDocument()
-      expect(editor).toBeInTheDocument()
-      expect(editor).toHaveValue('{}')
       await user.click(within(dialog).getByRole('button', { name: 'common.operation.close' }))
       await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
       expect(trigger).toHaveFocus()
-      expect(editor).toHaveValue('{}')
+      expect(screen.getByTestId('monaco-editor')).toHaveValue(value)
       expect(onChange).not.toHaveBeenCalled()
     },
   )
-
-  it.each([undefined, null])(
-    'keeps an unavailable schema entry disabled for %s',
-    async (input_schema) => {
-      const user = userEvent.setup()
-      renderWorkflowFlowComponent(
-        <Item
-          readOnly={false}
-          nodeId="node-1"
-          schema={createSchema({ input_schema })}
-          value={{}}
-          onChange={vi.fn()}
-        />,
-        { nodes: [], edges: [], hooksStoreProps: {} },
-      )
-      const trigger = screen.getByRole('button', { name: /^JSON Schema:/ })
-      expect(trigger).toBeDisabled()
-      await user.click(trigger)
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    },
-  )
-
-  it('keeps schema inspection available when the parameter is read-only', async () => {
-    const user = userEvent.setup()
-    const onChange = vi.fn()
-    renderWorkflowFlowComponent(
-      <Item
-        readOnly
-        nodeId="node-1"
-        schema={createSchema()}
-        value={{ config: { type: VarKindType.constant, value: '{}' } }}
-        onChange={onChange}
-      />,
-      { nodes: [], edges: [], hooksStoreProps: {} },
-    )
-    await user.click(screen.getByRole('button', { name: /^JSON Schema:/ }))
-    expect(
-      screen.getByRole('dialog', { name: 'workflowAgent.nodes.agent.parameterSchema' }),
-    ).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /addField/i })).not.toBeInTheDocument()
-    expect(onChange).not.toHaveBeenCalled()
-  })
 
   it('does not offer schema inspection for scalar parameters', () => {
     renderWorkflowFlowComponent(

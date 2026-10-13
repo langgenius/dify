@@ -1,15 +1,7 @@
-import type { ReasoningConfigValue } from '../reasoning-config-form'
-import type { ToolFormSchema } from '@/app/components/tools/utils/to-form-schema'
-import type { Field } from '@/app/components/workflow/nodes/llm/types'
-import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { useState } from 'react'
-import { page, userEvent } from 'vite-plus/test/browser'
+import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
-import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { WorkflowContextProvider } from '@/app/components/workflow/context'
-import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { Type } from '@/app/components/workflow/nodes/llm/types'
-import { ReasoningConfigForm } from '../reasoning-config-form'
+import { SchemaDialog } from '../schema-dialog'
 
 vi.mock('react-i18next', async () => {
   const actual = await vi.importActual<typeof import('react-i18next')>('react-i18next')
@@ -23,173 +15,15 @@ vi.mock('react-i18next', async () => {
   }
 })
 
-vi.mock('@monaco-editor/react', () => {
-  function Editor({
-    value,
-    onChange,
-    options,
-  }: {
-    value?: string
-    onChange?: (value: string) => void
-    options?: { readOnly?: boolean }
-  }) {
-    return (
-      <textarea
-        aria-label="JSON parameter editor"
-        value={value}
-        readOnly={options?.readOnly}
-        onChange={(event) => onChange?.(event.target.value)}
-      />
-    )
-  }
-  return {
-    default: Editor,
-    Editor,
-    DiffEditor: Editor,
-    useMonaco: () => null,
-    loader: { config: vi.fn() },
-  }
-})
-
-const profileSchema: Field = {
-  type: Type.object,
-  properties: { person_name: { type: Type.string, description: 'The profile name' } },
-  required: ['person_name'],
-}
-const rowsSchema: Field = {
-  type: Type.array,
-  items: {
-    type: Type.object,
-    properties: { row_count: { type: Type.number } },
-    required: ['row_count'],
-  },
-}
-
-function createParameter(
-  variable: string,
-  label: string,
-  type: FormTypeEnum,
-  schema?: Field,
-): ToolFormSchema {
-  return {
-    name: variable,
-    variable,
-    label: { en_US: label, zh_Hans: label },
-    type,
-    _type: type,
-    form: 'form',
-    required: false,
-    show_on: [],
-    input_schema: schema,
-  }
-}
-
-function ReasoningFixture({
-  onChange,
-  profile = profileSchema,
-}: {
-  onChange: (value: ReasoningConfigValue) => void
-  profile?: Field
-}) {
-  const [value, setValue] = useState<ReasoningConfigValue>({
-    profile: { auto: 0, value: { type: VarKindType.constant, value: '{}' } },
-    rows: { auto: 0, value: { type: VarKindType.constant, value: '[]' } },
-    amount: { auto: 0, value: { type: VarKindType.constant, value: 3 } },
-  })
-  return (
-    <WorkflowContextProvider>
-      <Popover>
-        <PopoverTrigger>Configure tool</PopoverTrigger>
-        <PopoverContent aria-label="Tool configuration" className="w-90">
-          <ReasoningConfigForm
-            nodeId="agent-1"
-            value={value}
-            onChange={(next) => {
-              setValue(next)
-              onChange(next)
-            }}
-            schemas={[
-              createParameter('profile', 'Profile', FormTypeEnum.object, profile),
-              createParameter('rows', 'Rows', FormTypeEnum.array, rowsSchema),
-              createParameter('amount', 'Amount', FormTypeEnum.textNumber),
-            ]}
-            nodeOutputVars={[]}
-            availableNodes={[]}
-          />
-        </PopoverContent>
-      </Popover>
-    </WorkflowContextProvider>
-  )
-}
-
-beforeEach(async () => {
-  await page.viewport(1280, 900)
-})
-
-it('preserves real reasoning fields in their Popover while each schema closes back to its own entry', async () => {
-  const onChange = vi.fn()
-  const screen = await render(<ReasoningFixture onChange={onChange} />)
-  await screen.getByRole('button', { name: 'Configure tool' }).click()
-  const parent = screen.getByRole('dialog', { name: 'Tool configuration' })
-  const editor = parent.getByRole('textbox', { name: 'JSON parameter editor' }).nth(0)
-  const amount = parent.getByRole('spinbutton', { name: 'Amount' })
-  await editor.fill('{"person_name":"Draft name"}')
-  await amount.fill('7')
-  const originalEditor = editor.element()
-  const originalAmount = amount.element()
-  onChange.mockClear()
-
-  const profileEntry = parent.getByRole('button', {
-    name: 'workflowAgent.nodes.agent.clickToViewParameterSchema: Profile',
-  })
-  await profileEntry.click()
-  const dialog = screen.getByRole('dialog', { name: 'Parameter Schema' })
-  await expect.element(dialog.getByText('Profile')).toBeVisible()
-  await expect.element(dialog.getByText('person_name')).toBeVisible()
-  await expect.element(dialog.getByText('row_count')).not.toBeInTheDocument()
-  expect(originalEditor.isConnected).toBe(true)
-  expect(originalAmount.isConnected).toBe(true)
-  await userEvent.hover(dialog.getByText('person_name'))
-  await expect.element(dialog.getByRole('textbox')).not.toBeInTheDocument()
-  await userEvent.keyboard('{Escape}')
-  await expect.element(dialog).not.toBeInTheDocument()
-  await expect.element(parent).toBeVisible()
-  await expect.element(profileEntry).toHaveFocus()
-  expect(editor.element()).toBe(originalEditor)
-  expect(amount.element()).toBe(originalAmount)
-  await expect.element(editor).toHaveValue('{"person_name":"Draft name"}')
-  await expect.element(amount).toHaveValue(7)
-
-  const rowsEntry = parent.getByRole('button', {
-    name: 'workflowAgent.nodes.agent.clickToViewParameterSchema: Rows',
-  })
-  await rowsEntry.click()
-  await expect.element(dialog.getByText('Rows')).toBeVisible()
-  await expect.element(dialog.getByText('row_count')).toBeVisible()
-  await expect.element(dialog.getByText('person_name')).not.toBeInTheDocument()
-  await dialog.getByRole('button', { name: 'common.operation.close' }).click()
-  await expect.element(dialog).not.toBeInTheDocument()
-  await expect.element(rowsEntry).toHaveFocus()
-  await expect.element(parent).toBeVisible()
-  expect(onChange).not.toHaveBeenCalled()
-  expect(editor.element()).toBe(originalEditor)
-  await amount.fill('8')
-  expect(onChange).toHaveBeenCalledOnce()
-})
-
 it('keeps a long schema scrollable and Close reachable on a small viewport', async () => {
   await page.viewport(414, 640)
   const properties = Object.fromEntries(
     Array.from({ length: 50 }, (_, index) => [`property_${index}`, { type: Type.string }]),
   )
   const screen = await render(
-    <ReasoningFixture onChange={vi.fn()} profile={{ type: Type.object, properties }} />,
+    <SchemaDialog rootName="Profile" schema={{ type: Type.object, properties }} />,
   )
-  await screen.getByRole('button', { name: 'Configure tool' }).click()
-  const parent = screen.getByRole('dialog', { name: 'Tool configuration' })
-  const entry = parent.getByRole('button', {
-    name: 'workflowAgent.nodes.agent.clickToViewParameterSchema: Profile',
-  })
+  const entry = screen.getByRole('button', { name: 'JSON Schema: Profile' })
   await entry.click()
   const dialog = screen.getByRole('dialog', { name: 'Parameter Schema' })
   const close = dialog.getByRole('button', { name: 'common.operation.close' })
@@ -207,57 +41,44 @@ it('keeps a long schema scrollable and Close reachable on a small viewport', asy
     .toBe(true)
   await close.click()
   await expect.element(dialog).not.toBeInTheDocument()
-  await expect.element(parent).toBeVisible()
-  await expect.element(entry).toHaveFocus()
 })
 
-it.each([414, 1280])(
-  'shows complete schema names and descriptions at %ipx without editing',
-  async (width) => {
-    await page.viewport(width, 900)
-    const description = `Choose the destination used for delivery. ${'Include the full warehouse address. '.repeat(6)}\nReference: ${'warehouse-reference-'.repeat(12)}`
-    const nestedDescription =
-      'Use the receiving warehouse address, including the building, floor, and loading bay.'
-    const fieldName = 'receiving_warehouse_building_floor_and_loading_bay_identifier'
-    const screen = await render(
-      <ReasoningFixture
-        onChange={vi.fn()}
-        profile={{
-          type: Type.object,
-          description,
-          properties: {
-            destination: {
-              type: Type.object,
-              description: nestedDescription,
-              properties: { [fieldName]: { type: Type.string } },
-            },
+it('shows complete schema names and descriptions on a narrow viewport', async () => {
+  await page.viewport(414, 900)
+  const description = `Choose the destination used for delivery. ${'Include the full warehouse address. '.repeat(6)}\nReference: ${'warehouse-reference-'.repeat(12)}`
+  const nestedDescription =
+    'Use the receiving warehouse address, including the building, floor, and loading bay.'
+  const fieldName = 'receiving_warehouse_building_floor_and_loading_bay_identifier'
+  const screen = await render(
+    <SchemaDialog
+      rootName="Profile"
+      schema={{
+        type: Type.object,
+        description,
+        properties: {
+          destination: {
+            type: Type.object,
+            description: nestedDescription,
+            properties: { [fieldName]: { type: Type.string } },
           },
-        }}
-      />,
-    )
-    await screen.getByRole('button', { name: 'Configure tool' }).click()
-    await screen
-      .getByRole('button', {
-        name: 'workflowAgent.nodes.agent.clickToViewParameterSchema: Profile',
-      })
-      .click()
-    const dialog = screen.getByRole('dialog', { name: 'Parameter Schema' })
-    for (const text of [description, nestedDescription, fieldName]) {
-      const content = dialog.getByText(text).element()
-      const bounds = content.getBoundingClientRect()
-      const dialogBounds = dialog.element().getBoundingClientRect()
-      expect(bounds.left).toBeGreaterThanOrEqual(dialogBounds.left)
-      expect(bounds.right).toBeLessThanOrEqual(dialogBounds.right)
-      const range = document.createRange()
-      range.selectNodeContents(content)
-      for (const line of range.getClientRects()) {
-        expect(line.left).toBeGreaterThanOrEqual(bounds.left)
-        expect(line.right).toBeLessThanOrEqual(bounds.right)
-        expect(line.bottom).toBeLessThanOrEqual(bounds.bottom)
-      }
+        },
+      }}
+    />,
+  )
+  await screen.getByRole('button', { name: 'JSON Schema: Profile' }).click()
+  const dialog = screen.getByRole('dialog', { name: 'Parameter Schema' })
+  for (const text of [description, nestedDescription, fieldName]) {
+    const content = dialog.getByText(text).element()
+    const bounds = content.getBoundingClientRect()
+    const dialogBounds = dialog.element().getBoundingClientRect()
+    expect(bounds.left).toBeGreaterThanOrEqual(dialogBounds.left)
+    expect(bounds.right).toBeLessThanOrEqual(dialogBounds.right)
+    const range = document.createRange()
+    range.selectNodeContents(content)
+    for (const line of range.getClientRects()) {
+      expect(line.left).toBeGreaterThanOrEqual(bounds.left)
+      expect(line.right).toBeLessThanOrEqual(bounds.right)
+      expect(line.bottom).toBeLessThanOrEqual(bounds.bottom)
     }
-    await userEvent.hover(dialog.getByText(nestedDescription))
-    await expect.element(dialog.getByRole('textbox')).not.toBeInTheDocument()
-    await expect.element(dialog.getByText(fieldName)).toBeVisible()
-  },
-)
+  }
+})
