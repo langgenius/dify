@@ -11,7 +11,7 @@ const fetchMock = vi.fn<typeof fetch>()
 
 beforeEach(() => {
   vi.clearAllMocks()
-  useReadmePanelStore.setState({ currentPanel: undefined })
+  useReadmePanelStore.setState({ currentPanel: undefined, isOpen: false })
   vi.stubGlobal('fetch', fetchMock)
   fetchMock.mockImplementation(async () => Response.json({ readme: '# Datasource documentation' }))
 })

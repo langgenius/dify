@@ -9,14 +9,19 @@ type ReadmeDialogProps = {
   detail: ReadmePanelState['detail']
   open: boolean
   onOpenChange: (open: boolean) => void
-  triggerId?: string
+  onOpenChangeComplete: (open: boolean) => void
 }
 
-export function ReadmeDialog({ detail, open, onOpenChange, triggerId }: ReadmeDialogProps) {
+export function ReadmeDialog({
+  detail,
+  open,
+  onOpenChange,
+  onOpenChangeComplete,
+}: ReadmeDialogProps) {
   const { t } = useTranslation(['common', 'plugin'])
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange} triggerId={triggerId}>
+    <Dialog open={open} onOpenChange={onOpenChange} onOpenChangeComplete={onOpenChangeComplete}>
       <DialogContent className="h-[calc(100dvh-16px)] w-full max-w-200 overflow-hidden p-0">
         <ReadmePanelContent
           detail={detail}

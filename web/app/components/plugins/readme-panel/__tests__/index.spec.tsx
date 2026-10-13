@@ -43,7 +43,7 @@ function readmeURL(input: Parameters<typeof fetch>[0]) {
 beforeEach(() => {
   vi.clearAllMocks()
   mockLocale = 'en-US'
-  useReadmePanelStore.setState({ currentPanel: undefined })
+  useReadmePanelStore.setState({ currentPanel: undefined, isOpen: false })
   vi.stubGlobal('fetch', fetchMock)
   fetchMock.mockImplementation(async () => Response.json({ readme: '# Plugin documentation' }))
 })
@@ -54,6 +54,30 @@ afterEach(() => {
 })
 
 describe('ReadmePanel', () => {
+  it('retains closing content and ignores a previous panel completion after another panel opens', () => {
+    const { openReadmePanel, closeReadmePanel, completeReadmePanelClose } =
+      useReadmePanelStore.getState()
+    const first = createPluginDetail()
+    openReadmePanel({ detail: first, presentation: 'dialog' })
+    const firstPanel = useReadmePanelStore.getState().currentPanel!
+    closeReadmePanel()
+    expect(useReadmePanelStore.getState().isOpen).toBe(false)
+    expect(useReadmePanelStore.getState().currentPanel?.detail).toBe(first)
+
+    const second = { ...first, plugin_unique_identifier: 'langgenius/second:1.0.0' }
+    openReadmePanel({ detail: second })
+    const secondPanel = useReadmePanelStore.getState().currentPanel!
+    completeReadmePanelClose(firstPanel)
+    expect(useReadmePanelStore.getState().isOpen).toBe(true)
+    expect(useReadmePanelStore.getState().currentPanel?.detail).toBe(second)
+
+    closeReadmePanel()
+    completeReadmePanelClose(firstPanel)
+    expect(useReadmePanelStore.getState().currentPanel?.detail).toBe(second)
+    completeReadmePanelClose(secondPanel)
+    expect(useReadmePanelStore.getState().currentPanel).toBeUndefined()
+  })
+
   it.each(['drawer', 'dialog'] as const)(
     'opens the %s from its entrance and closes the active panel',
     async (presentation) => {
