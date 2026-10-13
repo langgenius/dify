@@ -219,7 +219,9 @@ class TestOpenApiHumanInputFormPost:
 
 
 class TestSubmitFollowRunHint:
-    def _submit(self, app: Flask, monkeypatch: pytest.MonkeyPatch, *, workflow_run_id: str | None):
+    def _submit(
+        self, app: Flask, monkeypatch: pytest.MonkeyPatch, *, workflow_run_id: str | None
+    ) -> FormSubmitResponse:
         _mock_service(monkeypatch, _make_form(workflow_run_id=workflow_run_id))
         api = OpenApiWorkflowHumanInputFormSubmitApi()
         with app.test_request_context("/openapi/v1/apps/app-1/human-input-forms/tok-1:submit", method="POST"):
@@ -231,14 +233,14 @@ class TestSubmitFollowRunHint:
                 body=OpenApiFormSubmitPayload(action="approve", inputs={}),
             )
 
-    def test_hints_following_the_run_the_form_paused(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
+    def test_hints_following_the_run_the_form_paused(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         result = self._submit(app, monkeypatch, workflow_run_id="run-9")
 
         [hint] = result.hints
         assert hint.op == op_of(OpenApiWorkflowEventsApi.get) == "get.run.event"
         assert hint.input == {"app_id": "app-1", "task_id": "run-9", "continue_on_pause": False}
 
-    def test_hint_input_passes_the_events_op_input_schema(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
+    def test_hint_input_passes_the_events_op_input_schema(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         [hint] = self._submit(app, monkeypatch, workflow_run_id="run-9").hints
 
         catalog_app = Flask(__name__)
@@ -247,7 +249,7 @@ class TestSubmitFollowRunHint:
         validator = Draft202012Validator({**schema, "additionalProperties": False})
         assert [err.message for err in validator.iter_errors(hint.input)] == []
 
-    def test_no_hint_without_a_run(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
+    def test_no_hint_without_a_run(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         assert self._submit(app, monkeypatch, workflow_run_id=None).hints == []
 
 
