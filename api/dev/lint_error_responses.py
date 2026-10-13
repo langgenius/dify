@@ -12,6 +12,9 @@ with what those declarations document at runtime:
   document. Fix it in the decorator; the report names it.
 - stale (warning): ``@error_responses`` lists an error the handler is not inferred to
   raise, or ``unreachable=`` lists one it no longer raises. ``--prune`` removes them.
+- placeholder code (error): the handler raises a ``BaseHTTPException`` subclass that never
+  declares an ``error_code``, so nothing can document it. Declare one; ``--fix`` never
+  adds such a class.
 - non-standard error body (error): the handler, or a ``controllers`` helper it calls,
   returns ``(body, 4xx/5xx)`` whose body lacks ``code``/``message``/``status`` for a
   status with no ``@ns.response(status, ..., Model)``, or calls ``flask_restx.abort``
@@ -584,6 +587,8 @@ class LintResult:
     decorator_sources: dict[str, str] = field(default_factory=dict)
     # hand-built error body site -> the operations whose spec misdescribes it
     body_violations: dict[BodySite, set[str]] = field(default_factory=lambda: defaultdict(set))
+    # business error class that keeps the placeholder error_code -> the operations raising it
+    placeholder_codes: dict[type, set[str]] = field(default_factory=lambda: defaultdict(set))
     skipped: list[str] = field(default_factory=list)
 
 
@@ -612,12 +617,12 @@ def _source_location(fn: Callable[..., object]) -> str:
 
 def lint(apis: Mapping[str, Any], analyzer: RaiseAnalyzer) -> LintResult:
     from libs.exception import RelayedHTTPError
-    from libs.external_api import is_business_error
+    from libs.external_api import is_business_error, keeps_placeholder_error_code
 
     result = LintResult()
     for api in apis.values():
 
-        def business(exceptions: Iterable[type], api: Any = api) -> set[type]:
+        def business(exceptions: Iterable[type], where: str, api: Any = api) -> set[type]:
             documentable = set()
             for exception in exceptions:
                 if not is_business_error(exception):
@@ -629,6 +634,10 @@ def lint(apis: Mapping[str, Any], analyzer: RaiseAnalyzer) -> LintResult:
                 try:
                     api.resolve_error(exception)
                 except ValueError:
+                    continue
+                if keeps_placeholder_error_code(exception):
+                    # Nothing can document it until it declares a code; reported, never fixed.
+                    result.placeholder_codes[exception].add(where)
                     continue
                 documentable.add(exception)
             return documentable
@@ -673,7 +682,7 @@ def lint(apis: Mapping[str, Any], analyzer: RaiseAnalyzer) -> LintResult:
                             declaration=read_declaration(node, env),
                         )
                         result.handlers[key] = report
-                    inferred = business(analyzer.raises_of_node(node, env, resource))
+                    inferred = business(analyzer.raises_of_node(node, env, resource), f"{owner.__name__}.{method}")
                     report.inferred |= inferred
                     report.missing |= inferred - documented - report.declaration.unreachable
 
@@ -688,7 +697,7 @@ def lint(apis: Mapping[str, Any], analyzer: RaiseAnalyzer) -> LintResult:
                                 label = f"{_qualname(klass)}.method_decorators[{fn.__name__}]"
                                 guards.append((label, fn, analyzer.raises_of_function(fn, resource, 1)))
                     for label, fn, raised in guards:
-                        gaps = business(raised) - documented
+                        gaps = business(raised, label) - documented
                         if gaps:
                             result.decorator_gaps[label] |= gaps
                             result.decorator_hits[label] += 1
@@ -912,6 +921,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         _emit(
             f"error: {result.decorator_sources[label]}: {label} raises {_names(gaps)} without document_errors "
             f"({result.decorator_hits[label]} operations)"
+        )
+        failures += 1
+    for exception, operations in sorted(result.placeholder_codes.items(), key=lambda item: _qualname(item[0])):
+        _emit(
+            f"error: {_qualname(exception)} keeps the placeholder error_code; declare one so "
+            f"{', '.join(sorted(operations))} can document it"
         )
         failures += 1
     for message in result.skipped:

@@ -119,6 +119,19 @@ def _error_spec(
     raise ValueError(f"{exception.__name__} has no dedicated error handler; its status and code are not stable")
 
 
+def keeps_placeholder_error_code(exception: type[Exception]) -> bool:
+    """Whether ``exception`` would answer with ``BaseHTTPException``'s placeholder ``code``.
+
+    Such an error cannot be documented: declare an ``error_code`` on it. Relayed errors
+    take their code at runtime and are exempt.
+    """
+    return (
+        issubclass(exception, BaseHTTPException)
+        and not issubclass(exception, RelayedHTTPError)
+        and _class_attribute(exception, "error_code") == _UNDECLARED_ERROR_CODE
+    )
+
+
 def is_business_error(exception: type[Exception]) -> bool:
     """Whether ``exception`` names an operation-specific outcome worth listing.
 
@@ -145,13 +158,7 @@ def _documented_names(exceptions: Iterable[type[Exception]]) -> list[str]:
     generic = [exception.__name__ for exception in exceptions if not is_business_error(exception)]
     if generic:
         raise ValueError(f"generic errors are implied, do not list them: {', '.join(generic)}")
-    undeclared = [
-        exception.__name__
-        for exception in exceptions
-        if issubclass(exception, BaseHTTPException)
-        and not issubclass(exception, RelayedHTTPError)
-        and _class_attribute(exception, "error_code") == _UNDECLARED_ERROR_CODE
-    ]
+    undeclared = [exception.__name__ for exception in exceptions if keeps_placeholder_error_code(exception)]
     if undeclared:
         raise ValueError(f"business errors must declare an error_code: {', '.join(undeclared)}")
     return [f"{exception.__module__}:{exception.__qualname__}" for exception in exceptions]
