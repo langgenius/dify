@@ -182,6 +182,32 @@ describe('HTTP failure contract', () => {
     expect(fetch).toHaveBeenCalledTimes(2)
   })
 
+  it.each([429, 503])(
+    'keeps the session when token refresh fails with transient HTTP %s',
+    async (status) => {
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+        Response.json({ code: 'unauthorized' }, { status: 401 }),
+      )
+      refresh.mockRejectedValue(new ORPCError('HTTP_ERROR', { status }))
+      const initialUrl = window.location.href
+
+      await expect(get('/test-errors', {}, {})).rejects.toMatchObject({
+        code: 'unauthorized',
+        status: 401,
+      })
+      expect(refresh).toHaveBeenCalledOnce()
+      expect(window.location.href).toBe(initialUrl)
+    },
+  )
+
+  it('does not treat 3xx responses as HTTP failures', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(null, { status: 304 }))
+
+    await expect(
+      request<Response>('/test-errors', {}, { needAllResponseContent: true }),
+    ).resolves.toMatchObject({ status: 304 })
+  })
+
   it('preserves network and abort errors without inventing HTTP status codes', async () => {
     const fetch = vi.spyOn(globalThis, 'fetch')
     for (const error of [
