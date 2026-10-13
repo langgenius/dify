@@ -2,6 +2,7 @@
 # Usage: $env:DIFYCTL_R2_BASE='<BASE>'; irm https://raw.githubusercontent.com/langgenius/dify/main/cli/scripts/install-r2.ps1 | iex
 # Env: DIFYCTL_R2_BASE (required), DIFYCTL_CHANNEL (default edge),
 #      DIFYCTL_INSTALL_DIR (default %LOCALAPPDATA%\difyctl\bin; binary written here as difyctl.exe),
+#      DIFYCTL_PREFIX (the folder above the bin folder; <prefix>\bin is used when DIFYCTL_INSTALL_DIR is unset),
 #      DIFYCTL_VERSION (pin exact published version),
 #      DIFYCTL_COMMIT  (pin by git commit, short or full sha; via index.json),
 #      DIFYCTL_R2_PREFIX (default difyctl; key root for pointer JSONs),
@@ -38,26 +39,44 @@ function Get-ChecksumTarget([string]$text, [string]$target) {
   return $null
 }
 
+# DIFYCTL_INSTALL_DIR names the bin folder itself; DIFYCTL_PREFIX the folder above it.
+function Resolve-BinDir {
+  if ($env:DIFYCTL_INSTALL_DIR) { return $env:DIFYCTL_INSTALL_DIR }
+  $prefix = if ($env:DIFYCTL_PREFIX) { $env:DIFYCTL_PREFIX } else { Join-Path $env:LOCALAPPDATA 'difyctl' }
+  return Join-Path $prefix 'bin'
+}
+
+# The user PATH alone: $env:PATH also holds the machine PATH, which must not be copied into it.
+function Get-PathHint([string]$Dir) {
+  return "  [Environment]::SetEnvironmentVariable('PATH', `"$Dir;`" + [Environment]::GetEnvironmentVariable('PATH', 'User'), 'User')"
+}
+
 function Write-SkillHint {
   Write-Host 'AI agents: run `difyctl install skills <skills root>` after each install or upgrade; the skill ships inside the binary.'
 }
 
-# Download, sha256-verify, place. Returns nothing; throws on mismatch.
+# Download, sha256-verify, place. Returns nothing; throws on a missing or wrong checksum.
 function Install-DifyctlBinary([string]$dlUrl, [string]$sha, [string]$version, [string]$channel, [string]$installDir) {
-  $tmp = Join-Path ([System.IO.Path]::GetTempPath()) ([System.IO.Path]::GetFileName($dlUrl))
-  Invoke-WebRequest -Uri $dlUrl -OutFile $tmp
-  $actual = (Get-FileHash -Path $tmp -Algorithm SHA256).Hash.ToLower()
-  if ($actual -ne $sha.ToLower()) { throw "checksum mismatch for $dlUrl" }
+  if (-not $sha) { throw "no checksum published for $dlUrl; not installing an unverified binary" }
+  $tmp = Join-Path ([System.IO.Path]::GetTempPath()) ('difyctl-' + [guid]::NewGuid().ToString('N') + '.exe')
+  try {
+    Invoke-WebRequest -Uri $dlUrl -OutFile $tmp
+    $actual = (Get-FileHash -Path $tmp -Algorithm SHA256).Hash.ToLower()
+    if ($actual -ne $sha.ToLower()) { throw "checksum mismatch for $dlUrl" }
 
-  New-Item -ItemType Directory -Path $installDir -Force | Out-Null
-  $dest = Join-Path $installDir 'difyctl.exe'
-  try { Move-Item -Path $tmp -Destination $dest -Force }
-  catch { throw "cannot replace $dest — close any running difyctl and re-run." }
+    New-Item -ItemType Directory -Path $installDir -Force | Out-Null
+    $dest = Join-Path $installDir 'difyctl.exe'
+    try { Move-Item -Path $tmp -Destination $dest -Force }
+    catch { throw "cannot replace $dest — close any running difyctl and re-run." }
+  }
+  finally {
+    Remove-Item -Path $tmp -Force -ErrorAction SilentlyContinue
+  }
 
   Write-Host "difyctl $version (channel $channel) installed: $dest"
   if (($env:PATH -split ';') -notcontains $installDir) {
     Write-Host "$installDir is not on your PATH. Add it with:"
-    Write-Host "  [Environment]::SetEnvironmentVariable('PATH', `"$installDir;`$env:PATH`", 'User')"
+    Write-Host (Get-PathHint $installDir)
   }
   else {
     Write-SkillHint
@@ -71,7 +90,7 @@ function Install-DifyctlR2 {
   $channel = if ($env:DIFYCTL_CHANNEL) { $env:DIFYCTL_CHANNEL } else { 'edge' }
   $prefix = if ($env:DIFYCTL_R2_PREFIX) { $env:DIFYCTL_R2_PREFIX } else { 'difyctl' }
   $binPrefix = if ($env:DIFYCTL_R2_BIN_PREFIX) { $env:DIFYCTL_R2_BIN_PREFIX } else { "$prefix/bin" }
-  $installDir = if ($env:DIFYCTL_INSTALL_DIR) { $env:DIFYCTL_INSTALL_DIR } else { Join-Path (Join-Path $env:LOCALAPPDATA 'difyctl') 'bin' }
+  $installDir = Resolve-BinDir
   $target = 'windows-x64'
 
   if ($env:DIFYCTL_VERSION -or $env:DIFYCTL_COMMIT) {

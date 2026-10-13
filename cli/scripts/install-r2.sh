@@ -6,6 +6,7 @@
 #   DIFYCTL_R2_BASE  (required)  R2 public base, e.g. https://pub-….r2.dev
 #   DIFYCTL_CHANNEL  (default edge)
 #   DIFYCTL_INSTALL_DIR  (default $HOME/.local/bin)  directory the binary is written to as <dir>/difyctl
+#   DIFYCTL_PREFIX   the folder above the bin folder; <prefix>/bin is used when DIFYCTL_INSTALL_DIR is unset
 #   DIFYCTL_VERSION  pin an exact published version (e.g. 0.1.0-edge.ce4af868)
 #   DIFYCTL_COMMIT   pin by git commit (short or full sha); resolved via index.json
 #   DIFYCTL_R2_PREFIX      (default difyctl)       key root for pointer JSONs
@@ -25,11 +26,16 @@ print_skill_hint() {
   printf '%s\n' 'AI agents: run `difyctl install skills <skills root>` after each install or upgrade; the skill ships inside the binary.'
 }
 
+# DIFYCTL_INSTALL_DIR names the bin folder itself; DIFYCTL_PREFIX the folder above it.
+bin_dir_for() {
+  printf '%s' "${DIFYCTL_INSTALL_DIR:-${DIFYCTL_PREFIX:-${HOME}/.local}/bin}"
+}
+
 detect_target() {
   case "$(uname -s)" in
     Linux*)  _os=linux ;;
     Darwin*) _os=darwin ;;
-    *)       die "unsupported OS: $(uname -s) (use install.ps1 on Windows)" ;;
+    *)       die "unsupported OS: $(uname -s) (use install-r2.ps1 on Windows)" ;;
   esac
   case "$(uname -m)" in
     x86_64|amd64)  _arch=x64 ;;
@@ -150,7 +156,7 @@ install_main() {
   channel="${DIFYCTL_CHANNEL:-edge}"
   prefix="${DIFYCTL_R2_PREFIX:-difyctl}"
   bin_prefix="${DIFYCTL_R2_BIN_PREFIX:-${prefix}/bin}"
-  install_dir="${DIFYCTL_INSTALL_DIR:-${HOME}/.local/bin}"
+  install_dir="$(bin_dir_for)"
   target="$(detect_target)"
 
   if [ -n "${DIFYCTL_VERSION:-}" ] || [ -n "${DIFYCTL_COMMIT:-}" ]; then

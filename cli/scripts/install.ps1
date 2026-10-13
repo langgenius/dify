@@ -7,7 +7,8 @@
 # env:
 #   DIFY_VERSION     Dify release tag to install difyctl from (e.g. 1.14.2). Primary key.
 #   DIFYCTL_VERSION  difyctl version pin (used only when DIFY_VERSION is unset).
-#   DIFYCTL_PREFIX   install dir (default $env:LOCALAPPDATA\difyctl)
+#   DIFYCTL_PREFIX       install prefix (default $env:LOCALAPPDATA\difyctl); binary -> <prefix>\bin\difyctl.exe
+#   DIFYCTL_INSTALL_DIR  the bin folder itself (wins over DIFYCTL_PREFIX); binary -> <dir>\difyctl.exe
 #   DIFYCTL_REPO     release source repo (default langgenius/dify)
 #   GITHUB_TOKEN     GitHub token (or GH_TOKEN) sent as a bearer to raise the API
 #                    rate limit from 60 to 5000 requests/hour (useful in CI).
@@ -17,7 +18,6 @@ $ErrorActionPreference = 'Stop'
 $repo           = if ($env:DIFYCTL_REPO) { $env:DIFYCTL_REPO } else { 'langgenius/dify' }
 $difyVersion    = $env:DIFY_VERSION
 $difyctlVersion = $env:DIFYCTL_VERSION
-$prefix         = if ($env:DIFYCTL_PREFIX) { $env:DIFYCTL_PREFIX } else { Join-Path $env:LOCALAPPDATA 'difyctl' }
 $target         = 'windows-x64'
 $apiBase        = "https://api.github.com/repos/$repo"
 $dlBase         = "https://github.com/$repo/releases/download"
@@ -115,6 +115,18 @@ function Resolve-Release {
     }
 }
 
+# DIFYCTL_INSTALL_DIR names the bin folder itself; DIFYCTL_PREFIX the folder above it.
+function Resolve-BinDir {
+    if ($env:DIFYCTL_INSTALL_DIR) { return $env:DIFYCTL_INSTALL_DIR }
+    $prefix = if ($env:DIFYCTL_PREFIX) { $env:DIFYCTL_PREFIX } else { Join-Path $env:LOCALAPPDATA 'difyctl' }
+    return Join-Path $prefix 'bin'
+}
+
+# The user PATH alone: $env:PATH also holds the machine PATH, which must not be copied into it.
+function Get-PathHint([string]$Dir) {
+    return "  [Environment]::SetEnvironmentVariable('PATH', `"$Dir;`" + [Environment]::GetEnvironmentVariable('PATH', 'User'), 'User')"
+}
+
 function Write-SkillHint {
     Write-Host 'AI agents: run `difyctl install skills <skills root>` after each install or upgrade; the skill ships inside the binary.'
 }
@@ -147,7 +159,7 @@ function Invoke-Main {
         $actual = (Get-FileHash -Path $assetPath -Algorithm SHA256).Hash.ToLower()
         if ($actual -ne $expected.ToLower()) { throw "checksum mismatch for $assetName" }
 
-        $binDir = Join-Path $prefix 'bin'
+        $binDir = Resolve-BinDir
         New-Item -ItemType Directory -Path $binDir -Force | Out-Null
         $targetBin = Join-Path $binDir 'difyctl.exe'
         Copy-Item -Path $assetPath -Destination $targetBin -Force
@@ -157,7 +169,7 @@ function Invoke-Main {
         if (($env:PATH -split ';') -notcontains $binDir) {
             Write-Host ""
             Write-Host "$binDir is not on your PATH. Add it with:"
-            Write-Host "  [Environment]::SetEnvironmentVariable('PATH', `"$binDir;`$env:PATH`", 'User')"
+            Write-Host (Get-PathHint $binDir)
         }
         else {
             Write-Host 'verify: run "difyctl version"'
