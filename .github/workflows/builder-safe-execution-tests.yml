@@ -128,6 +128,7 @@ jobs:
                   "test_json_supplied_mismatched_graph_plugin_identifier_refuses_before_allocation": 1,
                   "test_json_constant_only_graph_without_start_inputs_seals_native_completion": 1,
                   "test_serverless_json_native_owned_prepare_run_and_seal": 1,
+                  "test_native_editor_metadata_serverless_json_prepare_run_and_seal": 1,
               },
               "test_workflow_empty_draft": {
                   "test_postgres_empty_save_state_transition": 20,
@@ -393,6 +394,9 @@ jobs:
           json_policy_module = "tests.unit_tests.services.dify_builder.test_json_tool_execution"
           json_policy_expected = {
               "test_reviewed_pure_mixed_graph_admits_exact_native_chain": 1,
+              "test_native_editor_metadata_admits_without_changing_graph_or_parameters": 2,
+              "test_native_editor_tool_metadata_refuses_bad_types_bounds_and_unknown_fields": 14,
+              "test_native_editor_end_metadata_keeps_exact_text_tool_selector": 6,
               "test_string_source_variants": 6,
               "test_final_parameters_keep_native_boolean": 4,
               "test_non_boolean_ensure_ascii_refuses_before_coercion": 10,
