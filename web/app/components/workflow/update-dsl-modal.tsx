@@ -17,6 +17,7 @@ import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { DSLImportMode, DSLImportStatus } from '@/models/app'
 import { consoleQuery } from '@/service/console'
 import { fetchWorkflowDraft } from '@/service/workflow'
+import { asyncRunSafe } from '@/utils'
 import { collaborationManager } from './collaboration/core/collaboration-manager'
 import { WORKFLOW_DATA_UPDATE } from './constants'
 import {
@@ -78,35 +79,44 @@ const UpdateDSLModal = ({ appId, appMode, onCancel, onBackup, onImport }: Update
         return
       }
 
-      const payload = getImportNotificationPayload(status, t)
-      toast[payload.type](
-        payload.message,
-        payload.children
-          ? {
-              description: (
-                <DSLImportWarningDescription warnings={warnings} fallback={payload.children} />
-              ),
-            }
-          : undefined,
-      )
-      try {
-        await handleWorkflowUpdate(appId)
-      } catch (error) {
-        collaborationManager.emitWorkflowUpdate(appId)
-        toast.error(
-          t(($) => $.error, { ns: 'common' }),
-          {
-            description: getAppTransferErrorMessage(error),
-          },
-        )
-        // Reload the committed graph before the old canvas can resume autosaving.
+      const [refreshError] = await asyncRunSafe(handleWorkflowUpdate(appId))
+      collaborationManager.emitWorkflowUpdate(appId)
+      // Do not let the stale canvas resume autosaving a successfully imported graph.
+      if (refreshError) {
+        if (refreshError.name !== 'AbortError')
+          toast.warning(
+            t(($) => $['common.importWarning'], { ns: 'workflow' }),
+            {
+              description: getAppTransferErrorMessage(refreshError),
+            },
+          )
         window.location.reload()
         return
       }
-      collaborationManager.emitWorkflowUpdate(appId)
       onImport?.()
-      // Dependency checks own their feedback after the import has already succeeded.
-      await handleCheckPluginDependencies(appId)
+      const [dependencyError] = await asyncRunSafe(handleCheckPluginDependencies(appId))
+      if (dependencyError?.name !== 'AbortError') {
+        const payload = getImportNotificationPayload(
+          dependencyError ? 'completed-with-warnings' : status,
+          t,
+        )
+        toast[payload.type](
+          payload.message,
+          payload.children
+            ? {
+                description: (
+                  <DSLImportWarningDescription
+                    warnings={[
+                      ...(warnings ?? []),
+                      ...(dependencyError ? [{ message: dependencyError.message }] : []),
+                    ]}
+                    fallback={payload.children}
+                  />
+                ),
+              }
+            : undefined,
+        )
+      }
       onCancel()
     },
     [handleCheckPluginDependencies, handleWorkflowUpdate, onCancel, onImport, t],
@@ -126,6 +136,7 @@ const UpdateDSLModal = ({ appId, appMode, onCancel, onBackup, onImport }: Update
   }
 
   const notifyImportError = async (error: unknown) => {
+    if (error instanceof Error && error.name === 'AbortError') return
     toast.error(
       t(($) => $['common.importFailure'], { ns: 'workflow' }),
       {

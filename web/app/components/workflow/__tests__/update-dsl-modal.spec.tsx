@@ -462,6 +462,21 @@ describe('UpdateDSLModal', () => {
     })
   })
 
+  it('reports one warning after a successful graph replacement when dependency checking fails', async () => {
+    const user = userEvent.setup()
+    mockHandleCheckPluginDependencies.mockRejectedValueOnce(new Error('Dependencies unavailable'))
+    renderModal()
+    await user.upload(screen.getByTestId('dsl-file-input'), new File(['workflow'], 'workflow.yml'))
+    await user.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
+    await waitFor(() => expect(defaultProps.onCancel).toHaveBeenCalledTimes(1))
+    expect(toast.warning).toHaveBeenCalledExactlyOnceWith('workflow.common.importWarning', {
+      description: expect.anything(),
+    })
+    expect(toast.success).not.toHaveBeenCalled()
+    expect(toast.error).not.toHaveBeenCalled()
+    expect(mockEmitWorkflowUpdate).toHaveBeenCalledWith('app-1')
+  })
+
   it('keeps a successful import successful when refreshing the draft fails', async () => {
     const user = userEvent.setup()
     const reload = vi.spyOn(window.location, 'reload').mockImplementation(() => {})
@@ -471,11 +486,12 @@ describe('UpdateDSLModal', () => {
     await user.click(screen.getByRole('button', { name: 'workflow.common.overwriteAndImport' }))
 
     await waitFor(() =>
-      expect(mockToastError).toHaveBeenCalledExactlyOnceWith('common.error', {
+      expect(toast.warning).toHaveBeenCalledExactlyOnceWith('workflow.common.importWarning', {
         description: 'Draft refresh unavailable',
       }),
     )
-    expect(toast.success).toHaveBeenCalledWith('workflow.common.importSuccess', undefined)
+    expect(toast.success).not.toHaveBeenCalled()
+    expect(toast.error).not.toHaveBeenCalled()
     expect(defaultProps.onCancel).not.toHaveBeenCalled()
     expect(mockEmitWorkflowUpdate).toHaveBeenCalledWith('app-1')
     expect(mockReplaceGraphFromCommittedDraft).not.toHaveBeenCalled()

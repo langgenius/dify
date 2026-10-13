@@ -1,14 +1,10 @@
 import { useMutation } from '@tanstack/react-query'
 import { useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
-import { getAppTransferErrorMessage } from '@/app/components/app/transfer-error'
-import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import { useCheckPipelineDependencies } from '@/service/use-pipeline'
 import { useStore as usePluginDependenciesStore } from './store'
 
 export const usePluginDependencies = () => {
-  const { t } = useTranslation(['common'])
   const { mutateAsync: checkWorkflowDependencies } = useMutation(
     consoleQuery.apps.imports.byAppId.checkDependencies.get.mutationOptions(),
   )
@@ -17,13 +13,13 @@ export const usePluginDependencies = () => {
   const handleCheckPluginDependencies = useCallback(
     async (id: string, isPipeline = false) => {
       const { setDependencies } = usePluginDependenciesStore.getState()
-      if (isPipeline) {
-        const { leaked_dependencies } = await checkPipelineDependencies(id)
-        setDependencies(leaked_dependencies)
-        return true
-      }
-
       try {
+        if (isPipeline) {
+          const { leaked_dependencies } = await checkPipelineDependencies(id)
+          setDependencies(leaked_dependencies)
+          return
+        }
+
         const { leaked_dependencies } = await checkWorkflowDependencies({ params: { app_id: id } })
         setDependencies(
           (leaked_dependencies ?? []).map((dependency) => ({
@@ -32,19 +28,12 @@ export const usePluginDependencies = () => {
             value: { ...dependency.value, version: dependency.value.version ?? undefined },
           })),
         )
-        return true
       } catch (error) {
         setDependencies([])
-        toast.error(
-          t(($) => $.error, { ns: 'common' }),
-          {
-            description: getAppTransferErrorMessage(error),
-          },
-        )
-        return false
+        throw error
       }
     },
-    [checkWorkflowDependencies, checkPipelineDependencies, t],
+    [checkWorkflowDependencies, checkPipelineDependencies],
   )
 
   return {

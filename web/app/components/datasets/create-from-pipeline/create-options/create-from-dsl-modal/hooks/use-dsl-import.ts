@@ -1,4 +1,5 @@
 'use client'
+import type { ImportPipelineDSLConfirmResponse, ImportPipelineDSLResponse } from '@/models/pipeline'
 import { useDebounceFn } from 'ahooks'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -7,6 +8,7 @@ import { toast } from '@/app/notifications'
 import { DSLImportMode, DSLImportStatus } from '@/models/app'
 import { useRouter } from '@/next/navigation'
 import { useImportPipelineDSL, useImportPipelineDSLConfirm } from '@/service/use-pipeline'
+import { asyncRunSafe } from '@/utils'
 
 export const CreateFromDSLModalTab = {
   FROM_FILE: 'from-file',
@@ -78,6 +80,38 @@ export const useDSLImport = ({
     },
     [readFile],
   )
+  const completeImport = useCallback(
+    async (response: ImportPipelineDSLResponse | ImportPipelineDSLConfirmResponse) => {
+      const { status, pipeline_id, dataset_id } = response
+      onSuccess?.()
+      onClose?.()
+      setShowConfirmModal(false)
+      const [dependencyError] = pipeline_id
+        ? await asyncRunSafe(handleCheckPluginDependencies(pipeline_id, true))
+        : [null]
+      push(`/datasets/${dataset_id}/pipeline`)
+      if (dependencyError?.name === 'AbortError') return
+      const isWarning = status === DSLImportStatus.COMPLETED_WITH_WARNINGS || !!dependencyError
+      toast(
+        t(($) => $[isWarning ? 'creation.caution' : 'creation.successTip'], {
+          ns: 'datasetPipeline',
+        }),
+        {
+          type: isWarning ? 'warning' : 'success',
+          description:
+            [
+              status === DSLImportStatus.COMPLETED_WITH_WARNINGS &&
+                t(($) => $['newApp.appCreateDSLWarning'], { ns: 'app' }),
+              dependencyError?.message,
+            ]
+              .filter(Boolean)
+              .join('\n') || undefined,
+        },
+      )
+    },
+    [onSuccess, onClose, handleCheckPluginDependencies, push, t],
+  )
+
   const onCreate = useCallback(async () => {
     if (currentTab === CreateFromDSLModalTab.FROM_FILE && !currentFile) return
     if (currentTab === CreateFromDSLModalTab.FROM_URL && !dslUrlValue) return
@@ -101,29 +135,12 @@ export const useDSLImport = ({
         notifyError()
         return
       }
-      const { id, status, pipeline_id, dataset_id, imported_dsl_version, current_dsl_version } =
-        response
+      const { id, status, imported_dsl_version, current_dsl_version } = response
       if (
         status === DSLImportStatus.COMPLETED ||
         status === DSLImportStatus.COMPLETED_WITH_WARNINGS
       ) {
-        onSuccess?.()
-        onClose?.()
-        toast(
-          t(
-            ($) =>
-              $[status === DSLImportStatus.COMPLETED ? 'creation.successTip' : 'creation.caution'],
-            { ns: 'datasetPipeline' },
-          ),
-          {
-            type: status === DSLImportStatus.COMPLETED ? 'success' : 'warning',
-            description:
-              status === DSLImportStatus.COMPLETED_WITH_WARNINGS &&
-              t(($) => $['newApp.appCreateDSLWarning'], { ns: 'app' }),
-          },
-        )
-        if (pipeline_id) await handleCheckPluginDependencies(pipeline_id, true)
-        push(`/datasets/${dataset_id}/pipeline`)
+        await completeImport(response)
       } else if (status === DSLImportStatus.PENDING) {
         setVersions({
           importedVersion: imported_dsl_version ?? '',
@@ -138,7 +155,8 @@ export const useDSLImport = ({
         notifyError(response.error)
       }
     } catch (error) {
-      notifyError(await getImportErrorMessage(error))
+      if (!(error instanceof Error && error.name === 'AbortError'))
+        notifyError(await getImportErrorMessage(error))
     } finally {
       isCreatingRef.current = false
     }
@@ -148,16 +166,14 @@ export const useDSLImport = ({
     dslUrlValue,
     fileContent,
     importDSL,
-    t,
     notifyError,
-    onSuccess,
     onClose,
-    handleCheckPluginDependencies,
-    push,
+    completeImport,
   ])
   const { run: handleCreateApp } = useDebounceFn(onCreate, { wait: 300 })
   const onDSLConfirm = useCallback(async () => {
-    if (!importId) return
+    if (!importId || isCreatingRef.current) return
+    isCreatingRef.current = true
     setIsConfirming(true)
     try {
       const response = await importDSLConfirm(importId)
@@ -165,21 +181,23 @@ export const useDSLImport = ({
         notifyError()
         return
       }
-      const { status, pipeline_id, dataset_id, error } = response
-      if (status === DSLImportStatus.COMPLETED) {
-        onSuccess?.()
-        setShowConfirmModal(false)
-        if (pipeline_id) await handleCheckPluginDependencies(pipeline_id, true)
-        push(`/datasets/${dataset_id}/pipeline`)
+      const { status, error } = response
+      if (
+        status === DSLImportStatus.COMPLETED ||
+        status === DSLImportStatus.COMPLETED_WITH_WARNINGS
+      ) {
+        await completeImport(response)
       } else if (status === DSLImportStatus.FAILED) {
         notifyError(error)
       }
     } catch (error) {
-      notifyError(await getImportErrorMessage(error))
+      if (!(error instanceof Error && error.name === 'AbortError'))
+        notifyError(await getImportErrorMessage(error))
     } finally {
+      isCreatingRef.current = false
       setIsConfirming(false)
     }
-  }, [importId, importDSLConfirm, notifyError, onSuccess, handleCheckPluginDependencies, push])
+  }, [importId, importDSLConfirm, notifyError, completeImport])
   const handleCancelConfirm = useCallback(() => {
     setShowConfirmModal(false)
   }, [])

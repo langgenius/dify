@@ -15,9 +15,10 @@ vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: vi.fn(),
 }))
 
-const { mockToastSuccess, mockToastError } = vi.hoisted(() => ({
+const { mockToastSuccess, mockToastError, mockToastWarning } = vi.hoisted(() => ({
   mockToastSuccess: vi.fn(),
   mockToastError: vi.fn(),
+  mockToastWarning: vi.fn(),
 }))
 
 vi.mock('@/app/notifications', async (importOriginal) => {
@@ -28,6 +29,7 @@ vi.mock('@/app/notifications', async (importOriginal) => {
       ...actual.toast,
       success: mockToastSuccess,
       error: mockToastError,
+      warning: mockToastWarning,
     },
   }
 })
@@ -235,9 +237,9 @@ describe('TemplateCard', () => {
     })
 
     it('should create dataset when template is applied', async () => {
-      mockCreateDataset.mockImplementation((_data, callbacks) => {
-        callbacks.onSuccess({ dataset_id: 'new-dataset-123', pipeline_id: 'pipe-123' })
-        return Promise.resolve()
+      mockCreateDataset.mockResolvedValue({
+        dataset_id: 'new-dataset-123',
+        pipeline_id: 'pipe-123',
       })
 
       render(<TemplateCard {...defaultProps} />)
@@ -250,9 +252,9 @@ describe('TemplateCard', () => {
     })
 
     it('should navigate to pipeline page on successful creation', async () => {
-      mockCreateDataset.mockImplementation((_data, callbacks) => {
-        callbacks.onSuccess({ dataset_id: 'new-dataset-123', pipeline_id: 'pipe-123' })
-        return Promise.resolve()
+      mockCreateDataset.mockResolvedValue({
+        dataset_id: 'new-dataset-123',
+        pipeline_id: 'pipe-123',
       })
 
       render(<TemplateCard {...defaultProps} />)
@@ -265,9 +267,9 @@ describe('TemplateCard', () => {
     })
 
     it('should invalidate dataset list on successful creation', async () => {
-      mockCreateDataset.mockImplementation((_data, callbacks) => {
-        callbacks.onSuccess({ dataset_id: 'new-dataset-123', pipeline_id: 'pipe-123' })
-        return Promise.resolve()
+      mockCreateDataset.mockResolvedValue({
+        dataset_id: 'new-dataset-123',
+        pipeline_id: 'pipe-123',
       })
 
       render(<TemplateCard {...defaultProps} />)
@@ -280,9 +282,9 @@ describe('TemplateCard', () => {
     })
 
     it('should show success toast on successful creation', async () => {
-      mockCreateDataset.mockImplementation((_data, callbacks) => {
-        callbacks.onSuccess({ dataset_id: 'new-dataset-123', pipeline_id: 'pipe-123' })
-        return Promise.resolve()
+      mockCreateDataset.mockResolvedValue({
+        dataset_id: 'new-dataset-123',
+        pipeline_id: 'pipe-123',
       })
 
       render(<TemplateCard {...defaultProps} />)
@@ -295,10 +297,7 @@ describe('TemplateCard', () => {
     })
 
     it('should show error toast on creation failure', async () => {
-      mockCreateDataset.mockImplementation((_data, callbacks) => {
-        callbacks.onError(new Error('Creation failed'))
-        return Promise.resolve()
-      })
+      mockCreateDataset.mockRejectedValue(new Error('Creation failed'))
 
       render(<TemplateCard {...defaultProps} />)
       const chooseButton = screen.getByTestId('action-choose')
@@ -355,9 +354,9 @@ describe('TemplateCard', () => {
     })
 
     it('should trigger use template from details modal', async () => {
-      mockCreateDataset.mockImplementation((_data, callbacks) => {
-        callbacks.onSuccess({ dataset_id: 'new-dataset-123', pipeline_id: 'pipe-123' })
-        return Promise.resolve()
+      mockCreateDataset.mockResolvedValue({
+        dataset_id: 'new-dataset-123',
+        pipeline_id: 'pipe-123',
       })
 
       render(<TemplateCard {...defaultProps} />)
@@ -379,12 +378,28 @@ describe('TemplateCard', () => {
     })
   })
 
+  it('reports one warning and navigates to the created dataset when dependency checking fails', async () => {
+    mockCreateDataset.mockResolvedValue({ dataset_id: 'new-dataset-123', pipeline_id: 'pipe-123' })
+    mockHandleCheckPluginDependencies.mockRejectedValue(new Error('Dependencies unavailable'))
+    render(<TemplateCard {...defaultProps} />)
+    fireEvent.click(screen.getByRole('button', { name: 'operations.choose' }))
+    await waitFor(() =>
+      expect(mockToastWarning).toHaveBeenCalledExactlyOnceWith(
+        'datasetPipeline.creation.successTip',
+        { description: 'Dependencies unavailable' },
+      ),
+    )
+    expect(mockPush).toHaveBeenCalledWith('/datasets/new-dataset-123/pipeline')
+    expect(mockToastSuccess).not.toHaveBeenCalled()
+    expect(mockToastError).not.toHaveBeenCalled()
+  })
+
   // Pipeline ID Branch Tests
   describe('Pipeline ID Branch', () => {
     it('should call handleCheckPluginDependencies when pipeline_id is present', async () => {
-      mockCreateDataset.mockImplementation((_data, callbacks) => {
-        callbacks.onSuccess({ dataset_id: 'new-dataset-123', pipeline_id: 'pipe-123' })
-        return Promise.resolve()
+      mockCreateDataset.mockResolvedValue({
+        dataset_id: 'new-dataset-123',
+        pipeline_id: 'pipe-123',
       })
 
       render(<TemplateCard {...defaultProps} />)
@@ -397,10 +412,7 @@ describe('TemplateCard', () => {
     })
 
     it('should not call handleCheckPluginDependencies when pipeline_id is falsy', async () => {
-      mockCreateDataset.mockImplementation((_data, callbacks) => {
-        callbacks.onSuccess({ dataset_id: 'new-dataset-123', pipeline_id: '' })
-        return Promise.resolve()
-      })
+      mockCreateDataset.mockResolvedValue({ dataset_id: 'new-dataset-123', pipeline_id: '' })
 
       render(<TemplateCard {...defaultProps} />)
       const chooseButton = screen.getByTestId('action-choose')
@@ -413,10 +425,7 @@ describe('TemplateCard', () => {
     })
 
     it('should not call handleCheckPluginDependencies when pipeline_id is null', async () => {
-      mockCreateDataset.mockImplementation((_data, callbacks) => {
-        callbacks.onSuccess({ dataset_id: 'new-dataset-123', pipeline_id: null })
-        return Promise.resolve()
-      })
+      mockCreateDataset.mockResolvedValue({ dataset_id: 'new-dataset-123', pipeline_id: null })
 
       render(<TemplateCard {...defaultProps} />)
       const chooseButton = screen.getByTestId('action-choose')

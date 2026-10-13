@@ -45,6 +45,15 @@ A success toast is appropriate when the result is not on screen: a background jo
 - Intentional cancellation, automatic retries, and intermediate recovery failures must not produce toasts. Report the final failure at the action owner. Do not use runtime error-object deduplication to coordinate competing owners.
 - Client-side validation belongs at the field through the [form contract], never in a toast.
 
+## Multi-request Actions
+
+Delay the final notification until the action's follow-up requests settle. For imports and
+resource creation, a failed dependency check must not report that the already committed
+operation failed. The action owner combines server warnings and follow-up failures into one
+warning and preserves access to the created resource. Dependency helpers update state or throw;
+they do not notify independently. If the imported editor graph cannot be refreshed safely,
+show a single warning and reload before the stale canvas can save over the committed graph.
+
 ## Existing Code
 
 When migrating a request, inspect its caller before removing error feedback. The HTTP layer does not provide a fallback. Background queries should expose their error state at the consuming surface instead of producing unsolicited toasts.

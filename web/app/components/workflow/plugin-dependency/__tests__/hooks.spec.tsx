@@ -58,7 +58,7 @@ describe('usePluginDependencies', () => {
       .mockResolvedValueOnce({})
     const { result } = renderDependencies()
     await act(async () =>
-      expect(await result.current.handleCheckPluginDependencies('app-1')).toBe(true),
+      expect(await result.current.handleCheckPluginDependencies('app-1')).toBeUndefined(),
     )
     expect(useStore.getState().dependencies).toEqual([
       { ...dependency, value: { ...dependency.value, version: undefined } },
@@ -66,6 +66,24 @@ describe('usePluginDependencies', () => {
     expect(mocks.request).toHaveBeenCalledWith({ params: { app_id: 'app-1' } }, undefined)
     await act(async () => result.current.handleCheckPluginDependencies('app-1'))
     expect(useStore.getState().dependencies).toEqual([])
+  })
+
+  it('clears stale pipeline dependencies and lets the action owner handle the error', async () => {
+    useStore
+      .getState()
+      .setDependencies([
+        { type: 'marketplace', value: { marketplace_plugin_unique_identifier: 'old-plugin' } },
+      ])
+    const error = new Error('Pipeline dependency check unavailable')
+    mocks.pipeline.mockRejectedValueOnce(error)
+    const { result } = renderDependencies()
+    await act(async () => {
+      await expect(result.current.handleCheckPluginDependencies('pipeline-1', true)).rejects.toBe(
+        error,
+      )
+    })
+    expect(useStore.getState().dependencies).toEqual([])
+    expect(mocks.error).not.toHaveBeenCalled()
   })
 
   it.each([
@@ -76,22 +94,19 @@ describe('usePluginDependencies', () => {
       }),
       'Dependency check unavailable',
     ],
-  ])(
-    'reports a request failure once without rejecting the completed import',
-    async (error, description) => {
-      useStore.getState().setDependencies([
-        {
-          type: 'marketplace',
-          value: { marketplace_plugin_unique_identifier: 'previous-app-plugin' },
-        },
-      ])
-      mocks.request.mockRejectedValue(error)
-      const { result } = renderDependencies()
-      await act(async () =>
-        expect(await result.current.handleCheckPluginDependencies('app-1')).toBe(false),
-      )
-      expect(mocks.error).toHaveBeenCalledExactlyOnceWith('common.error', { description })
-      expect(useStore.getState().dependencies).toEqual([])
-    },
-  )
+  ])('propagates failures to the action owner without showing feedback', async (error) => {
+    useStore.getState().setDependencies([
+      {
+        type: 'marketplace',
+        value: { marketplace_plugin_unique_identifier: 'previous-app-plugin' },
+      },
+    ])
+    mocks.request.mockRejectedValue(error)
+    const { result } = renderDependencies()
+    await act(async () =>
+      expect(result.current.handleCheckPluginDependencies('app-1')).rejects.toBe(error),
+    )
+    expect(mocks.error).not.toHaveBeenCalled()
+    expect(useStore.getState().dependencies).toEqual([])
+  })
 })
