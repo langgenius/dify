@@ -420,6 +420,11 @@ class AppGenerateService:
                 )
                 # A blocking run executes inside this call and opens its own sessions.
                 _release_session_connection(session)
+                if isinstance(builder_execution, JsonToolExecutionContext):
+                    # The Builder port passes an explicit read Session. All workflow
+                    # reads are complete here; release its transaction before the
+                    # native generator starts a worker that performs metadata I/O.
+                    session.close()
                 return rate_limit.generate(
                     WorkflowAppGenerator.convert_to_event_stream(
                         WorkflowAppGenerator(execution_driver=WorkflowRunAgg.run).generate(
