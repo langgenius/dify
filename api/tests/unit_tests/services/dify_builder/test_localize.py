@@ -92,6 +92,26 @@ def test_localize_current_goal_and_default_recovery_copy(monkeypatch):
     assert localized[1].payload["reply_text"] == "我已填入合理的默认值。请检查并调整需求。"
 
 
+@pytest.mark.parametrize(
+    ("source", "translation"),
+    [
+        ("The final plan is ready for approval.", "最终计划已准备好供审批。"),
+        ("The final change plan is ready for approval.", "最终变更计划已准备好供审批。"),
+        (
+            "I didn't apply anything: the canvas already has nodes with these ids. "
+            "Clear it or start from a new app, then approve again.",
+            "我没有应用任何内容：画布上已有这些 ID 的节点。请清空画布或新建应用，然后再次批准。",
+        ),
+    ],
+)
+def test_localize_current_build_and_edit_handler_literals(monkeypatch, source, translation):
+    loc, _ = _localizer(monkeypatch, table={source: translation})
+
+    item = ConversationItem(kind="assistant_turn", payload={"reply_text": source})
+
+    assert loc.localize_items([item], "zh-Hans")[0].payload["reply_text"] == translation
+
+
 def test_localize_form_presentation_preserves_field_keys_options_defaults_and_raw_values(monkeypatch):
     loc, _ = _localizer(
         monkeypatch,
@@ -136,6 +156,44 @@ def test_localize_form_presentation_preserves_field_keys_options_defaults_and_ra
     assert result["values"] == {"goal": "Yes"}
 
 
+def test_localize_resource_select_preserves_resource_identity_names_and_metadata(monkeypatch):
+    loc, _ = _localizer(
+        monkeypatch,
+        table={"Which resources should Builder use?": "Builder 应使用哪些资源？", "Goal": "目标"},
+    )
+    item = ConversationItem(
+        kind="resource_select",
+        payload={
+            "title": "Which resources should Builder use?",
+            "description": "Recommended resources are selected by default.",
+            "recommended": [
+                {
+                    "id": "kb-goal",
+                    "label": "Goal",
+                    "meta": "Goal",
+                    "kind": "knowledge",
+                    "readiness": "ready",
+                }
+            ],
+            "selected_ids": ["kb-goal"],
+        },
+    )
+
+    result = loc.localize_items([item], "zh-Hans")[0].payload
+
+    assert result["title"] == "Builder 应使用哪些资源？"
+    assert result["recommended"] == [
+        {
+            "id": "kb-goal",
+            "label": "Goal",
+            "meta": "Goal",
+            "kind": "knowledge",
+            "readiness": "ready",
+        }
+    ]
+    assert result["selected_ids"] == ["kb-goal"]
+
+
 @pytest.mark.parametrize(
     ("language", "translated_goal", "translated_yes"),
     [("zh-Hans", "目标", "是"), ("ja", "目標", "はい")],
@@ -155,13 +213,54 @@ def test_ui_copy_catalog_is_batched_and_includes_later_gate_and_receipt_literals
     assert model.translate_calls == 1
 
 
-def test_ui_copy_catalog_translation_failure_leaves_missing_entries_for_english_fallback(monkeypatch):
+def test_ui_copy_catalog_translation_failure_leaves_missing_entries_for_english_fallback():
     loc = Localizer(lambda: None)
 
     copy = loc.localize_ui_copy("ja")
 
     assert copy.get("Goal", "Goal") == "Goal"
     assert copy.get("Approve plan", "Approve plan") == "Approve plan"
+
+
+def test_ui_copy_persisted_warm_map_survives_cold_process_cache_and_translates_only_misses(monkeypatch):
+    loc, _ = _localizer(monkeypatch, table={"Goal": "目標", "Approve plan": "プランを承認"})
+    full = loc.localize_ui_copy("ja")
+    assert full["Goal"] == "目標"
+    partial = {source: translated for source, translated in full.items() if source != "Approve plan"}
+    localize_mod._TRANSLATION_CACHE.clear()
+    requested: list[list[str]] = []
+
+    def fake_invoke_json(_model, *, system, user):  # noqa: ARG001
+        import json
+
+        requested.append(list(json.loads(user).values()))
+        return {"0": "プランを承認"}
+
+    monkeypatch.setattr(localize_mod.llm, "invoke_json", fake_invoke_json)
+    fresh_worker = Localizer(lambda: object())
+
+    restored = fresh_worker.localize_ui_copy("ja", existing_copy=partial)
+
+    assert restored["Goal"] == "目標"
+    assert restored["Approve plan"] == "プランを承認"
+    assert requested == [["Approve plan"]]
+
+
+def test_ui_copy_rejects_unknown_and_oversized_translations(monkeypatch):
+    table = {"Approve plan": "x" * 4097}
+    loc, model = _localizer(monkeypatch, table=table)
+
+    first = loc.localize_ui_copy("ja", existing_copy={"raw user value": "bad", "Goal": "目標"})
+
+    assert first["Goal"] == "目標"
+    assert "raw user value" not in first
+    assert "Approve plan" not in first
+    table["Approve plan"] = "プランを承認"
+
+    second = loc.localize_ui_copy("ja", existing_copy=first)
+
+    assert second["Approve plan"] == "プランを承認"
+    assert model.translate_calls == 2
 
 
 def test_localize_leaves_non_catalog_prose_untouched(monkeypatch):

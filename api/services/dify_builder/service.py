@@ -10,8 +10,8 @@ caller (P3b Task 4: the Flask controller + the Celery task's ``.delay``).
 
 import json
 import logging
-from collections.abc import Callable, Iterator
-from dataclasses import asdict
+from collections.abc import Callable, Iterator, Mapping
+from dataclasses import asdict, replace
 from enum import StrEnum
 from typing import TYPE_CHECKING, Protocol
 from uuid import uuid4
@@ -32,6 +32,7 @@ from core.dify_builder.contract import (
     Phase,
     PreflightContextCard,
     PreflightIssue,
+    RecoveryClass,
     RunContextCard,
     RunStatus,
     SessionModel,
@@ -519,13 +520,84 @@ _FORM_COPY_FOR_VARIANT: dict[str, tuple[str, str]] = {
 }
 
 
-def _display_interaction_value(value: object) -> str:
+# Finite presentation vocabulary used by fresh session views and submitted
+# receipts. This is prepared in the worker and persisted with the context so
+# GET/SSE need no model call and a restarted worker can reuse prior translations.
+# Keep raw user values, dynamic resource labels, IDs and action guards out of it.
+UI_COPY_SOURCES: frozenset[str] = frozenset(
+    {
+        *(action.label for actions in _ACTIONS_FOR.values() for action in actions),
+        *(action.label for action in NO_REPAIR_ACTIONS),
+        *(text for pair in _DECISION_COPY_FOR.values() for text in pair),
+        *NO_REPAIR_DECISION_COPY,
+        *(text for pair in _FORM_COPY_FOR_VARIANT.values() for text in pair),
+        *(
+            ref.message
+            for ref in (recovery.recovery_ref_for(recovery_class) for recovery_class in RecoveryClass)
+            if ref is not None
+        ),
+        # Conditional actions/decision copy outside _ACTIONS_FOR.
+        "Retry",
+        "Restart from current draft",
+        "Continue",
+        "Review draft changes",
+        "Run test",
+        "Run affected tests",
+        "Run validation",
+        "How should Builder continue?",
+        "Choose one option to continue.",
+        "Submit",
+        # Checkpoint and fixed receipt presentation.
+        "Restore point",
+        "Goal",
+        "Yes",
+        "No",
+        "—",
+        "No resources selected",
+        "Submitted form",
+        "Which resources should Builder use?",
+    }
+)
+_MAX_UI_TRANSLATION_CHARS = 4096
+
+
+def filter_ui_copy(copy: object) -> dict[str, str]:
+    """Accept only bounded translations of the service's fixed source text."""
+    if not isinstance(copy, Mapping):
+        return {}
+    return {
+        source: translated
+        for source, translated in copy.items()
+        if isinstance(source, str)
+        and source in UI_COPY_SOURCES
+        and isinstance(translated, str)
+        and bool(translated.strip())
+        and len(translated) <= _MAX_UI_TRANSLATION_CHARS
+    }
+
+
+def _ui_copy_for(context: DifyBuilderContext) -> Mapping[str, str]:
+    """Only translations prepared for this exact language may enter a view."""
+    if not context.reply_language or context.ui_copy_language != context.reply_language:
+        return {}
+    return filter_ui_copy(context.ui_copy)
+
+
+def _translated_ui(source: str, copy: Mapping[str, str]) -> str:
+    translation = copy.get(source)
+    return translation if isinstance(translation, str) and translation else source
+
+
+def _display_interaction_value(value: object, copy: Mapping[str, str] | None = None) -> str:
     if value is None or value == "":
-        return "—"
+        return _translated_ui("—", copy) if copy is not None else "—"
     if isinstance(value, bool):
-        return "Yes" if value else "No"
+        source = "Yes" if value else "No"
+        return _translated_ui(source, copy) if copy is not None else source
     if isinstance(value, list):
-        return ", ".join(_display_interaction_value(item) for item in value) or "—"
+        return ", ".join(_display_interaction_value(item, copy) for item in value) or (
+            _translated_ui("—", copy) if copy is not None else "—"
+        )
     if isinstance(value, dict):
         name = value.get("name") or value.get("filename")
         if isinstance(name, str) and name:
@@ -549,6 +621,7 @@ def _interaction_response_for(
     session: Session,
     action: Action,
     visible_actions: list[UiAction],
+    copy: Mapping[str, str],
 ) -> InteractionResponseItem | None:
     selected_action = _selected_ui_action(visible_actions, action)
     if selected_action is None:
@@ -559,8 +632,8 @@ def _interaction_response_for(
         title, _description = _decision_copy_for(session.current_state, visible_actions)
         return InteractionResponseItem(
             interaction_kind="choice",
-            question=title,
-            answer=selected_action.label,
+            question=_translated_ui(title, copy),
+            answer=_translated_ui(selected_action.label, copy),
             submitted_data={"option_id": selected_action.id},
         )
 
@@ -581,8 +654,9 @@ def _interaction_response_for(
         ]
         return InteractionResponseItem(
             interaction_kind="resource",
-            question=str(card.payload.get("title") or "Which resources should Builder use?"),
-            answer=", ".join(label for label in selected_labels if label) or "No resources selected",
+            question=_translated_ui(str(card.payload.get("title") or "Which resources should Builder use?"), copy),
+            answer=", ".join(label for label in selected_labels if label)
+            or _translated_ui("No resources selected", copy),
             submitted_data={"resource_ids": selected_ids},
         )
 
@@ -606,9 +680,9 @@ def _interaction_response_for(
         response_fields.append(
             InteractionResponseField(
                 key=key,
-                label=str(raw_field.get("label") or key),
+                label=_translated_ui(str(raw_field.get("label") or key), copy),
                 value=value,
-                display_value=_display_interaction_value(value),
+                display_value=_display_interaction_value(value, copy),
             )
         )
     fallback_title, _fallback_description = _FORM_COPY_FOR_VARIANT.get(
@@ -617,7 +691,7 @@ def _interaction_response_for(
     )
     return InteractionResponseItem(
         interaction_kind="form",
-        question=str(card.payload.get("title") or fallback_title),
+        question=_translated_ui(str(card.payload.get("title") or fallback_title), copy),
         fields=response_fields,
         submitted_data=normalized_values,
     )
@@ -1297,8 +1371,22 @@ class DifyBuilderService:
                 s, fc, Actor(account_id=s.owner_account_id, tenant_id=s.tenant_id)
             ),
         )
+        copy = _ui_copy_for(fc)
+        actions = [replace(action, label=_translated_ui(action.label, copy)) for action in actions]
+        decision = _decision_for(st, actions)
+        if decision is not None:
+            decision = replace(
+                decision,
+                title=_translated_ui(decision.title, copy),
+                description=_translated_ui(decision.description, copy),
+                submit=(
+                    replace(decision.submit, label=_translated_ui(decision.submit.label, copy))
+                    if decision.submit is not None
+                    else None
+                ),
+            )
         checkpoint = (
-            CheckpointRef(checkpoint_id=fc.checkpoint_id, label="Restore point", created_at="")
+            CheckpointRef(checkpoint_id=fc.checkpoint_id, label=_translated_ui("Restore point", copy), created_at="")
             if fc.checkpoint_id
             else None
         )
@@ -1306,6 +1394,8 @@ class DifyBuilderService:
         # actions by ``_actions_for(interrupted=...)`` above. The ``recovery`` field
         # carries only the drift-recovery class set at a waiting gate.
         recovery_ref = recovery.recovery_ref_for(fc.recovery_class)
+        if recovery_ref is not None:
+            recovery_ref = replace(recovery_ref, message=_translated_ui(recovery_ref.message, copy))
         return SessionView(
             session_id=s.id,
             app_id=s.app_id,
@@ -1318,7 +1408,7 @@ class DifyBuilderService:
             entry_mode=s.entry_mode,
             phase=_phase_for(st),
             actions=actions,
-            decision=_decision_for(st, actions),
+            decision=decision,
             active_interaction=self._active_interaction_for(s.id, s.version, actions),
             checkpoint=checkpoint,
             recovery=recovery_ref,
@@ -1338,6 +1428,7 @@ class DifyBuilderService:
                 conflicted=app_revision_conflicted,
             ),
             last_command_id=fc.last_command_id,
+            reply_language=fc.reply_language,
         )
 
     def _prepare_action(
@@ -1463,7 +1554,7 @@ class DifyBuilderService:
                 s, fc, Actor(account_id=s.owner_account_id, tenant_id=s.tenant_id)
             ),
         )
-        interaction_response = _interaction_response_for(self._repo, s, action, visible_actions)
+        interaction_response = _interaction_response_for(self._repo, s, action, visible_actions, _ui_copy_for(fc))
         action.interaction_response = asdict(interaction_response) if interaction_response is not None else None
         if action.kind == "update_model":
             if is_working(s.current_state) or self._session_lock.exists(session_id):

@@ -262,6 +262,9 @@ class DifyBuilderAppRevisionResponse(ResponseModel):
 
 class DifyBuilderSessionStateResponse(ResponseModel):
     session_id: str
+    reply_language: str = Field(
+        description="Detected user-input language (BCP-47); empty until a user language is detected."
+    )
     version: int
     canvas_read_only: bool
     run_status: RunStatus

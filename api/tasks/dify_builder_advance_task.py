@@ -332,6 +332,7 @@ def advance_session(session_id: str, action_dict: dict, actor_dict: dict, token:
             # A confirmed outcome is deterministic status metadata: no model call.
             detect_language=None if confirmed else localizer.detect_language,
             localize_items=None if confirmed else localizer.localize_items,
+            prepare_ui_copy=None if confirmed else localizer.prepare_ui_copy,
             rename_app=None if confirmed else rename_app,
             command_id=action.command_id,
         )
