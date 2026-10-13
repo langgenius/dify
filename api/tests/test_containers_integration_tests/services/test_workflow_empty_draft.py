@@ -123,6 +123,8 @@ def test_postgres_empty_draft_confirmation_is_scoped_to_full_owner_chain(
             tenant_id=original.app.tenant_id,
             name="Other owned app",
             mode=AppMode.WORKFLOW,
+            enable_site=False,
+            enable_api=False,
             created_by=original.account.id,
             updated_by=original.account.id,
         )
