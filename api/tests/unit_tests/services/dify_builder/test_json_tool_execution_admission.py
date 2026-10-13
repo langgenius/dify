@@ -10,6 +10,7 @@ from pathlib import Path
 
 import pytest
 
+from core.dify_builder.execution_policy import scalar_inputs_digest
 from models.dify_builder import DifyBuilderExecutionRequest, DifyBuilderTestInput
 from models.workflow import Workflow
 from services.dify_builder.execution_policy_service import BuilderExecutionPolicyService
@@ -49,6 +50,8 @@ def test_owned_json_parse_prepare_persists_restricted_request(owned, ensure_asci
     assert context.policy_version == "builder-json-parse-v1"
     assert context.mode == "restricted"
     assert context.sandbox_profile == "disabled"
+    assert context.submitted_inputs_digest == scalar_inputs_digest(submitted)
+    assert context.effective_inputs_digest == scalar_inputs_digest(submitted)
     assert [(node.node_id, node.implementation, node.node_version) for node in context.admitted_nodes] == [
         ("node1", "graphon.nodes.start.start_node.StartNode", "1"),
         ("node2", "graphon.nodes.tool.tool_node.ToolNode", "1"),
