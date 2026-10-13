@@ -149,7 +149,9 @@ export const useDeleteMCP = ({ onSuccess }: { onSuccess?: () => void }) => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'delete-mcp'],
     mutationFn: (id: string) => {
+      // Query params for API <= 1.17.0 (DELETE validated args only); body for newer API.
       return del('/workspaces/current/tool-provider/mcp', {
+        params: { provider_id: id },
         body: {
           provider_id: id,
         },

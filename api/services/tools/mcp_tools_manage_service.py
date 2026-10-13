@@ -35,6 +35,13 @@ EMPTY_TOOLS_JSON = "[]"
 EMPTY_CREDENTIALS_JSON = "{}"
 
 
+def serialize_mcp_tool_for_storage(tool: MCPTool) -> dict[str, Any]:
+    """Persist MCP tools without JSON nulls for omitted optional MCP fields (e.g. title, _meta)."""
+    data = tool.model_dump(exclude_none=True, by_alias=True)
+    data.setdefault("description", "")
+    return data
+
+
 class OAuthDataType(StrEnum):
     """Types of OAuth data that can be saved."""
 
@@ -386,12 +393,7 @@ class MCPToolManageService:
             raise ValueError(f"Failed to connect to MCP server: {e}")
 
         # Update database with retrieved tools (ensure description is a non-null string)
-        tools_payload = []
-        for tool in tools:
-            data = tool.model_dump()
-            if data.get("description") is None:
-                data["description"] = ""
-            tools_payload.append(data)
+        tools_payload = [serialize_mcp_tool_for_storage(tool) for tool in tools]
         db_provider.tools = json.dumps(tools_payload)
         db_provider.authed = True
         db_provider.updated_at = datetime.now()
@@ -728,12 +730,7 @@ class MCPToolManageService:
             ) as mcp_client:
                 tools = mcp_client.list_tools()
                 # Ensure tool descriptions are non-null in payload
-                tools_payload = []
-                for t in tools:
-                    d = t.model_dump()
-                    if d.get("description") is None:
-                        d["description"] = ""
-                    tools_payload.append(d)
+                tools_payload = [serialize_mcp_tool_for_storage(t) for t in tools]
                 return ReconnectResult(
                     authed=True,
                     tools=json.dumps(tools_payload),
