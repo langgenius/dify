@@ -127,7 +127,13 @@ class Localizer:
         # 1) collect the source strings that need translation across all items
         needed: set[str] = set()
         for item in items:
-            if item.kind == "test_result":
+            if item.kind == "user":
+                # User input and client turn IDs must survive commit verbatim for retry lookup.
+                continue
+            elif item.kind == "assistant_turn":
+                # The reply is presentation; execution and turn protocol fields are facts.
+                self._collect(item.payload.get("reply_text"), language, needed)
+            elif item.kind == "test_result":
                 # Evidence and protocol IDs are facts, even when a value matches
                 # catalog prose. Only presentation fields may be translated.
                 for key in ("failure_reason", "review_note"):
@@ -151,7 +157,14 @@ class Localizer:
         self._fill_cache(sorted(needed), language)
         # 3) apply
         for item in items:
-            if item.kind == "test_result":
+            if item.kind == "user":
+                continue
+            elif item.kind == "assistant_turn":
+                item.payload = {
+                    key: self._apply(value, language) if key == "reply_text" else value
+                    for key, value in item.payload.items()
+                }
+            elif item.kind == "test_result":
                 item.payload = {
                     key: self._apply(value, language) if key in ("failure_reason", "review_note") else value
                     for key, value in item.payload.items()
