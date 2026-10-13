@@ -3,6 +3,18 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
+  zCreateApiBasedExtensionError400,
+  zCreateApiBasedExtensionError401,
+  zDeleteApiBasedExtensionError400,
+  zDeleteApiBasedExtensionError401,
+  zGetApiBasedExtensionError400,
+  zGetApiBasedExtensionError401,
+  zGetApiBasedExtensionsError400,
+  zGetApiBasedExtensionsError401,
+  zUpdateApiBasedExtensionError400,
+  zUpdateApiBasedExtensionError401,
+} from './zod.gen.ts'
+import {
   zDeleteApiBasedExtensionByIdPath,
   zDeleteApiBasedExtensionByIdResponse,
   zGetApiBasedExtensionByIdPath,
@@ -30,6 +42,14 @@ export const delete_ = oc
   })
   .input(z.object({ params: zDeleteApiBasedExtensionByIdPath }))
   .output(zDeleteApiBasedExtensionByIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zDeleteApiBasedExtensionError400 },
+    bad_request: { status: 400, data: zDeleteApiBasedExtensionError400 },
+    invalid_param: { status: 400, data: zDeleteApiBasedExtensionError400 },
+    not_init_validated: { status: 401, data: zDeleteApiBasedExtensionError401 },
+    not_setup: { status: 401, data: zDeleteApiBasedExtensionError401 },
+    unauthorized: { status: 401, data: zDeleteApiBasedExtensionError401 },
+  })
 
 /**
  * Get API-based extension by ID
@@ -45,6 +65,14 @@ export const get = oc
   })
   .input(z.object({ params: zGetApiBasedExtensionByIdPath }))
   .output(zGetApiBasedExtensionByIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetApiBasedExtensionError400 },
+    bad_request: { status: 400, data: zGetApiBasedExtensionError400 },
+    invalid_param: { status: 400, data: zGetApiBasedExtensionError400 },
+    not_init_validated: { status: 401, data: zGetApiBasedExtensionError401 },
+    not_setup: { status: 401, data: zGetApiBasedExtensionError401 },
+    unauthorized: { status: 401, data: zGetApiBasedExtensionError401 },
+  })
 
 /**
  * Update API-based extension
@@ -60,6 +88,14 @@ export const post = oc
   })
   .input(z.object({ body: zPostApiBasedExtensionByIdBody, params: zPostApiBasedExtensionByIdPath }))
   .output(zPostApiBasedExtensionByIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zUpdateApiBasedExtensionError400 },
+    bad_request: { status: 400, data: zUpdateApiBasedExtensionError400 },
+    invalid_param: { status: 400, data: zUpdateApiBasedExtensionError400 },
+    not_init_validated: { status: 401, data: zUpdateApiBasedExtensionError401 },
+    not_setup: { status: 401, data: zUpdateApiBasedExtensionError401 },
+    unauthorized: { status: 401, data: zUpdateApiBasedExtensionError401 },
+  })
 
 export const byId = {
   delete: delete_,
@@ -80,6 +116,14 @@ export const get2 = oc
     tags: ['console'],
   })
   .output(zGetApiBasedExtensionResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetApiBasedExtensionsError400 },
+    bad_request: { status: 400, data: zGetApiBasedExtensionsError400 },
+    invalid_param: { status: 400, data: zGetApiBasedExtensionsError400 },
+    not_init_validated: { status: 401, data: zGetApiBasedExtensionsError401 },
+    not_setup: { status: 401, data: zGetApiBasedExtensionsError401 },
+    unauthorized: { status: 401, data: zGetApiBasedExtensionsError401 },
+  })
 
 /**
  * Create a new API-based extension
@@ -96,6 +140,14 @@ export const post2 = oc
   })
   .input(z.object({ body: zPostApiBasedExtensionBody }))
   .output(zPostApiBasedExtensionResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zCreateApiBasedExtensionError400 },
+    bad_request: { status: 400, data: zCreateApiBasedExtensionError400 },
+    invalid_param: { status: 400, data: zCreateApiBasedExtensionError400 },
+    not_init_validated: { status: 401, data: zCreateApiBasedExtensionError401 },
+    not_setup: { status: 401, data: zCreateApiBasedExtensionError401 },
+    unauthorized: { status: 401, data: zCreateApiBasedExtensionError401 },
+  })
 
 export const apiBasedExtension = {
   get: get2,

@@ -3,6 +3,159 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
+  zDeleteCustomizedPipelineTemplateApiError400,
+  zDeleteCustomizedPipelineTemplateApiError401,
+  zDeleteRagPipelineByIdApiError400,
+  zDeleteRagPipelineByIdApiError401,
+  zDeleteRagPipelineByIdApiError404,
+  zDeleteRagPipelineNodeVariableCollectionApiError400,
+  zDeleteRagPipelineNodeVariableCollectionApiError401,
+  zDeleteRagPipelineNodeVariableCollectionApiError404,
+  zDeleteRagPipelineVariableApiError400,
+  zDeleteRagPipelineVariableApiError401,
+  zDeleteRagPipelineVariableApiError404,
+  zDeleteRagPipelineVariableCollectionApiError400,
+  zDeleteRagPipelineVariableCollectionApiError401,
+  zDeleteRagPipelineVariableCollectionApiError404,
+  zGetDatasourceListApiError400,
+  zGetDatasourceListApiError401,
+  zGetDefaultRagPipelineBlockConfigApiError400,
+  zGetDefaultRagPipelineBlockConfigApiError401,
+  zGetDefaultRagPipelineBlockConfigApiError404,
+  zGetDefaultRagPipelineBlockConfigsApiError400,
+  zGetDefaultRagPipelineBlockConfigsApiError401,
+  zGetDefaultRagPipelineBlockConfigsApiError404,
+  zGetDraftRagPipelineApiError400,
+  zGetDraftRagPipelineApiError401,
+  zGetDraftRagPipelineApiError404,
+  zGetDraftRagPipelineFirstStepApiError400,
+  zGetDraftRagPipelineFirstStepApiError401,
+  zGetDraftRagPipelineFirstStepApiError404,
+  zGetDraftRagPipelineSecondStepApiError400,
+  zGetDraftRagPipelineSecondStepApiError401,
+  zGetDraftRagPipelineSecondStepApiError404,
+  zGetPipelineTemplateDetailApiError400,
+  zGetPipelineTemplateDetailApiError401,
+  zGetPipelineTemplateListApiError400,
+  zGetPipelineTemplateListApiError401,
+  zGetPublishedAllRagPipelineApiError400,
+  zGetPublishedAllRagPipelineApiError401,
+  zGetPublishedAllRagPipelineApiError404,
+  zGetPublishedRagPipelineApiError400,
+  zGetPublishedRagPipelineApiError401,
+  zGetPublishedRagPipelineApiError404,
+  zGetPublishedRagPipelineFirstStepApiError400,
+  zGetPublishedRagPipelineFirstStepApiError401,
+  zGetPublishedRagPipelineFirstStepApiError404,
+  zGetPublishedRagPipelineSecondStepApiError400,
+  zGetPublishedRagPipelineSecondStepApiError401,
+  zGetPublishedRagPipelineSecondStepApiError404,
+  zGetRagPipelineEnvironmentVariableCollectionApiError400,
+  zGetRagPipelineEnvironmentVariableCollectionApiError401,
+  zGetRagPipelineEnvironmentVariableCollectionApiError404,
+  zGetRagPipelineExportApiError400,
+  zGetRagPipelineExportApiError401,
+  zGetRagPipelineExportApiError404,
+  zGetRagPipelineImportCheckDependenciesApiError400,
+  zGetRagPipelineImportCheckDependenciesApiError401,
+  zGetRagPipelineImportCheckDependenciesApiError404,
+  zGetRagPipelineNodeVariableCollectionApiError400,
+  zGetRagPipelineNodeVariableCollectionApiError401,
+  zGetRagPipelineNodeVariableCollectionApiError404,
+  zGetRagPipelineRecommendedPluginApiError400,
+  zGetRagPipelineRecommendedPluginApiError401,
+  zGetRagPipelineSystemVariableCollectionApiError400,
+  zGetRagPipelineSystemVariableCollectionApiError401,
+  zGetRagPipelineSystemVariableCollectionApiError404,
+  zGetRagPipelineVariableApiError400,
+  zGetRagPipelineVariableApiError401,
+  zGetRagPipelineVariableApiError404,
+  zGetRagPipelineVariableCollectionApiError400,
+  zGetRagPipelineVariableCollectionApiError401,
+  zGetRagPipelineVariableCollectionApiError404,
+  zGetRagPipelineWorkflowLastRunApiError400,
+  zGetRagPipelineWorkflowLastRunApiError401,
+  zGetRagPipelineWorkflowLastRunApiError404,
+  zGetRagPipelineWorkflowRunDetailApiError400,
+  zGetRagPipelineWorkflowRunDetailApiError401,
+  zGetRagPipelineWorkflowRunDetailApiError404,
+  zGetRagPipelineWorkflowRunListApiError400,
+  zGetRagPipelineWorkflowRunListApiError401,
+  zGetRagPipelineWorkflowRunListApiError404,
+  zGetRagPipelineWorkflowRunNodeExecutionListApiError400,
+  zGetRagPipelineWorkflowRunNodeExecutionListApiError401,
+  zGetRagPipelineWorkflowRunNodeExecutionListApiError404,
+  zPatchCustomizedPipelineTemplateApiError400,
+  zPatchCustomizedPipelineTemplateApiError401,
+  zPatchRagPipelineByIdApiError400,
+  zPatchRagPipelineByIdApiError401,
+  zPatchRagPipelineByIdApiError404,
+  zPatchRagPipelineVariableApiError400,
+  zPatchRagPipelineVariableApiError401,
+  zPatchRagPipelineVariableApiError404,
+  zPostCreateEmptyRagPipelineDatasetApiError400,
+  zPostCreateEmptyRagPipelineDatasetApiError401,
+  zPostCreateRagPipelineDatasetApiError400,
+  zPostCreateRagPipelineDatasetApiError401,
+  zPostCreateRagPipelineDatasetApiError409,
+  zPostCustomizedPipelineTemplateApiError400,
+  zPostCustomizedPipelineTemplateApiError401,
+  zPostDataSourceContentPreviewApiError400,
+  zPostDataSourceContentPreviewApiError401,
+  zPostDataSourceContentPreviewApiError404,
+  zPostDraftRagPipelineApiError400,
+  zPostDraftRagPipelineApiError401,
+  zPostDraftRagPipelineApiError404,
+  zPostDraftRagPipelineApiError409,
+  zPostDraftRagPipelineRunApiError400,
+  zPostDraftRagPipelineRunApiError401,
+  zPostDraftRagPipelineRunApiError404,
+  zPostDraftRagPipelineRunApiError429,
+  zPostPublishCustomizedPipelineTemplateApiError400,
+  zPostPublishCustomizedPipelineTemplateApiError401,
+  zPostPublishCustomizedPipelineTemplateApiError404,
+  zPostPublishedRagPipelineApiError400,
+  zPostPublishedRagPipelineApiError401,
+  zPostPublishedRagPipelineApiError404,
+  zPostPublishedRagPipelineRunApiError400,
+  zPostPublishedRagPipelineRunApiError401,
+  zPostPublishedRagPipelineRunApiError404,
+  zPostPublishedRagPipelineRunApiError429,
+  zPostRagPipelineDatasourceVariableApiError400,
+  zPostRagPipelineDatasourceVariableApiError401,
+  zPostRagPipelineDatasourceVariableApiError404,
+  zPostRagPipelineDraftDatasourceNodeRunApiError400,
+  zPostRagPipelineDraftDatasourceNodeRunApiError401,
+  zPostRagPipelineDraftDatasourceNodeRunApiError404,
+  zPostRagPipelineDraftNodeRunApiError400,
+  zPostRagPipelineDraftNodeRunApiError401,
+  zPostRagPipelineDraftNodeRunApiError404,
+  zPostRagPipelineDraftRunIterationNodeApiError400,
+  zPostRagPipelineDraftRunIterationNodeApiError401,
+  zPostRagPipelineDraftRunIterationNodeApiError404,
+  zPostRagPipelineDraftRunLoopNodeApiError400,
+  zPostRagPipelineDraftRunLoopNodeApiError401,
+  zPostRagPipelineDraftRunLoopNodeApiError404,
+  zPostRagPipelineDraftWorkflowRestoreApiError400,
+  zPostRagPipelineDraftWorkflowRestoreApiError401,
+  zPostRagPipelineDraftWorkflowRestoreApiError404,
+  zPostRagPipelineImportApiError400,
+  zPostRagPipelineImportApiError401,
+  zPostRagPipelineImportConfirmApiError400,
+  zPostRagPipelineImportConfirmApiError401,
+  zPostRagPipelinePublishedDatasourceNodeRunApiError400,
+  zPostRagPipelinePublishedDatasourceNodeRunApiError401,
+  zPostRagPipelinePublishedDatasourceNodeRunApiError404,
+  zPostRagPipelineTaskStopApiError400,
+  zPostRagPipelineTaskStopApiError401,
+  zPostRagPipelineTaskStopApiError404,
+  zPostRagPipelineTransformApiError400,
+  zPostRagPipelineTransformApiError401,
+  zPutRagPipelineVariableResetApiError400,
+  zPutRagPipelineVariableResetApiError401,
+  zPutRagPipelineVariableResetApiError404,
+} from './zod.gen.ts'
+import {
   zDeleteRagPipelineCustomizedTemplatesByTemplateIdPath,
   zDeleteRagPipelineCustomizedTemplatesByTemplateIdResponse,
   zDeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdPath,
@@ -144,6 +297,18 @@ export const delete_ = oc
   })
   .input(z.object({ params: zDeleteRagPipelineCustomizedTemplatesByTemplateIdPath }))
   .output(zDeleteRagPipelineCustomizedTemplatesByTemplateIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zDeleteCustomizedPipelineTemplateApiError400 },
+    bad_request: { status: 400, data: zDeleteCustomizedPipelineTemplateApiError400 },
+    invalid_param: { status: 400, data: zDeleteCustomizedPipelineTemplateApiError400 },
+    not_init_validated: { status: 401, data: zDeleteCustomizedPipelineTemplateApiError401 },
+    not_setup: { status: 401, data: zDeleteCustomizedPipelineTemplateApiError401 },
+    unauthorized: { status: 401, data: zDeleteCustomizedPipelineTemplateApiError401 },
+    unauthorized_and_force_logout: {
+      status: 401,
+      data: zDeleteCustomizedPipelineTemplateApiError401,
+    },
+  })
 
 export const patch = oc
   .route({
@@ -161,6 +326,18 @@ export const patch = oc
     }),
   )
   .output(zPatchRagPipelineCustomizedTemplatesByTemplateIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPatchCustomizedPipelineTemplateApiError400 },
+    bad_request: { status: 400, data: zPatchCustomizedPipelineTemplateApiError400 },
+    invalid_param: { status: 400, data: zPatchCustomizedPipelineTemplateApiError400 },
+    not_init_validated: { status: 401, data: zPatchCustomizedPipelineTemplateApiError401 },
+    not_setup: { status: 401, data: zPatchCustomizedPipelineTemplateApiError401 },
+    unauthorized: { status: 401, data: zPatchCustomizedPipelineTemplateApiError401 },
+    unauthorized_and_force_logout: {
+      status: 401,
+      data: zPatchCustomizedPipelineTemplateApiError401,
+    },
+  })
 
 export const post = oc
   .route({
@@ -172,6 +349,18 @@ export const post = oc
   })
   .input(z.object({ params: zPostRagPipelineCustomizedTemplatesByTemplateIdPath }))
   .output(zPostRagPipelineCustomizedTemplatesByTemplateIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostCustomizedPipelineTemplateApiError400 },
+    bad_request: { status: 400, data: zPostCustomizedPipelineTemplateApiError400 },
+    invalid_param: { status: 400, data: zPostCustomizedPipelineTemplateApiError400 },
+    not_init_validated: { status: 401, data: zPostCustomizedPipelineTemplateApiError401 },
+    not_setup: { status: 401, data: zPostCustomizedPipelineTemplateApiError401 },
+    unauthorized: { status: 401, data: zPostCustomizedPipelineTemplateApiError401 },
+    unauthorized_and_force_logout: {
+      status: 401,
+      data: zPostCustomizedPipelineTemplateApiError401,
+    },
+  })
 
 export const byTemplateId = {
   delete: delete_,
@@ -198,6 +387,16 @@ export const post2 = oc
   })
   .input(z.object({ body: zPostRagPipelineDatasetBody }))
   .output(zPostRagPipelineDatasetResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostCreateRagPipelineDatasetApiError400 },
+    bad_request: { status: 400, data: zPostCreateRagPipelineDatasetApiError400 },
+    invalid_param: { status: 400, data: zPostCreateRagPipelineDatasetApiError400 },
+    not_init_validated: { status: 401, data: zPostCreateRagPipelineDatasetApiError401 },
+    not_setup: { status: 401, data: zPostCreateRagPipelineDatasetApiError401 },
+    unauthorized: { status: 401, data: zPostCreateRagPipelineDatasetApiError401 },
+    conflict: { status: 409, data: zPostCreateRagPipelineDatasetApiError409 },
+    dataset_name_duplicate: { status: 409, data: zPostCreateRagPipelineDatasetApiError409 },
+  })
 
 export const dataset = {
   post: post2,
@@ -213,6 +412,14 @@ export const post3 = oc
     tags: ['console'],
   })
   .output(zPostRagPipelineEmptyDatasetResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostCreateEmptyRagPipelineDatasetApiError400 },
+    bad_request: { status: 400, data: zPostCreateEmptyRagPipelineDatasetApiError400 },
+    invalid_param: { status: 400, data: zPostCreateEmptyRagPipelineDatasetApiError400 },
+    not_init_validated: { status: 401, data: zPostCreateEmptyRagPipelineDatasetApiError401 },
+    not_setup: { status: 401, data: zPostCreateEmptyRagPipelineDatasetApiError401 },
+    unauthorized: { status: 401, data: zPostCreateEmptyRagPipelineDatasetApiError401 },
+  })
 
 export const emptyDataset = {
   post: post3,
@@ -233,6 +440,15 @@ export const get = oc
     }),
   )
   .output(zGetRagPipelineTemplatesByTemplateIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetPipelineTemplateDetailApiError400 },
+    bad_request: { status: 400, data: zGetPipelineTemplateDetailApiError400 },
+    invalid_param: { status: 400, data: zGetPipelineTemplateDetailApiError400 },
+    not_init_validated: { status: 401, data: zGetPipelineTemplateDetailApiError401 },
+    not_setup: { status: 401, data: zGetPipelineTemplateDetailApiError401 },
+    unauthorized: { status: 401, data: zGetPipelineTemplateDetailApiError401 },
+    unauthorized_and_force_logout: { status: 401, data: zGetPipelineTemplateDetailApiError401 },
+  })
 
 export const byTemplateId2 = {
   get,
@@ -248,6 +464,15 @@ export const get2 = oc
   })
   .input(z.object({ query: zGetRagPipelineTemplatesQuery.optional() }))
   .output(zGetRagPipelineTemplatesResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetPipelineTemplateListApiError400 },
+    bad_request: { status: 400, data: zGetPipelineTemplateListApiError400 },
+    invalid_param: { status: 400, data: zGetPipelineTemplateListApiError400 },
+    not_init_validated: { status: 401, data: zGetPipelineTemplateListApiError401 },
+    not_setup: { status: 401, data: zGetPipelineTemplateListApiError401 },
+    unauthorized: { status: 401, data: zGetPipelineTemplateListApiError401 },
+    unauthorized_and_force_logout: { status: 401, data: zGetPipelineTemplateListApiError401 },
+  })
 
 export const templates2 = {
   get: get2,
@@ -270,6 +495,14 @@ export const get3 = oc
     tags: ['console'],
   })
   .output(zGetRagPipelinesDatasourcePluginsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetDatasourceListApiError400 },
+    bad_request: { status: 400, data: zGetDatasourceListApiError400 },
+    invalid_param: { status: 400, data: zGetDatasourceListApiError400 },
+    not_init_validated: { status: 401, data: zGetDatasourceListApiError401 },
+    not_setup: { status: 401, data: zGetDatasourceListApiError401 },
+    unauthorized: { status: 401, data: zGetDatasourceListApiError401 },
+  })
 
 export const datasourcePlugins = {
   get: get3,
@@ -285,6 +518,14 @@ export const post4 = oc
   })
   .input(z.object({ params: zPostRagPipelinesImportsByImportIdConfirmPath }))
   .output(zPostRagPipelinesImportsByImportIdConfirmResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostRagPipelineImportConfirmApiError400 },
+    bad_request: { status: 400, data: zPostRagPipelineImportConfirmApiError400 },
+    invalid_param: { status: 400, data: zPostRagPipelineImportConfirmApiError400 },
+    not_init_validated: { status: 401, data: zPostRagPipelineImportConfirmApiError401 },
+    not_setup: { status: 401, data: zPostRagPipelineImportConfirmApiError401 },
+    unauthorized: { status: 401, data: zPostRagPipelineImportConfirmApiError401 },
+  })
 
 export const confirm = {
   post: post4,
@@ -304,6 +545,19 @@ export const get4 = oc
   })
   .input(z.object({ params: zGetRagPipelinesImportsByPipelineIdCheckDependenciesPath }))
   .output(zGetRagPipelinesImportsByPipelineIdCheckDependenciesResponse)
+  .errors({
+    account_not_initialized: {
+      status: 400,
+      data: zGetRagPipelineImportCheckDependenciesApiError400,
+    },
+    bad_request: { status: 400, data: zGetRagPipelineImportCheckDependenciesApiError400 },
+    invalid_param: { status: 400, data: zGetRagPipelineImportCheckDependenciesApiError400 },
+    not_init_validated: { status: 401, data: zGetRagPipelineImportCheckDependenciesApiError401 },
+    not_setup: { status: 401, data: zGetRagPipelineImportCheckDependenciesApiError401 },
+    unauthorized: { status: 401, data: zGetRagPipelineImportCheckDependenciesApiError401 },
+    not_found: { status: 404, data: zGetRagPipelineImportCheckDependenciesApiError404 },
+    pipeline_not_found: { status: 404, data: zGetRagPipelineImportCheckDependenciesApiError404 },
+  })
 
 export const checkDependencies = {
   get: get4,
@@ -323,6 +577,14 @@ export const post5 = oc
   })
   .input(z.object({ body: zPostRagPipelinesImportsBody }))
   .output(zPostRagPipelinesImportsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostRagPipelineImportApiError400 },
+    bad_request: { status: 400, data: zPostRagPipelineImportApiError400 },
+    invalid_param: { status: 400, data: zPostRagPipelineImportApiError400 },
+    not_init_validated: { status: 401, data: zPostRagPipelineImportApiError401 },
+    not_setup: { status: 401, data: zPostRagPipelineImportApiError401 },
+    unauthorized: { status: 401, data: zPostRagPipelineImportApiError401 },
+  })
 
 export const imports = {
   post: post5,
@@ -340,6 +602,14 @@ export const get5 = oc
   })
   .input(z.object({ query: zGetRagPipelinesRecommendedPluginsQuery.optional() }))
   .output(zGetRagPipelinesRecommendedPluginsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetRagPipelineRecommendedPluginApiError400 },
+    bad_request: { status: 400, data: zGetRagPipelineRecommendedPluginApiError400 },
+    invalid_param: { status: 400, data: zGetRagPipelineRecommendedPluginApiError400 },
+    not_init_validated: { status: 401, data: zGetRagPipelineRecommendedPluginApiError401 },
+    not_setup: { status: 401, data: zGetRagPipelineRecommendedPluginApiError401 },
+    unauthorized: { status: 401, data: zGetRagPipelineRecommendedPluginApiError401 },
+  })
 
 export const recommendedPlugins = {
   get: get5,
@@ -355,6 +625,14 @@ export const post6 = oc
   })
   .input(z.object({ params: zPostRagPipelinesTransformDatasetsByDatasetIdPath }))
   .output(zPostRagPipelinesTransformDatasetsByDatasetIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostRagPipelineTransformApiError400 },
+    bad_request: { status: 400, data: zPostRagPipelineTransformApiError400 },
+    invalid_param: { status: 400, data: zPostRagPipelineTransformApiError400 },
+    not_init_validated: { status: 401, data: zPostRagPipelineTransformApiError401 },
+    not_setup: { status: 401, data: zPostRagPipelineTransformApiError401 },
+    unauthorized: { status: 401, data: zPostRagPipelineTransformApiError401 },
+  })
 
 export const byDatasetId = {
   post: post6,
@@ -384,6 +662,23 @@ export const post7 = oc
     }),
   )
   .output(zPostRagPipelinesByPipelineIdCustomizedPublishResponse)
+  .errors({
+    account_not_initialized: {
+      status: 400,
+      data: zPostPublishCustomizedPipelineTemplateApiError400,
+    },
+    bad_request: { status: 400, data: zPostPublishCustomizedPipelineTemplateApiError400 },
+    invalid_param: { status: 400, data: zPostPublishCustomizedPipelineTemplateApiError400 },
+    not_init_validated: { status: 401, data: zPostPublishCustomizedPipelineTemplateApiError401 },
+    not_setup: { status: 401, data: zPostPublishCustomizedPipelineTemplateApiError401 },
+    unauthorized: { status: 401, data: zPostPublishCustomizedPipelineTemplateApiError401 },
+    unauthorized_and_force_logout: {
+      status: 401,
+      data: zPostPublishCustomizedPipelineTemplateApiError401,
+    },
+    not_found: { status: 404, data: zPostPublishCustomizedPipelineTemplateApiError404 },
+    pipeline_not_found: { status: 404, data: zPostPublishCustomizedPipelineTemplateApiError404 },
+  })
 
 export const publish = {
   post: post7,
@@ -408,6 +703,16 @@ export const get6 = oc
     }),
   )
   .output(zGetRagPipelinesByPipelineIdExportsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetRagPipelineExportApiError400 },
+    bad_request: { status: 400, data: zGetRagPipelineExportApiError400 },
+    invalid_param: { status: 400, data: zGetRagPipelineExportApiError400 },
+    not_init_validated: { status: 401, data: zGetRagPipelineExportApiError401 },
+    not_setup: { status: 401, data: zGetRagPipelineExportApiError401 },
+    unauthorized: { status: 401, data: zGetRagPipelineExportApiError401 },
+    not_found: { status: 404, data: zGetRagPipelineExportApiError404 },
+    pipeline_not_found: { status: 404, data: zGetRagPipelineExportApiError404 },
+  })
 
 export const exports_ = {
   get: get6,
@@ -427,6 +732,16 @@ export const post8 = oc
   })
   .input(z.object({ params: zPostRagPipelinesByPipelineIdWorkflowRunsTasksByTaskIdStopPath }))
   .output(zPostRagPipelinesByPipelineIdWorkflowRunsTasksByTaskIdStopResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostRagPipelineTaskStopApiError400 },
+    bad_request: { status: 400, data: zPostRagPipelineTaskStopApiError400 },
+    invalid_param: { status: 400, data: zPostRagPipelineTaskStopApiError400 },
+    not_init_validated: { status: 401, data: zPostRagPipelineTaskStopApiError401 },
+    not_setup: { status: 401, data: zPostRagPipelineTaskStopApiError401 },
+    unauthorized: { status: 401, data: zPostRagPipelineTaskStopApiError401 },
+    not_found: { status: 404, data: zPostRagPipelineTaskStopApiError404 },
+    pipeline_not_found: { status: 404, data: zPostRagPipelineTaskStopApiError404 },
+  })
 
 export const stop = {
   post: post8,
@@ -454,6 +769,25 @@ export const get7 = oc
   })
   .input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowRunsByRunIdNodeExecutionsPath }))
   .output(zGetRagPipelinesByPipelineIdWorkflowRunsByRunIdNodeExecutionsResponse)
+  .errors({
+    account_not_initialized: {
+      status: 400,
+      data: zGetRagPipelineWorkflowRunNodeExecutionListApiError400,
+    },
+    bad_request: { status: 400, data: zGetRagPipelineWorkflowRunNodeExecutionListApiError400 },
+    invalid_param: { status: 400, data: zGetRagPipelineWorkflowRunNodeExecutionListApiError400 },
+    not_init_validated: {
+      status: 401,
+      data: zGetRagPipelineWorkflowRunNodeExecutionListApiError401,
+    },
+    not_setup: { status: 401, data: zGetRagPipelineWorkflowRunNodeExecutionListApiError401 },
+    unauthorized: { status: 401, data: zGetRagPipelineWorkflowRunNodeExecutionListApiError401 },
+    not_found: { status: 404, data: zGetRagPipelineWorkflowRunNodeExecutionListApiError404 },
+    pipeline_not_found: {
+      status: 404,
+      data: zGetRagPipelineWorkflowRunNodeExecutionListApiError404,
+    },
+  })
 
 export const nodeExecutions = {
   get: get7,
@@ -473,6 +807,16 @@ export const get8 = oc
   })
   .input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowRunsByRunIdPath }))
   .output(zGetRagPipelinesByPipelineIdWorkflowRunsByRunIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetRagPipelineWorkflowRunDetailApiError400 },
+    bad_request: { status: 400, data: zGetRagPipelineWorkflowRunDetailApiError400 },
+    invalid_param: { status: 400, data: zGetRagPipelineWorkflowRunDetailApiError400 },
+    not_init_validated: { status: 401, data: zGetRagPipelineWorkflowRunDetailApiError401 },
+    not_setup: { status: 401, data: zGetRagPipelineWorkflowRunDetailApiError401 },
+    unauthorized: { status: 401, data: zGetRagPipelineWorkflowRunDetailApiError401 },
+    not_found: { status: 404, data: zGetRagPipelineWorkflowRunDetailApiError404 },
+    pipeline_not_found: { status: 404, data: zGetRagPipelineWorkflowRunDetailApiError404 },
+  })
 
 export const byRunId = {
   get: get8,
@@ -498,6 +842,16 @@ export const get9 = oc
     }),
   )
   .output(zGetRagPipelinesByPipelineIdWorkflowRunsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetRagPipelineWorkflowRunListApiError400 },
+    bad_request: { status: 400, data: zGetRagPipelineWorkflowRunListApiError400 },
+    invalid_param: { status: 400, data: zGetRagPipelineWorkflowRunListApiError400 },
+    not_init_validated: { status: 401, data: zGetRagPipelineWorkflowRunListApiError401 },
+    not_setup: { status: 401, data: zGetRagPipelineWorkflowRunListApiError401 },
+    unauthorized: { status: 401, data: zGetRagPipelineWorkflowRunListApiError401 },
+    not_found: { status: 404, data: zGetRagPipelineWorkflowRunListApiError404 },
+    pipeline_not_found: { status: 404, data: zGetRagPipelineWorkflowRunListApiError404 },
+  })
 
 export const workflowRuns = {
   get: get9,
@@ -525,6 +879,16 @@ export const get10 = oc
     }),
   )
   .output(zGetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetDefaultRagPipelineBlockConfigApiError400 },
+    bad_request: { status: 400, data: zGetDefaultRagPipelineBlockConfigApiError400 },
+    invalid_param: { status: 400, data: zGetDefaultRagPipelineBlockConfigApiError400 },
+    not_init_validated: { status: 401, data: zGetDefaultRagPipelineBlockConfigApiError401 },
+    not_setup: { status: 401, data: zGetDefaultRagPipelineBlockConfigApiError401 },
+    unauthorized: { status: 401, data: zGetDefaultRagPipelineBlockConfigApiError401 },
+    not_found: { status: 404, data: zGetDefaultRagPipelineBlockConfigApiError404 },
+    pipeline_not_found: { status: 404, data: zGetDefaultRagPipelineBlockConfigApiError404 },
+  })
 
 export const byBlockType = {
   get: get10,
@@ -544,6 +908,16 @@ export const get11 = oc
   })
   .input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsPath }))
   .output(zGetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetDefaultRagPipelineBlockConfigsApiError400 },
+    bad_request: { status: 400, data: zGetDefaultRagPipelineBlockConfigsApiError400 },
+    invalid_param: { status: 400, data: zGetDefaultRagPipelineBlockConfigsApiError400 },
+    not_init_validated: { status: 401, data: zGetDefaultRagPipelineBlockConfigsApiError401 },
+    not_setup: { status: 401, data: zGetDefaultRagPipelineBlockConfigsApiError401 },
+    unauthorized: { status: 401, data: zGetDefaultRagPipelineBlockConfigsApiError401 },
+    not_found: { status: 404, data: zGetDefaultRagPipelineBlockConfigsApiError404 },
+    pipeline_not_found: { status: 404, data: zGetDefaultRagPipelineBlockConfigsApiError404 },
+  })
 
 export const defaultWorkflowBlockConfigs = {
   get: get11,
@@ -569,6 +943,19 @@ export const post9 = oc
     }),
   )
   .output(zPostRagPipelinesByPipelineIdWorkflowsDraftDatasourceNodesByNodeIdRunResponse)
+  .errors({
+    account_not_initialized: {
+      status: 400,
+      data: zPostRagPipelineDraftDatasourceNodeRunApiError400,
+    },
+    bad_request: { status: 400, data: zPostRagPipelineDraftDatasourceNodeRunApiError400 },
+    invalid_param: { status: 400, data: zPostRagPipelineDraftDatasourceNodeRunApiError400 },
+    not_init_validated: { status: 401, data: zPostRagPipelineDraftDatasourceNodeRunApiError401 },
+    not_setup: { status: 401, data: zPostRagPipelineDraftDatasourceNodeRunApiError401 },
+    unauthorized: { status: 401, data: zPostRagPipelineDraftDatasourceNodeRunApiError401 },
+    not_found: { status: 404, data: zPostRagPipelineDraftDatasourceNodeRunApiError404 },
+    pipeline_not_found: { status: 404, data: zPostRagPipelineDraftDatasourceNodeRunApiError404 },
+  })
 
 export const run = {
   post: post9,
@@ -601,6 +988,16 @@ export const post10 = oc
     }),
   )
   .output(zPostRagPipelinesByPipelineIdWorkflowsDraftDatasourceVariablesInspectResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostRagPipelineDatasourceVariableApiError400 },
+    bad_request: { status: 400, data: zPostRagPipelineDatasourceVariableApiError400 },
+    invalid_param: { status: 400, data: zPostRagPipelineDatasourceVariableApiError400 },
+    not_init_validated: { status: 401, data: zPostRagPipelineDatasourceVariableApiError401 },
+    not_setup: { status: 401, data: zPostRagPipelineDatasourceVariableApiError401 },
+    unauthorized: { status: 401, data: zPostRagPipelineDatasourceVariableApiError401 },
+    not_found: { status: 404, data: zPostRagPipelineDatasourceVariableApiError404 },
+    pipeline_not_found: { status: 404, data: zPostRagPipelineDatasourceVariableApiError404 },
+  })
 
 export const variablesInspect = {
   post: post10,
@@ -625,6 +1022,29 @@ export const get12 = oc
   })
   .input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowsDraftEnvironmentVariablesPath }))
   .output(zGetRagPipelinesByPipelineIdWorkflowsDraftEnvironmentVariablesResponse)
+  .errors({
+    account_not_initialized: {
+      status: 400,
+      data: zGetRagPipelineEnvironmentVariableCollectionApiError400,
+    },
+    bad_request: { status: 400, data: zGetRagPipelineEnvironmentVariableCollectionApiError400 },
+    invalid_param: { status: 400, data: zGetRagPipelineEnvironmentVariableCollectionApiError400 },
+    not_init_validated: {
+      status: 401,
+      data: zGetRagPipelineEnvironmentVariableCollectionApiError401,
+    },
+    not_setup: { status: 401, data: zGetRagPipelineEnvironmentVariableCollectionApiError401 },
+    unauthorized: { status: 401, data: zGetRagPipelineEnvironmentVariableCollectionApiError401 },
+    draft_workflow_not_exist: {
+      status: 404,
+      data: zGetRagPipelineEnvironmentVariableCollectionApiError404,
+    },
+    not_found: { status: 404, data: zGetRagPipelineEnvironmentVariableCollectionApiError404 },
+    pipeline_not_found: {
+      status: 404,
+      data: zGetRagPipelineEnvironmentVariableCollectionApiError404,
+    },
+  })
 
 export const environmentVariables = {
   get: get12,
@@ -649,6 +1069,19 @@ export const post11 = oc
     }),
   )
   .output(zPostRagPipelinesByPipelineIdWorkflowsDraftIterationNodesByNodeIdRunResponse)
+  .errors({
+    account_not_initialized: {
+      status: 400,
+      data: zPostRagPipelineDraftRunIterationNodeApiError400,
+    },
+    bad_request: { status: 400, data: zPostRagPipelineDraftRunIterationNodeApiError400 },
+    invalid_param: { status: 400, data: zPostRagPipelineDraftRunIterationNodeApiError400 },
+    not_init_validated: { status: 401, data: zPostRagPipelineDraftRunIterationNodeApiError401 },
+    not_setup: { status: 401, data: zPostRagPipelineDraftRunIterationNodeApiError401 },
+    unauthorized: { status: 401, data: zPostRagPipelineDraftRunIterationNodeApiError401 },
+    not_found: { status: 404, data: zPostRagPipelineDraftRunIterationNodeApiError404 },
+    pipeline_not_found: { status: 404, data: zPostRagPipelineDraftRunIterationNodeApiError404 },
+  })
 
 export const run2 = {
   post: post11,
@@ -685,6 +1118,16 @@ export const post12 = oc
     }),
   )
   .output(zPostRagPipelinesByPipelineIdWorkflowsDraftLoopNodesByNodeIdRunResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostRagPipelineDraftRunLoopNodeApiError400 },
+    bad_request: { status: 400, data: zPostRagPipelineDraftRunLoopNodeApiError400 },
+    invalid_param: { status: 400, data: zPostRagPipelineDraftRunLoopNodeApiError400 },
+    not_init_validated: { status: 401, data: zPostRagPipelineDraftRunLoopNodeApiError401 },
+    not_setup: { status: 401, data: zPostRagPipelineDraftRunLoopNodeApiError401 },
+    unauthorized: { status: 401, data: zPostRagPipelineDraftRunLoopNodeApiError401 },
+    not_found: { status: 404, data: zPostRagPipelineDraftRunLoopNodeApiError404 },
+    pipeline_not_found: { status: 404, data: zPostRagPipelineDraftRunLoopNodeApiError404 },
+  })
 
 export const run3 = {
   post: post12,
@@ -712,6 +1155,16 @@ export const get13 = oc
   })
   .input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdLastRunPath }))
   .output(zGetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdLastRunResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetRagPipelineWorkflowLastRunApiError400 },
+    bad_request: { status: 400, data: zGetRagPipelineWorkflowLastRunApiError400 },
+    invalid_param: { status: 400, data: zGetRagPipelineWorkflowLastRunApiError400 },
+    not_init_validated: { status: 401, data: zGetRagPipelineWorkflowLastRunApiError401 },
+    not_setup: { status: 401, data: zGetRagPipelineWorkflowLastRunApiError401 },
+    unauthorized: { status: 401, data: zGetRagPipelineWorkflowLastRunApiError401 },
+    not_found: { status: 404, data: zGetRagPipelineWorkflowLastRunApiError404 },
+    pipeline_not_found: { status: 404, data: zGetRagPipelineWorkflowLastRunApiError404 },
+  })
 
 export const lastRun = {
   get: get13,
@@ -736,6 +1189,16 @@ export const post13 = oc
     }),
   )
   .output(zPostRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdRunResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostRagPipelineDraftNodeRunApiError400 },
+    bad_request: { status: 400, data: zPostRagPipelineDraftNodeRunApiError400 },
+    invalid_param: { status: 400, data: zPostRagPipelineDraftNodeRunApiError400 },
+    not_init_validated: { status: 401, data: zPostRagPipelineDraftNodeRunApiError401 },
+    not_setup: { status: 401, data: zPostRagPipelineDraftNodeRunApiError401 },
+    unauthorized: { status: 401, data: zPostRagPipelineDraftNodeRunApiError401 },
+    not_found: { status: 404, data: zPostRagPipelineDraftNodeRunApiError404 },
+    pipeline_not_found: { status: 404, data: zPostRagPipelineDraftNodeRunApiError404 },
+  })
 
 export const run4 = {
   post: post13,
@@ -754,6 +1217,19 @@ export const delete2 = oc
     z.object({ params: zDeleteRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesPath }),
   )
   .output(zDeleteRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesResponse)
+  .errors({
+    account_not_initialized: {
+      status: 400,
+      data: zDeleteRagPipelineNodeVariableCollectionApiError400,
+    },
+    bad_request: { status: 400, data: zDeleteRagPipelineNodeVariableCollectionApiError400 },
+    invalid_param: { status: 400, data: zDeleteRagPipelineNodeVariableCollectionApiError400 },
+    not_init_validated: { status: 401, data: zDeleteRagPipelineNodeVariableCollectionApiError401 },
+    not_setup: { status: 401, data: zDeleteRagPipelineNodeVariableCollectionApiError401 },
+    unauthorized: { status: 401, data: zDeleteRagPipelineNodeVariableCollectionApiError401 },
+    not_found: { status: 404, data: zDeleteRagPipelineNodeVariableCollectionApiError404 },
+    pipeline_not_found: { status: 404, data: zDeleteRagPipelineNodeVariableCollectionApiError404 },
+  })
 
 export const get14 = oc
   .route({
@@ -765,6 +1241,19 @@ export const get14 = oc
   })
   .input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesPath }))
   .output(zGetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesResponse)
+  .errors({
+    account_not_initialized: {
+      status: 400,
+      data: zGetRagPipelineNodeVariableCollectionApiError400,
+    },
+    bad_request: { status: 400, data: zGetRagPipelineNodeVariableCollectionApiError400 },
+    invalid_param: { status: 400, data: zGetRagPipelineNodeVariableCollectionApiError400 },
+    not_init_validated: { status: 401, data: zGetRagPipelineNodeVariableCollectionApiError401 },
+    not_setup: { status: 401, data: zGetRagPipelineNodeVariableCollectionApiError401 },
+    unauthorized: { status: 401, data: zGetRagPipelineNodeVariableCollectionApiError401 },
+    not_found: { status: 404, data: zGetRagPipelineNodeVariableCollectionApiError404 },
+    pipeline_not_found: { status: 404, data: zGetRagPipelineNodeVariableCollectionApiError404 },
+  })
 
 export const variables = {
   delete: delete2,
@@ -800,6 +1289,16 @@ export const get15 = oc
     }),
   )
   .output(zGetRagPipelinesByPipelineIdWorkflowsDraftPreProcessingParametersResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetDraftRagPipelineFirstStepApiError400 },
+    bad_request: { status: 400, data: zGetDraftRagPipelineFirstStepApiError400 },
+    invalid_param: { status: 400, data: zGetDraftRagPipelineFirstStepApiError400 },
+    not_init_validated: { status: 401, data: zGetDraftRagPipelineFirstStepApiError401 },
+    not_setup: { status: 401, data: zGetDraftRagPipelineFirstStepApiError401 },
+    unauthorized: { status: 401, data: zGetDraftRagPipelineFirstStepApiError401 },
+    not_found: { status: 404, data: zGetDraftRagPipelineFirstStepApiError404 },
+    pipeline_not_found: { status: 404, data: zGetDraftRagPipelineFirstStepApiError404 },
+  })
 
 export const parameters = {
   get: get15,
@@ -828,6 +1327,16 @@ export const get16 = oc
     }),
   )
   .output(zGetRagPipelinesByPipelineIdWorkflowsDraftProcessingParametersResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetDraftRagPipelineSecondStepApiError400 },
+    bad_request: { status: 400, data: zGetDraftRagPipelineSecondStepApiError400 },
+    invalid_param: { status: 400, data: zGetDraftRagPipelineSecondStepApiError400 },
+    not_init_validated: { status: 401, data: zGetDraftRagPipelineSecondStepApiError401 },
+    not_setup: { status: 401, data: zGetDraftRagPipelineSecondStepApiError401 },
+    unauthorized: { status: 401, data: zGetDraftRagPipelineSecondStepApiError401 },
+    not_found: { status: 404, data: zGetDraftRagPipelineSecondStepApiError404 },
+    pipeline_not_found: { status: 404, data: zGetDraftRagPipelineSecondStepApiError404 },
+  })
 
 export const parameters2 = {
   get: get16,
@@ -856,6 +1365,18 @@ export const post14 = oc
     }),
   )
   .output(zPostRagPipelinesByPipelineIdWorkflowsDraftRunResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostDraftRagPipelineRunApiError400 },
+    bad_request: { status: 400, data: zPostDraftRagPipelineRunApiError400 },
+    invalid_param: { status: 400, data: zPostDraftRagPipelineRunApiError400 },
+    not_init_validated: { status: 401, data: zPostDraftRagPipelineRunApiError401 },
+    not_setup: { status: 401, data: zPostDraftRagPipelineRunApiError401 },
+    unauthorized: { status: 401, data: zPostDraftRagPipelineRunApiError401 },
+    not_found: { status: 404, data: zPostDraftRagPipelineRunApiError404 },
+    pipeline_not_found: { status: 404, data: zPostDraftRagPipelineRunApiError404 },
+    rate_limit_error: { status: 429, data: zPostDraftRagPipelineRunApiError429 },
+    too_many_requests: { status: 429, data: zPostDraftRagPipelineRunApiError429 },
+  })
 
 export const run5 = {
   post: post14,
@@ -871,6 +1392,19 @@ export const get17 = oc
   })
   .input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowsDraftSystemVariablesPath }))
   .output(zGetRagPipelinesByPipelineIdWorkflowsDraftSystemVariablesResponse)
+  .errors({
+    account_not_initialized: {
+      status: 400,
+      data: zGetRagPipelineSystemVariableCollectionApiError400,
+    },
+    bad_request: { status: 400, data: zGetRagPipelineSystemVariableCollectionApiError400 },
+    invalid_param: { status: 400, data: zGetRagPipelineSystemVariableCollectionApiError400 },
+    not_init_validated: { status: 401, data: zGetRagPipelineSystemVariableCollectionApiError401 },
+    not_setup: { status: 401, data: zGetRagPipelineSystemVariableCollectionApiError401 },
+    unauthorized: { status: 401, data: zGetRagPipelineSystemVariableCollectionApiError401 },
+    not_found: { status: 404, data: zGetRagPipelineSystemVariableCollectionApiError404 },
+    pipeline_not_found: { status: 404, data: zGetRagPipelineSystemVariableCollectionApiError404 },
+  })
 
 export const systemVariables = {
   get: get17,
@@ -888,6 +1422,16 @@ export const put = oc
     z.object({ params: zPutRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResetPath }),
   )
   .output(zPutRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResetResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPutRagPipelineVariableResetApiError400 },
+    bad_request: { status: 400, data: zPutRagPipelineVariableResetApiError400 },
+    invalid_param: { status: 400, data: zPutRagPipelineVariableResetApiError400 },
+    not_init_validated: { status: 401, data: zPutRagPipelineVariableResetApiError401 },
+    not_setup: { status: 401, data: zPutRagPipelineVariableResetApiError401 },
+    unauthorized: { status: 401, data: zPutRagPipelineVariableResetApiError401 },
+    not_found: { status: 404, data: zPutRagPipelineVariableResetApiError404 },
+    pipeline_not_found: { status: 404, data: zPutRagPipelineVariableResetApiError404 },
+  })
 
 export const reset = {
   put,
@@ -906,6 +1450,16 @@ export const delete3 = oc
     z.object({ params: zDeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdPath }),
   )
   .output(zDeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zDeleteRagPipelineVariableApiError400 },
+    bad_request: { status: 400, data: zDeleteRagPipelineVariableApiError400 },
+    invalid_param: { status: 400, data: zDeleteRagPipelineVariableApiError400 },
+    not_init_validated: { status: 401, data: zDeleteRagPipelineVariableApiError401 },
+    not_setup: { status: 401, data: zDeleteRagPipelineVariableApiError401 },
+    unauthorized: { status: 401, data: zDeleteRagPipelineVariableApiError401 },
+    not_found: { status: 404, data: zDeleteRagPipelineVariableApiError404 },
+    pipeline_not_found: { status: 404, data: zDeleteRagPipelineVariableApiError404 },
+  })
 
 export const get18 = oc
   .route({
@@ -917,6 +1471,16 @@ export const get18 = oc
   })
   .input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdPath }))
   .output(zGetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetRagPipelineVariableApiError400 },
+    bad_request: { status: 400, data: zGetRagPipelineVariableApiError400 },
+    invalid_param: { status: 400, data: zGetRagPipelineVariableApiError400 },
+    not_init_validated: { status: 401, data: zGetRagPipelineVariableApiError401 },
+    not_setup: { status: 401, data: zGetRagPipelineVariableApiError401 },
+    unauthorized: { status: 401, data: zGetRagPipelineVariableApiError401 },
+    not_found: { status: 404, data: zGetRagPipelineVariableApiError404 },
+    pipeline_not_found: { status: 404, data: zGetRagPipelineVariableApiError404 },
+  })
 
 export const patch2 = oc
   .route({
@@ -933,6 +1497,16 @@ export const patch2 = oc
     }),
   )
   .output(zPatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPatchRagPipelineVariableApiError400 },
+    bad_request: { status: 400, data: zPatchRagPipelineVariableApiError400 },
+    invalid_param: { status: 400, data: zPatchRagPipelineVariableApiError400 },
+    not_init_validated: { status: 401, data: zPatchRagPipelineVariableApiError401 },
+    not_setup: { status: 401, data: zPatchRagPipelineVariableApiError401 },
+    unauthorized: { status: 401, data: zPatchRagPipelineVariableApiError401 },
+    not_found: { status: 404, data: zPatchRagPipelineVariableApiError404 },
+    pipeline_not_found: { status: 404, data: zPatchRagPipelineVariableApiError404 },
+  })
 
 export const byVariableId = {
   delete: delete3,
@@ -952,6 +1526,16 @@ export const delete4 = oc
   })
   .input(z.object({ params: zDeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesPath }))
   .output(zDeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zDeleteRagPipelineVariableCollectionApiError400 },
+    bad_request: { status: 400, data: zDeleteRagPipelineVariableCollectionApiError400 },
+    invalid_param: { status: 400, data: zDeleteRagPipelineVariableCollectionApiError400 },
+    not_init_validated: { status: 401, data: zDeleteRagPipelineVariableCollectionApiError401 },
+    not_setup: { status: 401, data: zDeleteRagPipelineVariableCollectionApiError401 },
+    unauthorized: { status: 401, data: zDeleteRagPipelineVariableCollectionApiError401 },
+    not_found: { status: 404, data: zDeleteRagPipelineVariableCollectionApiError404 },
+    pipeline_not_found: { status: 404, data: zDeleteRagPipelineVariableCollectionApiError404 },
+  })
 
 /**
  * Get draft workflow
@@ -972,6 +1556,17 @@ export const get19 = oc
     }),
   )
   .output(zGetRagPipelinesByPipelineIdWorkflowsDraftVariablesResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetRagPipelineVariableCollectionApiError400 },
+    bad_request: { status: 400, data: zGetRagPipelineVariableCollectionApiError400 },
+    invalid_param: { status: 400, data: zGetRagPipelineVariableCollectionApiError400 },
+    not_init_validated: { status: 401, data: zGetRagPipelineVariableCollectionApiError401 },
+    not_setup: { status: 401, data: zGetRagPipelineVariableCollectionApiError401 },
+    unauthorized: { status: 401, data: zGetRagPipelineVariableCollectionApiError401 },
+    draft_workflow_not_exist: { status: 404, data: zGetRagPipelineVariableCollectionApiError404 },
+    not_found: { status: 404, data: zGetRagPipelineVariableCollectionApiError404 },
+    pipeline_not_found: { status: 404, data: zGetRagPipelineVariableCollectionApiError404 },
+  })
 
 export const variables2 = {
   delete: delete4,
@@ -993,6 +1588,17 @@ export const get20 = oc
   })
   .input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowsDraftPath }))
   .output(zGetRagPipelinesByPipelineIdWorkflowsDraftResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetDraftRagPipelineApiError400 },
+    bad_request: { status: 400, data: zGetDraftRagPipelineApiError400 },
+    invalid_param: { status: 400, data: zGetDraftRagPipelineApiError400 },
+    not_init_validated: { status: 401, data: zGetDraftRagPipelineApiError401 },
+    not_setup: { status: 401, data: zGetDraftRagPipelineApiError401 },
+    unauthorized: { status: 401, data: zGetDraftRagPipelineApiError401 },
+    draft_workflow_not_exist: { status: 404, data: zGetDraftRagPipelineApiError404 },
+    not_found: { status: 404, data: zGetDraftRagPipelineApiError404 },
+    pipeline_not_found: { status: 404, data: zGetDraftRagPipelineApiError404 },
+  })
 
 /**
  * Sync draft workflow
@@ -1013,6 +1619,18 @@ export const post15 = oc
     }),
   )
   .output(zPostRagPipelinesByPipelineIdWorkflowsDraftResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostDraftRagPipelineApiError400 },
+    bad_request: { status: 400, data: zPostDraftRagPipelineApiError400 },
+    invalid_param: { status: 400, data: zPostDraftRagPipelineApiError400 },
+    not_init_validated: { status: 401, data: zPostDraftRagPipelineApiError401 },
+    not_setup: { status: 401, data: zPostDraftRagPipelineApiError401 },
+    unauthorized: { status: 401, data: zPostDraftRagPipelineApiError401 },
+    not_found: { status: 404, data: zPostDraftRagPipelineApiError404 },
+    pipeline_not_found: { status: 404, data: zPostDraftRagPipelineApiError404 },
+    conflict: { status: 409, data: zPostDraftRagPipelineApiError409 },
+    draft_workflow_not_sync: { status: 409, data: zPostDraftRagPipelineApiError409 },
+  })
 
 export const draft = {
   get: get20,
@@ -1043,6 +1661,16 @@ export const get21 = oc
   })
   .input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowsPublishPath }))
   .output(zGetRagPipelinesByPipelineIdWorkflowsPublishResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetPublishedRagPipelineApiError400 },
+    bad_request: { status: 400, data: zGetPublishedRagPipelineApiError400 },
+    invalid_param: { status: 400, data: zGetPublishedRagPipelineApiError400 },
+    not_init_validated: { status: 401, data: zGetPublishedRagPipelineApiError401 },
+    not_setup: { status: 401, data: zGetPublishedRagPipelineApiError401 },
+    unauthorized: { status: 401, data: zGetPublishedRagPipelineApiError401 },
+    not_found: { status: 404, data: zGetPublishedRagPipelineApiError404 },
+    pipeline_not_found: { status: 404, data: zGetPublishedRagPipelineApiError404 },
+  })
 
 /**
  * Publish workflow
@@ -1058,6 +1686,16 @@ export const post16 = oc
   })
   .input(z.object({ params: zPostRagPipelinesByPipelineIdWorkflowsPublishPath }))
   .output(zPostRagPipelinesByPipelineIdWorkflowsPublishResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostPublishedRagPipelineApiError400 },
+    bad_request: { status: 400, data: zPostPublishedRagPipelineApiError400 },
+    invalid_param: { status: 400, data: zPostPublishedRagPipelineApiError400 },
+    not_init_validated: { status: 401, data: zPostPublishedRagPipelineApiError401 },
+    not_setup: { status: 401, data: zPostPublishedRagPipelineApiError401 },
+    unauthorized: { status: 401, data: zPostPublishedRagPipelineApiError401 },
+    not_found: { status: 404, data: zPostPublishedRagPipelineApiError404 },
+    pipeline_not_found: { status: 404, data: zPostPublishedRagPipelineApiError404 },
+  })
 
 export const publish2 = {
   get: get21,
@@ -1083,6 +1721,16 @@ export const post17 = oc
     }),
   )
   .output(zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostDataSourceContentPreviewApiError400 },
+    bad_request: { status: 400, data: zPostDataSourceContentPreviewApiError400 },
+    invalid_param: { status: 400, data: zPostDataSourceContentPreviewApiError400 },
+    not_init_validated: { status: 401, data: zPostDataSourceContentPreviewApiError401 },
+    not_setup: { status: 401, data: zPostDataSourceContentPreviewApiError401 },
+    unauthorized: { status: 401, data: zPostDataSourceContentPreviewApiError401 },
+    not_found: { status: 404, data: zPostDataSourceContentPreviewApiError404 },
+    pipeline_not_found: { status: 404, data: zPostDataSourceContentPreviewApiError404 },
+  })
 
 export const preview = {
   post: post17,
@@ -1107,6 +1755,25 @@ export const post18 = oc
     }),
   )
   .output(zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdRunResponse)
+  .errors({
+    account_not_initialized: {
+      status: 400,
+      data: zPostRagPipelinePublishedDatasourceNodeRunApiError400,
+    },
+    bad_request: { status: 400, data: zPostRagPipelinePublishedDatasourceNodeRunApiError400 },
+    invalid_param: { status: 400, data: zPostRagPipelinePublishedDatasourceNodeRunApiError400 },
+    not_init_validated: {
+      status: 401,
+      data: zPostRagPipelinePublishedDatasourceNodeRunApiError401,
+    },
+    not_setup: { status: 401, data: zPostRagPipelinePublishedDatasourceNodeRunApiError401 },
+    unauthorized: { status: 401, data: zPostRagPipelinePublishedDatasourceNodeRunApiError401 },
+    not_found: { status: 404, data: zPostRagPipelinePublishedDatasourceNodeRunApiError404 },
+    pipeline_not_found: {
+      status: 404,
+      data: zPostRagPipelinePublishedDatasourceNodeRunApiError404,
+    },
+  })
 
 export const run6 = {
   post: post18,
@@ -1144,6 +1811,16 @@ export const get22 = oc
     }),
   )
   .output(zGetRagPipelinesByPipelineIdWorkflowsPublishedPreProcessingParametersResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetPublishedRagPipelineFirstStepApiError400 },
+    bad_request: { status: 400, data: zGetPublishedRagPipelineFirstStepApiError400 },
+    invalid_param: { status: 400, data: zGetPublishedRagPipelineFirstStepApiError400 },
+    not_init_validated: { status: 401, data: zGetPublishedRagPipelineFirstStepApiError401 },
+    not_setup: { status: 401, data: zGetPublishedRagPipelineFirstStepApiError401 },
+    unauthorized: { status: 401, data: zGetPublishedRagPipelineFirstStepApiError401 },
+    not_found: { status: 404, data: zGetPublishedRagPipelineFirstStepApiError404 },
+    pipeline_not_found: { status: 404, data: zGetPublishedRagPipelineFirstStepApiError404 },
+  })
 
 export const parameters3 = {
   get: get22,
@@ -1172,6 +1849,16 @@ export const get23 = oc
     }),
   )
   .output(zGetRagPipelinesByPipelineIdWorkflowsPublishedProcessingParametersResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetPublishedRagPipelineSecondStepApiError400 },
+    bad_request: { status: 400, data: zGetPublishedRagPipelineSecondStepApiError400 },
+    invalid_param: { status: 400, data: zGetPublishedRagPipelineSecondStepApiError400 },
+    not_init_validated: { status: 401, data: zGetPublishedRagPipelineSecondStepApiError401 },
+    not_setup: { status: 401, data: zGetPublishedRagPipelineSecondStepApiError401 },
+    unauthorized: { status: 401, data: zGetPublishedRagPipelineSecondStepApiError401 },
+    not_found: { status: 404, data: zGetPublishedRagPipelineSecondStepApiError404 },
+    pipeline_not_found: { status: 404, data: zGetPublishedRagPipelineSecondStepApiError404 },
+  })
 
 export const parameters4 = {
   get: get23,
@@ -1200,6 +1887,18 @@ export const post19 = oc
     }),
   )
   .output(zPostRagPipelinesByPipelineIdWorkflowsPublishedRunResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostPublishedRagPipelineRunApiError400 },
+    bad_request: { status: 400, data: zPostPublishedRagPipelineRunApiError400 },
+    invalid_param: { status: 400, data: zPostPublishedRagPipelineRunApiError400 },
+    not_init_validated: { status: 401, data: zPostPublishedRagPipelineRunApiError401 },
+    not_setup: { status: 401, data: zPostPublishedRagPipelineRunApiError401 },
+    unauthorized: { status: 401, data: zPostPublishedRagPipelineRunApiError401 },
+    not_found: { status: 404, data: zPostPublishedRagPipelineRunApiError404 },
+    pipeline_not_found: { status: 404, data: zPostPublishedRagPipelineRunApiError404 },
+    rate_limit_error: { status: 429, data: zPostPublishedRagPipelineRunApiError429 },
+    too_many_requests: { status: 429, data: zPostPublishedRagPipelineRunApiError429 },
+  })
 
 export const run7 = {
   post: post19,
@@ -1222,6 +1921,16 @@ export const post20 = oc
   })
   .input(z.object({ params: zPostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestorePath }))
   .output(zPostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestoreResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostRagPipelineDraftWorkflowRestoreApiError400 },
+    bad_request: { status: 400, data: zPostRagPipelineDraftWorkflowRestoreApiError400 },
+    invalid_param: { status: 400, data: zPostRagPipelineDraftWorkflowRestoreApiError400 },
+    not_init_validated: { status: 401, data: zPostRagPipelineDraftWorkflowRestoreApiError401 },
+    not_setup: { status: 401, data: zPostRagPipelineDraftWorkflowRestoreApiError401 },
+    unauthorized: { status: 401, data: zPostRagPipelineDraftWorkflowRestoreApiError401 },
+    not_found: { status: 404, data: zPostRagPipelineDraftWorkflowRestoreApiError404 },
+    pipeline_not_found: { status: 404, data: zPostRagPipelineDraftWorkflowRestoreApiError404 },
+  })
 
 export const restore = {
   post: post20,
@@ -1242,6 +1951,16 @@ export const delete5 = oc
   })
   .input(z.object({ params: zDeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdPath }))
   .output(zDeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zDeleteRagPipelineByIdApiError400 },
+    bad_request: { status: 400, data: zDeleteRagPipelineByIdApiError400 },
+    invalid_param: { status: 400, data: zDeleteRagPipelineByIdApiError400 },
+    not_init_validated: { status: 401, data: zDeleteRagPipelineByIdApiError401 },
+    not_setup: { status: 401, data: zDeleteRagPipelineByIdApiError401 },
+    unauthorized: { status: 401, data: zDeleteRagPipelineByIdApiError401 },
+    not_found: { status: 404, data: zDeleteRagPipelineByIdApiError404 },
+    pipeline_not_found: { status: 404, data: zDeleteRagPipelineByIdApiError404 },
+  })
 
 /**
  * Update workflow attributes
@@ -1262,6 +1981,16 @@ export const patch3 = oc
     }),
   )
   .output(zPatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPatchRagPipelineByIdApiError400 },
+    bad_request: { status: 400, data: zPatchRagPipelineByIdApiError400 },
+    invalid_param: { status: 400, data: zPatchRagPipelineByIdApiError400 },
+    not_init_validated: { status: 401, data: zPatchRagPipelineByIdApiError401 },
+    not_setup: { status: 401, data: zPatchRagPipelineByIdApiError401 },
+    unauthorized: { status: 401, data: zPatchRagPipelineByIdApiError401 },
+    not_found: { status: 404, data: zPatchRagPipelineByIdApiError404 },
+    pipeline_not_found: { status: 404, data: zPatchRagPipelineByIdApiError404 },
+  })
 
 export const byWorkflowId = {
   delete: delete5,
@@ -1288,6 +2017,16 @@ export const get24 = oc
     }),
   )
   .output(zGetRagPipelinesByPipelineIdWorkflowsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetPublishedAllRagPipelineApiError400 },
+    bad_request: { status: 400, data: zGetPublishedAllRagPipelineApiError400 },
+    invalid_param: { status: 400, data: zGetPublishedAllRagPipelineApiError400 },
+    not_init_validated: { status: 401, data: zGetPublishedAllRagPipelineApiError401 },
+    not_setup: { status: 401, data: zGetPublishedAllRagPipelineApiError401 },
+    unauthorized: { status: 401, data: zGetPublishedAllRagPipelineApiError401 },
+    not_found: { status: 404, data: zGetPublishedAllRagPipelineApiError404 },
+    pipeline_not_found: { status: 404, data: zGetPublishedAllRagPipelineApiError404 },
+  })
 
 export const workflows = {
   get: get24,

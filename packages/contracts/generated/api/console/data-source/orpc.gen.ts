@@ -3,6 +3,13 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
+  zGetDataSourceIntegrationListApiError400,
+  zGetDataSourceIntegrationListApiError401,
+  zPatchDataSourceIntegrationApiError400,
+  zPatchDataSourceIntegrationApiError401,
+  zPatchDataSourceIntegrationApiError404,
+} from './zod.gen.ts'
+import {
   zGetDataSourceIntegratesResponse,
   zPatchDataSourceIntegratesByBindingIdByActionPath,
   zPatchDataSourceIntegratesByBindingIdByActionResponse,
@@ -18,6 +25,16 @@ export const patch = oc
   })
   .input(z.object({ params: zPatchDataSourceIntegratesByBindingIdByActionPath }))
   .output(zPatchDataSourceIntegratesByBindingIdByActionResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPatchDataSourceIntegrationApiError400 },
+    bad_request: { status: 400, data: zPatchDataSourceIntegrationApiError400 },
+    invalid_action: { status: 400, data: zPatchDataSourceIntegrationApiError400 },
+    invalid_param: { status: 400, data: zPatchDataSourceIntegrationApiError400 },
+    not_init_validated: { status: 401, data: zPatchDataSourceIntegrationApiError401 },
+    not_setup: { status: 401, data: zPatchDataSourceIntegrationApiError401 },
+    unauthorized: { status: 401, data: zPatchDataSourceIntegrationApiError401 },
+    not_found: { status: 404, data: zPatchDataSourceIntegrationApiError404 },
+  })
 
 export const byAction = {
   patch,
@@ -36,6 +53,14 @@ export const get = oc
     tags: ['console'],
   })
   .output(zGetDataSourceIntegratesResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetDataSourceIntegrationListApiError400 },
+    bad_request: { status: 400, data: zGetDataSourceIntegrationListApiError400 },
+    invalid_param: { status: 400, data: zGetDataSourceIntegrationListApiError400 },
+    not_init_validated: { status: 401, data: zGetDataSourceIntegrationListApiError401 },
+    not_setup: { status: 401, data: zGetDataSourceIntegrationListApiError401 },
+    unauthorized: { status: 401, data: zGetDataSourceIntegrationListApiError401 },
+  })
 
 export const integrates = {
   get,

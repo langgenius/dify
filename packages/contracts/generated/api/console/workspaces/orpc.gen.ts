@@ -3,6 +3,500 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
+  zCheckSnippetDependenciesError400,
+  zCheckSnippetDependenciesError401,
+  zConfirmSnippetImportError400,
+  zConfirmSnippetImportError401,
+  zCreateCustomizedSnippetError400,
+  zCreateCustomizedSnippetError401,
+  zCreateEndpointDeprecatedError400,
+  zCreateEndpointDeprecatedError401,
+  zCreateEndpointError400,
+  zCreateEndpointError401,
+  zDeleteCustomizedSnippetError400,
+  zDeleteCustomizedSnippetError401,
+  zDeleteEndpointDeprecatedError400,
+  zDeleteEndpointDeprecatedError401,
+  zDeleteEndpointError400,
+  zDeleteEndpointError401,
+  zDeleteMemberCancelInviteApiError400,
+  zDeleteMemberCancelInviteApiError401,
+  zDeleteMemberCancelInviteApiError403,
+  zDeleteMemberCancelInviteApiError404,
+  zDeleteModelProviderCredentialApiError400,
+  zDeleteModelProviderCredentialApiError401,
+  zDeleteModelProviderModelApiError400,
+  zDeleteModelProviderModelApiError401,
+  zDeleteModelProviderModelCredentialApiError400,
+  zDeleteModelProviderModelCredentialApiError401,
+  zDeleteRbacAccessPolicyItemApiError400,
+  zDeleteRbacAccessPolicyItemApiError401,
+  zDeleteRbacAgentMemberBindingsApiError400,
+  zDeleteRbacAgentMemberBindingsApiError401,
+  zDeleteRbacAppMemberBindingsApiError400,
+  zDeleteRbacAppMemberBindingsApiError401,
+  zDeleteRbacDatasetMemberBindingsApiError400,
+  zDeleteRbacDatasetMemberBindingsApiError401,
+  zDeleteRbacRoleItemApiError400,
+  zDeleteRbacRoleItemApiError401,
+  zDeleteToolOAuthCustomClientError400,
+  zDeleteToolOAuthCustomClientError401,
+  zDeleteToolProviderMcpApiError400,
+  zDeleteToolProviderMcpApiError401,
+  zDeleteTriggerOAuthClientManageApiError400,
+  zDeleteTriggerOAuthClientManageApiError401,
+  zDeleteWorkspaceSkillApiError400,
+  zDeleteWorkspaceSkillApiError401,
+  zDeleteWorkspaceSkillVersionApiError400,
+  zDeleteWorkspaceSkillVersionApiError401,
+  zDisableEndpointError400,
+  zDisableEndpointError401,
+  zEnableEndpointError400,
+  zEnableEndpointError401,
+  zExportCustomizedSnippetError400,
+  zExportCustomizedSnippetError401,
+  zGetAgentProviderError400,
+  zGetAgentProviderError401,
+  zGetCurrentWorkspaceSummaryApiError400,
+  zGetCurrentWorkspaceSummaryApiError401,
+  zGetCurrentWorkspaceSummaryApiError409,
+  zGetCustomConfigWorkspaceApiError400,
+  zGetCustomConfigWorkspaceApiError401,
+  zGetCustomizedSnippetError400,
+  zGetCustomizedSnippetError401,
+  zGetDatasetOperatorMemberListApiError400,
+  zGetDatasetOperatorMemberListApiError401,
+  zGetDefaultModelApiError400,
+  zGetDefaultModelApiError401,
+  zGetListMembersByRoleError400,
+  zGetListMembersByRoleError401,
+  zGetMemberListApiError400,
+  zGetMemberListApiError401,
+  zGetModelProviderAvailableModelApiError400,
+  zGetModelProviderAvailableModelApiError401,
+  zGetModelProviderCredentialApiError400,
+  zGetModelProviderCredentialApiError401,
+  zGetModelProviderCreditsApiError400,
+  zGetModelProviderCreditsApiError401,
+  zGetModelProviderListApiError400,
+  zGetModelProviderListApiError401,
+  zGetModelProviderModelApiError400,
+  zGetModelProviderModelApiError401,
+  zGetModelProviderModelCredentialApiError400,
+  zGetModelProviderModelCredentialApiError401,
+  zGetModelProviderModelParameterRuleApiError400,
+  zGetModelProviderModelParameterRuleApiError401,
+  zGetModelProviderPaymentCheckoutUrlApiError400,
+  zGetModelProviderPaymentCheckoutUrlApiError401,
+  zGetModelProviderSummaryListApiError400,
+  zGetModelProviderSummaryListApiError401,
+  zGetPluginAssetApiError400,
+  zGetPluginAssetApiError401,
+  zGetPluginCategoryListApiError400,
+  zGetPluginCategoryListApiError401,
+  zGetPluginDebuggingKeyApiError400,
+  zGetPluginDebuggingKeyApiError401,
+  zGetPluginFetchAutoUpgradeApiError400,
+  zGetPluginFetchAutoUpgradeApiError401,
+  zGetPluginFetchDynamicSelectOptionsApiError400,
+  zGetPluginFetchDynamicSelectOptionsApiError401,
+  zGetPluginFetchInstallTaskApiError400,
+  zGetPluginFetchInstallTaskApiError401,
+  zGetPluginFetchInstallTasksApiError400,
+  zGetPluginFetchInstallTasksApiError401,
+  zGetPluginFetchManifestApiError400,
+  zGetPluginFetchManifestApiError401,
+  zGetPluginFetchMarketplacePkgApiError400,
+  zGetPluginFetchMarketplacePkgApiError401,
+  zGetPluginFetchPermissionApiError400,
+  zGetPluginFetchPermissionApiError401,
+  zGetPluginIconApiError400,
+  zGetPluginIconApiError401,
+  zGetPluginInstalledIdsApiError400,
+  zGetPluginInstalledIdsApiError401,
+  zGetPluginListApiError400,
+  zGetPluginListApiError401,
+  zGetPluginReadmeApiError400,
+  zGetPluginReadmeApiError401,
+  zGetRbacAccessPoliciesApiError400,
+  zGetRbacAccessPoliciesApiError401,
+  zGetRbacAccessPolicyItemApiError400,
+  zGetRbacAccessPolicyItemApiError401,
+  zGetRbacAgentCatalogApiError400,
+  zGetRbacAgentCatalogApiError401,
+  zGetRbacAgentMatrixApiError400,
+  zGetRbacAgentMatrixApiError401,
+  zGetRbacAgentMemberBindingsApiError400,
+  zGetRbacAgentMemberBindingsApiError401,
+  zGetRbacAgentRoleBindingsApiError400,
+  zGetRbacAgentRoleBindingsApiError401,
+  zGetRbacAgentUserAccessPoliciesApiError400,
+  zGetRbacAgentUserAccessPoliciesApiError401,
+  zGetRbacAgentWhitelistApiError400,
+  zGetRbacAgentWhitelistApiError401,
+  zGetRbacAgentWhitelistConfigApiError400,
+  zGetRbacAgentWhitelistConfigApiError401,
+  zGetRbacAppCatalogApiError400,
+  zGetRbacAppCatalogApiError401,
+  zGetRbacAppMatrixApiError400,
+  zGetRbacAppMatrixApiError401,
+  zGetRbacAppMemberBindingsApiError400,
+  zGetRbacAppMemberBindingsApiError401,
+  zGetRbacAppRoleBindingsApiError400,
+  zGetRbacAppRoleBindingsApiError401,
+  zGetRbacAppUserAccessPoliciesApiError400,
+  zGetRbacAppUserAccessPoliciesApiError401,
+  zGetRbacAppWhitelistApiError400,
+  zGetRbacAppWhitelistApiError401,
+  zGetRbacAppWhitelistConfigApiError400,
+  zGetRbacAppWhitelistConfigApiError401,
+  zGetRbacDatasetCatalogApiError400,
+  zGetRbacDatasetCatalogApiError401,
+  zGetRbacDatasetMatrixApiError400,
+  zGetRbacDatasetMatrixApiError401,
+  zGetRbacDatasetMemberBindingsApiError400,
+  zGetRbacDatasetMemberBindingsApiError401,
+  zGetRbacDatasetRoleBindingsApiError400,
+  zGetRbacDatasetRoleBindingsApiError401,
+  zGetRbacDatasetUserAccessPoliciesApiError400,
+  zGetRbacDatasetUserAccessPoliciesApiError401,
+  zGetRbacDatasetWhitelistApiError400,
+  zGetRbacDatasetWhitelistApiError401,
+  zGetRbacDatasetWhitelistConfigApiError400,
+  zGetRbacDatasetWhitelistConfigApiError401,
+  zGetRbacMemberRolesApiError400,
+  zGetRbacMemberRolesApiError401,
+  zGetRbacMyPermissionsApiError400,
+  zGetRbacMyPermissionsApiError401,
+  zGetRbacRoleItemApiError400,
+  zGetRbacRoleItemApiError401,
+  zGetRbacRolesApiError400,
+  zGetRbacRolesApiError401,
+  zGetRbacWorkspaceAgentMatrixApiError400,
+  zGetRbacWorkspaceAgentMatrixApiError401,
+  zGetRbacWorkspaceAgentMemberBindingsApiError400,
+  zGetRbacWorkspaceAgentMemberBindingsApiError401,
+  zGetRbacWorkspaceAgentRoleBindingsApiError400,
+  zGetRbacWorkspaceAgentRoleBindingsApiError401,
+  zGetRbacWorkspaceAppMatrixApiError400,
+  zGetRbacWorkspaceAppMatrixApiError401,
+  zGetRbacWorkspaceAppMemberBindingsApiError400,
+  zGetRbacWorkspaceAppMemberBindingsApiError401,
+  zGetRbacWorkspaceAppRoleBindingsApiError400,
+  zGetRbacWorkspaceAppRoleBindingsApiError401,
+  zGetRbacWorkspaceCatalogApiError400,
+  zGetRbacWorkspaceCatalogApiError401,
+  zGetRbacWorkspaceDatasetMatrixApiError400,
+  zGetRbacWorkspaceDatasetMatrixApiError401,
+  zGetRbacWorkspaceDatasetMemberBindingsApiError400,
+  zGetRbacWorkspaceDatasetMemberBindingsApiError401,
+  zGetRbacWorkspaceDatasetRoleBindingsApiError400,
+  zGetRbacWorkspaceDatasetRoleBindingsApiError401,
+  zGetTenantListApiError400,
+  zGetTenantListApiError401,
+  zGetToolApiListApiError400,
+  zGetToolApiListApiError401,
+  zGetToolApiProviderGetApiError400,
+  zGetToolApiProviderGetApiError401,
+  zGetToolApiProviderGetRemoteSchemaApiError400,
+  zGetToolApiProviderGetRemoteSchemaApiError401,
+  zGetToolApiProviderListToolsApiError400,
+  zGetToolApiProviderListToolsApiError401,
+  zGetToolBuiltinListApiError400,
+  zGetToolBuiltinListApiError401,
+  zGetToolBuiltinProviderCredentialsSchemaApiError400,
+  zGetToolBuiltinProviderCredentialsSchemaApiError401,
+  zGetToolBuiltinProviderGetCredentialInfoApiError400,
+  zGetToolBuiltinProviderGetCredentialInfoApiError401,
+  zGetToolBuiltinProviderGetCredentialsApiError400,
+  zGetToolBuiltinProviderGetCredentialsApiError401,
+  zGetToolBuiltinProviderGetOauthClientSchemaApiError400,
+  zGetToolBuiltinProviderGetOauthClientSchemaApiError401,
+  zGetToolBuiltinProviderIconApiError401,
+  zGetToolBuiltinProviderInfoApiError400,
+  zGetToolBuiltinProviderInfoApiError401,
+  zGetToolBuiltinProviderListToolsApiError400,
+  zGetToolBuiltinProviderListToolsApiError401,
+  zGetToolLabelsApiError400,
+  zGetToolLabelsApiError401,
+  zGetToolMcpDetailApiError400,
+  zGetToolMcpDetailApiError401,
+  zGetToolMcpListAllApiError400,
+  zGetToolMcpListAllApiError401,
+  zGetToolMcpUpdateApiError400,
+  zGetToolMcpUpdateApiError401,
+  zGetToolOAuthCustomClientError400,
+  zGetToolOAuthCustomClientError401,
+  zGetToolProviderListApiError400,
+  zGetToolProviderListApiError401,
+  zGetToolWorkflowListApiError400,
+  zGetToolWorkflowListApiError401,
+  zGetToolWorkflowProviderGetApiError400,
+  zGetToolWorkflowProviderGetApiError401,
+  zGetToolWorkflowProviderListToolApiError400,
+  zGetToolWorkflowProviderListToolApiError401,
+  zGetTriggerOAuthAuthorizeApiError400,
+  zGetTriggerOAuthAuthorizeApiError401,
+  zGetTriggerOAuthAuthorizeApiError404,
+  zGetTriggerOAuthClientManageApiError400,
+  zGetTriggerOAuthClientManageApiError401,
+  zGetTriggerProviderIconApiError400,
+  zGetTriggerProviderIconApiError401,
+  zGetTriggerProviderInfoApiError400,
+  zGetTriggerProviderInfoApiError401,
+  zGetTriggerProviderListApiError400,
+  zGetTriggerProviderListApiError401,
+  zGetTriggerSubscriptionBuilderGetApiError400,
+  zGetTriggerSubscriptionBuilderGetApiError401,
+  zGetTriggerSubscriptionBuilderLogsApiError400,
+  zGetTriggerSubscriptionBuilderLogsApiError401,
+  zGetTriggerSubscriptionListApiError400,
+  zGetTriggerSubscriptionListApiError401,
+  zGetWorkspaceAgentSkillBindingsApiError400,
+  zGetWorkspaceAgentSkillBindingsApiError401,
+  zGetWorkspacePermissionApiError400,
+  zGetWorkspacePermissionApiError401,
+  zGetWorkspaceSkillApiError400,
+  zGetWorkspaceSkillApiError401,
+  zGetWorkspaceSkillExportApiError400,
+  zGetWorkspaceSkillExportApiError401,
+  zGetWorkspaceSkillFileContentApiError400,
+  zGetWorkspaceSkillFileContentApiError401,
+  zGetWorkspaceSkillFilePreviewApiError400,
+  zGetWorkspaceSkillFilePreviewApiError401,
+  zGetWorkspaceSkillReferencesApiError400,
+  zGetWorkspaceSkillReferencesApiError401,
+  zGetWorkspaceSkillTagsApiError400,
+  zGetWorkspaceSkillTagsApiError401,
+  zGetWorkspaceSkillVersionApiError400,
+  zGetWorkspaceSkillVersionApiError401,
+  zGetWorkspaceSkillVersionsApiError400,
+  zGetWorkspaceSkillVersionsApiError401,
+  zGetWorkspaceSkillsApiError400,
+  zGetWorkspaceSkillsApiError401,
+  zImportCustomizedSnippetError400,
+  zImportCustomizedSnippetError401,
+  zIncrementSnippetUseCountError400,
+  zIncrementSnippetUseCountError401,
+  zListAgentProvidersError400,
+  zListAgentProvidersError401,
+  zListCustomizedSnippetsError400,
+  zListCustomizedSnippetsError401,
+  zListEndpointsError400,
+  zListEndpointsError401,
+  zListPluginEndpointsError400,
+  zListPluginEndpointsError401,
+  zPatchModelProviderModelDisableApiError400,
+  zPatchModelProviderModelDisableApiError401,
+  zPatchModelProviderModelEnableApiError400,
+  zPatchModelProviderModelEnableApiError401,
+  zPatchWorkspaceSkillApiError400,
+  zPatchWorkspaceSkillApiError401,
+  zPatchWorkspaceSkillFilesApiError400,
+  zPatchWorkspaceSkillFilesApiError401,
+  zPatchWorkspaceSkillVersionApiError400,
+  zPatchWorkspaceSkillVersionApiError401,
+  zPostCustomConfigWorkspaceApiError400,
+  zPostCustomConfigWorkspaceApiError401,
+  zPostDefaultModelApiError400,
+  zPostDefaultModelApiError401,
+  zPostLoadBalancingConfigCredentialsValidateApiError400,
+  zPostLoadBalancingConfigCredentialsValidateApiError401,
+  zPostLoadBalancingCredentialsValidateApiError400,
+  zPostLoadBalancingCredentialsValidateApiError401,
+  zPostMemberInviteEmailApiError400,
+  zPostMemberInviteEmailApiError401,
+  zPostModelProviderCredentialApiError400,
+  zPostModelProviderCredentialApiError401,
+  zPostModelProviderCredentialSwitchApiError400,
+  zPostModelProviderCredentialSwitchApiError401,
+  zPostModelProviderModelApiError400,
+  zPostModelProviderModelApiError401,
+  zPostModelProviderModelCredentialApiError400,
+  zPostModelProviderModelCredentialApiError401,
+  zPostModelProviderModelCredentialSwitchApiError400,
+  zPostModelProviderModelCredentialSwitchApiError401,
+  zPostModelProviderModelValidateApiError400,
+  zPostModelProviderModelValidateApiError401,
+  zPostModelProviderValidateApiError400,
+  zPostModelProviderValidateApiError401,
+  zPostOwnerTransferCheckApiError400,
+  zPostOwnerTransferCheckApiError401,
+  zPostOwnerTransferCheckApiError429,
+  zPostOwnerTransferError400,
+  zPostOwnerTransferError401,
+  zPostOwnerTransferError429,
+  zPostPluginAutoUpgradeExcludePluginApiError400,
+  zPostPluginAutoUpgradeExcludePluginApiError401,
+  zPostPluginChangeAutoUpgradeApiError400,
+  zPostPluginChangeAutoUpgradeApiError401,
+  zPostPluginChangePermissionApiError400,
+  zPostPluginChangePermissionApiError401,
+  zPostPluginDeleteAllInstallTaskItemsApiError400,
+  zPostPluginDeleteAllInstallTaskItemsApiError401,
+  zPostPluginDeleteInstallTaskApiError400,
+  zPostPluginDeleteInstallTaskApiError401,
+  zPostPluginDeleteInstallTaskItemApiError400,
+  zPostPluginDeleteInstallTaskItemApiError401,
+  zPostPluginFetchDynamicSelectOptionsWithCredentialsApiError400,
+  zPostPluginFetchDynamicSelectOptionsWithCredentialsApiError401,
+  zPostPluginInstallFromGithubApiError400,
+  zPostPluginInstallFromGithubApiError401,
+  zPostPluginInstallFromMarketplaceApiError400,
+  zPostPluginInstallFromMarketplaceApiError401,
+  zPostPluginInstallFromPkgApiError400,
+  zPostPluginInstallFromPkgApiError401,
+  zPostPluginListInstallationsFromIdsApiError400,
+  zPostPluginListInstallationsFromIdsApiError401,
+  zPostPluginListLatestVersionsApiError400,
+  zPostPluginListLatestVersionsApiError401,
+  zPostPluginUninstallApiError400,
+  zPostPluginUninstallApiError401,
+  zPostPluginUpgradeFromGithubApiError400,
+  zPostPluginUpgradeFromGithubApiError401,
+  zPostPluginUpgradeFromMarketplaceApiError400,
+  zPostPluginUpgradeFromMarketplaceApiError401,
+  zPostPluginUploadFromBundleApiError400,
+  zPostPluginUploadFromBundleApiError401,
+  zPostPluginUploadFromGithubApiError400,
+  zPostPluginUploadFromGithubApiError401,
+  zPostPluginUploadFromPkgApiError400,
+  zPostPluginUploadFromPkgApiError401,
+  zPostPreferredProviderTypeUpdateApiError400,
+  zPostPreferredProviderTypeUpdateApiError401,
+  zPostRbacAccessPoliciesApiError400,
+  zPostRbacAccessPoliciesApiError401,
+  zPostRbacAccessPolicyCopyApiError400,
+  zPostRbacAccessPolicyCopyApiError401,
+  zPostRbacRoleCopyApiError400,
+  zPostRbacRoleCopyApiError401,
+  zPostRbacRolesApiError400,
+  zPostRbacRolesApiError401,
+  zPostSendOwnerTransferEmailApiError400,
+  zPostSendOwnerTransferEmailApiError401,
+  zPostSendOwnerTransferEmailApiError429,
+  zPostSwitchWorkspaceApiError400,
+  zPostSwitchWorkspaceApiError401,
+  zPostSwitchWorkspaceApiError403,
+  zPostToolApiProviderAddApiError400,
+  zPostToolApiProviderAddApiError401,
+  zPostToolApiProviderDeleteApiError400,
+  zPostToolApiProviderDeleteApiError401,
+  zPostToolApiProviderPreviousTestApiError400,
+  zPostToolApiProviderPreviousTestApiError401,
+  zPostToolApiProviderSchemaApiError400,
+  zPostToolApiProviderSchemaApiError401,
+  zPostToolApiProviderUpdateApiError400,
+  zPostToolApiProviderUpdateApiError401,
+  zPostToolBuiltinProviderAddApiError400,
+  zPostToolBuiltinProviderAddApiError401,
+  zPostToolBuiltinProviderDeleteApiError400,
+  zPostToolBuiltinProviderDeleteApiError401,
+  zPostToolBuiltinProviderSetDefaultApiError400,
+  zPostToolBuiltinProviderSetDefaultApiError401,
+  zPostToolBuiltinProviderUpdateApiError400,
+  zPostToolBuiltinProviderUpdateApiError401,
+  zPostToolMcpAuthApiError400,
+  zPostToolMcpAuthApiError401,
+  zPostToolOAuthCustomClientError400,
+  zPostToolOAuthCustomClientError401,
+  zPostToolProviderMcpApiError400,
+  zPostToolProviderMcpApiError401,
+  zPostToolWorkflowProviderCreateApiError400,
+  zPostToolWorkflowProviderCreateApiError401,
+  zPostToolWorkflowProviderDeleteApiError400,
+  zPostToolWorkflowProviderDeleteApiError401,
+  zPostToolWorkflowProviderUpdateApiError400,
+  zPostToolWorkflowProviderUpdateApiError401,
+  zPostTriggerOAuthClientManageApiError400,
+  zPostTriggerOAuthClientManageApiError401,
+  zPostTriggerSubscriptionBuilderBuildApiError400,
+  zPostTriggerSubscriptionBuilderBuildApiError401,
+  zPostTriggerSubscriptionBuilderCreateApiError400,
+  zPostTriggerSubscriptionBuilderCreateApiError401,
+  zPostTriggerSubscriptionBuilderUpdateApiError400,
+  zPostTriggerSubscriptionBuilderUpdateApiError401,
+  zPostTriggerSubscriptionBuilderVerifyApiError400,
+  zPostTriggerSubscriptionBuilderVerifyApiError401,
+  zPostTriggerSubscriptionDeleteApiError400,
+  zPostTriggerSubscriptionDeleteApiError401,
+  zPostTriggerSubscriptionUpdateApiError400,
+  zPostTriggerSubscriptionUpdateApiError401,
+  zPostTriggerSubscriptionUpdateApiError404,
+  zPostTriggerSubscriptionVerifyApiError400,
+  zPostTriggerSubscriptionVerifyApiError401,
+  zPostWebappLogoWorkspaceApiError400,
+  zPostWebappLogoWorkspaceApiError401,
+  zPostWebappLogoWorkspaceApiError413,
+  zPostWebappLogoWorkspaceApiError415,
+  zPostWorkspaceInfoApiError400,
+  zPostWorkspaceInfoApiError401,
+  zPostWorkspaceSkillAssistMessageApiError400,
+  zPostWorkspaceSkillAssistMessageApiError401,
+  zPostWorkspaceSkillDuplicateApiError400,
+  zPostWorkspaceSkillDuplicateApiError401,
+  zPostWorkspaceSkillFileUploadApiError400,
+  zPostWorkspaceSkillFileUploadApiError401,
+  zPostWorkspaceSkillFilesCheckApiError400,
+  zPostWorkspaceSkillFilesCheckApiError401,
+  zPostWorkspaceSkillImportApiError400,
+  zPostWorkspaceSkillImportApiError401,
+  zPostWorkspaceSkillPublishApiError400,
+  zPostWorkspaceSkillPublishApiError401,
+  zPostWorkspaceSkillRestoreApiError400,
+  zPostWorkspaceSkillRestoreApiError401,
+  zPostWorkspaceSkillsApiError400,
+  zPostWorkspaceSkillsApiError401,
+  zPutMemberUpdateRoleApiError400,
+  zPutMemberUpdateRoleApiError401,
+  zPutMemberUpdateRoleApiError403,
+  zPutMemberUpdateRoleApiError404,
+  zPutModelProviderCredentialApiError400,
+  zPutModelProviderCredentialApiError401,
+  zPutModelProviderModelCredentialApiError400,
+  zPutModelProviderModelCredentialApiError401,
+  zPutRbacAccessPolicyBindingLockApiError400,
+  zPutRbacAccessPolicyBindingLockApiError401,
+  zPutRbacAccessPolicyBindingUnlockApiError400,
+  zPutRbacAccessPolicyBindingUnlockApiError401,
+  zPutRbacAccessPolicyItemApiError400,
+  zPutRbacAccessPolicyItemApiError401,
+  zPutRbacAgentUserAccessPolicyAssignmentApiError400,
+  zPutRbacAgentUserAccessPolicyAssignmentApiError401,
+  zPutRbacAgentWhitelistApiError400,
+  zPutRbacAgentWhitelistApiError401,
+  zPutRbacAppUserAccessPolicyAssignmentApiError400,
+  zPutRbacAppUserAccessPolicyAssignmentApiError401,
+  zPutRbacAppWhitelistApiError400,
+  zPutRbacAppWhitelistApiError401,
+  zPutRbacDatasetUserAccessPolicyAssignmentApiError400,
+  zPutRbacDatasetUserAccessPolicyAssignmentApiError401,
+  zPutRbacDatasetWhitelistApiError400,
+  zPutRbacDatasetWhitelistApiError401,
+  zPutRbacMemberRolesApiError400,
+  zPutRbacMemberRolesApiError401,
+  zPutRbacRoleItemApiError400,
+  zPutRbacRoleItemApiError401,
+  zPutRbacWorkspaceAgentBindingsApiError400,
+  zPutRbacWorkspaceAgentBindingsApiError401,
+  zPutRbacWorkspaceAppBindingsApiError400,
+  zPutRbacWorkspaceAppBindingsApiError401,
+  zPutRbacWorkspaceDatasetBindingsApiError400,
+  zPutRbacWorkspaceDatasetBindingsApiError401,
+  zPutToolProviderMcpApiError400,
+  zPutToolProviderMcpApiError401,
+  zPutWorkspaceAgentSkillBindingsApiError400,
+  zPutWorkspaceAgentSkillBindingsApiError401,
+  zPutWorkspaceSkillFilesApiError400,
+  zPutWorkspaceSkillFilesApiError401,
+  zUpdateCustomizedSnippetError400,
+  zUpdateCustomizedSnippetError401,
+  zUpdateEndpointDeprecatedError400,
+  zUpdateEndpointDeprecatedError401,
+  zUpdateEndpointError400,
+  zUpdateEndpointError401,
+} from './zod.gen.ts'
+import {
   zDeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdPath,
   zDeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdResponse,
   zDeleteWorkspacesCurrentEndpointsByIdPath,
@@ -541,6 +1035,14 @@ export const get = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentAgentProviderByProviderNamePath }))
   .output(zGetWorkspacesCurrentAgentProviderByProviderNameResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetAgentProviderError400 },
+    bad_request: { status: 400, data: zGetAgentProviderError400 },
+    invalid_param: { status: 400, data: zGetAgentProviderError400 },
+    not_init_validated: { status: 401, data: zGetAgentProviderError401 },
+    not_setup: { status: 401, data: zGetAgentProviderError401 },
+    unauthorized: { status: 401, data: zGetAgentProviderError401 },
+  })
 
 export const byProviderName = {
   get,
@@ -563,6 +1065,14 @@ export const get2 = oc
     tags: ['console'],
   })
   .output(zGetWorkspacesCurrentAgentProvidersResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zListAgentProvidersError400 },
+    bad_request: { status: 400, data: zListAgentProvidersError400 },
+    invalid_param: { status: 400, data: zListAgentProvidersError400 },
+    not_init_validated: { status: 401, data: zListAgentProvidersError401 },
+    not_setup: { status: 401, data: zListAgentProvidersError401 },
+    unauthorized: { status: 401, data: zListAgentProvidersError401 },
+  })
 
 export const agentProviders = {
   get: get2,
@@ -578,6 +1088,14 @@ export const get3 = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentAgentsByAgentIdSkillsPath }))
   .output(zGetWorkspacesCurrentAgentsByAgentIdSkillsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetWorkspaceAgentSkillBindingsApiError400 },
+    bad_request: { status: 400, data: zGetWorkspaceAgentSkillBindingsApiError400 },
+    invalid_param: { status: 400, data: zGetWorkspaceAgentSkillBindingsApiError400 },
+    not_init_validated: { status: 401, data: zGetWorkspaceAgentSkillBindingsApiError401 },
+    not_setup: { status: 401, data: zGetWorkspaceAgentSkillBindingsApiError401 },
+    unauthorized: { status: 401, data: zGetWorkspaceAgentSkillBindingsApiError401 },
+  })
 
 export const put = oc
   .route({
@@ -594,6 +1112,14 @@ export const put = oc
     }),
   )
   .output(zPutWorkspacesCurrentAgentsByAgentIdSkillsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPutWorkspaceAgentSkillBindingsApiError400 },
+    bad_request: { status: 400, data: zPutWorkspaceAgentSkillBindingsApiError400 },
+    invalid_param: { status: 400, data: zPutWorkspaceAgentSkillBindingsApiError400 },
+    not_init_validated: { status: 401, data: zPutWorkspaceAgentSkillBindingsApiError401 },
+    not_setup: { status: 401, data: zPutWorkspaceAgentSkillBindingsApiError401 },
+    unauthorized: { status: 401, data: zPutWorkspaceAgentSkillBindingsApiError401 },
+  })
 
 export const skills = {
   get: get3,
@@ -625,6 +1151,14 @@ export const post = oc
   })
   .input(z.object({ params: zPostWorkspacesCurrentCustomizedSnippetsImportsByImportIdConfirmPath }))
   .output(zPostWorkspacesCurrentCustomizedSnippetsImportsByImportIdConfirmResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zConfirmSnippetImportError400 },
+    bad_request: { status: 400, data: zConfirmSnippetImportError400 },
+    invalid_param: { status: 400, data: zConfirmSnippetImportError400 },
+    not_init_validated: { status: 401, data: zConfirmSnippetImportError401 },
+    not_setup: { status: 401, data: zConfirmSnippetImportError401 },
+    unauthorized: { status: 401, data: zConfirmSnippetImportError401 },
+  })
 
 export const confirm = {
   post,
@@ -651,6 +1185,14 @@ export const post2 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentCustomizedSnippetsImportsBody }))
   .output(zPostWorkspacesCurrentCustomizedSnippetsImportsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zImportCustomizedSnippetError400 },
+    bad_request: { status: 400, data: zImportCustomizedSnippetError400 },
+    invalid_param: { status: 400, data: zImportCustomizedSnippetError400 },
+    not_init_validated: { status: 401, data: zImportCustomizedSnippetError401 },
+    not_setup: { status: 401, data: zImportCustomizedSnippetError401 },
+    unauthorized: { status: 401, data: zImportCustomizedSnippetError401 },
+  })
 
 export const imports = {
   post: post2,
@@ -676,6 +1218,14 @@ export const get4 = oc
     z.object({ params: zGetWorkspacesCurrentCustomizedSnippetsBySnippetIdCheckDependenciesPath }),
   )
   .output(zGetWorkspacesCurrentCustomizedSnippetsBySnippetIdCheckDependenciesResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zCheckSnippetDependenciesError400 },
+    bad_request: { status: 400, data: zCheckSnippetDependenciesError400 },
+    invalid_param: { status: 400, data: zCheckSnippetDependenciesError400 },
+    not_init_validated: { status: 401, data: zCheckSnippetDependenciesError401 },
+    not_setup: { status: 401, data: zCheckSnippetDependenciesError401 },
+    unauthorized: { status: 401, data: zCheckSnippetDependenciesError401 },
+  })
 
 export const checkDependencies = {
   get: get4,
@@ -703,6 +1253,14 @@ export const get5 = oc
     }),
   )
   .output(zGetWorkspacesCurrentCustomizedSnippetsBySnippetIdExportResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zExportCustomizedSnippetError400 },
+    bad_request: { status: 400, data: zExportCustomizedSnippetError400 },
+    invalid_param: { status: 400, data: zExportCustomizedSnippetError400 },
+    not_init_validated: { status: 401, data: zExportCustomizedSnippetError401 },
+    not_setup: { status: 401, data: zExportCustomizedSnippetError401 },
+    unauthorized: { status: 401, data: zExportCustomizedSnippetError401 },
+  })
 
 export const export_ = {
   get: get5,
@@ -727,6 +1285,14 @@ export const post3 = oc
     z.object({ params: zPostWorkspacesCurrentCustomizedSnippetsBySnippetIdUseCountIncrementPath }),
   )
   .output(zPostWorkspacesCurrentCustomizedSnippetsBySnippetIdUseCountIncrementResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zIncrementSnippetUseCountError400 },
+    bad_request: { status: 400, data: zIncrementSnippetUseCountError400 },
+    invalid_param: { status: 400, data: zIncrementSnippetUseCountError400 },
+    not_init_validated: { status: 401, data: zIncrementSnippetUseCountError401 },
+    not_setup: { status: 401, data: zIncrementSnippetUseCountError401 },
+    unauthorized: { status: 401, data: zIncrementSnippetUseCountError401 },
+  })
 
 export const increment = {
   post: post3,
@@ -751,6 +1317,14 @@ export const delete_ = oc
   })
   .input(z.object({ params: zDeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdPath }))
   .output(zDeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zDeleteCustomizedSnippetError400 },
+    bad_request: { status: 400, data: zDeleteCustomizedSnippetError400 },
+    invalid_param: { status: 400, data: zDeleteCustomizedSnippetError400 },
+    not_init_validated: { status: 401, data: zDeleteCustomizedSnippetError401 },
+    not_setup: { status: 401, data: zDeleteCustomizedSnippetError401 },
+    unauthorized: { status: 401, data: zDeleteCustomizedSnippetError401 },
+  })
 
 /**
  * Get customized snippet details
@@ -766,6 +1340,14 @@ export const get6 = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentCustomizedSnippetsBySnippetIdPath }))
   .output(zGetWorkspacesCurrentCustomizedSnippetsBySnippetIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetCustomizedSnippetError400 },
+    bad_request: { status: 400, data: zGetCustomizedSnippetError400 },
+    invalid_param: { status: 400, data: zGetCustomizedSnippetError400 },
+    not_init_validated: { status: 401, data: zGetCustomizedSnippetError401 },
+    not_setup: { status: 401, data: zGetCustomizedSnippetError401 },
+    unauthorized: { status: 401, data: zGetCustomizedSnippetError401 },
+  })
 
 /**
  * Update customized snippet
@@ -786,6 +1368,14 @@ export const patch = oc
     }),
   )
   .output(zPatchWorkspacesCurrentCustomizedSnippetsBySnippetIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zUpdateCustomizedSnippetError400 },
+    bad_request: { status: 400, data: zUpdateCustomizedSnippetError400 },
+    invalid_param: { status: 400, data: zUpdateCustomizedSnippetError400 },
+    not_init_validated: { status: 401, data: zUpdateCustomizedSnippetError401 },
+    not_setup: { status: 401, data: zUpdateCustomizedSnippetError401 },
+    unauthorized: { status: 401, data: zUpdateCustomizedSnippetError401 },
+  })
 
 export const bySnippetId = {
   delete: delete_,
@@ -810,6 +1400,14 @@ export const get7 = oc
   })
   .input(z.object({ query: zGetWorkspacesCurrentCustomizedSnippetsQuery.optional() }))
   .output(zGetWorkspacesCurrentCustomizedSnippetsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zListCustomizedSnippetsError400 },
+    bad_request: { status: 400, data: zListCustomizedSnippetsError400 },
+    invalid_param: { status: 400, data: zListCustomizedSnippetsError400 },
+    not_init_validated: { status: 401, data: zListCustomizedSnippetsError401 },
+    not_setup: { status: 401, data: zListCustomizedSnippetsError401 },
+    unauthorized: { status: 401, data: zListCustomizedSnippetsError401 },
+  })
 
 /**
  * Create a new customized snippet
@@ -826,6 +1424,14 @@ export const post4 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentCustomizedSnippetsBody }))
   .output(zPostWorkspacesCurrentCustomizedSnippetsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zCreateCustomizedSnippetError400 },
+    bad_request: { status: 400, data: zCreateCustomizedSnippetError400 },
+    invalid_param: { status: 400, data: zCreateCustomizedSnippetError400 },
+    not_init_validated: { status: 401, data: zCreateCustomizedSnippetError401 },
+    not_setup: { status: 401, data: zCreateCustomizedSnippetError401 },
+    unauthorized: { status: 401, data: zCreateCustomizedSnippetError401 },
+  })
 
 export const customizedSnippets = {
   get: get7,
@@ -843,6 +1449,14 @@ export const get8 = oc
     tags: ['console'],
   })
   .output(zGetWorkspacesCurrentDatasetOperatorsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetDatasetOperatorMemberListApiError400 },
+    bad_request: { status: 400, data: zGetDatasetOperatorMemberListApiError400 },
+    invalid_param: { status: 400, data: zGetDatasetOperatorMemberListApiError400 },
+    not_init_validated: { status: 401, data: zGetDatasetOperatorMemberListApiError401 },
+    not_setup: { status: 401, data: zGetDatasetOperatorMemberListApiError401 },
+    unauthorized: { status: 401, data: zGetDatasetOperatorMemberListApiError401 },
+  })
 
 export const datasetOperators = {
   get: get8,
@@ -858,6 +1472,14 @@ export const get9 = oc
   })
   .input(z.object({ query: zGetWorkspacesCurrentDefaultModelQuery }))
   .output(zGetWorkspacesCurrentDefaultModelResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetDefaultModelApiError400 },
+    bad_request: { status: 400, data: zGetDefaultModelApiError400 },
+    invalid_param: { status: 400, data: zGetDefaultModelApiError400 },
+    not_init_validated: { status: 401, data: zGetDefaultModelApiError401 },
+    not_setup: { status: 401, data: zGetDefaultModelApiError401 },
+    unauthorized: { status: 401, data: zGetDefaultModelApiError401 },
+  })
 
 export const post5 = oc
   .route({
@@ -869,6 +1491,14 @@ export const post5 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentDefaultModelBody }))
   .output(zPostWorkspacesCurrentDefaultModelResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostDefaultModelApiError400 },
+    bad_request: { status: 400, data: zPostDefaultModelApiError400 },
+    invalid_param: { status: 400, data: zPostDefaultModelApiError400 },
+    not_init_validated: { status: 401, data: zPostDefaultModelApiError401 },
+    not_setup: { status: 401, data: zPostDefaultModelApiError401 },
+    unauthorized: { status: 401, data: zPostDefaultModelApiError401 },
+  })
 
 export const defaultModel = {
   get: get9,
@@ -893,6 +1523,14 @@ export const post6 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentEndpointsCreateBody }))
   .output(zPostWorkspacesCurrentEndpointsCreateResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zCreateEndpointDeprecatedError400 },
+    bad_request: { status: 400, data: zCreateEndpointDeprecatedError400 },
+    invalid_param: { status: 400, data: zCreateEndpointDeprecatedError400 },
+    not_init_validated: { status: 401, data: zCreateEndpointDeprecatedError401 },
+    not_setup: { status: 401, data: zCreateEndpointDeprecatedError401 },
+    unauthorized: { status: 401, data: zCreateEndpointDeprecatedError401 },
+  })
 
 export const create = {
   post: post6,
@@ -916,6 +1554,14 @@ export const post7 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentEndpointsDeleteBody }))
   .output(zPostWorkspacesCurrentEndpointsDeleteResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zDeleteEndpointDeprecatedError400 },
+    bad_request: { status: 400, data: zDeleteEndpointDeprecatedError400 },
+    invalid_param: { status: 400, data: zDeleteEndpointDeprecatedError400 },
+    not_init_validated: { status: 401, data: zDeleteEndpointDeprecatedError401 },
+    not_setup: { status: 401, data: zDeleteEndpointDeprecatedError401 },
+    unauthorized: { status: 401, data: zDeleteEndpointDeprecatedError401 },
+  })
 
 export const delete2 = {
   post: post7,
@@ -935,6 +1581,14 @@ export const post8 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentEndpointsDisableBody }))
   .output(zPostWorkspacesCurrentEndpointsDisableResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zDisableEndpointError400 },
+    bad_request: { status: 400, data: zDisableEndpointError400 },
+    invalid_param: { status: 400, data: zDisableEndpointError400 },
+    not_init_validated: { status: 401, data: zDisableEndpointError401 },
+    not_setup: { status: 401, data: zDisableEndpointError401 },
+    unauthorized: { status: 401, data: zDisableEndpointError401 },
+  })
 
 export const disable = {
   post: post8,
@@ -954,6 +1608,14 @@ export const post9 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentEndpointsEnableBody }))
   .output(zPostWorkspacesCurrentEndpointsEnableResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zEnableEndpointError400 },
+    bad_request: { status: 400, data: zEnableEndpointError400 },
+    invalid_param: { status: 400, data: zEnableEndpointError400 },
+    not_init_validated: { status: 401, data: zEnableEndpointError401 },
+    not_setup: { status: 401, data: zEnableEndpointError401 },
+    unauthorized: { status: 401, data: zEnableEndpointError401 },
+  })
 
 export const enable = {
   post: post9,
@@ -973,6 +1635,14 @@ export const get10 = oc
   })
   .input(z.object({ query: zGetWorkspacesCurrentEndpointsListPluginQuery }))
   .output(zGetWorkspacesCurrentEndpointsListPluginResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zListPluginEndpointsError400 },
+    bad_request: { status: 400, data: zListPluginEndpointsError400 },
+    invalid_param: { status: 400, data: zListPluginEndpointsError400 },
+    not_init_validated: { status: 401, data: zListPluginEndpointsError401 },
+    not_setup: { status: 401, data: zListPluginEndpointsError401 },
+    unauthorized: { status: 401, data: zListPluginEndpointsError401 },
+  })
 
 export const plugin = {
   get: get10,
@@ -992,6 +1662,14 @@ export const get11 = oc
   })
   .input(z.object({ query: zGetWorkspacesCurrentEndpointsListQuery }))
   .output(zGetWorkspacesCurrentEndpointsListResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zListEndpointsError400 },
+    bad_request: { status: 400, data: zListEndpointsError400 },
+    invalid_param: { status: 400, data: zListEndpointsError400 },
+    not_init_validated: { status: 401, data: zListEndpointsError401 },
+    not_setup: { status: 401, data: zListEndpointsError401 },
+    unauthorized: { status: 401, data: zListEndpointsError401 },
+  })
 
 export const list = {
   get: get11,
@@ -1016,6 +1694,14 @@ export const post10 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentEndpointsUpdateBody }))
   .output(zPostWorkspacesCurrentEndpointsUpdateResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zUpdateEndpointDeprecatedError400 },
+    bad_request: { status: 400, data: zUpdateEndpointDeprecatedError400 },
+    invalid_param: { status: 400, data: zUpdateEndpointDeprecatedError400 },
+    not_init_validated: { status: 401, data: zUpdateEndpointDeprecatedError401 },
+    not_setup: { status: 401, data: zUpdateEndpointDeprecatedError401 },
+    unauthorized: { status: 401, data: zUpdateEndpointDeprecatedError401 },
+  })
 
 export const update = {
   post: post10,
@@ -1035,6 +1721,14 @@ export const delete3 = oc
   })
   .input(z.object({ params: zDeleteWorkspacesCurrentEndpointsByIdPath }))
   .output(zDeleteWorkspacesCurrentEndpointsByIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zDeleteEndpointError400 },
+    bad_request: { status: 400, data: zDeleteEndpointError400 },
+    invalid_param: { status: 400, data: zDeleteEndpointError400 },
+    not_init_validated: { status: 401, data: zDeleteEndpointError401 },
+    not_setup: { status: 401, data: zDeleteEndpointError401 },
+    unauthorized: { status: 401, data: zDeleteEndpointError401 },
+  })
 
 /**
  * Update a plugin endpoint
@@ -1055,6 +1749,14 @@ export const patch2 = oc
     }),
   )
   .output(zPatchWorkspacesCurrentEndpointsByIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zUpdateEndpointError400 },
+    bad_request: { status: 400, data: zUpdateEndpointError400 },
+    invalid_param: { status: 400, data: zUpdateEndpointError400 },
+    not_init_validated: { status: 401, data: zUpdateEndpointError401 },
+    not_setup: { status: 401, data: zUpdateEndpointError401 },
+    unauthorized: { status: 401, data: zUpdateEndpointError401 },
+  })
 
 export const byId = {
   delete: delete3,
@@ -1075,6 +1777,14 @@ export const post11 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentEndpointsBody }))
   .output(zPostWorkspacesCurrentEndpointsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zCreateEndpointError400 },
+    bad_request: { status: 400, data: zCreateEndpointError400 },
+    invalid_param: { status: 400, data: zCreateEndpointError400 },
+    not_init_validated: { status: 401, data: zCreateEndpointError401 },
+    not_setup: { status: 401, data: zCreateEndpointError401 },
+    unauthorized: { status: 401, data: zCreateEndpointError401 },
+  })
 
 export const endpoints = {
   post: post11,
@@ -1098,6 +1808,16 @@ export const post12 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentMembersInviteEmailBody }))
   .output(zPostWorkspacesCurrentMembersInviteEmailResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostMemberInviteEmailApiError400 },
+    bad_request: { status: 400, data: zPostMemberInviteEmailApiError400 },
+    invalid_param: { status: 400, data: zPostMemberInviteEmailApiError400 },
+    invalid_role: { status: 400, data: zPostMemberInviteEmailApiError400 },
+    limit_exceeded: { status: 400, data: zPostMemberInviteEmailApiError400 },
+    not_init_validated: { status: 401, data: zPostMemberInviteEmailApiError401 },
+    not_setup: { status: 401, data: zPostMemberInviteEmailApiError401 },
+    unauthorized: { status: 401, data: zPostMemberInviteEmailApiError401 },
+  })
 
 export const inviteEmail = {
   post: post12,
@@ -1113,6 +1833,24 @@ export const post13 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentMembersOwnerTransferCheckBody }))
   .output(zPostWorkspacesCurrentMembersOwnerTransferCheckResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostOwnerTransferCheckApiError400 },
+    bad_request: { status: 400, data: zPostOwnerTransferCheckApiError400 },
+    cannot_transfer_owner_to_self: { status: 400, data: zPostOwnerTransferCheckApiError400 },
+    email_code_error: { status: 400, data: zPostOwnerTransferCheckApiError400 },
+    invalid_email: { status: 400, data: zPostOwnerTransferCheckApiError400 },
+    invalid_or_expired_token: { status: 400, data: zPostOwnerTransferCheckApiError400 },
+    invalid_param: { status: 400, data: zPostOwnerTransferCheckApiError400 },
+    member_not_in_tenant: { status: 400, data: zPostOwnerTransferCheckApiError400 },
+    not_owner: { status: 400, data: zPostOwnerTransferCheckApiError400 },
+    not_init_validated: { status: 401, data: zPostOwnerTransferCheckApiError401 },
+    not_setup: { status: 401, data: zPostOwnerTransferCheckApiError401 },
+    unauthorized: { status: 401, data: zPostOwnerTransferCheckApiError401 },
+    email_send_ip_limit: { status: 429, data: zPostOwnerTransferCheckApiError429 },
+    owner_transfer_limit: { status: 429, data: zPostOwnerTransferCheckApiError429 },
+    owner_transfer_rate_limit_exceeded: { status: 429, data: zPostOwnerTransferCheckApiError429 },
+    too_many_requests: { status: 429, data: zPostOwnerTransferCheckApiError429 },
+  })
 
 export const ownerTransferCheck = {
   post: post13,
@@ -1128,6 +1866,27 @@ export const post14 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentMembersSendOwnerTransferConfirmEmailBody }))
   .output(zPostWorkspacesCurrentMembersSendOwnerTransferConfirmEmailResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostSendOwnerTransferEmailApiError400 },
+    bad_request: { status: 400, data: zPostSendOwnerTransferEmailApiError400 },
+    cannot_transfer_owner_to_self: { status: 400, data: zPostSendOwnerTransferEmailApiError400 },
+    email_code_error: { status: 400, data: zPostSendOwnerTransferEmailApiError400 },
+    invalid_email: { status: 400, data: zPostSendOwnerTransferEmailApiError400 },
+    invalid_or_expired_token: { status: 400, data: zPostSendOwnerTransferEmailApiError400 },
+    invalid_param: { status: 400, data: zPostSendOwnerTransferEmailApiError400 },
+    member_not_in_tenant: { status: 400, data: zPostSendOwnerTransferEmailApiError400 },
+    not_owner: { status: 400, data: zPostSendOwnerTransferEmailApiError400 },
+    not_init_validated: { status: 401, data: zPostSendOwnerTransferEmailApiError401 },
+    not_setup: { status: 401, data: zPostSendOwnerTransferEmailApiError401 },
+    unauthorized: { status: 401, data: zPostSendOwnerTransferEmailApiError401 },
+    email_send_ip_limit: { status: 429, data: zPostSendOwnerTransferEmailApiError429 },
+    owner_transfer_limit: { status: 429, data: zPostSendOwnerTransferEmailApiError429 },
+    owner_transfer_rate_limit_exceeded: {
+      status: 429,
+      data: zPostSendOwnerTransferEmailApiError429,
+    },
+    too_many_requests: { status: 429, data: zPostSendOwnerTransferEmailApiError429 },
+  })
 
 export const sendOwnerTransferConfirmEmail = {
   post: post14,
@@ -1148,6 +1907,24 @@ export const post15 = oc
     }),
   )
   .output(zPostWorkspacesCurrentMembersByMemberIdOwnerTransferResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostOwnerTransferError400 },
+    bad_request: { status: 400, data: zPostOwnerTransferError400 },
+    cannot_transfer_owner_to_self: { status: 400, data: zPostOwnerTransferError400 },
+    email_code_error: { status: 400, data: zPostOwnerTransferError400 },
+    invalid_email: { status: 400, data: zPostOwnerTransferError400 },
+    invalid_or_expired_token: { status: 400, data: zPostOwnerTransferError400 },
+    invalid_param: { status: 400, data: zPostOwnerTransferError400 },
+    member_not_in_tenant: { status: 400, data: zPostOwnerTransferError400 },
+    not_owner: { status: 400, data: zPostOwnerTransferError400 },
+    not_init_validated: { status: 401, data: zPostOwnerTransferError401 },
+    not_setup: { status: 401, data: zPostOwnerTransferError401 },
+    unauthorized: { status: 401, data: zPostOwnerTransferError401 },
+    email_send_ip_limit: { status: 429, data: zPostOwnerTransferError429 },
+    owner_transfer_limit: { status: 429, data: zPostOwnerTransferError429 },
+    owner_transfer_rate_limit_exceeded: { status: 429, data: zPostOwnerTransferError429 },
+    too_many_requests: { status: 429, data: zPostOwnerTransferError429 },
+  })
 
 export const ownerTransfer = {
   post: post15,
@@ -1168,6 +1945,20 @@ export const put2 = oc
     }),
   )
   .output(zPutWorkspacesCurrentMembersByMemberIdUpdateRoleResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPutMemberUpdateRoleApiError400 },
+    bad_request: { status: 400, data: zPutMemberUpdateRoleApiError400 },
+    'cannot-operate-self': { status: 400, data: zPutMemberUpdateRoleApiError400 },
+    'invalid-role': { status: 400, data: zPutMemberUpdateRoleApiError400 },
+    invalid_param: { status: 400, data: zPutMemberUpdateRoleApiError400 },
+    'role-already-assigned': { status: 400, data: zPutMemberUpdateRoleApiError400 },
+    not_init_validated: { status: 401, data: zPutMemberUpdateRoleApiError401 },
+    not_setup: { status: 401, data: zPutMemberUpdateRoleApiError401 },
+    unauthorized: { status: 401, data: zPutMemberUpdateRoleApiError401 },
+    forbidden: { status: 403, data: zPutMemberUpdateRoleApiError403 },
+    'member-not-found': { status: 404, data: zPutMemberUpdateRoleApiError404 },
+    not_found: { status: 404, data: zPutMemberUpdateRoleApiError404 },
+  })
 
 export const updateRole = {
   put: put2,
@@ -1183,6 +1974,20 @@ export const delete4 = oc
   })
   .input(z.object({ params: zDeleteWorkspacesCurrentMembersByMemberIdPath }))
   .output(zDeleteWorkspacesCurrentMembersByMemberIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zDeleteMemberCancelInviteApiError400 },
+    bad_request: { status: 400, data: zDeleteMemberCancelInviteApiError400 },
+    'cannot-operate-self': { status: 400, data: zDeleteMemberCancelInviteApiError400 },
+    'invalid-role': { status: 400, data: zDeleteMemberCancelInviteApiError400 },
+    invalid_param: { status: 400, data: zDeleteMemberCancelInviteApiError400 },
+    'role-already-assigned': { status: 400, data: zDeleteMemberCancelInviteApiError400 },
+    not_init_validated: { status: 401, data: zDeleteMemberCancelInviteApiError401 },
+    not_setup: { status: 401, data: zDeleteMemberCancelInviteApiError401 },
+    unauthorized: { status: 401, data: zDeleteMemberCancelInviteApiError401 },
+    forbidden: { status: 403, data: zDeleteMemberCancelInviteApiError403 },
+    'member-not-found': { status: 404, data: zDeleteMemberCancelInviteApiError404 },
+    not_found: { status: 404, data: zDeleteMemberCancelInviteApiError404 },
+  })
 
 export const byMemberId = {
   delete: delete4,
@@ -1199,6 +2004,14 @@ export const get12 = oc
     tags: ['console'],
   })
   .output(zGetWorkspacesCurrentMembersResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetMemberListApiError400 },
+    bad_request: { status: 400, data: zGetMemberListApiError400 },
+    invalid_param: { status: 400, data: zGetMemberListApiError400 },
+    not_init_validated: { status: 401, data: zGetMemberListApiError401 },
+    not_setup: { status: 401, data: zGetMemberListApiError401 },
+    unauthorized: { status: 401, data: zGetMemberListApiError401 },
+  })
 
 export const members = {
   get: get12,
@@ -1217,6 +2030,14 @@ export const get13 = oc
     tags: ['console'],
   })
   .output(zGetWorkspacesCurrentModelProvidersCreditsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetModelProviderCreditsApiError400 },
+    bad_request: { status: 400, data: zGetModelProviderCreditsApiError400 },
+    invalid_param: { status: 400, data: zGetModelProviderCreditsApiError400 },
+    not_init_validated: { status: 401, data: zGetModelProviderCreditsApiError401 },
+    not_setup: { status: 401, data: zGetModelProviderCreditsApiError401 },
+    unauthorized: { status: 401, data: zGetModelProviderCreditsApiError401 },
+  })
 
 export const credits = {
   get: get13,
@@ -1231,6 +2052,14 @@ export const get14 = oc
     tags: ['console'],
   })
   .output(zGetWorkspacesCurrentModelProvidersSummaryResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetModelProviderSummaryListApiError400 },
+    bad_request: { status: 400, data: zGetModelProviderSummaryListApiError400 },
+    invalid_param: { status: 400, data: zGetModelProviderSummaryListApiError400 },
+    not_init_validated: { status: 401, data: zGetModelProviderSummaryListApiError401 },
+    not_setup: { status: 401, data: zGetModelProviderSummaryListApiError401 },
+    unauthorized: { status: 401, data: zGetModelProviderSummaryListApiError401 },
+  })
 
 export const summary = {
   get: get14,
@@ -1250,6 +2079,14 @@ export const get15 = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentModelProvidersByProviderCheckoutUrlPath }))
   .output(zGetWorkspacesCurrentModelProvidersByProviderCheckoutUrlResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetModelProviderPaymentCheckoutUrlApiError400 },
+    bad_request: { status: 400, data: zGetModelProviderPaymentCheckoutUrlApiError400 },
+    invalid_param: { status: 400, data: zGetModelProviderPaymentCheckoutUrlApiError400 },
+    not_init_validated: { status: 401, data: zGetModelProviderPaymentCheckoutUrlApiError401 },
+    not_setup: { status: 401, data: zGetModelProviderPaymentCheckoutUrlApiError401 },
+    unauthorized: { status: 401, data: zGetModelProviderPaymentCheckoutUrlApiError401 },
+  })
 
 export const checkoutUrl = {
   get: get15,
@@ -1270,6 +2107,14 @@ export const post16 = oc
     }),
   )
   .output(zPostWorkspacesCurrentModelProvidersByProviderCredentialsSwitchResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostModelProviderCredentialSwitchApiError400 },
+    bad_request: { status: 400, data: zPostModelProviderCredentialSwitchApiError400 },
+    invalid_param: { status: 400, data: zPostModelProviderCredentialSwitchApiError400 },
+    not_init_validated: { status: 401, data: zPostModelProviderCredentialSwitchApiError401 },
+    not_setup: { status: 401, data: zPostModelProviderCredentialSwitchApiError401 },
+    unauthorized: { status: 401, data: zPostModelProviderCredentialSwitchApiError401 },
+  })
 
 export const switch_ = {
   post: post16,
@@ -1290,6 +2135,14 @@ export const post17 = oc
     }),
   )
   .output(zPostWorkspacesCurrentModelProvidersByProviderCredentialsValidateResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostModelProviderValidateApiError400 },
+    bad_request: { status: 400, data: zPostModelProviderValidateApiError400 },
+    invalid_param: { status: 400, data: zPostModelProviderValidateApiError400 },
+    not_init_validated: { status: 401, data: zPostModelProviderValidateApiError401 },
+    not_setup: { status: 401, data: zPostModelProviderValidateApiError401 },
+    unauthorized: { status: 401, data: zPostModelProviderValidateApiError401 },
+  })
 
 export const validate = {
   post: post17,
@@ -1311,6 +2164,14 @@ export const delete5 = oc
     }),
   )
   .output(zDeleteWorkspacesCurrentModelProvidersByProviderCredentialsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zDeleteModelProviderCredentialApiError400 },
+    bad_request: { status: 400, data: zDeleteModelProviderCredentialApiError400 },
+    invalid_param: { status: 400, data: zDeleteModelProviderCredentialApiError400 },
+    not_init_validated: { status: 401, data: zDeleteModelProviderCredentialApiError401 },
+    not_setup: { status: 401, data: zDeleteModelProviderCredentialApiError401 },
+    unauthorized: { status: 401, data: zDeleteModelProviderCredentialApiError401 },
+  })
 
 export const get16 = oc
   .route({
@@ -1327,6 +2188,14 @@ export const get16 = oc
     }),
   )
   .output(zGetWorkspacesCurrentModelProvidersByProviderCredentialsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetModelProviderCredentialApiError400 },
+    bad_request: { status: 400, data: zGetModelProviderCredentialApiError400 },
+    invalid_param: { status: 400, data: zGetModelProviderCredentialApiError400 },
+    not_init_validated: { status: 401, data: zGetModelProviderCredentialApiError401 },
+    not_setup: { status: 401, data: zGetModelProviderCredentialApiError401 },
+    unauthorized: { status: 401, data: zGetModelProviderCredentialApiError401 },
+  })
 
 export const post18 = oc
   .route({
@@ -1344,6 +2213,14 @@ export const post18 = oc
     }),
   )
   .output(zPostWorkspacesCurrentModelProvidersByProviderCredentialsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostModelProviderCredentialApiError400 },
+    bad_request: { status: 400, data: zPostModelProviderCredentialApiError400 },
+    invalid_param: { status: 400, data: zPostModelProviderCredentialApiError400 },
+    not_init_validated: { status: 401, data: zPostModelProviderCredentialApiError401 },
+    not_setup: { status: 401, data: zPostModelProviderCredentialApiError401 },
+    unauthorized: { status: 401, data: zPostModelProviderCredentialApiError401 },
+  })
 
 export const put3 = oc
   .route({
@@ -1360,6 +2237,14 @@ export const put3 = oc
     }),
   )
   .output(zPutWorkspacesCurrentModelProvidersByProviderCredentialsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPutModelProviderCredentialApiError400 },
+    bad_request: { status: 400, data: zPutModelProviderCredentialApiError400 },
+    invalid_param: { status: 400, data: zPutModelProviderCredentialApiError400 },
+    not_init_validated: { status: 401, data: zPutModelProviderCredentialApiError401 },
+    not_setup: { status: 401, data: zPutModelProviderCredentialApiError401 },
+    unauthorized: { status: 401, data: zPutModelProviderCredentialApiError401 },
+  })
 
 export const credentials = {
   delete: delete5,
@@ -1385,6 +2270,17 @@ export const post19 = oc
     }),
   )
   .output(zPostWorkspacesCurrentModelProvidersByProviderModelsCredentialsSwitchResponse)
+  .errors({
+    account_not_initialized: {
+      status: 400,
+      data: zPostModelProviderModelCredentialSwitchApiError400,
+    },
+    bad_request: { status: 400, data: zPostModelProviderModelCredentialSwitchApiError400 },
+    invalid_param: { status: 400, data: zPostModelProviderModelCredentialSwitchApiError400 },
+    not_init_validated: { status: 401, data: zPostModelProviderModelCredentialSwitchApiError401 },
+    not_setup: { status: 401, data: zPostModelProviderModelCredentialSwitchApiError401 },
+    unauthorized: { status: 401, data: zPostModelProviderModelCredentialSwitchApiError401 },
+  })
 
 export const switch2 = {
   post: post19,
@@ -1405,6 +2301,14 @@ export const post20 = oc
     }),
   )
   .output(zPostWorkspacesCurrentModelProvidersByProviderModelsCredentialsValidateResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostModelProviderModelValidateApiError400 },
+    bad_request: { status: 400, data: zPostModelProviderModelValidateApiError400 },
+    invalid_param: { status: 400, data: zPostModelProviderModelValidateApiError400 },
+    not_init_validated: { status: 401, data: zPostModelProviderModelValidateApiError401 },
+    not_setup: { status: 401, data: zPostModelProviderModelValidateApiError401 },
+    unauthorized: { status: 401, data: zPostModelProviderModelValidateApiError401 },
+  })
 
 export const validate2 = {
   post: post20,
@@ -1426,6 +2330,14 @@ export const delete6 = oc
     }),
   )
   .output(zDeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zDeleteModelProviderModelCredentialApiError400 },
+    bad_request: { status: 400, data: zDeleteModelProviderModelCredentialApiError400 },
+    invalid_param: { status: 400, data: zDeleteModelProviderModelCredentialApiError400 },
+    not_init_validated: { status: 401, data: zDeleteModelProviderModelCredentialApiError401 },
+    not_setup: { status: 401, data: zDeleteModelProviderModelCredentialApiError401 },
+    unauthorized: { status: 401, data: zDeleteModelProviderModelCredentialApiError401 },
+  })
 
 export const get17 = oc
   .route({
@@ -1442,6 +2354,14 @@ export const get17 = oc
     }),
   )
   .output(zGetWorkspacesCurrentModelProvidersByProviderModelsCredentialsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetModelProviderModelCredentialApiError400 },
+    bad_request: { status: 400, data: zGetModelProviderModelCredentialApiError400 },
+    invalid_param: { status: 400, data: zGetModelProviderModelCredentialApiError400 },
+    not_init_validated: { status: 401, data: zGetModelProviderModelCredentialApiError401 },
+    not_setup: { status: 401, data: zGetModelProviderModelCredentialApiError401 },
+    unauthorized: { status: 401, data: zGetModelProviderModelCredentialApiError401 },
+  })
 
 export const post21 = oc
   .route({
@@ -1459,6 +2379,14 @@ export const post21 = oc
     }),
   )
   .output(zPostWorkspacesCurrentModelProvidersByProviderModelsCredentialsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostModelProviderModelCredentialApiError400 },
+    bad_request: { status: 400, data: zPostModelProviderModelCredentialApiError400 },
+    invalid_param: { status: 400, data: zPostModelProviderModelCredentialApiError400 },
+    not_init_validated: { status: 401, data: zPostModelProviderModelCredentialApiError401 },
+    not_setup: { status: 401, data: zPostModelProviderModelCredentialApiError401 },
+    unauthorized: { status: 401, data: zPostModelProviderModelCredentialApiError401 },
+  })
 
 export const put4 = oc
   .route({
@@ -1475,6 +2403,14 @@ export const put4 = oc
     }),
   )
   .output(zPutWorkspacesCurrentModelProvidersByProviderModelsCredentialsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPutModelProviderModelCredentialApiError400 },
+    bad_request: { status: 400, data: zPutModelProviderModelCredentialApiError400 },
+    invalid_param: { status: 400, data: zPutModelProviderModelCredentialApiError400 },
+    not_init_validated: { status: 401, data: zPutModelProviderModelCredentialApiError401 },
+    not_setup: { status: 401, data: zPutModelProviderModelCredentialApiError401 },
+    unauthorized: { status: 401, data: zPutModelProviderModelCredentialApiError401 },
+  })
 
 export const credentials2 = {
   delete: delete6,
@@ -1500,6 +2436,14 @@ export const patch3 = oc
     }),
   )
   .output(zPatchWorkspacesCurrentModelProvidersByProviderModelsDisableResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPatchModelProviderModelDisableApiError400 },
+    bad_request: { status: 400, data: zPatchModelProviderModelDisableApiError400 },
+    invalid_param: { status: 400, data: zPatchModelProviderModelDisableApiError400 },
+    not_init_validated: { status: 401, data: zPatchModelProviderModelDisableApiError401 },
+    not_setup: { status: 401, data: zPatchModelProviderModelDisableApiError401 },
+    unauthorized: { status: 401, data: zPatchModelProviderModelDisableApiError401 },
+  })
 
 export const disable2 = {
   patch: patch3,
@@ -1520,6 +2464,14 @@ export const patch4 = oc
     }),
   )
   .output(zPatchWorkspacesCurrentModelProvidersByProviderModelsEnableResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPatchModelProviderModelEnableApiError400 },
+    bad_request: { status: 400, data: zPatchModelProviderModelEnableApiError400 },
+    invalid_param: { status: 400, data: zPatchModelProviderModelEnableApiError400 },
+    not_init_validated: { status: 401, data: zPatchModelProviderModelEnableApiError401 },
+    not_setup: { status: 401, data: zPatchModelProviderModelEnableApiError401 },
+    unauthorized: { status: 401, data: zPatchModelProviderModelEnableApiError401 },
+  })
 
 export const enable2 = {
   patch: patch4,
@@ -1544,6 +2496,17 @@ export const post22 = oc
   .output(
     zPostWorkspacesCurrentModelProvidersByProviderModelsLoadBalancingConfigsCredentialsValidateResponse,
   )
+  .errors({
+    account_not_initialized: {
+      status: 400,
+      data: zPostLoadBalancingCredentialsValidateApiError400,
+    },
+    bad_request: { status: 400, data: zPostLoadBalancingCredentialsValidateApiError400 },
+    invalid_param: { status: 400, data: zPostLoadBalancingCredentialsValidateApiError400 },
+    not_init_validated: { status: 401, data: zPostLoadBalancingCredentialsValidateApiError401 },
+    not_setup: { status: 401, data: zPostLoadBalancingCredentialsValidateApiError401 },
+    unauthorized: { status: 401, data: zPostLoadBalancingCredentialsValidateApiError401 },
+  })
 
 export const credentialsValidate = {
   post: post22,
@@ -1568,6 +2531,20 @@ export const post23 = oc
   .output(
     zPostWorkspacesCurrentModelProvidersByProviderModelsLoadBalancingConfigsByConfigIdCredentialsValidateResponse,
   )
+  .errors({
+    account_not_initialized: {
+      status: 400,
+      data: zPostLoadBalancingConfigCredentialsValidateApiError400,
+    },
+    bad_request: { status: 400, data: zPostLoadBalancingConfigCredentialsValidateApiError400 },
+    invalid_param: { status: 400, data: zPostLoadBalancingConfigCredentialsValidateApiError400 },
+    not_init_validated: {
+      status: 401,
+      data: zPostLoadBalancingConfigCredentialsValidateApiError401,
+    },
+    not_setup: { status: 401, data: zPostLoadBalancingConfigCredentialsValidateApiError401 },
+    unauthorized: { status: 401, data: zPostLoadBalancingConfigCredentialsValidateApiError401 },
+  })
 
 export const credentialsValidate2 = {
   post: post23,
@@ -1597,6 +2574,14 @@ export const get18 = oc
     }),
   )
   .output(zGetWorkspacesCurrentModelProvidersByProviderModelsParameterRulesResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetModelProviderModelParameterRuleApiError400 },
+    bad_request: { status: 400, data: zGetModelProviderModelParameterRuleApiError400 },
+    invalid_param: { status: 400, data: zGetModelProviderModelParameterRuleApiError400 },
+    not_init_validated: { status: 401, data: zGetModelProviderModelParameterRuleApiError401 },
+    not_setup: { status: 401, data: zGetModelProviderModelParameterRuleApiError401 },
+    unauthorized: { status: 401, data: zGetModelProviderModelParameterRuleApiError401 },
+  })
 
 export const parameterRules = {
   get: get18,
@@ -1618,6 +2603,14 @@ export const delete7 = oc
     }),
   )
   .output(zDeleteWorkspacesCurrentModelProvidersByProviderModelsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zDeleteModelProviderModelApiError400 },
+    bad_request: { status: 400, data: zDeleteModelProviderModelApiError400 },
+    invalid_param: { status: 400, data: zDeleteModelProviderModelApiError400 },
+    not_init_validated: { status: 401, data: zDeleteModelProviderModelApiError401 },
+    not_setup: { status: 401, data: zDeleteModelProviderModelApiError401 },
+    unauthorized: { status: 401, data: zDeleteModelProviderModelApiError401 },
+  })
 
 export const get19 = oc
   .route({
@@ -1629,6 +2622,14 @@ export const get19 = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentModelProvidersByProviderModelsPath }))
   .output(zGetWorkspacesCurrentModelProvidersByProviderModelsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetModelProviderModelApiError400 },
+    bad_request: { status: 400, data: zGetModelProviderModelApiError400 },
+    invalid_param: { status: 400, data: zGetModelProviderModelApiError400 },
+    not_init_validated: { status: 401, data: zGetModelProviderModelApiError401 },
+    not_setup: { status: 401, data: zGetModelProviderModelApiError401 },
+    unauthorized: { status: 401, data: zGetModelProviderModelApiError401 },
+  })
 
 export const post24 = oc
   .route({
@@ -1645,6 +2646,14 @@ export const post24 = oc
     }),
   )
   .output(zPostWorkspacesCurrentModelProvidersByProviderModelsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostModelProviderModelApiError400 },
+    bad_request: { status: 400, data: zPostModelProviderModelApiError400 },
+    invalid_param: { status: 400, data: zPostModelProviderModelApiError400 },
+    not_init_validated: { status: 401, data: zPostModelProviderModelApiError401 },
+    not_setup: { status: 401, data: zPostModelProviderModelApiError401 },
+    unauthorized: { status: 401, data: zPostModelProviderModelApiError401 },
+  })
 
 export const models = {
   delete: delete7,
@@ -1672,6 +2681,14 @@ export const post25 = oc
     }),
   )
   .output(zPostWorkspacesCurrentModelProvidersByProviderPreferredProviderTypeResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostPreferredProviderTypeUpdateApiError400 },
+    bad_request: { status: 400, data: zPostPreferredProviderTypeUpdateApiError400 },
+    invalid_param: { status: 400, data: zPostPreferredProviderTypeUpdateApiError400 },
+    not_init_validated: { status: 401, data: zPostPreferredProviderTypeUpdateApiError401 },
+    not_setup: { status: 401, data: zPostPreferredProviderTypeUpdateApiError401 },
+    unauthorized: { status: 401, data: zPostPreferredProviderTypeUpdateApiError401 },
+  })
 
 export const preferredProviderType = {
   post: post25,
@@ -1694,6 +2711,14 @@ export const get20 = oc
   })
   .input(z.object({ query: zGetWorkspacesCurrentModelProvidersQuery.optional() }))
   .output(zGetWorkspacesCurrentModelProvidersResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetModelProviderListApiError400 },
+    bad_request: { status: 400, data: zGetModelProviderListApiError400 },
+    invalid_param: { status: 400, data: zGetModelProviderListApiError400 },
+    not_init_validated: { status: 401, data: zGetModelProviderListApiError401 },
+    not_setup: { status: 401, data: zGetModelProviderListApiError401 },
+    unauthorized: { status: 401, data: zGetModelProviderListApiError401 },
+  })
 
 export const modelProviders = {
   get: get20,
@@ -1712,6 +2737,14 @@ export const get21 = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentModelsModelTypesByModelTypePath }))
   .output(zGetWorkspacesCurrentModelsModelTypesByModelTypeResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetModelProviderAvailableModelApiError400 },
+    bad_request: { status: 400, data: zGetModelProviderAvailableModelApiError400 },
+    invalid_param: { status: 400, data: zGetModelProviderAvailableModelApiError400 },
+    not_init_validated: { status: 401, data: zGetModelProviderAvailableModelApiError401 },
+    not_setup: { status: 401, data: zGetModelProviderAvailableModelApiError401 },
+    unauthorized: { status: 401, data: zGetModelProviderAvailableModelApiError401 },
+  })
 
 export const byModelType = {
   get: get21,
@@ -1734,6 +2767,14 @@ export const get22 = oc
     tags: ['console'],
   })
   .output(zGetWorkspacesCurrentPermissionResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetWorkspacePermissionApiError400 },
+    bad_request: { status: 400, data: zGetWorkspacePermissionApiError400 },
+    invalid_param: { status: 400, data: zGetWorkspacePermissionApiError400 },
+    not_init_validated: { status: 401, data: zGetWorkspacePermissionApiError401 },
+    not_setup: { status: 401, data: zGetWorkspacePermissionApiError401 },
+    unauthorized: { status: 401, data: zGetWorkspacePermissionApiError401 },
+  })
 
 export const permission = {
   get: get22,
@@ -1749,6 +2790,15 @@ export const get23 = oc
   })
   .input(z.object({ query: zGetWorkspacesCurrentPluginAssetQuery }))
   .output(zGetWorkspacesCurrentPluginAssetResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetPluginAssetApiError400 },
+    bad_request: { status: 400, data: zGetPluginAssetApiError400 },
+    invalid_param: { status: 400, data: zGetPluginAssetApiError400 },
+    plugin_error: { status: 400, data: zGetPluginAssetApiError400 },
+    not_init_validated: { status: 401, data: zGetPluginAssetApiError401 },
+    not_setup: { status: 401, data: zGetPluginAssetApiError401 },
+    unauthorized: { status: 401, data: zGetPluginAssetApiError401 },
+  })
 
 export const asset = {
   get: get23,
@@ -1764,6 +2814,14 @@ export const post26 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentPluginAutoUpgradeChangeBody }))
   .output(zPostWorkspacesCurrentPluginAutoUpgradeChangeResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostPluginChangeAutoUpgradeApiError400 },
+    bad_request: { status: 400, data: zPostPluginChangeAutoUpgradeApiError400 },
+    invalid_param: { status: 400, data: zPostPluginChangeAutoUpgradeApiError400 },
+    not_init_validated: { status: 401, data: zPostPluginChangeAutoUpgradeApiError401 },
+    not_setup: { status: 401, data: zPostPluginChangeAutoUpgradeApiError401 },
+    unauthorized: { status: 401, data: zPostPluginChangeAutoUpgradeApiError401 },
+  })
 
 export const change = {
   post: post26,
@@ -1779,6 +2837,14 @@ export const post27 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentPluginAutoUpgradeExcludeBody }))
   .output(zPostWorkspacesCurrentPluginAutoUpgradeExcludeResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostPluginAutoUpgradeExcludePluginApiError400 },
+    bad_request: { status: 400, data: zPostPluginAutoUpgradeExcludePluginApiError400 },
+    invalid_param: { status: 400, data: zPostPluginAutoUpgradeExcludePluginApiError400 },
+    not_init_validated: { status: 401, data: zPostPluginAutoUpgradeExcludePluginApiError401 },
+    not_setup: { status: 401, data: zPostPluginAutoUpgradeExcludePluginApiError401 },
+    unauthorized: { status: 401, data: zPostPluginAutoUpgradeExcludePluginApiError401 },
+  })
 
 export const exclude = {
   post: post27,
@@ -1794,6 +2860,14 @@ export const get24 = oc
   })
   .input(z.object({ query: zGetWorkspacesCurrentPluginAutoUpgradeFetchQuery }))
   .output(zGetWorkspacesCurrentPluginAutoUpgradeFetchResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetPluginFetchAutoUpgradeApiError400 },
+    bad_request: { status: 400, data: zGetPluginFetchAutoUpgradeApiError400 },
+    invalid_param: { status: 400, data: zGetPluginFetchAutoUpgradeApiError400 },
+    not_init_validated: { status: 401, data: zGetPluginFetchAutoUpgradeApiError401 },
+    not_setup: { status: 401, data: zGetPluginFetchAutoUpgradeApiError401 },
+    unauthorized: { status: 401, data: zGetPluginFetchAutoUpgradeApiError401 },
+  })
 
 export const fetch_ = {
   get: get24,
@@ -1814,6 +2888,15 @@ export const get25 = oc
     tags: ['console'],
   })
   .output(zGetWorkspacesCurrentPluginDebuggingKeyResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetPluginDebuggingKeyApiError400 },
+    bad_request: { status: 400, data: zGetPluginDebuggingKeyApiError400 },
+    invalid_param: { status: 400, data: zGetPluginDebuggingKeyApiError400 },
+    plugin_error: { status: 400, data: zGetPluginDebuggingKeyApiError400 },
+    not_init_validated: { status: 401, data: zGetPluginDebuggingKeyApiError401 },
+    not_setup: { status: 401, data: zGetPluginDebuggingKeyApiError401 },
+    unauthorized: { status: 401, data: zGetPluginDebuggingKeyApiError401 },
+  })
 
 export const debuggingKey = {
   get: get25,
@@ -1829,6 +2912,15 @@ export const get26 = oc
   })
   .input(z.object({ query: zGetWorkspacesCurrentPluginFetchManifestQuery }))
   .output(zGetWorkspacesCurrentPluginFetchManifestResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetPluginFetchManifestApiError400 },
+    bad_request: { status: 400, data: zGetPluginFetchManifestApiError400 },
+    invalid_param: { status: 400, data: zGetPluginFetchManifestApiError400 },
+    plugin_error: { status: 400, data: zGetPluginFetchManifestApiError400 },
+    not_init_validated: { status: 401, data: zGetPluginFetchManifestApiError401 },
+    not_setup: { status: 401, data: zGetPluginFetchManifestApiError401 },
+    unauthorized: { status: 401, data: zGetPluginFetchManifestApiError401 },
+  })
 
 export const fetchManifest = {
   get: get26,
@@ -1844,6 +2936,14 @@ export const get27 = oc
   })
   .input(z.object({ query: zGetWorkspacesCurrentPluginIconQuery }))
   .output(zGetWorkspacesCurrentPluginIconResponse)
+  .errors({
+    bad_request: { status: 400, data: zGetPluginIconApiError400 },
+    invalid_param: { status: 400, data: zGetPluginIconApiError400 },
+    plugin_error: { status: 400, data: zGetPluginIconApiError400 },
+    not_init_validated: { status: 401, data: zGetPluginIconApiError401 },
+    not_setup: { status: 401, data: zGetPluginIconApiError401 },
+    unauthorized: { status: 401, data: zGetPluginIconApiError401 },
+  })
 
 export const icon = {
   get: get27,
@@ -1859,6 +2959,15 @@ export const post28 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentPluginInstallGithubBody }))
   .output(zPostWorkspacesCurrentPluginInstallGithubResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostPluginInstallFromGithubApiError400 },
+    bad_request: { status: 400, data: zPostPluginInstallFromGithubApiError400 },
+    invalid_param: { status: 400, data: zPostPluginInstallFromGithubApiError400 },
+    plugin_error: { status: 400, data: zPostPluginInstallFromGithubApiError400 },
+    not_init_validated: { status: 401, data: zPostPluginInstallFromGithubApiError401 },
+    not_setup: { status: 401, data: zPostPluginInstallFromGithubApiError401 },
+    unauthorized: { status: 401, data: zPostPluginInstallFromGithubApiError401 },
+  })
 
 export const github = {
   post: post28,
@@ -1874,6 +2983,15 @@ export const post29 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentPluginInstallMarketplaceBody }))
   .output(zPostWorkspacesCurrentPluginInstallMarketplaceResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostPluginInstallFromMarketplaceApiError400 },
+    bad_request: { status: 400, data: zPostPluginInstallFromMarketplaceApiError400 },
+    invalid_param: { status: 400, data: zPostPluginInstallFromMarketplaceApiError400 },
+    plugin_error: { status: 400, data: zPostPluginInstallFromMarketplaceApiError400 },
+    not_init_validated: { status: 401, data: zPostPluginInstallFromMarketplaceApiError401 },
+    not_setup: { status: 401, data: zPostPluginInstallFromMarketplaceApiError401 },
+    unauthorized: { status: 401, data: zPostPluginInstallFromMarketplaceApiError401 },
+  })
 
 export const marketplace = {
   post: post29,
@@ -1889,6 +3007,15 @@ export const post30 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentPluginInstallPkgBody }))
   .output(zPostWorkspacesCurrentPluginInstallPkgResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostPluginInstallFromPkgApiError400 },
+    bad_request: { status: 400, data: zPostPluginInstallFromPkgApiError400 },
+    invalid_param: { status: 400, data: zPostPluginInstallFromPkgApiError400 },
+    plugin_error: { status: 400, data: zPostPluginInstallFromPkgApiError400 },
+    not_init_validated: { status: 401, data: zPostPluginInstallFromPkgApiError401 },
+    not_setup: { status: 401, data: zPostPluginInstallFromPkgApiError401 },
+    unauthorized: { status: 401, data: zPostPluginInstallFromPkgApiError401 },
+  })
 
 export const pkg = {
   post: post30,
@@ -1910,6 +3037,15 @@ export const get28 = oc
   })
   .input(z.object({ query: zGetWorkspacesCurrentPluginInstalledIdsQuery }))
   .output(zGetWorkspacesCurrentPluginInstalledIdsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetPluginInstalledIdsApiError400 },
+    bad_request: { status: 400, data: zGetPluginInstalledIdsApiError400 },
+    invalid_param: { status: 400, data: zGetPluginInstalledIdsApiError400 },
+    plugin_error: { status: 400, data: zGetPluginInstalledIdsApiError400 },
+    not_init_validated: { status: 401, data: zGetPluginInstalledIdsApiError401 },
+    not_setup: { status: 401, data: zGetPluginInstalledIdsApiError401 },
+    unauthorized: { status: 401, data: zGetPluginInstalledIdsApiError401 },
+  })
 
 export const installedIds = {
   get: get28,
@@ -1925,6 +3061,15 @@ export const post31 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentPluginListInstallationsIdsBody }))
   .output(zPostWorkspacesCurrentPluginListInstallationsIdsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostPluginListInstallationsFromIdsApiError400 },
+    bad_request: { status: 400, data: zPostPluginListInstallationsFromIdsApiError400 },
+    invalid_param: { status: 400, data: zPostPluginListInstallationsFromIdsApiError400 },
+    plugin_error: { status: 400, data: zPostPluginListInstallationsFromIdsApiError400 },
+    not_init_validated: { status: 401, data: zPostPluginListInstallationsFromIdsApiError401 },
+    not_setup: { status: 401, data: zPostPluginListInstallationsFromIdsApiError401 },
+    unauthorized: { status: 401, data: zPostPluginListInstallationsFromIdsApiError401 },
+  })
 
 export const ids = {
   post: post31,
@@ -1944,6 +3089,15 @@ export const post32 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentPluginListLatestVersionsBody }))
   .output(zPostWorkspacesCurrentPluginListLatestVersionsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostPluginListLatestVersionsApiError400 },
+    bad_request: { status: 400, data: zPostPluginListLatestVersionsApiError400 },
+    invalid_param: { status: 400, data: zPostPluginListLatestVersionsApiError400 },
+    plugin_error: { status: 400, data: zPostPluginListLatestVersionsApiError400 },
+    not_init_validated: { status: 401, data: zPostPluginListLatestVersionsApiError401 },
+    not_setup: { status: 401, data: zPostPluginListLatestVersionsApiError401 },
+    unauthorized: { status: 401, data: zPostPluginListLatestVersionsApiError401 },
+  })
 
 export const latestVersions = {
   post: post32,
@@ -1959,6 +3113,15 @@ export const get29 = oc
   })
   .input(z.object({ query: zGetWorkspacesCurrentPluginListQuery.optional() }))
   .output(zGetWorkspacesCurrentPluginListResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetPluginListApiError400 },
+    bad_request: { status: 400, data: zGetPluginListApiError400 },
+    invalid_param: { status: 400, data: zGetPluginListApiError400 },
+    plugin_error: { status: 400, data: zGetPluginListApiError400 },
+    not_init_validated: { status: 401, data: zGetPluginListApiError401 },
+    not_setup: { status: 401, data: zGetPluginListApiError401 },
+    unauthorized: { status: 401, data: zGetPluginListApiError401 },
+  })
 
 export const list2 = {
   get: get29,
@@ -1976,6 +3139,15 @@ export const get30 = oc
   })
   .input(z.object({ query: zGetWorkspacesCurrentPluginMarketplacePkgQuery }))
   .output(zGetWorkspacesCurrentPluginMarketplacePkgResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetPluginFetchMarketplacePkgApiError400 },
+    bad_request: { status: 400, data: zGetPluginFetchMarketplacePkgApiError400 },
+    invalid_param: { status: 400, data: zGetPluginFetchMarketplacePkgApiError400 },
+    plugin_error: { status: 400, data: zGetPluginFetchMarketplacePkgApiError400 },
+    not_init_validated: { status: 401, data: zGetPluginFetchMarketplacePkgApiError401 },
+    not_setup: { status: 401, data: zGetPluginFetchMarketplacePkgApiError401 },
+    unauthorized: { status: 401, data: zGetPluginFetchMarketplacePkgApiError401 },
+  })
 
 export const pkg2 = {
   get: get30,
@@ -1995,6 +3167,15 @@ export const get31 = oc
   })
   .input(z.object({ query: zGetWorkspacesCurrentPluginParametersDynamicOptionsQuery }))
   .output(zGetWorkspacesCurrentPluginParametersDynamicOptionsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetPluginFetchDynamicSelectOptionsApiError400 },
+    bad_request: { status: 400, data: zGetPluginFetchDynamicSelectOptionsApiError400 },
+    invalid_param: { status: 400, data: zGetPluginFetchDynamicSelectOptionsApiError400 },
+    plugin_error: { status: 400, data: zGetPluginFetchDynamicSelectOptionsApiError400 },
+    not_init_validated: { status: 401, data: zGetPluginFetchDynamicSelectOptionsApiError401 },
+    not_setup: { status: 401, data: zGetPluginFetchDynamicSelectOptionsApiError401 },
+    unauthorized: { status: 401, data: zGetPluginFetchDynamicSelectOptionsApiError401 },
+  })
 
 export const dynamicOptions = {
   get: get31,
@@ -2016,6 +3197,36 @@ export const post33 = oc
     z.object({ body: zPostWorkspacesCurrentPluginParametersDynamicOptionsWithCredentialsBody }),
   )
   .output(zPostWorkspacesCurrentPluginParametersDynamicOptionsWithCredentialsResponse)
+  .errors({
+    account_not_initialized: {
+      status: 400,
+      data: zPostPluginFetchDynamicSelectOptionsWithCredentialsApiError400,
+    },
+    bad_request: {
+      status: 400,
+      data: zPostPluginFetchDynamicSelectOptionsWithCredentialsApiError400,
+    },
+    invalid_param: {
+      status: 400,
+      data: zPostPluginFetchDynamicSelectOptionsWithCredentialsApiError400,
+    },
+    plugin_error: {
+      status: 400,
+      data: zPostPluginFetchDynamicSelectOptionsWithCredentialsApiError400,
+    },
+    not_init_validated: {
+      status: 401,
+      data: zPostPluginFetchDynamicSelectOptionsWithCredentialsApiError401,
+    },
+    not_setup: {
+      status: 401,
+      data: zPostPluginFetchDynamicSelectOptionsWithCredentialsApiError401,
+    },
+    unauthorized: {
+      status: 401,
+      data: zPostPluginFetchDynamicSelectOptionsWithCredentialsApiError401,
+    },
+  })
 
 export const dynamicOptionsWithCredentials = {
   post: post33,
@@ -2036,6 +3247,14 @@ export const post34 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentPluginPermissionChangeBody }))
   .output(zPostWorkspacesCurrentPluginPermissionChangeResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostPluginChangePermissionApiError400 },
+    bad_request: { status: 400, data: zPostPluginChangePermissionApiError400 },
+    invalid_param: { status: 400, data: zPostPluginChangePermissionApiError400 },
+    not_init_validated: { status: 401, data: zPostPluginChangePermissionApiError401 },
+    not_setup: { status: 401, data: zPostPluginChangePermissionApiError401 },
+    unauthorized: { status: 401, data: zPostPluginChangePermissionApiError401 },
+  })
 
 export const change2 = {
   post: post34,
@@ -2050,6 +3269,14 @@ export const get32 = oc
     tags: ['console'],
   })
   .output(zGetWorkspacesCurrentPluginPermissionFetchResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetPluginFetchPermissionApiError400 },
+    bad_request: { status: 400, data: zGetPluginFetchPermissionApiError400 },
+    invalid_param: { status: 400, data: zGetPluginFetchPermissionApiError400 },
+    not_init_validated: { status: 401, data: zGetPluginFetchPermissionApiError401 },
+    not_setup: { status: 401, data: zGetPluginFetchPermissionApiError401 },
+    unauthorized: { status: 401, data: zGetPluginFetchPermissionApiError401 },
+  })
 
 export const fetch2 = {
   get: get32,
@@ -2070,6 +3297,14 @@ export const get33 = oc
   })
   .input(z.object({ query: zGetWorkspacesCurrentPluginReadmeQuery }))
   .output(zGetWorkspacesCurrentPluginReadmeResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetPluginReadmeApiError400 },
+    bad_request: { status: 400, data: zGetPluginReadmeApiError400 },
+    invalid_param: { status: 400, data: zGetPluginReadmeApiError400 },
+    not_init_validated: { status: 401, data: zGetPluginReadmeApiError401 },
+    not_setup: { status: 401, data: zGetPluginReadmeApiError401 },
+    unauthorized: { status: 401, data: zGetPluginReadmeApiError401 },
+  })
 
 export const readme = {
   get: get33,
@@ -2084,6 +3319,15 @@ export const post35 = oc
     tags: ['console'],
   })
   .output(zPostWorkspacesCurrentPluginTasksDeleteAllResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostPluginDeleteAllInstallTaskItemsApiError400 },
+    bad_request: { status: 400, data: zPostPluginDeleteAllInstallTaskItemsApiError400 },
+    invalid_param: { status: 400, data: zPostPluginDeleteAllInstallTaskItemsApiError400 },
+    plugin_error: { status: 400, data: zPostPluginDeleteAllInstallTaskItemsApiError400 },
+    not_init_validated: { status: 401, data: zPostPluginDeleteAllInstallTaskItemsApiError401 },
+    not_setup: { status: 401, data: zPostPluginDeleteAllInstallTaskItemsApiError401 },
+    unauthorized: { status: 401, data: zPostPluginDeleteAllInstallTaskItemsApiError401 },
+  })
 
 export const deleteAll = {
   post: post35,
@@ -2099,6 +3343,15 @@ export const post36 = oc
   })
   .input(z.object({ params: zPostWorkspacesCurrentPluginTasksByTaskIdDeleteByIdentifierPath }))
   .output(zPostWorkspacesCurrentPluginTasksByTaskIdDeleteByIdentifierResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostPluginDeleteInstallTaskItemApiError400 },
+    bad_request: { status: 400, data: zPostPluginDeleteInstallTaskItemApiError400 },
+    invalid_param: { status: 400, data: zPostPluginDeleteInstallTaskItemApiError400 },
+    plugin_error: { status: 400, data: zPostPluginDeleteInstallTaskItemApiError400 },
+    not_init_validated: { status: 401, data: zPostPluginDeleteInstallTaskItemApiError401 },
+    not_setup: { status: 401, data: zPostPluginDeleteInstallTaskItemApiError401 },
+    unauthorized: { status: 401, data: zPostPluginDeleteInstallTaskItemApiError401 },
+  })
 
 export const byIdentifier = {
   post: post36,
@@ -2114,6 +3367,15 @@ export const post37 = oc
   })
   .input(z.object({ params: zPostWorkspacesCurrentPluginTasksByTaskIdDeletePath }))
   .output(zPostWorkspacesCurrentPluginTasksByTaskIdDeleteResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostPluginDeleteInstallTaskApiError400 },
+    bad_request: { status: 400, data: zPostPluginDeleteInstallTaskApiError400 },
+    invalid_param: { status: 400, data: zPostPluginDeleteInstallTaskApiError400 },
+    plugin_error: { status: 400, data: zPostPluginDeleteInstallTaskApiError400 },
+    not_init_validated: { status: 401, data: zPostPluginDeleteInstallTaskApiError401 },
+    not_setup: { status: 401, data: zPostPluginDeleteInstallTaskApiError401 },
+    unauthorized: { status: 401, data: zPostPluginDeleteInstallTaskApiError401 },
+  })
 
 export const delete8 = {
   post: post37,
@@ -2130,6 +3392,15 @@ export const get34 = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentPluginTasksByTaskIdPath }))
   .output(zGetWorkspacesCurrentPluginTasksByTaskIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetPluginFetchInstallTaskApiError400 },
+    bad_request: { status: 400, data: zGetPluginFetchInstallTaskApiError400 },
+    invalid_param: { status: 400, data: zGetPluginFetchInstallTaskApiError400 },
+    plugin_error: { status: 400, data: zGetPluginFetchInstallTaskApiError400 },
+    not_init_validated: { status: 401, data: zGetPluginFetchInstallTaskApiError401 },
+    not_setup: { status: 401, data: zGetPluginFetchInstallTaskApiError401 },
+    unauthorized: { status: 401, data: zGetPluginFetchInstallTaskApiError401 },
+  })
 
 export const byTaskId = {
   get: get34,
@@ -2146,6 +3417,15 @@ export const get35 = oc
   })
   .input(z.object({ query: zGetWorkspacesCurrentPluginTasksQuery.optional() }))
   .output(zGetWorkspacesCurrentPluginTasksResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetPluginFetchInstallTasksApiError400 },
+    bad_request: { status: 400, data: zGetPluginFetchInstallTasksApiError400 },
+    invalid_param: { status: 400, data: zGetPluginFetchInstallTasksApiError400 },
+    plugin_error: { status: 400, data: zGetPluginFetchInstallTasksApiError400 },
+    not_init_validated: { status: 401, data: zGetPluginFetchInstallTasksApiError401 },
+    not_setup: { status: 401, data: zGetPluginFetchInstallTasksApiError401 },
+    unauthorized: { status: 401, data: zGetPluginFetchInstallTasksApiError401 },
+  })
 
 export const tasks = {
   get: get35,
@@ -2163,6 +3443,15 @@ export const post38 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentPluginUninstallBody }))
   .output(zPostWorkspacesCurrentPluginUninstallResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostPluginUninstallApiError400 },
+    bad_request: { status: 400, data: zPostPluginUninstallApiError400 },
+    invalid_param: { status: 400, data: zPostPluginUninstallApiError400 },
+    plugin_error: { status: 400, data: zPostPluginUninstallApiError400 },
+    not_init_validated: { status: 401, data: zPostPluginUninstallApiError401 },
+    not_setup: { status: 401, data: zPostPluginUninstallApiError401 },
+    unauthorized: { status: 401, data: zPostPluginUninstallApiError401 },
+  })
 
 export const uninstall = {
   post: post38,
@@ -2178,6 +3467,15 @@ export const post39 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentPluginUpgradeGithubBody }))
   .output(zPostWorkspacesCurrentPluginUpgradeGithubResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostPluginUpgradeFromGithubApiError400 },
+    bad_request: { status: 400, data: zPostPluginUpgradeFromGithubApiError400 },
+    invalid_param: { status: 400, data: zPostPluginUpgradeFromGithubApiError400 },
+    plugin_error: { status: 400, data: zPostPluginUpgradeFromGithubApiError400 },
+    not_init_validated: { status: 401, data: zPostPluginUpgradeFromGithubApiError401 },
+    not_setup: { status: 401, data: zPostPluginUpgradeFromGithubApiError401 },
+    unauthorized: { status: 401, data: zPostPluginUpgradeFromGithubApiError401 },
+  })
 
 export const github2 = {
   post: post39,
@@ -2193,6 +3491,15 @@ export const post40 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentPluginUpgradeMarketplaceBody }))
   .output(zPostWorkspacesCurrentPluginUpgradeMarketplaceResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostPluginUpgradeFromMarketplaceApiError400 },
+    bad_request: { status: 400, data: zPostPluginUpgradeFromMarketplaceApiError400 },
+    invalid_param: { status: 400, data: zPostPluginUpgradeFromMarketplaceApiError400 },
+    plugin_error: { status: 400, data: zPostPluginUpgradeFromMarketplaceApiError400 },
+    not_init_validated: { status: 401, data: zPostPluginUpgradeFromMarketplaceApiError401 },
+    not_setup: { status: 401, data: zPostPluginUpgradeFromMarketplaceApiError401 },
+    unauthorized: { status: 401, data: zPostPluginUpgradeFromMarketplaceApiError401 },
+  })
 
 export const marketplace3 = {
   post: post40,
@@ -2212,6 +3519,14 @@ export const post41 = oc
     tags: ['console'],
   })
   .output(zPostWorkspacesCurrentPluginUploadBundleResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostPluginUploadFromBundleApiError400 },
+    bad_request: { status: 400, data: zPostPluginUploadFromBundleApiError400 },
+    invalid_param: { status: 400, data: zPostPluginUploadFromBundleApiError400 },
+    not_init_validated: { status: 401, data: zPostPluginUploadFromBundleApiError401 },
+    not_setup: { status: 401, data: zPostPluginUploadFromBundleApiError401 },
+    unauthorized: { status: 401, data: zPostPluginUploadFromBundleApiError401 },
+  })
 
 export const bundle = {
   post: post41,
@@ -2227,6 +3542,15 @@ export const post42 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentPluginUploadGithubBody }))
   .output(zPostWorkspacesCurrentPluginUploadGithubResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostPluginUploadFromGithubApiError400 },
+    bad_request: { status: 400, data: zPostPluginUploadFromGithubApiError400 },
+    invalid_param: { status: 400, data: zPostPluginUploadFromGithubApiError400 },
+    plugin_error: { status: 400, data: zPostPluginUploadFromGithubApiError400 },
+    not_init_validated: { status: 401, data: zPostPluginUploadFromGithubApiError401 },
+    not_setup: { status: 401, data: zPostPluginUploadFromGithubApiError401 },
+    unauthorized: { status: 401, data: zPostPluginUploadFromGithubApiError401 },
+  })
 
 export const github3 = {
   post: post42,
@@ -2242,6 +3566,15 @@ export const post43 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentPluginUploadPkgBody }))
   .output(zPostWorkspacesCurrentPluginUploadPkgResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostPluginUploadFromPkgApiError400 },
+    bad_request: { status: 400, data: zPostPluginUploadFromPkgApiError400 },
+    invalid_param: { status: 400, data: zPostPluginUploadFromPkgApiError400 },
+    plugin_error: { status: 400, data: zPostPluginUploadFromPkgApiError400 },
+    not_init_validated: { status: 401, data: zPostPluginUploadFromPkgApiError401 },
+    not_setup: { status: 401, data: zPostPluginUploadFromPkgApiError401 },
+    unauthorized: { status: 401, data: zPostPluginUploadFromPkgApiError401 },
+  })
 
 export const pkg3 = {
   post: post43,
@@ -2268,6 +3601,15 @@ export const get36 = oc
     }),
   )
   .output(zGetWorkspacesCurrentPluginByCategoryListResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetPluginCategoryListApiError400 },
+    bad_request: { status: 400, data: zGetPluginCategoryListApiError400 },
+    invalid_param: { status: 400, data: zGetPluginCategoryListApiError400 },
+    plugin_error: { status: 400, data: zGetPluginCategoryListApiError400 },
+    not_init_validated: { status: 401, data: zGetPluginCategoryListApiError401 },
+    not_setup: { status: 401, data: zGetPluginCategoryListApiError401 },
+    unauthorized: { status: 401, data: zGetPluginCategoryListApiError401 },
+  })
 
 export const list3 = {
   get: get36,
@@ -2308,6 +3650,14 @@ export const post44 = oc
   })
   .input(z.object({ params: zPostWorkspacesCurrentRbacAccessPoliciesByPolicyIdCopyPath }))
   .output(zPostWorkspacesCurrentRbacAccessPoliciesByPolicyIdCopyResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostRbacAccessPolicyCopyApiError400 },
+    bad_request: { status: 400, data: zPostRbacAccessPolicyCopyApiError400 },
+    invalid_param: { status: 400, data: zPostRbacAccessPolicyCopyApiError400 },
+    not_init_validated: { status: 401, data: zPostRbacAccessPolicyCopyApiError401 },
+    not_setup: { status: 401, data: zPostRbacAccessPolicyCopyApiError401 },
+    unauthorized: { status: 401, data: zPostRbacAccessPolicyCopyApiError401 },
+  })
 
 export const copy = {
   post: post44,
@@ -2323,6 +3673,14 @@ export const delete9 = oc
   })
   .input(z.object({ params: zDeleteWorkspacesCurrentRbacAccessPoliciesByPolicyIdPath }))
   .output(zDeleteWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zDeleteRbacAccessPolicyItemApiError400 },
+    bad_request: { status: 400, data: zDeleteRbacAccessPolicyItemApiError400 },
+    invalid_param: { status: 400, data: zDeleteRbacAccessPolicyItemApiError400 },
+    not_init_validated: { status: 401, data: zDeleteRbacAccessPolicyItemApiError401 },
+    not_setup: { status: 401, data: zDeleteRbacAccessPolicyItemApiError401 },
+    unauthorized: { status: 401, data: zDeleteRbacAccessPolicyItemApiError401 },
+  })
 
 export const get37 = oc
   .route({
@@ -2334,6 +3692,14 @@ export const get37 = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentRbacAccessPoliciesByPolicyIdPath }))
   .output(zGetWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetRbacAccessPolicyItemApiError400 },
+    bad_request: { status: 400, data: zGetRbacAccessPolicyItemApiError400 },
+    invalid_param: { status: 400, data: zGetRbacAccessPolicyItemApiError400 },
+    not_init_validated: { status: 401, data: zGetRbacAccessPolicyItemApiError401 },
+    not_setup: { status: 401, data: zGetRbacAccessPolicyItemApiError401 },
+    unauthorized: { status: 401, data: zGetRbacAccessPolicyItemApiError401 },
+  })
 
 export const put5 = oc
   .route({
@@ -2350,6 +3716,14 @@ export const put5 = oc
     }),
   )
   .output(zPutWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPutRbacAccessPolicyItemApiError400 },
+    bad_request: { status: 400, data: zPutRbacAccessPolicyItemApiError400 },
+    invalid_param: { status: 400, data: zPutRbacAccessPolicyItemApiError400 },
+    not_init_validated: { status: 401, data: zPutRbacAccessPolicyItemApiError401 },
+    not_setup: { status: 401, data: zPutRbacAccessPolicyItemApiError401 },
+    unauthorized: { status: 401, data: zPutRbacAccessPolicyItemApiError401 },
+  })
 
 export const byPolicyId = {
   delete: delete9,
@@ -2367,6 +3741,14 @@ export const get38 = oc
     tags: ['console'],
   })
   .output(zGetWorkspacesCurrentRbacAccessPoliciesResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetRbacAccessPoliciesApiError400 },
+    bad_request: { status: 400, data: zGetRbacAccessPoliciesApiError400 },
+    invalid_param: { status: 400, data: zGetRbacAccessPoliciesApiError400 },
+    not_init_validated: { status: 401, data: zGetRbacAccessPoliciesApiError401 },
+    not_setup: { status: 401, data: zGetRbacAccessPoliciesApiError401 },
+    unauthorized: { status: 401, data: zGetRbacAccessPoliciesApiError401 },
+  })
 
 export const post45 = oc
   .route({
@@ -2379,6 +3761,14 @@ export const post45 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentRbacAccessPoliciesBody }))
   .output(zPostWorkspacesCurrentRbacAccessPoliciesResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostRbacAccessPoliciesApiError400 },
+    bad_request: { status: 400, data: zPostRbacAccessPoliciesApiError400 },
+    invalid_param: { status: 400, data: zPostRbacAccessPoliciesApiError400 },
+    not_init_validated: { status: 401, data: zPostRbacAccessPoliciesApiError401 },
+    not_setup: { status: 401, data: zPostRbacAccessPoliciesApiError401 },
+    unauthorized: { status: 401, data: zPostRbacAccessPoliciesApiError401 },
+  })
 
 export const accessPolicies = {
   get: get38,
@@ -2396,6 +3786,14 @@ export const put6 = oc
   })
   .input(z.object({ params: zPutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdLockPath }))
   .output(zPutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdLockResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPutRbacAccessPolicyBindingLockApiError400 },
+    bad_request: { status: 400, data: zPutRbacAccessPolicyBindingLockApiError400 },
+    invalid_param: { status: 400, data: zPutRbacAccessPolicyBindingLockApiError400 },
+    not_init_validated: { status: 401, data: zPutRbacAccessPolicyBindingLockApiError401 },
+    not_setup: { status: 401, data: zPutRbacAccessPolicyBindingLockApiError401 },
+    unauthorized: { status: 401, data: zPutRbacAccessPolicyBindingLockApiError401 },
+  })
 
 export const lock = {
   put: put6,
@@ -2411,6 +3809,14 @@ export const put7 = oc
   })
   .input(z.object({ params: zPutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdUnlockPath }))
   .output(zPutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdUnlockResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPutRbacAccessPolicyBindingUnlockApiError400 },
+    bad_request: { status: 400, data: zPutRbacAccessPolicyBindingUnlockApiError400 },
+    invalid_param: { status: 400, data: zPutRbacAccessPolicyBindingUnlockApiError400 },
+    not_init_validated: { status: 401, data: zPutRbacAccessPolicyBindingUnlockApiError401 },
+    not_setup: { status: 401, data: zPutRbacAccessPolicyBindingUnlockApiError401 },
+    unauthorized: { status: 401, data: zPutRbacAccessPolicyBindingUnlockApiError401 },
+  })
 
 export const unlock = {
   put: put7,
@@ -2440,6 +3846,14 @@ export const delete10 = oc
     }),
   )
   .output(zDeleteWorkspacesCurrentRbacAgentsByAgentIdAccessPoliciesByPolicyIdMemberBindingsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zDeleteRbacAgentMemberBindingsApiError400 },
+    bad_request: { status: 400, data: zDeleteRbacAgentMemberBindingsApiError400 },
+    invalid_param: { status: 400, data: zDeleteRbacAgentMemberBindingsApiError400 },
+    not_init_validated: { status: 401, data: zDeleteRbacAgentMemberBindingsApiError401 },
+    not_setup: { status: 401, data: zDeleteRbacAgentMemberBindingsApiError401 },
+    unauthorized: { status: 401, data: zDeleteRbacAgentMemberBindingsApiError401 },
+  })
 
 export const get39 = oc
   .route({
@@ -2455,6 +3869,14 @@ export const get39 = oc
     }),
   )
   .output(zGetWorkspacesCurrentRbacAgentsByAgentIdAccessPoliciesByPolicyIdMemberBindingsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetRbacAgentMemberBindingsApiError400 },
+    bad_request: { status: 400, data: zGetRbacAgentMemberBindingsApiError400 },
+    invalid_param: { status: 400, data: zGetRbacAgentMemberBindingsApiError400 },
+    not_init_validated: { status: 401, data: zGetRbacAgentMemberBindingsApiError401 },
+    not_setup: { status: 401, data: zGetRbacAgentMemberBindingsApiError401 },
+    unauthorized: { status: 401, data: zGetRbacAgentMemberBindingsApiError401 },
+  })
 
 export const memberBindings = {
   delete: delete10,
@@ -2475,6 +3897,14 @@ export const get40 = oc
     }),
   )
   .output(zGetWorkspacesCurrentRbacAgentsByAgentIdAccessPoliciesByPolicyIdRoleBindingsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetRbacAgentRoleBindingsApiError400 },
+    bad_request: { status: 400, data: zGetRbacAgentRoleBindingsApiError400 },
+    invalid_param: { status: 400, data: zGetRbacAgentRoleBindingsApiError400 },
+    not_init_validated: { status: 401, data: zGetRbacAgentRoleBindingsApiError401 },
+    not_setup: { status: 401, data: zGetRbacAgentRoleBindingsApiError401 },
+    unauthorized: { status: 401, data: zGetRbacAgentRoleBindingsApiError401 },
+  })
 
 export const roleBindings = {
   get: get40,
@@ -2504,6 +3934,14 @@ export const get41 = oc
     }),
   )
   .output(zGetWorkspacesCurrentRbacAgentsByAgentIdAccessPolicyResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetRbacAgentMatrixApiError400 },
+    bad_request: { status: 400, data: zGetRbacAgentMatrixApiError400 },
+    invalid_param: { status: 400, data: zGetRbacAgentMatrixApiError400 },
+    not_init_validated: { status: 401, data: zGetRbacAgentMatrixApiError401 },
+    not_setup: { status: 401, data: zGetRbacAgentMatrixApiError401 },
+    unauthorized: { status: 401, data: zGetRbacAgentMatrixApiError401 },
+  })
 
 export const accessPolicy = {
   get: get41,
@@ -2524,6 +3962,14 @@ export const get42 = oc
     }),
   )
   .output(zGetWorkspacesCurrentRbacAgentsByAgentIdUserAccessPoliciesResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetRbacAgentUserAccessPoliciesApiError400 },
+    bad_request: { status: 400, data: zGetRbacAgentUserAccessPoliciesApiError400 },
+    invalid_param: { status: 400, data: zGetRbacAgentUserAccessPoliciesApiError400 },
+    not_init_validated: { status: 401, data: zGetRbacAgentUserAccessPoliciesApiError401 },
+    not_setup: { status: 401, data: zGetRbacAgentUserAccessPoliciesApiError401 },
+    unauthorized: { status: 401, data: zGetRbacAgentUserAccessPoliciesApiError401 },
+  })
 
 export const userAccessPolicies = {
   get: get42,
@@ -2544,6 +3990,17 @@ export const put8 = oc
     }),
   )
   .output(zPutWorkspacesCurrentRbacAgentsByAgentIdUsersByTargetAccountIdAccessPoliciesResponse)
+  .errors({
+    account_not_initialized: {
+      status: 400,
+      data: zPutRbacAgentUserAccessPolicyAssignmentApiError400,
+    },
+    bad_request: { status: 400, data: zPutRbacAgentUserAccessPolicyAssignmentApiError400 },
+    invalid_param: { status: 400, data: zPutRbacAgentUserAccessPolicyAssignmentApiError400 },
+    not_init_validated: { status: 401, data: zPutRbacAgentUserAccessPolicyAssignmentApiError401 },
+    not_setup: { status: 401, data: zPutRbacAgentUserAccessPolicyAssignmentApiError401 },
+    unauthorized: { status: 401, data: zPutRbacAgentUserAccessPolicyAssignmentApiError401 },
+  })
 
 export const accessPolicies3 = {
   put: put8,
@@ -2567,6 +4024,14 @@ export const get43 = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentRbacAgentsByAgentIdWhitelistPath }))
   .output(zGetWorkspacesCurrentRbacAgentsByAgentIdWhitelistResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetRbacAgentWhitelistApiError400 },
+    bad_request: { status: 400, data: zGetRbacAgentWhitelistApiError400 },
+    invalid_param: { status: 400, data: zGetRbacAgentWhitelistApiError400 },
+    not_init_validated: { status: 401, data: zGetRbacAgentWhitelistApiError401 },
+    not_setup: { status: 401, data: zGetRbacAgentWhitelistApiError401 },
+    unauthorized: { status: 401, data: zGetRbacAgentWhitelistApiError401 },
+  })
 
 export const put9 = oc
   .route({
@@ -2583,6 +4048,14 @@ export const put9 = oc
     }),
   )
   .output(zPutWorkspacesCurrentRbacAgentsByAgentIdWhitelistResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPutRbacAgentWhitelistApiError400 },
+    bad_request: { status: 400, data: zPutRbacAgentWhitelistApiError400 },
+    invalid_param: { status: 400, data: zPutRbacAgentWhitelistApiError400 },
+    not_init_validated: { status: 401, data: zPutRbacAgentWhitelistApiError401 },
+    not_setup: { status: 401, data: zPutRbacAgentWhitelistApiError401 },
+    unauthorized: { status: 401, data: zPutRbacAgentWhitelistApiError401 },
+  })
 
 export const whitelist = {
   get: get43,
@@ -2599,6 +4072,14 @@ export const get44 = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentRbacAgentsByAgentIdWhitelistConfigPath }))
   .output(zGetWorkspacesCurrentRbacAgentsByAgentIdWhitelistConfigResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetRbacAgentWhitelistConfigApiError400 },
+    bad_request: { status: 400, data: zGetRbacAgentWhitelistConfigApiError400 },
+    invalid_param: { status: 400, data: zGetRbacAgentWhitelistConfigApiError400 },
+    not_init_validated: { status: 401, data: zGetRbacAgentWhitelistConfigApiError401 },
+    not_setup: { status: 401, data: zGetRbacAgentWhitelistConfigApiError401 },
+    unauthorized: { status: 401, data: zGetRbacAgentWhitelistConfigApiError401 },
+  })
 
 export const whitelistConfig = {
   get: get44,
@@ -2632,6 +4113,14 @@ export const delete11 = oc
     }),
   )
   .output(zDeleteWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberBindingsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zDeleteRbacAppMemberBindingsApiError400 },
+    bad_request: { status: 400, data: zDeleteRbacAppMemberBindingsApiError400 },
+    invalid_param: { status: 400, data: zDeleteRbacAppMemberBindingsApiError400 },
+    not_init_validated: { status: 401, data: zDeleteRbacAppMemberBindingsApiError401 },
+    not_setup: { status: 401, data: zDeleteRbacAppMemberBindingsApiError401 },
+    unauthorized: { status: 401, data: zDeleteRbacAppMemberBindingsApiError401 },
+  })
 
 export const get45 = oc
   .route({
@@ -2647,6 +4136,14 @@ export const get45 = oc
     }),
   )
   .output(zGetWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberBindingsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetRbacAppMemberBindingsApiError400 },
+    bad_request: { status: 400, data: zGetRbacAppMemberBindingsApiError400 },
+    invalid_param: { status: 400, data: zGetRbacAppMemberBindingsApiError400 },
+    not_init_validated: { status: 401, data: zGetRbacAppMemberBindingsApiError401 },
+    not_setup: { status: 401, data: zGetRbacAppMemberBindingsApiError401 },
+    unauthorized: { status: 401, data: zGetRbacAppMemberBindingsApiError401 },
+  })
 
 export const memberBindings2 = {
   delete: delete11,
@@ -2667,6 +4164,14 @@ export const get46 = oc
     }),
   )
   .output(zGetWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdRoleBindingsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetRbacAppRoleBindingsApiError400 },
+    bad_request: { status: 400, data: zGetRbacAppRoleBindingsApiError400 },
+    invalid_param: { status: 400, data: zGetRbacAppRoleBindingsApiError400 },
+    not_init_validated: { status: 401, data: zGetRbacAppRoleBindingsApiError401 },
+    not_setup: { status: 401, data: zGetRbacAppRoleBindingsApiError401 },
+    unauthorized: { status: 401, data: zGetRbacAppRoleBindingsApiError401 },
+  })
 
 export const roleBindings2 = {
   get: get46,
@@ -2696,6 +4201,14 @@ export const get47 = oc
     }),
   )
   .output(zGetWorkspacesCurrentRbacAppsByAppIdAccessPolicyResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetRbacAppMatrixApiError400 },
+    bad_request: { status: 400, data: zGetRbacAppMatrixApiError400 },
+    invalid_param: { status: 400, data: zGetRbacAppMatrixApiError400 },
+    not_init_validated: { status: 401, data: zGetRbacAppMatrixApiError401 },
+    not_setup: { status: 401, data: zGetRbacAppMatrixApiError401 },
+    unauthorized: { status: 401, data: zGetRbacAppMatrixApiError401 },
+  })
 
 export const accessPolicy2 = {
   get: get47,
@@ -2716,6 +4229,14 @@ export const get48 = oc
     }),
   )
   .output(zGetWorkspacesCurrentRbacAppsByAppIdUserAccessPoliciesResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetRbacAppUserAccessPoliciesApiError400 },
+    bad_request: { status: 400, data: zGetRbacAppUserAccessPoliciesApiError400 },
+    invalid_param: { status: 400, data: zGetRbacAppUserAccessPoliciesApiError400 },
+    not_init_validated: { status: 401, data: zGetRbacAppUserAccessPoliciesApiError401 },
+    not_setup: { status: 401, data: zGetRbacAppUserAccessPoliciesApiError401 },
+    unauthorized: { status: 401, data: zGetRbacAppUserAccessPoliciesApiError401 },
+  })
 
 export const userAccessPolicies2 = {
   get: get48,
@@ -2736,6 +4257,17 @@ export const put10 = oc
     }),
   )
   .output(zPutWorkspacesCurrentRbacAppsByAppIdUsersByTargetAccountIdAccessPoliciesResponse)
+  .errors({
+    account_not_initialized: {
+      status: 400,
+      data: zPutRbacAppUserAccessPolicyAssignmentApiError400,
+    },
+    bad_request: { status: 400, data: zPutRbacAppUserAccessPolicyAssignmentApiError400 },
+    invalid_param: { status: 400, data: zPutRbacAppUserAccessPolicyAssignmentApiError400 },
+    not_init_validated: { status: 401, data: zPutRbacAppUserAccessPolicyAssignmentApiError401 },
+    not_setup: { status: 401, data: zPutRbacAppUserAccessPolicyAssignmentApiError401 },
+    unauthorized: { status: 401, data: zPutRbacAppUserAccessPolicyAssignmentApiError401 },
+  })
 
 export const accessPolicies5 = {
   put: put10,
@@ -2759,6 +4291,14 @@ export const get49 = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentRbacAppsByAppIdWhitelistPath }))
   .output(zGetWorkspacesCurrentRbacAppsByAppIdWhitelistResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetRbacAppWhitelistApiError400 },
+    bad_request: { status: 400, data: zGetRbacAppWhitelistApiError400 },
+    invalid_param: { status: 400, data: zGetRbacAppWhitelistApiError400 },
+    not_init_validated: { status: 401, data: zGetRbacAppWhitelistApiError401 },
+    not_setup: { status: 401, data: zGetRbacAppWhitelistApiError401 },
+    unauthorized: { status: 401, data: zGetRbacAppWhitelistApiError401 },
+  })
 
 export const put11 = oc
   .route({
@@ -2775,6 +4315,14 @@ export const put11 = oc
     }),
   )
   .output(zPutWorkspacesCurrentRbacAppsByAppIdWhitelistResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPutRbacAppWhitelistApiError400 },
+    bad_request: { status: 400, data: zPutRbacAppWhitelistApiError400 },
+    invalid_param: { status: 400, data: zPutRbacAppWhitelistApiError400 },
+    not_init_validated: { status: 401, data: zPutRbacAppWhitelistApiError401 },
+    not_setup: { status: 401, data: zPutRbacAppWhitelistApiError401 },
+    unauthorized: { status: 401, data: zPutRbacAppWhitelistApiError401 },
+  })
 
 export const whitelist2 = {
   get: get49,
@@ -2791,6 +4339,14 @@ export const get50 = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentRbacAppsByAppIdWhitelistConfigPath }))
   .output(zGetWorkspacesCurrentRbacAppsByAppIdWhitelistConfigResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetRbacAppWhitelistConfigApiError400 },
+    bad_request: { status: 400, data: zGetRbacAppWhitelistConfigApiError400 },
+    invalid_param: { status: 400, data: zGetRbacAppWhitelistConfigApiError400 },
+    not_init_validated: { status: 401, data: zGetRbacAppWhitelistConfigApiError401 },
+    not_setup: { status: 401, data: zGetRbacAppWhitelistConfigApiError401 },
+    unauthorized: { status: 401, data: zGetRbacAppWhitelistConfigApiError401 },
+  })
 
 export const whitelistConfig2 = {
   get: get50,
@@ -2828,6 +4384,14 @@ export const delete12 = oc
   .output(
     zDeleteWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdMemberBindingsResponse,
   )
+  .errors({
+    account_not_initialized: { status: 400, data: zDeleteRbacDatasetMemberBindingsApiError400 },
+    bad_request: { status: 400, data: zDeleteRbacDatasetMemberBindingsApiError400 },
+    invalid_param: { status: 400, data: zDeleteRbacDatasetMemberBindingsApiError400 },
+    not_init_validated: { status: 401, data: zDeleteRbacDatasetMemberBindingsApiError401 },
+    not_setup: { status: 401, data: zDeleteRbacDatasetMemberBindingsApiError401 },
+    unauthorized: { status: 401, data: zDeleteRbacDatasetMemberBindingsApiError401 },
+  })
 
 export const get51 = oc
   .route({
@@ -2847,6 +4411,14 @@ export const get51 = oc
   .output(
     zGetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdMemberBindingsResponse,
   )
+  .errors({
+    account_not_initialized: { status: 400, data: zGetRbacDatasetMemberBindingsApiError400 },
+    bad_request: { status: 400, data: zGetRbacDatasetMemberBindingsApiError400 },
+    invalid_param: { status: 400, data: zGetRbacDatasetMemberBindingsApiError400 },
+    not_init_validated: { status: 401, data: zGetRbacDatasetMemberBindingsApiError401 },
+    not_setup: { status: 401, data: zGetRbacDatasetMemberBindingsApiError401 },
+    unauthorized: { status: 401, data: zGetRbacDatasetMemberBindingsApiError401 },
+  })
 
 export const memberBindings3 = {
   delete: delete12,
@@ -2867,6 +4439,14 @@ export const get52 = oc
     }),
   )
   .output(zGetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdRoleBindingsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetRbacDatasetRoleBindingsApiError400 },
+    bad_request: { status: 400, data: zGetRbacDatasetRoleBindingsApiError400 },
+    invalid_param: { status: 400, data: zGetRbacDatasetRoleBindingsApiError400 },
+    not_init_validated: { status: 401, data: zGetRbacDatasetRoleBindingsApiError401 },
+    not_setup: { status: 401, data: zGetRbacDatasetRoleBindingsApiError401 },
+    unauthorized: { status: 401, data: zGetRbacDatasetRoleBindingsApiError401 },
+  })
 
 export const roleBindings3 = {
   get: get52,
@@ -2896,6 +4476,14 @@ export const get53 = oc
     }),
   )
   .output(zGetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPolicyResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetRbacDatasetMatrixApiError400 },
+    bad_request: { status: 400, data: zGetRbacDatasetMatrixApiError400 },
+    invalid_param: { status: 400, data: zGetRbacDatasetMatrixApiError400 },
+    not_init_validated: { status: 401, data: zGetRbacDatasetMatrixApiError401 },
+    not_setup: { status: 401, data: zGetRbacDatasetMatrixApiError401 },
+    unauthorized: { status: 401, data: zGetRbacDatasetMatrixApiError401 },
+  })
 
 export const accessPolicy3 = {
   get: get53,
@@ -2916,6 +4504,14 @@ export const get54 = oc
     }),
   )
   .output(zGetWorkspacesCurrentRbacDatasetsByDatasetIdUserAccessPoliciesResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetRbacDatasetUserAccessPoliciesApiError400 },
+    bad_request: { status: 400, data: zGetRbacDatasetUserAccessPoliciesApiError400 },
+    invalid_param: { status: 400, data: zGetRbacDatasetUserAccessPoliciesApiError400 },
+    not_init_validated: { status: 401, data: zGetRbacDatasetUserAccessPoliciesApiError401 },
+    not_setup: { status: 401, data: zGetRbacDatasetUserAccessPoliciesApiError401 },
+    unauthorized: { status: 401, data: zGetRbacDatasetUserAccessPoliciesApiError401 },
+  })
 
 export const userAccessPolicies3 = {
   get: get54,
@@ -2936,6 +4532,17 @@ export const put12 = oc
     }),
   )
   .output(zPutWorkspacesCurrentRbacDatasetsByDatasetIdUsersByTargetAccountIdAccessPoliciesResponse)
+  .errors({
+    account_not_initialized: {
+      status: 400,
+      data: zPutRbacDatasetUserAccessPolicyAssignmentApiError400,
+    },
+    bad_request: { status: 400, data: zPutRbacDatasetUserAccessPolicyAssignmentApiError400 },
+    invalid_param: { status: 400, data: zPutRbacDatasetUserAccessPolicyAssignmentApiError400 },
+    not_init_validated: { status: 401, data: zPutRbacDatasetUserAccessPolicyAssignmentApiError401 },
+    not_setup: { status: 401, data: zPutRbacDatasetUserAccessPolicyAssignmentApiError401 },
+    unauthorized: { status: 401, data: zPutRbacDatasetUserAccessPolicyAssignmentApiError401 },
+  })
 
 export const accessPolicies7 = {
   put: put12,
@@ -2959,6 +4566,14 @@ export const get55 = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistPath }))
   .output(zGetWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetRbacDatasetWhitelistApiError400 },
+    bad_request: { status: 400, data: zGetRbacDatasetWhitelistApiError400 },
+    invalid_param: { status: 400, data: zGetRbacDatasetWhitelistApiError400 },
+    not_init_validated: { status: 401, data: zGetRbacDatasetWhitelistApiError401 },
+    not_setup: { status: 401, data: zGetRbacDatasetWhitelistApiError401 },
+    unauthorized: { status: 401, data: zGetRbacDatasetWhitelistApiError401 },
+  })
 
 export const put13 = oc
   .route({
@@ -2975,6 +4590,14 @@ export const put13 = oc
     }),
   )
   .output(zPutWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPutRbacDatasetWhitelistApiError400 },
+    bad_request: { status: 400, data: zPutRbacDatasetWhitelistApiError400 },
+    invalid_param: { status: 400, data: zPutRbacDatasetWhitelistApiError400 },
+    not_init_validated: { status: 401, data: zPutRbacDatasetWhitelistApiError401 },
+    not_setup: { status: 401, data: zPutRbacDatasetWhitelistApiError401 },
+    unauthorized: { status: 401, data: zPutRbacDatasetWhitelistApiError401 },
+  })
 
 export const whitelist3 = {
   get: get55,
@@ -2991,6 +4614,14 @@ export const get56 = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistConfigPath }))
   .output(zGetWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistConfigResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetRbacDatasetWhitelistConfigApiError400 },
+    bad_request: { status: 400, data: zGetRbacDatasetWhitelistConfigApiError400 },
+    invalid_param: { status: 400, data: zGetRbacDatasetWhitelistConfigApiError400 },
+    not_init_validated: { status: 401, data: zGetRbacDatasetWhitelistConfigApiError401 },
+    not_setup: { status: 401, data: zGetRbacDatasetWhitelistConfigApiError401 },
+    unauthorized: { status: 401, data: zGetRbacDatasetWhitelistConfigApiError401 },
+  })
 
 export const whitelistConfig3 = {
   get: get56,
@@ -3019,6 +4650,14 @@ export const get57 = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentRbacMembersByMemberIdRbacRolesPath }))
   .output(zGetWorkspacesCurrentRbacMembersByMemberIdRbacRolesResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetRbacMemberRolesApiError400 },
+    bad_request: { status: 400, data: zGetRbacMemberRolesApiError400 },
+    invalid_param: { status: 400, data: zGetRbacMemberRolesApiError400 },
+    not_init_validated: { status: 401, data: zGetRbacMemberRolesApiError401 },
+    not_setup: { status: 401, data: zGetRbacMemberRolesApiError401 },
+    unauthorized: { status: 401, data: zGetRbacMemberRolesApiError401 },
+  })
 
 export const put14 = oc
   .route({
@@ -3035,6 +4674,14 @@ export const put14 = oc
     }),
   )
   .output(zPutWorkspacesCurrentRbacMembersByMemberIdRbacRolesResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPutRbacMemberRolesApiError400 },
+    bad_request: { status: 400, data: zPutRbacMemberRolesApiError400 },
+    invalid_param: { status: 400, data: zPutRbacMemberRolesApiError400 },
+    not_init_validated: { status: 401, data: zPutRbacMemberRolesApiError401 },
+    not_setup: { status: 401, data: zPutRbacMemberRolesApiError401 },
+    unauthorized: { status: 401, data: zPutRbacMemberRolesApiError401 },
+  })
 
 export const rbacRoles = {
   get: get57,
@@ -3058,6 +4705,14 @@ export const get58 = oc
     tags: ['console'],
   })
   .output(zGetWorkspacesCurrentRbacMyPermissionsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetRbacMyPermissionsApiError400 },
+    bad_request: { status: 400, data: zGetRbacMyPermissionsApiError400 },
+    invalid_param: { status: 400, data: zGetRbacMyPermissionsApiError400 },
+    not_init_validated: { status: 401, data: zGetRbacMyPermissionsApiError401 },
+    not_setup: { status: 401, data: zGetRbacMyPermissionsApiError401 },
+    unauthorized: { status: 401, data: zGetRbacMyPermissionsApiError401 },
+  })
 
 export const myPermissions = {
   get: get58,
@@ -3072,6 +4727,14 @@ export const get59 = oc
     tags: ['console'],
   })
   .output(zGetWorkspacesCurrentRbacRolePermissionsCatalogAgentResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetRbacAgentCatalogApiError400 },
+    bad_request: { status: 400, data: zGetRbacAgentCatalogApiError400 },
+    invalid_param: { status: 400, data: zGetRbacAgentCatalogApiError400 },
+    not_init_validated: { status: 401, data: zGetRbacAgentCatalogApiError401 },
+    not_setup: { status: 401, data: zGetRbacAgentCatalogApiError401 },
+    unauthorized: { status: 401, data: zGetRbacAgentCatalogApiError401 },
+  })
 
 export const agent = {
   get: get59,
@@ -3086,6 +4749,14 @@ export const get60 = oc
     tags: ['console'],
   })
   .output(zGetWorkspacesCurrentRbacRolePermissionsCatalogAppResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetRbacAppCatalogApiError400 },
+    bad_request: { status: 400, data: zGetRbacAppCatalogApiError400 },
+    invalid_param: { status: 400, data: zGetRbacAppCatalogApiError400 },
+    not_init_validated: { status: 401, data: zGetRbacAppCatalogApiError401 },
+    not_setup: { status: 401, data: zGetRbacAppCatalogApiError401 },
+    unauthorized: { status: 401, data: zGetRbacAppCatalogApiError401 },
+  })
 
 export const app = {
   get: get60,
@@ -3100,6 +4771,14 @@ export const get61 = oc
     tags: ['console'],
   })
   .output(zGetWorkspacesCurrentRbacRolePermissionsCatalogDatasetResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetRbacDatasetCatalogApiError400 },
+    bad_request: { status: 400, data: zGetRbacDatasetCatalogApiError400 },
+    invalid_param: { status: 400, data: zGetRbacDatasetCatalogApiError400 },
+    not_init_validated: { status: 401, data: zGetRbacDatasetCatalogApiError401 },
+    not_setup: { status: 401, data: zGetRbacDatasetCatalogApiError401 },
+    unauthorized: { status: 401, data: zGetRbacDatasetCatalogApiError401 },
+  })
 
 export const dataset = {
   get: get61,
@@ -3114,6 +4793,14 @@ export const get62 = oc
     tags: ['console'],
   })
   .output(zGetWorkspacesCurrentRbacRolePermissionsCatalogResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetRbacWorkspaceCatalogApiError400 },
+    bad_request: { status: 400, data: zGetRbacWorkspaceCatalogApiError400 },
+    invalid_param: { status: 400, data: zGetRbacWorkspaceCatalogApiError400 },
+    not_init_validated: { status: 401, data: zGetRbacWorkspaceCatalogApiError401 },
+    not_setup: { status: 401, data: zGetRbacWorkspaceCatalogApiError401 },
+    unauthorized: { status: 401, data: zGetRbacWorkspaceCatalogApiError401 },
+  })
 
 export const catalog = {
   get: get62,
@@ -3137,6 +4824,14 @@ export const post46 = oc
   })
   .input(z.object({ params: zPostWorkspacesCurrentRbacRolesByRoleIdCopyPath }))
   .output(zPostWorkspacesCurrentRbacRolesByRoleIdCopyResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostRbacRoleCopyApiError400 },
+    bad_request: { status: 400, data: zPostRbacRoleCopyApiError400 },
+    invalid_param: { status: 400, data: zPostRbacRoleCopyApiError400 },
+    not_init_validated: { status: 401, data: zPostRbacRoleCopyApiError401 },
+    not_setup: { status: 401, data: zPostRbacRoleCopyApiError401 },
+    unauthorized: { status: 401, data: zPostRbacRoleCopyApiError401 },
+  })
 
 export const copy2 = {
   post: post46,
@@ -3152,6 +4847,14 @@ export const get63 = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentRbacRolesByRoleIdMembersPath }))
   .output(zGetWorkspacesCurrentRbacRolesByRoleIdMembersResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetListMembersByRoleError400 },
+    bad_request: { status: 400, data: zGetListMembersByRoleError400 },
+    invalid_param: { status: 400, data: zGetListMembersByRoleError400 },
+    not_init_validated: { status: 401, data: zGetListMembersByRoleError401 },
+    not_setup: { status: 401, data: zGetListMembersByRoleError401 },
+    unauthorized: { status: 401, data: zGetListMembersByRoleError401 },
+  })
 
 export const members3 = {
   get: get63,
@@ -3167,6 +4870,14 @@ export const delete13 = oc
   })
   .input(z.object({ params: zDeleteWorkspacesCurrentRbacRolesByRoleIdPath }))
   .output(zDeleteWorkspacesCurrentRbacRolesByRoleIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zDeleteRbacRoleItemApiError400 },
+    bad_request: { status: 400, data: zDeleteRbacRoleItemApiError400 },
+    invalid_param: { status: 400, data: zDeleteRbacRoleItemApiError400 },
+    not_init_validated: { status: 401, data: zDeleteRbacRoleItemApiError401 },
+    not_setup: { status: 401, data: zDeleteRbacRoleItemApiError401 },
+    unauthorized: { status: 401, data: zDeleteRbacRoleItemApiError401 },
+  })
 
 export const get64 = oc
   .route({
@@ -3178,6 +4889,14 @@ export const get64 = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentRbacRolesByRoleIdPath }))
   .output(zGetWorkspacesCurrentRbacRolesByRoleIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetRbacRoleItemApiError400 },
+    bad_request: { status: 400, data: zGetRbacRoleItemApiError400 },
+    invalid_param: { status: 400, data: zGetRbacRoleItemApiError400 },
+    not_init_validated: { status: 401, data: zGetRbacRoleItemApiError401 },
+    not_setup: { status: 401, data: zGetRbacRoleItemApiError401 },
+    unauthorized: { status: 401, data: zGetRbacRoleItemApiError401 },
+  })
 
 export const put15 = oc
   .route({
@@ -3189,6 +4908,14 @@ export const put15 = oc
   })
   .input(z.object({ params: zPutWorkspacesCurrentRbacRolesByRoleIdPath }))
   .output(zPutWorkspacesCurrentRbacRolesByRoleIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPutRbacRoleItemApiError400 },
+    bad_request: { status: 400, data: zPutRbacRoleItemApiError400 },
+    invalid_param: { status: 400, data: zPutRbacRoleItemApiError400 },
+    not_init_validated: { status: 401, data: zPutRbacRoleItemApiError401 },
+    not_setup: { status: 401, data: zPutRbacRoleItemApiError401 },
+    unauthorized: { status: 401, data: zPutRbacRoleItemApiError401 },
+  })
 
 export const byRoleId = {
   delete: delete13,
@@ -3207,6 +4934,14 @@ export const get65 = oc
     tags: ['console'],
   })
   .output(zGetWorkspacesCurrentRbacRolesResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetRbacRolesApiError400 },
+    bad_request: { status: 400, data: zGetRbacRolesApiError400 },
+    invalid_param: { status: 400, data: zGetRbacRolesApiError400 },
+    not_init_validated: { status: 401, data: zGetRbacRolesApiError401 },
+    not_setup: { status: 401, data: zGetRbacRolesApiError401 },
+    unauthorized: { status: 401, data: zGetRbacRolesApiError401 },
+  })
 
 export const post47 = oc
   .route({
@@ -3218,6 +4953,14 @@ export const post47 = oc
     tags: ['console'],
   })
   .output(zPostWorkspacesCurrentRbacRolesResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostRbacRolesApiError400 },
+    bad_request: { status: 400, data: zPostRbacRolesApiError400 },
+    invalid_param: { status: 400, data: zPostRbacRolesApiError400 },
+    not_init_validated: { status: 401, data: zPostRbacRolesApiError401 },
+    not_setup: { status: 401, data: zPostRbacRolesApiError401 },
+    unauthorized: { status: 401, data: zPostRbacRolesApiError401 },
+  })
 
 export const roles = {
   get: get65,
@@ -3240,6 +4983,14 @@ export const put16 = oc
     }),
   )
   .output(zPutWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdBindingsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPutRbacWorkspaceAgentBindingsApiError400 },
+    bad_request: { status: 400, data: zPutRbacWorkspaceAgentBindingsApiError400 },
+    invalid_param: { status: 400, data: zPutRbacWorkspaceAgentBindingsApiError400 },
+    not_init_validated: { status: 401, data: zPutRbacWorkspaceAgentBindingsApiError401 },
+    not_setup: { status: 401, data: zPutRbacWorkspaceAgentBindingsApiError401 },
+    unauthorized: { status: 401, data: zPutRbacWorkspaceAgentBindingsApiError401 },
+  })
 
 export const bindings = {
   put: put16,
@@ -3259,6 +5010,14 @@ export const get66 = oc
     }),
   )
   .output(zGetWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdMemberBindingsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetRbacWorkspaceAgentMemberBindingsApiError400 },
+    bad_request: { status: 400, data: zGetRbacWorkspaceAgentMemberBindingsApiError400 },
+    invalid_param: { status: 400, data: zGetRbacWorkspaceAgentMemberBindingsApiError400 },
+    not_init_validated: { status: 401, data: zGetRbacWorkspaceAgentMemberBindingsApiError401 },
+    not_setup: { status: 401, data: zGetRbacWorkspaceAgentMemberBindingsApiError401 },
+    unauthorized: { status: 401, data: zGetRbacWorkspaceAgentMemberBindingsApiError401 },
+  })
 
 export const memberBindings4 = {
   get: get66,
@@ -3278,6 +5037,14 @@ export const get67 = oc
     }),
   )
   .output(zGetWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdRoleBindingsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetRbacWorkspaceAgentRoleBindingsApiError400 },
+    bad_request: { status: 400, data: zGetRbacWorkspaceAgentRoleBindingsApiError400 },
+    invalid_param: { status: 400, data: zGetRbacWorkspaceAgentRoleBindingsApiError400 },
+    not_init_validated: { status: 401, data: zGetRbacWorkspaceAgentRoleBindingsApiError401 },
+    not_setup: { status: 401, data: zGetRbacWorkspaceAgentRoleBindingsApiError401 },
+    unauthorized: { status: 401, data: zGetRbacWorkspaceAgentRoleBindingsApiError401 },
+  })
 
 export const roleBindings4 = {
   get: get67,
@@ -3302,6 +5069,14 @@ export const get68 = oc
     tags: ['console'],
   })
   .output(zGetWorkspacesCurrentRbacWorkspaceAgentsAccessPolicyResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetRbacWorkspaceAgentMatrixApiError400 },
+    bad_request: { status: 400, data: zGetRbacWorkspaceAgentMatrixApiError400 },
+    invalid_param: { status: 400, data: zGetRbacWorkspaceAgentMatrixApiError400 },
+    not_init_validated: { status: 401, data: zGetRbacWorkspaceAgentMatrixApiError401 },
+    not_setup: { status: 401, data: zGetRbacWorkspaceAgentMatrixApiError401 },
+    unauthorized: { status: 401, data: zGetRbacWorkspaceAgentMatrixApiError401 },
+  })
 
 export const accessPolicy4 = {
   get: get68,
@@ -3327,6 +5102,14 @@ export const put17 = oc
     }),
   )
   .output(zPutWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdBindingsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPutRbacWorkspaceAppBindingsApiError400 },
+    bad_request: { status: 400, data: zPutRbacWorkspaceAppBindingsApiError400 },
+    invalid_param: { status: 400, data: zPutRbacWorkspaceAppBindingsApiError400 },
+    not_init_validated: { status: 401, data: zPutRbacWorkspaceAppBindingsApiError401 },
+    not_setup: { status: 401, data: zPutRbacWorkspaceAppBindingsApiError401 },
+    unauthorized: { status: 401, data: zPutRbacWorkspaceAppBindingsApiError401 },
+  })
 
 export const bindings2 = {
   put: put17,
@@ -3346,6 +5129,14 @@ export const get69 = oc
     }),
   )
   .output(zGetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdMemberBindingsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetRbacWorkspaceAppMemberBindingsApiError400 },
+    bad_request: { status: 400, data: zGetRbacWorkspaceAppMemberBindingsApiError400 },
+    invalid_param: { status: 400, data: zGetRbacWorkspaceAppMemberBindingsApiError400 },
+    not_init_validated: { status: 401, data: zGetRbacWorkspaceAppMemberBindingsApiError401 },
+    not_setup: { status: 401, data: zGetRbacWorkspaceAppMemberBindingsApiError401 },
+    unauthorized: { status: 401, data: zGetRbacWorkspaceAppMemberBindingsApiError401 },
+  })
 
 export const memberBindings5 = {
   get: get69,
@@ -3365,6 +5156,14 @@ export const get70 = oc
     }),
   )
   .output(zGetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdRoleBindingsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetRbacWorkspaceAppRoleBindingsApiError400 },
+    bad_request: { status: 400, data: zGetRbacWorkspaceAppRoleBindingsApiError400 },
+    invalid_param: { status: 400, data: zGetRbacWorkspaceAppRoleBindingsApiError400 },
+    not_init_validated: { status: 401, data: zGetRbacWorkspaceAppRoleBindingsApiError401 },
+    not_setup: { status: 401, data: zGetRbacWorkspaceAppRoleBindingsApiError401 },
+    unauthorized: { status: 401, data: zGetRbacWorkspaceAppRoleBindingsApiError401 },
+  })
 
 export const roleBindings5 = {
   get: get70,
@@ -3389,6 +5188,14 @@ export const get71 = oc
     tags: ['console'],
   })
   .output(zGetWorkspacesCurrentRbacWorkspaceAppsAccessPolicyResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetRbacWorkspaceAppMatrixApiError400 },
+    bad_request: { status: 400, data: zGetRbacWorkspaceAppMatrixApiError400 },
+    invalid_param: { status: 400, data: zGetRbacWorkspaceAppMatrixApiError400 },
+    not_init_validated: { status: 401, data: zGetRbacWorkspaceAppMatrixApiError401 },
+    not_setup: { status: 401, data: zGetRbacWorkspaceAppMatrixApiError401 },
+    unauthorized: { status: 401, data: zGetRbacWorkspaceAppMatrixApiError401 },
+  })
 
 export const accessPolicy5 = {
   get: get71,
@@ -3414,6 +5221,14 @@ export const put18 = oc
     }),
   )
   .output(zPutWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdBindingsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPutRbacWorkspaceDatasetBindingsApiError400 },
+    bad_request: { status: 400, data: zPutRbacWorkspaceDatasetBindingsApiError400 },
+    invalid_param: { status: 400, data: zPutRbacWorkspaceDatasetBindingsApiError400 },
+    not_init_validated: { status: 401, data: zPutRbacWorkspaceDatasetBindingsApiError401 },
+    not_setup: { status: 401, data: zPutRbacWorkspaceDatasetBindingsApiError401 },
+    unauthorized: { status: 401, data: zPutRbacWorkspaceDatasetBindingsApiError401 },
+  })
 
 export const bindings3 = {
   put: put18,
@@ -3433,6 +5248,17 @@ export const get72 = oc
     }),
   )
   .output(zGetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdMemberBindingsResponse)
+  .errors({
+    account_not_initialized: {
+      status: 400,
+      data: zGetRbacWorkspaceDatasetMemberBindingsApiError400,
+    },
+    bad_request: { status: 400, data: zGetRbacWorkspaceDatasetMemberBindingsApiError400 },
+    invalid_param: { status: 400, data: zGetRbacWorkspaceDatasetMemberBindingsApiError400 },
+    not_init_validated: { status: 401, data: zGetRbacWorkspaceDatasetMemberBindingsApiError401 },
+    not_setup: { status: 401, data: zGetRbacWorkspaceDatasetMemberBindingsApiError401 },
+    unauthorized: { status: 401, data: zGetRbacWorkspaceDatasetMemberBindingsApiError401 },
+  })
 
 export const memberBindings6 = {
   get: get72,
@@ -3452,6 +5278,14 @@ export const get73 = oc
     }),
   )
   .output(zGetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdRoleBindingsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetRbacWorkspaceDatasetRoleBindingsApiError400 },
+    bad_request: { status: 400, data: zGetRbacWorkspaceDatasetRoleBindingsApiError400 },
+    invalid_param: { status: 400, data: zGetRbacWorkspaceDatasetRoleBindingsApiError400 },
+    not_init_validated: { status: 401, data: zGetRbacWorkspaceDatasetRoleBindingsApiError401 },
+    not_setup: { status: 401, data: zGetRbacWorkspaceDatasetRoleBindingsApiError401 },
+    unauthorized: { status: 401, data: zGetRbacWorkspaceDatasetRoleBindingsApiError401 },
+  })
 
 export const roleBindings6 = {
   get: get73,
@@ -3476,6 +5310,14 @@ export const get74 = oc
     tags: ['console'],
   })
   .output(zGetWorkspacesCurrentRbacWorkspaceDatasetsAccessPolicyResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetRbacWorkspaceDatasetMatrixApiError400 },
+    bad_request: { status: 400, data: zGetRbacWorkspaceDatasetMatrixApiError400 },
+    invalid_param: { status: 400, data: zGetRbacWorkspaceDatasetMatrixApiError400 },
+    not_init_validated: { status: 401, data: zGetRbacWorkspaceDatasetMatrixApiError401 },
+    not_setup: { status: 401, data: zGetRbacWorkspaceDatasetMatrixApiError401 },
+    unauthorized: { status: 401, data: zGetRbacWorkspaceDatasetMatrixApiError401 },
+  })
 
 export const accessPolicy6 = {
   get: get74,
@@ -3516,6 +5358,16 @@ export const post48 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentSkillsFilesUploadBody }))
   .output(zPostWorkspacesCurrentSkillsFilesUploadResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostWorkspaceSkillFileUploadApiError400 },
+    bad_request: { status: 400, data: zPostWorkspaceSkillFileUploadApiError400 },
+    filename_missing: { status: 400, data: zPostWorkspaceSkillFileUploadApiError400 },
+    invalid_param: { status: 400, data: zPostWorkspaceSkillFileUploadApiError400 },
+    no_file_uploaded: { status: 400, data: zPostWorkspaceSkillFileUploadApiError400 },
+    not_init_validated: { status: 401, data: zPostWorkspaceSkillFileUploadApiError401 },
+    not_setup: { status: 401, data: zPostWorkspaceSkillFileUploadApiError401 },
+    unauthorized: { status: 401, data: zPostWorkspaceSkillFileUploadApiError401 },
+  })
 
 export const upload2 = {
   post: post48,
@@ -3539,6 +5391,15 @@ export const post49 = oc
     tags: ['console'],
   })
   .output(zPostWorkspacesCurrentSkillsImportResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostWorkspaceSkillImportApiError400 },
+    bad_request: { status: 400, data: zPostWorkspaceSkillImportApiError400 },
+    invalid_param: { status: 400, data: zPostWorkspaceSkillImportApiError400 },
+    invalid_request: { status: 400, data: zPostWorkspaceSkillImportApiError400 },
+    not_init_validated: { status: 401, data: zPostWorkspaceSkillImportApiError401 },
+    not_setup: { status: 401, data: zPostWorkspaceSkillImportApiError401 },
+    unauthorized: { status: 401, data: zPostWorkspaceSkillImportApiError401 },
+  })
 
 export const import_ = {
   post: post49,
@@ -3553,6 +5414,14 @@ export const get75 = oc
     tags: ['console'],
   })
   .output(zGetWorkspacesCurrentSkillsTagsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetWorkspaceSkillTagsApiError400 },
+    bad_request: { status: 400, data: zGetWorkspaceSkillTagsApiError400 },
+    invalid_param: { status: 400, data: zGetWorkspaceSkillTagsApiError400 },
+    not_init_validated: { status: 401, data: zGetWorkspaceSkillTagsApiError401 },
+    not_setup: { status: 401, data: zGetWorkspaceSkillTagsApiError401 },
+    unauthorized: { status: 401, data: zGetWorkspaceSkillTagsApiError401 },
+  })
 
 export const tags = {
   get: get75,
@@ -3573,6 +5442,14 @@ export const post50 = oc
     }),
   )
   .output(zPostWorkspacesCurrentSkillsBySkillIdAssistMessagesResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostWorkspaceSkillAssistMessageApiError400 },
+    bad_request: { status: 400, data: zPostWorkspaceSkillAssistMessageApiError400 },
+    invalid_param: { status: 400, data: zPostWorkspaceSkillAssistMessageApiError400 },
+    not_init_validated: { status: 401, data: zPostWorkspaceSkillAssistMessageApiError401 },
+    not_setup: { status: 401, data: zPostWorkspaceSkillAssistMessageApiError401 },
+    unauthorized: { status: 401, data: zPostWorkspaceSkillAssistMessageApiError401 },
+  })
 
 export const messages = {
   post: post50,
@@ -3593,6 +5470,14 @@ export const post51 = oc
   })
   .input(z.object({ params: zPostWorkspacesCurrentSkillsBySkillIdDuplicatePath }))
   .output(zPostWorkspacesCurrentSkillsBySkillIdDuplicateResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostWorkspaceSkillDuplicateApiError400 },
+    bad_request: { status: 400, data: zPostWorkspaceSkillDuplicateApiError400 },
+    invalid_param: { status: 400, data: zPostWorkspaceSkillDuplicateApiError400 },
+    not_init_validated: { status: 401, data: zPostWorkspaceSkillDuplicateApiError401 },
+    not_setup: { status: 401, data: zPostWorkspaceSkillDuplicateApiError401 },
+    unauthorized: { status: 401, data: zPostWorkspaceSkillDuplicateApiError401 },
+  })
 
 export const duplicate = {
   post: post51,
@@ -3608,6 +5493,14 @@ export const get76 = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentSkillsBySkillIdExportPath }))
   .output(zGetWorkspacesCurrentSkillsBySkillIdExportResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetWorkspaceSkillExportApiError400 },
+    bad_request: { status: 400, data: zGetWorkspaceSkillExportApiError400 },
+    invalid_param: { status: 400, data: zGetWorkspaceSkillExportApiError400 },
+    not_init_validated: { status: 401, data: zGetWorkspaceSkillExportApiError401 },
+    not_setup: { status: 401, data: zGetWorkspaceSkillExportApiError401 },
+    unauthorized: { status: 401, data: zGetWorkspaceSkillExportApiError401 },
+  })
 
 export const export2 = {
   get: get76,
@@ -3628,6 +5521,15 @@ export const post52 = oc
     }),
   )
   .output(zPostWorkspacesCurrentSkillsBySkillIdFilesCheckResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostWorkspaceSkillFilesCheckApiError400 },
+    bad_request: { status: 400, data: zPostWorkspaceSkillFilesCheckApiError400 },
+    invalid_param: { status: 400, data: zPostWorkspaceSkillFilesCheckApiError400 },
+    invalid_request: { status: 400, data: zPostWorkspaceSkillFilesCheckApiError400 },
+    not_init_validated: { status: 401, data: zPostWorkspaceSkillFilesCheckApiError401 },
+    not_setup: { status: 401, data: zPostWorkspaceSkillFilesCheckApiError401 },
+    unauthorized: { status: 401, data: zPostWorkspaceSkillFilesCheckApiError401 },
+  })
 
 export const check = {
   post: post52,
@@ -3648,6 +5550,15 @@ export const get77 = oc
     }),
   )
   .output(zGetWorkspacesCurrentSkillsBySkillIdFilesContentResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetWorkspaceSkillFileContentApiError400 },
+    bad_request: { status: 400, data: zGetWorkspaceSkillFileContentApiError400 },
+    invalid_param: { status: 400, data: zGetWorkspaceSkillFileContentApiError400 },
+    invalid_request: { status: 400, data: zGetWorkspaceSkillFileContentApiError400 },
+    not_init_validated: { status: 401, data: zGetWorkspaceSkillFileContentApiError401 },
+    not_setup: { status: 401, data: zGetWorkspaceSkillFileContentApiError401 },
+    unauthorized: { status: 401, data: zGetWorkspaceSkillFileContentApiError401 },
+  })
 
 export const content = {
   get: get77,
@@ -3668,6 +5579,15 @@ export const get78 = oc
     }),
   )
   .output(zGetWorkspacesCurrentSkillsBySkillIdFilesPreviewResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetWorkspaceSkillFilePreviewApiError400 },
+    bad_request: { status: 400, data: zGetWorkspaceSkillFilePreviewApiError400 },
+    invalid_param: { status: 400, data: zGetWorkspaceSkillFilePreviewApiError400 },
+    invalid_request: { status: 400, data: zGetWorkspaceSkillFilePreviewApiError400 },
+    not_init_validated: { status: 401, data: zGetWorkspaceSkillFilePreviewApiError401 },
+    not_setup: { status: 401, data: zGetWorkspaceSkillFilePreviewApiError401 },
+    unauthorized: { status: 401, data: zGetWorkspaceSkillFilePreviewApiError401 },
+  })
 
 export const preview = {
   get: get78,
@@ -3688,6 +5608,15 @@ export const patch5 = oc
     }),
   )
   .output(zPatchWorkspacesCurrentSkillsBySkillIdFilesResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPatchWorkspaceSkillFilesApiError400 },
+    bad_request: { status: 400, data: zPatchWorkspaceSkillFilesApiError400 },
+    invalid_param: { status: 400, data: zPatchWorkspaceSkillFilesApiError400 },
+    invalid_request: { status: 400, data: zPatchWorkspaceSkillFilesApiError400 },
+    not_init_validated: { status: 401, data: zPatchWorkspaceSkillFilesApiError401 },
+    not_setup: { status: 401, data: zPatchWorkspaceSkillFilesApiError401 },
+    unauthorized: { status: 401, data: zPatchWorkspaceSkillFilesApiError401 },
+  })
 
 export const put19 = oc
   .route({
@@ -3704,6 +5633,15 @@ export const put19 = oc
     }),
   )
   .output(zPutWorkspacesCurrentSkillsBySkillIdFilesResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPutWorkspaceSkillFilesApiError400 },
+    bad_request: { status: 400, data: zPutWorkspaceSkillFilesApiError400 },
+    invalid_param: { status: 400, data: zPutWorkspaceSkillFilesApiError400 },
+    invalid_request: { status: 400, data: zPutWorkspaceSkillFilesApiError400 },
+    not_init_validated: { status: 401, data: zPutWorkspaceSkillFilesApiError401 },
+    not_setup: { status: 401, data: zPutWorkspaceSkillFilesApiError401 },
+    unauthorized: { status: 401, data: zPutWorkspaceSkillFilesApiError401 },
+  })
 
 export const files2 = {
   patch: patch5,
@@ -3728,6 +5666,14 @@ export const post53 = oc
     }),
   )
   .output(zPostWorkspacesCurrentSkillsBySkillIdPublishResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostWorkspaceSkillPublishApiError400 },
+    bad_request: { status: 400, data: zPostWorkspaceSkillPublishApiError400 },
+    invalid_param: { status: 400, data: zPostWorkspaceSkillPublishApiError400 },
+    not_init_validated: { status: 401, data: zPostWorkspaceSkillPublishApiError401 },
+    not_setup: { status: 401, data: zPostWorkspaceSkillPublishApiError401 },
+    unauthorized: { status: 401, data: zPostWorkspaceSkillPublishApiError401 },
+  })
 
 export const publish = {
   post: post53,
@@ -3743,6 +5689,14 @@ export const get79 = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentSkillsBySkillIdReferencesPath }))
   .output(zGetWorkspacesCurrentSkillsBySkillIdReferencesResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetWorkspaceSkillReferencesApiError400 },
+    bad_request: { status: 400, data: zGetWorkspaceSkillReferencesApiError400 },
+    invalid_param: { status: 400, data: zGetWorkspaceSkillReferencesApiError400 },
+    not_init_validated: { status: 401, data: zGetWorkspaceSkillReferencesApiError401 },
+    not_setup: { status: 401, data: zGetWorkspaceSkillReferencesApiError401 },
+    unauthorized: { status: 401, data: zGetWorkspaceSkillReferencesApiError401 },
+  })
 
 export const references = {
   get: get79,
@@ -3763,6 +5717,14 @@ export const post54 = oc
     }),
   )
   .output(zPostWorkspacesCurrentSkillsBySkillIdRestoreResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostWorkspaceSkillRestoreApiError400 },
+    bad_request: { status: 400, data: zPostWorkspaceSkillRestoreApiError400 },
+    invalid_param: { status: 400, data: zPostWorkspaceSkillRestoreApiError400 },
+    not_init_validated: { status: 401, data: zPostWorkspaceSkillRestoreApiError401 },
+    not_setup: { status: 401, data: zPostWorkspaceSkillRestoreApiError401 },
+    unauthorized: { status: 401, data: zPostWorkspaceSkillRestoreApiError401 },
+  })
 
 export const restore = {
   post: post54,
@@ -3778,6 +5740,14 @@ export const delete14 = oc
   })
   .input(z.object({ params: zDeleteWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdPath }))
   .output(zDeleteWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zDeleteWorkspaceSkillVersionApiError400 },
+    bad_request: { status: 400, data: zDeleteWorkspaceSkillVersionApiError400 },
+    invalid_param: { status: 400, data: zDeleteWorkspaceSkillVersionApiError400 },
+    not_init_validated: { status: 401, data: zDeleteWorkspaceSkillVersionApiError401 },
+    not_setup: { status: 401, data: zDeleteWorkspaceSkillVersionApiError401 },
+    unauthorized: { status: 401, data: zDeleteWorkspaceSkillVersionApiError401 },
+  })
 
 export const get80 = oc
   .route({
@@ -3789,6 +5759,14 @@ export const get80 = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdPath }))
   .output(zGetWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetWorkspaceSkillVersionApiError400 },
+    bad_request: { status: 400, data: zGetWorkspaceSkillVersionApiError400 },
+    invalid_param: { status: 400, data: zGetWorkspaceSkillVersionApiError400 },
+    not_init_validated: { status: 401, data: zGetWorkspaceSkillVersionApiError401 },
+    not_setup: { status: 401, data: zGetWorkspaceSkillVersionApiError401 },
+    unauthorized: { status: 401, data: zGetWorkspaceSkillVersionApiError401 },
+  })
 
 export const patch6 = oc
   .route({
@@ -3805,6 +5783,14 @@ export const patch6 = oc
     }),
   )
   .output(zPatchWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPatchWorkspaceSkillVersionApiError400 },
+    bad_request: { status: 400, data: zPatchWorkspaceSkillVersionApiError400 },
+    invalid_param: { status: 400, data: zPatchWorkspaceSkillVersionApiError400 },
+    not_init_validated: { status: 401, data: zPatchWorkspaceSkillVersionApiError401 },
+    not_setup: { status: 401, data: zPatchWorkspaceSkillVersionApiError401 },
+    unauthorized: { status: 401, data: zPatchWorkspaceSkillVersionApiError401 },
+  })
 
 export const byVersionId = {
   delete: delete14,
@@ -3822,6 +5808,14 @@ export const get81 = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentSkillsBySkillIdVersionsPath }))
   .output(zGetWorkspacesCurrentSkillsBySkillIdVersionsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetWorkspaceSkillVersionsApiError400 },
+    bad_request: { status: 400, data: zGetWorkspaceSkillVersionsApiError400 },
+    invalid_param: { status: 400, data: zGetWorkspaceSkillVersionsApiError400 },
+    not_init_validated: { status: 401, data: zGetWorkspaceSkillVersionsApiError401 },
+    not_setup: { status: 401, data: zGetWorkspaceSkillVersionsApiError401 },
+    unauthorized: { status: 401, data: zGetWorkspaceSkillVersionsApiError401 },
+  })
 
 export const versions = {
   get: get81,
@@ -3843,6 +5837,14 @@ export const delete15 = oc
     }),
   )
   .output(zDeleteWorkspacesCurrentSkillsBySkillIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zDeleteWorkspaceSkillApiError400 },
+    bad_request: { status: 400, data: zDeleteWorkspaceSkillApiError400 },
+    invalid_param: { status: 400, data: zDeleteWorkspaceSkillApiError400 },
+    not_init_validated: { status: 401, data: zDeleteWorkspaceSkillApiError401 },
+    not_setup: { status: 401, data: zDeleteWorkspaceSkillApiError401 },
+    unauthorized: { status: 401, data: zDeleteWorkspaceSkillApiError401 },
+  })
 
 export const get82 = oc
   .route({
@@ -3854,6 +5856,14 @@ export const get82 = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentSkillsBySkillIdPath }))
   .output(zGetWorkspacesCurrentSkillsBySkillIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetWorkspaceSkillApiError400 },
+    bad_request: { status: 400, data: zGetWorkspaceSkillApiError400 },
+    invalid_param: { status: 400, data: zGetWorkspaceSkillApiError400 },
+    not_init_validated: { status: 401, data: zGetWorkspaceSkillApiError401 },
+    not_setup: { status: 401, data: zGetWorkspaceSkillApiError401 },
+    unauthorized: { status: 401, data: zGetWorkspaceSkillApiError401 },
+  })
 
 export const patch7 = oc
   .route({
@@ -3870,6 +5880,15 @@ export const patch7 = oc
     }),
   )
   .output(zPatchWorkspacesCurrentSkillsBySkillIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPatchWorkspaceSkillApiError400 },
+    bad_request: { status: 400, data: zPatchWorkspaceSkillApiError400 },
+    invalid_param: { status: 400, data: zPatchWorkspaceSkillApiError400 },
+    invalid_request: { status: 400, data: zPatchWorkspaceSkillApiError400 },
+    not_init_validated: { status: 401, data: zPatchWorkspaceSkillApiError401 },
+    not_setup: { status: 401, data: zPatchWorkspaceSkillApiError401 },
+    unauthorized: { status: 401, data: zPatchWorkspaceSkillApiError401 },
+  })
 
 export const bySkillId = {
   delete: delete15,
@@ -3895,6 +5914,14 @@ export const get83 = oc
   })
   .input(z.object({ query: zGetWorkspacesCurrentSkillsQuery.optional() }))
   .output(zGetWorkspacesCurrentSkillsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetWorkspaceSkillsApiError400 },
+    bad_request: { status: 400, data: zGetWorkspaceSkillsApiError400 },
+    invalid_param: { status: 400, data: zGetWorkspaceSkillsApiError400 },
+    not_init_validated: { status: 401, data: zGetWorkspaceSkillsApiError401 },
+    not_setup: { status: 401, data: zGetWorkspaceSkillsApiError401 },
+    unauthorized: { status: 401, data: zGetWorkspaceSkillsApiError401 },
+  })
 
 export const post55 = oc
   .route({
@@ -3907,6 +5934,15 @@ export const post55 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentSkillsBody }))
   .output(zPostWorkspacesCurrentSkillsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostWorkspaceSkillsApiError400 },
+    bad_request: { status: 400, data: zPostWorkspaceSkillsApiError400 },
+    invalid_param: { status: 400, data: zPostWorkspaceSkillsApiError400 },
+    invalid_request: { status: 400, data: zPostWorkspaceSkillsApiError400 },
+    not_init_validated: { status: 401, data: zPostWorkspaceSkillsApiError401 },
+    not_setup: { status: 401, data: zPostWorkspaceSkillsApiError401 },
+    unauthorized: { status: 401, data: zPostWorkspaceSkillsApiError401 },
+  })
 
 export const skills2 = {
   get: get83,
@@ -3926,6 +5962,16 @@ export const get84 = oc
     tags: ['console'],
   })
   .output(zGetWorkspacesCurrentSummaryResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetCurrentWorkspaceSummaryApiError400 },
+    bad_request: { status: 400, data: zGetCurrentWorkspaceSummaryApiError400 },
+    invalid_param: { status: 400, data: zGetCurrentWorkspaceSummaryApiError400 },
+    not_init_validated: { status: 401, data: zGetCurrentWorkspaceSummaryApiError401 },
+    not_setup: { status: 401, data: zGetCurrentWorkspaceSummaryApiError401 },
+    unauthorized: { status: 401, data: zGetCurrentWorkspaceSummaryApiError401 },
+    conflict: { status: 409, data: zGetCurrentWorkspaceSummaryApiError409 },
+    current_workspace_archived: { status: 409, data: zGetCurrentWorkspaceSummaryApiError409 },
+  })
 
 export const summary2 = {
   get: get84,
@@ -3940,6 +5986,15 @@ export const get85 = oc
     tags: ['console'],
   })
   .output(zGetWorkspacesCurrentToolLabelsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetToolLabelsApiError400 },
+    bad_request: { status: 400, data: zGetToolLabelsApiError400 },
+    invalid_param: { status: 400, data: zGetToolLabelsApiError400 },
+    not_init_validated: { status: 401, data: zGetToolLabelsApiError401 },
+    not_setup: { status: 401, data: zGetToolLabelsApiError401 },
+    unauthorized: { status: 401, data: zGetToolLabelsApiError401 },
+    unauthorized_and_force_logout: { status: 401, data: zGetToolLabelsApiError401 },
+  })
 
 export const toolLabels = {
   get: get85,
@@ -3955,6 +6010,14 @@ export const post56 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentToolProviderApiAddBody }))
   .output(zPostWorkspacesCurrentToolProviderApiAddResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostToolApiProviderAddApiError400 },
+    bad_request: { status: 400, data: zPostToolApiProviderAddApiError400 },
+    invalid_param: { status: 400, data: zPostToolApiProviderAddApiError400 },
+    not_init_validated: { status: 401, data: zPostToolApiProviderAddApiError401 },
+    not_setup: { status: 401, data: zPostToolApiProviderAddApiError401 },
+    unauthorized: { status: 401, data: zPostToolApiProviderAddApiError401 },
+  })
 
 export const add = {
   post: post56,
@@ -3970,6 +6033,14 @@ export const post57 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentToolProviderApiDeleteBody }))
   .output(zPostWorkspacesCurrentToolProviderApiDeleteResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostToolApiProviderDeleteApiError400 },
+    bad_request: { status: 400, data: zPostToolApiProviderDeleteApiError400 },
+    invalid_param: { status: 400, data: zPostToolApiProviderDeleteApiError400 },
+    not_init_validated: { status: 401, data: zPostToolApiProviderDeleteApiError401 },
+    not_setup: { status: 401, data: zPostToolApiProviderDeleteApiError401 },
+    unauthorized: { status: 401, data: zPostToolApiProviderDeleteApiError401 },
+  })
 
 export const delete16 = {
   post: post57,
@@ -3985,6 +6056,14 @@ export const get86 = oc
   })
   .input(z.object({ query: zGetWorkspacesCurrentToolProviderApiGetQuery }))
   .output(zGetWorkspacesCurrentToolProviderApiGetResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetToolApiProviderGetApiError400 },
+    bad_request: { status: 400, data: zGetToolApiProviderGetApiError400 },
+    invalid_param: { status: 400, data: zGetToolApiProviderGetApiError400 },
+    not_init_validated: { status: 401, data: zGetToolApiProviderGetApiError401 },
+    not_setup: { status: 401, data: zGetToolApiProviderGetApiError401 },
+    unauthorized: { status: 401, data: zGetToolApiProviderGetApiError401 },
+  })
 
 export const get87 = {
   get: get86,
@@ -4000,6 +6079,14 @@ export const get88 = oc
   })
   .input(z.object({ query: zGetWorkspacesCurrentToolProviderApiRemoteQuery }))
   .output(zGetWorkspacesCurrentToolProviderApiRemoteResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetToolApiProviderGetRemoteSchemaApiError400 },
+    bad_request: { status: 400, data: zGetToolApiProviderGetRemoteSchemaApiError400 },
+    invalid_param: { status: 400, data: zGetToolApiProviderGetRemoteSchemaApiError400 },
+    not_init_validated: { status: 401, data: zGetToolApiProviderGetRemoteSchemaApiError401 },
+    not_setup: { status: 401, data: zGetToolApiProviderGetRemoteSchemaApiError401 },
+    unauthorized: { status: 401, data: zGetToolApiProviderGetRemoteSchemaApiError401 },
+  })
 
 export const remote = {
   get: get88,
@@ -4015,6 +6102,14 @@ export const post58 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentToolProviderApiSchemaBody }))
   .output(zPostWorkspacesCurrentToolProviderApiSchemaResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostToolApiProviderSchemaApiError400 },
+    bad_request: { status: 400, data: zPostToolApiProviderSchemaApiError400 },
+    invalid_param: { status: 400, data: zPostToolApiProviderSchemaApiError400 },
+    not_init_validated: { status: 401, data: zPostToolApiProviderSchemaApiError401 },
+    not_setup: { status: 401, data: zPostToolApiProviderSchemaApiError401 },
+    unauthorized: { status: 401, data: zPostToolApiProviderSchemaApiError401 },
+  })
 
 export const schema = {
   post: post58,
@@ -4030,6 +6125,14 @@ export const post59 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentToolProviderApiTestPreBody }))
   .output(zPostWorkspacesCurrentToolProviderApiTestPreResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostToolApiProviderPreviousTestApiError400 },
+    bad_request: { status: 400, data: zPostToolApiProviderPreviousTestApiError400 },
+    invalid_param: { status: 400, data: zPostToolApiProviderPreviousTestApiError400 },
+    not_init_validated: { status: 401, data: zPostToolApiProviderPreviousTestApiError401 },
+    not_setup: { status: 401, data: zPostToolApiProviderPreviousTestApiError401 },
+    unauthorized: { status: 401, data: zPostToolApiProviderPreviousTestApiError401 },
+  })
 
 export const pre = {
   post: post59,
@@ -4049,6 +6152,14 @@ export const get89 = oc
   })
   .input(z.object({ query: zGetWorkspacesCurrentToolProviderApiToolsQuery }))
   .output(zGetWorkspacesCurrentToolProviderApiToolsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetToolApiProviderListToolsApiError400 },
+    bad_request: { status: 400, data: zGetToolApiProviderListToolsApiError400 },
+    invalid_param: { status: 400, data: zGetToolApiProviderListToolsApiError400 },
+    not_init_validated: { status: 401, data: zGetToolApiProviderListToolsApiError401 },
+    not_setup: { status: 401, data: zGetToolApiProviderListToolsApiError401 },
+    unauthorized: { status: 401, data: zGetToolApiProviderListToolsApiError401 },
+  })
 
 export const tools = {
   get: get89,
@@ -4064,6 +6175,14 @@ export const post60 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentToolProviderApiUpdateBody }))
   .output(zPostWorkspacesCurrentToolProviderApiUpdateResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostToolApiProviderUpdateApiError400 },
+    bad_request: { status: 400, data: zPostToolApiProviderUpdateApiError400 },
+    invalid_param: { status: 400, data: zPostToolApiProviderUpdateApiError400 },
+    not_init_validated: { status: 401, data: zPostToolApiProviderUpdateApiError401 },
+    not_setup: { status: 401, data: zPostToolApiProviderUpdateApiError401 },
+    unauthorized: { status: 401, data: zPostToolApiProviderUpdateApiError401 },
+  })
 
 export const update2 = {
   post: post60,
@@ -4095,6 +6214,14 @@ export const post61 = oc
     }),
   )
   .output(zPostWorkspacesCurrentToolProviderBuiltinByProviderAddResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostToolBuiltinProviderAddApiError400 },
+    bad_request: { status: 400, data: zPostToolBuiltinProviderAddApiError400 },
+    invalid_param: { status: 400, data: zPostToolBuiltinProviderAddApiError400 },
+    not_init_validated: { status: 401, data: zPostToolBuiltinProviderAddApiError401 },
+    not_setup: { status: 401, data: zPostToolBuiltinProviderAddApiError401 },
+    unauthorized: { status: 401, data: zPostToolBuiltinProviderAddApiError401 },
+  })
 
 export const add2 = {
   post: post61,
@@ -4115,6 +6242,17 @@ export const get90 = oc
     }),
   )
   .output(zGetWorkspacesCurrentToolProviderBuiltinByProviderCredentialInfoResponse)
+  .errors({
+    account_not_initialized: {
+      status: 400,
+      data: zGetToolBuiltinProviderGetCredentialInfoApiError400,
+    },
+    bad_request: { status: 400, data: zGetToolBuiltinProviderGetCredentialInfoApiError400 },
+    invalid_param: { status: 400, data: zGetToolBuiltinProviderGetCredentialInfoApiError400 },
+    not_init_validated: { status: 401, data: zGetToolBuiltinProviderGetCredentialInfoApiError401 },
+    not_setup: { status: 401, data: zGetToolBuiltinProviderGetCredentialInfoApiError401 },
+    unauthorized: { status: 401, data: zGetToolBuiltinProviderGetCredentialInfoApiError401 },
+  })
 
 export const info = {
   get: get90,
@@ -4138,6 +6276,17 @@ export const get91 = oc
   .output(
     zGetWorkspacesCurrentToolProviderBuiltinByProviderCredentialSchemaByCredentialTypeResponse,
   )
+  .errors({
+    account_not_initialized: {
+      status: 400,
+      data: zGetToolBuiltinProviderCredentialsSchemaApiError400,
+    },
+    bad_request: { status: 400, data: zGetToolBuiltinProviderCredentialsSchemaApiError400 },
+    invalid_param: { status: 400, data: zGetToolBuiltinProviderCredentialsSchemaApiError400 },
+    not_init_validated: { status: 401, data: zGetToolBuiltinProviderCredentialsSchemaApiError401 },
+    not_setup: { status: 401, data: zGetToolBuiltinProviderCredentialsSchemaApiError401 },
+    unauthorized: { status: 401, data: zGetToolBuiltinProviderCredentialsSchemaApiError401 },
+  })
 
 export const byCredentialType = {
   get: get91,
@@ -4167,6 +6316,17 @@ export const get92 = oc
     }),
   )
   .output(zGetWorkspacesCurrentToolProviderBuiltinByProviderCredentialsResponse)
+  .errors({
+    account_not_initialized: {
+      status: 400,
+      data: zGetToolBuiltinProviderGetCredentialsApiError400,
+    },
+    bad_request: { status: 400, data: zGetToolBuiltinProviderGetCredentialsApiError400 },
+    invalid_param: { status: 400, data: zGetToolBuiltinProviderGetCredentialsApiError400 },
+    not_init_validated: { status: 401, data: zGetToolBuiltinProviderGetCredentialsApiError401 },
+    not_setup: { status: 401, data: zGetToolBuiltinProviderGetCredentialsApiError401 },
+    unauthorized: { status: 401, data: zGetToolBuiltinProviderGetCredentialsApiError401 },
+  })
 
 export const credentials3 = {
   get: get92,
@@ -4187,6 +6347,14 @@ export const post62 = oc
     }),
   )
   .output(zPostWorkspacesCurrentToolProviderBuiltinByProviderDefaultCredentialResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostToolBuiltinProviderSetDefaultApiError400 },
+    bad_request: { status: 400, data: zPostToolBuiltinProviderSetDefaultApiError400 },
+    invalid_param: { status: 400, data: zPostToolBuiltinProviderSetDefaultApiError400 },
+    not_init_validated: { status: 401, data: zPostToolBuiltinProviderSetDefaultApiError401 },
+    not_setup: { status: 401, data: zPostToolBuiltinProviderSetDefaultApiError401 },
+    unauthorized: { status: 401, data: zPostToolBuiltinProviderSetDefaultApiError401 },
+  })
 
 export const defaultCredential = {
   post: post62,
@@ -4207,6 +6375,14 @@ export const post63 = oc
     }),
   )
   .output(zPostWorkspacesCurrentToolProviderBuiltinByProviderDeleteResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostToolBuiltinProviderDeleteApiError400 },
+    bad_request: { status: 400, data: zPostToolBuiltinProviderDeleteApiError400 },
+    invalid_param: { status: 400, data: zPostToolBuiltinProviderDeleteApiError400 },
+    not_init_validated: { status: 401, data: zPostToolBuiltinProviderDeleteApiError401 },
+    not_setup: { status: 401, data: zPostToolBuiltinProviderDeleteApiError401 },
+    unauthorized: { status: 401, data: zPostToolBuiltinProviderDeleteApiError401 },
+  })
 
 export const delete17 = {
   post: post63,
@@ -4222,6 +6398,11 @@ export const get93 = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentToolProviderBuiltinByProviderIconPath }))
   .output(zGetWorkspacesCurrentToolProviderBuiltinByProviderIconResponse)
+  .errors({
+    not_init_validated: { status: 401, data: zGetToolBuiltinProviderIconApiError401 },
+    not_setup: { status: 401, data: zGetToolBuiltinProviderIconApiError401 },
+    unauthorized: { status: 401, data: zGetToolBuiltinProviderIconApiError401 },
+  })
 
 export const icon2 = {
   get: get93,
@@ -4237,6 +6418,14 @@ export const get94 = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentToolProviderBuiltinByProviderInfoPath }))
   .output(zGetWorkspacesCurrentToolProviderBuiltinByProviderInfoResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetToolBuiltinProviderInfoApiError400 },
+    bad_request: { status: 400, data: zGetToolBuiltinProviderInfoApiError400 },
+    invalid_param: { status: 400, data: zGetToolBuiltinProviderInfoApiError400 },
+    not_init_validated: { status: 401, data: zGetToolBuiltinProviderInfoApiError401 },
+    not_setup: { status: 401, data: zGetToolBuiltinProviderInfoApiError401 },
+    unauthorized: { status: 401, data: zGetToolBuiltinProviderInfoApiError401 },
+  })
 
 export const info2 = {
   get: get94,
@@ -4254,6 +6443,20 @@ export const get95 = oc
     z.object({ params: zGetWorkspacesCurrentToolProviderBuiltinByProviderOauthClientSchemaPath }),
   )
   .output(zGetWorkspacesCurrentToolProviderBuiltinByProviderOauthClientSchemaResponse)
+  .errors({
+    account_not_initialized: {
+      status: 400,
+      data: zGetToolBuiltinProviderGetOauthClientSchemaApiError400,
+    },
+    bad_request: { status: 400, data: zGetToolBuiltinProviderGetOauthClientSchemaApiError400 },
+    invalid_param: { status: 400, data: zGetToolBuiltinProviderGetOauthClientSchemaApiError400 },
+    not_init_validated: {
+      status: 401,
+      data: zGetToolBuiltinProviderGetOauthClientSchemaApiError401,
+    },
+    not_setup: { status: 401, data: zGetToolBuiltinProviderGetOauthClientSchemaApiError401 },
+    unauthorized: { status: 401, data: zGetToolBuiltinProviderGetOauthClientSchemaApiError401 },
+  })
 
 export const clientSchema = {
   get: get95,
@@ -4273,6 +6476,14 @@ export const delete18 = oc
     }),
   )
   .output(zDeleteWorkspacesCurrentToolProviderBuiltinByProviderOauthCustomClientResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zDeleteToolOAuthCustomClientError400 },
+    bad_request: { status: 400, data: zDeleteToolOAuthCustomClientError400 },
+    invalid_param: { status: 400, data: zDeleteToolOAuthCustomClientError400 },
+    not_init_validated: { status: 401, data: zDeleteToolOAuthCustomClientError401 },
+    not_setup: { status: 401, data: zDeleteToolOAuthCustomClientError401 },
+    unauthorized: { status: 401, data: zDeleteToolOAuthCustomClientError401 },
+  })
 
 export const get96 = oc
   .route({
@@ -4286,6 +6497,14 @@ export const get96 = oc
     z.object({ params: zGetWorkspacesCurrentToolProviderBuiltinByProviderOauthCustomClientPath }),
   )
   .output(zGetWorkspacesCurrentToolProviderBuiltinByProviderOauthCustomClientResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetToolOAuthCustomClientError400 },
+    bad_request: { status: 400, data: zGetToolOAuthCustomClientError400 },
+    invalid_param: { status: 400, data: zGetToolOAuthCustomClientError400 },
+    not_init_validated: { status: 401, data: zGetToolOAuthCustomClientError401 },
+    not_setup: { status: 401, data: zGetToolOAuthCustomClientError401 },
+    unauthorized: { status: 401, data: zGetToolOAuthCustomClientError401 },
+  })
 
 export const post64 = oc
   .route({
@@ -4302,6 +6521,14 @@ export const post64 = oc
     }),
   )
   .output(zPostWorkspacesCurrentToolProviderBuiltinByProviderOauthCustomClientResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostToolOAuthCustomClientError400 },
+    bad_request: { status: 400, data: zPostToolOAuthCustomClientError400 },
+    invalid_param: { status: 400, data: zPostToolOAuthCustomClientError400 },
+    not_init_validated: { status: 401, data: zPostToolOAuthCustomClientError401 },
+    not_setup: { status: 401, data: zPostToolOAuthCustomClientError401 },
+    unauthorized: { status: 401, data: zPostToolOAuthCustomClientError401 },
+  })
 
 export const customClient = {
   delete: delete18,
@@ -4324,6 +6551,14 @@ export const get97 = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentToolProviderBuiltinByProviderToolsPath }))
   .output(zGetWorkspacesCurrentToolProviderBuiltinByProviderToolsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetToolBuiltinProviderListToolsApiError400 },
+    bad_request: { status: 400, data: zGetToolBuiltinProviderListToolsApiError400 },
+    invalid_param: { status: 400, data: zGetToolBuiltinProviderListToolsApiError400 },
+    not_init_validated: { status: 401, data: zGetToolBuiltinProviderListToolsApiError401 },
+    not_setup: { status: 401, data: zGetToolBuiltinProviderListToolsApiError401 },
+    unauthorized: { status: 401, data: zGetToolBuiltinProviderListToolsApiError401 },
+  })
 
 export const tools2 = {
   get: get97,
@@ -4344,6 +6579,14 @@ export const post65 = oc
     }),
   )
   .output(zPostWorkspacesCurrentToolProviderBuiltinByProviderUpdateResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostToolBuiltinProviderUpdateApiError400 },
+    bad_request: { status: 400, data: zPostToolBuiltinProviderUpdateApiError400 },
+    invalid_param: { status: 400, data: zPostToolBuiltinProviderUpdateApiError400 },
+    not_init_validated: { status: 401, data: zPostToolBuiltinProviderUpdateApiError401 },
+    not_setup: { status: 401, data: zPostToolBuiltinProviderUpdateApiError401 },
+    unauthorized: { status: 401, data: zPostToolBuiltinProviderUpdateApiError401 },
+  })
 
 export const update3 = {
   post: post65,
@@ -4376,6 +6619,14 @@ export const post66 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentToolProviderMcpAuthBody }))
   .output(zPostWorkspacesCurrentToolProviderMcpAuthResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostToolMcpAuthApiError400 },
+    bad_request: { status: 400, data: zPostToolMcpAuthApiError400 },
+    invalid_param: { status: 400, data: zPostToolMcpAuthApiError400 },
+    not_init_validated: { status: 401, data: zPostToolMcpAuthApiError401 },
+    not_setup: { status: 401, data: zPostToolMcpAuthApiError401 },
+    unauthorized: { status: 401, data: zPostToolMcpAuthApiError401 },
+  })
 
 export const auth = {
   post: post66,
@@ -4391,6 +6642,14 @@ export const get98 = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentToolProviderMcpToolsByProviderIdPath }))
   .output(zGetWorkspacesCurrentToolProviderMcpToolsByProviderIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetToolMcpDetailApiError400 },
+    bad_request: { status: 400, data: zGetToolMcpDetailApiError400 },
+    invalid_param: { status: 400, data: zGetToolMcpDetailApiError400 },
+    not_init_validated: { status: 401, data: zGetToolMcpDetailApiError401 },
+    not_setup: { status: 401, data: zGetToolMcpDetailApiError401 },
+    unauthorized: { status: 401, data: zGetToolMcpDetailApiError401 },
+  })
 
 export const byProviderId = {
   get: get98,
@@ -4410,6 +6669,14 @@ export const get99 = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentToolProviderMcpUpdateByProviderIdPath }))
   .output(zGetWorkspacesCurrentToolProviderMcpUpdateByProviderIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetToolMcpUpdateApiError400 },
+    bad_request: { status: 400, data: zGetToolMcpUpdateApiError400 },
+    invalid_param: { status: 400, data: zGetToolMcpUpdateApiError400 },
+    not_init_validated: { status: 401, data: zGetToolMcpUpdateApiError401 },
+    not_setup: { status: 401, data: zGetToolMcpUpdateApiError401 },
+    unauthorized: { status: 401, data: zGetToolMcpUpdateApiError401 },
+  })
 
 export const byProviderId2 = {
   get: get99,
@@ -4429,6 +6696,14 @@ export const delete19 = oc
   })
   .input(z.object({ body: zDeleteWorkspacesCurrentToolProviderMcpBody }))
   .output(zDeleteWorkspacesCurrentToolProviderMcpResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zDeleteToolProviderMcpApiError400 },
+    bad_request: { status: 400, data: zDeleteToolProviderMcpApiError400 },
+    invalid_param: { status: 400, data: zDeleteToolProviderMcpApiError400 },
+    not_init_validated: { status: 401, data: zDeleteToolProviderMcpApiError401 },
+    not_setup: { status: 401, data: zDeleteToolProviderMcpApiError401 },
+    unauthorized: { status: 401, data: zDeleteToolProviderMcpApiError401 },
+  })
 
 export const post67 = oc
   .route({
@@ -4440,6 +6715,14 @@ export const post67 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentToolProviderMcpBody }))
   .output(zPostWorkspacesCurrentToolProviderMcpResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostToolProviderMcpApiError400 },
+    bad_request: { status: 400, data: zPostToolProviderMcpApiError400 },
+    invalid_param: { status: 400, data: zPostToolProviderMcpApiError400 },
+    not_init_validated: { status: 401, data: zPostToolProviderMcpApiError401 },
+    not_setup: { status: 401, data: zPostToolProviderMcpApiError401 },
+    unauthorized: { status: 401, data: zPostToolProviderMcpApiError401 },
+  })
 
 export const put20 = oc
   .route({
@@ -4451,6 +6734,14 @@ export const put20 = oc
   })
   .input(z.object({ body: zPutWorkspacesCurrentToolProviderMcpBody }))
   .output(zPutWorkspacesCurrentToolProviderMcpResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPutToolProviderMcpApiError400 },
+    bad_request: { status: 400, data: zPutToolProviderMcpApiError400 },
+    invalid_param: { status: 400, data: zPutToolProviderMcpApiError400 },
+    not_init_validated: { status: 401, data: zPutToolProviderMcpApiError401 },
+    not_setup: { status: 401, data: zPutToolProviderMcpApiError401 },
+    unauthorized: { status: 401, data: zPutToolProviderMcpApiError401 },
+  })
 
 export const mcp = {
   delete: delete19,
@@ -4471,6 +6762,18 @@ export const post68 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentToolProviderWorkflowCreateBody }))
   .output(zPostWorkspacesCurrentToolProviderWorkflowCreateResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostToolWorkflowProviderCreateApiError400 },
+    bad_request: { status: 400, data: zPostToolWorkflowProviderCreateApiError400 },
+    invalid_param: { status: 400, data: zPostToolWorkflowProviderCreateApiError400 },
+    workflow_tool_human_input_not_supported: {
+      status: 400,
+      data: zPostToolWorkflowProviderCreateApiError400,
+    },
+    not_init_validated: { status: 401, data: zPostToolWorkflowProviderCreateApiError401 },
+    not_setup: { status: 401, data: zPostToolWorkflowProviderCreateApiError401 },
+    unauthorized: { status: 401, data: zPostToolWorkflowProviderCreateApiError401 },
+  })
 
 export const create2 = {
   post: post68,
@@ -4486,6 +6789,14 @@ export const post69 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentToolProviderWorkflowDeleteBody }))
   .output(zPostWorkspacesCurrentToolProviderWorkflowDeleteResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostToolWorkflowProviderDeleteApiError400 },
+    bad_request: { status: 400, data: zPostToolWorkflowProviderDeleteApiError400 },
+    invalid_param: { status: 400, data: zPostToolWorkflowProviderDeleteApiError400 },
+    not_init_validated: { status: 401, data: zPostToolWorkflowProviderDeleteApiError401 },
+    not_setup: { status: 401, data: zPostToolWorkflowProviderDeleteApiError401 },
+    unauthorized: { status: 401, data: zPostToolWorkflowProviderDeleteApiError401 },
+  })
 
 export const delete20 = {
   post: post69,
@@ -4501,6 +6812,14 @@ export const get100 = oc
   })
   .input(z.object({ query: zGetWorkspacesCurrentToolProviderWorkflowGetQuery.optional() }))
   .output(zGetWorkspacesCurrentToolProviderWorkflowGetResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetToolWorkflowProviderGetApiError400 },
+    bad_request: { status: 400, data: zGetToolWorkflowProviderGetApiError400 },
+    invalid_param: { status: 400, data: zGetToolWorkflowProviderGetApiError400 },
+    not_init_validated: { status: 401, data: zGetToolWorkflowProviderGetApiError401 },
+    not_setup: { status: 401, data: zGetToolWorkflowProviderGetApiError401 },
+    unauthorized: { status: 401, data: zGetToolWorkflowProviderGetApiError401 },
+  })
 
 export const get101 = {
   get: get100,
@@ -4516,6 +6835,14 @@ export const get102 = oc
   })
   .input(z.object({ query: zGetWorkspacesCurrentToolProviderWorkflowToolsQuery }))
   .output(zGetWorkspacesCurrentToolProviderWorkflowToolsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetToolWorkflowProviderListToolApiError400 },
+    bad_request: { status: 400, data: zGetToolWorkflowProviderListToolApiError400 },
+    invalid_param: { status: 400, data: zGetToolWorkflowProviderListToolApiError400 },
+    not_init_validated: { status: 401, data: zGetToolWorkflowProviderListToolApiError401 },
+    not_setup: { status: 401, data: zGetToolWorkflowProviderListToolApiError401 },
+    unauthorized: { status: 401, data: zGetToolWorkflowProviderListToolApiError401 },
+  })
 
 export const tools4 = {
   get: get102,
@@ -4531,6 +6858,18 @@ export const post70 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentToolProviderWorkflowUpdateBody }))
   .output(zPostWorkspacesCurrentToolProviderWorkflowUpdateResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostToolWorkflowProviderUpdateApiError400 },
+    bad_request: { status: 400, data: zPostToolWorkflowProviderUpdateApiError400 },
+    invalid_param: { status: 400, data: zPostToolWorkflowProviderUpdateApiError400 },
+    workflow_tool_human_input_not_supported: {
+      status: 400,
+      data: zPostToolWorkflowProviderUpdateApiError400,
+    },
+    not_init_validated: { status: 401, data: zPostToolWorkflowProviderUpdateApiError401 },
+    not_setup: { status: 401, data: zPostToolWorkflowProviderUpdateApiError401 },
+    unauthorized: { status: 401, data: zPostToolWorkflowProviderUpdateApiError401 },
+  })
 
 export const update5 = {
   post: post70,
@@ -4561,6 +6900,14 @@ export const get103 = oc
   })
   .input(z.object({ query: zGetWorkspacesCurrentToolProvidersQuery.optional() }))
   .output(zGetWorkspacesCurrentToolProvidersResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetToolProviderListApiError400 },
+    bad_request: { status: 400, data: zGetToolProviderListApiError400 },
+    invalid_param: { status: 400, data: zGetToolProviderListApiError400 },
+    not_init_validated: { status: 401, data: zGetToolProviderListApiError401 },
+    not_setup: { status: 401, data: zGetToolProviderListApiError401 },
+    unauthorized: { status: 401, data: zGetToolProviderListApiError401 },
+  })
 
 export const toolProviders = {
   get: get103,
@@ -4575,6 +6922,14 @@ export const get104 = oc
     tags: ['console'],
   })
   .output(zGetWorkspacesCurrentToolsApiResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetToolApiListApiError400 },
+    bad_request: { status: 400, data: zGetToolApiListApiError400 },
+    invalid_param: { status: 400, data: zGetToolApiListApiError400 },
+    not_init_validated: { status: 401, data: zGetToolApiListApiError401 },
+    not_setup: { status: 401, data: zGetToolApiListApiError401 },
+    unauthorized: { status: 401, data: zGetToolApiListApiError401 },
+  })
 
 export const api2 = {
   get: get104,
@@ -4589,6 +6944,14 @@ export const get105 = oc
     tags: ['console'],
   })
   .output(zGetWorkspacesCurrentToolsBuiltinResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetToolBuiltinListApiError400 },
+    bad_request: { status: 400, data: zGetToolBuiltinListApiError400 },
+    invalid_param: { status: 400, data: zGetToolBuiltinListApiError400 },
+    not_init_validated: { status: 401, data: zGetToolBuiltinListApiError401 },
+    not_setup: { status: 401, data: zGetToolBuiltinListApiError401 },
+    unauthorized: { status: 401, data: zGetToolBuiltinListApiError401 },
+  })
 
 export const builtin2 = {
   get: get105,
@@ -4603,6 +6966,14 @@ export const get106 = oc
     tags: ['console'],
   })
   .output(zGetWorkspacesCurrentToolsMcpResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetToolMcpListAllApiError400 },
+    bad_request: { status: 400, data: zGetToolMcpListAllApiError400 },
+    invalid_param: { status: 400, data: zGetToolMcpListAllApiError400 },
+    not_init_validated: { status: 401, data: zGetToolMcpListAllApiError401 },
+    not_setup: { status: 401, data: zGetToolMcpListAllApiError401 },
+    unauthorized: { status: 401, data: zGetToolMcpListAllApiError401 },
+  })
 
 export const mcp2 = {
   get: get106,
@@ -4617,6 +6988,14 @@ export const get107 = oc
     tags: ['console'],
   })
   .output(zGetWorkspacesCurrentToolsWorkflowResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetToolWorkflowListApiError400 },
+    bad_request: { status: 400, data: zGetToolWorkflowListApiError400 },
+    invalid_param: { status: 400, data: zGetToolWorkflowListApiError400 },
+    not_init_validated: { status: 401, data: zGetToolWorkflowListApiError401 },
+    not_setup: { status: 401, data: zGetToolWorkflowListApiError401 },
+    unauthorized: { status: 401, data: zGetToolWorkflowListApiError401 },
+  })
 
 export const workflow2 = {
   get: get107,
@@ -4639,6 +7018,14 @@ export const get108 = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentTriggerProviderByProviderIconPath }))
   .output(zGetWorkspacesCurrentTriggerProviderByProviderIconResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetTriggerProviderIconApiError400 },
+    bad_request: { status: 400, data: zGetTriggerProviderIconApiError400 },
+    invalid_param: { status: 400, data: zGetTriggerProviderIconApiError400 },
+    not_init_validated: { status: 401, data: zGetTriggerProviderIconApiError401 },
+    not_setup: { status: 401, data: zGetTriggerProviderIconApiError401 },
+    unauthorized: { status: 401, data: zGetTriggerProviderIconApiError401 },
+  })
 
 export const icon3 = {
   get: get108,
@@ -4658,6 +7045,14 @@ export const get109 = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentTriggerProviderByProviderInfoPath }))
   .output(zGetWorkspacesCurrentTriggerProviderByProviderInfoResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetTriggerProviderInfoApiError400 },
+    bad_request: { status: 400, data: zGetTriggerProviderInfoApiError400 },
+    invalid_param: { status: 400, data: zGetTriggerProviderInfoApiError400 },
+    not_init_validated: { status: 401, data: zGetTriggerProviderInfoApiError401 },
+    not_setup: { status: 401, data: zGetTriggerProviderInfoApiError401 },
+    unauthorized: { status: 401, data: zGetTriggerProviderInfoApiError401 },
+  })
 
 export const info3 = {
   get: get109,
@@ -4677,6 +7072,14 @@ export const delete21 = oc
   })
   .input(z.object({ params: zDeleteWorkspacesCurrentTriggerProviderByProviderOauthClientPath }))
   .output(zDeleteWorkspacesCurrentTriggerProviderByProviderOauthClientResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zDeleteTriggerOAuthClientManageApiError400 },
+    bad_request: { status: 400, data: zDeleteTriggerOAuthClientManageApiError400 },
+    invalid_param: { status: 400, data: zDeleteTriggerOAuthClientManageApiError400 },
+    not_init_validated: { status: 401, data: zDeleteTriggerOAuthClientManageApiError401 },
+    not_setup: { status: 401, data: zDeleteTriggerOAuthClientManageApiError401 },
+    unauthorized: { status: 401, data: zDeleteTriggerOAuthClientManageApiError401 },
+  })
 
 /**
  * Get OAuth client configuration for a provider
@@ -4692,6 +7095,14 @@ export const get110 = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentTriggerProviderByProviderOauthClientPath }))
   .output(zGetWorkspacesCurrentTriggerProviderByProviderOauthClientResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetTriggerOAuthClientManageApiError400 },
+    bad_request: { status: 400, data: zGetTriggerOAuthClientManageApiError400 },
+    invalid_param: { status: 400, data: zGetTriggerOAuthClientManageApiError400 },
+    not_init_validated: { status: 401, data: zGetTriggerOAuthClientManageApiError401 },
+    not_setup: { status: 401, data: zGetTriggerOAuthClientManageApiError401 },
+    unauthorized: { status: 401, data: zGetTriggerOAuthClientManageApiError401 },
+  })
 
 /**
  * Configure custom OAuth client for a provider
@@ -4712,6 +7123,14 @@ export const post71 = oc
     }),
   )
   .output(zPostWorkspacesCurrentTriggerProviderByProviderOauthClientResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostTriggerOAuthClientManageApiError400 },
+    bad_request: { status: 400, data: zPostTriggerOAuthClientManageApiError400 },
+    invalid_param: { status: 400, data: zPostTriggerOAuthClientManageApiError400 },
+    not_init_validated: { status: 401, data: zPostTriggerOAuthClientManageApiError401 },
+    not_setup: { status: 401, data: zPostTriggerOAuthClientManageApiError401 },
+    unauthorized: { status: 401, data: zPostTriggerOAuthClientManageApiError401 },
+  })
 
 export const client = {
   delete: delete21,
@@ -4746,6 +7165,14 @@ export const post72 = oc
   .output(
     zPostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderBuildBySubscriptionBuilderIdResponse,
   )
+  .errors({
+    account_not_initialized: { status: 400, data: zPostTriggerSubscriptionBuilderBuildApiError400 },
+    bad_request: { status: 400, data: zPostTriggerSubscriptionBuilderBuildApiError400 },
+    invalid_param: { status: 400, data: zPostTriggerSubscriptionBuilderBuildApiError400 },
+    not_init_validated: { status: 401, data: zPostTriggerSubscriptionBuilderBuildApiError401 },
+    not_setup: { status: 401, data: zPostTriggerSubscriptionBuilderBuildApiError401 },
+    unauthorized: { status: 401, data: zPostTriggerSubscriptionBuilderBuildApiError401 },
+  })
 
 export const bySubscriptionBuilderId = {
   post: post72,
@@ -4774,6 +7201,17 @@ export const post73 = oc
     }),
   )
   .output(zPostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderCreateResponse)
+  .errors({
+    account_not_initialized: {
+      status: 400,
+      data: zPostTriggerSubscriptionBuilderCreateApiError400,
+    },
+    bad_request: { status: 400, data: zPostTriggerSubscriptionBuilderCreateApiError400 },
+    invalid_param: { status: 400, data: zPostTriggerSubscriptionBuilderCreateApiError400 },
+    not_init_validated: { status: 401, data: zPostTriggerSubscriptionBuilderCreateApiError401 },
+    not_setup: { status: 401, data: zPostTriggerSubscriptionBuilderCreateApiError401 },
+    unauthorized: { status: 401, data: zPostTriggerSubscriptionBuilderCreateApiError401 },
+  })
 
 export const create3 = {
   post: post73,
@@ -4801,6 +7239,14 @@ export const get111 = oc
   .output(
     zGetWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderLogsBySubscriptionBuilderIdResponse,
   )
+  .errors({
+    account_not_initialized: { status: 400, data: zGetTriggerSubscriptionBuilderLogsApiError400 },
+    bad_request: { status: 400, data: zGetTriggerSubscriptionBuilderLogsApiError400 },
+    invalid_param: { status: 400, data: zGetTriggerSubscriptionBuilderLogsApiError400 },
+    not_init_validated: { status: 401, data: zGetTriggerSubscriptionBuilderLogsApiError401 },
+    not_setup: { status: 401, data: zGetTriggerSubscriptionBuilderLogsApiError401 },
+    unauthorized: { status: 401, data: zGetTriggerSubscriptionBuilderLogsApiError401 },
+  })
 
 export const bySubscriptionBuilderId2 = {
   get: get111,
@@ -4833,6 +7279,17 @@ export const post74 = oc
   .output(
     zPostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderUpdateBySubscriptionBuilderIdResponse,
   )
+  .errors({
+    account_not_initialized: {
+      status: 400,
+      data: zPostTriggerSubscriptionBuilderUpdateApiError400,
+    },
+    bad_request: { status: 400, data: zPostTriggerSubscriptionBuilderUpdateApiError400 },
+    invalid_param: { status: 400, data: zPostTriggerSubscriptionBuilderUpdateApiError400 },
+    not_init_validated: { status: 401, data: zPostTriggerSubscriptionBuilderUpdateApiError401 },
+    not_setup: { status: 401, data: zPostTriggerSubscriptionBuilderUpdateApiError401 },
+    unauthorized: { status: 401, data: zPostTriggerSubscriptionBuilderUpdateApiError401 },
+  })
 
 export const bySubscriptionBuilderId3 = {
   post: post74,
@@ -4865,6 +7322,17 @@ export const post75 = oc
   .output(
     zPostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderVerifyAndUpdateBySubscriptionBuilderIdResponse,
   )
+  .errors({
+    account_not_initialized: {
+      status: 400,
+      data: zPostTriggerSubscriptionBuilderVerifyApiError400,
+    },
+    bad_request: { status: 400, data: zPostTriggerSubscriptionBuilderVerifyApiError400 },
+    invalid_param: { status: 400, data: zPostTriggerSubscriptionBuilderVerifyApiError400 },
+    not_init_validated: { status: 401, data: zPostTriggerSubscriptionBuilderVerifyApiError401 },
+    not_setup: { status: 401, data: zPostTriggerSubscriptionBuilderVerifyApiError401 },
+    unauthorized: { status: 401, data: zPostTriggerSubscriptionBuilderVerifyApiError401 },
+  })
 
 export const bySubscriptionBuilderId4 = {
   post: post75,
@@ -4896,6 +7364,14 @@ export const get112 = oc
   .output(
     zGetWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderBySubscriptionBuilderIdResponse,
   )
+  .errors({
+    account_not_initialized: { status: 400, data: zGetTriggerSubscriptionBuilderGetApiError400 },
+    bad_request: { status: 400, data: zGetTriggerSubscriptionBuilderGetApiError400 },
+    invalid_param: { status: 400, data: zGetTriggerSubscriptionBuilderGetApiError400 },
+    not_init_validated: { status: 401, data: zGetTriggerSubscriptionBuilderGetApiError401 },
+    not_setup: { status: 401, data: zGetTriggerSubscriptionBuilderGetApiError401 },
+    unauthorized: { status: 401, data: zGetTriggerSubscriptionBuilderGetApiError401 },
+  })
 
 export const bySubscriptionBuilderId5 = {
   get: get112,
@@ -4924,6 +7400,14 @@ export const get113 = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentTriggerProviderByProviderSubscriptionsListPath }))
   .output(zGetWorkspacesCurrentTriggerProviderByProviderSubscriptionsListResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetTriggerSubscriptionListApiError400 },
+    bad_request: { status: 400, data: zGetTriggerSubscriptionListApiError400 },
+    invalid_param: { status: 400, data: zGetTriggerSubscriptionListApiError400 },
+    not_init_validated: { status: 401, data: zGetTriggerSubscriptionListApiError401 },
+    not_setup: { status: 401, data: zGetTriggerSubscriptionListApiError401 },
+    unauthorized: { status: 401, data: zGetTriggerSubscriptionListApiError401 },
+  })
 
 export const list4 = {
   get: get113,
@@ -4947,6 +7431,15 @@ export const get114 = oc
     }),
   )
   .output(zGetWorkspacesCurrentTriggerProviderByProviderSubscriptionsOauthAuthorizeResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetTriggerOAuthAuthorizeApiError400 },
+    bad_request: { status: 400, data: zGetTriggerOAuthAuthorizeApiError400 },
+    invalid_param: { status: 400, data: zGetTriggerOAuthAuthorizeApiError400 },
+    not_init_validated: { status: 401, data: zGetTriggerOAuthAuthorizeApiError401 },
+    not_setup: { status: 401, data: zGetTriggerOAuthAuthorizeApiError401 },
+    unauthorized: { status: 401, data: zGetTriggerOAuthAuthorizeApiError401 },
+    not_found: { status: 404, data: zGetTriggerOAuthAuthorizeApiError404 },
+  })
 
 export const authorize = {
   get: get114,
@@ -4979,6 +7472,14 @@ export const post76 = oc
   .output(
     zPostWorkspacesCurrentTriggerProviderByProviderSubscriptionsVerifyBySubscriptionIdResponse,
   )
+  .errors({
+    account_not_initialized: { status: 400, data: zPostTriggerSubscriptionVerifyApiError400 },
+    bad_request: { status: 400, data: zPostTriggerSubscriptionVerifyApiError400 },
+    invalid_param: { status: 400, data: zPostTriggerSubscriptionVerifyApiError400 },
+    not_init_validated: { status: 401, data: zPostTriggerSubscriptionVerifyApiError401 },
+    not_setup: { status: 401, data: zPostTriggerSubscriptionVerifyApiError401 },
+    unauthorized: { status: 401, data: zPostTriggerSubscriptionVerifyApiError401 },
+  })
 
 export const bySubscriptionId = {
   post: post76,
@@ -5020,6 +7521,14 @@ export const post77 = oc
     }),
   )
   .output(zPostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsDeleteResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostTriggerSubscriptionDeleteApiError400 },
+    bad_request: { status: 400, data: zPostTriggerSubscriptionDeleteApiError400 },
+    invalid_param: { status: 400, data: zPostTriggerSubscriptionDeleteApiError400 },
+    not_init_validated: { status: 401, data: zPostTriggerSubscriptionDeleteApiError401 },
+    not_setup: { status: 401, data: zPostTriggerSubscriptionDeleteApiError401 },
+    unauthorized: { status: 401, data: zPostTriggerSubscriptionDeleteApiError401 },
+  })
 
 export const delete22 = {
   post: post77,
@@ -5044,6 +7553,15 @@ export const post78 = oc
     }),
   )
   .output(zPostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsUpdateResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostTriggerSubscriptionUpdateApiError400 },
+    bad_request: { status: 400, data: zPostTriggerSubscriptionUpdateApiError400 },
+    invalid_param: { status: 400, data: zPostTriggerSubscriptionUpdateApiError400 },
+    not_init_validated: { status: 401, data: zPostTriggerSubscriptionUpdateApiError401 },
+    not_setup: { status: 401, data: zPostTriggerSubscriptionUpdateApiError401 },
+    unauthorized: { status: 401, data: zPostTriggerSubscriptionUpdateApiError401 },
+    not_found: { status: 404, data: zPostTriggerSubscriptionUpdateApiError404 },
+  })
 
 export const update7 = {
   post: post78,
@@ -5076,6 +7594,14 @@ export const get115 = oc
     tags: ['console'],
   })
   .output(zGetWorkspacesCurrentTriggersResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetTriggerProviderListApiError400 },
+    bad_request: { status: 400, data: zGetTriggerProviderListApiError400 },
+    invalid_param: { status: 400, data: zGetTriggerProviderListApiError400 },
+    not_init_validated: { status: 401, data: zGetTriggerProviderListApiError401 },
+    not_setup: { status: 401, data: zGetTriggerProviderListApiError401 },
+    unauthorized: { status: 401, data: zGetTriggerProviderListApiError401 },
+  })
 
 export const triggers = {
   get: get115,
@@ -5116,6 +7642,21 @@ export const post79 = oc
   })
   .input(z.object({ body: zPostWorkspacesCustomConfigWebappLogoUploadBody }))
   .output(zPostWorkspacesCustomConfigWebappLogoUploadResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostWebappLogoWorkspaceApiError400 },
+    bad_request: { status: 400, data: zPostWebappLogoWorkspaceApiError400 },
+    filename_not_exists_error: { status: 400, data: zPostWebappLogoWorkspaceApiError400 },
+    invalid_param: { status: 400, data: zPostWebappLogoWorkspaceApiError400 },
+    no_file_uploaded: { status: 400, data: zPostWebappLogoWorkspaceApiError400 },
+    too_many_files: { status: 400, data: zPostWebappLogoWorkspaceApiError400 },
+    not_init_validated: { status: 401, data: zPostWebappLogoWorkspaceApiError401 },
+    not_setup: { status: 401, data: zPostWebappLogoWorkspaceApiError401 },
+    unauthorized: { status: 401, data: zPostWebappLogoWorkspaceApiError401 },
+    file_too_large: { status: 413, data: zPostWebappLogoWorkspaceApiError413 },
+    request_entity_too_large: { status: 413, data: zPostWebappLogoWorkspaceApiError413 },
+    unsupported_file_type: { status: 415, data: zPostWebappLogoWorkspaceApiError415 },
+    unsupported_media_type: { status: 415, data: zPostWebappLogoWorkspaceApiError415 },
+  })
 
 export const upload3 = {
   post: post79,
@@ -5134,6 +7675,14 @@ export const get116 = oc
     tags: ['console'],
   })
   .output(zGetWorkspacesCustomConfigResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetCustomConfigWorkspaceApiError400 },
+    bad_request: { status: 400, data: zGetCustomConfigWorkspaceApiError400 },
+    invalid_param: { status: 400, data: zGetCustomConfigWorkspaceApiError400 },
+    not_init_validated: { status: 401, data: zGetCustomConfigWorkspaceApiError401 },
+    not_setup: { status: 401, data: zGetCustomConfigWorkspaceApiError401 },
+    unauthorized: { status: 401, data: zGetCustomConfigWorkspaceApiError401 },
+  })
 
 export const post80 = oc
   .route({
@@ -5145,6 +7694,14 @@ export const post80 = oc
   })
   .input(z.object({ body: zPostWorkspacesCustomConfigBody }))
   .output(zPostWorkspacesCustomConfigResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostCustomConfigWorkspaceApiError400 },
+    bad_request: { status: 400, data: zPostCustomConfigWorkspaceApiError400 },
+    invalid_param: { status: 400, data: zPostCustomConfigWorkspaceApiError400 },
+    not_init_validated: { status: 401, data: zPostCustomConfigWorkspaceApiError401 },
+    not_setup: { status: 401, data: zPostCustomConfigWorkspaceApiError401 },
+    unauthorized: { status: 401, data: zPostCustomConfigWorkspaceApiError401 },
+  })
 
 export const customConfig = {
   get: get116,
@@ -5162,6 +7719,14 @@ export const post81 = oc
   })
   .input(z.object({ body: zPostWorkspacesInfoBody }))
   .output(zPostWorkspacesInfoResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostWorkspaceInfoApiError400 },
+    bad_request: { status: 400, data: zPostWorkspaceInfoApiError400 },
+    invalid_param: { status: 400, data: zPostWorkspaceInfoApiError400 },
+    not_init_validated: { status: 401, data: zPostWorkspaceInfoApiError401 },
+    not_setup: { status: 401, data: zPostWorkspaceInfoApiError401 },
+    unauthorized: { status: 401, data: zPostWorkspaceInfoApiError401 },
+  })
 
 export const info4 = {
   post: post81,
@@ -5177,6 +7742,16 @@ export const post82 = oc
   })
   .input(z.object({ body: zPostWorkspacesSwitchBody }))
   .output(zPostWorkspacesSwitchResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostSwitchWorkspaceApiError400 },
+    bad_request: { status: 400, data: zPostSwitchWorkspaceApiError400 },
+    invalid_param: { status: 400, data: zPostSwitchWorkspaceApiError400 },
+    not_init_validated: { status: 401, data: zPostSwitchWorkspaceApiError401 },
+    not_setup: { status: 401, data: zPostSwitchWorkspaceApiError401 },
+    unauthorized: { status: 401, data: zPostSwitchWorkspaceApiError401 },
+    account_not_link_tenant: { status: 403, data: zPostSwitchWorkspaceApiError403 },
+    forbidden: { status: 403, data: zPostSwitchWorkspaceApiError403 },
+  })
 
 export const switch3 = {
   post: post82,
@@ -5222,6 +7797,14 @@ export const get118 = oc
     tags: ['console'],
   })
   .output(zGetWorkspacesResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetTenantListApiError400 },
+    bad_request: { status: 400, data: zGetTenantListApiError400 },
+    invalid_param: { status: 400, data: zGetTenantListApiError400 },
+    not_init_validated: { status: 401, data: zGetTenantListApiError401 },
+    not_setup: { status: 401, data: zGetTenantListApiError401 },
+    unauthorized: { status: 401, data: zGetTenantListApiError401 },
+  })
 
 export const workspaces = {
   get: get118,

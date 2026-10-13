@@ -3,6 +3,15 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
+  zGetLearnDifyAppListApiError400,
+  zGetLearnDifyAppListApiError401,
+  zGetRecommendedAppApiError400,
+  zGetRecommendedAppApiError401,
+  zGetRecommendedAppApiError404,
+  zGetRecommendedAppListApiError400,
+  zGetRecommendedAppListApiError401,
+} from './zod.gen.ts'
+import {
   zGetExploreAppsByAppIdPath,
   zGetExploreAppsByAppIdResponse,
   zGetExploreAppsLearnDifyQuery,
@@ -23,6 +32,14 @@ export const get = oc
   })
   .input(z.object({ query: zGetExploreAppsLearnDifyQuery.optional() }))
   .output(zGetExploreAppsLearnDifyResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetLearnDifyAppListApiError400 },
+    bad_request: { status: 400, data: zGetLearnDifyAppListApiError400 },
+    invalid_param: { status: 400, data: zGetLearnDifyAppListApiError400 },
+    not_init_validated: { status: 401, data: zGetLearnDifyAppListApiError401 },
+    not_setup: { status: 401, data: zGetLearnDifyAppListApiError401 },
+    unauthorized: { status: 401, data: zGetLearnDifyAppListApiError401 },
+  })
 
 export const learnDify = {
   get,
@@ -38,6 +55,16 @@ export const get2 = oc
   })
   .input(z.object({ params: zGetExploreAppsByAppIdPath }))
   .output(zGetExploreAppsByAppIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetRecommendedAppApiError400 },
+    bad_request: { status: 400, data: zGetRecommendedAppApiError400 },
+    invalid_param: { status: 400, data: zGetRecommendedAppApiError400 },
+    not_init_validated: { status: 401, data: zGetRecommendedAppApiError401 },
+    not_setup: { status: 401, data: zGetRecommendedAppApiError401 },
+    unauthorized: { status: 401, data: zGetRecommendedAppApiError401 },
+    not_found: { status: 404, data: zGetRecommendedAppApiError404 },
+    recommended_app_not_found: { status: 404, data: zGetRecommendedAppApiError404 },
+  })
 
 export const byAppId = {
   get: get2,
@@ -53,6 +80,14 @@ export const get3 = oc
   })
   .input(z.object({ query: zGetExploreAppsQuery.optional() }))
   .output(zGetExploreAppsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetRecommendedAppListApiError400 },
+    bad_request: { status: 400, data: zGetRecommendedAppListApiError400 },
+    invalid_param: { status: 400, data: zGetRecommendedAppListApiError400 },
+    not_init_validated: { status: 401, data: zGetRecommendedAppListApiError401 },
+    not_setup: { status: 401, data: zGetRecommendedAppListApiError401 },
+    unauthorized: { status: 401, data: zGetRecommendedAppListApiError401 },
+  })
 
 export const apps = {
   get: get3,

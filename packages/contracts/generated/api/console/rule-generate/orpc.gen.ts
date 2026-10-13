@@ -2,6 +2,7 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
+import { zGenerateRuleConfigError400, zGenerateRuleConfigError401 } from './zod.gen.ts'
 import { zPostRuleGenerateBody, zPostRuleGenerateResponse } from './zod.gen.ts'
 
 /**
@@ -18,6 +19,18 @@ export const post = oc
   })
   .input(z.object({ body: zPostRuleGenerateBody }))
   .output(zPostRuleGenerateResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGenerateRuleConfigError400 },
+    bad_request: { status: 400, data: zGenerateRuleConfigError400 },
+    completion_request_error: { status: 400, data: zGenerateRuleConfigError400 },
+    invalid_param: { status: 400, data: zGenerateRuleConfigError400 },
+    model_currently_not_support: { status: 400, data: zGenerateRuleConfigError400 },
+    provider_not_initialize: { status: 400, data: zGenerateRuleConfigError400 },
+    provider_quota_exceeded: { status: 400, data: zGenerateRuleConfigError400 },
+    not_init_validated: { status: 401, data: zGenerateRuleConfigError401 },
+    not_setup: { status: 401, data: zGenerateRuleConfigError401 },
+    unauthorized: { status: 401, data: zGenerateRuleConfigError401 },
+  })
 
 export const ruleGenerate = {
   post,

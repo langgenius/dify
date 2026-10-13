@@ -3,6 +3,14 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
+  zCrawlWebsiteError400,
+  zCrawlWebsiteError401,
+  zCrawlWebsiteError500,
+  zGetCrawlStatusError400,
+  zGetCrawlStatusError401,
+  zGetCrawlStatusError500,
+} from './zod.gen.ts'
+import {
   zGetWebsiteCrawlStatusByJobIdPath,
   zGetWebsiteCrawlStatusByJobIdQuery,
   zGetWebsiteCrawlStatusByJobIdResponse,
@@ -29,6 +37,18 @@ export const get = oc
     }),
   )
   .output(zGetWebsiteCrawlStatusByJobIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetCrawlStatusError400 },
+    bad_request: { status: 400, data: zGetCrawlStatusError400 },
+    invalid_param: { status: 400, data: zGetCrawlStatusError400 },
+    not_init_validated: { status: 401, data: zGetCrawlStatusError401 },
+    not_setup: { status: 401, data: zGetCrawlStatusError401 },
+    unauthorized: { status: 401, data: zGetCrawlStatusError401 },
+    active_workspace_required: { status: 500, data: zGetCrawlStatusError500 },
+    crawl_failed: { status: 500, data: zGetCrawlStatusError500 },
+    internal_server_error: { status: 500, data: zGetCrawlStatusError500 },
+    unknown: { status: 500, data: zGetCrawlStatusError500 },
+  })
 
 export const byJobId = {
   get,
@@ -52,6 +72,18 @@ export const post = oc
   })
   .input(z.object({ body: zPostWebsiteCrawlBody }))
   .output(zPostWebsiteCrawlResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zCrawlWebsiteError400 },
+    bad_request: { status: 400, data: zCrawlWebsiteError400 },
+    invalid_param: { status: 400, data: zCrawlWebsiteError400 },
+    not_init_validated: { status: 401, data: zCrawlWebsiteError401 },
+    not_setup: { status: 401, data: zCrawlWebsiteError401 },
+    unauthorized: { status: 401, data: zCrawlWebsiteError401 },
+    active_workspace_required: { status: 500, data: zCrawlWebsiteError500 },
+    crawl_failed: { status: 500, data: zCrawlWebsiteError500 },
+    internal_server_error: { status: 500, data: zCrawlWebsiteError500 },
+    unknown: { status: 500, data: zCrawlWebsiteError500 },
+  })
 
 export const crawl = {
   post,

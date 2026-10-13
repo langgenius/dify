@@ -3,6 +3,12 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
+  zDismissNotificationError400,
+  zDismissNotificationError401,
+  zGetNotificationError400,
+  zGetNotificationError401,
+} from './zod.gen.ts'
+import {
   zGetNotificationQuery,
   zGetNotificationResponse,
   zPostNotificationDismissBody,
@@ -23,6 +29,14 @@ export const post = oc
   })
   .input(z.object({ body: zPostNotificationDismissBody }))
   .output(zPostNotificationDismissResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zDismissNotificationError400 },
+    bad_request: { status: 400, data: zDismissNotificationError400 },
+    invalid_param: { status: 400, data: zDismissNotificationError400 },
+    not_init_validated: { status: 401, data: zDismissNotificationError401 },
+    not_setup: { status: 401, data: zDismissNotificationError401 },
+    unauthorized: { status: 401, data: zDismissNotificationError401 },
+  })
 
 export const dismiss = {
   post,
@@ -43,6 +57,14 @@ export const get = oc
   })
   .input(z.object({ query: zGetNotificationQuery.optional() }))
   .output(zGetNotificationResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetNotificationError400 },
+    bad_request: { status: 400, data: zGetNotificationError400 },
+    invalid_param: { status: 400, data: zGetNotificationError400 },
+    not_init_validated: { status: 401, data: zGetNotificationError401 },
+    not_setup: { status: 401, data: zGetNotificationError401 },
+    unauthorized: { status: 401, data: zGetNotificationError401 },
+  })
 
 export const notification = {
   get,

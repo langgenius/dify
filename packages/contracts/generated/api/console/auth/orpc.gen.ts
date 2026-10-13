@@ -3,6 +3,28 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
+  zDeleteDatasourceAuthOauthCustomClientError400,
+  zDeleteDatasourceAuthOauthCustomClientError401,
+  zGetDatasourceAuthError400,
+  zGetDatasourceAuthError401,
+  zGetDatasourceAuthListApiError400,
+  zGetDatasourceAuthListApiError401,
+  zGetDatasourceHardCodeAuthListApiError400,
+  zGetDatasourceHardCodeAuthListApiError401,
+  zPostDatasourceAuthDefaultApiError400,
+  zPostDatasourceAuthDefaultApiError401,
+  zPostDatasourceAuthDeleteApiError400,
+  zPostDatasourceAuthDeleteApiError401,
+  zPostDatasourceAuthError400,
+  zPostDatasourceAuthError401,
+  zPostDatasourceAuthOauthCustomClientError400,
+  zPostDatasourceAuthOauthCustomClientError401,
+  zPostDatasourceAuthUpdateApiError400,
+  zPostDatasourceAuthUpdateApiError401,
+  zPostDatasourceUpdateProviderNameApiError400,
+  zPostDatasourceUpdateProviderNameApiError401,
+} from './zod.gen.ts'
+import {
   zDeleteAuthPluginDatasourceByProviderIdCustomClientPath,
   zDeleteAuthPluginDatasourceByProviderIdCustomClientResponse,
   zGetAuthPluginDatasourceByProviderIdPath,
@@ -38,6 +60,14 @@ export const get = oc
     tags: ['console'],
   })
   .output(zGetAuthPluginDatasourceDefaultListResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetDatasourceHardCodeAuthListApiError400 },
+    bad_request: { status: 400, data: zGetDatasourceHardCodeAuthListApiError400 },
+    invalid_param: { status: 400, data: zGetDatasourceHardCodeAuthListApiError400 },
+    not_init_validated: { status: 401, data: zGetDatasourceHardCodeAuthListApiError401 },
+    not_setup: { status: 401, data: zGetDatasourceHardCodeAuthListApiError401 },
+    unauthorized: { status: 401, data: zGetDatasourceHardCodeAuthListApiError401 },
+  })
 
 export const defaultList = {
   get,
@@ -52,6 +82,14 @@ export const get2 = oc
     tags: ['console'],
   })
   .output(zGetAuthPluginDatasourceListResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetDatasourceAuthListApiError400 },
+    bad_request: { status: 400, data: zGetDatasourceAuthListApiError400 },
+    invalid_param: { status: 400, data: zGetDatasourceAuthListApiError400 },
+    not_init_validated: { status: 401, data: zGetDatasourceAuthListApiError401 },
+    not_setup: { status: 401, data: zGetDatasourceAuthListApiError401 },
+    unauthorized: { status: 401, data: zGetDatasourceAuthListApiError401 },
+  })
 
 export const list = {
   get: get2,
@@ -67,6 +105,14 @@ export const delete_ = oc
   })
   .input(z.object({ params: zDeleteAuthPluginDatasourceByProviderIdCustomClientPath }))
   .output(zDeleteAuthPluginDatasourceByProviderIdCustomClientResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zDeleteDatasourceAuthOauthCustomClientError400 },
+    bad_request: { status: 400, data: zDeleteDatasourceAuthOauthCustomClientError400 },
+    invalid_param: { status: 400, data: zDeleteDatasourceAuthOauthCustomClientError400 },
+    not_init_validated: { status: 401, data: zDeleteDatasourceAuthOauthCustomClientError401 },
+    not_setup: { status: 401, data: zDeleteDatasourceAuthOauthCustomClientError401 },
+    unauthorized: { status: 401, data: zDeleteDatasourceAuthOauthCustomClientError401 },
+  })
 
 export const post = oc
   .route({
@@ -83,6 +129,14 @@ export const post = oc
     }),
   )
   .output(zPostAuthPluginDatasourceByProviderIdCustomClientResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostDatasourceAuthOauthCustomClientError400 },
+    bad_request: { status: 400, data: zPostDatasourceAuthOauthCustomClientError400 },
+    invalid_param: { status: 400, data: zPostDatasourceAuthOauthCustomClientError400 },
+    not_init_validated: { status: 401, data: zPostDatasourceAuthOauthCustomClientError401 },
+    not_setup: { status: 401, data: zPostDatasourceAuthOauthCustomClientError401 },
+    unauthorized: { status: 401, data: zPostDatasourceAuthOauthCustomClientError401 },
+  })
 
 export const customClient = {
   delete: delete_,
@@ -104,6 +158,14 @@ export const post2 = oc
     }),
   )
   .output(zPostAuthPluginDatasourceByProviderIdDefaultResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostDatasourceAuthDefaultApiError400 },
+    bad_request: { status: 400, data: zPostDatasourceAuthDefaultApiError400 },
+    invalid_param: { status: 400, data: zPostDatasourceAuthDefaultApiError400 },
+    not_init_validated: { status: 401, data: zPostDatasourceAuthDefaultApiError401 },
+    not_setup: { status: 401, data: zPostDatasourceAuthDefaultApiError401 },
+    unauthorized: { status: 401, data: zPostDatasourceAuthDefaultApiError401 },
+  })
 
 export const default_ = {
   post: post2,
@@ -124,6 +186,14 @@ export const post3 = oc
     }),
   )
   .output(zPostAuthPluginDatasourceByProviderIdDeleteResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostDatasourceAuthDeleteApiError400 },
+    bad_request: { status: 400, data: zPostDatasourceAuthDeleteApiError400 },
+    invalid_param: { status: 400, data: zPostDatasourceAuthDeleteApiError400 },
+    not_init_validated: { status: 401, data: zPostDatasourceAuthDeleteApiError401 },
+    not_setup: { status: 401, data: zPostDatasourceAuthDeleteApiError401 },
+    unauthorized: { status: 401, data: zPostDatasourceAuthDeleteApiError401 },
+  })
 
 export const delete2 = {
   post: post3,
@@ -145,6 +215,14 @@ export const post4 = oc
     }),
   )
   .output(zPostAuthPluginDatasourceByProviderIdUpdateResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostDatasourceAuthUpdateApiError400 },
+    bad_request: { status: 400, data: zPostDatasourceAuthUpdateApiError400 },
+    invalid_param: { status: 400, data: zPostDatasourceAuthUpdateApiError400 },
+    not_init_validated: { status: 401, data: zPostDatasourceAuthUpdateApiError401 },
+    not_setup: { status: 401, data: zPostDatasourceAuthUpdateApiError401 },
+    unauthorized: { status: 401, data: zPostDatasourceAuthUpdateApiError401 },
+  })
 
 export const update = {
   post: post4,
@@ -165,6 +243,14 @@ export const post5 = oc
     }),
   )
   .output(zPostAuthPluginDatasourceByProviderIdUpdateNameResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostDatasourceUpdateProviderNameApiError400 },
+    bad_request: { status: 400, data: zPostDatasourceUpdateProviderNameApiError400 },
+    invalid_param: { status: 400, data: zPostDatasourceUpdateProviderNameApiError400 },
+    not_init_validated: { status: 401, data: zPostDatasourceUpdateProviderNameApiError401 },
+    not_setup: { status: 401, data: zPostDatasourceUpdateProviderNameApiError401 },
+    unauthorized: { status: 401, data: zPostDatasourceUpdateProviderNameApiError401 },
+  })
 
 export const updateName = {
   post: post5,
@@ -180,6 +266,14 @@ export const get3 = oc
   })
   .input(z.object({ params: zGetAuthPluginDatasourceByProviderIdPath }))
   .output(zGetAuthPluginDatasourceByProviderIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetDatasourceAuthError400 },
+    bad_request: { status: 400, data: zGetDatasourceAuthError400 },
+    invalid_param: { status: 400, data: zGetDatasourceAuthError400 },
+    not_init_validated: { status: 401, data: zGetDatasourceAuthError401 },
+    not_setup: { status: 401, data: zGetDatasourceAuthError401 },
+    unauthorized: { status: 401, data: zGetDatasourceAuthError401 },
+  })
 
 export const post6 = oc
   .route({
@@ -196,6 +290,14 @@ export const post6 = oc
     }),
   )
   .output(zPostAuthPluginDatasourceByProviderIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostDatasourceAuthError400 },
+    bad_request: { status: 400, data: zPostDatasourceAuthError400 },
+    invalid_param: { status: 400, data: zPostDatasourceAuthError400 },
+    not_init_validated: { status: 401, data: zPostDatasourceAuthError401 },
+    not_setup: { status: 401, data: zPostDatasourceAuthError401 },
+    unauthorized: { status: 401, data: zPostDatasourceAuthError401 },
+  })
 
 export const byProviderId = {
   get: get3,

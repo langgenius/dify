@@ -2,6 +2,12 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
+import {
+  zPostLoginApiError400,
+  zPostLoginApiError401,
+  zPostLoginApiError429,
+  zPostLoginApiError503,
+} from './zod.gen.ts'
 import { zPostLoginBody, zPostLoginResponse } from './zod.gen.ts'
 
 /**
@@ -18,6 +24,34 @@ export const post = oc
   })
   .input(z.object({ body: zPostLoginBody }))
   .output(zPostLoginResponse)
+  .errors({
+    account_banned: { status: 400, data: zPostLoginApiError400 },
+    account_in_freeze: { status: 400, data: zPostLoginApiError400 },
+    account_not_found: { status: 400, data: zPostLoginApiError400 },
+    bad_request: { status: 400, data: zPostLoginApiError400 },
+    email_code_error: { status: 400, data: zPostLoginApiError400 },
+    email_domain_suspended: { status: 400, data: zPostLoginApiError400 },
+    invalid_account_password: { status: 400, data: zPostLoginApiError400 },
+    invalid_email: { status: 400, data: zPostLoginApiError400 },
+    invalid_or_expired_token: { status: 400, data: zPostLoginApiError400 },
+    invalid_param: { status: 400, data: zPostLoginApiError400 },
+    limit_exceeded: { status: 400, data: zPostLoginApiError400 },
+    normalized_email_already_in_use: { status: 400, data: zPostLoginApiError400 },
+    not_allowed_create_workspace: { status: 400, data: zPostLoginApiError400 },
+    turnstile_verification_failed: { status: 400, data: zPostLoginApiError400 },
+    authentication_failed: { status: 401, data: zPostLoginApiError401 },
+    not_init_validated: { status: 401, data: zPostLoginApiError401 },
+    not_setup: { status: 401, data: zPostLoginApiError401 },
+    unauthorized: { status: 401, data: zPostLoginApiError401 },
+    email_code_login_limit: { status: 429, data: zPostLoginApiError429 },
+    email_code_login_rate_limit_exceeded: { status: 429, data: zPostLoginApiError429 },
+    email_send_ip_limit: { status: 429, data: zPostLoginApiError429 },
+    password_reset_rate_limit_exceeded: { status: 429, data: zPostLoginApiError429 },
+    too_many_requests: { status: 429, data: zPostLoginApiError429 },
+    email_code_login_service_unavailable: { status: 503, data: zPostLoginApiError503 },
+    service_unavailable: { status: 503, data: zPostLoginApiError503 },
+    turnstile_service_unavailable: { status: 503, data: zPostLoginApiError503 },
+  })
 
 export const login = {
   post,

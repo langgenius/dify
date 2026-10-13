@@ -3,6 +3,89 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
+  zGetAppApiError400,
+  zGetAppApiError401,
+  zGetAppApiError403,
+  zGetAppApiError404,
+  zGetAppWorkflowApiError400,
+  zGetAppWorkflowApiError404,
+  zGetDatasetListApiError400,
+  zGetDatasetListApiError404,
+  zGetRecommendedAgentExportApiError404,
+  zGetTrialAgentComposerApiError400,
+  zGetTrialAgentComposerApiError404,
+  zGetTrialAgentConfigFileDownloadApiError400,
+  zGetTrialAgentConfigFileDownloadApiError404,
+  zGetTrialAgentConfigFilePreviewApiError400,
+  zGetTrialAgentConfigFilePreviewApiError404,
+  zGetTrialAgentConfigFilesApiError400,
+  zGetTrialAgentConfigFilesApiError404,
+  zGetTrialAgentConfigSkillDownloadApiError400,
+  zGetTrialAgentConfigSkillDownloadApiError404,
+  zGetTrialAgentConfigSkillFileContentApiError400,
+  zGetTrialAgentConfigSkillFileContentApiError404,
+  zGetTrialAgentConfigSkillFileDownloadApiError400,
+  zGetTrialAgentConfigSkillFileDownloadApiError404,
+  zGetTrialAgentConfigSkillFilePreviewApiError400,
+  zGetTrialAgentConfigSkillFilePreviewApiError404,
+  zGetTrialAgentConfigSkillInspectApiError400,
+  zGetTrialAgentConfigSkillInspectApiError404,
+  zGetTrialAgentConfigSkillsApiError400,
+  zGetTrialAgentConfigSkillsApiError404,
+  zGetTrialAppParameterApiError400,
+  zGetTrialAppParameterApiError404,
+  zGetTrialMessageSuggestedQuestionApiError400,
+  zGetTrialMessageSuggestedQuestionApiError401,
+  zGetTrialMessageSuggestedQuestionApiError403,
+  zGetTrialMessageSuggestedQuestionApiError404,
+  zGetTrialMessageSuggestedQuestionApiError500,
+  zGetTrialSitApiError403,
+  zGetTrialSitApiError404,
+  zPostTrialAppFileUploadApiError400,
+  zPostTrialAppFileUploadApiError401,
+  zPostTrialAppFileUploadApiError403,
+  zPostTrialAppRemoteFileUploadApiError400,
+  zPostTrialAppRemoteFileUploadApiError401,
+  zPostTrialAppRemoteFileUploadApiError403,
+  zPostTrialAppRemoteFileUploadApiError404,
+  zPostTrialAppRemoteFileUploadApiError413,
+  zPostTrialAppRemoteFileUploadApiError415,
+  zPostTrialAppRemoteFileUploadApiError502,
+  zPostTrialAppWorkflowRunApiError400,
+  zPostTrialAppWorkflowRunApiError401,
+  zPostTrialAppWorkflowRunApiError403,
+  zPostTrialAppWorkflowRunApiError429,
+  zPostTrialAppWorkflowRunApiError500,
+  zPostTrialAppWorkflowTaskStopApiError400,
+  zPostTrialAppWorkflowTaskStopApiError401,
+  zPostTrialAppWorkflowTaskStopApiError403,
+  zPostTrialChatApiError400,
+  zPostTrialChatApiError401,
+  zPostTrialChatApiError403,
+  zPostTrialChatApiError404,
+  zPostTrialChatApiError429,
+  zPostTrialChatApiError500,
+  zPostTrialChatAudioApiError400,
+  zPostTrialChatAudioApiError401,
+  zPostTrialChatAudioApiError403,
+  zPostTrialChatTaskStopApiError400,
+  zPostTrialChatTaskStopApiError401,
+  zPostTrialChatTaskStopApiError403,
+  zPostTrialChatTextApiError400,
+  zPostTrialChatTextApiError401,
+  zPostTrialChatTextApiError403,
+  zPostTrialChatTextApiError404,
+  zPostTrialChatTextApiError413,
+  zPostTrialChatTextApiError415,
+  zPostTrialChatTextApiError500,
+  zPostTrialCompletionApiError400,
+  zPostTrialCompletionApiError401,
+  zPostTrialCompletionApiError403,
+  zPostTrialCompletionApiError404,
+  zPostTrialCompletionApiError429,
+  zPostTrialCompletionApiError500,
+} from './zod.gen.ts'
+import {
   zGetTrialAppsByAppIdAgentComposerPath,
   zGetTrialAppsByAppIdAgentComposerResponse,
   zGetTrialAppsByAppIdAgentConfigFilesByNameDownloadPath,
@@ -84,6 +167,13 @@ export const get = oc
   })
   .input(z.object({ params: zGetTrialAppsByAppIdAgentComposerPath }))
   .output(zGetTrialAppsByAppIdAgentComposerResponse)
+  .errors({
+    app_unavailable: { status: 400, data: zGetTrialAgentComposerApiError400 },
+    bad_request: { status: 400, data: zGetTrialAgentComposerApiError400 },
+    invalid_param: { status: 400, data: zGetTrialAgentComposerApiError400 },
+    app_not_found: { status: 404, data: zGetTrialAgentComposerApiError404 },
+    not_found: { status: 404, data: zGetTrialAgentComposerApiError404 },
+  })
 
 export const agentComposer = {
   get,
@@ -104,6 +194,13 @@ export const get2 = oc
     }),
   )
   .output(zGetTrialAppsByAppIdAgentConfigFilesByNameDownloadResponse)
+  .errors({
+    app_unavailable: { status: 400, data: zGetTrialAgentConfigFileDownloadApiError400 },
+    bad_request: { status: 400, data: zGetTrialAgentConfigFileDownloadApiError400 },
+    invalid_param: { status: 400, data: zGetTrialAgentConfigFileDownloadApiError400 },
+    app_not_found: { status: 404, data: zGetTrialAgentConfigFileDownloadApiError404 },
+    not_found: { status: 404, data: zGetTrialAgentConfigFileDownloadApiError404 },
+  })
 
 export const download = {
   get: get2,
@@ -124,6 +221,13 @@ export const get3 = oc
     }),
   )
   .output(zGetTrialAppsByAppIdAgentConfigFilesByNamePreviewResponse)
+  .errors({
+    app_unavailable: { status: 400, data: zGetTrialAgentConfigFilePreviewApiError400 },
+    bad_request: { status: 400, data: zGetTrialAgentConfigFilePreviewApiError400 },
+    invalid_param: { status: 400, data: zGetTrialAgentConfigFilePreviewApiError400 },
+    app_not_found: { status: 404, data: zGetTrialAgentConfigFilePreviewApiError404 },
+    not_found: { status: 404, data: zGetTrialAgentConfigFilePreviewApiError404 },
+  })
 
 export const preview = {
   get: get3,
@@ -149,6 +253,13 @@ export const get4 = oc
     }),
   )
   .output(zGetTrialAppsByAppIdAgentConfigFilesResponse)
+  .errors({
+    app_unavailable: { status: 400, data: zGetTrialAgentConfigFilesApiError400 },
+    bad_request: { status: 400, data: zGetTrialAgentConfigFilesApiError400 },
+    invalid_param: { status: 400, data: zGetTrialAgentConfigFilesApiError400 },
+    app_not_found: { status: 404, data: zGetTrialAgentConfigFilesApiError404 },
+    not_found: { status: 404, data: zGetTrialAgentConfigFilesApiError404 },
+  })
 
 export const files = {
   get: get4,
@@ -170,6 +281,13 @@ export const get5 = oc
     }),
   )
   .output(zGetTrialAppsByAppIdAgentConfigSkillsByNameDownloadResponse)
+  .errors({
+    app_unavailable: { status: 400, data: zGetTrialAgentConfigSkillDownloadApiError400 },
+    bad_request: { status: 400, data: zGetTrialAgentConfigSkillDownloadApiError400 },
+    invalid_param: { status: 400, data: zGetTrialAgentConfigSkillDownloadApiError400 },
+    app_not_found: { status: 404, data: zGetTrialAgentConfigSkillDownloadApiError404 },
+    not_found: { status: 404, data: zGetTrialAgentConfigSkillDownloadApiError404 },
+  })
 
 export const download2 = {
   get: get5,
@@ -190,6 +308,13 @@ export const get6 = oc
     }),
   )
   .output(zGetTrialAppsByAppIdAgentConfigSkillsByNameFilesContentResponse)
+  .errors({
+    app_unavailable: { status: 400, data: zGetTrialAgentConfigSkillFileContentApiError400 },
+    bad_request: { status: 400, data: zGetTrialAgentConfigSkillFileContentApiError400 },
+    invalid_param: { status: 400, data: zGetTrialAgentConfigSkillFileContentApiError400 },
+    app_not_found: { status: 404, data: zGetTrialAgentConfigSkillFileContentApiError404 },
+    not_found: { status: 404, data: zGetTrialAgentConfigSkillFileContentApiError404 },
+  })
 
 export const content = {
   get: get6,
@@ -210,6 +335,13 @@ export const get7 = oc
     }),
   )
   .output(zGetTrialAppsByAppIdAgentConfigSkillsByNameFilesDownloadResponse)
+  .errors({
+    app_unavailable: { status: 400, data: zGetTrialAgentConfigSkillFileDownloadApiError400 },
+    bad_request: { status: 400, data: zGetTrialAgentConfigSkillFileDownloadApiError400 },
+    invalid_param: { status: 400, data: zGetTrialAgentConfigSkillFileDownloadApiError400 },
+    app_not_found: { status: 404, data: zGetTrialAgentConfigSkillFileDownloadApiError404 },
+    not_found: { status: 404, data: zGetTrialAgentConfigSkillFileDownloadApiError404 },
+  })
 
 export const download3 = {
   get: get7,
@@ -230,6 +362,13 @@ export const get8 = oc
     }),
   )
   .output(zGetTrialAppsByAppIdAgentConfigSkillsByNameFilesPreviewResponse)
+  .errors({
+    app_unavailable: { status: 400, data: zGetTrialAgentConfigSkillFilePreviewApiError400 },
+    bad_request: { status: 400, data: zGetTrialAgentConfigSkillFilePreviewApiError400 },
+    invalid_param: { status: 400, data: zGetTrialAgentConfigSkillFilePreviewApiError400 },
+    app_not_found: { status: 404, data: zGetTrialAgentConfigSkillFilePreviewApiError404 },
+    not_found: { status: 404, data: zGetTrialAgentConfigSkillFilePreviewApiError404 },
+  })
 
 export const preview2 = {
   get: get8,
@@ -256,6 +395,13 @@ export const get9 = oc
     }),
   )
   .output(zGetTrialAppsByAppIdAgentConfigSkillsByNameInspectResponse)
+  .errors({
+    app_unavailable: { status: 400, data: zGetTrialAgentConfigSkillInspectApiError400 },
+    bad_request: { status: 400, data: zGetTrialAgentConfigSkillInspectApiError400 },
+    invalid_param: { status: 400, data: zGetTrialAgentConfigSkillInspectApiError400 },
+    app_not_found: { status: 404, data: zGetTrialAgentConfigSkillInspectApiError404 },
+    not_found: { status: 404, data: zGetTrialAgentConfigSkillInspectApiError404 },
+  })
 
 export const inspect = {
   get: get9,
@@ -282,6 +428,13 @@ export const get10 = oc
     }),
   )
   .output(zGetTrialAppsByAppIdAgentConfigSkillsResponse)
+  .errors({
+    app_unavailable: { status: 400, data: zGetTrialAgentConfigSkillsApiError400 },
+    bad_request: { status: 400, data: zGetTrialAgentConfigSkillsApiError400 },
+    invalid_param: { status: 400, data: zGetTrialAgentConfigSkillsApiError400 },
+    app_not_found: { status: 404, data: zGetTrialAgentConfigSkillsApiError404 },
+    not_found: { status: 404, data: zGetTrialAgentConfigSkillsApiError404 },
+  })
 
 export const skills = {
   get: get10,
@@ -307,6 +460,18 @@ export const post = oc
   })
   .input(z.object({ params: zPostTrialAppsByAppIdAudioToTextPath }))
   .output(zPostTrialAppsByAppIdAudioToTextResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostTrialChatAudioApiError400 },
+    bad_request: { status: 400, data: zPostTrialChatAudioApiError400 },
+    invalid_param: { status: 400, data: zPostTrialChatAudioApiError400 },
+    not_init_validated: { status: 401, data: zPostTrialChatAudioApiError401 },
+    not_setup: { status: 401, data: zPostTrialChatAudioApiError401 },
+    unauthorized: { status: 401, data: zPostTrialChatAudioApiError401 },
+    forbidden: { status: 403, data: zPostTrialChatAudioApiError403 },
+    trial_app_feature_disabled: { status: 403, data: zPostTrialChatAudioApiError403 },
+    trial_app_limit_exceeded: { status: 403, data: zPostTrialChatAudioApiError403 },
+    trial_app_not_allowed: { status: 403, data: zPostTrialChatAudioApiError403 },
+  })
 
 export const audioToText = {
   post,
@@ -322,6 +487,19 @@ export const post2 = oc
   })
   .input(z.object({ params: zPostTrialAppsByAppIdChatMessagesByTaskIdStopPath }))
   .output(zPostTrialAppsByAppIdChatMessagesByTaskIdStopResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostTrialChatTaskStopApiError400 },
+    bad_request: { status: 400, data: zPostTrialChatTaskStopApiError400 },
+    invalid_param: { status: 400, data: zPostTrialChatTaskStopApiError400 },
+    not_chat_app: { status: 400, data: zPostTrialChatTaskStopApiError400 },
+    not_init_validated: { status: 401, data: zPostTrialChatTaskStopApiError401 },
+    not_setup: { status: 401, data: zPostTrialChatTaskStopApiError401 },
+    unauthorized: { status: 401, data: zPostTrialChatTaskStopApiError401 },
+    forbidden: { status: 403, data: zPostTrialChatTaskStopApiError403 },
+    trial_app_feature_disabled: { status: 403, data: zPostTrialChatTaskStopApiError403 },
+    trial_app_limit_exceeded: { status: 403, data: zPostTrialChatTaskStopApiError403 },
+    trial_app_not_allowed: { status: 403, data: zPostTrialChatTaskStopApiError403 },
+  })
 
 export const stop = {
   post: post2,
@@ -346,6 +524,30 @@ export const post3 = oc
     }),
   )
   .output(zPostTrialAppsByAppIdChatMessagesResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostTrialChatApiError400 },
+    app_unavailable: { status: 400, data: zPostTrialChatApiError400 },
+    bad_request: { status: 400, data: zPostTrialChatApiError400 },
+    completion_request_error: { status: 400, data: zPostTrialChatApiError400 },
+    invalid_param: { status: 400, data: zPostTrialChatApiError400 },
+    model_currently_not_support: { status: 400, data: zPostTrialChatApiError400 },
+    not_chat_app: { status: 400, data: zPostTrialChatApiError400 },
+    provider_not_initialize: { status: 400, data: zPostTrialChatApiError400 },
+    provider_quota_exceeded: { status: 400, data: zPostTrialChatApiError400 },
+    not_init_validated: { status: 401, data: zPostTrialChatApiError401 },
+    not_setup: { status: 401, data: zPostTrialChatApiError401 },
+    unauthorized: { status: 401, data: zPostTrialChatApiError401 },
+    forbidden: { status: 403, data: zPostTrialChatApiError403 },
+    trial_app_feature_disabled: { status: 403, data: zPostTrialChatApiError403 },
+    trial_app_limit_exceeded: { status: 403, data: zPostTrialChatApiError403 },
+    trial_app_not_allowed: { status: 403, data: zPostTrialChatApiError403 },
+    not_found: { status: 404, data: zPostTrialChatApiError404 },
+    rate_limit_error: { status: 429, data: zPostTrialChatApiError429 },
+    too_many_requests: { status: 429, data: zPostTrialChatApiError429 },
+    active_workspace_required: { status: 500, data: zPostTrialChatApiError500 },
+    internal_server_error: { status: 500, data: zPostTrialChatApiError500 },
+    unknown: { status: 500, data: zPostTrialChatApiError500 },
+  })
 
 export const chatMessages = {
   post: post3,
@@ -367,6 +569,30 @@ export const post4 = oc
     }),
   )
   .output(zPostTrialAppsByAppIdCompletionMessagesResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostTrialCompletionApiError400 },
+    app_unavailable: { status: 400, data: zPostTrialCompletionApiError400 },
+    bad_request: { status: 400, data: zPostTrialCompletionApiError400 },
+    completion_request_error: { status: 400, data: zPostTrialCompletionApiError400 },
+    invalid_param: { status: 400, data: zPostTrialCompletionApiError400 },
+    model_currently_not_support: { status: 400, data: zPostTrialCompletionApiError400 },
+    not_completion_app: { status: 400, data: zPostTrialCompletionApiError400 },
+    provider_not_initialize: { status: 400, data: zPostTrialCompletionApiError400 },
+    provider_quota_exceeded: { status: 400, data: zPostTrialCompletionApiError400 },
+    not_init_validated: { status: 401, data: zPostTrialCompletionApiError401 },
+    not_setup: { status: 401, data: zPostTrialCompletionApiError401 },
+    unauthorized: { status: 401, data: zPostTrialCompletionApiError401 },
+    forbidden: { status: 403, data: zPostTrialCompletionApiError403 },
+    trial_app_feature_disabled: { status: 403, data: zPostTrialCompletionApiError403 },
+    trial_app_limit_exceeded: { status: 403, data: zPostTrialCompletionApiError403 },
+    trial_app_not_allowed: { status: 403, data: zPostTrialCompletionApiError403 },
+    not_found: { status: 404, data: zPostTrialCompletionApiError404 },
+    rate_limit_error: { status: 429, data: zPostTrialCompletionApiError429 },
+    too_many_requests: { status: 429, data: zPostTrialCompletionApiError429 },
+    active_workspace_required: { status: 500, data: zPostTrialCompletionApiError500 },
+    internal_server_error: { status: 500, data: zPostTrialCompletionApiError500 },
+    unknown: { status: 500, data: zPostTrialCompletionApiError500 },
+  })
 
 export const completionMessages = {
   post: post4,
@@ -387,6 +613,13 @@ export const get11 = oc
     }),
   )
   .output(zGetTrialAppsByAppIdDatasetsResponse)
+  .errors({
+    bad_request: { status: 400, data: zGetDatasetListApiError400 },
+    invalid_param: { status: 400, data: zGetDatasetListApiError400 },
+    need_add_ids: { status: 400, data: zGetDatasetListApiError400 },
+    app_not_found: { status: 404, data: zGetDatasetListApiError404 },
+    not_found: { status: 404, data: zGetDatasetListApiError404 },
+  })
 
 export const datasets = {
   get: get11,
@@ -404,6 +637,10 @@ export const get12 = oc
     z.object({ params: zGetTrialAppsByAppIdExportPath, query: zGetTrialAppsByAppIdExportQuery }),
   )
   .output(zGetTrialAppsByAppIdExportResponse)
+  .errors({
+    not_found: { status: 404, data: zGetRecommendedAgentExportApiError404 },
+    recommended_app_not_found: { status: 404, data: zGetRecommendedAgentExportApiError404 },
+  })
 
 export const export_ = {
   get: get12,
@@ -429,6 +666,21 @@ export const post5 = oc
     }),
   )
   .output(zPostTrialAppsByAppIdFilesUploadResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostTrialAppFileUploadApiError400 },
+    bad_request: { status: 400, data: zPostTrialAppFileUploadApiError400 },
+    filename_not_exists_error: { status: 400, data: zPostTrialAppFileUploadApiError400 },
+    invalid_param: { status: 400, data: zPostTrialAppFileUploadApiError400 },
+    no_file_uploaded: { status: 400, data: zPostTrialAppFileUploadApiError400 },
+    too_many_files: { status: 400, data: zPostTrialAppFileUploadApiError400 },
+    not_init_validated: { status: 401, data: zPostTrialAppFileUploadApiError401 },
+    not_setup: { status: 401, data: zPostTrialAppFileUploadApiError401 },
+    unauthorized: { status: 401, data: zPostTrialAppFileUploadApiError401 },
+    forbidden: { status: 403, data: zPostTrialAppFileUploadApiError403 },
+    trial_app_feature_disabled: { status: 403, data: zPostTrialAppFileUploadApiError403 },
+    trial_app_limit_exceeded: { status: 403, data: zPostTrialAppFileUploadApiError403 },
+    trial_app_not_allowed: { status: 403, data: zPostTrialAppFileUploadApiError403 },
+  })
 
 export const upload = {
   post: post5,
@@ -448,6 +700,35 @@ export const get13 = oc
   })
   .input(z.object({ params: zGetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsPath }))
   .output(zGetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetTrialMessageSuggestedQuestionApiError400 },
+    app_unavailable: { status: 400, data: zGetTrialMessageSuggestedQuestionApiError400 },
+    bad_request: { status: 400, data: zGetTrialMessageSuggestedQuestionApiError400 },
+    completion_request_error: { status: 400, data: zGetTrialMessageSuggestedQuestionApiError400 },
+    invalid_param: { status: 400, data: zGetTrialMessageSuggestedQuestionApiError400 },
+    model_currently_not_support: {
+      status: 400,
+      data: zGetTrialMessageSuggestedQuestionApiError400,
+    },
+    not_chat_app: { status: 400, data: zGetTrialMessageSuggestedQuestionApiError400 },
+    provider_not_initialize: { status: 400, data: zGetTrialMessageSuggestedQuestionApiError400 },
+    provider_quota_exceeded: { status: 400, data: zGetTrialMessageSuggestedQuestionApiError400 },
+    not_init_validated: { status: 401, data: zGetTrialMessageSuggestedQuestionApiError401 },
+    not_setup: { status: 401, data: zGetTrialMessageSuggestedQuestionApiError401 },
+    unauthorized: { status: 401, data: zGetTrialMessageSuggestedQuestionApiError401 },
+    app_suggested_questions_after_answer_disabled: {
+      status: 403,
+      data: zGetTrialMessageSuggestedQuestionApiError403,
+    },
+    forbidden: { status: 403, data: zGetTrialMessageSuggestedQuestionApiError403 },
+    trial_app_feature_disabled: { status: 403, data: zGetTrialMessageSuggestedQuestionApiError403 },
+    trial_app_limit_exceeded: { status: 403, data: zGetTrialMessageSuggestedQuestionApiError403 },
+    trial_app_not_allowed: { status: 403, data: zGetTrialMessageSuggestedQuestionApiError403 },
+    not_found: { status: 404, data: zGetTrialMessageSuggestedQuestionApiError404 },
+    active_workspace_required: { status: 500, data: zGetTrialMessageSuggestedQuestionApiError500 },
+    internal_server_error: { status: 500, data: zGetTrialMessageSuggestedQuestionApiError500 },
+    unknown: { status: 500, data: zGetTrialMessageSuggestedQuestionApiError500 },
+  })
 
 export const suggestedQuestions = {
   get: get13,
@@ -475,6 +756,13 @@ export const get14 = oc
   })
   .input(z.object({ params: zGetTrialAppsByAppIdParametersPath }))
   .output(zGetTrialAppsByAppIdParametersResponse)
+  .errors({
+    app_unavailable: { status: 400, data: zGetTrialAppParameterApiError400 },
+    bad_request: { status: 400, data: zGetTrialAppParameterApiError400 },
+    invalid_param: { status: 400, data: zGetTrialAppParameterApiError400 },
+    app_not_found: { status: 404, data: zGetTrialAppParameterApiError404 },
+    not_found: { status: 404, data: zGetTrialAppParameterApiError404 },
+  })
 
 export const parameters = {
   get: get14,
@@ -500,6 +788,32 @@ export const post6 = oc
     }),
   )
   .output(zPostTrialAppsByAppIdRemoteFilesUploadResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostTrialAppRemoteFileUploadApiError400 },
+    bad_request: { status: 400, data: zPostTrialAppRemoteFileUploadApiError400 },
+    file_extension_blocked: { status: 400, data: zPostTrialAppRemoteFileUploadApiError400 },
+    invalid_param: { status: 400, data: zPostTrialAppRemoteFileUploadApiError400 },
+    remote_file_access_denied: { status: 400, data: zPostTrialAppRemoteFileUploadApiError400 },
+    remote_file_invalid_url: { status: 400, data: zPostTrialAppRemoteFileUploadApiError400 },
+    remote_file_url_blocked: { status: 400, data: zPostTrialAppRemoteFileUploadApiError400 },
+    not_init_validated: { status: 401, data: zPostTrialAppRemoteFileUploadApiError401 },
+    not_setup: { status: 401, data: zPostTrialAppRemoteFileUploadApiError401 },
+    unauthorized: { status: 401, data: zPostTrialAppRemoteFileUploadApiError401 },
+    forbidden: { status: 403, data: zPostTrialAppRemoteFileUploadApiError403 },
+    trial_app_feature_disabled: { status: 403, data: zPostTrialAppRemoteFileUploadApiError403 },
+    trial_app_limit_exceeded: { status: 403, data: zPostTrialAppRemoteFileUploadApiError403 },
+    trial_app_not_allowed: { status: 403, data: zPostTrialAppRemoteFileUploadApiError403 },
+    not_found: { status: 404, data: zPostTrialAppRemoteFileUploadApiError404 },
+    remote_file_not_found: { status: 404, data: zPostTrialAppRemoteFileUploadApiError404 },
+    file_too_large: { status: 413, data: zPostTrialAppRemoteFileUploadApiError413 },
+    request_entity_too_large: { status: 413, data: zPostTrialAppRemoteFileUploadApiError413 },
+    unsupported_file_type: { status: 415, data: zPostTrialAppRemoteFileUploadApiError415 },
+    unsupported_media_type: { status: 415, data: zPostTrialAppRemoteFileUploadApiError415 },
+    bad_gateway: { status: 502, data: zPostTrialAppRemoteFileUploadApiError502 },
+    plugin_runtime_error: { status: 502, data: zPostTrialAppRemoteFileUploadApiError502 },
+    remote_file_invalid_response: { status: 502, data: zPostTrialAppRemoteFileUploadApiError502 },
+    remote_file_unavailable: { status: 502, data: zPostTrialAppRemoteFileUploadApiError502 },
+  })
 
 export const upload2 = {
   post: post6,
@@ -527,6 +841,13 @@ export const get15 = oc
   })
   .input(z.object({ params: zGetTrialAppsByAppIdSitePath }))
   .output(zGetTrialAppsByAppIdSiteResponse)
+  .errors({
+    app_owner_unavailable: { status: 403, data: zGetTrialSitApiError403 },
+    app_site_unavailable: { status: 403, data: zGetTrialSitApiError403 },
+    forbidden: { status: 403, data: zGetTrialSitApiError403 },
+    app_not_found: { status: 404, data: zGetTrialSitApiError404 },
+    not_found: { status: 404, data: zGetTrialSitApiError404 },
+  })
 
 export const site = {
   get: get15,
@@ -547,6 +868,35 @@ export const post7 = oc
     }),
   )
   .output(zPostTrialAppsByAppIdTextToAudioResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostTrialChatTextApiError400 },
+    app_unavailable: { status: 400, data: zPostTrialChatTextApiError400 },
+    bad_request: { status: 400, data: zPostTrialChatTextApiError400 },
+    completion_request_error: { status: 400, data: zPostTrialChatTextApiError400 },
+    invalid_param: { status: 400, data: zPostTrialChatTextApiError400 },
+    model_currently_not_support: { status: 400, data: zPostTrialChatTextApiError400 },
+    no_audio_uploaded: { status: 400, data: zPostTrialChatTextApiError400 },
+    provider_not_initialize: { status: 400, data: zPostTrialChatTextApiError400 },
+    provider_not_support_speech_to_text: { status: 400, data: zPostTrialChatTextApiError400 },
+    provider_quota_exceeded: { status: 400, data: zPostTrialChatTextApiError400 },
+    speech_to_text_disabled: { status: 400, data: zPostTrialChatTextApiError400 },
+    not_init_validated: { status: 401, data: zPostTrialChatTextApiError401 },
+    not_setup: { status: 401, data: zPostTrialChatTextApiError401 },
+    unauthorized: { status: 401, data: zPostTrialChatTextApiError401 },
+    forbidden: { status: 403, data: zPostTrialChatTextApiError403 },
+    trial_app_feature_disabled: { status: 403, data: zPostTrialChatTextApiError403 },
+    trial_app_limit_exceeded: { status: 403, data: zPostTrialChatTextApiError403 },
+    trial_app_not_allowed: { status: 403, data: zPostTrialChatTextApiError403 },
+    agent_version_not_found_error: { status: 404, data: zPostTrialChatTextApiError404 },
+    not_found: { status: 404, data: zPostTrialChatTextApiError404 },
+    audio_too_large: { status: 413, data: zPostTrialChatTextApiError413 },
+    request_entity_too_large: { status: 413, data: zPostTrialChatTextApiError413 },
+    unsupported_audio_type: { status: 415, data: zPostTrialChatTextApiError415 },
+    unsupported_media_type: { status: 415, data: zPostTrialChatTextApiError415 },
+    active_workspace_required: { status: 500, data: zPostTrialChatTextApiError500 },
+    internal_server_error: { status: 500, data: zPostTrialChatTextApiError500 },
+    unknown: { status: 500, data: zPostTrialChatTextApiError500 },
+  })
 
 export const textToAudio = {
   post: post7,
@@ -571,6 +921,29 @@ export const post8 = oc
     }),
   )
   .output(zPostTrialAppsByAppIdWorkflowsRunResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostTrialAppWorkflowRunApiError400 },
+    app_unavailable: { status: 400, data: zPostTrialAppWorkflowRunApiError400 },
+    bad_request: { status: 400, data: zPostTrialAppWorkflowRunApiError400 },
+    completion_request_error: { status: 400, data: zPostTrialAppWorkflowRunApiError400 },
+    invalid_param: { status: 400, data: zPostTrialAppWorkflowRunApiError400 },
+    model_currently_not_support: { status: 400, data: zPostTrialAppWorkflowRunApiError400 },
+    not_workflow_app: { status: 400, data: zPostTrialAppWorkflowRunApiError400 },
+    provider_not_initialize: { status: 400, data: zPostTrialAppWorkflowRunApiError400 },
+    provider_quota_exceeded: { status: 400, data: zPostTrialAppWorkflowRunApiError400 },
+    not_init_validated: { status: 401, data: zPostTrialAppWorkflowRunApiError401 },
+    not_setup: { status: 401, data: zPostTrialAppWorkflowRunApiError401 },
+    unauthorized: { status: 401, data: zPostTrialAppWorkflowRunApiError401 },
+    forbidden: { status: 403, data: zPostTrialAppWorkflowRunApiError403 },
+    trial_app_feature_disabled: { status: 403, data: zPostTrialAppWorkflowRunApiError403 },
+    trial_app_limit_exceeded: { status: 403, data: zPostTrialAppWorkflowRunApiError403 },
+    trial_app_not_allowed: { status: 403, data: zPostTrialAppWorkflowRunApiError403 },
+    rate_limit_error: { status: 429, data: zPostTrialAppWorkflowRunApiError429 },
+    too_many_requests: { status: 429, data: zPostTrialAppWorkflowRunApiError429 },
+    active_workspace_required: { status: 500, data: zPostTrialAppWorkflowRunApiError500 },
+    internal_server_error: { status: 500, data: zPostTrialAppWorkflowRunApiError500 },
+    unknown: { status: 500, data: zPostTrialAppWorkflowRunApiError500 },
+  })
 
 export const run = {
   post: post8,
@@ -590,6 +963,19 @@ export const post9 = oc
   })
   .input(z.object({ params: zPostTrialAppsByAppIdWorkflowsTasksByTaskIdStopPath }))
   .output(zPostTrialAppsByAppIdWorkflowsTasksByTaskIdStopResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zPostTrialAppWorkflowTaskStopApiError400 },
+    bad_request: { status: 400, data: zPostTrialAppWorkflowTaskStopApiError400 },
+    invalid_param: { status: 400, data: zPostTrialAppWorkflowTaskStopApiError400 },
+    not_workflow_app: { status: 400, data: zPostTrialAppWorkflowTaskStopApiError400 },
+    not_init_validated: { status: 401, data: zPostTrialAppWorkflowTaskStopApiError401 },
+    not_setup: { status: 401, data: zPostTrialAppWorkflowTaskStopApiError401 },
+    unauthorized: { status: 401, data: zPostTrialAppWorkflowTaskStopApiError401 },
+    forbidden: { status: 403, data: zPostTrialAppWorkflowTaskStopApiError403 },
+    trial_app_feature_disabled: { status: 403, data: zPostTrialAppWorkflowTaskStopApiError403 },
+    trial_app_limit_exceeded: { status: 403, data: zPostTrialAppWorkflowTaskStopApiError403 },
+    trial_app_not_allowed: { status: 403, data: zPostTrialAppWorkflowTaskStopApiError403 },
+  })
 
 export const stop2 = {
   post: post9,
@@ -617,6 +1003,13 @@ export const get16 = oc
   })
   .input(z.object({ params: zGetTrialAppsByAppIdWorkflowsPath }))
   .output(zGetTrialAppsByAppIdWorkflowsResponse)
+  .errors({
+    app_unavailable: { status: 400, data: zGetAppWorkflowApiError400 },
+    bad_request: { status: 400, data: zGetAppWorkflowApiError400 },
+    invalid_param: { status: 400, data: zGetAppWorkflowApiError400 },
+    app_not_found: { status: 404, data: zGetAppWorkflowApiError404 },
+    not_found: { status: 404, data: zGetAppWorkflowApiError404 },
+  })
 
 export const workflows = {
   get: get16,
@@ -638,6 +1031,19 @@ export const get17 = oc
   })
   .input(z.object({ params: zGetTrialAppsByAppIdPath }))
   .output(zGetTrialAppsByAppIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetAppApiError400 },
+    app_unavailable: { status: 400, data: zGetAppApiError400 },
+    bad_request: { status: 400, data: zGetAppApiError400 },
+    invalid_param: { status: 400, data: zGetAppApiError400 },
+    not_init_validated: { status: 401, data: zGetAppApiError401 },
+    not_setup: { status: 401, data: zGetAppApiError401 },
+    unauthorized: { status: 401, data: zGetAppApiError401 },
+    app_site_unavailable: { status: 403, data: zGetAppApiError403 },
+    forbidden: { status: 403, data: zGetAppApiError403 },
+    app_not_found: { status: 404, data: zGetAppApiError404 },
+    not_found: { status: 404, data: zGetAppApiError404 },
+  })
 
 export const byAppId = {
   get: get17,

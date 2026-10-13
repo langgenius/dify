@@ -3,6 +3,65 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
+  zAudioToTextError400,
+  zAudioToTextError413,
+  zAudioToTextError415,
+  zCreateChatMessageError400,
+  zCreateChatMessageError403,
+  zCreateChatMessageError429,
+  zCreateChildChunkError400,
+  zCreateCompletionError400,
+  zCreateDatasetError409,
+  zCreateDocumentByTextDeprecatedError400,
+  zCreateSegmentsError400,
+  zDatasetHitTestingError400,
+  zDeleteConversationError400,
+  zDeleteDocumentError403,
+  zGetAppInfoError400,
+  zGetAppMetaError400,
+  zGetAppParametersError400,
+  zGetEndUserError404,
+  zGetHumanInputFormError412,
+  zGetSuggestedQuestionsError400,
+  zGetWorkflowEventsError400,
+  zGetWorkflowRunDetailError400,
+  zKnowledgebasePipelineFileUploadError400,
+  zKnowledgebasePipelineFileUploadError413,
+  zKnowledgebasePipelineFileUploadError415,
+  zListConversationVariablesError400,
+  zListConversationsError400,
+  zListMessagesError400,
+  zListSegmentsError400,
+  zPreviewFileError403,
+  zPreviewFileError404,
+  zRenameConversationError400,
+  zRunPipelineError500,
+  zRunWorkflowByIdError400,
+  zRunWorkflowByIdError403,
+  zRunWorkflowByIdError429,
+  zRunWorkflowError400,
+  zRunWorkflowError403,
+  zRunWorkflowError429,
+  zStopChatMessageError400,
+  zStopCompletionError400,
+  zStopWorkflowTaskError400,
+  zSubmitHumanInputFormError400,
+  zSubmitHumanInputFormError412,
+  zTextToAudioError400,
+  zTextToAudioError413,
+  zTextToAudioError415,
+  zUpdateConversationVariableError400,
+  zUpdateDocumentByFileError400,
+  zUpdateDocumentByFileError413,
+  zUpdateDocumentByFileError415,
+  zUpdateDocumentByTextDeprecatedError400,
+  zUpdateDocumentStatusError400,
+  zUpdateSegmentError400,
+  zUploadFileError400,
+  zUploadFileError413,
+  zUploadFileError415,
+} from './zod.gen.ts'
+import {
   zDeleteAppsAnnotationsByAnnotationIdPath,
   zDeleteAppsAnnotationsByAnnotationIdResponse,
   zDeleteConversationsByConversationIdBody,
@@ -438,6 +497,22 @@ export const post3 = oc
   })
   .input(z.object({ body: zPostAudioToTextBody }))
   .output(zPostAudioToTextResponse)
+  .errors({
+    app_unavailable: { status: 400, data: zAudioToTextError400 },
+    bad_request: { status: 400, data: zAudioToTextError400 },
+    completion_request_error: { status: 400, data: zAudioToTextError400 },
+    invalid_param: { status: 400, data: zAudioToTextError400 },
+    model_currently_not_support: { status: 400, data: zAudioToTextError400 },
+    no_audio_uploaded: { status: 400, data: zAudioToTextError400 },
+    provider_not_initialize: { status: 400, data: zAudioToTextError400 },
+    provider_not_support_speech_to_text: { status: 400, data: zAudioToTextError400 },
+    provider_quota_exceeded: { status: 400, data: zAudioToTextError400 },
+    speech_to_text_disabled: { status: 400, data: zAudioToTextError400 },
+    audio_too_large: { status: 413, data: zAudioToTextError413 },
+    request_entity_too_large: { status: 413, data: zAudioToTextError413 },
+    unsupported_audio_type: { status: 415, data: zAudioToTextError415 },
+    unsupported_media_type: { status: 415, data: zAudioToTextError415 },
+  })
 
 export const audioToText = {
   post: post3,
@@ -465,6 +540,11 @@ export const post4 = oc
     }),
   )
   .output(zPostChatMessagesByTaskIdStopResponse)
+  .errors({
+    bad_request: { status: 400, data: zStopChatMessageError400 },
+    invalid_param: { status: 400, data: zStopChatMessageError400 },
+    not_chat_app: { status: 400, data: zStopChatMessageError400 },
+  })
 
 export const stop = {
   post: post4,
@@ -491,6 +571,21 @@ export const post5 = oc
   })
   .input(z.object({ body: zPostChatMessagesBody }))
   .output(zPostChatMessagesResponse)
+  .errors({
+    agent_not_published: { status: 400, data: zCreateChatMessageError400 },
+    app_unavailable: { status: 400, data: zCreateChatMessageError400 },
+    bad_request: { status: 400, data: zCreateChatMessageError400 },
+    completion_request_error: { status: 400, data: zCreateChatMessageError400 },
+    invalid_param: { status: 400, data: zCreateChatMessageError400 },
+    model_currently_not_support: { status: 400, data: zCreateChatMessageError400 },
+    not_chat_app: { status: 400, data: zCreateChatMessageError400 },
+    provider_not_initialize: { status: 400, data: zCreateChatMessageError400 },
+    provider_quota_exceeded: { status: 400, data: zCreateChatMessageError400 },
+    forbidden: { status: 403, data: zCreateChatMessageError403 },
+    workflow_version_execution_not_allowed: { status: 403, data: zCreateChatMessageError403 },
+    rate_limit_error: { status: 429, data: zCreateChatMessageError429 },
+    too_many_requests: { status: 429, data: zCreateChatMessageError429 },
+  })
 
 export const chatMessages = {
   post: post5,
@@ -519,6 +614,11 @@ export const post6 = oc
     }),
   )
   .output(zPostCompletionMessagesByTaskIdStopResponse)
+  .errors({
+    app_unavailable: { status: 400, data: zStopCompletionError400 },
+    bad_request: { status: 400, data: zStopCompletionError400 },
+    invalid_param: { status: 400, data: zStopCompletionError400 },
+  })
 
 export const stop2 = {
   post: post6,
@@ -545,6 +645,16 @@ export const post7 = oc
   })
   .input(z.object({ body: zPostCompletionMessagesBody }))
   .output(zPostCompletionMessagesResponse)
+  .errors({
+    agent_not_published: { status: 400, data: zCreateCompletionError400 },
+    app_unavailable: { status: 400, data: zCreateCompletionError400 },
+    bad_request: { status: 400, data: zCreateCompletionError400 },
+    completion_request_error: { status: 400, data: zCreateCompletionError400 },
+    invalid_param: { status: 400, data: zCreateCompletionError400 },
+    model_currently_not_support: { status: 400, data: zCreateCompletionError400 },
+    provider_not_initialize: { status: 400, data: zCreateCompletionError400 },
+    provider_quota_exceeded: { status: 400, data: zCreateCompletionError400 },
+  })
 
 export const completionMessages = {
   post: post7,
@@ -574,6 +684,11 @@ export const post8 = oc
     }),
   )
   .output(zPostConversationsByConversationIdNameResponse)
+  .errors({
+    bad_request: { status: 400, data: zRenameConversationError400 },
+    invalid_param: { status: 400, data: zRenameConversationError400 },
+    not_chat_app: { status: 400, data: zRenameConversationError400 },
+  })
 
 export const name = {
   post: post8,
@@ -602,6 +717,11 @@ export const put2 = oc
     }),
   )
   .output(zPutConversationsByConversationIdVariablesByVariableIdResponse)
+  .errors({
+    bad_request: { status: 400, data: zUpdateConversationVariableError400 },
+    invalid_param: { status: 400, data: zUpdateConversationVariableError400 },
+    not_chat_app: { status: 400, data: zUpdateConversationVariableError400 },
+  })
 
 export const byVariableId = {
   put: put2,
@@ -629,6 +749,11 @@ export const get5 = oc
     }),
   )
   .output(zGetConversationsByConversationIdVariablesResponse)
+  .errors({
+    bad_request: { status: 400, data: zListConversationVariablesError400 },
+    invalid_param: { status: 400, data: zListConversationVariablesError400 },
+    not_chat_app: { status: 400, data: zListConversationVariablesError400 },
+  })
 
 export const variables = {
   get: get5,
@@ -658,6 +783,11 @@ export const delete2 = oc
     }),
   )
   .output(zDeleteConversationsByConversationIdResponse)
+  .errors({
+    bad_request: { status: 400, data: zDeleteConversationError400 },
+    invalid_param: { status: 400, data: zDeleteConversationError400 },
+    not_chat_app: { status: 400, data: zDeleteConversationError400 },
+  })
 
 export const byConversationId = {
   delete: delete2,
@@ -683,6 +813,11 @@ export const get6 = oc
   })
   .input(z.object({ query: zGetConversationsQuery.optional() }))
   .output(zGetConversationsResponse)
+  .errors({
+    bad_request: { status: 400, data: zListConversationsError400 },
+    invalid_param: { status: 400, data: zListConversationsError400 },
+    not_chat_app: { status: 400, data: zListConversationsError400 },
+  })
 
 export const conversations = {
   get: get6,
@@ -708,6 +843,17 @@ export const post9 = oc
   })
   .input(z.object({ body: zPostDatasetsPipelineFileUploadBody }))
   .output(zPostDatasetsPipelineFileUploadResponse)
+  .errors({
+    bad_request: { status: 400, data: zKnowledgebasePipelineFileUploadError400 },
+    filename_not_exists_error: { status: 400, data: zKnowledgebasePipelineFileUploadError400 },
+    invalid_param: { status: 400, data: zKnowledgebasePipelineFileUploadError400 },
+    no_file_uploaded: { status: 400, data: zKnowledgebasePipelineFileUploadError400 },
+    too_many_files: { status: 400, data: zKnowledgebasePipelineFileUploadError400 },
+    file_too_large: { status: 413, data: zKnowledgebasePipelineFileUploadError413 },
+    request_entity_too_large: { status: 413, data: zKnowledgebasePipelineFileUploadError413 },
+    unsupported_file_type: { status: 415, data: zKnowledgebasePipelineFileUploadError415 },
+    unsupported_media_type: { status: 415, data: zKnowledgebasePipelineFileUploadError415 },
+  })
 
 export const fileUpload = {
   post: post9,
@@ -869,6 +1015,16 @@ export const post13 = oc
     }),
   )
   .output(zPostDatasetsByDatasetIdDocumentCreateByFileResponse)
+  .errors({
+    bad_request: { status: 400 },
+    filename_not_exists_error: { status: 400 },
+    invalid_param: { status: 400 },
+    no_file_uploaded: { status: 400 },
+    provider_not_initialize: { status: 400 },
+    too_many_files: { status: 400 },
+    file_too_large: { status: 413 },
+    request_entity_too_large: { status: 413 },
+  })
 
 /**
  * Create Document by File
@@ -896,6 +1052,16 @@ export const post14 = oc
     }),
   )
   .output(zPostDatasetsByDatasetIdDocumentCreateByFile2Response)
+  .errors({
+    bad_request: { status: 400 },
+    filename_not_exists_error: { status: 400 },
+    invalid_param: { status: 400 },
+    no_file_uploaded: { status: 400 },
+    provider_not_initialize: { status: 400 },
+    too_many_files: { status: 400 },
+    file_too_large: { status: 413 },
+    request_entity_too_large: { status: 413 },
+  })
 
 export const createByFile = {
   post: post14,
@@ -924,6 +1090,11 @@ export const post15 = oc
     }),
   )
   .output(zPostDatasetsByDatasetIdDocumentCreateByTextResponse)
+  .errors({
+    bad_request: { status: 400, data: zCreateDocumentByTextDeprecatedError400 },
+    invalid_param: { status: 400, data: zCreateDocumentByTextDeprecatedError400 },
+    provider_not_initialize: { status: 400, data: zCreateDocumentByTextDeprecatedError400 },
+  })
 
 /**
  * Create document by text through the deprecated underscore alias
@@ -951,6 +1122,11 @@ export const post16 = oc
     }),
   )
   .output(zPostDatasetsByDatasetIdDocumentCreateByText2Response)
+  .errors({
+    bad_request: { status: 400, data: zCreateDocumentByTextDeprecatedError400 },
+    invalid_param: { status: 400, data: zCreateDocumentByTextDeprecatedError400 },
+    provider_not_initialize: { status: 400, data: zCreateDocumentByTextDeprecatedError400 },
+  })
 
 export const createByText = {
   post: post16,
@@ -1039,6 +1215,11 @@ export const patch2 = oc
     }),
   )
   .output(zPatchDatasetsByDatasetIdDocumentsStatusByActionResponse)
+  .errors({
+    bad_request: { status: 400, data: zUpdateDocumentStatusError400 },
+    invalid_action: { status: 400, data: zUpdateDocumentStatusError400 },
+    invalid_param: { status: 400, data: zUpdateDocumentStatusError400 },
+  })
 
 export const byAction2 = {
   patch: patch2,
@@ -1202,6 +1383,11 @@ export const post19 = oc
     }),
   )
   .output(zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse)
+  .errors({
+    bad_request: { status: 400, data: zCreateChildChunkError400 },
+    invalid_param: { status: 400, data: zCreateChildChunkError400 },
+    provider_not_initialize: { status: 400, data: zCreateChildChunkError400 },
+  })
 
 export const childChunks = {
   get: get10,
@@ -1272,6 +1458,11 @@ export const post20 = oc
     }),
   )
   .output(zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse)
+  .errors({
+    bad_request: { status: 400, data: zUpdateSegmentError400 },
+    invalid_param: { status: 400, data: zUpdateSegmentError400 },
+    provider_not_initialize: { status: 400, data: zUpdateSegmentError400 },
+  })
 
 export const bySegmentId = {
   delete: delete5,
@@ -1303,6 +1494,11 @@ export const get12 = oc
     }),
   )
   .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse)
+  .errors({
+    bad_request: { status: 400, data: zListSegmentsError400 },
+    invalid_param: { status: 400, data: zListSegmentsError400 },
+    provider_not_initialize: { status: 400, data: zListSegmentsError400 },
+  })
 
 /**
  * Create Chunks
@@ -1327,6 +1523,11 @@ export const post21 = oc
     }),
   )
   .output(zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse)
+  .errors({
+    bad_request: { status: 400, data: zCreateSegmentsError400 },
+    invalid_param: { status: 400, data: zCreateSegmentsError400 },
+    provider_not_initialize: { status: 400, data: zCreateSegmentsError400 },
+  })
 
 export const segments = {
   get: get12,
@@ -1360,6 +1561,17 @@ export const post22 = oc
     }),
   )
   .output(zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileResponse)
+  .errors({
+    bad_request: { status: 400 },
+    filename_not_exists_error: { status: 400 },
+    invalid_param: { status: 400 },
+    provider_not_initialize: { status: 400 },
+    too_many_files: { status: 400 },
+    file_too_large: { status: 413 },
+    request_entity_too_large: { status: 413 },
+    unsupported_file_type: { status: 415 },
+    unsupported_media_type: { status: 415 },
+  })
 
 /**
  * Update Document by File
@@ -1387,6 +1599,17 @@ export const post23 = oc
     }),
   )
   .output(zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Response)
+  .errors({
+    bad_request: { status: 400 },
+    filename_not_exists_error: { status: 400 },
+    invalid_param: { status: 400 },
+    provider_not_initialize: { status: 400 },
+    too_many_files: { status: 400 },
+    file_too_large: { status: 413 },
+    request_entity_too_large: { status: 413 },
+    unsupported_file_type: { status: 415 },
+    unsupported_media_type: { status: 415 },
+  })
 
 export const updateByFile = {
   post: post23,
@@ -1415,6 +1638,11 @@ export const post24 = oc
     }),
   )
   .output(zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextResponse)
+  .errors({
+    bad_request: { status: 400, data: zUpdateDocumentByTextDeprecatedError400 },
+    invalid_param: { status: 400, data: zUpdateDocumentByTextDeprecatedError400 },
+    provider_not_initialize: { status: 400, data: zUpdateDocumentByTextDeprecatedError400 },
+  })
 
 /**
  * Update document by text through the deprecated underscore alias
@@ -1442,6 +1670,11 @@ export const post25 = oc
     }),
   )
   .output(zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Response)
+  .errors({
+    bad_request: { status: 400, data: zUpdateDocumentByTextDeprecatedError400 },
+    invalid_param: { status: 400, data: zUpdateDocumentByTextDeprecatedError400 },
+    provider_not_initialize: { status: 400, data: zUpdateDocumentByTextDeprecatedError400 },
+  })
 
 export const updateByText = {
   post: post25,
@@ -1465,6 +1698,10 @@ export const delete6 = oc
   })
   .input(z.object({ params: zDeleteDatasetsByDatasetIdDocumentsByDocumentIdPath }))
   .output(zDeleteDatasetsByDatasetIdDocumentsByDocumentIdResponse)
+  .errors({
+    archived_document_immutable: { status: 403, data: zDeleteDocumentError403 },
+    forbidden: { status: 403, data: zDeleteDocumentError403 },
+  })
 
 /**
  * Get Document
@@ -1513,6 +1750,17 @@ export const patch4 = oc
     }),
   )
   .output(zPatchDatasetsByDatasetIdDocumentsByDocumentIdResponse)
+  .errors({
+    bad_request: { status: 400, data: zUpdateDocumentByFileError400 },
+    filename_not_exists_error: { status: 400, data: zUpdateDocumentByFileError400 },
+    invalid_param: { status: 400, data: zUpdateDocumentByFileError400 },
+    provider_not_initialize: { status: 400, data: zUpdateDocumentByFileError400 },
+    too_many_files: { status: 400, data: zUpdateDocumentByFileError400 },
+    file_too_large: { status: 413, data: zUpdateDocumentByFileError413 },
+    request_entity_too_large: { status: 413, data: zUpdateDocumentByFileError413 },
+    unsupported_file_type: { status: 415, data: zUpdateDocumentByFileError415 },
+    unsupported_media_type: { status: 415, data: zUpdateDocumentByFileError415 },
+  })
 
 export const byDocumentId = {
   delete: delete6,
@@ -1583,6 +1831,14 @@ export const post26 = oc
     }),
   )
   .output(zPostDatasetsByDatasetIdHitTestingResponse)
+  .errors({
+    bad_request: { status: 400 },
+    completion_request_error: { status: 400 },
+    invalid_param: { status: 400 },
+    model_currently_not_support: { status: 400 },
+    provider_not_initialize: { status: 400 },
+    provider_quota_exceeded: { status: 400 },
+  })
 
 export const hitTesting = {
   post: post26,
@@ -1824,6 +2080,11 @@ export const post30 = oc
     }),
   )
   .output(zPostDatasetsByDatasetIdPipelineRunResponse)
+  .errors({
+    internal_server_error: { status: 500, data: zRunPipelineError500 },
+    pipeline_run_error: { status: 500, data: zRunPipelineError500 },
+    unknown: { status: 500, data: zRunPipelineError500 },
+  })
 
 export const run2 = {
   post: post30,
@@ -1858,6 +2119,14 @@ export const post31 = oc
     }),
   )
   .output(zPostDatasetsByDatasetIdRetrieveResponse)
+  .errors({
+    bad_request: { status: 400, data: zDatasetHitTestingError400 },
+    completion_request_error: { status: 400, data: zDatasetHitTestingError400 },
+    invalid_param: { status: 400, data: zDatasetHitTestingError400 },
+    model_currently_not_support: { status: 400, data: zDatasetHitTestingError400 },
+    provider_not_initialize: { status: 400, data: zDatasetHitTestingError400 },
+    provider_quota_exceeded: { status: 400, data: zDatasetHitTestingError400 },
+  })
 
 export const retrieve = {
   post: post31,
@@ -1992,6 +2261,10 @@ export const post32 = oc
   })
   .input(z.object({ body: zPostDatasetsBody }))
   .output(zPostDatasetsResponse)
+  .errors({
+    conflict: { status: 409, data: zCreateDatasetError409 },
+    dataset_name_duplicate: { status: 409, data: zCreateDatasetError409 },
+  })
 
 export const datasets = {
   get: get20,
@@ -2019,6 +2292,10 @@ export const get21 = oc
   })
   .input(z.object({ params: zGetEndUsersByEndUserIdPath }))
   .output(zGetEndUsersByEndUserIdResponse)
+  .errors({
+    end_user_not_found: { status: 404, data: zGetEndUserError404 },
+    not_found: { status: 404, data: zGetEndUserError404 },
+  })
 
 export const byEndUserId = {
   get: get21,
@@ -2047,6 +2324,18 @@ export const post33 = oc
   })
   .input(z.object({ body: zPostFilesUploadBody }))
   .output(zPostFilesUploadResponse)
+  .errors({
+    bad_request: { status: 400, data: zUploadFileError400 },
+    file_extension_blocked: { status: 400, data: zUploadFileError400 },
+    filename_not_exists_error: { status: 400, data: zUploadFileError400 },
+    invalid_param: { status: 400, data: zUploadFileError400 },
+    no_file_uploaded: { status: 400, data: zUploadFileError400 },
+    too_many_files: { status: 400, data: zUploadFileError400 },
+    file_too_large: { status: 413, data: zUploadFileError413 },
+    request_entity_too_large: { status: 413, data: zUploadFileError413 },
+    unsupported_file_type: { status: 415, data: zUploadFileError415 },
+    unsupported_media_type: { status: 415, data: zUploadFileError415 },
+  })
 
 export const upload = {
   post: post33,
@@ -2075,6 +2364,12 @@ export const get22 = oc
     }),
   )
   .output(zGetFilesByFileIdPreviewResponse)
+  .errors({
+    file_access_denied: { status: 403, data: zPreviewFileError403 },
+    forbidden: { status: 403, data: zPreviewFileError403 },
+    file_not_found: { status: 404, data: zPreviewFileError404 },
+    not_found: { status: 404, data: zPreviewFileError404 },
+  })
 
 export const preview = {
   get: get22,
@@ -2107,6 +2402,11 @@ export const get23 = oc
   })
   .input(z.object({ params: zGetFormHumanInputByFormTokenPath }))
   .output(zGetFormHumanInputByFormTokenResponse)
+  .errors({
+    human_input_form_expired: { status: 412, data: zGetHumanInputFormError412 },
+    human_input_form_submitted: { status: 412, data: zGetHumanInputFormError412 },
+    precondition_failed: { status: 412, data: zGetHumanInputFormError412 },
+  })
 
 /**
  * Submit Human Input Form
@@ -2131,6 +2431,14 @@ export const post34 = oc
     }),
   )
   .output(zPostFormHumanInputByFormTokenResponse)
+  .errors({
+    bad_request: { status: 400, data: zSubmitHumanInputFormError400 },
+    invalid_form_data: { status: 400, data: zSubmitHumanInputFormError400 },
+    invalid_param: { status: 400, data: zSubmitHumanInputFormError400 },
+    human_input_form_expired: { status: 412, data: zSubmitHumanInputFormError412 },
+    human_input_form_submitted: { status: 412, data: zSubmitHumanInputFormError412 },
+    precondition_failed: { status: 412, data: zSubmitHumanInputFormError412 },
+  })
 
 export const byFormToken = {
   get: get23,
@@ -2162,6 +2470,11 @@ export const get24 = oc
     tags: ['Applications'],
   })
   .output(zGetInfoResponse)
+  .errors({
+    app_unavailable: { status: 400, data: zGetAppInfoError400 },
+    bad_request: { status: 400, data: zGetAppInfoError400 },
+    invalid_param: { status: 400, data: zGetAppInfoError400 },
+  })
 
 export const info = {
   get: get24,
@@ -2217,6 +2530,11 @@ export const get25 = oc
     }),
   )
   .output(zGetMessagesByMessageIdSuggestedResponse)
+  .errors({
+    bad_request: { status: 400, data: zGetSuggestedQuestionsError400 },
+    invalid_param: { status: 400, data: zGetSuggestedQuestionsError400 },
+    not_chat_app: { status: 400, data: zGetSuggestedQuestionsError400 },
+  })
 
 export const suggested = {
   get: get25,
@@ -2245,6 +2563,11 @@ export const get26 = oc
   })
   .input(z.object({ query: zGetMessagesQuery }))
   .output(zGetMessagesResponse)
+  .errors({
+    bad_request: { status: 400, data: zListMessagesError400 },
+    invalid_param: { status: 400, data: zListMessagesError400 },
+    not_chat_app: { status: 400, data: zListMessagesError400 },
+  })
 
 export const messages = {
   get: get26,
@@ -2268,6 +2591,11 @@ export const get27 = oc
     tags: ['Applications'],
   })
   .output(zGetMetaResponse)
+  .errors({
+    app_unavailable: { status: 400, data: zGetAppMetaError400 },
+    bad_request: { status: 400, data: zGetAppMetaError400 },
+    invalid_param: { status: 400, data: zGetAppMetaError400 },
+  })
 
 export const meta = {
   get: get27,
@@ -2290,6 +2618,12 @@ export const get28 = oc
     tags: ['Applications'],
   })
   .output(zGetParametersResponse)
+  .errors({
+    agent_not_published: { status: 400, data: zGetAppParametersError400 },
+    app_unavailable: { status: 400, data: zGetAppParametersError400 },
+    bad_request: { status: 400, data: zGetAppParametersError400 },
+    invalid_param: { status: 400, data: zGetAppParametersError400 },
+  })
 
 export const parameters = {
   get: get28,
@@ -2334,6 +2668,21 @@ export const post36 = oc
   })
   .input(z.object({ body: zPostTextToAudioBody }))
   .output(zPostTextToAudioResponse)
+  .errors({
+    app_unavailable: { status: 400, data: zTextToAudioError400 },
+    bad_request: { status: 400, data: zTextToAudioError400 },
+    completion_request_error: { status: 400, data: zTextToAudioError400 },
+    invalid_param: { status: 400, data: zTextToAudioError400 },
+    model_currently_not_support: { status: 400, data: zTextToAudioError400 },
+    no_audio_uploaded: { status: 400, data: zTextToAudioError400 },
+    provider_not_initialize: { status: 400, data: zTextToAudioError400 },
+    provider_not_support_speech_to_text: { status: 400, data: zTextToAudioError400 },
+    provider_quota_exceeded: { status: 400, data: zTextToAudioError400 },
+    audio_too_large: { status: 413, data: zTextToAudioError413 },
+    request_entity_too_large: { status: 413, data: zTextToAudioError413 },
+    unsupported_audio_type: { status: 415, data: zTextToAudioError415 },
+    unsupported_media_type: { status: 415, data: zTextToAudioError415 },
+  })
 
 export const textToAudio = {
   post: post36,
@@ -2362,6 +2711,11 @@ export const get30 = oc
     }),
   )
   .output(zGetWorkflowByWorkflowRunIdEventsResponse)
+  .errors({
+    bad_request: { status: 400, data: zGetWorkflowEventsError400 },
+    invalid_param: { status: 400, data: zGetWorkflowEventsError400 },
+    not_workflow_app: { status: 400, data: zGetWorkflowEventsError400 },
+  })
 
 export const events = {
   get: get30,
@@ -2415,6 +2769,11 @@ export const get32 = oc
   })
   .input(z.object({ params: zGetWorkflowsRunByWorkflowRunIdPath }))
   .output(zGetWorkflowsRunByWorkflowRunIdResponse)
+  .errors({
+    bad_request: { status: 400, data: zGetWorkflowRunDetailError400 },
+    invalid_param: { status: 400, data: zGetWorkflowRunDetailError400 },
+    not_workflow_app: { status: 400, data: zGetWorkflowRunDetailError400 },
+  })
 
 export const byWorkflowRunId2 = {
   get: get32,
@@ -2437,6 +2796,19 @@ export const post37 = oc
   })
   .input(z.object({ body: zPostWorkflowsRunBody }))
   .output(zPostWorkflowsRunResponse)
+  .errors({
+    bad_request: { status: 400, data: zRunWorkflowError400 },
+    completion_request_error: { status: 400, data: zRunWorkflowError400 },
+    invalid_param: { status: 400, data: zRunWorkflowError400 },
+    model_currently_not_support: { status: 400, data: zRunWorkflowError400 },
+    not_workflow_app: { status: 400, data: zRunWorkflowError400 },
+    provider_not_initialize: { status: 400, data: zRunWorkflowError400 },
+    provider_quota_exceeded: { status: 400, data: zRunWorkflowError400 },
+    forbidden: { status: 403, data: zRunWorkflowError403 },
+    trigger_workflow_service_mode_unavailable: { status: 403, data: zRunWorkflowError403 },
+    rate_limit_error: { status: 429, data: zRunWorkflowError429 },
+    too_many_requests: { status: 429, data: zRunWorkflowError429 },
+  })
 
 export const run3 = {
   post: post37,
@@ -2465,6 +2837,11 @@ export const post38 = oc
     }),
   )
   .output(zPostWorkflowsTasksByTaskIdStopResponse)
+  .errors({
+    bad_request: { status: 400, data: zStopWorkflowTaskError400 },
+    invalid_param: { status: 400, data: zStopWorkflowTaskError400 },
+    not_workflow_app: { status: 400, data: zStopWorkflowTaskError400 },
+  })
 
 export const stop3 = {
   post: post38,
@@ -2501,6 +2878,20 @@ export const post39 = oc
     }),
   )
   .output(zPostWorkflowsByWorkflowIdRunResponse)
+  .errors({
+    bad_request: { status: 400, data: zRunWorkflowByIdError400 },
+    completion_request_error: { status: 400, data: zRunWorkflowByIdError400 },
+    invalid_param: { status: 400, data: zRunWorkflowByIdError400 },
+    model_currently_not_support: { status: 400, data: zRunWorkflowByIdError400 },
+    not_workflow_app: { status: 400, data: zRunWorkflowByIdError400 },
+    provider_not_initialize: { status: 400, data: zRunWorkflowByIdError400 },
+    provider_quota_exceeded: { status: 400, data: zRunWorkflowByIdError400 },
+    forbidden: { status: 403, data: zRunWorkflowByIdError403 },
+    trigger_workflow_service_mode_unavailable: { status: 403, data: zRunWorkflowByIdError403 },
+    workflow_version_execution_not_allowed: { status: 403, data: zRunWorkflowByIdError403 },
+    rate_limit_error: { status: 429, data: zRunWorkflowByIdError429 },
+    too_many_requests: { status: 429, data: zRunWorkflowByIdError429 },
+  })
 
 export const run4 = {
   post: post39,

@@ -2,6 +2,13 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
+import {
+  zDownloadComplianceDocumentError400,
+  zDownloadComplianceDocumentError401,
+  zDownloadComplianceDocumentError429,
+  zDownloadComplianceDocumentError502,
+  zDownloadComplianceDocumentError503,
+} from './zod.gen.ts'
 import { zGetComplianceDownloadQuery, zGetComplianceDownloadResponse } from './zod.gen.ts'
 
 /**
@@ -18,6 +25,21 @@ export const get = oc
   })
   .input(z.object({ query: zGetComplianceDownloadQuery }))
   .output(zGetComplianceDownloadResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zDownloadComplianceDocumentError400 },
+    bad_request: { status: 400, data: zDownloadComplianceDocumentError400 },
+    invalid_param: { status: 400, data: zDownloadComplianceDocumentError400 },
+    not_init_validated: { status: 401, data: zDownloadComplianceDocumentError401 },
+    not_setup: { status: 401, data: zDownloadComplianceDocumentError401 },
+    unauthorized: { status: 401, data: zDownloadComplianceDocumentError401 },
+    compliance_rate_limit: { status: 429, data: zDownloadComplianceDocumentError429 },
+    too_many_requests: { status: 429, data: zDownloadComplianceDocumentError429 },
+    bad_gateway: { status: 502, data: zDownloadComplianceDocumentError502 },
+    billing_operation_failed: { status: 502, data: zDownloadComplianceDocumentError502 },
+    plugin_runtime_error: { status: 502, data: zDownloadComplianceDocumentError502 },
+    billing_unavailable: { status: 503, data: zDownloadComplianceDocumentError503 },
+    service_unavailable: { status: 503, data: zDownloadComplianceDocumentError503 },
+  })
 
 export const download = {
   get,

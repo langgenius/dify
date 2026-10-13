@@ -3,6 +3,16 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
+  zCreateResourceAccessTokenError400,
+  zCreateResourceAccessTokenError401,
+  zDeleteResourceAccessTokenRelationError400,
+  zDeleteResourceAccessTokenRelationError401,
+  zListResourceAccessTokensError400,
+  zListResourceAccessTokensError401,
+  zUpdateResourceAccessTokenError400,
+  zUpdateResourceAccessTokenError401,
+} from './zod.gen.ts'
+import {
   zDeleteResourceAccessTokensByTokenIdRelationsByRelationIdPath,
   zDeleteResourceAccessTokensByTokenIdRelationsByRelationIdResponse,
   zGetResourceAccessTokensQuery,
@@ -25,6 +35,14 @@ export const delete_ = oc
   })
   .input(z.object({ params: zDeleteResourceAccessTokensByTokenIdRelationsByRelationIdPath }))
   .output(zDeleteResourceAccessTokensByTokenIdRelationsByRelationIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zDeleteResourceAccessTokenRelationError400 },
+    bad_request: { status: 400, data: zDeleteResourceAccessTokenRelationError400 },
+    invalid_param: { status: 400, data: zDeleteResourceAccessTokenRelationError400 },
+    not_init_validated: { status: 401, data: zDeleteResourceAccessTokenRelationError401 },
+    not_setup: { status: 401, data: zDeleteResourceAccessTokenRelationError401 },
+    unauthorized: { status: 401, data: zDeleteResourceAccessTokenRelationError401 },
+  })
 
 export const byRelationId = {
   delete: delete_,
@@ -49,6 +67,14 @@ export const patch = oc
     }),
   )
   .output(zPatchResourceAccessTokensByTokenIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zUpdateResourceAccessTokenError400 },
+    bad_request: { status: 400, data: zUpdateResourceAccessTokenError400 },
+    invalid_param: { status: 400, data: zUpdateResourceAccessTokenError400 },
+    not_init_validated: { status: 401, data: zUpdateResourceAccessTokenError401 },
+    not_setup: { status: 401, data: zUpdateResourceAccessTokenError401 },
+    unauthorized: { status: 401, data: zUpdateResourceAccessTokenError401 },
+  })
 
 export const byTokenId = {
   patch,
@@ -65,6 +91,14 @@ export const get = oc
   })
   .input(z.object({ query: zGetResourceAccessTokensQuery.optional() }))
   .output(zGetResourceAccessTokensResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zListResourceAccessTokensError400 },
+    bad_request: { status: 400, data: zListResourceAccessTokensError400 },
+    invalid_param: { status: 400, data: zListResourceAccessTokensError400 },
+    not_init_validated: { status: 401, data: zListResourceAccessTokensError401 },
+    not_setup: { status: 401, data: zListResourceAccessTokensError401 },
+    unauthorized: { status: 401, data: zListResourceAccessTokensError401 },
+  })
 
 export const post = oc
   .route({
@@ -77,6 +111,14 @@ export const post = oc
   })
   .input(z.object({ body: zPostResourceAccessTokensBody }))
   .output(zPostResourceAccessTokensResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zCreateResourceAccessTokenError400 },
+    bad_request: { status: 400, data: zCreateResourceAccessTokenError400 },
+    invalid_param: { status: 400, data: zCreateResourceAccessTokenError400 },
+    not_init_validated: { status: 401, data: zCreateResourceAccessTokenError401 },
+    not_setup: { status: 401, data: zCreateResourceAccessTokenError401 },
+    unauthorized: { status: 401, data: zCreateResourceAccessTokenError401 },
+  })
 
 export const resourceAccessTokens = {
   get,

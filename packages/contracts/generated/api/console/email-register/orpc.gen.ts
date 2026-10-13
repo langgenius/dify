@@ -3,6 +3,16 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
+  zPostEmailRegisterCheckApiError400,
+  zPostEmailRegisterCheckApiError401,
+  zPostEmailRegisterCheckApiError429,
+  zPostEmailRegisterResetApiError400,
+  zPostEmailRegisterResetApiError401,
+  zPostEmailRegisterSendEmailApiError400,
+  zPostEmailRegisterSendEmailApiError401,
+  zPostEmailRegisterSendEmailApiError429,
+} from './zod.gen.ts'
+import {
   zPostEmailRegisterBody,
   zPostEmailRegisterResponse,
   zPostEmailRegisterSendEmailBody,
@@ -21,6 +31,21 @@ export const post = oc
   })
   .input(z.object({ body: zPostEmailRegisterSendEmailBody }))
   .output(zPostEmailRegisterSendEmailResponse)
+  .errors({
+    account_in_freeze: { status: 400, data: zPostEmailRegisterSendEmailApiError400 },
+    bad_request: { status: 400, data: zPostEmailRegisterSendEmailApiError400 },
+    email_domain_suspended: { status: 400, data: zPostEmailRegisterSendEmailApiError400 },
+    invalid_param: { status: 400, data: zPostEmailRegisterSendEmailApiError400 },
+    not_init_validated: { status: 401, data: zPostEmailRegisterSendEmailApiError401 },
+    not_setup: { status: 401, data: zPostEmailRegisterSendEmailApiError401 },
+    unauthorized: { status: 401, data: zPostEmailRegisterSendEmailApiError401 },
+    email_register_rate_limit_exceeded: {
+      status: 429,
+      data: zPostEmailRegisterSendEmailApiError429,
+    },
+    email_send_ip_limit: { status: 429, data: zPostEmailRegisterSendEmailApiError429 },
+    too_many_requests: { status: 429, data: zPostEmailRegisterSendEmailApiError429 },
+  })
 
 export const sendEmail = {
   post,
@@ -36,6 +61,18 @@ export const post2 = oc
   })
   .input(z.object({ body: zPostEmailRegisterValidityBody }))
   .output(zPostEmailRegisterValidityResponse)
+  .errors({
+    bad_request: { status: 400, data: zPostEmailRegisterCheckApiError400 },
+    email_code_error: { status: 400, data: zPostEmailRegisterCheckApiError400 },
+    invalid_email: { status: 400, data: zPostEmailRegisterCheckApiError400 },
+    invalid_or_expired_token: { status: 400, data: zPostEmailRegisterCheckApiError400 },
+    invalid_param: { status: 400, data: zPostEmailRegisterCheckApiError400 },
+    not_init_validated: { status: 401, data: zPostEmailRegisterCheckApiError401 },
+    not_setup: { status: 401, data: zPostEmailRegisterCheckApiError401 },
+    unauthorized: { status: 401, data: zPostEmailRegisterCheckApiError401 },
+    email_register_limit: { status: 429, data: zPostEmailRegisterCheckApiError429 },
+    too_many_requests: { status: 429, data: zPostEmailRegisterCheckApiError429 },
+  })
 
 export const validity = {
   post: post2,
@@ -51,6 +88,20 @@ export const post3 = oc
   })
   .input(z.object({ body: zPostEmailRegisterBody }))
   .output(zPostEmailRegisterResponse)
+  .errors({
+    account_in_freeze: { status: 400, data: zPostEmailRegisterResetApiError400 },
+    bad_request: { status: 400, data: zPostEmailRegisterResetApiError400 },
+    email_already_in_use: { status: 400, data: zPostEmailRegisterResetApiError400 },
+    email_domain_suspended: { status: 400, data: zPostEmailRegisterResetApiError400 },
+    invalid_or_expired_token: { status: 400, data: zPostEmailRegisterResetApiError400 },
+    invalid_param: { status: 400, data: zPostEmailRegisterResetApiError400 },
+    limit_exceeded: { status: 400, data: zPostEmailRegisterResetApiError400 },
+    normalized_email_already_in_use: { status: 400, data: zPostEmailRegisterResetApiError400 },
+    password_mismatch: { status: 400, data: zPostEmailRegisterResetApiError400 },
+    not_init_validated: { status: 401, data: zPostEmailRegisterResetApiError401 },
+    not_setup: { status: 401, data: zPostEmailRegisterResetApiError401 },
+    unauthorized: { status: 401, data: zPostEmailRegisterResetApiError401 },
+  })
 
 export const emailRegister = {
   post: post3,

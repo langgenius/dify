@@ -3,6 +3,14 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
+  zCreateWorkflowRunArchiveDownloadError400,
+  zCreateWorkflowRunArchiveDownloadError401,
+  zGetWorkflowRunArchiveDownloadError400,
+  zGetWorkflowRunArchiveDownloadError401,
+  zListWorkflowRunArchivesError400,
+  zListWorkflowRunArchivesError401,
+} from './zod.gen.ts'
+import {
   zGetWorkflowRunArchivesDownloadsByDownloadIdPath,
   zGetWorkflowRunArchivesDownloadsByDownloadIdResponse,
   zGetWorkflowRunArchivesResponse,
@@ -24,6 +32,14 @@ export const get = oc
   })
   .input(z.object({ params: zGetWorkflowRunArchivesDownloadsByDownloadIdPath }))
   .output(zGetWorkflowRunArchivesDownloadsByDownloadIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetWorkflowRunArchiveDownloadError400 },
+    bad_request: { status: 400, data: zGetWorkflowRunArchiveDownloadError400 },
+    invalid_param: { status: 400, data: zGetWorkflowRunArchiveDownloadError400 },
+    not_init_validated: { status: 401, data: zGetWorkflowRunArchiveDownloadError401 },
+    not_setup: { status: 401, data: zGetWorkflowRunArchiveDownloadError401 },
+    unauthorized: { status: 401, data: zGetWorkflowRunArchiveDownloadError401 },
+  })
 
 export const byDownloadId = {
   get,
@@ -44,6 +60,14 @@ export const post = oc
   })
   .input(z.object({ body: zPostWorkflowRunArchivesDownloadsBody }))
   .output(zPostWorkflowRunArchivesDownloadsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zCreateWorkflowRunArchiveDownloadError400 },
+    bad_request: { status: 400, data: zCreateWorkflowRunArchiveDownloadError400 },
+    invalid_param: { status: 400, data: zCreateWorkflowRunArchiveDownloadError400 },
+    not_init_validated: { status: 401, data: zCreateWorkflowRunArchiveDownloadError401 },
+    not_setup: { status: 401, data: zCreateWorkflowRunArchiveDownloadError401 },
+    unauthorized: { status: 401, data: zCreateWorkflowRunArchiveDownloadError401 },
+  })
 
 export const downloads = {
   post,
@@ -63,6 +87,14 @@ export const get2 = oc
     tags: ['console'],
   })
   .output(zGetWorkflowRunArchivesResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zListWorkflowRunArchivesError400 },
+    bad_request: { status: 400, data: zListWorkflowRunArchivesError400 },
+    invalid_param: { status: 400, data: zListWorkflowRunArchivesError400 },
+    not_init_validated: { status: 401, data: zListWorkflowRunArchivesError401 },
+    not_setup: { status: 401, data: zListWorkflowRunArchivesError401 },
+    unauthorized: { status: 401, data: zListWorkflowRunArchivesError401 },
+  })
 
 export const workflowRunArchives = {
   get: get2,

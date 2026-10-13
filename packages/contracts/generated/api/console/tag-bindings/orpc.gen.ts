@@ -3,6 +3,12 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
+  zCreateTagBindingError400,
+  zCreateTagBindingError401,
+  zRemoveTagBindingsError400,
+  zRemoveTagBindingsError401,
+} from './zod.gen.ts'
+import {
   zPostTagBindingsBody,
   zPostTagBindingsRemoveBody,
   zPostTagBindingsRemoveResponse,
@@ -23,6 +29,14 @@ export const post = oc
   })
   .input(z.object({ body: zPostTagBindingsRemoveBody }))
   .output(zPostTagBindingsRemoveResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zRemoveTagBindingsError400 },
+    bad_request: { status: 400, data: zRemoveTagBindingsError400 },
+    invalid_param: { status: 400, data: zRemoveTagBindingsError400 },
+    not_init_validated: { status: 401, data: zRemoveTagBindingsError401 },
+    not_setup: { status: 401, data: zRemoveTagBindingsError401 },
+    unauthorized: { status: 401, data: zRemoveTagBindingsError401 },
+  })
 
 export const remove = {
   post,
@@ -38,6 +52,14 @@ export const post2 = oc
   })
   .input(z.object({ body: zPostTagBindingsBody }))
   .output(zPostTagBindingsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zCreateTagBindingError400 },
+    bad_request: { status: 400, data: zCreateTagBindingError400 },
+    invalid_param: { status: 400, data: zCreateTagBindingError400 },
+    not_init_validated: { status: 401, data: zCreateTagBindingError401 },
+    not_setup: { status: 401, data: zCreateTagBindingError401 },
+    unauthorized: { status: 401, data: zCreateTagBindingError401 },
+  })
 
 export const tagBindings = {
   post: post2,

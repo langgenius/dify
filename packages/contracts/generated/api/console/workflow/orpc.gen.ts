@@ -3,6 +3,13 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
+  zGetConsoleWorkflowEventsApiError400,
+  zGetConsoleWorkflowEventsApiError404,
+  zGetWorkflowPauseDetailsError400,
+  zGetWorkflowPauseDetailsError401,
+  zGetWorkflowPauseDetailsError404,
+} from './zod.gen.ts'
+import {
   zGetWorkflowByWorkflowRunIdEventsPath,
   zGetWorkflowByWorkflowRunIdEventsResponse,
   zGetWorkflowByWorkflowRunIdPauseDetailsPath,
@@ -29,6 +36,12 @@ export const get = oc
   })
   .input(z.object({ params: zGetWorkflowByWorkflowRunIdEventsPath }))
   .output(zGetWorkflowByWorkflowRunIdEventsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetConsoleWorkflowEventsApiError400 },
+    bad_request: { status: 400, data: zGetConsoleWorkflowEventsApiError400 },
+    invalid_param: { status: 400, data: zGetConsoleWorkflowEventsApiError400 },
+    not_found: { status: 404, data: zGetConsoleWorkflowEventsApiError404 },
+  })
 
 export const events = {
   get,
@@ -55,6 +68,15 @@ export const get2 = oc
   })
   .input(z.object({ params: zGetWorkflowByWorkflowRunIdPauseDetailsPath }))
   .output(zGetWorkflowByWorkflowRunIdPauseDetailsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetWorkflowPauseDetailsError400 },
+    bad_request: { status: 400, data: zGetWorkflowPauseDetailsError400 },
+    invalid_param: { status: 400, data: zGetWorkflowPauseDetailsError400 },
+    not_init_validated: { status: 401, data: zGetWorkflowPauseDetailsError401 },
+    not_setup: { status: 401, data: zGetWorkflowPauseDetailsError401 },
+    unauthorized: { status: 401, data: zGetWorkflowPauseDetailsError401 },
+    not_found: { status: 404, data: zGetWorkflowPauseDetailsError404 },
+  })
 
 export const pauseDetails = {
   get: get2,

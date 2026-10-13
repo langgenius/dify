@@ -3,6 +3,16 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
+  zGetInvoicesError400,
+  zGetInvoicesError401,
+  zGetInvoicesError502,
+  zGetInvoicesError503,
+  zGetSubscriptionError400,
+  zGetSubscriptionError401,
+  zGetSubscriptionError502,
+  zGetSubscriptionError503,
+} from './zod.gen.ts'
+import {
   zGetBillingInvoicesResponse,
   zGetBillingSubscriptionQuery,
   zGetBillingSubscriptionResponse,
@@ -17,6 +27,19 @@ export const get = oc
     tags: ['console'],
   })
   .output(zGetBillingInvoicesResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetInvoicesError400 },
+    bad_request: { status: 400, data: zGetInvoicesError400 },
+    invalid_param: { status: 400, data: zGetInvoicesError400 },
+    not_init_validated: { status: 401, data: zGetInvoicesError401 },
+    not_setup: { status: 401, data: zGetInvoicesError401 },
+    unauthorized: { status: 401, data: zGetInvoicesError401 },
+    bad_gateway: { status: 502, data: zGetInvoicesError502 },
+    billing_operation_failed: { status: 502, data: zGetInvoicesError502 },
+    plugin_runtime_error: { status: 502, data: zGetInvoicesError502 },
+    billing_unavailable: { status: 503, data: zGetInvoicesError503 },
+    service_unavailable: { status: 503, data: zGetInvoicesError503 },
+  })
 
 export const invoices = {
   get,
@@ -32,6 +55,19 @@ export const get2 = oc
   })
   .input(z.object({ query: zGetBillingSubscriptionQuery }))
   .output(zGetBillingSubscriptionResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetSubscriptionError400 },
+    bad_request: { status: 400, data: zGetSubscriptionError400 },
+    invalid_param: { status: 400, data: zGetSubscriptionError400 },
+    not_init_validated: { status: 401, data: zGetSubscriptionError401 },
+    not_setup: { status: 401, data: zGetSubscriptionError401 },
+    unauthorized: { status: 401, data: zGetSubscriptionError401 },
+    bad_gateway: { status: 502, data: zGetSubscriptionError502 },
+    billing_operation_failed: { status: 502, data: zGetSubscriptionError502 },
+    plugin_runtime_error: { status: 502, data: zGetSubscriptionError502 },
+    billing_unavailable: { status: 503, data: zGetSubscriptionError503 },
+    service_unavailable: { status: 503, data: zGetSubscriptionError503 },
+  })
 
 export const subscription = {
   get: get2,

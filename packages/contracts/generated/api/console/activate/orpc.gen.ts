@@ -2,6 +2,7 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
+import { zActivateAccountError400, zActivateAccountError403 } from './zod.gen.ts'
 import {
   zGetActivateCheckQuery,
   zGetActivateCheckResponse,
@@ -49,6 +50,15 @@ export const post = oc
   })
   .input(z.object({ body: zPostActivateBody }))
   .output(zPostActivateResponse)
+  .errors({
+    account_in_freeze: { status: 400, data: zActivateAccountError400 },
+    bad_request: { status: 400, data: zActivateAccountError400 },
+    email_domain_suspended: { status: 400, data: zActivateAccountError400 },
+    invalid_param: { status: 400, data: zActivateAccountError400 },
+    already_activate: { status: 403, data: zActivateAccountError403 },
+    forbidden: { status: 403, data: zActivateAccountError403 },
+    invitation_account_mismatch: { status: 403, data: zActivateAccountError403 },
+  })
 
 export const activate = {
   post,

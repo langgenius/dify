@@ -612,7 +612,72 @@ const createApiJobs = (spec: ApiSpec): ApiJob[] => {
   ]
 }
 
-const apiJobs = apiSpecs.flatMap(createApiJobs)
+export const apiJobs = apiSpecs.flatMap(createApiJobs)
+
+export type OrpcErrorEntry = {
+  code: string
+  schemaName: string
+  status: number
+}
+
+const narrowedErrorCodes = (schema: SwaggerSchema | undefined): string[] => {
+  const parts = Array.isArray(schema?.allOf) ? schema.allOf : []
+  for (const part of parts) {
+    if (!isObject(part) || !isObject(part.properties)) continue
+    const code = part.properties.code
+    if (isObject(code) && Array.isArray(code.enum))
+      return code.enum.filter((value): value is string => typeof value === 'string')
+  }
+  return []
+}
+
+/**
+ * The oRPC `errorMap` each operation can declare, keyed by generated operationId. Every
+ * code of a narrowed `{OperationId}Error{status}` component becomes `{ status, data }`.
+ * oRPC keys errors by code, so a code documented under more than one status is left out
+ * (it stays an undefined error) and reported in `ambiguous`.
+ */
+export const orpcErrorMaps = (document: SwaggerDocument) => {
+  const schemas = getDocumentSchemas(document)
+  const errorMaps = new Map<string, OrpcErrorEntry[]>()
+  const ambiguous: string[] = []
+  for (const pathItem of Object.values(document.paths ?? {})) {
+    for (const [method, operation] of Object.entries(pathItem)) {
+      if (!operationMethods.has(method) || !isObject(operation)) continue
+      const { operationId, responses } = operation as SwaggerOperation
+      if (!operationId) continue
+
+      const statusesByCode = new Map<string, Set<number>>()
+      const entries: OrpcErrorEntry[] = []
+      for (const [status, response] of Object.entries(responses ?? {})) {
+        if (!/^[45]\d\d$/.test(status) || !isObject(response) || !isObject(response.content))
+          continue
+        const media = response.content['application/json']
+        const schema = isObject(media) ? media.schema : undefined
+        const options = Array.isArray(schema?.anyOf) ? schema.anyOf : [schema]
+        for (const option of options) {
+          const schemaName =
+            isObject(option) && typeof option.$ref === 'string'
+              ? schemaNameFromRef(option.$ref)
+              : undefined
+          if (!schemaName) continue
+          for (const code of narrowedErrorCodes(schemas[schemaName])) {
+            const statuses = statusesByCode.get(code) ?? new Set<number>()
+            statuses.add(Number(status))
+            statusesByCode.set(code, statuses)
+            entries.push({ code, schemaName, status: Number(status) })
+          }
+        }
+      }
+      const unique = entries.filter((entry) => statusesByCode.get(entry.code)?.size === 1)
+      for (const [code, statuses] of statusesByCode)
+        if (statuses.size > 1)
+          ambiguous.push(`${operationId}: ${code} (${[...statuses].join(', ')})`)
+      if (unique.length > 0) errorMaps.set(operationId, unique)
+    }
+  }
+  return { ambiguous, errorMaps }
+}
 
 const createApiConfig = (job: ApiJob): UserConfig => ({
   input: job.document,

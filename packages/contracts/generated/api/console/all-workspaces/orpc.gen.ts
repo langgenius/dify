@@ -2,6 +2,7 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
+import { zGetWorkspaceListApiError401 } from './zod.gen.ts'
 import { zGetAllWorkspacesQuery, zGetAllWorkspacesResponse } from './zod.gen.ts'
 
 export const get = oc
@@ -14,6 +15,11 @@ export const get = oc
   })
   .input(z.object({ query: zGetAllWorkspacesQuery.optional() }))
   .output(zGetAllWorkspacesResponse)
+  .errors({
+    not_init_validated: { status: 401, data: zGetWorkspaceListApiError401 },
+    not_setup: { status: 401, data: zGetWorkspaceListApiError401 },
+    unauthorized: { status: 401, data: zGetWorkspaceListApiError401 },
+  })
 
 export const allWorkspaces = {
   get,

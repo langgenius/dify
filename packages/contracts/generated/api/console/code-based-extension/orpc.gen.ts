@@ -2,6 +2,7 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
+import { zGetCodeBasedExtensionError400, zGetCodeBasedExtensionError401 } from './zod.gen.ts'
 import { zGetCodeBasedExtensionQuery, zGetCodeBasedExtensionResponse } from './zod.gen.ts'
 
 /**
@@ -18,6 +19,14 @@ export const get = oc
   })
   .input(z.object({ query: zGetCodeBasedExtensionQuery }))
   .output(zGetCodeBasedExtensionResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zGetCodeBasedExtensionError400 },
+    bad_request: { status: 400, data: zGetCodeBasedExtensionError400 },
+    invalid_param: { status: 400, data: zGetCodeBasedExtensionError400 },
+    not_init_validated: { status: 401, data: zGetCodeBasedExtensionError401 },
+    not_setup: { status: 401, data: zGetCodeBasedExtensionError401 },
+    unauthorized: { status: 401, data: zGetCodeBasedExtensionError401 },
+  })
 
 export const codeBasedExtension = {
   get,
