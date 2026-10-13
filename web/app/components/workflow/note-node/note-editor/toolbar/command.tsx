@@ -1,4 +1,5 @@
 import { cn } from '@langgenius/dify-ui/cn'
+import { Toggle } from '@langgenius/dify-ui/toggle'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { memo, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -67,6 +68,14 @@ const Command = ({ type }: CommandProps) => {
     selectedIsBullet,
   ])
 
+  const pressed = {
+    bold: selectedIsBold,
+    italic: selectedIsItalic,
+    strikethrough: selectedIsStrikeThrough,
+    link: selectedIsLink,
+    bullet: selectedIsBullet,
+  }[type]
+
   const tip = useMemo(() => {
     switch (type) {
       case 'bold':
@@ -86,21 +95,14 @@ const Command = ({ type }: CommandProps) => {
     <Tooltip>
       <TooltipTrigger
         render={
-          <button
-            type="button"
+          <Toggle
             aria-label={tip}
-            className={cn(
-              'flex size-8 cursor-pointer items-center justify-center rounded-md text-text-tertiary hover:bg-state-accent-active hover:text-text-accent',
-              type === 'bold' && selectedIsBold && 'bg-state-accent-active',
-              type === 'italic' && selectedIsItalic && 'bg-state-accent-active',
-              type === 'strikethrough' && selectedIsStrikeThrough && 'bg-state-accent-active',
-              type === 'link' && selectedIsLink && 'bg-state-accent-active',
-              type === 'bullet' && selectedIsBullet && 'bg-state-accent-active',
-            )}
-            onClick={() => handleCommand(type)}
+            pressed={pressed}
+            onPressedChange={() => handleCommand(type)}
+            className="flex size-8 items-center justify-center rounded-md text-text-tertiary hover:bg-state-accent-active hover:text-text-accent focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-pressed:bg-state-accent-active"
           >
             {icon}
-          </button>
+          </Toggle>
         }
       />
       <TooltipContent>{tip}</TooltipContent>
