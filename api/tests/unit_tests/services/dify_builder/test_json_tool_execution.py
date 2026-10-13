@@ -559,5 +559,6 @@ def test_qualified_binding_is_frozen_and_strict():
     binding = QualifiedJsonToolBinding(**values)
     with pytest.raises(ValidationError):
         binding.tenant_id = "other"
-    with pytest.raises(ValidationError):
-        QualifiedJsonToolBinding(**{**values, "runtime_type": "serverless"})
+    for unsupported in ("", "Local", "SERVERLESS", "unknown"):
+        with pytest.raises(ValidationError):
+            QualifiedJsonToolBinding(**{**values, "runtime_type": unsupported})

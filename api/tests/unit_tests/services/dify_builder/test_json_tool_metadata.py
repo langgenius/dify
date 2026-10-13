@@ -122,11 +122,21 @@ def test_zero_or_multiple_installations_refuse(monkeypatch, count):
         ("version", "0.0.9"),
         ("checksum", "f" * 64),
         ("runtime_type", "serverless"),
+        pytest.param("runtime_type", "", id="runtime_type-empty"),
+        pytest.param("runtime_type", "Local", id="runtime_type-case-local"),
+        pytest.param("runtime_type", "SERVERLESS", id="runtime_type-case-serverless"),
+        pytest.param("runtime_type", "unknown", id="runtime_type-unknown"),
         ("source", "remote"),
     ],
 )
 def test_installation_identity_or_runtime_drift_refuses(monkeypatch, field, value):
     _owners(monkeypatch, installations=[_installation(**{field: value})])
+    if field == "runtime_type" and value == "serverless":
+        actual = metadata.resolve_installed_json_parse(tenant_id=TENANT)
+        local = replace(actual, runtime_type="local", qualification_digest=metadata.QUALIFICATION_DIGEST)
+        with pytest.raises(BuilderExecutionPolicyError, match="json_tool_installation_changed"):
+            metadata.require_same_json_installation(_expected(local), actual)
+        return
     with pytest.raises(BuilderExecutionPolicyError, match="unsupported_json_tool_installation"):
         metadata.resolve_installed_json_parse(tenant_id=TENANT)
 
