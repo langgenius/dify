@@ -11,7 +11,7 @@ from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 from controllers.openapi import app_dsl
 from controllers.openapi._contract import op_of
-from controllers.openapi._errors import DraftNotFound, DslInvalid, OpenApiError, VersionNotFound
+from controllers.openapi._errors import DraftChanged, DraftNotFound, DslInvalid, OpenApiError, VersionNotFound
 from controllers.openapi._models import (
     AppDslExportQuery,
     AppDslExportResponse,
@@ -29,8 +29,8 @@ from machinery.context import RequestContext
 from models.model import App, AppMode
 from services.app.console_service import ConsoleAppNotFoundError
 from services.app_dsl_service import AppDslService
-from services.entities.dsl_entities import Import, ImportStatus
-from services.errors.app import IsDraftWorkflowError, WorkflowNotFoundError
+from services.entities.dsl_entities import DraftGuardedImportParams, Import, ImportStatus
+from services.errors.app import DraftChangedError, IsDraftWorkflowError, WorkflowNotFoundError
 from services.errors.base import NoPermissionError
 from services.workflow import dsl_import, graph_check
 from services.workflow.graph_check import IssueCode, IssueSeverity
@@ -315,3 +315,61 @@ def test_export_answers_a_missing_workflow_with_the_openapi_error(
     api = AppDslExportApi()
     with app.test_request_context("/openapi/v1/apps/app-1/dsl"), pytest.raises(expected):
         cast(_ExportView, api.get).__handler__(api, ctx, "app-1", query=AppDslExportQuery(workflow_id=workflow_id))
+
+
+def test_import_hands_the_draft_hash_to_the_save(
+    app_query_services: ControllerTestServices, app: Flask, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(app_dsl, "prepare_import", lambda *_args, **_kwargs: "prepared yaml")
+    import_app = Mock(return_value=Import(id="import-1", status=ImportStatus.COMPLETED, app_id="app-1"))
+    monkeypatch.setattr(app_query_services.apps.imports, "import_app", import_app)
+
+    api = AppDslImportApi()
+    with app.test_request_context("/openapi/v1/workspaces/workspace-1/apps/imports", method="POST"):
+        cast(_EndpointView, api.post).__handler__(
+            api,
+            _CONTEXT,
+            workspace_id="workspace-1",
+            body=AppDslImportPayload(mode="yaml-content", yaml_content="x", app_id="app-1", draft_hash="exported"),
+        )
+
+    params = import_app.call_args.args[1]
+    assert isinstance(params, DraftGuardedImportParams)
+    assert (params.draft_hash, params.yaml_content, params.app_id) == ("exported", "prepared yaml", "app-1")
+
+
+@pytest.mark.parametrize(
+    ("api", "kwargs"),
+    [
+        (
+            AppDslImportApi(),
+            {
+                "workspace_id": "workspace-1",
+                "body": AppDslImportPayload(
+                    mode="yaml-content", yaml_content="x", app_id="app-1", draft_hash="exported"
+                ),
+            },
+        ),
+        (AppDslImportConfirmApi(), {"workspace_id": "workspace-1", "import_id": "import-1"}),
+    ],
+    ids=["import", "confirm"],
+)
+def test_a_draft_changed_during_the_save_answers_draft_changed(
+    app_query_services: ControllerTestServices,
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    api: AppDslImportApi | AppDslImportConfirmApi,
+    kwargs: dict[str, object],
+) -> None:
+    def changed(*_args: object, **_kwargs: object) -> None:
+        raise DraftChangedError()
+
+    monkeypatch.setattr(app_dsl, "prepare_import", lambda *_args, **_kwargs: "prepared yaml")
+    monkeypatch.setattr(app_query_services.apps.imports, "import_app", changed)
+    monkeypatch.setattr(app_query_services.apps.imports, "confirm_import", changed)
+
+    with app.test_request_context("/openapi/v1/workspaces/workspace-1/apps/imports", method="POST"):
+        with pytest.raises(DraftChanged) as exc_info:
+            cast(_EndpointView, api.post).__handler__(api, _CONTEXT, **kwargs)
+
+    assert exc_info.value.code == 409

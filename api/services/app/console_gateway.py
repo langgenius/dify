@@ -59,6 +59,7 @@ from services.entities.dsl_entities import (
     AppImportPackage,
     AppImportParams,
     CheckDependenciesResult,
+    DraftGuardedImportParams,
     Import,
     ImportStatus,
 )
@@ -252,6 +253,7 @@ class AppTransferGateway(AppTransfers, AppDefinitionImports):
                 app_id=params.app_id,
                 package=package,
                 preserve_agent_bindings=as_copy,
+                draft_hash=params.draft_hash if isinstance(params, DraftGuardedImportParams) else None,
             )
             if result.status == ImportStatus.FAILED or (as_copy and result.status == ImportStatus.PENDING):
                 session.rollback()

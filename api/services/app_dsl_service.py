@@ -74,7 +74,7 @@ from services.entities.dsl_entities import (
     make_app_dsl,
 )
 from services.entities.site_dsl import SiteDsl, apply_site_dsl
-from services.errors.app import WorkflowNotFoundError
+from services.errors.app import DraftChangedError, WorkflowNotFoundError
 from services.errors.base import NoPermissionError
 from services.feature_service import FeatureService
 from services.icon_configuration import (
@@ -83,6 +83,7 @@ from services.icon_configuration import (
     is_valid_image_icon,
 )
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
+from services.workflow.graph_diff import draft_token
 from services.workflow_draft_variable_service import WorkflowDraftVariableService
 from services.workflow_service import WorkflowService
 
@@ -119,6 +120,7 @@ class PendingData(PendingImportOwner):
     icon: str | None = None
     icon_background: str | None = None
     app_id: str | None = None
+    draft_hash: str | None = None
     warnings: list[DslImportWarning] = Field(default_factory=list)
 
 
@@ -150,8 +152,13 @@ class AppDslService:
         import_app_id: str | None = None,
         package: AppImportPackage | None = None,
         preserve_agent_bindings: bool = False,
+        draft_hash: str | None = None,
     ) -> Import:
-        """Import an App DSL after checking Site entitlements and staging archive resources."""
+        """Import an App DSL after checking Site entitlements and staging archive resources.
+
+        With ``draft_hash``, an overwrite saves only while the draft's ``draft_token`` still equals it and
+        raises DraftChangedError otherwise; a pending import keeps it for the confirm.
+        """
         self._warnings = []
         import_id = str(uuid.uuid4())
 
@@ -315,6 +322,7 @@ class AppDslService:
                     icon=icon,
                     icon_background=icon_background,
                     app_id=app_id,
+                    draft_hash=draft_hash,
                     warnings=self._warnings,
                 )
                 redis_client.setex(
@@ -360,6 +368,7 @@ class AppDslService:
                 import_app_id=import_app_id,
                 allow_premium_site_settings=allow_premium_site_settings,
                 preserve_agent_bindings=preserve_agent_bindings,
+                draft_hash=draft_hash,
             )
 
             draft_var_srv = WorkflowDraftVariableService(session=self._session)
@@ -381,7 +390,7 @@ class AppDslService:
                 error=f"Invalid YAML format: {str(e)}",
             )
 
-        except NoPermissionError:
+        except (NoPermissionError, DraftChangedError):
             raise
 
         except Exception as e:
@@ -458,6 +467,7 @@ class AppDslService:
                 icon=pending_data.icon,
                 icon_background=pending_data.icon_background,
                 allow_premium_site_settings=allow_premium_site_settings,
+                draft_hash=pending_data.draft_hash,
             )
 
             # Delete import info from Redis
@@ -473,7 +483,7 @@ class AppDslService:
                 warnings=self._warnings,
             )
 
-        except NoPermissionError:
+        except (NoPermissionError, DraftChangedError):
             raise
 
         except Exception as e:
@@ -600,6 +610,7 @@ class AppDslService:
         import_app_id: str | None = None,
         allow_premium_site_settings: bool = True,
         preserve_agent_bindings: bool = False,
+        draft_hash: str | None = None,
     ) -> App:
         """Create a new app or update an existing one."""
         app_data = data.get("app", {})
@@ -697,7 +708,15 @@ class AppDslService:
                 ]
 
                 workflow_service = WorkflowService()
-                current_draft_workflow = workflow_service.get_draft_workflow(app_model=app, session=self._session)
+                if draft_hash is None:
+                    current_draft_workflow = workflow_service.get_draft_workflow(app_model=app, session=self._session)
+                else:
+                    # The row lock holds until commit, so the draft stays the one the caller exported.
+                    current_draft_workflow = workflow_service.get_draft_workflow_for_update(
+                        app_model=app, session=self._session
+                    )
+                    if current_draft_workflow is None or draft_token(current_draft_workflow) != draft_hash:
+                        raise DraftChangedError()
                 if current_draft_workflow:
                     unique_hash = current_draft_workflow.unique_hash
                 else:

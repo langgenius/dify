@@ -24,6 +24,7 @@ from models import App, AppMode, Workflow
 from repositories.app.console_repository import require_console_app
 from services.dsl_content import DSL_MAX_SIZE, dsl_content_size
 from services.entities.dsl_entities import ImportMode
+from services.errors.app import DraftChangedError
 from services.workflow.graph_check import (
     GRAPH_MODES,
     GraphIssue,
@@ -42,10 +43,6 @@ class DslNotCheckableError(ValueError):
 
 class YamlUrlFetchError(ValueError):
     pass
-
-
-class DraftChangedError(Exception):
-    """The draft changed after the export the import is based on."""
 
 
 class DslRefusedError(Exception):

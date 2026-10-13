@@ -269,7 +269,7 @@ class WorkflowService:
         # return draft workflow
         return workflow
 
-    def _get_draft_workflow_for_update(self, app_model: App, *, session: Session) -> Workflow | None:
+    def get_draft_workflow_for_update(self, app_model: App, *, session: Session) -> Workflow | None:
         """Return the app draft while holding its row lock for the caller's transaction."""
         return session.scalar(
             select(Workflow)
@@ -442,7 +442,7 @@ class WorkflowService:
             raise ValueError("Deleted environment variable ids require an environment variable patch.")
 
         # fetch draft workflow by app_model
-        workflow = self._get_draft_workflow_for_update(app_model=app_model, session=session)
+        workflow = self.get_draft_workflow_for_update(app_model=app_model, session=session)
 
         if workflow and workflow.unique_hash != unique_hash:
             raise WorkflowHashNotEqualError()
@@ -563,7 +563,7 @@ class WorkflowService:
         variables they do not touch. Existing variables keep their order and new variables are appended.
         The transaction is committed before this method returns.
         """
-        workflow = self._get_draft_workflow_for_update(app_model=app_model, session=session)
+        workflow = self.get_draft_workflow_for_update(app_model=app_model, session=session)
         if not workflow:
             raise ValueError("No draft workflow found.")
 

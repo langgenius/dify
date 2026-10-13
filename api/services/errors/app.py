@@ -6,6 +6,10 @@ class WorkflowHashNotEqualError(Exception):
     pass
 
 
+class DraftChangedError(Exception):
+    """The draft no longer matches the export an overwrite is based on."""
+
+
 class IsDraftWorkflowError(Exception):
     pass
 

@@ -47,7 +47,14 @@ from services.entities.app_entities import (
     AppExportOptions,
     CopyAppParams,
 )
-from services.entities.dsl_entities import AppDslExportData, AppImportPackage, AppImportParams, Import, ImportStatus
+from services.entities.dsl_entities import (
+    AppDslExportData,
+    AppImportPackage,
+    AppImportParams,
+    DraftGuardedImportParams,
+    Import,
+    ImportStatus,
+)
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
 from services.recommended_app_package_service import RecommendedAppPackageService
 from services.system_feature_service import SystemFeatureService
@@ -688,3 +695,30 @@ def test_console_package_import_forwards_archive_and_closes_it(
     assert result.status == status
     assert len(archives) == 1
     assert archives[0].archive.closed
+
+
+@pytest.mark.parametrize(
+    ("params", "draft_hash"),
+    [
+        (DraftGuardedImportParams(mode="yaml-content", yaml_content="kind: app\n", draft_hash="exported"), "exported"),
+        (DraftGuardedImportParams(mode="yaml-content", yaml_content="kind: app\n"), None),
+        (AppImportParams(mode="yaml-content", yaml_content="kind: app\n"), None),
+    ],
+    ids=["guarded", "guarded-without-hash", "console"],
+)
+def test_dsl_import_forwards_only_a_guarded_draft_hash(
+    app_services: AppServices,
+    copy_source: tuple[RequestContext, str],
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+    params: AppImportParams,
+    draft_hash: str | None,
+) -> None:
+    config_overrides(RBAC_ENABLED=False, DEPLOYMENT_EDITION="COMMUNITY")
+    context, _ = copy_source
+    import_app = Mock(return_value=Import(id="import-1", status=ImportStatus.FAILED))
+    monkeypatch.setattr(AppDslService, "import_app", import_app)
+
+    app_services.console.import_app(context, params)
+
+    assert import_app.call_args.kwargs["draft_hash"] == draft_hash
