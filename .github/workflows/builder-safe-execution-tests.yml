@@ -311,6 +311,8 @@ jobs:
               "api/tests/unit_tests/services/dify_builder/test_execution_policy_service.py",
               "api/tests/unit_tests/services/dify_builder/test_json_tool_execution_admission.py",
               "api/tests/unit_tests/services/dify_builder/test_json_tool_execution.py",
+              "api/tests/unit_tests/services/dify_builder/test_json_tool_metadata.py",
+              "api/tests/unit_tests/services/dify_builder/test_json_tool_runtime.py",
               "api/tests/unit_tests/core/dify_builder/test_verification.py",
               "api/tests/unit_tests/core/dify_builder/test_handlers_build.py",
               "api/tests/unit_tests/services/dify_builder/test_localize.py",
@@ -387,6 +389,37 @@ jobs:
               "test_reserved_native_owner_refuses_for_every_node": 9,
               "test_optional_start_user_id_cannot_collide_with_native_system_owner": 1,
           }
+          json_runtime_expected = {
+              "tests.unit_tests.services.dify_builder.test_json_tool_metadata": {
+                  "test_reviewed_normalized_declaration_matches_frozen_digests": 1,
+                  "test_zero_or_multiple_installations_refuse": 2,
+                  "test_installation_identity_or_runtime_drift_refuses": 7,
+                  "test_provider_identity_drift_refuses": 3,
+                  "test_schema_credential_oauth_dynamic_or_default_drift_refuses": 5,
+                  "test_transport_failure_is_sanitized": 1,
+                  "test_malformed_native_response_is_sanitized": 1,
+                  "test_persisted_binding_drift_refuses": 1,
+              },
+              "tests.unit_tests.services.dify_builder.test_json_tool_runtime": {
+                  "test_native_plugin_casts_final_boolean_and_preserves_unicode": 2,
+                  "test_exact_native_text_is_data_not_status": 4,
+                  "test_forbidden_message_closes_transport_before_file_transform": 1,
+                  "test_text_byte_and_count_limits_close_transport": 2,
+                  "test_final_envelope_mismatch_prevents_native_dispatch": 1,
+                  "test_native_form_conversion_keeps_explicit_boolean": 4,
+                  "test_actual_controller_drift_refuses_before_credentials": 1,
+                  "test_actual_parse_schema_drift_refuses_before_dynamic_fetch": 1,
+                  "test_hardcoded_fallback_refuses_before_credential_branch": 1,
+                  "test_static_resolution_never_reads_dynamic_or_decrypts": 1,
+                  "test_json_native_getter_rejects_incompatible_guard_arguments": 4,
+                  "test_full_native_text_path_receipt_and_replay": 1,
+                  "test_prior_handle_and_recorder_failure_never_emit_receipt": 1,
+                  "test_post_dispatch_metadata_change_prevents_receipt": 1,
+                  "test_interrupted_stream_closes_native_generator_without_receipt": 1,
+                  "test_non_text_is_refused_before_native_file_transform": 1,
+                  "test_metadata_and_native_dispatch_have_no_active_own_transaction": 1,
+              },
+          }
           json_contract_expected = {
               "tests.unit_tests.services.dify_builder.test_execution_policy_service": {
                   "test_historical_restricted_context_tag_and_absence_decode_identically": 1,
@@ -401,7 +434,7 @@ jobs:
                   "test_json_non_success_evidence_allows_exact_false_seal_and_legacy_coercion_is_unchanged": 1,
               },
           }
-          for module, expected in {json_policy_module: json_policy_expected, **json_contract_expected}.items():
+          for module, expected in {json_policy_module: json_policy_expected, **json_contract_expected, **json_runtime_expected}.items():
               actual = {}
               for classname, name in identities:
                   if classname.removeprefix("api.") == module:
@@ -410,8 +443,8 @@ jobs:
               for function, expected_count in expected.items():
                   if actual.get(function, 0) != expected_count:
                       problems.append(f"JSON case inventory mismatch {module}::{function}")
-              if module == json_policy_module and set(actual) != set(expected):
-                  problems.append("unexpected JSON policy test functions")
+              if (module == json_policy_module or module in json_runtime_expected) and set(actual) != set(expected):
+                  problems.append(f"unexpected JSON test functions {module}")
           print(f"COLLECTED total: {len(identities)} unit cases", flush=True)
           for problem in problems:
               print(f"COMPLETENESS {problem}", flush=True)
