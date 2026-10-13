@@ -26,6 +26,20 @@ if TYPE_CHECKING:  # pragma: no cover - imported for type checking only
     from graphon.nodes.tool.tool_node import ToolNode
 
 
+def _assert_signed_tool_file_text(text: str, tool_file_id: str, extension: str) -> None:
+    """Tool file URLs are signed (#39222); verify path, params, and signature."""
+    from urllib.parse import parse_qs, urlsplit
+
+    from core.tools.signature import verify_tool_file_signature
+
+    assert text.startswith(f"File: /files/tools/{tool_file_id}{extension}?")
+    assert text.endswith("\n")
+    query = parse_qs(urlsplit(text.removeprefix("File: ").removesuffix("\n")).query)
+    assert verify_tool_file_signature(
+        tool_file_id, query["timestamp"][0], query["nonce"][0], query["sign"][0]
+    )
+
+
 class _StubToolRuntime:
     def get_runtime(
         self,
@@ -173,12 +187,12 @@ def test_link_messages_with_file_populate_files_output(tool_node: ToolNode):
 
     chunk_events = [event for event in events if isinstance(event, StreamChunkEvent)]
     assert chunk_events
-    assert chunk_events[0].chunk == "File: /files/tools/file-id.pdf\n"
+    _assert_signed_tool_file_text(chunk_events[0].chunk, "file-id", ".pdf")
 
     completed_events = [event for event in events if isinstance(event, StreamCompletedEvent)]
     assert len(completed_events) == 1
     outputs = completed_events[0].node_run_result.outputs
-    assert outputs["text"] == "File: /files/tools/file-id.pdf\n"
+    _assert_signed_tool_file_text(outputs["text"], "file-id", ".pdf")
 
     files_segment = outputs["files"]
     assert isinstance(files_segment, ArrayFileSegment)
