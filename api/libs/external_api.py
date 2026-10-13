@@ -1,6 +1,7 @@
 import pkgutil
 import re
 from collections.abc import Callable, Iterable, Mapping, Sequence
+from dataclasses import dataclass
 from typing import Any, ClassVar, Protocol, TypedDict, override
 
 from flask import Blueprint, Flask, current_app, got_request_exception, request
@@ -41,6 +42,8 @@ class ErrorResponse(BaseModel):
 _ERROR_SCHEMA_REF_TEMPLATE = "#/components/schemas/{model}"
 ERROR_CODES_VENDOR_KEY = "dify-error-codes"
 _ERROR_CODES_EXTENSION = f"x-{ERROR_CODES_VENDOR_KEY}"
+# ``BaseHTTPException`` ships this placeholder; a documented business error must replace it.
+_UNDECLARED_ERROR_CODE = BaseHTTPException.error_code
 
 
 class ErrorSpec(TypedDict):
@@ -120,7 +123,8 @@ def is_business_error(exception: type[Exception]) -> bool:
     """Whether ``exception`` names an operation-specific outcome worth listing.
 
     Werkzeug exceptions and anything dispatched through a dedicated (non-HTTP) handler
-    are implied instead: every listed status already admits their codes.
+    are generic instead: clients handle them centrally, and every operation's open
+    ``default`` error response covers them.
     """
     return issubclass(exception, HTTPException) and not exception.__module__.startswith("werkzeug.")
 
@@ -141,6 +145,14 @@ def _documented_names(exceptions: Iterable[type[Exception]]) -> list[str]:
     generic = [exception.__name__ for exception in exceptions if not is_business_error(exception)]
     if generic:
         raise ValueError(f"generic errors are implied, do not list them: {', '.join(generic)}")
+    undeclared = [
+        exception.__name__
+        for exception in exceptions
+        if issubclass(exception, BaseHTTPException)
+        and _class_attribute(exception, "error_code") == _UNDECLARED_ERROR_CODE
+    ]
+    if undeclared:
+        raise ValueError(f"business errors must declare an error_code: {', '.join(undeclared)}")
     return [f"{exception.__module__}:{exception.__qualname__}" for exception in exceptions]
 
 
@@ -182,9 +194,10 @@ def error_responses(
     """Document the business errors an operation's handler raises.
 
     List what the handler and its callees raise; decorators document their own errors
-    with ``document_errors``. Each listed status also admits the surface's generic codes,
-    and statuses nobody lists keep the surface's open error body. Each surface resolves
-    status and ``code`` from its own handlers when it builds the document.
+    with ``document_errors``. Generic errors are never listed: every operation documents
+    an open ``default`` error for them. Each surface resolves status and ``code`` from its
+    own handlers when it builds the document, and documents each code once as a shared
+    ``{Code}Error`` component, so a business error must declare an ``error_code``.
 
     ``unreachable`` names errors static analysis would infer but that cannot occur (for
     example an ``except`` for a service error the call never raises). They are not
@@ -204,6 +217,43 @@ def _pascal_case(value: str) -> str:
     return "".join(word[:1].upper() + word[1:] for word in re.split(r"[^0-9A-Za-z]+", value) if word)
 
 
+def error_component_name(code: str) -> str:
+    """The component that documents ``code``: ``draft_workflow_not_sync`` becomes ``DraftWorkflowNotSyncError``."""
+    name = _pascal_case(code)
+    return name if name.endswith("Error") else f"{name}Error"
+
+
+def _details_model(exception: type[Exception]) -> type[BaseModel] | None:
+    """The Pydantic model an exception declares for its ``details``, if any."""
+    model = _class_attribute(exception, "details_model")
+    return model if isinstance(model, type) and issubclass(model, BaseModel) else None
+
+
+@dataclass(frozen=True)
+class _ErrorComponent:
+    code: str
+    status: int
+    exception: type[Exception]
+    details_model: type[BaseModel] | None
+    where: str
+
+    def schema(self, name: str, error_body_ref: Mapping[str, object]) -> dict[str, object]:
+        properties: dict[str, object] = {
+            "code": {"const": self.code, "type": "string"},
+            "status": {"const": self.status, "type": "integer"},
+        }
+        if self.details_model is not None:
+            properties["details"] = {"$ref": _ERROR_SCHEMA_REF_TEMPLATE.format(model=self.details_model.__name__)}
+        schema: dict[str, object] = {
+            "allOf": [dict(error_body_ref), {"properties": properties, "required": ["code"], "type": "object"}],
+            "title": name,
+        }
+        description = _class_attribute(self.exception, "description")
+        if isinstance(description, str) and description:
+            schema["description"] = description
+        return schema
+
+
 def _explicit_json_schema(response: Mapping[str, Any]) -> object | None:
     """The body schema a response already declares, if any."""
     content = response.get("content")
@@ -215,28 +265,39 @@ def _explicit_json_schema(response: Mapping[str, Any]) -> object | None:
     return None
 
 
+def _add_model_schemas(schemas: dict[str, object], model: type[BaseModel]) -> None:
+    schema = model.model_json_schema(ref_template=_ERROR_SCHEMA_REF_TEMPLATE, mode="serialization")
+    definitions = schema.pop("$defs", {})
+    for name, definition in {**definitions, model.__name__: schema}.items():
+        schemas.setdefault(name, definition)
+
+
 def attach_error_response_schema(
     document: dict[str, object],
     model: type[BaseModel],
     resolve_error: Callable[[type[Exception]], tuple[int, str]],
-    implicit_codes: Callable[[int], set[str]],
 ) -> dict[str, object]:
-    """Give every 4xx/5xx response the surface's error body.
+    """Give every 4xx/5xx response the surface's error body and document business errors by code.
 
-    Statuses documented with ``error_responses`` narrow ``code`` to the listed values plus
-    the surface's implicit codes, as a named ``{OperationId}Error{status}`` component.
-    Other error statuses get the open error body. A status that also declares its own
-    body schema documents both, as ``anyOf``, since the surface's handlers can still
-    answer it with the error body.
+    Every operation gets a ``default`` error response with the open error body: generic
+    errors (authentication, validation, rate limits, unexpected failures) can answer any
+    operation and clients handle them centrally, so no operation lists them.
+
+    Each business error an operation documents with ``error_responses`` is one shared
+    ``{Code}Error`` component: the error body with ``code`` and ``status`` fixed, plus the
+    class's ``details_model`` when it declares one. The response of its status references
+    it; several codes on one status are an ``anyOf``, and a status that also declares its
+    own body schema keeps that schema beside them. A code maps to exactly one status in a
+    document, and two classes may share a code only when they agree on it.
     """
 
     paths = document.get("paths")
     if not isinstance(paths, dict):
         return document
 
-    ref = {"$ref": _ERROR_SCHEMA_REF_TEMPLATE.format(model=model.__name__)}
+    ref: dict[str, object] = {"$ref": _ERROR_SCHEMA_REF_TEMPLATE.format(model=model.__name__)}
+    error_components: dict[str, _ErrorComponent] = {}
     used = False
-    narrowed_schemas: dict[str, dict[str, object]] = {}
     for path, path_item in paths.items():
         if not isinstance(path_item, dict):
             continue
@@ -247,37 +308,49 @@ def attach_error_response_schema(
             responses = operation.setdefault("responses", {})
             if not isinstance(responses, dict):
                 continue
+            where = f"{method.upper()} {path}"
 
-            codes_by_status: dict[str, set[str]] = {}
-            for name in exception_names:
-                status_code, code = resolve_error(pkgutil.resolve_name(name))
-                codes_by_status.setdefault(str(status_code), set()).add(code)
-            for status, codes in codes_by_status.items():
-                codes |= implicit_codes(int(status))
+            components_by_status: dict[str, set[str]] = {}
+            for exception_name in exception_names:
+                exception = pkgutil.resolve_name(exception_name)
+                status, code = resolve_error(exception)
+                name = error_component_name(code)
+                component = _ErrorComponent(code, status, exception, _details_model(exception), where)
+                known = error_components.setdefault(name, component)
+                if known.code != code:
+                    raise ValueError(
+                        f"error codes {known.code!r} ({known.where}) and {code!r} ({where}) both document as {name}"
+                    )
+                if known.status != status:
+                    raise ValueError(
+                        f"error code {code!r} answers {status} on {where} but {known.status} on {known.where}; "
+                        "a code maps to one status"
+                    )
+                if known.details_model is not component.details_model:
+                    raise ValueError(
+                        f"error code {code!r} declares different details models on {known.where} and {where}"
+                    )
+                components_by_status.setdefault(str(status), set()).add(name)
+
+            for status, names in components_by_status.items():
                 response = responses.setdefault(status, {"description": http_status_message(int(status))})
-                operation_id = operation.get("operationId")
-                operation_name = operation_id if isinstance(operation_id, str) else f"{method} {path}"
-                schema_name = f"{_pascal_case(operation_name)}Error{status}"
-                narrowed_schemas[schema_name] = {
-                    "allOf": [
-                        dict(ref),
-                        {
-                            "properties": {"code": {"enum": sorted(codes), "type": "string"}},
-                            "required": ["code"],
-                            "type": "object",
-                        },
-                    ],
-                    "title": schema_name,
-                }
-                narrowed_ref: dict[str, object] = {"$ref": _ERROR_SCHEMA_REF_TEMPLATE.format(model=schema_name)}
+                if not isinstance(response, dict):
+                    continue
+                options: list[object] = [
+                    {"$ref": _ERROR_SCHEMA_REF_TEMPLATE.format(model=name)} for name in sorted(names)
+                ]
                 explicit = _explicit_json_schema(response)
-                # A declared body and a documented error can both answer this status.
-                schema = narrowed_ref if explicit is None else {"anyOf": [explicit, narrowed_ref]}
-                response["content"] = {"application/json": {"schema": schema}}
+                if explicit is not None:
+                    # The declared body and the documented errors can all answer this status.
+                    options.insert(0, explicit)
+                response["content"] = {
+                    "application/json": {"schema": options[0] if len(options) == 1 else {"anyOf": options}}
+                }
                 used = True
 
+            responses.setdefault("default", {"description": "Error"})
             for status, response in responses.items():
-                if status in codes_by_status or not str(status).startswith(("4", "5")):
+                if status in components_by_status or not (status == "default" or str(status).startswith(("4", "5"))):
                     continue
                 if not isinstance(response, dict):
                     continue
@@ -308,14 +381,13 @@ def attach_error_response_schema(
     schemas = components.setdefault("schemas", {})
     if not isinstance(schemas, dict):
         return document
-    schema = model.model_json_schema(ref_template=_ERROR_SCHEMA_REF_TEMPLATE, mode="serialization")
-    definitions = schema.pop("$defs", {})
-    for name, definition in {**definitions, model.__name__: schema}.items():
-        schemas.setdefault(name, definition)
-    for name, definition in narrowed_schemas.items():
+    _add_model_schemas(schemas, model)
+    for name, component in error_components.items():
+        if component.details_model is not None:
+            _add_model_schemas(schemas, component.details_model)
         if name in schemas:
-            raise ValueError(f"narrowed error schema {name} collides with an existing component")
-        schemas[name] = definition
+            raise ValueError(f"error component {name} (code {component.code!r}) collides with an existing component")
+        schemas[name] = component.schema(name, ref)
     return document
 
 
@@ -484,9 +556,7 @@ class ExternalApi(Api):
         """A surface overrides this to rewrite its finished OpenAPI document (see
         ``DocumentFinisher`` in ``flask_restx_compat``); overrides must call ``super()``.
         The default documents ``error_response_model`` on error responses."""
-        return attach_error_response_schema(
-            document, self.error_response_model, self.resolve_error, self.implicit_error_codes
-        )
+        return attach_error_response_schema(document, self.error_response_model, self.resolve_error)
 
     def document_error_handler(self, exception: type[Exception], *, status: int, code: str) -> None:
         """Record what a surface-specific handler for ``exception`` emits, for ``error_responses``."""
@@ -512,7 +582,12 @@ class ExternalApi(Api):
         return spec["default_code"]
 
     def implicit_error_codes(self, status: int) -> set[str]:
-        """Generic codes any operation may emit at ``status`` without listing them."""
+        """Generic codes any operation may emit at ``status`` without listing them.
+
+        The document covers them with each operation's open ``default`` error; checks that
+        compare served error bodies with the document admit them beside the documented
+        business codes.
+        """
         codes = set(_framework_error_codes().get(status, ()))
         codes.update(code for handled_status, code in self._handled_errors.values() if handled_status == status)
         if status == 500:

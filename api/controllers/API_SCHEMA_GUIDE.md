@@ -227,24 +227,30 @@ not provide, such as returning a non-dict payload, intentionally excluding field
 ## Error Responses
 
 Every 4xx/5xx response is documented with the surface's error body: `ErrorResponse` (`code`, `message`, `status`,
-optional `params`/`details`) on Console, Web and Service API, and `ErrorBody` on `/openapi/v1`. Responses that declare
-their own error schema keep it.
+optional `params`/`details`) on Console, Web and Service API, and `ErrorBody` on `/openapi/v1`. Every operation also
+documents a `default` error response with that open body: generic errors (authentication, validation, rate limits,
+unexpected failures) can answer any operation and clients handle them centrally, so no operation lists them.
+Responses that declare their own error schema keep it.
 
-Document business errors so clients can narrow `code` per status:
+Document business errors so clients can branch on `code`:
 
 - A handler lists what it and its callees raise with `@error_responses(SomeError, ...)` from `libs.external_api`.
 - A view decorator documents its own errors on the wrapper it returns: `return document_errors(decorated, SomeError)`.
   Guards in a Resource's `method_decorators` are documented on the class with `document_errors(ResourceClass, ...)`.
 - List only business errors: `HTTPException` subclasses that declare an `error_code`. Werkzeug exceptions and
   exceptions with a dedicated handler (`ValueError`, `NoPermissionError`, and others registered through
-  `ExternalApi.document_error_handler`) are implied; every narrowed status already admits their codes.
+  `ExternalApi.document_error_handler`) are generic and covered by `default`; listing them is an error, and so is
+  listing a `BaseHTTPException` subclass that keeps the placeholder `error_code`.
 - Record an error raised only from an unreachable branch, such as an `except` for a service error the call never
   raises, as `@error_responses(..., unreachable=(SomeError,))`. It stays undocumented.
 - View decorators must keep `__apidoc__` from the view they wrap (`functools.wraps` does, unless `updated=()`; then
   add `"__apidoc__"` to `assigned`), or the errors documented below them are lost.
 
-Each narrowed status becomes a named component, `{OperationId}Error{status}` (for example `ListAppsError400`), that
-extends the error body with a `code` enum. A status that also declares its own model documents both as `anyOf`.
+Each documented code is one shared component, `{Code}Error` (`draft_workflow_not_sync` documents as
+`DraftWorkflowNotSyncError`): the error body with `code` and `status` fixed, plus the class's `details_model` (a
+Pydantic model) when it declares one. The response of its status references it; several codes on one status are an
+`anyOf`, and a status that also declares its own model keeps it beside them. Within a surface a code maps to one
+status, and classes that share a code must agree on its status and details; the document fails to build otherwise.
 Statuses that no handler or decorator documents keep the open error body.
 
 ## Legacy Flask-RESTX Patterns
