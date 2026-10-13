@@ -127,6 +127,7 @@ jobs:
                   "test_json_optional_graph_plugin_identifier_seals_without_saved_graph_rewrite": 2,
                   "test_json_supplied_mismatched_graph_plugin_identifier_refuses_before_allocation": 1,
                   "test_json_constant_only_graph_without_start_inputs_seals_native_completion": 1,
+                  "test_serverless_json_native_owned_prepare_run_and_seal": 1,
               },
               "test_workflow_empty_draft": {
                   "test_postgres_empty_save_state_transition": 20,
@@ -427,6 +428,9 @@ jobs:
                   "test_transport_failure_is_sanitized": 1,
                   "test_malformed_native_response_is_sanitized": 1,
                   "test_persisted_binding_drift_refuses": 1,
+                  "test_qualified_serverless_installation_persists_its_own_binding": 1,
+                  "test_qualified_serverless_binding_preserves_runtime_and_digest": 1,
+                  "test_cross_variant_expected_binding_drift_refuses": 2,
               },
               "tests.unit_tests.services.dify_builder.test_json_tool_runtime": {
                   "test_native_plugin_casts_final_boolean_and_preserves_unicode": 2,
@@ -446,6 +450,7 @@ jobs:
                   "test_full_native_text_path_receipt_and_replay": 1,
                   "test_prior_handle_and_recorder_failure_never_emit_receipt": 1,
                   "test_post_dispatch_metadata_change_prevents_receipt": 1,
+                  "test_post_dispatch_runtime_variant_change_prevents_receipt": 1,
                   "test_interrupted_stream_closes_native_generator_without_receipt": 1,
                   "test_non_text_is_refused_before_native_file_transform": 1,
                   "test_file_producing_output_refuses_before_all_file_owners": 2,
