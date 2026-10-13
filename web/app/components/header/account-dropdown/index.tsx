@@ -2,7 +2,7 @@
 
 import type { ReactElement, ReactNode } from 'react'
 import type { Theme } from '@/app/components/base/theme-selector'
-import { Avatar } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
@@ -33,6 +33,7 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
 import { useLogout } from '@/service/use-common'
+import { getAvatarInitial } from '@/utils/avatar'
 import { ExternalLinkIndicator, MenuItemContent } from './menu-item-content'
 
 type AccountDropdownProps = {
@@ -165,12 +166,10 @@ function MainNavMenuContent({ onLogout }: MainNavMenuContentProps) {
               {userProfile.email}
             </div>
           </div>
-          <Avatar
-            avatar={userProfile.avatar_url}
-            name={userProfile.name}
-            size="lg"
-            className="shrink-0"
-          />
+          <Avatar size="lg" className="shrink-0" aria-hidden="true">
+            <AvatarFallback>{getAvatarInitial(userProfile.name)}</AvatarFallback>
+            <AvatarImage src={userProfile.avatar_url || undefined} alt="" />
+          </Avatar>
         </div>
       </DropdownMenuGroup>
       <DropdownMenuGroup className="p-1">

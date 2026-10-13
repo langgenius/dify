@@ -12,7 +12,7 @@ and optional Dify inner API bridge settings live here under the
 
 import httpx
 
-from typing import ClassVar, Literal, cast
+from typing import ClassVar, Literal, cast, override
 
 from pydantic import AliasChoices, AnyHttpUrl, Field, SecretStr, TypeAdapter, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -158,6 +158,7 @@ class ServerSettings(BaseSettings):
     )
 
     @classmethod
+    @override
     def settings_customise_sources(
         cls,
         settings_cls: type[BaseSettings],

@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from dataclasses import replace
-from typing import cast
+from typing import cast, override
 
 from pydantic import JsonValue
 from pydantic_ai import RunContext, Tool
@@ -52,6 +52,7 @@ class Toolset(FunctionToolset[Deps]):
         self.name = name
         self._loaded = False
 
+    @override
     async def get_tools(self, ctx: RunContext[Deps]):
         if not self._loaded:
             config = Config.model_validate(ctx.deps.layers[self.name]["config"])

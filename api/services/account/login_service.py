@@ -106,6 +106,7 @@ class EmailCodeGateway(Protocol):
         normalized_email: str,
         recipient_email: str,
         language: str,
+        registration_allowed: bool,
     ) -> str: ...
 
     def verify(self, *, normalized_email: str, code: str, token: str) -> EmailCodeChallengeStatus: ...
@@ -240,14 +241,12 @@ class ConsoleAuthenticationService:
         self._ensure_email_eligible(normalized_email, command.ip_address)
         account = self._preferred_account(command.email)
         self._ensure_account_not_banned(account, normalized_email, command.ip_address)
-        if account is None and not self._policies.is_registration_allowed():
-            raise account_errors.AccountNotFoundError
-
         return self._email_codes.send(
             account_id=account.id if account is not None else None,
             normalized_email=normalized_email,
             recipient_email=account.email if account is not None else normalized_email,
             language=self._email_language(command.language),
+            registration_allowed=account is not None or self._policies.is_registration_allowed(),
         )
 
     def login_with_email_code(self, command: EmailCodeLoginCommand) -> AccountSessionTokens:

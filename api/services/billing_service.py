@@ -275,14 +275,6 @@ class BillingService:
     _PLAN_CACHE_TTL = 600
 
     @classmethod
-    def ensure_new_agent_beta_revision(cls, revision_id: str) -> None:
-        cls._send_request("POST", f"/new-agent-beta/revisions/{revision_id}/ensure")
-
-    @classmethod
-    def ensure_new_agent_beta_workflow(cls, workflow_id: str) -> None:
-        cls._send_request("POST", f"/new-agent-beta/workflows/{workflow_id}/ensure")
-
-    @classmethod
     def bootstrap_tokener_tenant(cls, tenant_id: str, display_name: str) -> TokenerTenantBootstrapResponse:
         """Ensure the remote Tokener org and trial allowance without logging its one-time key."""
         base_url = dify_config.TOKENER_BILLING_API_URL.strip().rstrip("/")

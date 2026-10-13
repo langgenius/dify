@@ -18,7 +18,7 @@ import json
 import mimetypes
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field, replace
-from typing import ClassVar
+from typing import ClassVar, override
 from urllib.parse import urlparse
 
 import httpx
@@ -161,6 +161,7 @@ class Toolset(FunctionToolset[Deps]):
         self.name = name
         self._loaded = False
 
+    @override
     async def get_tools(self, ctx: RunContext[Deps]):
         if not self._loaded:
             config = Config.model_validate(ctx.deps.layers[self.name]["config"])

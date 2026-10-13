@@ -10,7 +10,7 @@ sensitive runtime configuration.
 """
 
 from collections.abc import AsyncIterator, Awaitable
-from typing import cast
+from typing import cast, override
 
 from redis.asyncio import Redis
 
@@ -198,6 +198,7 @@ class RedisRunStore(RunEventSink):
             value = value.decode()
         return RunRecord.model_validate_json(value)
 
+    @override
     async def append_event(self, event: NonTerminalRunEvent) -> str:
         """Append a non-terminal event JSON payload with refreshed TTLs."""
         events_key = run_events_key(self.prefix, event.run_id)
@@ -215,6 +216,7 @@ class RedisRunStore(RunEventSink):
         event_id = results[0]
         return event_id.decode() if isinstance(event_id, bytes) else str(event_id)
 
+    @override
     async def finalize_run(self, event: TerminalRunEvent) -> RunFinalizationResult:
         """Atomically append the first success/failure event and update its run record."""
         status, error, error_type = terminal_event_status_fields(event)

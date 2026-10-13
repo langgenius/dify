@@ -1,4 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react'
+import { createHttpError } from '@/service/http-error'
 import Splash from '../splash'
 
 const navigationMocks = vi.hoisted(() => ({
@@ -131,7 +132,7 @@ describe('Splash', () => {
       userLoggedIn: true,
       appLoggedIn: false,
     })
-    fetchAccessTokenMock.mockRejectedValue(new Response(null, { status: 404 }))
+    fetchAccessTokenMock.mockRejectedValue(createHttpError(new Response(null, { status: 404 })))
 
     render(
       <Splash>
@@ -177,7 +178,7 @@ describe('Splash', () => {
       userLoggedIn: true,
       appLoggedIn: false,
     })
-    fetchAccessTokenMock.mockRejectedValue(new Response(null, { status: 401 }))
+    fetchAccessTokenMock.mockRejectedValue(createHttpError(new Response(null, { status: 401 })))
 
     render(
       <Splash>

@@ -182,7 +182,6 @@ def init_app(app: DifyApp) -> Celery:
         "tasks.bootstrap_tokener_tenant_task",  # managed Tokener setup for new tenants
         "tasks.prepare_tokener_migration_task",  # recover persisted legacy migration preparations
         "tasks.install_default_plugins_task",  # tenant default plugin installation
-        "tasks.new_agent_beta_task",  # New Agent Beta eligibility checks
         "tasks.refresh_billing_vector_space_task",  # billing vector-space cache refresh
         "tasks.workflow_run_archive_download_tasks",  # workflow-run archive download preparation
     ]

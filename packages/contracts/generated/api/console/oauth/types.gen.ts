@@ -40,6 +40,7 @@ export type OAuthClientPayload = {
 
 export type OAuthProviderAccountResponse = {
   avatar?: string | null
+  created_at: number
   email: string
   id: string
   interface_language: string | null
