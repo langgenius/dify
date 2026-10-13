@@ -120,6 +120,10 @@ jobs:
                   "test_json_native_port_worker_graphon_run_and_end_seal": 4,
                   "test_json_seal_refuses_cross_owner_and_corrupt_native_proof": 8,
                   "test_concurrent_json_launch_claim_dispatches_at_most_once": 1,
+                  "test_json_caller_explicit_read_session_closes_before_native_spawn": 1,
+                  "test_json_native_end_matches_tool_and_start_selectors_exactly": 4,
+                  "test_json_first_seal_requires_single_trusted_completed_observation": 7,
+                  "test_json_unknown_first_seal_cannot_upgrade_after_receipt_repair": 1,
               },
               "test_workflow_empty_draft": {
                   "test_postgres_empty_save_state_transition": 20,
@@ -300,6 +304,7 @@ jobs:
           JUNIT = "builder-confirmed-tool-units.xml"
           FILES = [
               "api/tests/unit_tests/services/dify_builder/test_reconcile.py",
+              "api/tests/unit_tests/core/app/apps/test_builder_execution_admission.py",
               "api/tests/unit_tests/services/dify_builder/test_real_call_consent_service.py",
               "api/tests/unit_tests/services/dify_builder/test_confirmed_tool_launch.py",
               "api/tests/unit_tests/services/dify_builder/test_wiring.py",
@@ -442,6 +447,22 @@ jobs:
               },
           }
           json_contract_expected = {
+              "tests.unit_tests.core.app.apps.test_builder_execution_admission": {
+                  "test_serialized_native_markers_cannot_disappear": 1,
+                  "test_celery_refuses_marker_before_logging_or_initialization": 1,
+                  "test_factory_composes_restricted_without_live_adapters": 6,
+                  "test_worker_readmission_rejects_reload_races_inside_queue_lifecycle": 9,
+                  "test_worker_claims_once_and_shares_recorder_with_runner_and_completion": 1,
+                  "test_resume_marker_refused_before_restore_trace_or_cancellation_reset": 1,
+                  "test_native_worker_outer_finally_acknowledges_context_entry_failure": 1,
+                  "test_json_marker_round_trips_existing_native_carriers": 3,
+                  "test_json_celery_refuses_before_logging_or_runner": 1,
+                  "test_json_generate_refuses_unsupported_transport_before_workflow_read": 2,
+                  "test_json_workflow_generator_refuses_before_file_or_graph_effect": 3,
+                  "test_json_resume_refuses_before_trace_or_graph_restore": 1,
+                  "test_json_factory_refuses_nonissued_recorder_before_ordinary_setup": 1,
+                  "test_json_task_resume_refuses_before_snapshot_restore": 1,
+              },
               "tests.unit_tests.services.dify_builder.test_template_presentation": {
                   "test_generic_missing_coverage_keeps_workflow_editable": 1,
                   "test_json_coverage_refusal_uses_only_static_actionable_copy": 10,
