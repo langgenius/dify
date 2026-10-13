@@ -10,7 +10,7 @@ import { resolveClassName } from '../internal/resolve-class-name'
 const buttonVariants = cva(
   [
     focusRingClassName,
-    'inline-flex cursor-pointer items-center justify-center overflow-hidden whitespace-nowrap data-disabled:cursor-not-allowed',
+    'inline-flex items-center justify-center overflow-hidden whitespace-nowrap data-disabled:cursor-not-allowed',
   ],
   {
     variants: {

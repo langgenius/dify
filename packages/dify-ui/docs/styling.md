@@ -73,6 +73,12 @@ Padding scrolls away with the content, so a scroll container with vertical paddi
 sets matching scroll padding on the same element. Primitives own this pair. A call site adds the
 height of a header or group label that must stay visible with the target item.
 
+## Cursor
+
+A control does not set a cursor for its enabled state; the consuming app's base styles decide it.
+A control sets a cursor only for a state it owns: `not-allowed` when disabled, the default arrow
+when read-only, and the text cursor on a text entry area.
+
 ## Focus indicator
 
 `src/internal/focus.ts` owns the outer and inset focus-visible rings and the separated indicator
