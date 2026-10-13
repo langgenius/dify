@@ -134,6 +134,39 @@ def test_legacy_if_else_branches_on_true() -> None:
     assert _codes({"nodes": [START, branch, END], "edges": edges}) == []
 
 
+def _unconnected(graph: Mapping[str, object]) -> list[str]:
+    issues = check_graph(graph, mode=AppMode.WORKFLOW)
+    return [i.message for i in issues if i.code is IssueCode.BRANCH_UNCONNECTED]
+
+
+def test_fail_branch_classifier_is_not_asked_for_a_source_edge() -> None:
+    classifier = _node(
+        "qc",
+        {
+            "type": "question-classifier",
+            "title": "Q",
+            "classes": [{"id": "c1", "name": "a"}],
+            "error_strategy": "fail-branch",
+        },
+    )
+    edges = [
+        {"id": "e0", "source": "start", "target": "qc", "sourceHandle": "source"},
+        {"id": "e1", "source": "qc", "target": "end", "sourceHandle": "c1"},
+        {"id": "e2", "source": "qc", "target": "end", "sourceHandle": "fail-branch"},
+    ]
+    assert _unconnected({"nodes": [START, classifier, END], "edges": edges}) == []
+
+
+def test_fail_branch_ordinary_node_still_needs_its_source_edge() -> None:
+    code = _node("c", {"type": "code", "title": "C", "error_strategy": "fail-branch"})
+    edges = [
+        {"id": "e0", "source": "start", "target": "c", "sourceHandle": "source"},
+        {"id": "e1", "source": "c", "target": "end", "sourceHandle": "fail-branch"},
+    ]
+    [message] = _unconnected({"nodes": [START, code, END], "edges": edges})
+    assert "'source'" in message
+
+
 def test_scalar_branch_lists_are_reported_not_raised() -> None:
     if_else = _node("if", {"type": "if-else", "title": "If", "cases": 5})
     classifier = _node("qc", {"type": "question-classifier", "title": "Q", "classes": 7})

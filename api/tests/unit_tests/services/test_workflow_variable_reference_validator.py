@@ -461,7 +461,15 @@ class TestBranchHandles:
             ({"type": "tool", "error_strategy": "fail-branch"}, {"source", "fail-branch"}),
             (
                 {"type": "if-else", "cases": [{"case_id": "a"}], "error_strategy": "fail-branch"},
-                {"a", "false", "source", "fail-branch"},
+                {"a", "false", "fail-branch"},
+            ),
+            (
+                {"type": "question-classifier", "classes": [{"id": "c1"}], "error_strategy": "fail-branch"},
+                {"c1", "fail-branch"},
+            ),
+            (
+                {"type": "human-input", "user_actions": [{"id": "ok"}], "error_strategy": "fail-branch"},
+                {"ok", "__timeout", "fail-branch"},
             ),
             (_routed_agent("yes", "no"), {"yes", "no"}),
             (_routed_agent("yes", "no", error_strategy="fail-branch"), {"yes", "no", "fail-branch"}),
@@ -525,6 +533,43 @@ class TestAgentOutputRoutes:
     def test_disabled_routes_follow_every_edge(self) -> None:
         graph = self._graph(_routed_agent("yes", "no", enabled=False), _edge("agent", "prod"), _edge("prod", "cons"))
         assert validate_variable_references(graph) == []
+
+
+class TestFailBranchOnBranchNodes:
+    def test_classifier_whose_every_exit_runs_the_producer_is_not_flagged(self) -> None:
+        router = _node("router", "question-classifier")
+        _node_data(router)["classes"] = [{"id": "c1"}, {"id": "c2"}]
+        _node_data(router)["error_strategy"] = "fail-branch"
+        graph = {
+            "nodes": [
+                _node("start", "start"),
+                router,
+                _node("prod", "tool"),
+                _node("cons", "llm", selector=["prod", "x"]),
+            ],
+            "edges": [
+                _edge("start", "router"),
+                _edge("start", "cons"),
+                _edge("router", "prod", "c1"),
+                _edge("router", "prod", "c2"),
+                _edge("router", "prod", "fail-branch"),
+            ],
+        }
+        assert validate_variable_references(graph) == []
+
+    def test_ordinary_node_with_fail_branch_still_leaves_by_source(self) -> None:
+        tool = _node("tool", "tool")
+        _node_data(tool)["error_strategy"] = "fail-branch"
+        graph = {
+            "nodes": [
+                _node("start", "start"),
+                tool,
+                _node("prod", "code"),
+                _node("cons", "llm", selector=["prod", "x"]),
+            ],
+            "edges": [_edge("start", "tool"), _edge("start", "cons"), _edge("tool", "prod", "fail-branch")],
+        }
+        assert [(i.node_id, i.referenced_node_id) for i in validate_variable_references(graph)] == [("cons", "prod")]
 
 
 class TestMalformedBranchData:

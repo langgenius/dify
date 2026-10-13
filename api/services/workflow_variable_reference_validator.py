@@ -60,34 +60,25 @@ def _agent_route_handles(data: Mapping[str, Any]) -> frozenset[str] | None:
     return _ids(routes.get("routes"), "id")
 
 
-@dataclass(frozen=True)
-class _Branching:
-    handles: Callable[[Mapping[str, Any]], frozenset[str] | None]
-    # A fail-branch node is counted as also leaving by `source`; an agent choosing a route never does.
-    leaves_by_source: bool = True
-
-
-_BRANCHING: Final[Mapping[str, _Branching]] = {
-    BuiltinNodeTypes.IF_ELSE: _Branching(_if_else_handles),
-    BuiltinNodeTypes.QUESTION_CLASSIFIER: _Branching(_question_classifier_handles),
-    BuiltinNodeTypes.HUMAN_INPUT: _Branching(_human_input_handles),
-    BuiltinNodeTypes.AGENT: _Branching(_agent_route_handles, leaves_by_source=False),
+_BRANCH_HANDLES: Final[Mapping[str, Callable[[Mapping[str, Any]], frozenset[str] | None]]] = {
+    BuiltinNodeTypes.IF_ELSE: _if_else_handles,
+    BuiltinNodeTypes.QUESTION_CLASSIFIER: _question_classifier_handles,
+    BuiltinNodeTypes.HUMAN_INPUT: _human_input_handles,
+    BuiltinNodeTypes.AGENT: _agent_route_handles,
 }
 
 
 def branch_handles(data: Mapping[str, Any]) -> frozenset[str] | None:
     """The source handles a node chooses one of at run time; None for a node that follows every outgoing edge.
 
-    A fail-branch node becomes a branch node that can also leave by ``fail-branch``.
+    A fail-branch node can also leave by ``fail-branch``: a branch node beside its own handles, any other node
+    beside ``source``.
     """
-    branching = _BRANCHING.get(str(data.get("type")))
-    handles = branching.handles(data) if branching else None
+    read = _BRANCH_HANDLES.get(str(data.get("type")))
+    handles = read(data) if read else None
     if data.get("error_strategy") != ErrorStrategy.FAIL_BRANCH:
         return handles
-    if branching is None or handles is None:
-        return frozenset({SOURCE_HANDLE, _FAIL_BRANCH_HANDLE})
-    extra = {SOURCE_HANDLE, _FAIL_BRANCH_HANDLE} if branching.leaves_by_source else {_FAIL_BRANCH_HANDLE}
-    return handles | extra
+    return (handles if handles is not None else frozenset({SOURCE_HANDLE})) | {_FAIL_BRANCH_HANDLE}
 
 
 @dataclass(frozen=True)
