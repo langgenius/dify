@@ -6,7 +6,7 @@ from uuid import UUID
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, TypeAdapter, field_validator, model_validator
-from werkzeug.exceptions import Forbidden, NotFound
+from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 from controllers.common.errors import InvalidArgumentError, NotFoundError
 from controllers.common.fields import ApiBaseUrlResponse, SimpleResultResponse, UsageCheckResponse
@@ -648,7 +648,7 @@ class DatasetApiKeyApi(Resource):
         payload = request.get_json(silent=True) or {}
         dataset_ids = payload.get("dataset_ids") or []
         if not isinstance(dataset_ids, list) or any(not isinstance(item, str) for item in dataset_ids):
-            console_ns.abort(400, message="dataset_ids must be a list of strings.")
+            raise BadRequest("dataset_ids must be a list of strings.")
         with api_key_errors():
             key = application_services().dataset_api_keys.create_workspace_key(request_context, tuple(dataset_ids))
         return dump_response(ApiKeyItem, key), 200

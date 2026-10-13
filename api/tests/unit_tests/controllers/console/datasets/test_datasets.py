@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, create_autospec, patch
 from uuid import UUID
 
 import pytest
-from werkzeug.exceptions import Forbidden, NotFound
+from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 import services
 from controllers.common.errors import InvalidArgumentError, NotFoundError
@@ -14,6 +14,7 @@ from controllers.console.datasets import datasets as controller
 from controllers.console.datasets.datasets import (
     DatasetApi,
     DatasetApiBaseUrlApi,
+    DatasetApiKeyApi,
     DatasetAutoDisableLogApi,
     DatasetEnableApiApi,
     DatasetErrorDocs,
@@ -324,3 +325,10 @@ def test_new_source_estimate_authorizes_before_execution(dataset_id, scene, loca
     assert check.scene is scene
     assert isinstance(check.locator, locator_type)
     estimates.estimate_new_sources.assert_not_called()
+
+
+def test_api_key_create_rejects_non_string_dataset_ids_with_the_standard_error(app):
+    # A raised BadRequest gets the standard error body; ``Namespace.abort(message=...)`` replaced it.
+    with app.test_request_context("/", method="POST", json={"dataset_ids": [123]}), pytest.raises(BadRequest) as error:
+        unwrap(DatasetApiKeyApi.post)(DatasetApiKeyApi(), CONTEXT)
+    assert error.value.description == "dataset_ids must be a list of strings."
