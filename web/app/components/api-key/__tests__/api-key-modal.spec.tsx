@@ -2,10 +2,9 @@ import type { ApiKeyList as AppApiKeyList } from '@dify/contracts/api/console/ap
 import type { ApiKeyList as DatasetApiKeyList } from '@dify/contracts/api/console/datasets/types.gen'
 import type { EnvironmentApiKey } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import type { ComponentProps } from 'react'
-import { QueryClientProvider, skipToken } from '@tanstack/react-query'
+import { QueryClientProvider } from '@tanstack/react-query'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach } from 'vite-plus/test'
 import { render } from '@/test/console/render'
 import { createTestQueryClient } from '@/test/query-client'
 import { ApiKeyModal } from '../api-key-modal'
@@ -25,90 +24,34 @@ const apiMocks = vi.hoisted(() => ({
   deleteEnvironment: vi.fn(),
 }))
 
-vi.mock('@/service/console', () => ({
-  consoleQuery: {
-    apps: {
-      byResourceId: {
-        apiKeys: {
-          get: {
-            queryOptions: ({ input }: { input: unknown }) => ({
-              queryKey: ['apps', 'api-keys', input],
-              queryFn:
-                input === skipToken
-                  ? skipToken
-                  : () => {
-                      apiMocks.listApp(input)
-                      return Promise.resolve({ data: apiMocks.appKeys })
-                    },
-            }),
-          },
-          post: {
-            mutationOptions: () => ({
-              mutationFn: (variables: unknown) => apiMocks.createApp(variables),
-            }),
-          },
-          byApiKeyId: {
-            delete: {
-              mutationOptions: () => ({
-                mutationFn: (variables: unknown) => apiMocks.deleteApp(variables),
-              }),
-            },
-          },
-        },
-      },
-    },
-    datasets: {
-      apiKeys: {
-        get: {
-          queryOptions: () => ({
-            queryKey: ['datasets', 'api-keys'],
-            queryFn: () => {
-              apiMocks.listDataset()
-              return Promise.resolve({ data: apiMocks.datasetKeys })
-            },
-          }),
-        },
-        post: {
-          mutationOptions: () => ({
-            mutationFn: (variables: unknown) => apiMocks.createDataset(variables),
-          }),
-        },
-        byApiKeyId: {
-          delete: {
-            mutationOptions: () => ({
-              mutationFn: (variables: unknown) => apiMocks.deleteDataset(variables),
-            }),
-          },
-        },
-      },
-    },
-    enterprise: {
-      appDeploy: {
-        accessService: {
-          listEnvironmentApiKeys: {
-            queryOptions: ({ input }: { input: unknown }) => ({
-              queryKey: ['environment', 'api-keys', input],
-              queryFn:
-                input === skipToken
-                  ? skipToken
-                  : () => {
-                      apiMocks.listEnvironment(input)
-                      return Promise.resolve({ data: apiMocks.environmentKeys })
-                    },
-            }),
-          },
-          createEnvironmentApiKey: {
-            mutationOptions: () => ({
-              mutationFn: (variables: unknown) => apiMocks.createEnvironment(variables),
-            }),
-          },
-          deleteEnvironmentApiKey: {
-            mutationOptions: () => ({
-              mutationFn: (variables: unknown) => apiMocks.deleteEnvironment(variables),
-            }),
-          },
-        },
-      },
+vi.mock('@/service/console/browser', () => ({
+  consoleBrowserLink: {
+    call: async (path: string[], input: unknown) => {
+      switch (path.join('.')) {
+        case 'apps.byResourceId.apiKeys.get':
+          apiMocks.listApp(input)
+          return { data: apiMocks.appKeys }
+        case 'apps.byResourceId.apiKeys.post':
+          return apiMocks.createApp(input)
+        case 'apps.byResourceId.apiKeys.byApiKeyId.delete':
+          return apiMocks.deleteApp(input)
+        case 'datasets.apiKeys.get':
+          apiMocks.listDataset()
+          return { data: apiMocks.datasetKeys }
+        case 'datasets.apiKeys.post':
+          return apiMocks.createDataset(input)
+        case 'datasets.apiKeys.byApiKeyId.delete':
+          return apiMocks.deleteDataset(input)
+        case 'enterprise.appDeploy.accessService.listEnvironmentApiKeys':
+          apiMocks.listEnvironment(input)
+          return { data: apiMocks.environmentKeys }
+        case 'enterprise.appDeploy.accessService.createEnvironmentApiKey':
+          return apiMocks.createEnvironment(input)
+        case 'enterprise.appDeploy.accessService.deleteEnvironmentApiKey':
+          return apiMocks.deleteEnvironment(input)
+        default:
+          throw new Error(`Unexpected API call: ${path.join('.')}`)
+      }
     },
   },
 }))
@@ -171,26 +114,19 @@ async function renderModal(
       />
     </QueryClientProvider>,
   )
-  await act(async () => {
-    vi.runAllTimers()
-  })
+  await waitFor(() => expect(queryClient.isFetching()).toBe(0))
   return { ...result, onOpenChange }
 }
 
 async function confirmKeyDeletion(accessibleName: string) {
-  const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+  const user = userEvent.setup()
   const deleteButton = screen.getByRole('button', { name: accessibleName })
   await user.click(deleteButton)
-  await act(async () => {
-    vi.runAllTimers()
-  })
-  await user.click(await screen.findByText('common.operation.confirm'))
+  await user.click(await screen.findByRole('button', { name: 'common.operation.confirm' }))
 }
 
 describe('ApiKeyModal', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    vi.useFakeTimers({ shouldAdvanceTime: true })
     mockCurrentWorkspace.mockReturnValue({ id: 'workspace-1', name: 'Test Workspace' })
     apiMocks.appKeys = []
     apiMocks.datasetKeys = []
@@ -206,11 +142,6 @@ describe('ApiKeyModal', () => {
       created_at: 1,
     })
     apiMocks.deleteEnvironment.mockResolvedValue(undefined)
-  })
-
-  afterEach(() => {
-    vi.runOnlyPendingTimers()
-    vi.useRealTimers()
   })
 
   it('loads and renders app API keys through the generated query input', async () => {
@@ -254,7 +185,7 @@ describe('ApiKeyModal', () => {
   })
 
   it('creates an app API key through the generated mutation input', async () => {
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    const user = userEvent.setup()
     await renderModal(appScope)
 
     await user.click(screen.getByText('appApi.apiKeyModal.createNewSecretKey'))
@@ -270,7 +201,7 @@ describe('ApiKeyModal', () => {
   })
 
   it('creates a workspace dataset API key scoped to all knowledge bases', async () => {
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    const user = userEvent.setup()
     await renderModal(datasetScope)
 
     await user.click(screen.getByText('appApi.apiKeyModal.createNewSecretKey'))
@@ -315,7 +246,7 @@ describe('ApiKeyModal', () => {
   })
 
   it('searches for a knowledge base and creates a key scoped to the selection', async () => {
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    const user = userEvent.setup()
     await renderModal(datasetScope)
 
     await user.click(screen.getByText('appApi.apiKeyModal.createNewSecretKey'))
@@ -399,7 +330,7 @@ describe('ApiKeyModal', () => {
   })
 
   it('creates an environment-scoped API key', async () => {
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    const user = userEvent.setup()
     await renderModal(environmentScope)
 
     await user.click(screen.getByText('appApi.apiKeyModal.createNewSecretKey'))
@@ -442,6 +373,100 @@ describe('ApiKeyModal', () => {
     })
   })
 
+  it.each(['cancel', 'escape'] as const)(
+    'cancels deletion with %s without closing key management, then targets another key',
+    async (dismiss) => {
+      const user = userEvent.setup()
+      apiMocks.appKeys = [
+        { id: 'first', token: 'app-first', type: 'app', created_at: 1 },
+        { id: 'second', token: 'app-second', type: 'app', created_at: 1 },
+      ]
+      const { onOpenChange } = await renderModal(appScope)
+      const firstTrigger = screen.getByRole('button', {
+        name: 'common.operation.delete app...app-first',
+      })
+      await user.click(firstTrigger)
+      const dialog = await screen.findByRole('alertdialog', {
+        name: 'appApi.actionMsg.deleteConfirmTitle',
+      })
+      expect(dialog).toHaveAccessibleDescription('appApi.actionMsg.deleteConfirmTips')
+
+      if (dismiss === 'cancel')
+        await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+      else await user.keyboard('{Escape}')
+
+      await waitFor(() => expect(dialog).not.toBeInTheDocument())
+      expect(firstTrigger).toHaveFocus()
+      expect(onOpenChange).not.toHaveBeenCalled()
+      expect(apiMocks.deleteApp).not.toHaveBeenCalled()
+
+      await confirmKeyDeletion('common.operation.delete app...app-second')
+      await waitFor(() =>
+        expect(apiMocks.deleteApp).toHaveBeenCalledWith({
+          params: { resource_id: 'app-123', api_key_id: 'second' },
+        }),
+      )
+    },
+  )
+
+  it.each([
+    { scope: appScope, keys: 'appKeys', remove: 'deleteApp', list: 'listApp' },
+    { scope: datasetScope, keys: 'datasetKeys', remove: 'deleteDataset', list: 'listDataset' },
+    {
+      scope: environmentScope,
+      keys: 'environmentKeys',
+      remove: 'deleteEnvironment',
+      list: 'listEnvironment',
+    },
+  ] as const)(
+    'keeps $scope.type deletion pending, allows retry after failure, and refreshes after success',
+    async ({ scope, keys, remove, list }) => {
+      const user = userEvent.setup()
+      apiMocks[keys] = [{ id: 'key-1', token: 'key-secret', type: 'api', created_at: 1 }]
+      let rejectDeletion!: (reason: Error) => void
+      const request = new Promise<void>((_resolve, reject) => {
+        rejectDeletion = reject
+      })
+      apiMocks[remove].mockReturnValueOnce(request)
+      const { onOpenChange } = await renderModal(scope)
+      await confirmKeyDeletion('common.operation.delete key...key-secret')
+      const dialog = screen.getByRole('alertdialog')
+      const confirm = screen.getByRole('button', { name: 'common.operation.confirm' })
+      const cancel = screen.getByRole('button', { name: 'common.operation.cancel' })
+      expect(confirm).toHaveAttribute('aria-disabled', 'true')
+      expect(cancel).toBeDisabled()
+      await user.click(confirm)
+      await user.click(cancel)
+      await user.keyboard('{Escape}')
+      expect(dialog).toBeInTheDocument()
+      expect(onOpenChange).not.toHaveBeenCalled()
+      expect(apiMocks[remove]).toHaveBeenCalledTimes(1)
+
+      await act(async () => rejectDeletion(new Error('Deletion failed')))
+      await waitFor(() => expect(cancel).toBeEnabled())
+      expect(dialog).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.operation.confirm' })).not.toHaveAttribute(
+        'aria-disabled',
+        'true',
+      )
+
+      apiMocks[remove].mockImplementationOnce(async () => {
+        apiMocks[keys] = []
+      })
+      await user.click(confirm)
+      await waitFor(() => expect(dialog).not.toBeInTheDocument())
+      await waitFor(() => expect(apiMocks[list]).toHaveBeenCalledTimes(2))
+      expect(
+        screen.queryByRole('button', { name: 'common.operation.delete key...key-secret' }),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'appApi.apiKeyModal.createNewSecretKey' }),
+      ).toHaveFocus()
+      expect(onOpenChange).not.toHaveBeenCalled()
+      expect(apiMocks[remove]).toHaveBeenCalledTimes(2)
+    },
+  )
+
   it('disables creation when the caller cannot manage keys', async () => {
     await renderModal(datasetScope, { canManage: false })
 
@@ -454,7 +479,7 @@ describe('ApiKeyModal', () => {
 
   it('exposes an accessible close button', async () => {
     const { onOpenChange } = await renderModal(datasetScope)
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    const user = userEvent.setup()
 
     await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
