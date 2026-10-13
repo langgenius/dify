@@ -96,7 +96,13 @@ class WorkflowAgentComposerApi(Resource):
             ),
         )
 
-    @error_responses(AgentNotFoundError, AgentSoulLockedError, AgentVersionNotFoundError, InvalidComposerConfigError)
+    @error_responses(
+        AgentNotFoundError,
+        AgentSoulLockedError,
+        AgentVersionNotFoundError,
+        InvalidComposerConfigError,
+        PlaintextSecretNotAllowedError,
+    )
     @console_ns.expect(console_ns.models[ComposerSavePayload.__name__])
     @console_ns.response(
         200, "Workflow agent composer saved", console_ns.models[WorkflowAgentComposerResponse.__name__]
@@ -253,7 +259,13 @@ class WorkflowAgentComposerImpactApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/agent-composer/save-to-roster")
 class WorkflowAgentComposerSaveToRosterApi(Resource):
-    @error_responses(AgentNotFoundError, AgentSoulLockedError, AgentVersionNotFoundError, InvalidComposerConfigError)
+    @error_responses(
+        AgentNotFoundError,
+        AgentSoulLockedError,
+        AgentVersionNotFoundError,
+        InvalidComposerConfigError,
+        PlaintextSecretNotAllowedError,
+    )
     @console_ns.expect(console_ns.models[ComposerSavePayload.__name__])
     @console_ns.response(
         200, "Workflow agent composer saved to roster", console_ns.models[WorkflowAgentComposerResponse.__name__]
@@ -334,7 +346,13 @@ class SnippetAgentComposerApi(Resource):
             ),
         )
 
-    @error_responses(AgentNotFoundError, AgentSoulLockedError, AgentVersionNotFoundError, InvalidComposerConfigError)
+    @error_responses(
+        AgentNotFoundError,
+        AgentSoulLockedError,
+        AgentVersionNotFoundError,
+        InvalidComposerConfigError,
+        PlaintextSecretNotAllowedError,
+    )
     @console_ns.expect(console_ns.models[ComposerSavePayload.__name__])
     @console_ns.response(200, "Snippet agent composer saved", console_ns.models[WorkflowAgentComposerResponse.__name__])
     @setup_required
@@ -486,7 +504,13 @@ class SnippetAgentComposerImpactApi(Resource):
 
 @console_ns.route("/snippets/<uuid:snippet_id>/workflows/draft/nodes/<string:node_id>/agent-composer/save-to-roster")
 class SnippetAgentComposerSaveToRosterApi(Resource):
-    @error_responses(AgentNotFoundError, AgentSoulLockedError, AgentVersionNotFoundError, InvalidComposerConfigError)
+    @error_responses(
+        AgentNotFoundError,
+        AgentSoulLockedError,
+        AgentVersionNotFoundError,
+        InvalidComposerConfigError,
+        PlaintextSecretNotAllowedError,
+    )
     @console_ns.expect(console_ns.models[ComposerSavePayload.__name__])
     @console_ns.response(
         200, "Snippet agent saved to roster", console_ns.models[WorkflowAgentComposerResponse.__name__]
@@ -539,7 +563,13 @@ class AgentComposerApi(Resource):
             AgentComposerService.load_agent_composer(session=session, tenant_id=tenant_id, agent_id=str(agent_id)),
         )
 
-    @error_responses(AgentNotFoundError, AgentSoulLockedError, AgentVersionNotFoundError, InvalidComposerConfigError)
+    @error_responses(
+        AgentNotFoundError,
+        AgentSoulLockedError,
+        AgentVersionNotFoundError,
+        InvalidComposerConfigError,
+        PlaintextSecretNotAllowedError,
+    )
     @console_ns.expect(console_ns.models[ComposerSavePayload.__name__])
     @console_ns.response(200, "Agent app composer saved", console_ns.models[AgentAppComposerResponse.__name__])
     @setup_required

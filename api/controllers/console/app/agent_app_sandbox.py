@@ -165,6 +165,7 @@ class AgentAppSandboxInfoResource(Resource):
         AgentSandboxDownloadUnavailableHTTPError,
         AgentSandboxUnavailableHTTPError,
         AppNotFoundError,
+        RelayedHTTPError,
     )
     @console_ns.doc("get_agent_app_sandbox_info")
     @console_ns.doc(description="Get basic information for an Agent App conversation sandbox")
@@ -191,6 +192,7 @@ class AgentAppSandboxListResource(Resource):
         AgentSandboxDownloadUnavailableHTTPError,
         AgentSandboxUnavailableHTTPError,
         AppNotFoundError,
+        RelayedHTTPError,
     )
     @console_ns.doc("list_agent_app_sandbox_files")
     @console_ns.doc(description="List a directory in an Agent App conversation sandbox")
@@ -217,6 +219,7 @@ class AgentAppSandboxReadResource(Resource):
         AgentSandboxDownloadUnavailableHTTPError,
         AgentSandboxUnavailableHTTPError,
         AppNotFoundError,
+        RelayedHTTPError,
     )
     @console_ns.doc("read_agent_app_sandbox_file")
     @console_ns.doc(description="Read a text/binary preview file in an Agent App conversation sandbox")
@@ -243,6 +246,7 @@ class AgentAppSandboxDownloadResource(Resource):
         AgentSandboxDownloadUnavailableHTTPError,
         AgentSandboxUnavailableHTTPError,
         AppNotFoundError,
+        RelayedHTTPError,
     )
     @console_ns.doc("download_agent_app_sandbox_file")
     @console_ns.doc(description="Create a ToolFile from one Agent App Binding file and return its download URL")
@@ -269,6 +273,7 @@ class WorkflowAgentSandboxListResource(Resource):
         AgentSandboxDownloadUnavailableHTTPError,
         AgentSandboxUnavailableHTTPError,
         AppNotFoundError,
+        RelayedHTTPError,
     )
     @console_ns.doc("list_workflow_agent_sandbox_files")
     @console_ns.doc(description="List a directory in a workflow Agent node sandbox")
@@ -306,6 +311,7 @@ class WorkflowAgentSandboxReadResource(Resource):
         AgentSandboxDownloadUnavailableHTTPError,
         AgentSandboxUnavailableHTTPError,
         AppNotFoundError,
+        RelayedHTTPError,
     )
     @console_ns.doc("read_workflow_agent_sandbox_file")
     @console_ns.doc(description="Read a text/binary preview file in a workflow Agent node sandbox")
@@ -343,6 +349,7 @@ class WorkflowAgentSandboxDownloadResource(Resource):
         AgentSandboxDownloadUnavailableHTTPError,
         AgentSandboxUnavailableHTTPError,
         AppNotFoundError,
+        RelayedHTTPError,
     )
     @console_ns.doc("download_workflow_agent_sandbox_file")
     @console_ns.doc(description="Create a ToolFile from one workflow Agent Binding file and return its download URL")
