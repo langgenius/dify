@@ -172,3 +172,90 @@ def test_confirmed_card_has_ids_status_and_reasons_but_no_native_content(
         "consent-1",
         action,
     )
+
+
+def json_run(
+    *,
+    outcome: Literal["restricted_execution_completed", "execution_evidence_unknown", "native_failed"] = (
+        "restricted_execution_completed"
+    ),
+    status: str = "succeeded",
+    text: str = "result",
+) -> models.Run:
+    """Unit presentation fixture; it does not attest to a native Tool invocation."""
+    run = verified()
+    assert run.verification is not None
+    run.verification.execution_evidence = ExecutionEvidenceSummary(
+        request_id="request",
+        policy_version="builder-json-parse-v1",
+        mode="restricted",
+        sealed=outcome != "execution_evidence_unknown",
+        safety_outcome=outcome,
+        sandbox_profile="disabled",
+        native_run_id="native" if outcome != "execution_evidence_unknown" else None,
+    )
+    run.status = status
+    run.verification.terminal_outputs = {"result": text}
+    return run
+
+
+@pytest.mark.parametrize("text", ["Error: invalid JSON", "not valid { JSON"])
+def test_json_native_success_text_remains_data_requiring_review(text: str) -> None:
+    from core.dify_builder.verification import publication_decision, result_card
+
+    run = json_run(text=text)
+    card = result_card(run)
+    assert card.policy_version == "builder-json-parse-v1"
+    assert card.execution_mode == "restricted"
+    assert card.safety_outcome == "restricted_execution_completed"
+    assert card.outcome == "execution_succeeded_needs_review"
+    assert card.failure_reason is None
+    assert card.terminal_outputs == {"result": text}
+    assert publication_decision(run, session_id="s", current_revision="rev", current_graph_revision="graph").allowed
+
+
+def test_json_completion_preserves_required_output_and_revision_gates() -> None:
+    from core.dify_builder.verification import publication_decision, result_card
+
+    run = json_run()
+    assert run.verification is not None
+    run.verification.output_findings = [
+        models.OutputFinding(
+            node_id="end", output_name="result", selector=["tool", "text"], state="unresolved", reason="key_presence"
+        )
+    ]
+    card = result_card(run)
+    assert card.policy_version == "builder-json-parse-v1"
+    assert card.outcome == "required_output_unresolved"
+    assert publication_decision(run, session_id="s", current_revision="rev", current_graph_revision="graph").reason == (
+        "required_output_unresolved"
+    )
+    run.verification.output_findings = []
+    assert publication_decision(run, session_id="s", current_revision="old", current_graph_revision="graph").reason == (
+        "stale_revision"
+    )
+
+
+@pytest.mark.parametrize(
+    ("outcome", "status", "expected"),
+    [
+        ("execution_evidence_unknown", "succeeded", "execution_provenance_unbound"),
+        ("native_failed", "failed", "execution_failed"),
+    ],
+)
+def test_json_noncompletion_blocks_publication(outcome, status, expected) -> None:
+    from core.dify_builder.verification import is_execution_policy_blocker, publication_decision, result_card
+
+    run = json_run(outcome=outcome, status=status)
+    assert is_execution_policy_blocker(run)
+    run.error = "SECRET-PROVIDER-ERROR"
+    assert publication_decision(run, session_id="s", current_revision="rev", current_graph_revision="graph").reason == (
+        expected
+    )
+    card = result_card(run)
+    assert card.policy_version == "builder-json-parse-v1"
+    assert card.outcome == ("execution_failed" if status == "failed" else "execution_unknown")
+    assert card.failure_reason is not None
+    assert "SECRET-PROVIDER-ERROR" not in card.failure_reason
+    if status == "failed":
+        assert card.terminal_outputs is None

@@ -3,6 +3,7 @@
 from core.dify_builder.contract import TestResultCard
 from core.dify_builder.models import PublicationDecision, Run
 from services.dify_builder.execution_messages import FALLBACK, execution_refusal_message
+from services.dify_builder.json_execution_presentation import json_execution_blocks_repair, json_failed_reason
 
 REVIEW_NOTE = "Other paths and goal acceptance were not verified."
 SUCCESS_REPLY = "Execution succeeded; output needs review."
@@ -18,6 +19,7 @@ def is_execution_policy_blocker(run: Run) -> bool:
     return (
         bool(summary.blocked_node_ids)
         or not summary.sealed
+        or json_execution_blocks_repair(summary, run.status)
         or summary.safety_outcome
         in {"unsupported_safe_execution", "execution_blocked", "execution_evidence_unknown", "simulation_completed"}
     )
@@ -140,6 +142,7 @@ def result_card(run: Run) -> TestResultCard:
     if summary:
         card.execution_mode = summary.mode
         card.safety_outcome = summary.safety_outcome
+        card.policy_version = summary.policy_version
         card.simulated_node_ids = list(summary.simulated_node_ids)
         card.blocked_node_ids = list(summary.blocked_node_ids)
     elif run.execution_refusal:
@@ -147,10 +150,15 @@ def result_card(run: Run) -> TestResultCard:
     else:
         card.safety_outcome = "execution_evidence_unknown"
     if is_execution_policy_blocker(run):
-        card.outcome = "execution_unknown"
+        failed_reason = json_failed_reason(summary, run.status)
+        card.outcome = "execution_failed" if failed_reason else "execution_unknown"
         card.failure_reason = (
-            execution_refusal_message(run.execution_refusal.reason_code) if run.execution_refusal else FALLBACK
+            execution_refusal_message(run.execution_refusal.reason_code)
+            if run.execution_refusal
+            else failed_reason or FALLBACK
         )
+        if failed_reason:
+            card.terminal_outputs = None
         if run.execution_refusal is not None:
             card.terminal_outputs = None
             if not run.dify_run_id:
