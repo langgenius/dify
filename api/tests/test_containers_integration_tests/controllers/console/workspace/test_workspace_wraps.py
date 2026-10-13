@@ -60,6 +60,52 @@ class TestPluginPermissionRequired:
 
             assert handler() == "ok"
 
+    def test_install_without_permission_forbids_non_admin(self, db_session_with_containers: Session):
+        tenant = _create_tenant(db_session_with_containers)
+        user = SimpleNamespace(is_admin_or_owner=False)
+
+        with patch(
+            "controllers.console.workspace.current_account_with_tenant",
+            return_value=(user, tenant.id),
+        ):
+
+            @plugin_permission_required(install_required=True)
+            def handler():
+                return "ok"
+
+            with pytest.raises(Forbidden):
+                handler()
+
+    def test_install_without_permission_allows_admin(self, db_session_with_containers: Session):
+        tenant = _create_tenant(db_session_with_containers)
+        user = SimpleNamespace(is_admin_or_owner=True)
+
+        with patch(
+            "controllers.console.workspace.current_account_with_tenant",
+            return_value=(user, tenant.id),
+        ):
+
+            @plugin_permission_required(install_required=True)
+            def handler():
+                return "ok"
+
+            assert handler() == "ok"
+
+    def test_debug_without_permission_allows_non_admin(self, db_session_with_containers: Session):
+        tenant = _create_tenant(db_session_with_containers)
+        user = SimpleNamespace(is_admin_or_owner=False)
+
+        with patch(
+            "controllers.console.workspace.current_account_with_tenant",
+            return_value=(user, tenant.id),
+        ):
+
+            @plugin_permission_required(debug_required=True)
+            def handler():
+                return "ok"
+
+            assert handler() == "ok"
+
     def test_install_nobody_forbidden(self, db_session_with_containers: Session):
         tenant = _create_tenant(db_session_with_containers)
         _create_permission(

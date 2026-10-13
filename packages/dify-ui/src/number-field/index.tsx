@@ -114,13 +114,12 @@ function NumberFieldControls({ className, ...props }: NumberFieldControlsProps) 
 
 const numberFieldControlButtonVariants = cva(
   [
-    'flex touch-manipulation items-center justify-center text-text-tertiary transition-colors select-none',
+    'flex touch-manipulation items-center justify-center text-text-tertiary select-none',
     'hover:bg-components-input-bg-hover focus-visible:bg-components-input-bg-hover',
     insetFocusRingClassName,
     'disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:focus-visible:bg-transparent',
     'group-data-disabled/number-field:cursor-not-allowed hover:group-data-disabled/number-field:bg-transparent focus-visible:group-data-disabled/number-field:bg-transparent',
     'group-data-readonly/number-field:cursor-default hover:group-data-readonly/number-field:bg-transparent focus-visible:group-data-readonly/number-field:bg-transparent',
-    'motion-reduce:transition-none',
   ],
   {
     variants: {
