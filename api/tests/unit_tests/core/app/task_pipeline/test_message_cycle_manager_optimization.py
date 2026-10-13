@@ -8,20 +8,26 @@ from unittest.mock import Mock, patch
 
 import pytest
 from flask import Flask, current_app
+from redis import Redis
 from sqlalchemy import Engine, event, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.app.app_config.entities import WorkflowUIBasedAppConfig
+from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
 from core.app.entities.queue_entities import QueueAnnotationReplyEvent, QueueRetrieverResourcesEvent
 from core.app.entities.task_entities import MessageStreamResponse, StreamEvent, TaskStateMetadata, WorkflowTaskState
 from core.app.task_pipeline import message_cycle_manager as message_cycle_manager_module
 from core.app.task_pipeline.message_cycle_manager import MessageCycleManager
 from core.rag.entities import RetrievalSourceMetadata
+from enums import DeploymentEdition
+from extensions.ext_application_services import build_application_services
+from extensions.ext_redis import RedisClientWrapper
 from graphon.file import FileTransferMethod, FileType
 from models import model as model_module
 from models.account import Account
 from models.base import TypeBase
 from models.enums import ConversationFromSource, CreatorUserRole, MessageFileBelongsTo
-from models.model import App, Conversation, MessageAnnotation, MessageFile
+from models.model import App, AppMode, Conversation, MessageAnnotation, MessageFile
 from tests.unit_tests.model_factories import make_app, make_conversation
 
 
@@ -81,6 +87,36 @@ def _message_file(
     )
     message_file.id = file_id
     return message_file
+
+
+@pytest.fixture
+def annotation_cycle_manager(sqlite_session_factory: sessionmaker[Session]) -> Iterator[MessageCycleManager]:
+    app = Flask(__name__)
+    redis = RedisClientWrapper()
+    redis.initialize(Redis())
+    app.extensions["application_services"] = build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=redis,
+    )
+    entity = AdvancedChatAppGenerateEntity(
+        task_id="task-id",
+        app_config=WorkflowUIBasedAppConfig(
+            app_id="app-id",
+            tenant_id="tenant-1",
+            app_mode=AppMode.ADVANCED_CHAT,
+            workflow_id="workflow-id",
+        ),
+        inputs={},
+        query="question",
+        files=[],
+        user_id="user-id",
+        stream=False,
+        invoke_from=InvokeFrom.WEB_APP,
+    )
+    with app.app_context():
+        yield MessageCycleManager(application_generate_entity=entity, task_state=WorkflowTaskState())
 
 
 class TestMessageCycleManagerOptimization:
@@ -418,10 +454,13 @@ class TestMessageCycleManagerOptimization:
 
     @pytest.mark.parametrize("author_name", ["Alice", "", None])
     def test_handle_annotation_reply_reads_author_in_one_query(
-        self, message_cycle_manager, sqlite_session: Session, sqlite_engine: Engine, author_name: str | None
-    ):
+        self,
+        annotation_cycle_manager: MessageCycleManager,
+        sqlite_session: Session,
+        sqlite_engine: Engine,
+        author_name: str | None,
+    ) -> None:
         """Read annotation content and author metadata together, including deleted authors."""
-        message_cycle_manager._task_state = WorkflowTaskState()
         annotation = MessageAnnotation(
             app_id="app-id",
             question="question",
@@ -429,6 +468,7 @@ class TestMessageCycleManagerOptimization:
             account_id="acct-1",
         )
         annotation.id = "ann-1"
+        sqlite_session.add(_app())
         sqlite_session.add(annotation)
         if author_name is not None:
             account = Account(name=author_name, email="author@example.com")
@@ -443,8 +483,8 @@ class TestMessageCycleManagerOptimization:
 
         event.listen(sqlite_engine, "before_cursor_execute", capture_sql)
         try:
-            result = message_cycle_manager.handle_annotation_reply(
-                QueueAnnotationReplyEvent(message_annotation_id="ann-1"), sqlite_session
+            result = annotation_cycle_manager.handle_annotation_reply(
+                QueueAnnotationReplyEvent(message_annotation_id="ann-1")
             )
         finally:
             event.remove(sqlite_engine, "before_cursor_execute", capture_sql)
@@ -452,22 +492,23 @@ class TestMessageCycleManagerOptimization:
         assert result is not None
         assert result.id == "ann-1"
         assert result.content == "answer"
-        assert message_cycle_manager._task_state.metadata.annotation_reply.id == "ann-1"
-        assert message_cycle_manager._task_state.metadata.annotation_reply.account.name == (
+        assert annotation_cycle_manager._task_state.metadata.annotation_reply.id == "ann-1"
+        assert annotation_cycle_manager._task_state.metadata.annotation_reply.account.name == (
             author_name if author_name is not None else "Dify user"
         )
         assert len(queries) == 1
         assert "LEFT OUTER JOIN accounts" in queries[0]
 
-    def test_handle_annotation_reply_returns_none_when_missing(self, message_cycle_manager, sqlite_session: Session):
+    def test_handle_annotation_reply_returns_none_when_missing(
+        self, annotation_cycle_manager: MessageCycleManager
+    ) -> None:
         """Return None and keep metadata unchanged when annotation is not found."""
-        message_cycle_manager._task_state = WorkflowTaskState()
-        result = message_cycle_manager.handle_annotation_reply(
-            QueueAnnotationReplyEvent(message_annotation_id="missing"), sqlite_session
+        result = annotation_cycle_manager.handle_annotation_reply(
+            QueueAnnotationReplyEvent(message_annotation_id="missing")
         )
 
         assert result is None
-        assert message_cycle_manager._task_state.metadata.annotation_reply is None
+        assert annotation_cycle_manager._task_state.metadata.annotation_reply is None
 
     def test_handle_retriever_resources_merges_and_deduplicates(self, message_cycle_manager):
         """Merge retriever resources, deduplicate, and preserve ordering positions.

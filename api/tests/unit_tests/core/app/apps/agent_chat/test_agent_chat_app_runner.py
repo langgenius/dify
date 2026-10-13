@@ -154,7 +154,8 @@ class TestAgentChatAppRunnerRun:
         runner.run(generate_entity, queue_manager, conversation, message, write_session)
 
         queue_manager.publish.assert_called_once()
-        assert annotation_query.call_args.kwargs["session"] is write_session
+        assert "session" not in annotation_query.call_args.kwargs
+        assert not write_session.in_transaction()
         runner.direct_output.assert_called_once()
 
     def test_run_hosting_moderation_short_circuits(

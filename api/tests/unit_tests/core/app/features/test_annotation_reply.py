@@ -1,185 +1,153 @@
-import logging
-from types import SimpleNamespace
-from unittest.mock import Mock, patch
+"""Legacy feature bridge exercised through real service wiring and SQLite.
+
+Successful embedding searches need a configured provider/vector backend; the
+failure path below uses actual backend validation instead of mocking a search.
+"""
+
+from collections.abc import Iterator
+from dataclasses import dataclass
+from decimal import Decimal
+from uuid import uuid4
 
 import pytest
+from flask import Flask
+from redis import Redis
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.features.annotation_reply.annotation_reply import AnnotationReplyFeature
+from enums import DeploymentEdition
+from extensions.ext_application_services import build_application_services
+from extensions.ext_redis import RedisClientWrapper
 from models.dataset import DatasetCollectionBinding
 from models.enums import CollectionBindingType, ConversationFromSource
 from models.model import App, AppAnnotationHitHistory, AppAnnotationSetting, Message, MessageAnnotation
+from tests.unit_tests.config_override import config_overrides_context
 from tests.unit_tests.model_factories import make_app, make_message
 
-TABLES = (AppAnnotationSetting, DatasetCollectionBinding, MessageAnnotation, AppAnnotationHitHistory)
+
+@dataclass(frozen=True)
+class _Harness:
+    factory: sessionmaker[Session]
+    app: App
+    message: Message
+    feature: AnnotationReplyFeature
 
 
-def _app() -> App:
-    return make_app(icon_type=None, max_active_requests=0)
+@pytest.fixture
+def harness(sqlite_session_factory: sessionmaker[Session]) -> Iterator[_Harness]:
+    app = make_app(app_id=str(uuid4()), tenant_id=str(uuid4()))
+    message = make_message(
+        message_id=str(uuid4()),
+        app_id=app.id,
+        inputs={},
+        query="User question",
+        message={},
+        answer="",
+        message_unit_price=Decimal(0),
+        answer_unit_price=Decimal(0),
+        currency="USD",
+        from_source=ConversationFromSource.API,
+        from_end_user_id="user-1",
+    )
+    with sqlite_session_factory.begin() as session:
+        session.add_all([app, message])
+    redis = RedisClientWrapper()
+    redis.initialize(Redis())
+    services = build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=redis,
+    )
+    flask_app = Flask(__name__)
+    flask_app.extensions["application_services"] = services
+    with (
+        flask_app.app_context(),
+        config_overrides_context(
+            VECTOR_STORE="annotation-test-uninstalled-vector-backend", VECTOR_STORE_WHITELIST_ENABLE=False
+        ),
+    ):
+        yield _Harness(sqlite_session_factory, app, message, AnnotationReplyFeature())
 
 
-def _message() -> Message:
-    return make_message(message_id="msg-1", app_id=None, conversation_id=None)
+@pytest.mark.parametrize(
+    "invoke_from", [InvokeFrom.SERVICE_API, InvokeFrom.WEB_APP, InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER]
+)
+def test_disabled_reply_falls_through_without_caller_session(harness: _Harness, invoke_from: InvokeFrom) -> None:
+    result = harness.feature.query(
+        app_record=harness.app,
+        message=harness.message,
+        query="hi",
+        user_id="user-1",
+        invoke_from=invoke_from,
+    )
+
+    assert result is None
+    with harness.factory() as session:
+        assert session.scalar(select(AppAnnotationHitHistory)) is None
 
 
-def _persist_binding(session: Session) -> DatasetCollectionBinding:
+def test_backend_failure_falls_through_and_keeps_hit_history_empty(
+    harness: _Harness, caplog: pytest.LogCaptureFixture
+) -> None:
     binding = DatasetCollectionBinding(
-        provider_name="prov",
-        model_name="model",
+        provider_name="annotation-provider",
+        model_name="annotation-embedding",
         type=CollectionBindingType.ANNOTATION,
-        collection_name="annotation-collection",
+        collection_name="annotation_collection",
     )
-    session.add(binding)
-    session.flush()
-    return binding
+    binding.id = str(uuid4())
+    with harness.factory.begin() as session:
+        session.add(binding)
+        session.add(
+            AppAnnotationSetting(
+                app_id=harness.app.id,
+                score_threshold=0.5,
+                collection_binding_id=binding.id,
+                created_user_id="user-1",
+                updated_user_id="user-1",
+            )
+        )
 
-
-def _persist_setting(
-    session: Session,
-    *,
-    app_id: str = "app-1",
-    collection_binding_id: str,
-    score_threshold: float = 0.5,
-) -> AppAnnotationSetting:
-    setting = AppAnnotationSetting(
-        app_id=app_id,
-        score_threshold=score_threshold,
-        collection_binding_id=collection_binding_id,
-        created_user_id="user-1",
-        updated_user_id="user-1",
+    result = harness.feature.query(
+        app_record=harness.app,
+        message=harness.message,
+        query="hi",
+        user_id="user-1",
+        invoke_from=InvokeFrom.SERVICE_API,
     )
-    session.add(setting)
-    session.flush()
-    return setting
+
+    assert result is None
+    assert "Query annotation failed" in caplog.text
+    assert "not supported" in caplog.text
+    with harness.factory() as session:
+        assert session.scalar(select(AppAnnotationHitHistory)) is None
 
 
-def _persist_annotation(session: Session) -> MessageAnnotation:
+def test_reply_read_uses_app_and_tenant_scope_and_returns_detached_content(harness: _Harness) -> None:
     annotation = MessageAnnotation(
-        app_id="app-1",
-        question="question",
-        content="content",
-        account_id="acct-1",
+        app_id=harness.app.id, question="Question", content="Answer", account_id="deleted-author"
     )
-    session.add(annotation)
-    session.flush()
-    return annotation
+    with harness.factory.begin() as session:
+        session.add(annotation)
 
-
-@pytest.mark.parametrize("sqlite_session", [TABLES], indirect=True)
-class TestAnnotationReplyFeature:
-    def test_query_returns_none_when_setting_missing(self, sqlite_session: Session):
-        binding = _persist_binding(sqlite_session)
-        _persist_setting(sqlite_session, app_id="other-app", collection_binding_id=binding.id)
-
-        result = AnnotationReplyFeature().query(
-            app_record=_app(),
-            message=_message(),
-            query="hi",
-            user_id="user-1",
-            invoke_from=InvokeFrom.SERVICE_API,
-            session=sqlite_session,
-        )
-
-        assert result is None
-
-    def test_query_returns_none_when_binding_missing(self, sqlite_session: Session):
-        _persist_setting(sqlite_session, collection_binding_id="missing-binding")
-
-        result = AnnotationReplyFeature().query(
-            app_record=_app(),
-            message=_message(),
-            query="hi",
-            user_id="user-1",
-            invoke_from=InvokeFrom.SERVICE_API,
-            session=sqlite_session,
-        )
-
-        assert result is None
-
-    def test_query_returns_annotation_and_persists_history_for_api(self, sqlite_session: Session):
-        binding = _persist_binding(sqlite_session)
-        _persist_setting(sqlite_session, collection_binding_id=binding.id, score_threshold=0)
-        annotation = _persist_annotation(sqlite_session)
-        document = SimpleNamespace(metadata={"annotation_id": annotation.id, "score": 0.8})
-        vector_instance = Mock()
-        vector_instance.search_by_vector.return_value = [document]
-
-        with patch(
-            "core.app.features.annotation_reply.annotation_reply.Vector", return_value=vector_instance
-        ) as vector_cls:
-            result = AnnotationReplyFeature().query(
-                app_record=_app(),
-                message=_message(),
-                query="hi",
-                user_id="user-1",
-                invoke_from=InvokeFrom.SERVICE_API,
-                session=sqlite_session,
-            )
-
-        assert result is annotation
-        vector_instance.search_by_vector.assert_called_once_with(
-            query="hi", top_k=1, score_threshold=1, filter={"group_id": ["app-1"]}
-        )
-        assert vector_cls.call_args.kwargs["session"] is sqlite_session
-        sqlite_session.refresh(annotation)
-        assert annotation.hit_count == 1
-        history = sqlite_session.scalar(select(AppAnnotationHitHistory))
-        assert history is not None
-        assert history.annotation_id == annotation.id
-        assert history.app_id == "app-1"
-        assert history.message_id == "msg-1"
-        assert history.account_id == "user-1"
-        assert history.source == ConversationFromSource.API
-        assert history.score == 0.8
-
-    def test_query_returns_annotation_and_persists_history_for_console(self, sqlite_session: Session):
-        binding = _persist_binding(sqlite_session)
-        _persist_setting(sqlite_session, collection_binding_id=binding.id)
-        annotation = _persist_annotation(sqlite_session)
-        document = SimpleNamespace(metadata={"annotation_id": annotation.id, "score": 0.6})
-        vector_instance = Mock()
-        vector_instance.search_by_vector.return_value = [document]
-
-        with patch("core.app.features.annotation_reply.annotation_reply.Vector", return_value=vector_instance):
-            result = AnnotationReplyFeature().query(
-                app_record=_app(),
-                message=_message(),
-                query="hi",
-                user_id="user-1",
-                invoke_from=InvokeFrom.EXPLORE,
-                session=sqlite_session,
-            )
-
-        assert result is annotation
-        history = sqlite_session.scalar(select(AppAnnotationHitHistory))
-        assert history is not None
-        assert history.source == ConversationFromSource.CONSOLE
-
-    def test_query_logs_and_returns_none_on_exception(self, sqlite_session: Session, caplog: pytest.LogCaptureFixture):
-        binding = _persist_binding(sqlite_session)
-        _persist_setting(sqlite_session, collection_binding_id=binding.id)
-        vector_instance = Mock()
-        vector_instance.search_by_vector.side_effect = RuntimeError("boom")
-
-        with (
-            patch(
-                "core.app.features.annotation_reply.annotation_reply.Vector",
-                return_value=vector_instance,
-            ),
-            caplog.at_level(logging.WARNING),
-        ):
-            result = AnnotationReplyFeature().query(
-                app_record=_app(),
-                message=_message(),
-                query="hi",
-                user_id="user-1",
-                invoke_from=InvokeFrom.SERVICE_API,
-                session=sqlite_session,
-            )
-
-        assert result is None
-        assert "Query annotation failed" in caplog.text
-        assert sqlite_session.scalar(select(AppAnnotationHitHistory)) is None
-        assert sqlite_session.is_active
+    reply = harness.feature.get_reply(
+        tenant_id=harness.app.tenant_id, app_id=harness.app.id, annotation_id=annotation.id
+    )
+    assert reply is not None
+    assert (reply.id, reply.content, reply.account_id, reply.account_name) == (
+        annotation.id,
+        "Answer",
+        "deleted-author",
+        None,
+    )
+    assert (
+        harness.feature.get_reply(tenant_id="different-tenant", app_id=harness.app.id, annotation_id=annotation.id)
+        is None
+    )
+    assert (
+        harness.feature.get_reply(tenant_id=harness.app.tenant_id, app_id="different-app", annotation_id=annotation.id)
+        is None
+    )

@@ -4,12 +4,13 @@ from collections.abc import Sequence
 from typing import override
 from uuid import NAMESPACE_URL, uuid4, uuid5
 
-from sqlalchemy import delete, exists, func, or_, select
+from sqlalchemy import delete, exists, func, or_, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from libs.datetime_utils import naive_utc_now
 from libs.helper import escape_like_pattern
 from libs.pagination import paginate_query
+from models.account import Account
 from models.dataset import Dataset, DatasetCollectionBinding
 from models.enums import AppStatus, CollectionBindingType
 from models.model import App, AppAnnotationHitHistory, AppAnnotationSetting, Message, MessageAnnotation
@@ -41,10 +42,14 @@ from services.annotation_query import (
 from services.annotation_reply_service import (
     AnnotationIndexBinding,
     AnnotationIndexEntry,
+    AnnotationMatchCandidate,
+    AnnotationMatchPlan,
     AnnotationReplyChangedError,
     AnnotationReplyDisablePlan,
     AnnotationReplyEnablePlan,
+    AnnotationReplyRecord,
     AnnotationReplyRevision,
+    AnnotationReplySource,
     AnnotationReplyStore,
 )
 from services.errors.message import MessageNotExistsError
@@ -58,6 +63,131 @@ class AnnotationRepository(AnnotationQuery, AnnotationWriteStore, AnnotationRepl
     def require_app(self, *, tenant_id: str, app_id: str) -> None:
         with self._session_factory() as session:
             self._require_app(session, tenant_id=tenant_id, app_id=app_id)
+
+    @override
+    def prepare_match(self, *, tenant_id: str, app_id: str) -> AnnotationMatchPlan | None:
+        with self._session_factory() as session:
+            setting = session.scalar(
+                select(AppAnnotationSetting)
+                .join(App, App.id == AppAnnotationSetting.app_id)
+                .where(App.id == app_id, App.tenant_id == tenant_id, App.status == AppStatus.NORMAL)
+                .limit(1)
+            )
+            if setting is None:
+                return None
+            binding = self._annotation_binding(session, binding_id=setting.collection_binding_id)
+            if binding is None:
+                return None
+            return AnnotationMatchPlan(
+                tenant_id=tenant_id,
+                app_id=app_id,
+                revision=self._reply_revision(setting),
+                binding=self._index_binding(binding),
+                score_threshold=setting.score_threshold,
+            )
+
+    @override
+    def record_match(
+        self,
+        *,
+        plan: AnnotationMatchPlan,
+        candidate: AnnotationMatchCandidate,
+        message_id: str,
+        user_id: str,
+        query: str,
+        source: AnnotationReplySource,
+    ) -> AnnotationReplyRecord | None:
+        with self._session_factory.begin() as session:
+            app_id = session.scalar(
+                select(App.id)
+                .where(App.id == plan.app_id, App.tenant_id == plan.tenant_id, App.status == AppStatus.NORMAL)
+                .with_for_update(read=True)
+            )
+            if app_id is None:
+                return None
+            setting = session.scalar(
+                select(AppAnnotationSetting)
+                .where(AppAnnotationSetting.app_id == app_id)
+                .limit(1)
+                .with_for_update(read=True)
+            )
+            if (
+                setting is None
+                or self._reply_revision(setting) != plan.revision
+                or setting.score_threshold != plan.score_threshold
+            ):
+                return None
+            binding = session.scalar(
+                select(DatasetCollectionBinding)
+                .where(
+                    DatasetCollectionBinding.id == setting.collection_binding_id,
+                    DatasetCollectionBinding.type == CollectionBindingType.ANNOTATION,
+                )
+                .with_for_update(read=True)
+            )
+            if binding is None or self._index_binding(binding) != plan.binding:
+                return None
+            owned_message_id = session.scalar(
+                select(Message.id).where(Message.id == message_id, Message.app_id == app_id).with_for_update(read=True)
+            )
+            if owned_message_id is None:
+                return None
+            annotation = session.scalar(
+                select(MessageAnnotation)
+                .where(MessageAnnotation.id == candidate.annotation_id, MessageAnnotation.app_id == app_id)
+                .with_for_update()
+            )
+            if annotation is None:
+                return None
+            account_name = session.scalar(select(Account.name).where(Account.id == annotation.account_id))
+            session.execute(
+                update(MessageAnnotation)
+                .where(MessageAnnotation.id == annotation.id, MessageAnnotation.app_id == app_id)
+                .values(hit_count=MessageAnnotation.hit_count + 1)
+            )
+            session.add(
+                AppAnnotationHitHistory(
+                    app_id=app_id,
+                    annotation_id=annotation.id,
+                    source=source,
+                    question=query,
+                    account_id=user_id,
+                    score=candidate.score,
+                    message_id=owned_message_id,
+                    annotation_question=annotation.question_text,
+                    annotation_content=annotation.content,
+                )
+            )
+            return AnnotationReplyRecord(
+                id=annotation.id,
+                content=annotation.content,
+                account_id=annotation.account_id,
+                account_name=account_name,
+            )
+
+    @override
+    def get_reply(self, *, tenant_id: str, app_id: str, annotation_id: str) -> AnnotationReplyRecord | None:
+        with self._session_factory() as session:
+            row = session.execute(
+                select(MessageAnnotation, Account.name)
+                .join(App, App.id == MessageAnnotation.app_id)
+                .outerjoin(Account, Account.id == MessageAnnotation.account_id)
+                .where(
+                    MessageAnnotation.id == annotation_id,
+                    App.id == app_id,
+                    App.tenant_id == tenant_id,
+                    App.status == AppStatus.NORMAL,
+                )
+            ).one_or_none()
+            if row is None:
+                return None
+            annotation, account_name = row
+            return AnnotationReplyRecord(
+                id=annotation.id,
+                content=annotation.content,
+                account_id=annotation.account_id,
+                account_name=account_name,
+            )
 
     @override
     def count(self, *, tenant_id: str, app_id: str) -> int:

@@ -555,16 +555,11 @@ class TestAppRunner:
 
         assert result == (True, {}, "")
 
-    @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
-    def test_query_app_annotations_to_reply(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-        sqlite_session: Session,
-    ):
+    def test_query_app_annotations_to_reply(self, monkeypatch: pytest.MonkeyPatch) -> None:
         runner = AppRunner()
         monkeypatch.setattr(
             "core.app.apps.base_app_runner.AnnotationReplyFeature.query",
-            lambda self, app_record, message, query, user_id, invoke_from, session: "reply",
+            lambda self, app_record, message, query, user_id, invoke_from: "reply",
         )
 
         response = runner.query_app_annotations_to_reply(
@@ -573,7 +568,6 @@ class TestAppRunner:
             query="hello",
             user_id="user",
             invoke_from=InvokeFrom.WEB_APP,
-            session=sqlite_session,
         )
 
         assert response == "reply"

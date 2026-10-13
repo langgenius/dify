@@ -336,10 +336,9 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                     self._message_cycle_manager.handle_retriever_resources(event)
                 case QueueAnnotationReplyEvent():
                     annotation_content = None
-                    with session_factory.create_session() as session:
-                        annotation = self._message_cycle_manager.handle_annotation_reply(event, session)
-                        if annotation:
-                            annotation_content = annotation.content
+                    annotation = self._message_cycle_manager.handle_annotation_reply(event)
+                    if annotation:
+                        annotation_content = annotation.content
                     if annotation_content:
                         self._task_state.llm_result.message.content = annotation_content
                 case QueueAgentThoughtEvent():

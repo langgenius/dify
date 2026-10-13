@@ -16,7 +16,7 @@ from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.models.document import Document
 from models.dataset import Dataset
 from services.annotation_command_service import AnnotationSettingNotFoundError
-from services.annotation_reply_service import AnnotationIndexBinding, AnnotationIndexEntry
+from services.annotation_reply_service import AnnotationIndexBinding, AnnotationIndexEntry, AnnotationMatchCandidate
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +24,21 @@ logger = logging.getLogger(__name__)
 class AnnotationVectorIndex:
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
+
+    def search(
+        self, *, tenant_id: str, app_id: str, binding: AnnotationIndexBinding, query: str, score_threshold: float
+    ) -> AnnotationMatchCandidate | None:
+        documents = self._vector(tenant_id=tenant_id, app_id=app_id, binding=binding).search_by_vector(
+            query=query, top_k=1, score_threshold=score_threshold, filter={"group_id": [app_id]}
+        )
+        if not documents or not documents[0].metadata:
+            return None
+        metadata = documents[0].metadata
+        annotation_id = metadata.get("annotation_id")
+        score = metadata.get("score")
+        if not isinstance(annotation_id, str) or not isinstance(score, (int, float)):
+            return None
+        return AnnotationMatchCandidate(annotation_id=annotation_id, score=float(score))
 
     def add(
         self, *, tenant_id: str, app_id: str, binding: AnnotationIndexBinding, entries: tuple[AnnotationIndexEntry, ...]

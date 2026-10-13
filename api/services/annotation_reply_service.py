@@ -1,4 +1,4 @@
-"""Manage annotation reply job admission, execution and status."""
+"""Manage annotation reply settings, index jobs and runtime matching."""
 
 import logging
 from dataclasses import dataclass
@@ -10,6 +10,7 @@ from services.annotation_query import AnnotationAppQuery
 logger = logging.getLogger(__name__)
 
 type AnnotationReplyAction = Literal["enable", "disable"]
+type AnnotationReplySource = Literal["api", "console"]
 
 
 class AnnotationReplyJobNotFoundError(Exception):
@@ -50,6 +51,30 @@ class AnnotationIndexEntry:
 
 
 @dataclass(frozen=True, slots=True)
+class AnnotationReplyRecord:
+    id: str
+    content: str
+    account_id: str
+    # None means the author was deleted; an empty name remains an empty string.
+    account_name: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class AnnotationMatchPlan:
+    tenant_id: str
+    app_id: str
+    revision: AnnotationReplyRevision
+    binding: AnnotationIndexBinding
+    score_threshold: float
+
+
+@dataclass(frozen=True, slots=True)
+class AnnotationMatchCandidate:
+    annotation_id: str
+    score: float
+
+
+@dataclass(frozen=True, slots=True)
 class AnnotationReplyEnablePlan:
     tenant_id: str
     app_id: str
@@ -73,6 +98,27 @@ class AnnotationReplyDisablePlan:
 
 
 class AnnotationReplyStore(AnnotationAppQuery, Protocol):
+    def prepare_match(self, *, tenant_id: str, app_id: str) -> AnnotationMatchPlan | None:
+        """Return detached enabled settings, or None when matching is unavailable."""
+        ...
+
+    def record_match(
+        self,
+        *,
+        plan: AnnotationMatchPlan,
+        candidate: AnnotationMatchCandidate,
+        message_id: str,
+        user_id: str,
+        query: str,
+        source: AnnotationReplySource,
+    ) -> AnnotationReplyRecord | None:
+        """Commit an owned hit, or return None if the match/configuration became stale."""
+        ...
+
+    def get_reply(self, *, tenant_id: str, app_id: str, annotation_id: str) -> AnnotationReplyRecord | None:
+        """Read an owned reply and its author, or None when it no longer exists."""
+        ...
+
     def prepare_enable_reply(
         self, *, tenant_id: str, app_id: str, provider_name: str, model_name: str
     ) -> AnnotationReplyEnablePlan:
@@ -95,6 +141,12 @@ class AnnotationReplyStore(AnnotationAppQuery, Protocol):
 
 
 class AnnotationReplyIndex(Protocol):
+    def search(
+        self, *, tenant_id: str, app_id: str, binding: AnnotationIndexBinding, query: str, score_threshold: float
+    ) -> AnnotationMatchCandidate | None:
+        """Return the nearest candidate, or None if the index has no match."""
+        ...
+
     def rebuild(
         self, *, tenant_id: str, app_id: str, binding: AnnotationIndexBinding, entries: tuple[AnnotationIndexEntry, ...]
     ) -> None: ...
@@ -157,6 +209,45 @@ class AnnotationReplyService:
         self._jobs = jobs
         self._enable_task = enable_task
         self._disable_task = disable_task
+
+    def match(
+        self,
+        *,
+        tenant_id: str,
+        app_id: str,
+        message_id: str,
+        user_id: str,
+        query: str,
+        source: AnnotationReplySource,
+    ) -> AnnotationReplyRecord | None:
+        """Match outside SQL transactions, then commit a revalidated hit before replying.
+
+        Matching remains best effort: unavailable configuration, stale results or
+        search/persistence failures fall through to normal generation.
+        """
+        try:
+            plan = self._annotations.prepare_match(tenant_id=tenant_id, app_id=app_id)
+            if plan is None:
+                return None
+            candidate = self._index.search(
+                tenant_id=tenant_id,
+                app_id=app_id,
+                binding=plan.binding,
+                query=query,
+                # Preserve the runtime's historical zero-threshold fallback.
+                score_threshold=plan.score_threshold or 1,
+            )
+            if candidate is None:
+                return None
+            return self._annotations.record_match(
+                plan=plan, candidate=candidate, message_id=message_id, user_id=user_id, query=query, source=source
+            )
+        except Exception:
+            logger.warning("Query annotation failed for app %s in tenant %s", app_id, tenant_id, exc_info=True)
+            return None
+
+    def get_reply(self, *, tenant_id: str, app_id: str, annotation_id: str) -> AnnotationReplyRecord | None:
+        return self._annotations.get_reply(tenant_id=tenant_id, app_id=app_id, annotation_id=annotation_id)
 
     def request_enable(
         self,

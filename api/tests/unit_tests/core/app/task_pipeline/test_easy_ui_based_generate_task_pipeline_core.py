@@ -666,7 +666,7 @@ class TestEasyUiBasedGenerateTaskPipeline:
         _set_method(
             pipeline._message_cycle_manager,
             "handle_annotation_reply",
-            lambda event, session: _AnnotationReply(content="annotated"),
+            lambda event: _AnnotationReply(content="annotated"),
         )
         _set_method(pipeline, "_agent_thought_to_stream_response", _agent_thought_response)
         _set_method(pipeline._message_cycle_manager, "message_file_to_stream_response", _file_response)
