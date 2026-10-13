@@ -14,7 +14,7 @@ import {
   WEB_APP_SHARE_CODE_HEADER_NAME,
 } from '@/config'
 import { shouldSuppressAppDeletionErrorToast } from './app-deletion'
-import { httpErrorFromResponse } from './http-error'
+import { httpErrorFromResponse, isHttpErrorStatus } from './http-error'
 import { clearRequestErrorToasts, notifyRequestError } from './request-error-toast'
 import { getWebAppPublicApiPath, resolveWebAppAddress } from './webapp-address'
 import { getWebAppAccessToken, getWebAppPassport } from './webapp-auth'
@@ -47,7 +47,7 @@ const afterResponse204: AfterResponseHook = async ({ response }) => {
 
 const afterResponseErrorCode = (otherOptions: IOtherOptions): AfterResponseHook => {
   return async ({ request, response }) => {
-    if (!response.ok) {
+    if (isHttpErrorStatus(response.status)) {
       const error = await httpErrorFromResponse(response)
       const errorData = error.data
       const shouldNotifyError =
@@ -89,6 +89,7 @@ const baseHooks: Hooks = {
 
 const baseClient = ky.create({
   hooks: baseHooks,
+  throwHttpErrors: isHttpErrorStatus,
   timeout: TIME_OUT,
 })
 

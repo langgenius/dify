@@ -45,7 +45,7 @@ import { isClient } from '@/utils/client'
 import { resolveLoginRedirectTarget } from '@/utils/login-redirect'
 import { basePath } from '@/utils/var'
 import { base, ContentType, getBaseOptions } from './fetch'
-import { createHttpError } from './http-error'
+import { httpErrorFromXhr, isHttpErrorStatus, isTransientHttpError } from './http-error'
 import { refreshAccessTokenOrReLogin } from './refresh-token'
 import { getWebAppPublicApiPath, resolveWebAppAddress } from './webapp-address'
 import {
@@ -628,7 +628,7 @@ export const upload = async (
     xhr.responseType = 'json'
     xhr.onreadystatechange = function () {
       if (xhr.readyState === 4 && xhr.status !== 0) {
-        if (xhr.status >= 200 && xhr.status < 300) resolve(xhr.response)
+        if (!isHttpErrorStatus(xhr.status)) resolve(xhr.response)
         else {
           if (
             isPublicAPI &&
@@ -637,21 +637,7 @@ export const upload = async (
             xhr.response !== null
           )
             handleWebAppAuthorizationError(xhr.response)
-          const headers = new Headers()
-          for (const line of xhr
-            .getAllResponseHeaders()
-            .trim()
-            .split(/[\r\n]+/)) {
-            const separator = line.indexOf(':')
-            if (separator > 0)
-              headers.append(line.slice(0, separator), line.slice(separator + 1).trim())
-          }
-          reject(
-            createHttpError(
-              { status: xhr.status, statusText: xhr.statusText, headers },
-              xhr.response,
-            ),
-          )
+          reject(httpErrorFromXhr(xhr))
         }
       }
     }
@@ -1144,6 +1130,8 @@ export const request = async <T>(url: string, options = {}, otherOptions?: IOthe
       // refresh token
       const [refreshErr] = await asyncRunSafe(refreshAccessTokenOrReLogin(TIME_OUT))
       if (refreshErr === null) return baseFetch<T>(url, options, otherOptionsForBaseFetch)
+      // A refresh outage does not prove the session ended; keep the user signed in.
+      if (isTransientHttpError(refreshErr)) return Promise.reject(err)
       // /device is the device-flow chooser; logged-out is a valid state
       // there. Redirecting to /signin loses the user_code context and
       // the post-login flow lands on /apps instead of returning here.
