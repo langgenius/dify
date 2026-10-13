@@ -8,21 +8,6 @@ export type DatasourceProviderAuthListResponse = {
   result: Array<DatasourceProviderAuthResponse>
 }
 
-export type AccountNotInitializedError = ErrorResponse & {
-  code: 'account_not_initialized'
-  status: 400
-}
-
-export type NotInitValidatedError = ErrorResponse & {
-  code: 'not_init_validated'
-  status: 401
-}
-
-export type NotSetupError = ErrorResponse & {
-  code: 'not_setup'
-  status: 401
-}
-
 export type ErrorResponse = {
   code: string
   details?: {
@@ -168,8 +153,6 @@ export type GetAuthPluginDatasourceDefaultListData = {
 }
 
 export type GetAuthPluginDatasourceDefaultListErrors = {
-  400: AccountNotInitializedError
-  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -191,8 +174,6 @@ export type GetAuthPluginDatasourceListData = {
 }
 
 export type GetAuthPluginDatasourceListErrors = {
-  400: AccountNotInitializedError
-  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -216,8 +197,6 @@ export type GetAuthPluginDatasourceByProviderIdData = {
 }
 
 export type GetAuthPluginDatasourceByProviderIdErrors = {
-  400: AccountNotInitializedError
-  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -241,8 +220,6 @@ export type PostAuthPluginDatasourceByProviderIdData = {
 }
 
 export type PostAuthPluginDatasourceByProviderIdErrors = {
-  400: AccountNotInitializedError
-  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -266,8 +243,6 @@ export type DeleteAuthPluginDatasourceByProviderIdCustomClientData = {
 }
 
 export type DeleteAuthPluginDatasourceByProviderIdCustomClientErrors = {
-  400: AccountNotInitializedError
-  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -291,8 +266,6 @@ export type PostAuthPluginDatasourceByProviderIdCustomClientData = {
 }
 
 export type PostAuthPluginDatasourceByProviderIdCustomClientErrors = {
-  400: AccountNotInitializedError
-  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -316,8 +289,6 @@ export type PostAuthPluginDatasourceByProviderIdDefaultData = {
 }
 
 export type PostAuthPluginDatasourceByProviderIdDefaultErrors = {
-  400: AccountNotInitializedError
-  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -341,8 +312,6 @@ export type PostAuthPluginDatasourceByProviderIdDeleteData = {
 }
 
 export type PostAuthPluginDatasourceByProviderIdDeleteErrors = {
-  400: AccountNotInitializedError
-  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -366,8 +335,6 @@ export type PostAuthPluginDatasourceByProviderIdUpdateData = {
 }
 
 export type PostAuthPluginDatasourceByProviderIdUpdateErrors = {
-  400: AccountNotInitializedError
-  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -391,8 +358,6 @@ export type PostAuthPluginDatasourceByProviderIdUpdateNameData = {
 }
 
 export type PostAuthPluginDatasourceByProviderIdUpdateNameErrors = {
-  400: AccountNotInitializedError
-  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 

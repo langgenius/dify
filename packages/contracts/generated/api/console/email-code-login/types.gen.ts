@@ -80,16 +80,6 @@ export type AuthenticationFailedError = ErrorResponse & {
   status: 401
 }
 
-export type NotInitValidatedError = ErrorResponse & {
-  code: 'not_init_validated'
-  status: 401
-}
-
-export type NotSetupError = ErrorResponse & {
-  code: 'not_setup'
-  status: 401
-}
-
 export type EmailCodeLoginLimitError = ErrorResponse & {
   code: 'email_code_login_limit'
   status: 429
@@ -164,7 +154,7 @@ export type PostEmailCodeLoginErrors = {
     | NormalizedEmailAlreadyInUseError
     | NotAllowedCreateWorkspaceError
     | TurnstileVerificationFailedError
-  401: AuthenticationFailedError | NotInitValidatedError | NotSetupError
+  401: AuthenticationFailedError
   429:
     | EmailCodeLoginLimitError
     | EmailCodeLoginRateLimitExceededError
@@ -204,7 +194,7 @@ export type PostEmailCodeLoginValidityErrors = {
     | NormalizedEmailAlreadyInUseError
     | NotAllowedCreateWorkspaceError
     | TurnstileVerificationFailedError
-  401: AuthenticationFailedError | NotInitValidatedError | NotSetupError
+  401: AuthenticationFailedError
   429:
     | EmailCodeLoginLimitError
     | EmailCodeLoginRateLimitExceededError

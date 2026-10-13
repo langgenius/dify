@@ -6,21 +6,6 @@ export type ClientOptions = {
 
 export type ApiBasedExtensionListResponse = Array<ApiBasedExtensionResponse>
 
-export type AccountNotInitializedError = ErrorResponse & {
-  code: 'account_not_initialized'
-  status: 400
-}
-
-export type NotInitValidatedError = ErrorResponse & {
-  code: 'not_init_validated'
-  status: 401
-}
-
-export type NotSetupError = ErrorResponse & {
-  code: 'not_setup'
-  status: 401
-}
-
 export type ErrorResponse = {
   code: string
   details?: {
@@ -53,8 +38,6 @@ export type GetApiBasedExtensionData = {
 }
 
 export type GetApiBasedExtensionErrors = {
-  400: AccountNotInitializedError
-  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -75,8 +58,6 @@ export type PostApiBasedExtensionData = {
 }
 
 export type PostApiBasedExtensionErrors = {
-  400: AccountNotInitializedError
-  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -100,8 +81,6 @@ export type DeleteApiBasedExtensionByIdData = {
 }
 
 export type DeleteApiBasedExtensionByIdErrors = {
-  400: AccountNotInitializedError
-  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -125,8 +104,6 @@ export type GetApiBasedExtensionByIdData = {
 }
 
 export type GetApiBasedExtensionByIdErrors = {
-  400: AccountNotInitializedError
-  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -150,8 +127,6 @@ export type PostApiBasedExtensionByIdData = {
 }
 
 export type PostApiBasedExtensionByIdErrors = {
-  400: AccountNotInitializedError
-  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 

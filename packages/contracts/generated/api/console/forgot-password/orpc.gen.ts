@@ -9,8 +9,6 @@ import {
   zEmailSendIpLimitError,
   zInvalidEmailError,
   zInvalidOrExpiredTokenError,
-  zNotInitValidatedError,
-  zNotSetupError,
   zPasswordMismatchError,
   zPasswordResetRateLimitExceededError,
 } from './zod.gen.ts'
@@ -40,8 +38,6 @@ export const post = oc
   .errors({
     account_not_found: { status: 400, data: zAccountNotFoundError },
     invalid_or_expired_token: { status: 400, data: zInvalidOrExpiredTokenError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
     password_mismatch: { status: 400, data: zPasswordMismatchError },
   })
 
@@ -68,8 +64,6 @@ export const post2 = oc
     email_password_reset_limit: { status: 429, data: zEmailPasswordResetLimitError },
     invalid_email: { status: 400, data: zInvalidEmailError },
     invalid_or_expired_token: { status: 400, data: zInvalidOrExpiredTokenError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const validity = {
@@ -92,8 +86,6 @@ export const post3 = oc
   .output(zPostForgotPasswordResponse)
   .errors({
     email_send_ip_limit: { status: 429, data: zEmailSendIpLimitError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
     password_reset_rate_limit_exceeded: { status: 429, data: zPasswordResetRateLimitExceededError },
   })
 

@@ -12,21 +12,6 @@ export type ResourceAccessTokenListResponse = {
   total: number
 }
 
-export type AccountNotInitializedError = ErrorResponse & {
-  code: 'account_not_initialized'
-  status: 400
-}
-
-export type NotInitValidatedError = ErrorResponse & {
-  code: 'not_init_validated'
-  status: 401
-}
-
-export type NotSetupError = ErrorResponse & {
-  code: 'not_setup'
-  status: 401
-}
-
 export type ErrorResponse = {
   code: string
   details?: {
@@ -85,8 +70,6 @@ export type GetResourceAccessTokensData = {
 }
 
 export type GetResourceAccessTokensErrors = {
-  400: AccountNotInitializedError
-  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -108,8 +91,6 @@ export type PostResourceAccessTokensData = {
 }
 
 export type PostResourceAccessTokensErrors = {
-  400: AccountNotInitializedError
-  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -133,8 +114,6 @@ export type PatchResourceAccessTokensByTokenIdData = {
 }
 
 export type PatchResourceAccessTokensByTokenIdErrors = {
-  400: AccountNotInitializedError
-  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -159,8 +138,6 @@ export type DeleteResourceAccessTokensByTokenIdRelationsByRelationIdData = {
 }
 
 export type DeleteResourceAccessTokensByTokenIdRelationsByRelationIdErrors = {
-  400: AccountNotInitializedError
-  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 

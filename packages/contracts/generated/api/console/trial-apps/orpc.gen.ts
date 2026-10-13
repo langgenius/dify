@@ -3,7 +3,6 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
-  zAccountNotInitializedError,
   zAgentVersionNotFoundError,
   zAppNotFoundError,
   zAppOwnerUnavailableError,
@@ -23,8 +22,6 @@ import {
   zNotChatAppError,
   zNotCompletionAppError,
   zNotFoundError,
-  zNotInitValidatedError,
-  zNotSetupError,
   zNotWorkflowAppError,
   zProviderNotInitializeError,
   zProviderNotSupportSpeechToTextError,
@@ -392,7 +389,6 @@ export const post = oc
   .input(z.object({ params: zPostTrialAppsByAppIdAudioToTextPath }))
   .output(zPostTrialAppsByAppIdAudioToTextResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
     app_unavailable: { status: 400, data: zAppUnavailableError },
     audio_too_large: { status: 413, data: zAudioTooLargeError },
@@ -400,8 +396,6 @@ export const post = oc
     internal_server_error: { status: 500, data: zInternalServerError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     no_audio_uploaded: { status: 400, data: zNoAudioUploadedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
     provider_not_support_speech_to_text: {
       status: 400,
@@ -430,10 +424,7 @@ export const post2 = oc
   .input(z.object({ params: zPostTrialAppsByAppIdChatMessagesByTaskIdStopPath }))
   .output(zPostTrialAppsByAppIdChatMessagesByTaskIdStopResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     not_chat_app: { status: 400, data: zNotChatAppError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
     trial_app_feature_disabled: { status: 403, data: zTrialAppFeatureDisabledError },
     trial_app_limit_exceeded: { status: 403, data: zTrialAppLimitExceededError },
     trial_app_not_allowed: { status: 403, data: zTrialAppNotAllowedError },
@@ -463,15 +454,12 @@ export const post3 = oc
   )
   .output(zPostTrialAppsByAppIdChatMessagesResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     app_unavailable: { status: 400, data: zAppUnavailableError },
     completion_request_error: { status: 400, data: zCompletionRequestError },
     internal_server_error: { status: 500, data: zInternalServerError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     not_chat_app: { status: 400, data: zNotChatAppError },
     not_found: { status: 404, data: zNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
     provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
     rate_limit_error: { status: 429, data: zRateLimitError },
@@ -502,15 +490,12 @@ export const post4 = oc
   )
   .output(zPostTrialAppsByAppIdCompletionMessagesResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     app_unavailable: { status: 400, data: zAppUnavailableError },
     completion_request_error: { status: 400, data: zCompletionRequestError },
     internal_server_error: { status: 500, data: zInternalServerError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     not_completion_app: { status: 400, data: zNotCompletionAppError },
     not_found: { status: 404, data: zNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
     provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
     rate_limit_error: { status: 429, data: zRateLimitError },
@@ -587,13 +572,10 @@ export const post5 = oc
   )
   .output(zPostTrialAppsByAppIdFilesUploadResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     file_extension_blocked: { status: 400, data: zFileExtensionBlockedError },
     file_too_large: { status: 413, data: zFileTooLargeError },
     filename_not_exists_error: { status: 400, data: zFilenameNotExistsError },
     no_file_uploaded: { status: 400, data: zNoFileUploadedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
     too_many_files: { status: 400, data: zTooManyFilesError },
     trial_app_feature_disabled: { status: 403, data: zTrialAppFeatureDisabledError },
     trial_app_limit_exceeded: { status: 403, data: zTrialAppLimitExceededError },
@@ -620,7 +602,6 @@ export const get13 = oc
   .input(z.object({ params: zGetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsPath }))
   .output(zGetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     app_suggested_questions_after_answer_disabled: {
       status: 403,
       data: zAppSuggestedQuestionsAfterAnswerDisabledError,
@@ -631,8 +612,6 @@ export const get13 = oc
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     not_chat_app: { status: 400, data: zNotChatAppError },
     not_found: { status: 404, data: zNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
     provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
     trial_app_feature_disabled: { status: 403, data: zTrialAppFeatureDisabledError },
@@ -697,11 +676,8 @@ export const post6 = oc
   )
   .output(zPostTrialAppsByAppIdRemoteFilesUploadResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     file_extension_blocked: { status: 400, data: zFileExtensionBlockedError },
     file_too_large: { status: 413, data: zFileTooLargeError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
     remote_file_access_denied: { status: 400, data: zRemoteFileAccessDeniedError },
     remote_file_invalid_response: { status: 502, data: zRemoteFileInvalidResponseError },
     remote_file_invalid_url: { status: 400, data: zRemoteFileInvalidUrlError },
@@ -766,7 +742,6 @@ export const post7 = oc
   )
   .output(zPostTrialAppsByAppIdTextToAudioResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
     app_unavailable: { status: 400, data: zAppUnavailableError },
     audio_too_large: { status: 413, data: zAudioTooLargeError },
@@ -774,8 +749,6 @@ export const post7 = oc
     internal_server_error: { status: 500, data: zInternalServerError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     no_audio_uploaded: { status: 400, data: zNoAudioUploadedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
     provider_not_support_speech_to_text: {
       status: 400,
@@ -813,13 +786,10 @@ export const post8 = oc
   )
   .output(zPostTrialAppsByAppIdWorkflowsRunResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     app_unavailable: { status: 400, data: zAppUnavailableError },
     completion_request_error: { status: 400, data: zCompletionRequestError },
     internal_server_error: { status: 500, data: zInternalServerError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
     not_workflow_app: { status: 400, data: zNotWorkflowAppError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
     provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
@@ -849,9 +819,6 @@ export const post9 = oc
   .input(z.object({ params: zPostTrialAppsByAppIdWorkflowsTasksByTaskIdStopPath }))
   .output(zPostTrialAppsByAppIdWorkflowsTasksByTaskIdStopResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
     not_workflow_app: { status: 400, data: zNotWorkflowAppError },
     trial_app_feature_disabled: { status: 403, data: zTrialAppFeatureDisabledError },
     trial_app_limit_exceeded: { status: 403, data: zTrialAppLimitExceededError },
@@ -910,12 +877,9 @@ export const get17 = oc
   .input(z.object({ params: zGetTrialAppsByAppIdPath }))
   .output(zGetTrialAppsByAppIdResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     app_not_found: { status: 404, data: zAppNotFoundError },
     app_site_unavailable: { status: 403, data: zAppSiteUnavailableError },
     app_unavailable: { status: 400, data: zAppUnavailableError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
     unauthorized: { status: 401, data: zUnauthorizedError },
   })
 

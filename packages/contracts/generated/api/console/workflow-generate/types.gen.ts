@@ -27,11 +27,6 @@ export type WorkflowGenerateRejectedResponse = {
   errors: Array<WorkflowGenerateErrorResponse>
 }
 
-export type AccountNotInitializedError = ErrorResponse & {
-  code: 'account_not_initialized'
-  status: 400
-}
-
 export type CompletionRequestError = ErrorResponse & {
   code: 'completion_request_error'
   status: 400
@@ -50,16 +45,6 @@ export type ProviderNotInitializeError = ErrorResponse & {
 export type ProviderQuotaExceededError = ErrorResponse & {
   code: 'provider_quota_exceeded'
   status: 400
-}
-
-export type NotInitValidatedError = ErrorResponse & {
-  code: 'not_init_validated'
-  status: 401
-}
-
-export type NotSetupError = ErrorResponse & {
-  code: 'not_setup'
-  status: 401
 }
 
 export type ErrorResponse = {
@@ -199,12 +184,10 @@ export type PostWorkflowGenerateData = {
 export type PostWorkflowGenerateErrors = {
   400:
     | WorkflowGenerateRejectedResponse
-    | AccountNotInitializedError
     | CompletionRequestError
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -225,8 +208,7 @@ export type PostWorkflowGenerateStreamData = {
 }
 
 export type PostWorkflowGenerateStreamErrors = {
-  400: WorkflowGenerateRejectedResponse | AccountNotInitializedError
-  401: NotInitValidatedError | NotSetupError
+  400: WorkflowGenerateRejectedResponse | ErrorResponse
   default: ErrorResponse
 }
 
@@ -248,8 +230,7 @@ export type PostWorkflowGenerateSuggestionsData = {
 }
 
 export type PostWorkflowGenerateSuggestionsErrors = {
-  400: AccountNotInitializedError
-  401: NotInitValidatedError | NotSetupError
+  400: ErrorResponse
   default: ErrorResponse
 }
 

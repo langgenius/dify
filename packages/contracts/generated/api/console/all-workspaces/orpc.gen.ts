@@ -2,7 +2,6 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-import { zNotInitValidatedError, zNotSetupError } from './zod.gen.ts'
 import { zGetAllWorkspacesQuery, zGetAllWorkspacesResponse } from './zod.gen.ts'
 
 export const get = oc
@@ -15,10 +14,6 @@ export const get = oc
   })
   .input(z.object({ query: zGetAllWorkspacesQuery.optional() }))
   .output(zGetAllWorkspacesResponse)
-  .errors({
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
 
 export const allWorkspaces = {
   get,

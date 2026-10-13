@@ -31,24 +31,9 @@ export type TrialAppDetailResponse = {
   workflow?: TrialWorkflowPartialResponse | null
 }
 
-export type AccountNotInitializedError = ErrorResponse & {
-  code: 'account_not_initialized'
-  status: 400
-}
-
 export type AppUnavailableError = ErrorResponse & {
   code: 'app_unavailable'
   status: 400
-}
-
-export type NotInitValidatedError = ErrorResponse & {
-  code: 'not_init_validated'
-  status: 401
-}
-
-export type NotSetupError = ErrorResponse & {
-  code: 'not_setup'
-  status: 401
 }
 
 export type UnauthorizedError = ErrorResponse & {
@@ -1513,8 +1498,8 @@ export type GetTrialAppsByAppIdData = {
 }
 
 export type GetTrialAppsByAppIdErrors = {
-  400: AccountNotInitializedError | AppUnavailableError
-  401: NotInitValidatedError | NotSetupError | UnauthorizedError
+  400: AppUnavailableError
+  401: UnauthorizedError
   403: AppSiteUnavailableError
   404: AppNotFoundError
   default: ErrorResponse
@@ -1818,7 +1803,6 @@ export type PostTrialAppsByAppIdAudioToTextData = {
 
 export type PostTrialAppsByAppIdAudioToTextErrors = {
   400:
-    | AccountNotInitializedError
     | AppUnavailableError
     | CompletionRequestError
     | ModelCurrentlyNotSupportError
@@ -1827,7 +1811,6 @@ export type PostTrialAppsByAppIdAudioToTextErrors = {
     | ProviderNotSupportSpeechToTextError
     | ProviderQuotaExceededError
     | SpeechToTextDisabledError
-  401: NotInitValidatedError | NotSetupError
   403: TrialAppFeatureDisabledError | TrialAppLimitExceededError | TrialAppNotAllowedError
   404: AgentVersionNotFoundError
   413: AudioTooLargeError
@@ -1857,14 +1840,13 @@ export type PostTrialAppsByAppIdChatMessagesData = {
 
 export type PostTrialAppsByAppIdChatMessagesErrors = {
   400:
-    | AccountNotInitializedError
     | AppUnavailableError
     | CompletionRequestError
     | ModelCurrentlyNotSupportError
     | NotChatAppError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  401: NotInitValidatedError | NotSetupError | UnauthorizedError
+  401: UnauthorizedError
   403: TrialAppFeatureDisabledError | TrialAppLimitExceededError | TrialAppNotAllowedError
   404: NotFoundError
   429: RateLimitError
@@ -1895,8 +1877,7 @@ export type PostTrialAppsByAppIdChatMessagesByTaskIdStopData = {
 }
 
 export type PostTrialAppsByAppIdChatMessagesByTaskIdStopErrors = {
-  400: AccountNotInitializedError | NotChatAppError
-  401: NotInitValidatedError | NotSetupError
+  400: NotChatAppError
   403: TrialAppFeatureDisabledError | TrialAppLimitExceededError | TrialAppNotAllowedError
   default: ErrorResponse
 }
@@ -1922,14 +1903,13 @@ export type PostTrialAppsByAppIdCompletionMessagesData = {
 
 export type PostTrialAppsByAppIdCompletionMessagesErrors = {
   400:
-    | AccountNotInitializedError
     | AppUnavailableError
     | CompletionRequestError
     | ModelCurrentlyNotSupportError
     | NotCompletionAppError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  401: NotInitValidatedError | NotSetupError | UnauthorizedError
+  401: UnauthorizedError
   403: TrialAppFeatureDisabledError | TrialAppLimitExceededError | TrialAppNotAllowedError
   404: NotFoundError
   429: RateLimitError
@@ -2018,13 +1998,7 @@ export type PostTrialAppsByAppIdFilesUploadData = {
 }
 
 export type PostTrialAppsByAppIdFilesUploadErrors = {
-  400:
-    | AccountNotInitializedError
-    | FileExtensionBlockedError
-    | FilenameNotExistsError
-    | NoFileUploadedError
-    | TooManyFilesError
-  401: NotInitValidatedError | NotSetupError
+  400: FileExtensionBlockedError | FilenameNotExistsError | NoFileUploadedError | TooManyFilesError
   403: TrialAppFeatureDisabledError | TrialAppLimitExceededError | TrialAppNotAllowedError
   413: FileTooLargeError
   415: UnsupportedFileTypeError
@@ -2053,14 +2027,13 @@ export type GetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsData = {
 
 export type GetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsErrors = {
   400:
-    | AccountNotInitializedError
     | AppUnavailableError
     | CompletionRequestError
     | ModelCurrentlyNotSupportError
     | NotChatAppError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  401: NotInitValidatedError | NotSetupError | UnauthorizedError
+  401: UnauthorizedError
   403:
     | AppSuggestedQuestionsAfterAnswerDisabledError
     | TrialAppFeatureDisabledError
@@ -2117,12 +2090,10 @@ export type PostTrialAppsByAppIdRemoteFilesUploadData = {
 
 export type PostTrialAppsByAppIdRemoteFilesUploadErrors = {
   400:
-    | AccountNotInitializedError
     | FileExtensionBlockedError
     | RemoteFileAccessDeniedError
     | RemoteFileInvalidUrlError
     | RemoteFileUrlBlockedError
-  401: NotInitValidatedError | NotSetupError
   403: TrialAppFeatureDisabledError | TrialAppLimitExceededError | TrialAppNotAllowedError
   404: RemoteFileNotFoundError
   413: FileTooLargeError
@@ -2177,7 +2148,6 @@ export type PostTrialAppsByAppIdTextToAudioData = {
 
 export type PostTrialAppsByAppIdTextToAudioErrors = {
   400:
-    | AccountNotInitializedError
     | AppUnavailableError
     | CompletionRequestError
     | ModelCurrentlyNotSupportError
@@ -2186,7 +2156,6 @@ export type PostTrialAppsByAppIdTextToAudioErrors = {
     | ProviderNotSupportSpeechToTextError
     | ProviderQuotaExceededError
     | SpeechToTextDisabledError
-  401: NotInitValidatedError | NotSetupError
   403: TrialAppFeatureDisabledError | TrialAppLimitExceededError | TrialAppNotAllowedError
   404: AgentVersionNotFoundError
   413: AudioTooLargeError
@@ -2241,14 +2210,13 @@ export type PostTrialAppsByAppIdWorkflowsRunData = {
 
 export type PostTrialAppsByAppIdWorkflowsRunErrors = {
   400:
-    | AccountNotInitializedError
     | AppUnavailableError
     | CompletionRequestError
     | ModelCurrentlyNotSupportError
     | NotWorkflowAppError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  401: NotInitValidatedError | NotSetupError | UnauthorizedError
+  401: UnauthorizedError
   403: TrialAppFeatureDisabledError | TrialAppLimitExceededError | TrialAppNotAllowedError
   429: RateLimitError
   500: InternalServerError
@@ -2278,8 +2246,7 @@ export type PostTrialAppsByAppIdWorkflowsTasksByTaskIdStopData = {
 }
 
 export type PostTrialAppsByAppIdWorkflowsTasksByTaskIdStopErrors = {
-  400: AccountNotInitializedError | NotWorkflowAppError
-  401: NotInitValidatedError | NotSetupError
+  400: NotWorkflowAppError
   403: TrialAppFeatureDisabledError | TrialAppLimitExceededError | TrialAppNotAllowedError
   default: ErrorResponse
 }

@@ -3,17 +3,12 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
-  zAccountNotInitializedError,
   zDatasetNameDuplicateError,
   zDraftWorkflowNotExistError,
   zDraftWorkflowNotSyncError,
-  zInvalidParamError,
   zNotFoundError,
-  zNotInitValidatedError,
-  zNotSetupError,
   zPipelineNotFoundError,
   zRateLimitError,
-  zUnauthorizedAndForceLogoutError,
 } from './zod.gen.ts'
 import {
   zDeleteRagPipelineCustomizedTemplatesByTemplateIdPath,
@@ -157,12 +152,6 @@ export const delete_ = oc
   })
   .input(z.object({ params: zDeleteRagPipelineCustomizedTemplatesByTemplateIdPath }))
   .output(zDeleteRagPipelineCustomizedTemplatesByTemplateIdResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-    unauthorized_and_force_logout: { status: 401, data: zUnauthorizedAndForceLogoutError },
-  })
 
 export const patch = oc
   .route({
@@ -180,12 +169,6 @@ export const patch = oc
     }),
   )
   .output(zPatchRagPipelineCustomizedTemplatesByTemplateIdResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-    unauthorized_and_force_logout: { status: 401, data: zUnauthorizedAndForceLogoutError },
-  })
 
 export const post = oc
   .route({
@@ -197,12 +180,6 @@ export const post = oc
   })
   .input(z.object({ params: zPostRagPipelineCustomizedTemplatesByTemplateIdPath }))
   .output(zPostRagPipelineCustomizedTemplatesByTemplateIdResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-    unauthorized_and_force_logout: { status: 401, data: zUnauthorizedAndForceLogoutError },
-  })
 
 export const byTemplateId = {
   delete: delete_,
@@ -229,12 +206,7 @@ export const post2 = oc
   })
   .input(z.object({ body: zPostRagPipelineDatasetBody }))
   .output(zPostRagPipelineDatasetResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    dataset_name_duplicate: { status: 409, data: zDatasetNameDuplicateError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ dataset_name_duplicate: { status: 409, data: zDatasetNameDuplicateError } })
 
 export const dataset = {
   post: post2,
@@ -250,11 +222,6 @@ export const post3 = oc
     tags: ['console'],
   })
   .output(zPostRagPipelineEmptyDatasetResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
 
 export const emptyDataset = {
   post: post3,
@@ -275,12 +242,6 @@ export const get = oc
     }),
   )
   .output(zGetRagPipelineTemplatesByTemplateIdResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-    unauthorized_and_force_logout: { status: 401, data: zUnauthorizedAndForceLogoutError },
-  })
 
 export const byTemplateId2 = {
   get,
@@ -296,12 +257,6 @@ export const get2 = oc
   })
   .input(z.object({ query: zGetRagPipelineTemplatesQuery.optional() }))
   .output(zGetRagPipelineTemplatesResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-    unauthorized_and_force_logout: { status: 401, data: zUnauthorizedAndForceLogoutError },
-  })
 
 export const templates2 = {
   get: get2,
@@ -324,11 +279,6 @@ export const get3 = oc
     tags: ['console'],
   })
   .output(zGetRagPipelinesDatasourcePluginsResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
 
 export const datasourcePlugins = {
   get: get3,
@@ -344,11 +294,6 @@ export const post4 = oc
   })
   .input(z.object({ params: zPostRagPipelinesImportsByImportIdConfirmPath }))
   .output(zPostRagPipelinesImportsByImportIdConfirmResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
 
 export const confirm = {
   post: post4,
@@ -368,12 +313,7 @@ export const get4 = oc
   })
   .input(z.object({ params: zGetRagPipelinesImportsByPipelineIdCheckDependenciesPath }))
   .output(zGetRagPipelinesImportsByPipelineIdCheckDependenciesResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-    pipeline_not_found: { status: 404, data: zPipelineNotFoundError },
-  })
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const checkDependencies = {
   get: get4,
@@ -393,11 +333,6 @@ export const post5 = oc
   })
   .input(z.object({ body: zPostRagPipelinesImportsBody }))
   .output(zPostRagPipelinesImportsResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
 
 export const imports = {
   post: post5,
@@ -415,11 +350,6 @@ export const get5 = oc
   })
   .input(z.object({ query: zGetRagPipelinesRecommendedPluginsQuery.optional() }))
   .output(zGetRagPipelinesRecommendedPluginsResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
 
 export const recommendedPlugins = {
   get: get5,
@@ -435,11 +365,6 @@ export const post6 = oc
   })
   .input(z.object({ params: zPostRagPipelinesTransformDatasetsByDatasetIdPath }))
   .output(zPostRagPipelinesTransformDatasetsByDatasetIdResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
 
 export const byDatasetId = {
   post: post6,
@@ -469,13 +394,7 @@ export const post7 = oc
     }),
   )
   .output(zPostRagPipelinesByPipelineIdCustomizedPublishResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-    pipeline_not_found: { status: 404, data: zPipelineNotFoundError },
-    unauthorized_and_force_logout: { status: 401, data: zUnauthorizedAndForceLogoutError },
-  })
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const publish = {
   post: post7,
@@ -500,12 +419,7 @@ export const get6 = oc
     }),
   )
   .output(zGetRagPipelinesByPipelineIdExportsResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-    pipeline_not_found: { status: 404, data: zPipelineNotFoundError },
-  })
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const exports_ = {
   get: get6,
@@ -525,12 +439,7 @@ export const post8 = oc
   })
   .input(z.object({ params: zPostRagPipelinesByPipelineIdWorkflowRunsTasksByTaskIdStopPath }))
   .output(zPostRagPipelinesByPipelineIdWorkflowRunsTasksByTaskIdStopResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-    pipeline_not_found: { status: 404, data: zPipelineNotFoundError },
-  })
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const stop = {
   post: post8,
@@ -558,12 +467,7 @@ export const get7 = oc
   })
   .input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowRunsByRunIdNodeExecutionsPath }))
   .output(zGetRagPipelinesByPipelineIdWorkflowRunsByRunIdNodeExecutionsResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-    pipeline_not_found: { status: 404, data: zPipelineNotFoundError },
-  })
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const nodeExecutions = {
   get: get7,
@@ -583,12 +487,7 @@ export const get8 = oc
   })
   .input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowRunsByRunIdPath }))
   .output(zGetRagPipelinesByPipelineIdWorkflowRunsByRunIdResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-    pipeline_not_found: { status: 404, data: zPipelineNotFoundError },
-  })
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const byRunId = {
   get: get8,
@@ -614,12 +513,7 @@ export const get9 = oc
     }),
   )
   .output(zGetRagPipelinesByPipelineIdWorkflowRunsResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-    pipeline_not_found: { status: 404, data: zPipelineNotFoundError },
-  })
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const workflowRuns = {
   get: get9,
@@ -647,12 +541,7 @@ export const get10 = oc
     }),
   )
   .output(zGetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-    pipeline_not_found: { status: 404, data: zPipelineNotFoundError },
-  })
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const byBlockType = {
   get: get10,
@@ -672,12 +561,7 @@ export const get11 = oc
   })
   .input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsPath }))
   .output(zGetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-    pipeline_not_found: { status: 404, data: zPipelineNotFoundError },
-  })
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const defaultWorkflowBlockConfigs = {
   get: get11,
@@ -703,12 +587,7 @@ export const post9 = oc
     }),
   )
   .output(zPostRagPipelinesByPipelineIdWorkflowsDraftDatasourceNodesByNodeIdRunResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-    pipeline_not_found: { status: 404, data: zPipelineNotFoundError },
-  })
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const run = {
   post: post9,
@@ -741,12 +620,7 @@ export const post10 = oc
     }),
   )
   .output(zPostRagPipelinesByPipelineIdWorkflowsDraftDatasourceVariablesInspectResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-    pipeline_not_found: { status: 404, data: zPipelineNotFoundError },
-  })
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const variablesInspect = {
   post: post10,
@@ -772,10 +646,7 @@ export const get12 = oc
   .input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowsDraftEnvironmentVariablesPath }))
   .output(zGetRagPipelinesByPipelineIdWorkflowsDraftEnvironmentVariablesResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     draft_workflow_not_exist: { status: 404, data: zDraftWorkflowNotExistError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
     pipeline_not_found: { status: 404, data: zPipelineNotFoundError },
   })
 
@@ -802,12 +673,7 @@ export const post11 = oc
     }),
   )
   .output(zPostRagPipelinesByPipelineIdWorkflowsDraftIterationNodesByNodeIdRunResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-    pipeline_not_found: { status: 404, data: zPipelineNotFoundError },
-  })
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const run2 = {
   post: post11,
@@ -844,12 +710,7 @@ export const post12 = oc
     }),
   )
   .output(zPostRagPipelinesByPipelineIdWorkflowsDraftLoopNodesByNodeIdRunResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-    pipeline_not_found: { status: 404, data: zPipelineNotFoundError },
-  })
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const run3 = {
   post: post12,
@@ -877,12 +738,7 @@ export const get13 = oc
   })
   .input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdLastRunPath }))
   .output(zGetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdLastRunResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-    pipeline_not_found: { status: 404, data: zPipelineNotFoundError },
-  })
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const lastRun = {
   get: get13,
@@ -907,12 +763,7 @@ export const post13 = oc
     }),
   )
   .output(zPostRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdRunResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-    pipeline_not_found: { status: 404, data: zPipelineNotFoundError },
-  })
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const run4 = {
   post: post13,
@@ -931,13 +782,7 @@ export const delete2 = oc
     z.object({ params: zDeleteRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesPath }),
   )
   .output(zDeleteRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    invalid_param: { status: 400, data: zInvalidParamError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-    pipeline_not_found: { status: 404, data: zPipelineNotFoundError },
-  })
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const get14 = oc
   .route({
@@ -949,13 +794,7 @@ export const get14 = oc
   })
   .input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesPath }))
   .output(zGetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    invalid_param: { status: 400, data: zInvalidParamError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-    pipeline_not_found: { status: 404, data: zPipelineNotFoundError },
-  })
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const variables = {
   delete: delete2,
@@ -991,12 +830,7 @@ export const get15 = oc
     }),
   )
   .output(zGetRagPipelinesByPipelineIdWorkflowsDraftPreProcessingParametersResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-    pipeline_not_found: { status: 404, data: zPipelineNotFoundError },
-  })
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const parameters = {
   get: get15,
@@ -1025,12 +859,7 @@ export const get16 = oc
     }),
   )
   .output(zGetRagPipelinesByPipelineIdWorkflowsDraftProcessingParametersResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-    pipeline_not_found: { status: 404, data: zPipelineNotFoundError },
-  })
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const parameters2 = {
   get: get16,
@@ -1060,9 +889,6 @@ export const post14 = oc
   )
   .output(zPostRagPipelinesByPipelineIdWorkflowsDraftRunResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
     pipeline_not_found: { status: 404, data: zPipelineNotFoundError },
     rate_limit_error: { status: 429, data: zRateLimitError },
   })
@@ -1081,12 +907,7 @@ export const get17 = oc
   })
   .input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowsDraftSystemVariablesPath }))
   .output(zGetRagPipelinesByPipelineIdWorkflowsDraftSystemVariablesResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-    pipeline_not_found: { status: 404, data: zPipelineNotFoundError },
-  })
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const systemVariables = {
   get: get17,
@@ -1105,10 +926,7 @@ export const put = oc
   )
   .output(zPutRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResetResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     not_found: { status: 404, data: zNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
     pipeline_not_found: { status: 404, data: zPipelineNotFoundError },
   })
 
@@ -1130,10 +948,7 @@ export const delete3 = oc
   )
   .output(zDeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     not_found: { status: 404, data: zNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
     pipeline_not_found: { status: 404, data: zPipelineNotFoundError },
   })
 
@@ -1148,10 +963,7 @@ export const get18 = oc
   .input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdPath }))
   .output(zGetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     not_found: { status: 404, data: zNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
     pipeline_not_found: { status: 404, data: zPipelineNotFoundError },
   })
 
@@ -1171,11 +983,7 @@ export const patch2 = oc
   )
   .output(zPatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    invalid_param: { status: 400, data: zInvalidParamError },
     not_found: { status: 404, data: zNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
     pipeline_not_found: { status: 404, data: zPipelineNotFoundError },
   })
 
@@ -1197,12 +1005,7 @@ export const delete4 = oc
   })
   .input(z.object({ params: zDeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesPath }))
   .output(zDeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-    pipeline_not_found: { status: 404, data: zPipelineNotFoundError },
-  })
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 /**
  * Get draft workflow
@@ -1224,10 +1027,7 @@ export const get19 = oc
   )
   .output(zGetRagPipelinesByPipelineIdWorkflowsDraftVariablesResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     draft_workflow_not_exist: { status: 404, data: zDraftWorkflowNotExistError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
     pipeline_not_found: { status: 404, data: zPipelineNotFoundError },
   })
 
@@ -1252,10 +1052,7 @@ export const get20 = oc
   .input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowsDraftPath }))
   .output(zGetRagPipelinesByPipelineIdWorkflowsDraftResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     draft_workflow_not_exist: { status: 404, data: zDraftWorkflowNotExistError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
     pipeline_not_found: { status: 404, data: zPipelineNotFoundError },
   })
 
@@ -1279,11 +1076,7 @@ export const post15 = oc
   )
   .output(zPostRagPipelinesByPipelineIdWorkflowsDraftResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     draft_workflow_not_sync: { status: 409, data: zDraftWorkflowNotSyncError },
-    invalid_param: { status: 400, data: zInvalidParamError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
     pipeline_not_found: { status: 404, data: zPipelineNotFoundError },
   })
 
@@ -1316,12 +1109,7 @@ export const get21 = oc
   })
   .input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowsPublishPath }))
   .output(zGetRagPipelinesByPipelineIdWorkflowsPublishResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-    pipeline_not_found: { status: 404, data: zPipelineNotFoundError },
-  })
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 /**
  * Publish workflow
@@ -1337,12 +1125,7 @@ export const post16 = oc
   })
   .input(z.object({ params: zPostRagPipelinesByPipelineIdWorkflowsPublishPath }))
   .output(zPostRagPipelinesByPipelineIdWorkflowsPublishResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-    pipeline_not_found: { status: 404, data: zPipelineNotFoundError },
-  })
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const publish2 = {
   get: get21,
@@ -1368,12 +1151,7 @@ export const post17 = oc
     }),
   )
   .output(zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-    pipeline_not_found: { status: 404, data: zPipelineNotFoundError },
-  })
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const preview = {
   post: post17,
@@ -1398,12 +1176,7 @@ export const post18 = oc
     }),
   )
   .output(zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdRunResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-    pipeline_not_found: { status: 404, data: zPipelineNotFoundError },
-  })
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const run6 = {
   post: post18,
@@ -1441,12 +1214,7 @@ export const get22 = oc
     }),
   )
   .output(zGetRagPipelinesByPipelineIdWorkflowsPublishedPreProcessingParametersResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-    pipeline_not_found: { status: 404, data: zPipelineNotFoundError },
-  })
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const parameters3 = {
   get: get22,
@@ -1475,12 +1243,7 @@ export const get23 = oc
     }),
   )
   .output(zGetRagPipelinesByPipelineIdWorkflowsPublishedProcessingParametersResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-    pipeline_not_found: { status: 404, data: zPipelineNotFoundError },
-  })
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const parameters4 = {
   get: get23,
@@ -1510,9 +1273,6 @@ export const post19 = oc
   )
   .output(zPostRagPipelinesByPipelineIdWorkflowsPublishedRunResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
     pipeline_not_found: { status: 404, data: zPipelineNotFoundError },
     rate_limit_error: { status: 429, data: zRateLimitError },
   })
@@ -1538,12 +1298,7 @@ export const post20 = oc
   })
   .input(z.object({ params: zPostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestorePath }))
   .output(zPostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestoreResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-    pipeline_not_found: { status: 404, data: zPipelineNotFoundError },
-  })
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const restore = {
   post: post20,
@@ -1564,12 +1319,7 @@ export const delete5 = oc
   })
   .input(z.object({ params: zDeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdPath }))
   .output(zDeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-    pipeline_not_found: { status: 404, data: zPipelineNotFoundError },
-  })
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 /**
  * Update workflow attributes
@@ -1590,13 +1340,7 @@ export const patch3 = oc
     }),
   )
   .output(zPatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    invalid_param: { status: 400, data: zInvalidParamError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-    pipeline_not_found: { status: 404, data: zPipelineNotFoundError },
-  })
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const byWorkflowId = {
   delete: delete5,
@@ -1623,12 +1367,7 @@ export const get24 = oc
     }),
   )
   .output(zGetRagPipelinesByPipelineIdWorkflowsResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-    pipeline_not_found: { status: 404, data: zPipelineNotFoundError },
-  })
+  .errors({ pipeline_not_found: { status: 404, data: zPipelineNotFoundError } })
 
 export const workflows = {
   get: get24,

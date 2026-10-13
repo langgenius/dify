@@ -2,14 +2,7 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-import {
-  zAccountNotInitializedError,
-  zDatasetAccessDeniedError,
-  zInvalidParamError,
-  zNotFoundError,
-  zNotInitValidatedError,
-  zNotSetupError,
-} from './zod.gen.ts'
+import { zDatasetAccessDeniedError, zNotFoundError } from './zod.gen.ts'
 import {
   zGetNotionPagesByPageIdByPageTypePreviewPath,
   zGetNotionPagesByPageIdByPageTypePreviewQuery,
@@ -33,13 +26,7 @@ export const get = oc
     }),
   )
   .output(zGetNotionPagesByPageIdByPageTypePreviewResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    invalid_param: { status: 400, data: zInvalidParamError },
-    not_found: { status: 404, data: zNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ not_found: { status: 404, data: zNotFoundError } })
 
 export const preview = {
   get,
@@ -68,12 +55,8 @@ export const get2 = oc
   .input(z.object({ query: zGetNotionPreImportPagesQuery }))
   .output(zGetNotionPreImportPagesResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     dataset_access_denied: { status: 403, data: zDatasetAccessDeniedError },
-    invalid_param: { status: 400, data: zInvalidParamError },
     not_found: { status: 404, data: zNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const pages2 = {

@@ -14,8 +14,6 @@ import {
   zInvalidOrExpiredTokenError,
   zLimitExceededError,
   zNormalizedEmailAlreadyInUseError,
-  zNotInitValidatedError,
-  zNotSetupError,
   zPasswordMismatchError,
 } from './zod.gen.ts'
 import {
@@ -42,8 +40,6 @@ export const post = oc
     email_domain_suspended: { status: 400, data: zEmailDomainSuspendedError },
     email_register_rate_limit_exceeded: { status: 429, data: zEmailRegisterRateLimitExceededError },
     email_send_ip_limit: { status: 429, data: zEmailSendIpLimitError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const sendEmail = {
@@ -65,8 +61,6 @@ export const post2 = oc
     email_register_limit: { status: 429, data: zEmailRegisterLimitError },
     invalid_email: { status: 400, data: zInvalidEmailError },
     invalid_or_expired_token: { status: 400, data: zInvalidOrExpiredTokenError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const validity = {
@@ -90,8 +84,6 @@ export const post3 = oc
     invalid_or_expired_token: { status: 400, data: zInvalidOrExpiredTokenError },
     limit_exceeded: { status: 400, data: zLimitExceededError },
     normalized_email_already_in_use: { status: 400, data: zNormalizedEmailAlreadyInUseError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
     password_mismatch: { status: 400, data: zPasswordMismatchError },
   })
 

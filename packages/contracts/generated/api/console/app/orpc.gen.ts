@@ -2,7 +2,6 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-import { zAccountNotInitializedError, zNotInitValidatedError, zNotSetupError } from './zod.gen.ts'
 import { zGetAppPromptTemplatesQuery, zGetAppPromptTemplatesResponse } from './zod.gen.ts'
 
 /**
@@ -19,11 +18,6 @@ export const get = oc
   })
   .input(z.object({ query: zGetAppPromptTemplatesQuery }))
   .output(zGetAppPromptTemplatesResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
 
 export const promptTemplates = {
   get,

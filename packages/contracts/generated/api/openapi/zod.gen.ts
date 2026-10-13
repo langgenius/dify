@@ -312,18 +312,6 @@ export const zErrorBody = z.object({
 })
 
 /**
- * AccountNotInitializedError
- *
- * The account has not been initialized yet. Please proceed with the initialization process first.
- */
-export const zAccountNotInitializedError = zErrorBody.and(
-  z.object({
-    code: z.literal('account_not_initialized'),
-    status: z.literal(400),
-  }),
-)
-
-/**
  * EventStreamResponse
  */
 export const zEventStreamResponse = z.string()
@@ -534,30 +522,6 @@ export const zMemberListResponse = z.object({
 export const zMemberRoleUpdatePayload = z.object({
   role: z.enum(['admin', 'normal']),
 })
-
-/**
- * NotInitValidatedError
- *
- * Init validation has not been completed yet. Please proceed with the init validation process first.
- */
-export const zNotInitValidatedError = zErrorBody.and(
-  z.object({
-    code: z.literal('not_init_validated'),
-    status: z.literal(401),
-  }),
-)
-
-/**
- * NotSetupError
- *
- * Dify has not been initialized and installed yet. Please proceed with the initialization and installation process first.
- */
-export const zNotSetupError = zErrorBody.and(
-  z.object({
-    code: z.literal('not_setup'),
-    status: z.literal(401),
-  }),
-)
 
 /**
  * OpenApiErrorCode

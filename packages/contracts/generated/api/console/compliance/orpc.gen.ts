@@ -3,12 +3,9 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
-  zAccountNotInitializedError,
   zBillingOperationFailedError,
   zBillingUnavailableError,
   zComplianceRateLimitError,
-  zNotInitValidatedError,
-  zNotSetupError,
 } from './zod.gen.ts'
 import { zGetComplianceDownloadQuery, zGetComplianceDownloadResponse } from './zod.gen.ts'
 
@@ -27,12 +24,9 @@ export const get = oc
   .input(z.object({ query: zGetComplianceDownloadQuery }))
   .output(zGetComplianceDownloadResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     billing_operation_failed: { status: 502, data: zBillingOperationFailedError },
     billing_unavailable: { status: 503, data: zBillingUnavailableError },
     compliance_rate_limit: { status: 429, data: zComplianceRateLimitError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const download = {

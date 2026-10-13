@@ -10,24 +10,9 @@ export type InstalledAppListResponse = {
   next_cursor: string | null
 }
 
-export type AccountNotInitializedError = ErrorResponse & {
-  code: 'account_not_initialized'
-  status: 400
-}
-
 export type InvalidCursorError = ErrorResponse & {
   code: 'invalid_cursor'
   status: 400
-}
-
-export type NotInitValidatedError = ErrorResponse & {
-  code: 'not_init_validated'
-  status: 401
-}
-
-export type NotSetupError = ErrorResponse & {
-  code: 'not_setup'
-  status: 401
 }
 
 export type WebAppAccessUnavailableError = ErrorResponse & {
@@ -1015,8 +1000,7 @@ export type GetInstalledAppsData = {
 }
 
 export type GetInstalledAppsErrors = {
-  400: AccountNotInitializedError | InvalidCursorError
-  401: NotInitValidatedError | NotSetupError
+  400: InvalidCursorError
   503: WebAppAccessUnavailableError
   default: ErrorResponse
 }
@@ -1039,8 +1023,6 @@ export type GetInstalledAppsByInstalledAppIdData = {
 }
 
 export type GetInstalledAppsByInstalledAppIdErrors = {
-  400: AccountNotInitializedError
-  401: NotInitValidatedError | NotSetupError
   403: AccessDeniedError
   404: InstalledAppNotFoundError | InstalledAppUnavailableError
   503: WebAppAccessUnavailableError
@@ -1067,8 +1049,6 @@ export type PatchInstalledAppsByInstalledAppIdData = {
 }
 
 export type PatchInstalledAppsByInstalledAppIdErrors = {
-  400: AccountNotInitializedError
-  401: NotInitValidatedError | NotSetupError
   403: AccessDeniedError
   404: InstalledAppNotFoundError
   503: WebAppAccessUnavailableError
@@ -1096,7 +1076,6 @@ export type PostInstalledAppsByInstalledAppIdAudioToTextData = {
 
 export type PostInstalledAppsByInstalledAppIdAudioToTextErrors = {
   400:
-    | AccountNotInitializedError
     | AppUnavailableError
     | CompletionRequestError
     | ModelCurrentlyNotSupportError
@@ -1106,7 +1085,6 @@ export type PostInstalledAppsByInstalledAppIdAudioToTextErrors = {
     | ProviderNotSupportTextToSpeechError
     | ProviderQuotaExceededError
     | SpeechToTextDisabledError
-  401: NotInitValidatedError | NotSetupError
   403: AccessDeniedError
   404: AgentVersionNotFoundError | InstalledAppNotFoundError
   413: AudioTooLargeError
@@ -1137,14 +1115,13 @@ export type PostInstalledAppsByInstalledAppIdChatMessagesData = {
 
 export type PostInstalledAppsByInstalledAppIdChatMessagesErrors = {
   400:
-    | AccountNotInitializedError
     | AppUnavailableError
     | CompletionRequestError
     | ModelCurrentlyNotSupportError
     | NotChatAppError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  401: NotInitValidatedError | NotSetupError | UnauthorizedError
+  401: UnauthorizedError
   403: AccessDeniedError
   404: InstalledAppNotFoundError | NotFoundError
   429: RateLimitError
@@ -1176,8 +1153,7 @@ export type PostInstalledAppsByInstalledAppIdChatMessagesByTaskIdStopData = {
 }
 
 export type PostInstalledAppsByInstalledAppIdChatMessagesByTaskIdStopErrors = {
-  400: AccountNotInitializedError | NotChatAppError
-  401: NotInitValidatedError | NotSetupError
+  400: NotChatAppError
   403: AccessDeniedError
   404: InstalledAppNotFoundError
   503: WebAppAccessUnavailableError
@@ -1205,14 +1181,13 @@ export type PostInstalledAppsByInstalledAppIdCompletionMessagesData = {
 
 export type PostInstalledAppsByInstalledAppIdCompletionMessagesErrors = {
   400:
-    | AccountNotInitializedError
     | AppUnavailableError
     | CompletionRequestError
     | ModelCurrentlyNotSupportError
     | NotCompletionAppError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  401: NotInitValidatedError | NotSetupError | UnauthorizedError
+  401: UnauthorizedError
   403: AccessDeniedError
   404: InstalledAppNotFoundError | NotFoundError
   500: InternalServerError
@@ -1243,8 +1218,7 @@ export type PostInstalledAppsByInstalledAppIdCompletionMessagesByTaskIdStopData 
 }
 
 export type PostInstalledAppsByInstalledAppIdCompletionMessagesByTaskIdStopErrors = {
-  400: AccountNotInitializedError | NotCompletionAppError
-  401: NotInitValidatedError | NotSetupError
+  400: NotCompletionAppError
   403: AccessDeniedError
   404: InstalledAppNotFoundError
   503: WebAppAccessUnavailableError
@@ -1275,8 +1249,7 @@ export type GetInstalledAppsByInstalledAppIdConversationsData = {
 }
 
 export type GetInstalledAppsByInstalledAppIdConversationsErrors = {
-  400: AccountNotInitializedError | ConversationNameRequiredError | NotChatAppError
-  401: NotInitValidatedError | NotSetupError
+  400: ConversationNameRequiredError | NotChatAppError
   403: AccessDeniedError
   404:
     | ConversationCursorNotFoundError
@@ -1308,8 +1281,7 @@ export type DeleteInstalledAppsByInstalledAppIdConversationsByCIdData = {
 }
 
 export type DeleteInstalledAppsByInstalledAppIdConversationsByCIdErrors = {
-  400: AccountNotInitializedError | ConversationNameRequiredError | NotChatAppError
-  401: NotInitValidatedError | NotSetupError
+  400: ConversationNameRequiredError | NotChatAppError
   403: AccessDeniedError
   404:
     | ConversationCursorNotFoundError
@@ -1341,8 +1313,7 @@ export type PostInstalledAppsByInstalledAppIdConversationsByCIdNameData = {
 }
 
 export type PostInstalledAppsByInstalledAppIdConversationsByCIdNameErrors = {
-  400: AccountNotInitializedError | ConversationNameRequiredError | NotChatAppError
-  401: NotInitValidatedError | NotSetupError
+  400: ConversationNameRequiredError | NotChatAppError
   403: AccessDeniedError
   404:
     | ConversationCursorNotFoundError
@@ -1374,8 +1345,7 @@ export type PatchInstalledAppsByInstalledAppIdConversationsByCIdPinData = {
 }
 
 export type PatchInstalledAppsByInstalledAppIdConversationsByCIdPinErrors = {
-  400: AccountNotInitializedError | ConversationNameRequiredError | NotChatAppError
-  401: NotInitValidatedError | NotSetupError
+  400: ConversationNameRequiredError | NotChatAppError
   403: AccessDeniedError
   404:
     | ConversationCursorNotFoundError
@@ -1407,8 +1377,7 @@ export type PatchInstalledAppsByInstalledAppIdConversationsByCIdUnpinData = {
 }
 
 export type PatchInstalledAppsByInstalledAppIdConversationsByCIdUnpinErrors = {
-  400: AccountNotInitializedError | ConversationNameRequiredError | NotChatAppError
-  401: NotInitValidatedError | NotSetupError
+  400: ConversationNameRequiredError | NotChatAppError
   403: AccessDeniedError
   404:
     | ConversationCursorNotFoundError
@@ -1444,7 +1413,6 @@ export type GetInstalledAppsByInstalledAppIdMessagesData = {
 
 export type GetInstalledAppsByInstalledAppIdMessagesErrors = {
   400:
-    | AccountNotInitializedError
     | AppUnavailableError
     | CompletionRequestError
     | MessageFeedbackRatingRequiredError
@@ -1453,7 +1421,7 @@ export type GetInstalledAppsByInstalledAppIdMessagesErrors = {
     | NotCompletionAppError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  401: NotInitValidatedError | NotSetupError | UnauthorizedError
+  401: UnauthorizedError
   403:
     | AccessDeniedError
     | AppMoreLikeThisDisabledError
@@ -1490,7 +1458,6 @@ export type PostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksData = 
 
 export type PostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksErrors = {
   400:
-    | AccountNotInitializedError
     | AppUnavailableError
     | CompletionRequestError
     | MessageFeedbackRatingRequiredError
@@ -1499,7 +1466,7 @@ export type PostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksErrors 
     | NotCompletionAppError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  401: NotInitValidatedError | NotSetupError | UnauthorizedError
+  401: UnauthorizedError
   403:
     | AccessDeniedError
     | AppMoreLikeThisDisabledError
@@ -1538,7 +1505,6 @@ export type GetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisData 
 
 export type GetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisErrors = {
   400:
-    | AccountNotInitializedError
     | AppUnavailableError
     | CompletionRequestError
     | MessageFeedbackRatingRequiredError
@@ -1547,7 +1513,7 @@ export type GetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisError
     | NotCompletionAppError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  401: NotInitValidatedError | NotSetupError | UnauthorizedError
+  401: UnauthorizedError
   403:
     | AccessDeniedError
     | AppMoreLikeThisDisabledError
@@ -1586,7 +1552,6 @@ export type GetInstalledAppsByInstalledAppIdMessagesByMessageIdSuggestedQuestion
 
 export type GetInstalledAppsByInstalledAppIdMessagesByMessageIdSuggestedQuestionsErrors = {
   400:
-    | AccountNotInitializedError
     | AppUnavailableError
     | CompletionRequestError
     | MessageFeedbackRatingRequiredError
@@ -1595,7 +1560,7 @@ export type GetInstalledAppsByInstalledAppIdMessagesByMessageIdSuggestedQuestion
     | NotCompletionAppError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  401: NotInitValidatedError | NotSetupError | UnauthorizedError
+  401: UnauthorizedError
   403:
     | AccessDeniedError
     | AppMoreLikeThisDisabledError
@@ -1630,8 +1595,7 @@ export type GetInstalledAppsByInstalledAppIdMetaData = {
 }
 
 export type GetInstalledAppsByInstalledAppIdMetaErrors = {
-  400: AccountNotInitializedError | AppUnavailableError
-  401: NotInitValidatedError | NotSetupError
+  400: AppUnavailableError
   403: AccessDeniedError
   404: InstalledAppNotFoundError
   503: WebAppAccessUnavailableError
@@ -1658,8 +1622,7 @@ export type GetInstalledAppsByInstalledAppIdParametersData = {
 }
 
 export type GetInstalledAppsByInstalledAppIdParametersErrors = {
-  400: AccountNotInitializedError | AppUnavailableError
-  401: NotInitValidatedError | NotSetupError
+  400: AppUnavailableError
   403: AccessDeniedError
   404: InstalledAppNotFoundError
   503: WebAppAccessUnavailableError
@@ -1689,8 +1652,7 @@ export type GetInstalledAppsByInstalledAppIdSavedMessagesData = {
 }
 
 export type GetInstalledAppsByInstalledAppIdSavedMessagesErrors = {
-  400: AccountNotInitializedError | NotCompletionAppError
-  401: NotInitValidatedError | NotSetupError
+  400: NotCompletionAppError
   403: AccessDeniedError
   404: InstalledAppNotFoundError
   503: WebAppAccessUnavailableError
@@ -1717,8 +1679,7 @@ export type PostInstalledAppsByInstalledAppIdSavedMessagesData = {
 }
 
 export type PostInstalledAppsByInstalledAppIdSavedMessagesErrors = {
-  400: AccountNotInitializedError | NotCompletionAppError
-  401: NotInitValidatedError | NotSetupError
+  400: NotCompletionAppError
   403: AccessDeniedError
   404: InstalledAppNotFoundError | NotFoundError
   503: WebAppAccessUnavailableError
@@ -1746,8 +1707,7 @@ export type DeleteInstalledAppsByInstalledAppIdSavedMessagesByMessageIdData = {
 }
 
 export type DeleteInstalledAppsByInstalledAppIdSavedMessagesByMessageIdErrors = {
-  400: AccountNotInitializedError | NotCompletionAppError
-  401: NotInitValidatedError | NotSetupError
+  400: NotCompletionAppError
   403: AccessDeniedError
   404: InstalledAppNotFoundError
   503: WebAppAccessUnavailableError
@@ -1775,7 +1735,6 @@ export type PostInstalledAppsByInstalledAppIdTextToAudioData = {
 
 export type PostInstalledAppsByInstalledAppIdTextToAudioErrors = {
   400:
-    | AccountNotInitializedError
     | AppUnavailableError
     | CompletionRequestError
     | ModelCurrentlyNotSupportError
@@ -1785,7 +1744,6 @@ export type PostInstalledAppsByInstalledAppIdTextToAudioErrors = {
     | ProviderNotSupportTextToSpeechError
     | ProviderQuotaExceededError
     | SpeechToTextDisabledError
-  401: NotInitValidatedError | NotSetupError
   403: AccessDeniedError
   404: AgentVersionNotFoundError | InstalledAppNotFoundError
   413: AudioTooLargeError
@@ -1816,13 +1774,12 @@ export type PostInstalledAppsByInstalledAppIdWorkflowsRunData = {
 
 export type PostInstalledAppsByInstalledAppIdWorkflowsRunErrors = {
   400:
-    | AccountNotInitializedError
     | CompletionRequestError
     | ModelCurrentlyNotSupportError
     | NotWorkflowAppError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  401: NotInitValidatedError | NotSetupError | UnauthorizedError
+  401: UnauthorizedError
   403: AccessDeniedError
   404: InstalledAppNotFoundError
   429: RateLimitError
@@ -1854,8 +1811,7 @@ export type PostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopData = {
 }
 
 export type PostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopErrors = {
-  400: AccountNotInitializedError | NotWorkflowAppError
-  401: NotInitValidatedError | NotSetupError
+  400: NotWorkflowAppError
   403: AccessDeniedError
   404: InstalledAppNotFoundError
   503: WebAppAccessUnavailableError

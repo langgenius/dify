@@ -6,7 +6,6 @@ import {
   zAccountAlreadyInitedError,
   zAccountInFreezeError,
   zAccountNotFoundError,
-  zAccountNotInitializedError,
   zCurrentPasswordIncorrectError,
   zEducationActivateLimitError,
   zEducationVerifyLimitError,
@@ -23,9 +22,6 @@ import {
   zInvalidInvitationCodeError,
   zInvalidOrExpiredTokenError,
   zMissingInvitationCodeError,
-  zNotInitValidatedError,
-  zNotSetupError,
-  zUnauthorizedAndForceLogoutError,
 } from './zod.gen.ts'
 import {
   zGetAccountAvatarQuery,
@@ -83,11 +79,6 @@ export const get = oc
   })
   .input(z.object({ query: zGetAccountAvatarQuery }))
   .output(zGetAccountAvatarResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
 
 /**
  * Deprecated. Use PATCH /account/profile instead.
@@ -106,12 +97,7 @@ export const post = oc
   })
   .input(z.object({ body: zPostAccountAvatarBody }))
   .output(zPostAccountAvatarResponse)
-  .errors({
-    account_not_found: { status: 400, data: zAccountNotFoundError },
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ account_not_found: { status: 400, data: zAccountNotFoundError } })
 
 export const avatar = {
   get,
@@ -132,8 +118,6 @@ export const post2 = oc
     account_in_freeze: { status: 400, data: zAccountInFreezeError },
     email_already_in_use: { status: 400, data: zEmailAlreadyInUseError },
     email_domain_suspended: { status: 400, data: zEmailDomainSuspendedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const checkEmailUnique = {
@@ -153,12 +137,9 @@ export const post3 = oc
   .errors({
     account_in_freeze: { status: 400, data: zAccountInFreezeError },
     account_not_found: { status: 400, data: zAccountNotFoundError },
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     email_already_in_use: { status: 400, data: zEmailAlreadyInUseError },
     email_domain_suspended: { status: 400, data: zEmailDomainSuspendedError },
     invalid_or_expired_token: { status: 400, data: zInvalidOrExpiredTokenError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const reset = {
@@ -176,13 +157,10 @@ export const post4 = oc
   .input(z.object({ body: zPostAccountChangeEmailValidityBody }))
   .output(zPostAccountChangeEmailValidityResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     email_change_limit: { status: 429, data: zEmailChangeLimitError },
     email_code_error: { status: 400, data: zEmailCodeError },
     invalid_email: { status: 400, data: zInvalidEmailError },
     invalid_or_expired_token: { status: 400, data: zInvalidOrExpiredTokenError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const validity = {
@@ -201,13 +179,10 @@ export const post5 = oc
   .output(zPostAccountChangeEmailResponse)
   .errors({
     account_not_found: { status: 400, data: zAccountNotFoundError },
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     email_change_rate_limit_exceeded: { status: 429, data: zEmailChangeRateLimitExceededError },
     email_send_ip_limit: { status: 429, data: zEmailSendIpLimitError },
     invalid_email: { status: 400, data: zInvalidEmailError },
     invalid_or_expired_token: { status: 400, data: zInvalidOrExpiredTokenError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const changeEmail = {
@@ -227,10 +202,6 @@ export const post6 = oc
   })
   .input(z.object({ body: zPostAccountDeleteFeedbackBody }))
   .output(zPostAccountDeleteFeedbackResponse)
-  .errors({
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
 
 export const feedback = {
   post: post6,
@@ -247,13 +218,10 @@ export const get2 = oc
   .output(zGetAccountDeleteVerifyResponse)
   .errors({
     account_not_found: { status: 400, data: zAccountNotFoundError },
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     email_code_account_deletion_rate_limit_exceeded: {
       status: 429,
       data: zEmailCodeAccountDeletionRateLimitExceededError,
     },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const verify = {
@@ -271,10 +239,7 @@ export const post7 = oc
   .input(z.object({ body: zPostAccountDeleteBody }))
   .output(zPostAccountDeleteResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     invalid_account_deletion_code: { status: 400, data: zInvalidAccountDeletionCodeError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const delete_ = {
@@ -293,11 +258,6 @@ export const get3 = oc
   })
   .input(z.object({ query: zGetAccountEducationAutocompleteQuery }))
   .output(zGetAccountEducationAutocompleteResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
 
 export const autocomplete = {
   get: get3,
@@ -314,10 +274,7 @@ export const get4 = oc
   .output(zGetAccountEducationVerifyResponse)
   .errors({
     account_not_found: { status: 400, data: zAccountNotFoundError },
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     education_verify_limit: { status: 429, data: zEducationVerifyLimitError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const verify2 = {
@@ -333,11 +290,6 @@ export const get5 = oc
     tags: ['console'],
   })
   .output(zGetAccountEducationResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
 
 export const post8 = oc
   .route({
@@ -351,10 +303,7 @@ export const post8 = oc
   .output(zPostAccountEducationResponse)
   .errors({
     account_not_found: { status: 400, data: zAccountNotFoundError },
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     education_activate_limit: { status: 429, data: zEducationActivateLimitError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const education = {
@@ -379,8 +328,6 @@ export const post9 = oc
     account_not_found: { status: 400, data: zAccountNotFoundError },
     invalid_invitation_code: { status: 400, data: zInvalidInvitationCodeError },
     missing_invitation_code: { status: 400, data: zMissingInvitationCodeError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const init = {
@@ -396,11 +343,6 @@ export const get6 = oc
     tags: ['console'],
   })
   .output(zGetAccountIntegratesResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
 
 export const integrates = {
   get: get6,
@@ -423,12 +365,7 @@ export const post10 = oc
   })
   .input(z.object({ body: zPostAccountInterfaceLanguageBody }))
   .output(zPostAccountInterfaceLanguageResponse)
-  .errors({
-    account_not_found: { status: 400, data: zAccountNotFoundError },
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ account_not_found: { status: 400, data: zAccountNotFoundError } })
 
 export const interfaceLanguage = {
   post: post10,
@@ -451,12 +388,7 @@ export const post11 = oc
   })
   .input(z.object({ body: zPostAccountInterfaceThemeBody }))
   .output(zPostAccountInterfaceThemeResponse)
-  .errors({
-    account_not_found: { status: 400, data: zAccountNotFoundError },
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ account_not_found: { status: 400, data: zAccountNotFoundError } })
 
 export const interfaceTheme = {
   post: post11,
@@ -479,12 +411,7 @@ export const post12 = oc
   })
   .input(z.object({ body: zPostAccountNameBody }))
   .output(zPostAccountNameResponse)
-  .errors({
-    account_not_found: { status: 400, data: zAccountNotFoundError },
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ account_not_found: { status: 400, data: zAccountNotFoundError } })
 
 export const name = {
   post: post12,
@@ -502,11 +429,8 @@ export const post13 = oc
   .output(zPostAccountPasswordResponse)
   .errors({
     account_not_found: { status: 400, data: zAccountNotFoundError },
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     current_password_incorrect: { status: 400, data: zCurrentPasswordIncorrectError },
     invalid_account_password: { status: 400, data: zInvalidAccountPasswordError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const password = {
@@ -522,13 +446,7 @@ export const get7 = oc
     tags: ['console'],
   })
   .output(zGetAccountProfileResponse)
-  .errors({
-    account_not_found: { status: 400, data: zAccountNotFoundError },
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-    unauthorized_and_force_logout: { status: 401, data: zUnauthorizedAndForceLogoutError },
-  })
+  .errors({ account_not_found: { status: 400, data: zAccountNotFoundError } })
 
 export const patch = oc
   .route({
@@ -540,12 +458,7 @@ export const patch = oc
   })
   .input(z.object({ body: zPatchAccountProfileBody }))
   .output(zPatchAccountProfileResponse)
-  .errors({
-    account_not_found: { status: 400, data: zAccountNotFoundError },
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ account_not_found: { status: 400, data: zAccountNotFoundError } })
 
 export const profile = {
   get: get7,
@@ -569,12 +482,7 @@ export const post14 = oc
   })
   .input(z.object({ body: zPostAccountTimezoneBody }))
   .output(zPostAccountTimezoneResponse)
-  .errors({
-    account_not_found: { status: 400, data: zAccountNotFoundError },
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ account_not_found: { status: 400, data: zAccountNotFoundError } })
 
 export const timezone = {
   post: post14,

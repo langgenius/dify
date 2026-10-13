@@ -2,7 +2,6 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-import { zAccountNotInitializedError, zNotInitValidatedError, zNotSetupError } from './zod.gen.ts'
 import {
   zGetNotificationQuery,
   zGetNotificationResponse,
@@ -24,11 +23,6 @@ export const post = oc
   })
   .input(z.object({ body: zPostNotificationDismissBody }))
   .output(zPostNotificationDismissResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
 
 export const dismiss = {
   post,
@@ -49,11 +43,6 @@ export const get = oc
   })
   .input(z.object({ query: zGetNotificationQuery.optional() }))
   .output(zGetNotificationResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
 
 export const notification = {
   get,

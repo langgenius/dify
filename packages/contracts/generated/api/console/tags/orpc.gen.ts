@@ -2,7 +2,6 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-import { zAccountNotInitializedError, zNotInitValidatedError, zNotSetupError } from './zod.gen.ts'
 import {
   zDeleteTagsByTagIdPath,
   zDeleteTagsByTagIdResponse,
@@ -26,11 +25,6 @@ export const delete_ = oc
   })
   .input(z.object({ params: zDeleteTagsByTagIdPath }))
   .output(zDeleteTagsByTagIdResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
 
 export const patch = oc
   .route({
@@ -42,11 +36,6 @@ export const patch = oc
   })
   .input(z.object({ body: zPatchTagsByTagIdBody, params: zPatchTagsByTagIdPath }))
   .output(zPatchTagsByTagIdResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
 
 export const byTagId = {
   delete: delete_,
@@ -63,11 +52,6 @@ export const get = oc
   })
   .input(z.object({ query: zGetTagsQuery }))
   .output(zGetTagsResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
 
 export const post = oc
   .route({
@@ -79,11 +63,6 @@ export const post = oc
   })
   .input(z.object({ body: zPostTagsBody }))
   .output(zPostTagsResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
 
 export const tags = {
   get,

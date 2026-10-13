@@ -3,13 +3,10 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
-  zAccountNotInitializedError,
   zHumanInputFormExpiredError,
   zHumanInputFormSubmittedError,
   zInvalidFormDataError,
   zNotFoundError,
-  zNotInitValidatedError,
-  zNotSetupError,
 } from './zod.gen.ts'
 import {
   zGetFormHumanInputByFormTokenPath,
@@ -37,11 +34,8 @@ export const get = oc
   .input(z.object({ params: zGetFormHumanInputByFormTokenPath }))
   .output(zGetFormHumanInputByFormTokenResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     human_input_form_submitted: { status: 412, data: zHumanInputFormSubmittedError },
     not_found: { status: 404, data: zNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 /**
@@ -76,7 +70,6 @@ export const post = oc
   )
   .output(zPostFormHumanInputByFormTokenResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     human_input_form_expired: { status: 412, data: zHumanInputFormExpiredError },
     human_input_form_submitted: { status: 412, data: zHumanInputFormSubmittedError },
     invalid_form_data: { status: 400, data: zInvalidFormDataError },

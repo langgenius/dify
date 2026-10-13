@@ -3,7 +3,6 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
-  zAccountNotInitializedError,
   zAgentBackendUnreachableError,
   zAgentNotBoundError,
   zAgentNotFoundError,
@@ -22,7 +21,6 @@ import {
   zForbiddenError,
   zInspectorUnavailableError,
   zInvalidComposerConfigError,
-  zInvalidParamError,
   zInvalidRosterAgentPackageError,
   zInvalidTracingConfigError,
   zMaxKeysExceededError,
@@ -33,8 +31,6 @@ import {
   zNodeNotInWorkflowRunError,
   zNodeOutputNotDeclaredError,
   zNotFoundError,
-  zNotInitValidatedError,
-  zNotSetupError,
   zPlaintextSecretNotAllowedError,
   zProviderNotInitializeError,
   zProviderNotSupportSpeechToTextError,
@@ -48,7 +44,6 @@ import {
   zTracingConfigProcessingFailedError,
   zTracingConfigVerificationFailedError,
   zTracingProviderUnavailableError,
-  zUnauthorizedAndForceLogoutError,
   zUnsupportedAudioTypeError,
   zUnsupportedTracingProviderError,
   zWorkflowRunNotFoundError,
@@ -518,12 +513,7 @@ export const get = oc
   })
   .input(z.object({ params: zGetAppsImportsByAppIdCheckDependenciesPath }))
   .output(zGetAppsImportsByAppIdCheckDependenciesResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const checkDependencies = {
   get,
@@ -543,11 +533,6 @@ export const post = oc
   })
   .input(z.object({ params: zPostAppsImportsByImportIdConfirmPath }))
   .output(zPostAppsImportsByImportIdConfirmResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
 
 export const confirm = {
   post,
@@ -568,10 +553,7 @@ export const post2 = oc
   .input(z.object({ body: zPostAppsImportsBody }))
   .output(zPostAppsImportsResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     invalid_roster_agent_package: { status: 400, data: zInvalidRosterAgentPackageError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
     recommended_app_not_found: { status: 404, data: zRecommendedAppNotFoundError },
   })
 
@@ -595,12 +577,6 @@ export const get2 = oc
   })
   .input(z.object({ query: zGetAppsRecentQuery.optional() }))
   .output(zGetAppsRecentResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-    unauthorized_and_force_logout: { status: 401, data: zUnauthorizedAndForceLogoutError },
-  })
 
 export const recent = {
   get: get2,
@@ -620,12 +596,6 @@ export const get3 = oc
   })
   .input(z.object({ query: zGetAppsStarredQuery.optional() }))
   .output(zGetAppsStarredResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-    unauthorized_and_force_logout: { status: 401, data: zUnauthorizedAndForceLogoutError },
-  })
 
 export const starred = {
   get: get3,
@@ -645,11 +615,6 @@ export const post3 = oc
   })
   .input(z.object({ body: zPostAppsWorkflowsOnlineUsersBody }))
   .output(zPostAppsWorkflowsOnlineUsersResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
 
 export const onlineUsers = {
   post: post3,
@@ -681,12 +646,7 @@ export const get4 = oc
     }),
   )
   .output(zGetAppsByAppIdAdvancedChatWorkflowRunsCountResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const count = {
   get: get4,
@@ -714,12 +674,7 @@ export const get5 = oc
     }),
   )
   .output(zGetAppsByAppIdAdvancedChatWorkflowRunsResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const workflowRuns = {
   get: get5,
@@ -748,12 +703,7 @@ export const post4 = oc
     }),
   )
   .output(zPostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormPreviewResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const preview = {
   post: post4,
@@ -781,12 +731,7 @@ export const post5 = oc
     }),
   )
   .output(zPostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormRunResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const run = {
   post: post5,
@@ -831,12 +776,7 @@ export const post6 = oc
     }),
   )
   .output(zPostAppsByAppIdAdvancedChatWorkflowsDraftIterationNodesByNodeIdRunResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const run2 = {
   post: post6,
@@ -876,12 +816,7 @@ export const post7 = oc
     }),
   )
   .output(zPostAppsByAppIdAdvancedChatWorkflowsDraftLoopNodesByNodeIdRunResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const run3 = {
   post: post7,
@@ -922,10 +857,7 @@ export const post8 = oc
   )
   .output(zPostAppsByAppIdAdvancedChatWorkflowsDraftRunResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
     rate_limit_error: { status: 429, data: zRateLimitError },
   })
 
@@ -965,13 +897,10 @@ export const get6 = oc
   )
   .output(zGetAppsByAppIdAgentConfigFilesByNameDownloadResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     agent_not_bound: { status: 400, data: zAgentNotBoundError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
     agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
     app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const download = {
@@ -994,13 +923,10 @@ export const get7 = oc
   )
   .output(zGetAppsByAppIdAgentConfigFilesByNamePreviewResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     agent_not_bound: { status: 400, data: zAgentNotBoundError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
     agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
     app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const preview2 = {
@@ -1023,13 +949,10 @@ export const delete_ = oc
   )
   .output(zDeleteAppsByAppIdAgentConfigFilesByNameResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     agent_not_bound: { status: 400, data: zAgentNotBoundError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
     agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
     app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const byName = {
@@ -1054,13 +977,10 @@ export const get8 = oc
   )
   .output(zGetAppsByAppIdAgentConfigFilesResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     agent_not_bound: { status: 400, data: zAgentNotBoundError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
     agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
     app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const post9 = oc
@@ -1081,13 +1001,10 @@ export const post9 = oc
   )
   .output(zPostAppsByAppIdAgentConfigFilesResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     agent_not_bound: { status: 400, data: zAgentNotBoundError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
     agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
     app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const files = {
@@ -1112,13 +1029,10 @@ export const get9 = oc
   )
   .output(zGetAppsByAppIdAgentConfigManifestResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     agent_not_bound: { status: 400, data: zAgentNotBoundError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
     agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
     app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const manifest = {
@@ -1143,13 +1057,10 @@ export const post10 = oc
   )
   .output(zPostAppsByAppIdAgentConfigSkillsUploadResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     agent_not_bound: { status: 400, data: zAgentNotBoundError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
     agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
     app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const upload = {
@@ -1172,13 +1083,10 @@ export const get10 = oc
   )
   .output(zGetAppsByAppIdAgentConfigSkillsByNameDownloadResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     agent_not_bound: { status: 400, data: zAgentNotBoundError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
     agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
     app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const download2 = {
@@ -1196,13 +1104,10 @@ export const get11 = oc
   .input(z.object({ params: zGetAppsByAppIdAgentConfigSkillsByNameFilesContentPath }))
   .output(zGetAppsByAppIdAgentConfigSkillsByNameFilesContentResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     agent_not_bound: { status: 400, data: zAgentNotBoundError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
     agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
     app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const content = {
@@ -1225,13 +1130,10 @@ export const get12 = oc
   )
   .output(zGetAppsByAppIdAgentConfigSkillsByNameFilesDownloadResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     agent_not_bound: { status: 400, data: zAgentNotBoundError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
     agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
     app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const download3 = {
@@ -1254,13 +1156,10 @@ export const get13 = oc
   )
   .output(zGetAppsByAppIdAgentConfigSkillsByNameFilesPreviewResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     agent_not_bound: { status: 400, data: zAgentNotBoundError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
     agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
     app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const preview3 = {
@@ -1289,13 +1188,10 @@ export const get14 = oc
   )
   .output(zGetAppsByAppIdAgentConfigSkillsByNameInspectResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     agent_not_bound: { status: 400, data: zAgentNotBoundError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
     agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
     app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const inspect = {
@@ -1318,13 +1214,10 @@ export const delete2 = oc
   )
   .output(zDeleteAppsByAppIdAgentConfigSkillsByNameResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     agent_not_bound: { status: 400, data: zAgentNotBoundError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
     agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
     app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const byName2 = {
@@ -1350,13 +1243,10 @@ export const get15 = oc
   )
   .output(zGetAppsByAppIdAgentConfigSkillsResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     agent_not_bound: { status: 400, data: zAgentNotBoundError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
     agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
     app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const skills = {
@@ -1388,12 +1278,7 @@ export const get16 = oc
   })
   .input(z.object({ params: zGetAppsByAppIdAgentLogsPath, query: zGetAppsByAppIdAgentLogsQuery }))
   .output(zGetAppsByAppIdAgentLogsResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const logs = {
   get: get16,
@@ -1418,11 +1303,6 @@ export const get17 = oc
   })
   .input(z.object({ params: zGetAppsByAppIdAnnotationReplyByActionStatusByJobIdPath }))
   .output(zGetAppsByAppIdAnnotationReplyByActionStatusByJobIdResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
 
 export const byJobId = {
   get: get17,
@@ -1451,11 +1331,6 @@ export const post11 = oc
     }),
   )
   .output(zPostAppsByAppIdAnnotationReplyByActionResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
 
 export const byAction = {
   post: post11,
@@ -1480,11 +1355,6 @@ export const get18 = oc
   })
   .input(z.object({ params: zGetAppsByAppIdAnnotationSettingPath }))
   .output(zGetAppsByAppIdAnnotationSettingResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
 
 export const annotationSetting = {
   get: get18,
@@ -1509,11 +1379,6 @@ export const post12 = oc
     }),
   )
   .output(zPostAppsByAppIdAnnotationSettingsByAnnotationSettingIdResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
 
 export const byAnnotationSettingId = {
   post: post12,
@@ -1538,10 +1403,7 @@ export const post13 = oc
   .input(z.object({ params: zPostAppsByAppIdAnnotationsBatchImportPath }))
   .output(zPostAppsByAppIdAnnotationsBatchImportResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     no_file_uploaded: { status: 400, data: zNoFileUploadedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
     too_many_files: { status: 400, data: zTooManyFilesError },
   })
 
@@ -1563,11 +1425,6 @@ export const get19 = oc
   })
   .input(z.object({ params: zGetAppsByAppIdAnnotationsBatchImportStatusByJobIdPath }))
   .output(zGetAppsByAppIdAnnotationsBatchImportStatusByJobIdResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
 
 export const byJobId2 = {
   get: get19,
@@ -1591,12 +1448,7 @@ export const get20 = oc
   })
   .input(z.object({ params: zGetAppsByAppIdAnnotationsCountPath }))
   .output(zGetAppsByAppIdAnnotationsCountResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const count2 = {
   get: get20,
@@ -1616,11 +1468,6 @@ export const get21 = oc
   })
   .input(z.object({ params: zGetAppsByAppIdAnnotationsExportPath }))
   .output(zGetAppsByAppIdAnnotationsExportResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
 
 export const export_ = {
   get: get21,
@@ -1645,11 +1492,6 @@ export const get22 = oc
     }),
   )
   .output(zGetAppsByAppIdAnnotationsByAnnotationIdHitHistoriesResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
 
 export const hitHistories = {
   get: get22,
@@ -1666,11 +1508,6 @@ export const delete3 = oc
   })
   .input(z.object({ params: zDeleteAppsByAppIdAnnotationsByAnnotationIdPath }))
   .output(zDeleteAppsByAppIdAnnotationsByAnnotationIdResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
 
 /**
  * Update or delete an annotation
@@ -1691,11 +1528,6 @@ export const post14 = oc
     }),
   )
   .output(zPostAppsByAppIdAnnotationsByAnnotationIdResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
 
 export const byAnnotationId = {
   delete: delete3,
@@ -1714,11 +1546,6 @@ export const delete4 = oc
   })
   .input(z.object({ params: zDeleteAppsByAppIdAnnotationsPath }))
   .output(zDeleteAppsByAppIdAnnotationsResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
 
 /**
  * Get annotations for an app with pagination
@@ -1739,11 +1566,6 @@ export const get23 = oc
     }),
   )
   .output(zGetAppsByAppIdAnnotationsResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
 
 /**
  * Create a new annotation for an app
@@ -1762,11 +1584,6 @@ export const post15 = oc
     z.object({ body: zPostAppsByAppIdAnnotationsBody, params: zPostAppsByAppIdAnnotationsPath }),
   )
   .output(zPostAppsByAppIdAnnotationsResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
 
 export const annotations = {
   delete: delete4,
@@ -1793,11 +1610,6 @@ export const post16 = oc
   })
   .input(z.object({ body: zPostAppsByAppIdApiEnableBody, params: zPostAppsByAppIdApiEnablePath }))
   .output(zPostAppsByAppIdApiEnableResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
 
 export const apiEnable = {
   post: post16,
@@ -1820,7 +1632,6 @@ export const post17 = oc
   )
   .output(zPostAppsByAppIdAudioToTextResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
     app_not_found: { status: 404, data: zAppNotFoundError },
     app_unavailable: { status: 400, data: zAppUnavailableError },
@@ -1828,8 +1639,6 @@ export const post17 = oc
     completion_request_error: { status: 400, data: zCompletionRequestError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     no_audio_uploaded: { status: 400, data: zNoAudioUploadedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
     provider_not_support_speech_to_text: {
       status: 400,
@@ -1859,12 +1668,7 @@ export const delete5 = oc
   })
   .input(z.object({ params: zDeleteAppsByAppIdChatConversationsByConversationIdPath }))
   .output(zDeleteAppsByAppIdChatConversationsByConversationIdResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 /**
  * Get chat conversation details
@@ -1880,12 +1684,7 @@ export const get24 = oc
   })
   .input(z.object({ params: zGetAppsByAppIdChatConversationsByConversationIdPath }))
   .output(zGetAppsByAppIdChatConversationsByConversationIdResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const byConversationId = {
   delete: delete5,
@@ -1911,12 +1710,7 @@ export const get25 = oc
     }),
   )
   .output(zGetAppsByAppIdChatConversationsResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const chatConversations = {
   get: get25,
@@ -1938,7 +1732,6 @@ export const get26 = oc
   .input(z.object({ params: zGetAppsByAppIdChatMessagesByMessageIdSuggestedQuestionsPath }))
   .output(zGetAppsByAppIdChatMessagesByMessageIdSuggestedQuestionsResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     app_not_found: { status: 404, data: zAppNotFoundError },
     app_suggested_questions_after_answer_disabled: {
       status: 403,
@@ -1947,8 +1740,6 @@ export const get26 = oc
     app_unavailable: { status: 400, data: zAppUnavailableError },
     completion_request_error: { status: 400, data: zCompletionRequestError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
     provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
   })
@@ -1975,12 +1766,7 @@ export const post18 = oc
   })
   .input(z.object({ params: zPostAppsByAppIdChatMessagesByTaskIdStopPath }))
   .output(zPostAppsByAppIdChatMessagesByTaskIdStopResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const stop = {
   post: post18,
@@ -2006,12 +1792,7 @@ export const get27 = oc
     z.object({ params: zGetAppsByAppIdChatMessagesPath, query: zGetAppsByAppIdChatMessagesQuery }),
   )
   .output(zGetAppsByAppIdChatMessagesResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const chatMessages = {
   get: get27,
@@ -2034,12 +1815,7 @@ export const delete6 = oc
   })
   .input(z.object({ params: zDeleteAppsByAppIdCompletionConversationsByConversationIdPath }))
   .output(zDeleteAppsByAppIdCompletionConversationsByConversationIdResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 /**
  * Get completion conversation details with messages
@@ -2055,12 +1831,7 @@ export const get28 = oc
   })
   .input(z.object({ params: zGetAppsByAppIdCompletionConversationsByConversationIdPath }))
   .output(zGetAppsByAppIdCompletionConversationsByConversationIdResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const byConversationId2 = {
   delete: delete6,
@@ -2086,12 +1857,7 @@ export const get29 = oc
     }),
   )
   .output(zGetAppsByAppIdCompletionConversationsResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const completionConversations = {
   get: get29,
@@ -2112,12 +1878,7 @@ export const post19 = oc
   })
   .input(z.object({ params: zPostAppsByAppIdCompletionMessagesByTaskIdStopPath }))
   .output(zPostAppsByAppIdCompletionMessagesByTaskIdStopResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const stop2 = {
   post: post19,
@@ -2147,13 +1908,10 @@ export const post20 = oc
   )
   .output(zPostAppsByAppIdCompletionMessagesResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     app_not_found: { status: 404, data: zAppNotFoundError },
     app_unavailable: { status: 400, data: zAppUnavailableError },
     completion_request_error: { status: 400, data: zCompletionRequestError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
     provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
   })
@@ -2182,12 +1940,7 @@ export const get30 = oc
     }),
   )
   .output(zGetAppsByAppIdConversationVariablesResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const conversationVariables = {
   get: get30,
@@ -2218,12 +1971,7 @@ export const post21 = oc
     }),
   )
   .output(zPostAppsByAppIdConvertToWorkflowResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const convertToWorkflow = {
   post: post21,
@@ -2244,11 +1992,6 @@ export const post22 = oc
   })
   .input(z.object({ body: zPostAppsByAppIdCopyBody, params: zPostAppsByAppIdCopyPath }))
   .output(zPostAppsByAppIdCopyResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
 
 export const copy = {
   post: post22,
@@ -2270,11 +2013,6 @@ export const get31 = oc
     z.object({ params: zGetAppsByAppIdExportPath, query: zGetAppsByAppIdExportQuery.optional() }),
   )
   .output(zGetAppsByAppIdExportResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
 
 export const export2 = {
   get: get31,
@@ -2294,12 +2032,7 @@ export const post23 = oc
   })
   .input(z.object({ body: zPostAppsByAppIdFeedbacksBody, params: zPostAppsByAppIdFeedbacksPath }))
   .output(zPostAppsByAppIdFeedbacksResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const feedbacks = {
   post: post23,
@@ -2319,11 +2052,6 @@ export const post24 = oc
   })
   .input(z.object({ body: zPostAppsByAppIdIconBody, params: zPostAppsByAppIdIconPath }))
   .output(zPostAppsByAppIdIconResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
 
 export const icon = {
   post: post24,
@@ -2343,12 +2071,7 @@ export const get32 = oc
   })
   .input(z.object({ params: zGetAppsByAppIdMessagesByMessageIdPath }))
   .output(zGetAppsByAppIdMessagesByMessageIdResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const byMessageId2 = {
   get: get32,
@@ -2377,12 +2100,7 @@ export const post25 = oc
     z.object({ body: zPostAppsByAppIdModelConfigBody, params: zPostAppsByAppIdModelConfigPath }),
   )
   .output(zPostAppsByAppIdModelConfigResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const modelConfig = {
   post: post25,
@@ -2402,11 +2120,6 @@ export const post26 = oc
   })
   .input(z.object({ body: zPostAppsByAppIdNameBody, params: zPostAppsByAppIdNamePath }))
   .output(zPostAppsByAppIdNameResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
 
 export const name = {
   post: post26,
@@ -2422,11 +2135,6 @@ export const post27 = oc
   })
   .input(z.object({ params: zPostAppsByAppIdPublishToCreatorsPlatformPath }))
   .output(zPostAppsByAppIdPublishToCreatorsPlatformResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
 
 export const publishToCreatorsPlatform = {
   post: post27,
@@ -2446,12 +2154,7 @@ export const post28 = oc
   })
   .input(z.object({ params: zPostAppsByAppIdServerRefreshPath }))
   .output(zPostAppsByAppIdServerRefreshResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const refresh = {
   post: post28,
@@ -2471,12 +2174,7 @@ export const get33 = oc
   })
   .input(z.object({ params: zGetAppsByAppIdServerPath }))
   .output(zGetAppsByAppIdServerResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 /**
  * Create MCP server configuration for an application
@@ -2493,12 +2191,7 @@ export const post29 = oc
   })
   .input(z.object({ body: zPostAppsByAppIdServerBody, params: zPostAppsByAppIdServerPath }))
   .output(zPostAppsByAppIdServerResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 /**
  * Update MCP server configuration for an application
@@ -2514,12 +2207,7 @@ export const put = oc
   })
   .input(z.object({ body: zPutAppsByAppIdServerBody, params: zPutAppsByAppIdServerPath }))
   .output(zPutAppsByAppIdServerResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const server = {
   get: get33,
@@ -2542,12 +2230,7 @@ export const post30 = oc
   })
   .input(z.object({ params: zPostAppsByAppIdSiteAccessTokenResetPath }))
   .output(zPostAppsByAppIdSiteAccessTokenResetResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const accessTokenReset = {
   post: post30,
@@ -2567,12 +2250,7 @@ export const post31 = oc
   })
   .input(z.object({ body: zPostAppsByAppIdSiteBody, params: zPostAppsByAppIdSitePath }))
   .output(zPostAppsByAppIdSiteResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const site = {
   post: post31,
@@ -2593,11 +2271,6 @@ export const post32 = oc
   })
   .input(z.object({ body: zPostAppsByAppIdSiteEnableBody, params: zPostAppsByAppIdSiteEnablePath }))
   .output(zPostAppsByAppIdSiteEnableResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
 
 export const siteEnable = {
   post: post32,
@@ -2617,12 +2290,6 @@ export const delete7 = oc
   })
   .input(z.object({ params: zDeleteAppsByAppIdStarPath }))
   .output(zDeleteAppsByAppIdStarResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-    unauthorized_and_force_logout: { status: 401, data: zUnauthorizedAndForceLogoutError },
-  })
 
 /**
  * Star an application for the current account
@@ -2638,12 +2305,6 @@ export const post33 = oc
   })
   .input(z.object({ params: zPostAppsByAppIdStarPath }))
   .output(zPostAppsByAppIdStarResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-    unauthorized_and_force_logout: { status: 401, data: zUnauthorizedAndForceLogoutError },
-  })
 
 export const star = {
   delete: delete7,
@@ -2669,12 +2330,7 @@ export const get34 = oc
     }),
   )
   .output(zGetAppsByAppIdStatisticsAverageResponseTimeResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const averageResponseTime = {
   get: get34,
@@ -2699,12 +2355,7 @@ export const get35 = oc
     }),
   )
   .output(zGetAppsByAppIdStatisticsAverageSessionInteractionsResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const averageSessionInteractions = {
   get: get35,
@@ -2729,12 +2380,7 @@ export const get36 = oc
     }),
   )
   .output(zGetAppsByAppIdStatisticsDailyConversationsResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const dailyConversations = {
   get: get36,
@@ -2759,12 +2405,7 @@ export const get37 = oc
     }),
   )
   .output(zGetAppsByAppIdStatisticsDailyEndUsersResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const dailyEndUsers = {
   get: get37,
@@ -2789,12 +2430,7 @@ export const get38 = oc
     }),
   )
   .output(zGetAppsByAppIdStatisticsDailyMessagesResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const dailyMessages = {
   get: get38,
@@ -2819,12 +2455,7 @@ export const get39 = oc
     }),
   )
   .output(zGetAppsByAppIdStatisticsTokenCostsResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const tokenCosts = {
   get: get39,
@@ -2849,12 +2480,7 @@ export const get40 = oc
     }),
   )
   .output(zGetAppsByAppIdStatisticsTokensPerSecondResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const tokensPerSecond = {
   get: get40,
@@ -2879,12 +2505,7 @@ export const get41 = oc
     }),
   )
   .output(zGetAppsByAppIdStatisticsUserSatisfactionRateResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const userSatisfactionRate = {
   get: get41,
@@ -2921,14 +2542,11 @@ export const get42 = oc
   )
   .output(zGetAppsByAppIdTextToAudioVoicesResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     app_not_found: { status: 404, data: zAppNotFoundError },
     audio_too_large: { status: 413, data: zAudioTooLargeError },
     completion_request_error: { status: 400, data: zCompletionRequestError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     no_audio_uploaded: { status: 400, data: zNoAudioUploadedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
     provider_not_support_speech_to_text: {
       status: 400,
@@ -2959,15 +2577,12 @@ export const post34 = oc
   )
   .output(zPostAppsByAppIdTextToAudioResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     app_not_found: { status: 404, data: zAppNotFoundError },
     app_unavailable: { status: 400, data: zAppUnavailableError },
     audio_too_large: { status: 413, data: zAudioTooLargeError },
     completion_request_error: { status: 400, data: zCompletionRequestError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     no_audio_uploaded: { status: 400, data: zNoAudioUploadedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
     provider_not_support_speech_to_text: {
       status: 400,
@@ -2996,11 +2611,6 @@ export const get43 = oc
   })
   .input(z.object({ params: zGetAppsByAppIdTracePath }))
   .output(zGetAppsByAppIdTraceResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
 
 /**
  * Update app tracing configuration
@@ -3016,12 +2626,7 @@ export const post35 = oc
   })
   .input(z.object({ body: zPostAppsByAppIdTraceBody, params: zPostAppsByAppIdTracePath }))
   .output(zPostAppsByAppIdTraceResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-    tracing_provider_unavailable: { status: 400, data: zTracingProviderUnavailableError },
-  })
+  .errors({ tracing_provider_unavailable: { status: 400, data: zTracingProviderUnavailableError } })
 
 export const trace = {
   get: get43,
@@ -3052,10 +2657,7 @@ export const delete8 = oc
   )
   .output(zDeleteAppsByAppIdTraceConfigResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
     trace_config_not_found: { status: 404, data: zTraceConfigNotFoundError },
     tracing_config_processing_failed: { status: 500, data: zTracingConfigProcessingFailedError },
     unsupported_tracing_provider: { status: 400, data: zUnsupportedTracingProviderError },
@@ -3078,10 +2680,7 @@ export const get44 = oc
   )
   .output(zGetAppsByAppIdTraceConfigResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
     tracing_config_processing_failed: { status: 500, data: zTracingConfigProcessingFailedError },
     tracing_provider_unavailable: { status: 400, data: zTracingProviderUnavailableError },
     unsupported_tracing_provider: { status: 400, data: zUnsupportedTracingProviderError },
@@ -3107,11 +2706,8 @@ export const patch = oc
   )
   .output(zPatchAppsByAppIdTraceConfigResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     app_not_found: { status: 404, data: zAppNotFoundError },
     invalid_tracing_config: { status: 400, data: zInvalidTracingConfigError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
     trace_config_not_found: { status: 404, data: zTraceConfigNotFoundError },
     tracing_config_processing_failed: { status: 500, data: zTracingConfigProcessingFailedError },
     tracing_config_verification_failed: {
@@ -3143,11 +2739,8 @@ export const post36 = oc
   )
   .output(zPostAppsByAppIdTraceConfigResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     app_not_found: { status: 404, data: zAppNotFoundError },
     invalid_tracing_config: { status: 400, data: zInvalidTracingConfigError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
     trace_config_already_exists: { status: 409, data: zTraceConfigAlreadyExistsError },
     tracing_config_processing_failed: { status: 500, data: zTracingConfigProcessingFailedError },
     tracing_config_verification_failed: {
@@ -3184,12 +2777,7 @@ export const post37 = oc
     }),
   )
   .output(zPostAppsByAppIdTriggerEnableResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const triggerEnable = {
   post: post37,
@@ -3209,12 +2797,7 @@ export const get45 = oc
   })
   .input(z.object({ params: zGetAppsByAppIdTriggersPath }))
   .output(zGetAppsByAppIdTriggersResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const triggers = {
   get: get45,
@@ -3242,12 +2825,7 @@ export const get46 = oc
     }),
   )
   .output(zGetAppsByAppIdWorkflowAppLogsResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const workflowAppLogs = {
   get: get46,
@@ -3275,12 +2853,7 @@ export const get47 = oc
     }),
   )
   .output(zGetAppsByAppIdWorkflowRunsCountResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const count3 = {
   get: get47,
@@ -3303,12 +2876,7 @@ export const post38 = oc
   })
   .input(z.object({ params: zPostAppsByAppIdWorkflowRunsTasksByTaskIdStopPath }))
   .output(zPostAppsByAppIdWorkflowRunsTasksByTaskIdStopResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const stop3 = {
   post: post38,
@@ -3339,12 +2907,7 @@ export const get48 = oc
   })
   .input(z.object({ params: zGetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsPath }))
   .output(zGetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const nodeExecutions = {
   get: get48,
@@ -3368,11 +2931,8 @@ export const get49 = oc
   .input(z.object({ params: zGetAppsByAppIdWorkflowRunsByRunIdPath }))
   .output(zGetAppsByAppIdWorkflowRunsByRunIdResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     app_not_found: { status: 404, data: zAppNotFoundError },
     not_found: { status: 404, data: zNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const byRunId = {
@@ -3401,15 +2961,12 @@ export const post39 = oc
   )
   .output(zPostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesDownloadResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     agent_backend_unreachable: { status: 502, data: zAgentBackendUnreachableError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
     app_not_found: { status: 404, data: zAppNotFoundError },
     binding_file_download_unavailable: { status: 502, data: zBindingFileDownloadUnavailableError },
     inspector_unavailable: { status: 503, data: zInspectorUnavailableError },
     no_active_binding: { status: 404, data: zNoActiveBindingError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const download4 = {
@@ -3436,15 +2993,12 @@ export const get50 = oc
   )
   .output(zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesReadResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     agent_backend_unreachable: { status: 502, data: zAgentBackendUnreachableError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
     app_not_found: { status: 404, data: zAppNotFoundError },
     binding_file_download_unavailable: { status: 502, data: zBindingFileDownloadUnavailableError },
     inspector_unavailable: { status: 503, data: zInspectorUnavailableError },
     no_active_binding: { status: 404, data: zNoActiveBindingError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const read = {
@@ -3471,15 +3025,12 @@ export const get51 = oc
   )
   .output(zGetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     agent_backend_unreachable: { status: 502, data: zAgentBackendUnreachableError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
     app_not_found: { status: 404, data: zAppNotFoundError },
     binding_file_download_unavailable: { status: 502, data: zBindingFileDownloadUnavailableError },
     inspector_unavailable: { status: 503, data: zInspectorUnavailableError },
     no_active_binding: { status: 404, data: zNoActiveBindingError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const files3 = {
@@ -3526,12 +3077,7 @@ export const get52 = oc
     }),
   )
   .output(zGetAppsByAppIdWorkflowRunsResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const workflowRuns2 = {
   get: get52,
@@ -3559,13 +3105,9 @@ export const get53 = oc
   .input(z.object({ params: zGetAppsByAppIdWorkflowCommentsMentionUsersPath }))
   .output(zGetAppsByAppIdWorkflowCommentsMentionUsersResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     app_not_found: { status: 404, data: zAppNotFoundError },
     forbidden: { status: 403, data: zForbiddenError },
-    invalid_param: { status: 400, data: zInvalidParamError },
     not_found: { status: 404, data: zNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const mentionUsers = {
@@ -3591,13 +3133,9 @@ export const delete9 = oc
   .input(z.object({ params: zDeleteAppsByAppIdWorkflowCommentsByCommentIdRepliesByReplyIdPath }))
   .output(zDeleteAppsByAppIdWorkflowCommentsByCommentIdRepliesByReplyIdResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     app_not_found: { status: 404, data: zAppNotFoundError },
     forbidden: { status: 403, data: zForbiddenError },
-    invalid_param: { status: 400, data: zInvalidParamError },
     not_found: { status: 404, data: zNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 /**
@@ -3623,13 +3161,9 @@ export const put2 = oc
   )
   .output(zPutAppsByAppIdWorkflowCommentsByCommentIdRepliesByReplyIdResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     app_not_found: { status: 404, data: zAppNotFoundError },
     forbidden: { status: 403, data: zForbiddenError },
-    invalid_param: { status: 400, data: zInvalidParamError },
     not_found: { status: 404, data: zNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const byReplyId = {
@@ -3661,13 +3195,9 @@ export const post40 = oc
   )
   .output(zPostAppsByAppIdWorkflowCommentsByCommentIdRepliesResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     app_not_found: { status: 404, data: zAppNotFoundError },
     forbidden: { status: 403, data: zForbiddenError },
-    invalid_param: { status: 400, data: zInvalidParamError },
     not_found: { status: 404, data: zNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const replies = {
@@ -3693,13 +3223,9 @@ export const post41 = oc
   .input(z.object({ params: zPostAppsByAppIdWorkflowCommentsByCommentIdResolvePath }))
   .output(zPostAppsByAppIdWorkflowCommentsByCommentIdResolveResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     app_not_found: { status: 404, data: zAppNotFoundError },
     forbidden: { status: 403, data: zForbiddenError },
-    invalid_param: { status: 400, data: zInvalidParamError },
     not_found: { status: 404, data: zNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const resolve = {
@@ -3725,13 +3251,9 @@ export const delete10 = oc
   .input(z.object({ params: zDeleteAppsByAppIdWorkflowCommentsByCommentIdPath }))
   .output(zDeleteAppsByAppIdWorkflowCommentsByCommentIdResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     app_not_found: { status: 404, data: zAppNotFoundError },
     forbidden: { status: 403, data: zForbiddenError },
-    invalid_param: { status: 400, data: zInvalidParamError },
     not_found: { status: 404, data: zNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 /**
@@ -3752,13 +3274,9 @@ export const get54 = oc
   .input(z.object({ params: zGetAppsByAppIdWorkflowCommentsByCommentIdPath }))
   .output(zGetAppsByAppIdWorkflowCommentsByCommentIdResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     app_not_found: { status: 404, data: zAppNotFoundError },
     forbidden: { status: 403, data: zForbiddenError },
-    invalid_param: { status: 400, data: zInvalidParamError },
     not_found: { status: 404, data: zNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 /**
@@ -3784,13 +3302,9 @@ export const put3 = oc
   )
   .output(zPutAppsByAppIdWorkflowCommentsByCommentIdResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     app_not_found: { status: 404, data: zAppNotFoundError },
     forbidden: { status: 403, data: zForbiddenError },
-    invalid_param: { status: 400, data: zInvalidParamError },
     not_found: { status: 404, data: zNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const byCommentId = {
@@ -3819,13 +3333,9 @@ export const get55 = oc
   .input(z.object({ params: zGetAppsByAppIdWorkflowCommentsPath }))
   .output(zGetAppsByAppIdWorkflowCommentsResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     app_not_found: { status: 404, data: zAppNotFoundError },
     forbidden: { status: 403, data: zForbiddenError },
-    invalid_param: { status: 400, data: zInvalidParamError },
     not_found: { status: 404, data: zNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 /**
@@ -3852,13 +3362,9 @@ export const post42 = oc
   )
   .output(zPostAppsByAppIdWorkflowCommentsResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     app_not_found: { status: 404, data: zAppNotFoundError },
     forbidden: { status: 403, data: zForbiddenError },
-    invalid_param: { status: 400, data: zInvalidParamError },
     not_found: { status: 404, data: zNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const comments = {
@@ -3887,12 +3393,7 @@ export const get56 = oc
     }),
   )
   .output(zGetAppsByAppIdWorkflowStatisticsAverageAppInteractionsResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const averageAppInteractions = {
   get: get56,
@@ -3917,12 +3418,7 @@ export const get57 = oc
     }),
   )
   .output(zGetAppsByAppIdWorkflowStatisticsDailyConversationsResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const dailyConversations2 = {
   get: get57,
@@ -3947,12 +3443,7 @@ export const get58 = oc
     }),
   )
   .output(zGetAppsByAppIdWorkflowStatisticsDailyTerminalsResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const dailyTerminals = {
   get: get58,
@@ -3977,12 +3468,7 @@ export const get59 = oc
     }),
   )
   .output(zGetAppsByAppIdWorkflowStatisticsTokenCostsResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const tokenCosts2 = {
   get: get59,
@@ -4022,12 +3508,7 @@ export const get60 = oc
     }),
   )
   .output(zGetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const byBlockType = {
   get: get60,
@@ -4050,12 +3531,7 @@ export const get61 = oc
   })
   .input(z.object({ params: zGetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsPath }))
   .output(zGetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const defaultWorkflowBlockConfigs = {
   get: get61,
@@ -4077,11 +3553,8 @@ export const get62 = oc
   .input(z.object({ params: zGetAppsByAppIdWorkflowsDraftConversationVariablesPath }))
   .output(zGetAppsByAppIdWorkflowsDraftConversationVariablesResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     app_not_found: { status: 404, data: zAppNotFoundError },
     not_found: { status: 404, data: zNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 /**
@@ -4103,12 +3576,7 @@ export const post43 = oc
     }),
   )
   .output(zPostAppsByAppIdWorkflowsDraftConversationVariablesResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const conversationVariables2 = {
   get: get62,
@@ -4133,11 +3601,8 @@ export const get63 = oc
   .input(z.object({ params: zGetAppsByAppIdWorkflowsDraftEnvironmentVariablesPath }))
   .output(zGetAppsByAppIdWorkflowsDraftEnvironmentVariablesResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     app_not_found: { status: 404, data: zAppNotFoundError },
     draft_workflow_not_exist: { status: 404, data: zDraftWorkflowNotExistError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 /**
@@ -4159,12 +3624,7 @@ export const post44 = oc
     }),
   )
   .output(zPostAppsByAppIdWorkflowsDraftEnvironmentVariablesResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const environmentVariables = {
   get: get63,
@@ -4190,12 +3650,7 @@ export const post45 = oc
     }),
   )
   .output(zPostAppsByAppIdWorkflowsDraftFeaturesResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const features = {
   post: post45,
@@ -4223,12 +3678,7 @@ export const post46 = oc
     }),
   )
   .output(zPostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdDeliveryTestResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const deliveryTest = {
   post: post46,
@@ -4256,12 +3706,7 @@ export const post47 = oc
     }),
   )
   .output(zPostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormPreviewResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const preview4 = {
   post: post47,
@@ -4289,12 +3734,7 @@ export const post48 = oc
     }),
   )
   .output(zPostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormRunResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const run5 = {
   post: post48,
@@ -4340,12 +3780,7 @@ export const post49 = oc
     }),
   )
   .output(zPostAppsByAppIdWorkflowsDraftIterationNodesByNodeIdRunResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const run6 = {
   post: post49,
@@ -4385,12 +3820,7 @@ export const post50 = oc
     }),
   )
   .output(zPostAppsByAppIdWorkflowsDraftLoopNodesByNodeIdRunResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const run7 = {
   post: post50,
@@ -4420,12 +3850,7 @@ export const get64 = oc
     z.object({ params: zGetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesPath }),
   )
   .output(zGetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const candidates = {
   get: get64,
@@ -4447,14 +3872,11 @@ export const post51 = oc
   )
   .output(zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRosterResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
     agent_version_conflict_error: { status: 409, data: zAgentVersionConflictError },
     agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
     app_not_found: { status: 404, data: zAppNotFoundError },
     invalid_composer_config_error: { status: 400, data: zInvalidComposerConfigError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const copyFromRoster = {
@@ -4476,12 +3898,7 @@ export const post52 = oc
     }),
   )
   .output(zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerImpactResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const impact = {
   post: post52,
@@ -4503,14 +3920,11 @@ export const post53 = oc
   )
   .output(zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRosterResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
     agent_soul_locked_error: { status: 400, data: zAgentSoulLockedError },
     agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
     app_not_found: { status: 404, data: zAppNotFoundError },
     invalid_composer_config_error: { status: 400, data: zInvalidComposerConfigError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
     plaintext_secret_not_allowed_error: { status: 400, data: zPlaintextSecretNotAllowedError },
   })
 
@@ -4534,12 +3948,9 @@ export const post54 = oc
   )
   .output(zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerValidateResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     agent_soul_locked_error: { status: 400, data: zAgentSoulLockedError },
     app_not_found: { status: 404, data: zAppNotFoundError },
     invalid_composer_config_error: { status: 400, data: zInvalidComposerConfigError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
     plaintext_secret_not_allowed_error: { status: 400, data: zPlaintextSecretNotAllowedError },
   })
 
@@ -4563,12 +3974,9 @@ export const get65 = oc
   )
   .output(zGetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
     agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
     app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const put4 = oc
@@ -4587,14 +3995,11 @@ export const put4 = oc
   )
   .output(zPutAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
     agent_soul_locked_error: { status: 400, data: zAgentSoulLockedError },
     agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
     app_not_found: { status: 404, data: zAppNotFoundError },
     invalid_composer_config_error: { status: 400, data: zInvalidComposerConfigError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
     plaintext_secret_not_allowed_error: { status: 400, data: zPlaintextSecretNotAllowedError },
   })
 
@@ -4622,12 +4027,7 @@ export const get66 = oc
   })
   .input(z.object({ params: zGetAppsByAppIdWorkflowsDraftNodesByNodeIdLastRunPath }))
   .output(zGetAppsByAppIdWorkflowsDraftNodesByNodeIdLastRunResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const lastRun = {
   get: get66,
@@ -4655,12 +4055,7 @@ export const post55 = oc
     }),
   )
   .output(zPostAppsByAppIdWorkflowsDraftNodesByNodeIdRunResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const run8 = {
   post: post55,
@@ -4683,12 +4078,7 @@ export const post56 = oc
   })
   .input(z.object({ params: zPostAppsByAppIdWorkflowsDraftNodesByNodeIdTriggerRunPath }))
   .output(zPostAppsByAppIdWorkflowsDraftNodesByNodeIdTriggerRunResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const run9 = {
   post: post56,
@@ -4713,13 +4103,7 @@ export const delete11 = oc
   })
   .input(z.object({ params: zDeleteAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesPath }))
   .output(zDeleteAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    invalid_param: { status: 400, data: zInvalidParamError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 /**
  * Get variables for a specific node
@@ -4735,13 +4119,7 @@ export const get67 = oc
   })
   .input(z.object({ params: zGetAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesPath }))
   .output(zGetAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    invalid_param: { status: 400, data: zInvalidParamError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const variables = {
   delete: delete11,
@@ -4783,10 +4161,7 @@ export const post57 = oc
   )
   .output(zPostAppsByAppIdWorkflowsDraftRunResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
     rate_limit_error: { status: 429, data: zRateLimitError },
   })
 
@@ -4809,12 +4184,9 @@ export const get68 = oc
   .input(z.object({ params: zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEventsPath }))
   .output(zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEventsResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     app_not_found: { status: 404, data: zAppNotFoundError },
     node_not_in_workflow_run: { status: 404, data: zNodeNotInWorkflowRunError },
     node_output_not_declared: { status: 404, data: zNodeOutputNotDeclaredError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
     workflow_run_not_found: { status: 404, data: zWorkflowRunNotFoundError },
   })
 
@@ -4841,12 +4213,9 @@ export const get69 = oc
   )
   .output(zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     app_not_found: { status: 404, data: zAppNotFoundError },
     node_not_in_workflow_run: { status: 404, data: zNodeNotInWorkflowRunError },
     node_output_not_declared: { status: 404, data: zNodeOutputNotDeclaredError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
     workflow_run_not_found: { status: 404, data: zWorkflowRunNotFoundError },
   })
 
@@ -4873,12 +4242,9 @@ export const get70 = oc
   .input(z.object({ params: zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdPath }))
   .output(zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     app_not_found: { status: 404, data: zAppNotFoundError },
     node_not_in_workflow_run: { status: 404, data: zNodeNotInWorkflowRunError },
     node_output_not_declared: { status: 404, data: zNodeOutputNotDeclaredError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
     workflow_run_not_found: { status: 404, data: zWorkflowRunNotFoundError },
   })
 
@@ -4902,12 +4268,9 @@ export const get71 = oc
   .input(z.object({ params: zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsPath }))
   .output(zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     app_not_found: { status: 404, data: zAppNotFoundError },
     node_not_in_workflow_run: { status: 404, data: zNodeNotInWorkflowRunError },
     node_output_not_declared: { status: 404, data: zNodeOutputNotDeclaredError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
     workflow_run_not_found: { status: 404, data: zWorkflowRunNotFoundError },
   })
 
@@ -4939,12 +4302,7 @@ export const get72 = oc
   })
   .input(z.object({ params: zGetAppsByAppIdWorkflowsDraftSystemVariablesPath }))
   .output(zGetAppsByAppIdWorkflowsDraftSystemVariablesResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const systemVariables = {
   get: get72,
@@ -4973,10 +4331,7 @@ export const post58 = oc
   )
   .output(zPostAppsByAppIdWorkflowsDraftTriggerRunResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
     rate_limit_error: { status: 429, data: zRateLimitError },
   })
 
@@ -5007,10 +4362,7 @@ export const post59 = oc
   )
   .output(zPostAppsByAppIdWorkflowsDraftTriggerRunAllResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
     rate_limit_error: { status: 429, data: zRateLimitError },
   })
 
@@ -5038,11 +4390,8 @@ export const put5 = oc
   .input(z.object({ params: zPutAppsByAppIdWorkflowsDraftVariablesByVariableIdResetPath }))
   .output(zPutAppsByAppIdWorkflowsDraftVariablesByVariableIdResetResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     app_not_found: { status: 404, data: zAppNotFoundError },
     not_found: { status: 404, data: zNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const reset = {
@@ -5065,11 +4414,8 @@ export const delete12 = oc
   .input(z.object({ params: zDeleteAppsByAppIdWorkflowsDraftVariablesByVariableIdPath }))
   .output(zDeleteAppsByAppIdWorkflowsDraftVariablesByVariableIdResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     app_not_found: { status: 404, data: zAppNotFoundError },
     not_found: { status: 404, data: zNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 /**
@@ -5087,11 +4433,8 @@ export const get73 = oc
   .input(z.object({ params: zGetAppsByAppIdWorkflowsDraftVariablesByVariableIdPath }))
   .output(zGetAppsByAppIdWorkflowsDraftVariablesByVariableIdResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     app_not_found: { status: 404, data: zAppNotFoundError },
     not_found: { status: 404, data: zNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 /**
@@ -5114,12 +4457,8 @@ export const patch2 = oc
   )
   .output(zPatchAppsByAppIdWorkflowsDraftVariablesByVariableIdResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     app_not_found: { status: 404, data: zAppNotFoundError },
-    invalid_param: { status: 400, data: zInvalidParamError },
     not_found: { status: 404, data: zNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const byVariableId = {
@@ -5144,12 +4483,7 @@ export const delete13 = oc
   })
   .input(z.object({ params: zDeleteAppsByAppIdWorkflowsDraftVariablesPath }))
   .output(zDeleteAppsByAppIdWorkflowsDraftVariablesResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 /**
  * Get draft workflow
@@ -5174,11 +4508,8 @@ export const get74 = oc
   )
   .output(zGetAppsByAppIdWorkflowsDraftVariablesResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     app_not_found: { status: 404, data: zAppNotFoundError },
     draft_workflow_not_exist: { status: 404, data: zDraftWorkflowNotExistError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const variables2 = {
@@ -5205,11 +4536,8 @@ export const get75 = oc
   .input(z.object({ params: zGetAppsByAppIdWorkflowsDraftPath }))
   .output(zGetAppsByAppIdWorkflowsDraftResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     app_not_found: { status: 404, data: zAppNotFoundError },
     draft_workflow_not_exist: { status: 404, data: zDraftWorkflowNotExistError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 /**
@@ -5235,12 +4563,8 @@ export const post60 = oc
   )
   .output(zPostAppsByAppIdWorkflowsDraftResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     app_not_found: { status: 404, data: zAppNotFoundError },
     draft_workflow_not_sync: { status: 409, data: zDraftWorkflowNotSyncError },
-    invalid_param: { status: 400, data: zInvalidParamError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const draft2 = {
@@ -5277,12 +4601,7 @@ export const get76 = oc
   })
   .input(z.object({ params: zGetAppsByAppIdWorkflowsPublishPath }))
   .output(zGetAppsByAppIdWorkflowsPublishResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 /**
  * Publish workflow
@@ -5303,12 +4622,7 @@ export const post61 = oc
     }),
   )
   .output(zPostAppsByAppIdWorkflowsPublishResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const publish = {
   get: get76,
@@ -5330,12 +4644,9 @@ export const get77 = oc
   .input(z.object({ params: zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEventsPath }))
   .output(zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEventsResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     app_not_found: { status: 404, data: zAppNotFoundError },
     node_not_in_workflow_run: { status: 404, data: zNodeNotInWorkflowRunError },
     node_output_not_declared: { status: 404, data: zNodeOutputNotDeclaredError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
     workflow_run_not_found: { status: 404, data: zWorkflowRunNotFoundError },
   })
 
@@ -5366,12 +4677,9 @@ export const get78 = oc
     zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewResponse,
   )
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     app_not_found: { status: 404, data: zAppNotFoundError },
     node_not_in_workflow_run: { status: 404, data: zNodeNotInWorkflowRunError },
     node_output_not_declared: { status: 404, data: zNodeOutputNotDeclaredError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
     workflow_run_not_found: { status: 404, data: zWorkflowRunNotFoundError },
   })
 
@@ -5398,12 +4706,9 @@ export const get79 = oc
   .input(z.object({ params: zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdPath }))
   .output(zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     app_not_found: { status: 404, data: zAppNotFoundError },
     node_not_in_workflow_run: { status: 404, data: zNodeNotInWorkflowRunError },
     node_output_not_declared: { status: 404, data: zNodeOutputNotDeclaredError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
     workflow_run_not_found: { status: 404, data: zWorkflowRunNotFoundError },
   })
 
@@ -5427,12 +4732,9 @@ export const get80 = oc
   .input(z.object({ params: zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsPath }))
   .output(zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     app_not_found: { status: 404, data: zAppNotFoundError },
     node_not_in_workflow_run: { status: 404, data: zNodeNotInWorkflowRunError },
     node_output_not_declared: { status: 404, data: zNodeOutputNotDeclaredError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
     workflow_run_not_found: { status: 404, data: zWorkflowRunNotFoundError },
   })
 
@@ -5473,12 +4775,7 @@ export const get81 = oc
     }),
   )
   .output(zGetAppsByAppIdWorkflowsTriggersWebhookResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const webhook = {
   get: get81,
@@ -5502,12 +4799,7 @@ export const post62 = oc
   })
   .input(z.object({ params: zPostAppsByAppIdWorkflowsByWorkflowIdRestorePath }))
   .output(zPostAppsByAppIdWorkflowsByWorkflowIdRestoreResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const restore = {
   post: post62,
@@ -5528,12 +4820,7 @@ export const delete14 = oc
   })
   .input(z.object({ params: zDeleteAppsByAppIdWorkflowsByWorkflowIdPath }))
   .output(zDeleteAppsByAppIdWorkflowsByWorkflowIdResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 /**
  * Update workflow attributes
@@ -5557,13 +4844,7 @@ export const patch3 = oc
     }),
   )
   .output(zPatchAppsByAppIdWorkflowsByWorkflowIdResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    invalid_param: { status: 400, data: zInvalidParamError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const byWorkflowId = {
   delete: delete14,
@@ -5593,12 +4874,7 @@ export const get82 = oc
     }),
   )
   .output(zGetAppsByAppIdWorkflowsResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const workflows3 = {
   get: get82,
@@ -5625,11 +4901,6 @@ export const delete15 = oc
   })
   .input(z.object({ params: zDeleteAppsByAppIdPath }))
   .output(zDeleteAppsByAppIdResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
 
 /**
  * Get application details
@@ -5645,12 +4916,6 @@ export const get83 = oc
   })
   .input(z.object({ params: zGetAppsByAppIdPath }))
   .output(zGetAppsByAppIdResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-    unauthorized_and_force_logout: { status: 401, data: zUnauthorizedAndForceLogoutError },
-  })
 
 /**
  * Update application details
@@ -5666,11 +4931,6 @@ export const put6 = oc
   })
   .input(z.object({ body: zPutAppsByAppIdBody, params: zPutAppsByAppIdPath }))
   .output(zPutAppsByAppIdResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
 
 export const byAppId2 = {
   delete: delete15,
@@ -5730,11 +4990,8 @@ export const delete16 = oc
   .input(z.object({ params: zDeleteAppsByResourceIdApiKeysByApiKeyIdPath }))
   .output(zDeleteAppsByResourceIdApiKeysByApiKeyIdResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     agent_not_published: { status: 409, data: zAgentNotPublishedError },
     max_keys_exceeded: { status: 400, data: zMaxKeysExceededError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const byApiKeyId = {
@@ -5756,11 +5013,8 @@ export const get84 = oc
   .input(z.object({ params: zGetAppsByResourceIdApiKeysPath }))
   .output(zGetAppsByResourceIdApiKeysResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     agent_not_published: { status: 409, data: zAgentNotPublishedError },
     max_keys_exceeded: { status: 400, data: zMaxKeysExceededError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 /**
@@ -5779,11 +5033,8 @@ export const post63 = oc
   .input(z.object({ params: zPostAppsByResourceIdApiKeysPath }))
   .output(zPostAppsByResourceIdApiKeysResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     agent_not_published: { status: 409, data: zAgentNotPublishedError },
     max_keys_exceeded: { status: 400, data: zMaxKeysExceededError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const apiKeys = {
@@ -5810,12 +5061,6 @@ export const get85 = oc
   })
   .input(z.object({ query: zGetAppsQuery.optional() }))
   .output(zGetAppsResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-    unauthorized_and_force_logout: { status: 401, data: zUnauthorizedAndForceLogoutError },
-  })
 
 /**
  * Create a new application
@@ -5832,11 +5077,6 @@ export const post64 = oc
   })
   .input(z.object({ body: zPostAppsBody }))
   .output(zPostAppsResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
 
 export const apps = {
   get: get85,

@@ -13,11 +13,6 @@ export type RuleCodeGeneratePayload = {
 
 export type GeneratorResponse = unknown
 
-export type AccountNotInitializedError = ErrorResponse & {
-  code: 'account_not_initialized'
-  status: 400
-}
-
 export type CompletionRequestError = ErrorResponse & {
   code: 'completion_request_error'
   status: 400
@@ -36,16 +31,6 @@ export type ProviderNotInitializeError = ErrorResponse & {
 export type ProviderQuotaExceededError = ErrorResponse & {
   code: 'provider_quota_exceeded'
   status: 400
-}
-
-export type NotInitValidatedError = ErrorResponse & {
-  code: 'not_init_validated'
-  status: 401
-}
-
-export type NotSetupError = ErrorResponse & {
-  code: 'not_setup'
-  status: 401
 }
 
 export type ErrorResponse = {
@@ -78,12 +63,10 @@ export type PostRuleCodeGenerateData = {
 
 export type PostRuleCodeGenerateErrors = {
   400:
-    | AccountNotInitializedError
     | CompletionRequestError
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 

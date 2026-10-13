@@ -2,12 +2,7 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-import {
-  zAccountNotInitializedError,
-  zNotInitValidatedError,
-  zNotSetupError,
-  zRecommendedAppNotFoundError,
-} from './zod.gen.ts'
+import { zRecommendedAppNotFoundError } from './zod.gen.ts'
 import {
   zGetExploreAppsByAppIdPath,
   zGetExploreAppsByAppIdResponse,
@@ -29,11 +24,6 @@ export const get = oc
   })
   .input(z.object({ query: zGetExploreAppsLearnDifyQuery.optional() }))
   .output(zGetExploreAppsLearnDifyResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
 
 export const learnDify = {
   get,
@@ -49,12 +39,7 @@ export const get2 = oc
   })
   .input(z.object({ params: zGetExploreAppsByAppIdPath }))
   .output(zGetExploreAppsByAppIdResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-    recommended_app_not_found: { status: 404, data: zRecommendedAppNotFoundError },
-  })
+  .errors({ recommended_app_not_found: { status: 404, data: zRecommendedAppNotFoundError } })
 
 export const byAppId = {
   get: get2,
@@ -70,11 +55,6 @@ export const get3 = oc
   })
   .input(z.object({ query: zGetExploreAppsQuery.optional() }))
   .output(zGetExploreAppsResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
 
 export const apps = {
   get: get3,

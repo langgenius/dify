@@ -3,11 +3,8 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
-  zAccountNotInitializedError,
   zFileExtensionBlockedError,
   zFileTooLargeError,
-  zNotInitValidatedError,
-  zNotSetupError,
   zRemoteFileAccessDeniedError,
   zRemoteFileInvalidResponseError,
   zRemoteFileInvalidUrlError,
@@ -61,9 +58,6 @@ export const get = oc
   .input(z.object({ params: zGetRemoteFilesByUrlPath }))
   .output(zGetRemoteFilesByUrlResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
     remote_file_access_denied: { status: 400, data: zRemoteFileAccessDeniedError },
     remote_file_invalid_response: { status: 502, data: zRemoteFileInvalidResponseError },
     remote_file_invalid_url: { status: 400, data: zRemoteFileInvalidUrlError },

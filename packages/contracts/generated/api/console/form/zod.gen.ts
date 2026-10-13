@@ -24,42 +24,6 @@ export const zErrorResponse = z.object({
 })
 
 /**
- * AccountNotInitializedError
- *
- * The account has not been initialized yet. Please proceed with the initialization process first.
- */
-export const zAccountNotInitializedError = zErrorResponse.and(
-  z.object({
-    code: z.literal('account_not_initialized'),
-    status: z.literal(400),
-  }),
-)
-
-/**
- * NotInitValidatedError
- *
- * Init validation has not been completed yet. Please proceed with the init validation process first.
- */
-export const zNotInitValidatedError = zErrorResponse.and(
-  z.object({
-    code: z.literal('not_init_validated'),
-    status: z.literal(401),
-  }),
-)
-
-/**
- * NotSetupError
- *
- * Dify has not been initialized and installed yet. Please proceed with the initialization and installation process first.
- */
-export const zNotSetupError = zErrorResponse.and(
-  z.object({
-    code: z.literal('not_setup'),
-    status: z.literal(401),
-  }),
-)
-
-/**
  * NotFoundError
  */
 export const zNotFoundError = zErrorResponse.and(

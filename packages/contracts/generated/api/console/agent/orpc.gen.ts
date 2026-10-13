@@ -3,7 +3,6 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
-  zAccountNotInitializedError,
   zAgentBackendUnreachableError,
   zAgentBuildSandboxNotFoundError,
   zAgentModelNotConfiguredError,
@@ -23,15 +22,12 @@ import {
   zModelCurrentlyNotSupportError,
   zNoActiveBindingError,
   zNoAudioUploadedError,
-  zNotInitValidatedError,
-  zNotSetupError,
   zPlaintextSecretNotAllowedError,
   zProviderNotInitializeError,
   zProviderNotSupportSpeechToTextError,
   zProviderQuotaExceededError,
   zRateLimitError,
   zSpeechToTextDisabledError,
-  zUnauthorizedAndForceLogoutError,
   zUnsupportedAudioTypeError,
 } from './zod.gen.ts'
 import {
@@ -201,11 +197,6 @@ export const get = oc
   })
   .input(z.object({ query: zGetAgentInviteOptionsQuery.optional() }))
   .output(zGetAgentInviteOptionsResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
 
 export const inviteOptions = {
   get,
@@ -221,11 +212,6 @@ export const get2 = oc
   })
   .input(z.object({ params: zGetAgentByAgentIdApiAccessPath }))
   .output(zGetAgentByAgentIdApiAccessResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
 
 export const apiAccess = {
   get: get2,
@@ -243,12 +229,7 @@ export const post = oc
     z.object({ body: zPostAgentByAgentIdApiEnableBody, params: zPostAgentByAgentIdApiEnablePath }),
   )
   .output(zPostAgentByAgentIdApiEnableResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    agent_not_published: { status: 409, data: zAgentNotPublishedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ agent_not_published: { status: 409, data: zAgentNotPublishedError } })
 
 export const apiEnable = {
   post,
@@ -266,11 +247,8 @@ export const delete_ = oc
   .input(z.object({ params: zDeleteAgentByAgentIdApiKeysByApiKeyIdPath }))
   .output(zDeleteAgentByAgentIdApiKeysByApiKeyIdResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     agent_not_published: { status: 409, data: zAgentNotPublishedError },
     max_keys_exceeded: { status: 400, data: zMaxKeysExceededError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const byApiKeyId = {
@@ -288,11 +266,8 @@ export const get3 = oc
   .input(z.object({ params: zGetAgentByAgentIdApiKeysPath }))
   .output(zGetAgentByAgentIdApiKeysResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     agent_not_published: { status: 409, data: zAgentNotPublishedError },
     max_keys_exceeded: { status: 400, data: zMaxKeysExceededError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const post2 = oc
@@ -307,11 +282,8 @@ export const post2 = oc
   .input(z.object({ params: zPostAgentByAgentIdApiKeysPath }))
   .output(zPostAgentByAgentIdApiKeysResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     agent_not_published: { status: 409, data: zAgentNotPublishedError },
     max_keys_exceeded: { status: 400, data: zMaxKeysExceededError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const apiKeys = {
@@ -340,7 +312,6 @@ export const post3 = oc
   )
   .output(zPostAgentByAgentIdAudioToTextResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
     agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
     app_unavailable: { status: 400, data: zAppUnavailableError },
@@ -348,8 +319,6 @@ export const post3 = oc
     completion_request_error: { status: 400, data: zCompletionRequestError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     no_audio_uploaded: { status: 400, data: zNoAudioUploadedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
     provider_not_support_speech_to_text: {
       status: 400,
@@ -379,13 +348,10 @@ export const post4 = oc
   .input(z.object({ params: zPostAgentByAgentIdBuildChatFinalizePath }))
   .output(zPostAgentByAgentIdBuildChatFinalizeResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
     app_unavailable: { status: 400, data: zAppUnavailableError },
     completion_request_error: { status: 400, data: zCompletionRequestError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
     provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
     rate_limit_error: { status: 429, data: zRateLimitError },
@@ -410,14 +376,11 @@ export const post5 = oc
   .input(z.object({ params: zPostAgentByAgentIdBuildDraftApplyPath }))
   .output(zPostAgentByAgentIdBuildDraftApplyResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     agent_build_sandbox_not_found: { status: 404, data: zAgentBuildSandboxNotFoundError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
     agent_soul_locked_error: { status: 400, data: zAgentSoulLockedError },
     agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
     invalid_composer_config_error: { status: 400, data: zInvalidComposerConfigError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
     plaintext_secret_not_allowed_error: { status: 400, data: zPlaintextSecretNotAllowedError },
   })
 
@@ -441,12 +404,9 @@ export const post6 = oc
   )
   .output(zPostAgentByAgentIdBuildDraftCheckoutResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     agent_build_sandbox_not_found: { status: 404, data: zAgentBuildSandboxNotFoundError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
     agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const checkout = {
@@ -464,11 +424,8 @@ export const delete2 = oc
   .input(z.object({ params: zDeleteAgentByAgentIdBuildDraftPath }))
   .output(zDeleteAgentByAgentIdBuildDraftResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     agent_build_sandbox_not_found: { status: 404, data: zAgentBuildSandboxNotFoundError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const get4 = oc
@@ -481,12 +438,7 @@ export const get4 = oc
   })
   .input(z.object({ params: zGetAgentByAgentIdBuildDraftPath }))
   .output(zGetAgentByAgentIdBuildDraftResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError } })
 
 export const put = oc
   .route({
@@ -501,12 +453,9 @@ export const put = oc
   )
   .output(zPutAgentByAgentIdBuildDraftResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
     agent_soul_locked_error: { status: 400, data: zAgentSoulLockedError },
     agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const buildDraft = {
@@ -532,7 +481,6 @@ export const get5 = oc
   .input(z.object({ params: zGetAgentByAgentIdChatMessagesByMessageIdSuggestedQuestionsPath }))
   .output(zGetAgentByAgentIdChatMessagesByMessageIdSuggestedQuestionsResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
     agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
     app_suggested_questions_after_answer_disabled: {
@@ -542,8 +490,6 @@ export const get5 = oc
     app_unavailable: { status: 400, data: zAppUnavailableError },
     completion_request_error: { status: 400, data: zCompletionRequestError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
     provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
   })
@@ -570,12 +516,7 @@ export const post7 = oc
   })
   .input(z.object({ params: zPostAgentByAgentIdChatMessagesByTaskIdStopPath }))
   .output(zPostAgentByAgentIdChatMessagesByTaskIdStopResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
 
 export const stop = {
   post: post7,
@@ -604,12 +545,7 @@ export const get6 = oc
     }),
   )
   .output(zGetAgentByAgentIdChatMessagesResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
 
 export const chatMessages = {
   get: get6,
@@ -627,12 +563,7 @@ export const get7 = oc
   })
   .input(z.object({ params: zGetAgentByAgentIdComposerCandidatesPath }))
   .output(zGetAgentByAgentIdComposerCandidatesResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError } })
 
 export const candidates = {
   get: get7,
@@ -654,13 +585,10 @@ export const post8 = oc
   )
   .output(zPostAgentByAgentIdComposerValidateResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
     agent_soul_locked_error: { status: 400, data: zAgentSoulLockedError },
     agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
     invalid_composer_config_error: { status: 400, data: zInvalidComposerConfigError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
     plaintext_secret_not_allowed_error: { status: 400, data: zPlaintextSecretNotAllowedError },
   })
 
@@ -679,11 +607,8 @@ export const get8 = oc
   .input(z.object({ params: zGetAgentByAgentIdComposerPath }))
   .output(zGetAgentByAgentIdComposerResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
     agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const put2 = oc
@@ -697,13 +622,10 @@ export const put2 = oc
   .input(z.object({ body: zPutAgentByAgentIdComposerBody, params: zPutAgentByAgentIdComposerPath }))
   .output(zPutAgentByAgentIdComposerResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
     agent_soul_locked_error: { status: 400, data: zAgentSoulLockedError },
     agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
     invalid_composer_config_error: { status: 400, data: zInvalidComposerConfigError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
     plaintext_secret_not_allowed_error: { status: 400, data: zPlaintextSecretNotAllowedError },
   })
 
@@ -730,11 +652,8 @@ export const get9 = oc
   )
   .output(zGetAgentByAgentIdConfigFilesByNameDownloadResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
     agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const download = {
@@ -757,11 +676,8 @@ export const get10 = oc
   )
   .output(zGetAgentByAgentIdConfigFilesByNamePreviewResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
     agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const preview = {
@@ -784,11 +700,8 @@ export const delete3 = oc
   )
   .output(zDeleteAgentByAgentIdConfigFilesByNameResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
     agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const byName = {
@@ -813,11 +726,8 @@ export const get11 = oc
   )
   .output(zGetAgentByAgentIdConfigFilesResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
     agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const post9 = oc
@@ -838,11 +748,8 @@ export const post9 = oc
   )
   .output(zPostAgentByAgentIdConfigFilesResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
     agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const files = {
@@ -867,11 +774,8 @@ export const get12 = oc
   )
   .output(zGetAgentByAgentIdConfigManifestResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
     agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const manifest = {
@@ -896,11 +800,8 @@ export const post10 = oc
   )
   .output(zPostAgentByAgentIdConfigSkillsUploadResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
     agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const upload = {
@@ -923,11 +824,8 @@ export const get13 = oc
   )
   .output(zGetAgentByAgentIdConfigSkillsByNameDownloadResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
     agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const download2 = {
@@ -945,11 +843,8 @@ export const get14 = oc
   .input(z.object({ params: zGetAgentByAgentIdConfigSkillsByNameFilesContentPath }))
   .output(zGetAgentByAgentIdConfigSkillsByNameFilesContentResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
     agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const content = {
@@ -972,11 +867,8 @@ export const get15 = oc
   )
   .output(zGetAgentByAgentIdConfigSkillsByNameFilesDownloadResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
     agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const download3 = {
@@ -999,11 +891,8 @@ export const get16 = oc
   )
   .output(zGetAgentByAgentIdConfigSkillsByNameFilesPreviewResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
     agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const preview2 = {
@@ -1032,11 +921,8 @@ export const get17 = oc
   )
   .output(zGetAgentByAgentIdConfigSkillsByNameInspectResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
     agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const inspect = {
@@ -1059,11 +945,8 @@ export const delete4 = oc
   )
   .output(zDeleteAgentByAgentIdConfigSkillsByNameResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
     agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const byName2 = {
@@ -1089,11 +972,8 @@ export const get18 = oc
   )
   .output(zGetAgentByAgentIdConfigSkillsResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
     agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const skills = {
@@ -1119,12 +999,7 @@ export const post11 = oc
   })
   .input(z.object({ body: zPostAgentByAgentIdCopyBody, params: zPostAgentByAgentIdCopyPath }))
   .output(zPostAgentByAgentIdCopyResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
 
 export const copy = {
   post: post11,
@@ -1140,11 +1015,6 @@ export const post12 = oc
   })
   .input(z.object({ params: zPostAgentByAgentIdDebugConversationRefreshPath }))
   .output(zPostAgentByAgentIdDebugConversationRefreshResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
 
 export const refresh = {
   post: post12,
@@ -1170,12 +1040,7 @@ export const post13 = oc
     z.object({ body: zPostAgentByAgentIdFeaturesBody, params: zPostAgentByAgentIdFeaturesPath }),
   )
   .output(zPostAgentByAgentIdFeaturesResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
 
 export const features = {
   post: post13,
@@ -1197,12 +1062,7 @@ export const post14 = oc
     z.object({ body: zPostAgentByAgentIdFeedbacksBody, params: zPostAgentByAgentIdFeedbacksPath }),
   )
   .output(zPostAgentByAgentIdFeedbacksResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
 
 export const feedbacks = {
   post: post14,
@@ -1218,11 +1078,6 @@ export const get19 = oc
   })
   .input(z.object({ params: zGetAgentByAgentIdLogSourcesPath }))
   .output(zGetAgentByAgentIdLogSourcesResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
 
 export const logSources = {
   get: get19,
@@ -1243,11 +1098,6 @@ export const get20 = oc
     }),
   )
   .output(zGetAgentByAgentIdLogsByConversationIdMessagesResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
 
 export const messages = {
   get: get20,
@@ -1269,11 +1119,6 @@ export const get21 = oc
     z.object({ params: zGetAgentByAgentIdLogsPath, query: zGetAgentByAgentIdLogsQuery.optional() }),
   )
   .output(zGetAgentByAgentIdLogsResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
 
 export const logs = {
   get: get21,
@@ -1294,12 +1139,7 @@ export const get22 = oc
   })
   .input(z.object({ params: zGetAgentByAgentIdMessagesByMessageIdPath }))
   .output(zGetAgentByAgentIdMessagesByMessageIdResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
 
 export const byMessageId2 = {
   get: get22,
@@ -1320,14 +1160,11 @@ export const post15 = oc
   .input(z.object({ body: zPostAgentByAgentIdPublishBody, params: zPostAgentByAgentIdPublishPath }))
   .output(zPostAgentByAgentIdPublishResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     agent_model_not_configured: { status: 400, data: zAgentModelNotConfiguredError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
     agent_soul_locked_error: { status: 400, data: zAgentSoulLockedError },
     agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
     invalid_composer_config_error: { status: 400, data: zInvalidComposerConfigError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
     plaintext_secret_not_allowed_error: { status: 400, data: zPlaintextSecretNotAllowedError },
   })
 
@@ -1349,12 +1186,7 @@ export const get23 = oc
   })
   .input(z.object({ params: zGetAgentByAgentIdReferencingWorkflowsPath }))
   .output(zGetAgentByAgentIdReferencingWorkflowsResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
 
 export const referencingWorkflows = {
   get: get23,
@@ -1380,15 +1212,12 @@ export const post16 = oc
   )
   .output(zPostAgentByAgentIdSandboxFilesDownloadResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     agent_backend_unreachable: { status: 502, data: zAgentBackendUnreachableError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
     app_not_found: { status: 404, data: zAppNotFoundError },
     binding_file_download_unavailable: { status: 502, data: zBindingFileDownloadUnavailableError },
     inspector_unavailable: { status: 503, data: zInspectorUnavailableError },
     no_active_binding: { status: 404, data: zNoActiveBindingError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const download4 = {
@@ -1415,15 +1244,12 @@ export const get24 = oc
   )
   .output(zGetAgentByAgentIdSandboxFilesReadResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     agent_backend_unreachable: { status: 502, data: zAgentBackendUnreachableError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
     app_not_found: { status: 404, data: zAppNotFoundError },
     binding_file_download_unavailable: { status: 502, data: zBindingFileDownloadUnavailableError },
     inspector_unavailable: { status: 503, data: zInspectorUnavailableError },
     no_active_binding: { status: 404, data: zNoActiveBindingError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const read = {
@@ -1450,15 +1276,12 @@ export const get25 = oc
   )
   .output(zGetAgentByAgentIdSandboxFilesResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     agent_backend_unreachable: { status: 502, data: zAgentBackendUnreachableError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
     app_not_found: { status: 404, data: zAppNotFoundError },
     binding_file_download_unavailable: { status: 502, data: zBindingFileDownloadUnavailableError },
     inspector_unavailable: { status: 503, data: zInspectorUnavailableError },
     no_active_binding: { status: 404, data: zNoActiveBindingError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const files3 = {
@@ -1482,15 +1305,12 @@ export const get26 = oc
   .input(z.object({ params: zGetAgentByAgentIdSandboxPath, query: zGetAgentByAgentIdSandboxQuery }))
   .output(zGetAgentByAgentIdSandboxResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     agent_backend_unreachable: { status: 502, data: zAgentBackendUnreachableError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
     app_not_found: { status: 404, data: zAppNotFoundError },
     binding_file_download_unavailable: { status: 502, data: zBindingFileDownloadUnavailableError },
     inspector_unavailable: { status: 503, data: zInspectorUnavailableError },
     no_active_binding: { status: 404, data: zNoActiveBindingError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const sandbox = {
@@ -1513,11 +1333,6 @@ export const get27 = oc
     }),
   )
   .output(zGetAgentByAgentIdStatisticsSummaryResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
 
 export const summary = {
   get: get27,
@@ -1547,14 +1362,11 @@ export const get28 = oc
   )
   .output(zGetAgentByAgentIdTextToAudioVoicesResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
     audio_too_large: { status: 413, data: zAudioTooLargeError },
     completion_request_error: { status: 400, data: zCompletionRequestError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     no_audio_uploaded: { status: 400, data: zNoAudioUploadedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
     provider_not_support_speech_to_text: {
       status: 400,
@@ -1588,15 +1400,12 @@ export const post17 = oc
   )
   .output(zPostAgentByAgentIdTextToAudioResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
     app_unavailable: { status: 400, data: zAppUnavailableError },
     audio_too_large: { status: 413, data: zAudioTooLargeError },
     completion_request_error: { status: 400, data: zCompletionRequestError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     no_audio_uploaded: { status: 400, data: zNoAudioUploadedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
     provider_not_support_speech_to_text: {
       status: 400,
@@ -1621,11 +1430,6 @@ export const post18 = oc
   })
   .input(z.object({ params: zPostAgentByAgentIdVersionsByVersionIdRestorePath }))
   .output(zPostAgentByAgentIdVersionsByVersionIdRestoreResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
 
 export const restore = {
   post: post18,
@@ -1641,11 +1445,6 @@ export const get29 = oc
   })
   .input(z.object({ params: zGetAgentByAgentIdVersionsByVersionIdPath }))
   .output(zGetAgentByAgentIdVersionsByVersionIdResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
 
 export const byVersionId = {
   get: get29,
@@ -1662,11 +1461,6 @@ export const get30 = oc
   })
   .input(z.object({ params: zGetAgentByAgentIdVersionsPath }))
   .output(zGetAgentByAgentIdVersionsResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
 
 export const versions = {
   get: get30,
@@ -1684,11 +1478,6 @@ export const delete5 = oc
   })
   .input(z.object({ params: zDeleteAgentByAgentIdPath }))
   .output(zDeleteAgentByAgentIdResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
 
 export const get31 = oc
   .route({
@@ -1700,13 +1489,7 @@ export const get31 = oc
   })
   .input(z.object({ params: zGetAgentByAgentIdPath }))
   .output(zGetAgentByAgentIdResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-    unauthorized_and_force_logout: { status: 401, data: zUnauthorizedAndForceLogoutError },
-  })
+  .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
 
 export const put3 = oc
   .route({
@@ -1718,12 +1501,7 @@ export const put3 = oc
   })
   .input(z.object({ body: zPutAgentByAgentIdBody, params: zPutAgentByAgentIdPath }))
   .output(zPutAgentByAgentIdResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
 
 export const byAgentId = {
   delete: delete5,
@@ -1763,11 +1541,6 @@ export const get32 = oc
   })
   .input(z.object({ query: zGetAgentQuery.optional() }))
   .output(zGetAgentResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
 
 export const post19 = oc
   .route({
@@ -1780,12 +1553,7 @@ export const post19 = oc
   })
   .input(z.object({ body: zPostAgentBody }))
   .output(zPostAgentResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
+  .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
 
 export const agent = {
   get: get32,

@@ -8,21 +8,6 @@ export type ComplianceDownloadResponse = {
   url: string
 }
 
-export type AccountNotInitializedError = ErrorResponse & {
-  code: 'account_not_initialized'
-  status: 400
-}
-
-export type NotInitValidatedError = ErrorResponse & {
-  code: 'not_init_validated'
-  status: 401
-}
-
-export type NotSetupError = ErrorResponse & {
-  code: 'not_setup'
-  status: 401
-}
-
 export type BillingUnprocessableEntityErrorResponse = {
   code: 'unprocessable_entity'
   message: string
@@ -82,8 +67,6 @@ export type GetComplianceDownloadData = {
 }
 
 export type GetComplianceDownloadErrors = {
-  400: AccountNotInitializedError
-  401: NotInitValidatedError | NotSetupError
   422: BillingUnprocessableEntityErrorResponse | ErrorResponse
   429: ComplianceRateLimitErrorResponse | ComplianceRateLimitError
   502: BillingOperationFailedErrorResponse | BillingOperationFailedError

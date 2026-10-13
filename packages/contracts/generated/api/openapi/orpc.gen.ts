@@ -2,7 +2,6 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-import { zAccountNotInitializedError, zNotInitValidatedError, zNotSetupError } from './zod.gen.ts'
 import {
   zDeleteAccountSessionsBySessionIdPath,
   zDeleteAccountSessionsBySessionIdResponse,
@@ -470,11 +469,6 @@ export const post8 = oc
   })
   .input(z.object({ body: zPostOauthDeviceApproveBody }))
   .output(zPostOauthDeviceApproveResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
 
 export const approve = {
   post: post8,
@@ -505,11 +499,6 @@ export const post10 = oc
   })
   .input(z.object({ body: zPostOauthDeviceDenyBody }))
   .output(zPostOauthDeviceDenyResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
 
 export const deny = {
   post: post10,

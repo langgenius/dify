@@ -52,16 +52,6 @@ export type PasswordMismatchError = ErrorResponse & {
   status: 400
 }
 
-export type NotInitValidatedError = ErrorResponse & {
-  code: 'not_init_validated'
-  status: 401
-}
-
-export type NotSetupError = ErrorResponse & {
-  code: 'not_setup'
-  status: 401
-}
-
 export type ErrorResponse = {
   code: string
   details?: {
@@ -141,7 +131,6 @@ export type PostEmailRegisterErrors = {
     | LimitExceededError
     | NormalizedEmailAlreadyInUseError
     | PasswordMismatchError
-  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -162,7 +151,6 @@ export type PostEmailRegisterSendEmailData = {
 
 export type PostEmailRegisterSendEmailErrors = {
   400: AccountInFreezeError | EmailDomainSuspendedError
-  401: NotInitValidatedError | NotSetupError
   429: EmailRegisterRateLimitExceededError | EmailSendIpLimitError
   default: ErrorResponse
 }
@@ -186,7 +174,6 @@ export type PostEmailRegisterValidityData = {
 
 export type PostEmailRegisterValidityErrors = {
   400: EmailCodeError | InvalidEmailError | InvalidOrExpiredTokenError
-  401: NotInitValidatedError | NotSetupError
   429: EmailRegisterLimitError
   default: ErrorResponse
 }

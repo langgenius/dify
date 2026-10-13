@@ -73,11 +73,6 @@ export type AppMoreLikeThisDisabledError = ErrorResponse & {
   status: 403
 }
 
-export type AppNotFoundError = ErrorResponse & {
-  code: 'app_not_found'
-  status: 404
-}
-
 export type AppPermissionQuery = {
   appId: string
 }
@@ -514,16 +509,6 @@ export type NotCompletionAppError = ErrorResponse & {
 export type NotFoundError = ErrorResponse & {
   code: 'not_found'
   status: 404
-}
-
-export type NotInitValidatedError = ErrorResponse & {
-  code: 'not_init_validated'
-  status: 401
-}
-
-export type NotSetupError = ErrorResponse & {
-  code: 'not_setup'
-  status: 401
 }
 
 export type NotWorkflowAppError = ErrorResponse & {
@@ -1142,16 +1127,6 @@ export type VerificationTokenResponse = {
   token: string
 }
 
-export type WebAppAccessDeniedError = ErrorResponse & {
-  code: 'web_app_access_denied'
-  status: 401
-}
-
-export type WebAppAccessUnavailableError = ErrorResponse & {
-  code: 'web_app_access_unavailable'
-  status: 503
-}
-
 export type WebAppAuthModel = {
   allow_email_code_login: boolean
   allow_email_password_login: boolean
@@ -1248,11 +1223,6 @@ export type WebSiteResponse = {
   use_icon_as_answer_icon?: boolean | null
 }
 
-export type WebSsoAuthRequiredError = ErrorResponse & {
-  code: 'web_sso_auth_required'
-  status: 401
-}
-
 export type WorkflowRunPayload = {
   files?: Array<
     | {
@@ -1343,12 +1313,11 @@ export type PostAudioToTextErrors = {
     | ProviderNotSupportSpeechToTextError
     | ProviderQuotaExceededError
     | SpeechToTextDisabledError
-  401: WebAppAccessDeniedError | WebSsoAuthRequiredError
-  404: AgentVersionNotFoundError | AppNotFoundError
+  401: ErrorResponse
+  404: AgentVersionNotFoundError
   413: AudioTooLargeError
   415: UnsupportedAudioTypeError
   500: ErrorResponse
-  503: WebAppAccessUnavailableError
   default: ErrorResponse
 }
 
@@ -1376,11 +1345,10 @@ export type PostChatMessagesErrors = {
     | NotChatAppError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  401: WebAppAccessDeniedError | WebSsoAuthRequiredError
-  404: AppNotFoundError
+  401: ErrorResponse
+  404: ErrorResponse
   429: RateLimitError
   500: ErrorResponse
-  503: WebAppAccessUnavailableError
   default: ErrorResponse
 }
 
@@ -1403,10 +1371,9 @@ export type PostChatMessagesByTaskIdStopData = {
 
 export type PostChatMessagesByTaskIdStopErrors = {
   400: NotChatAppError
-  401: WebAppAccessDeniedError | WebSsoAuthRequiredError
-  404: AppNotFoundError
+  401: ErrorResponse
+  404: ErrorResponse
   500: ErrorResponse
-  503: WebAppAccessUnavailableError
   default: ErrorResponse
 }
 
@@ -1436,10 +1403,9 @@ export type PostCompletionMessagesErrors = {
     | NotCompletionAppError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  401: WebAppAccessDeniedError | WebSsoAuthRequiredError
-  404: AppNotFoundError
+  401: ErrorResponse
+  404: ErrorResponse
   500: ErrorResponse
-  503: WebAppAccessUnavailableError
   default: ErrorResponse
 }
 
@@ -1464,10 +1430,9 @@ export type PostCompletionMessagesByTaskIdStopData = {
 
 export type PostCompletionMessagesByTaskIdStopErrors = {
   400: NotCompletionAppError
-  401: WebAppAccessDeniedError | WebSsoAuthRequiredError
-  404: AppNotFoundError
+  401: ErrorResponse
+  404: ErrorResponse
   500: ErrorResponse
-  503: WebAppAccessUnavailableError
   default: ErrorResponse
 }
 
@@ -1495,10 +1460,9 @@ export type GetConversationsData = {
 
 export type GetConversationsErrors = {
   400: NotChatAppError
-  401: WebAppAccessDeniedError | WebSsoAuthRequiredError
-  404: AppNotFoundError
+  401: ErrorResponse
+  404: ErrorResponse
   500: ErrorResponse
-  503: WebAppAccessUnavailableError
   default: ErrorResponse
 }
 
@@ -1521,10 +1485,9 @@ export type DeleteConversationsByCIdData = {
 
 export type DeleteConversationsByCIdErrors = {
   400: NotChatAppError
-  401: WebAppAccessDeniedError | WebSsoAuthRequiredError
-  404: AppNotFoundError
+  401: ErrorResponse
+  404: ErrorResponse
   500: ErrorResponse
-  503: WebAppAccessUnavailableError
   default: ErrorResponse
 }
 
@@ -1552,10 +1515,9 @@ export type PostConversationsByCIdNameData = {
 
 export type PostConversationsByCIdNameErrors = {
   400: NotChatAppError
-  401: WebAppAccessDeniedError | WebSsoAuthRequiredError
-  404: AppNotFoundError
+  401: ErrorResponse
+  404: ErrorResponse
   500: ErrorResponse
-  503: WebAppAccessUnavailableError
   default: ErrorResponse
 }
 
@@ -1580,10 +1542,9 @@ export type PatchConversationsByCIdPinData = {
 
 export type PatchConversationsByCIdPinErrors = {
   400: NotChatAppError
-  401: WebAppAccessDeniedError | WebSsoAuthRequiredError
-  404: AppNotFoundError
+  401: ErrorResponse
+  404: ErrorResponse
   500: ErrorResponse
-  503: WebAppAccessUnavailableError
   default: ErrorResponse
 }
 
@@ -1608,10 +1569,9 @@ export type PatchConversationsByCIdUnpinData = {
 
 export type PatchConversationsByCIdUnpinErrors = {
   400: NotChatAppError
-  401: WebAppAccessDeniedError | WebSsoAuthRequiredError
-  404: AppNotFoundError
+  401: ErrorResponse
+  404: ErrorResponse
   500: ErrorResponse
-  503: WebAppAccessUnavailableError
   default: ErrorResponse
 }
 
@@ -1634,7 +1594,7 @@ export type PostEmailCodeLoginData = {
 
 export type PostEmailCodeLoginErrors = {
   400: ErrorResponse
-  401: AuthenticationFailedError | NotInitValidatedError | NotSetupError
+  401: AuthenticationFailedError
   404: ErrorResponse
   default: ErrorResponse
 }
@@ -1657,7 +1617,7 @@ export type PostEmailCodeLoginValidityData = {
 
 export type PostEmailCodeLoginValidityErrors = {
   400: AccountBannedError | EmailCodeError | InvalidEmailError
-  401: AuthenticationFailedError | NotInitValidatedError | NotSetupError
+  401: AuthenticationFailedError
   404: ErrorResponse
   default: ErrorResponse
 }
@@ -1681,11 +1641,8 @@ export type PostFilesUploadData = {
 
 export type PostFilesUploadErrors = {
   400: FileExtensionBlockedError | FilenameNotExistsError | NoFileUploadedError | TooManyFilesError
-  401: WebAppAccessDeniedError | WebSsoAuthRequiredError
-  404: AppNotFoundError
   413: FileTooLargeError
   415: UnsupportedFileTypeError
-  503: WebAppAccessUnavailableError
   default: ErrorResponse
 }
 
@@ -1706,7 +1663,7 @@ export type PostForgotPasswordData = {
 
 export type PostForgotPasswordErrors = {
   400: ErrorResponse
-  401: AuthenticationFailedError | NotInitValidatedError | NotSetupError
+  401: AuthenticationFailedError
   404: ErrorResponse
   429: EmailSendIpLimitError | PasswordResetRateLimitExceededError
   default: ErrorResponse
@@ -1730,7 +1687,7 @@ export type PostForgotPasswordResetsData = {
 
 export type PostForgotPasswordResetsErrors = {
   400: InvalidOrExpiredTokenError | PasswordMismatchError
-  401: AuthenticationFailedError | NotInitValidatedError | NotSetupError
+  401: AuthenticationFailedError
   404: ErrorResponse
   default: ErrorResponse
 }
@@ -1754,7 +1711,7 @@ export type PostForgotPasswordValidityData = {
 
 export type PostForgotPasswordValidityErrors = {
   400: EmailCodeError | InvalidEmailError | InvalidOrExpiredTokenError
-  401: NotInitValidatedError | NotSetupError
+  401: ErrorResponse
   429: EmailPasswordResetLimitError
   default: ErrorResponse
 }
@@ -1894,7 +1851,7 @@ export type PostLoginData = {
 
 export type PostLoginErrors = {
   400: AccountBannedError
-  401: AuthenticationFailedError | NotInitValidatedError | NotSetupError
+  401: AuthenticationFailedError
   404: ErrorResponse
   default: ErrorResponse
 }
@@ -1918,9 +1875,7 @@ export type GetLoginStatusData = {
 }
 
 export type GetLoginStatusErrors = {
-  401: NotInitValidatedError | NotSetupError
-  404: AppNotFoundError
-  503: WebAppAccessUnavailableError
+  401: ErrorResponse
   default: ErrorResponse
 }
 
@@ -1940,7 +1895,6 @@ export type PostLogoutData = {
 }
 
 export type PostLogoutErrors = {
-  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -1965,10 +1919,9 @@ export type GetMessagesData = {
 
 export type GetMessagesErrors = {
   400: NotChatAppError
-  401: WebAppAccessDeniedError | WebSsoAuthRequiredError
-  404: AppNotFoundError
+  401: ErrorResponse
+  404: ErrorResponse
   500: ErrorResponse
-  503: WebAppAccessUnavailableError
   default: ErrorResponse
 }
 
@@ -1994,10 +1947,9 @@ export type PostMessagesByMessageIdFeedbacksData = {
 
 export type PostMessagesByMessageIdFeedbacksErrors = {
   400: ErrorResponse
-  401: WebAppAccessDeniedError | WebSsoAuthRequiredError
-  404: AppNotFoundError
+  401: ErrorResponse
+  404: ErrorResponse
   500: ErrorResponse
-  503: WebAppAccessUnavailableError
   default: ErrorResponse
 }
 
@@ -2029,11 +1981,10 @@ export type GetMessagesByMessageIdMoreLikeThisErrors = {
     | NotCompletionAppError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  401: WebAppAccessDeniedError | WebSsoAuthRequiredError
+  401: ErrorResponse
   403: AppMoreLikeThisDisabledError
-  404: AppNotFoundError
+  404: ErrorResponse
   500: ErrorResponse
-  503: WebAppAccessUnavailableError
   default: ErrorResponse
 }
 
@@ -2063,11 +2014,10 @@ export type GetMessagesByMessageIdSuggestedQuestionsErrors = {
     | NotChatAppError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  401: WebAppAccessDeniedError | WebSsoAuthRequiredError
+  401: ErrorResponse
   403: AppSuggestedQuestionsAfterAnswerDisabledError
-  404: AppNotFoundError
+  404: ErrorResponse
   500: ErrorResponse
-  503: WebAppAccessUnavailableError
   default: ErrorResponse
 }
 
@@ -2090,10 +2040,9 @@ export type GetMetaData = {
 
 export type GetMetaErrors = {
   400: AppUnavailableError
-  401: WebAppAccessDeniedError | WebSsoAuthRequiredError
-  404: AppNotFoundError
+  401: ErrorResponse
+  404: ErrorResponse
   500: ErrorResponse
-  503: WebAppAccessUnavailableError
   default: ErrorResponse
 }
 
@@ -2114,10 +2063,9 @@ export type GetParametersData = {
 
 export type GetParametersErrors = {
   400: AgentNotPublishedError | AppUnavailableError
-  401: WebAppAccessDeniedError | WebSsoAuthRequiredError
-  404: AppNotFoundError
+  401: ErrorResponse
+  404: ErrorResponse
   500: ErrorResponse
-  503: WebAppAccessUnavailableError
   default: ErrorResponse
 }
 
@@ -2139,7 +2087,7 @@ export type GetPassportData = {
 }
 
 export type GetPassportErrors = {
-  401: WebSsoAuthRequiredError
+  401: ErrorResponse
   404: ErrorResponse
   default: ErrorResponse
 }
@@ -2165,14 +2113,12 @@ export type PostRemoteFilesUploadErrors = {
     | RemoteFileAccessDeniedError
     | RemoteFileInvalidUrlError
     | RemoteFileUrlBlockedError
-  401: WebAppAccessDeniedError | WebSsoAuthRequiredError
-  404: AppNotFoundError | RemoteFileNotFoundError
+  404: RemoteFileNotFoundError
   413: FileTooLargeError
   415: UnsupportedFileTypeError
   422: ErrorResponse
   500: ErrorResponse
   502: RemoteFileInvalidResponseError | RemoteFileUnavailableError
-  503: WebAppAccessUnavailableError
   default: ErrorResponse
 }
 
@@ -2197,11 +2143,9 @@ export type GetRemoteFilesByUrlData = {
 
 export type GetRemoteFilesByUrlErrors = {
   400: RemoteFileAccessDeniedError | RemoteFileInvalidUrlError | RemoteFileUrlBlockedError
-  401: WebAppAccessDeniedError | WebSsoAuthRequiredError
-  404: AppNotFoundError | RemoteFileNotFoundError
+  404: RemoteFileNotFoundError
   500: ErrorResponse
   502: RemoteFileInvalidResponseError | RemoteFileUnavailableError
-  503: WebAppAccessUnavailableError
   default: ErrorResponse
 }
 
@@ -2226,10 +2170,9 @@ export type GetSavedMessagesData = {
 
 export type GetSavedMessagesErrors = {
   400: NotCompletionAppError
-  401: WebAppAccessDeniedError | WebSsoAuthRequiredError
-  404: AppNotFoundError
+  401: ErrorResponse
+  404: ErrorResponse
   500: ErrorResponse
-  503: WebAppAccessUnavailableError
   default: ErrorResponse
 }
 
@@ -2252,10 +2195,9 @@ export type PostSavedMessagesData = {
 
 export type PostSavedMessagesErrors = {
   400: NotCompletionAppError
-  401: WebAppAccessDeniedError | WebSsoAuthRequiredError
-  404: AppNotFoundError
+  401: ErrorResponse
+  404: ErrorResponse
   500: ErrorResponse
-  503: WebAppAccessUnavailableError
   default: ErrorResponse
 }
 
@@ -2278,10 +2220,9 @@ export type DeleteSavedMessagesByMessageIdData = {
 
 export type DeleteSavedMessagesByMessageIdErrors = {
   400: NotCompletionAppError
-  401: WebAppAccessDeniedError | WebSsoAuthRequiredError
-  404: AppNotFoundError
+  401: ErrorResponse
+  404: ErrorResponse
   500: ErrorResponse
-  503: WebAppAccessUnavailableError
   default: ErrorResponse
 }
 
@@ -2304,11 +2245,10 @@ export type GetSiteData = {
 
 export type GetSiteErrors = {
   400: ErrorResponse
-  401: WebAppAccessDeniedError | WebSsoAuthRequiredError
+  401: ErrorResponse
   403: ErrorResponse
-  404: AppNotFoundError
+  404: ErrorResponse
   500: ErrorResponse
-  503: WebAppAccessUnavailableError
   default: ErrorResponse
 }
 
@@ -2356,12 +2296,10 @@ export type PostTextToAudioErrors = {
     | ProviderNotInitializeError
     | ProviderNotSupportSpeechToTextError
     | ProviderQuotaExceededError
-  401: WebAppAccessDeniedError | WebSsoAuthRequiredError
-  404: AppNotFoundError
+  401: ErrorResponse
   413: AudioTooLargeError
   415: UnsupportedAudioTypeError
   500: ErrorResponse
-  503: WebAppAccessUnavailableError
   default: ErrorResponse
 }
 
@@ -2387,9 +2325,9 @@ export type GetWebappAccessModeData = {
 
 export type GetWebappAccessModeErrors = {
   400: InvalidParamError
-  404: AppNotFoundError
+  404: ErrorResponse
   500: ErrorResponse
-  503: WebAppAccessUnavailableError
+  503: ErrorResponse
   default: ErrorResponse
 }
 
@@ -2413,9 +2351,9 @@ export type GetWebappPermissionData = {
 
 export type GetWebappPermissionErrors = {
   400: ErrorResponse
-  401: WebSsoAuthRequiredError
+  401: ErrorResponse
   500: ErrorResponse
-  503: WebAppAccessUnavailableError
+  503: ErrorResponse
   default: ErrorResponse
 }
 
@@ -2439,9 +2377,7 @@ export type GetWorkflowByTaskIdEventsData = {
 
 export type GetWorkflowByTaskIdEventsErrors = {
   400: InvalidParamError
-  401: WebAppAccessDeniedError | WebSsoAuthRequiredError
-  404: AppNotFoundError | NotFoundError
-  503: WebAppAccessUnavailableError
+  404: NotFoundError
   default: ErrorResponse
 }
 
@@ -2469,12 +2405,11 @@ export type PostWorkflowsRunErrors = {
     | NotWorkflowAppError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  401: WebAppAccessDeniedError | WebSsoAuthRequiredError
+  401: ErrorResponse
   403: TriggerWorkflowServiceModeUnavailableError
-  404: AppNotFoundError
+  404: ErrorResponse
   429: RateLimitError
   500: ErrorResponse
-  503: WebAppAccessUnavailableError
   default: ErrorResponse
 }
 
@@ -2497,10 +2432,9 @@ export type PostWorkflowsTasksByTaskIdStopData = {
 
 export type PostWorkflowsTasksByTaskIdStopErrors = {
   400: NotWorkflowAppError
-  401: WebAppAccessDeniedError | WebSsoAuthRequiredError
-  404: AppNotFoundError
+  401: ErrorResponse
+  404: ErrorResponse
   500: ErrorResponse
-  503: WebAppAccessUnavailableError
   default: ErrorResponse
 }
 

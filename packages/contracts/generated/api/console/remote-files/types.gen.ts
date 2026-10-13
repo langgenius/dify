@@ -79,21 +79,6 @@ export type RemoteFileInfo = {
   file_type: string
 }
 
-export type AccountNotInitializedError = ErrorResponse & {
-  code: 'account_not_initialized'
-  status: 400
-}
-
-export type NotInitValidatedError = ErrorResponse & {
-  code: 'not_init_validated'
-  status: 401
-}
-
-export type NotSetupError = ErrorResponse & {
-  code: 'not_setup'
-  status: 401
-}
-
 export type PostRemoteFilesUploadData = {
   body: RemoteFileUploadPayload
   path?: never
@@ -136,12 +121,7 @@ export type GetRemoteFilesByUrlData = {
 }
 
 export type GetRemoteFilesByUrlErrors = {
-  400:
-    | AccountNotInitializedError
-    | RemoteFileAccessDeniedError
-    | RemoteFileInvalidUrlError
-    | RemoteFileUrlBlockedError
-  401: NotInitValidatedError | NotSetupError
+  400: RemoteFileAccessDeniedError | RemoteFileInvalidUrlError | RemoteFileUrlBlockedError
   404: RemoteFileNotFoundError
   500: ErrorResponse
   502: RemoteFileInvalidResponseError | RemoteFileUnavailableError

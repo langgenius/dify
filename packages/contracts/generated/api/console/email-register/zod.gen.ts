@@ -114,30 +114,6 @@ export const zPasswordMismatchError = zErrorResponse.and(
 )
 
 /**
- * NotInitValidatedError
- *
- * Init validation has not been completed yet. Please proceed with the init validation process first.
- */
-export const zNotInitValidatedError = zErrorResponse.and(
-  z.object({
-    code: z.literal('not_init_validated'),
-    status: z.literal(401),
-  }),
-)
-
-/**
- * NotSetupError
- *
- * Dify has not been initialized and installed yet. Please proceed with the initialization and installation process first.
- */
-export const zNotSetupError = zErrorResponse.and(
-  z.object({
-    code: z.literal('not_setup'),
-    status: z.literal(401),
-  }),
-)
-
-/**
  * EmailRegisterSendPayload
  */
 export const zEmailRegisterSendPayload = z.object({

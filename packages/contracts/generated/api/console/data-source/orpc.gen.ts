@@ -2,14 +2,7 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-import {
-  zAccountNotInitializedError,
-  zInvalidActionError,
-  zInvalidParamError,
-  zNotFoundError,
-  zNotInitValidatedError,
-  zNotSetupError,
-} from './zod.gen.ts'
+import { zInvalidActionError, zNotFoundError } from './zod.gen.ts'
 import {
   zGetDataSourceIntegratesResponse,
   zPatchDataSourceIntegratesByBindingIdByActionPath,
@@ -27,12 +20,8 @@ export const patch = oc
   .input(z.object({ params: zPatchDataSourceIntegratesByBindingIdByActionPath }))
   .output(zPatchDataSourceIntegratesByBindingIdByActionResponse)
   .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
     invalid_action: { status: 400, data: zInvalidActionError },
-    invalid_param: { status: 400, data: zInvalidParamError },
     not_found: { status: 404, data: zNotFoundError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
   })
 
 export const byAction = {
@@ -52,11 +41,6 @@ export const get = oc
     tags: ['console'],
   })
   .output(zGetDataSourceIntegratesResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
 
 export const integrates = {
   get,

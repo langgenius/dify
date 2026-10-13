@@ -12,26 +12,6 @@ export type DatasetListResponse = {
   total: number
 }
 
-export type AccountNotInitializedError = ErrorResponse & {
-  code: 'account_not_initialized'
-  status: 400
-}
-
-export type NotInitValidatedError = ErrorResponse & {
-  code: 'not_init_validated'
-  status: 401
-}
-
-export type NotSetupError = ErrorResponse & {
-  code: 'not_setup'
-  status: 401
-}
-
-export type UnauthorizedAndForceLogoutError = ErrorResponse & {
-  code: 'unauthorized_and_force_logout'
-  status: 401
-}
-
 export type ErrorResponse = {
   code: string
   details?: {
@@ -242,11 +222,6 @@ export type IndexingEstimateResponse = {
   tokens: number
   total_price: number | number
   total_segments: number
-}
-
-export type InvalidParamError = ErrorResponse & {
-  code: 'invalid_param'
-  status: 400
 }
 
 export type ProviderNotInitializeError = ErrorResponse & {
@@ -1251,8 +1226,6 @@ export type GetDatasetsData = {
 }
 
 export type GetDatasetsErrors = {
-  400: AccountNotInitializedError
-  401: NotInitValidatedError | NotSetupError | UnauthorizedAndForceLogoutError
   default: ErrorResponse
 }
 
@@ -1272,8 +1245,7 @@ export type PostDatasetsData = {
 }
 
 export type PostDatasetsErrors = {
-  400: AccountNotInitializedError
-  401: NotInitValidatedError | NotSetupError
+  400: ErrorResponse
   409: DatasetInUseError | DatasetNameDuplicateError
   default: ErrorResponse
 }
@@ -1294,8 +1266,6 @@ export type GetDatasetsApiBaseInfoData = {
 }
 
 export type GetDatasetsApiBaseInfoErrors = {
-  400: AccountNotInitializedError
-  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -1317,8 +1287,7 @@ export type GetDatasetsApiKeysData = {
 }
 
 export type GetDatasetsApiKeysErrors = {
-  400: AccountNotInitializedError | MaxKeysExceededError
-  401: NotInitValidatedError | NotSetupError
+  400: MaxKeysExceededError
   409: AgentNotPublishedError
   default: ErrorResponse
 }
@@ -1340,8 +1309,7 @@ export type PostDatasetsApiKeysData = {
 }
 
 export type PostDatasetsApiKeysErrors = {
-  400: AccountNotInitializedError | MaxKeysExceededError
-  401: NotInitValidatedError | NotSetupError
+  400: MaxKeysExceededError
   409: AgentNotPublishedError
   default: ErrorResponse
 }
@@ -1365,8 +1333,7 @@ export type DeleteDatasetsApiKeysByApiKeyIdData = {
 }
 
 export type DeleteDatasetsApiKeysByApiKeyIdErrors = {
-  400: AccountNotInitializedError | MaxKeysExceededError
-  401: NotInitValidatedError | NotSetupError
+  400: MaxKeysExceededError
   409: AgentNotPublishedError
   default: ErrorResponse
 }
@@ -1391,8 +1358,6 @@ export type GetDatasetsBatchImportStatusByJobIdData = {
 }
 
 export type GetDatasetsBatchImportStatusByJobIdErrors = {
-  400: AccountNotInitializedError
-  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -1414,8 +1379,7 @@ export type PostDatasetsExternalData = {
 }
 
 export type PostDatasetsExternalErrors = {
-  400: AccountNotInitializedError
-  401: NotInitValidatedError | NotSetupError
+  400: ErrorResponse
   403: ErrorResponse
   409: DatasetNameDuplicateError
   default: ErrorResponse
@@ -1442,8 +1406,6 @@ export type GetDatasetsExternalKnowledgeApiData = {
 }
 
 export type GetDatasetsExternalKnowledgeApiErrors = {
-  400: AccountNotInitializedError
-  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -1465,8 +1427,6 @@ export type PostDatasetsExternalKnowledgeApiData = {
 }
 
 export type PostDatasetsExternalKnowledgeApiErrors = {
-  400: AccountNotInitializedError
-  401: NotInitValidatedError | NotSetupError
   403: ErrorResponse
   409: DatasetNameDuplicateError
   default: ErrorResponse
@@ -1492,8 +1452,6 @@ export type DeleteDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdData = {
 }
 
 export type DeleteDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdErrors = {
-  400: AccountNotInitializedError
-  401: NotInitValidatedError | NotSetupError
   409: DatasetNameDuplicateError
   default: ErrorResponse
 }
@@ -1518,8 +1476,6 @@ export type GetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdData = {
 }
 
 export type GetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdErrors = {
-  400: AccountNotInitializedError
-  401: NotInitValidatedError | NotSetupError
   404: ErrorResponse
   409: DatasetNameDuplicateError
   default: ErrorResponse
@@ -1545,8 +1501,6 @@ export type PatchDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdData = {
 }
 
 export type PatchDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdErrors = {
-  400: AccountNotInitializedError
-  401: NotInitValidatedError | NotSetupError
   404: ErrorResponse
   409: DatasetNameDuplicateError
   default: ErrorResponse
@@ -1572,8 +1526,6 @@ export type GetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdUseCheckData 
 }
 
 export type GetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdUseCheckErrors = {
-  400: AccountNotInitializedError
-  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -1595,8 +1547,7 @@ export type PostDatasetsIndexingEstimateData = {
 }
 
 export type PostDatasetsIndexingEstimateErrors = {
-  400: AccountNotInitializedError | InvalidParamError | ProviderNotInitializeError
-  401: NotInitValidatedError | NotSetupError
+  400: ProviderNotInitializeError
   403: DatasetAccessDeniedError
   404: NotFoundError
   500: IndexingEstimateError
@@ -1622,13 +1573,11 @@ export type PostDatasetsInitData = {
 
 export type PostDatasetsInitErrors = {
   400:
-    | AccountNotInitializedError
     | DocumentIndexingError
     | InvalidActionError
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  401: NotInitValidatedError | NotSetupError
   403: ArchivedDocumentImmutableError
   default: ErrorResponse
 }
@@ -1649,8 +1598,6 @@ export type GetDatasetsMetadataBuiltInData = {
 }
 
 export type GetDatasetsMetadataBuiltInErrors = {
-  400: AccountNotInitializedError
-  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -1672,8 +1619,7 @@ export type PostDatasetsNotionIndexingEstimateData = {
 }
 
 export type PostDatasetsNotionIndexingEstimateErrors = {
-  400: AccountNotInitializedError | ProviderNotInitializeError
-  401: NotInitValidatedError | NotSetupError
+  400: ProviderNotInitializeError
   404: NotFoundError
   500: IndexingEstimateError
   default: ErrorResponse
@@ -1700,13 +1646,11 @@ export type GetDatasetsProcessRuleData = {
 
 export type GetDatasetsProcessRuleErrors = {
   400:
-    | AccountNotInitializedError
     | DocumentIndexingError
     | InvalidActionError
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  401: NotInitValidatedError | NotSetupError
   403: ArchivedDocumentImmutableError
   default: ErrorResponse
 }
@@ -1729,8 +1673,6 @@ export type GetDatasetsRetrievalSettingData = {
 }
 
 export type GetDatasetsRetrievalSettingErrors = {
-  400: AccountNotInitializedError
-  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -1754,8 +1696,6 @@ export type GetDatasetsRetrievalSettingByVectorTypeData = {
 }
 
 export type GetDatasetsRetrievalSettingByVectorTypeErrors = {
-  400: AccountNotInitializedError
-  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -1779,8 +1719,6 @@ export type DeleteDatasetsByDatasetIdData = {
 }
 
 export type DeleteDatasetsByDatasetIdErrors = {
-  400: AccountNotInitializedError
-  401: NotInitValidatedError | NotSetupError
   409: DatasetInUseError | DatasetNameDuplicateError
   default: ErrorResponse
 }
@@ -1805,8 +1743,6 @@ export type GetDatasetsByDatasetIdData = {
 }
 
 export type GetDatasetsByDatasetIdErrors = {
-  400: AccountNotInitializedError
-  401: NotInitValidatedError | NotSetupError
   403: ErrorResponse
   404: ErrorResponse
   409: DatasetInUseError | DatasetNameDuplicateError
@@ -1833,8 +1769,6 @@ export type PatchDatasetsByDatasetIdData = {
 }
 
 export type PatchDatasetsByDatasetIdErrors = {
-  400: AccountNotInitializedError
-  401: NotInitValidatedError | NotSetupError
   403: ErrorResponse
   404: ErrorResponse
   409: DatasetInUseError | DatasetNameDuplicateError
@@ -1862,8 +1796,6 @@ export type PostDatasetsByDatasetIdApiKeysByStatusData = {
 }
 
 export type PostDatasetsByDatasetIdApiKeysByStatusErrors = {
-  400: AccountNotInitializedError
-  401: NotInitValidatedError | NotSetupError
   409: DatasetInUseError | DatasetNameDuplicateError
   default: ErrorResponse
 }
@@ -1888,8 +1820,6 @@ export type GetDatasetsByDatasetIdAutoDisableLogsData = {
 }
 
 export type GetDatasetsByDatasetIdAutoDisableLogsErrors = {
-  400: AccountNotInitializedError
-  401: NotInitValidatedError | NotSetupError
   404: ErrorResponse
   409: DatasetInUseError | DatasetNameDuplicateError
   default: ErrorResponse
@@ -1916,12 +1846,7 @@ export type GetDatasetsByDatasetIdBatchByBatchIndexingEstimateData = {
 }
 
 export type GetDatasetsByDatasetIdBatchByBatchIndexingEstimateErrors = {
-  400:
-    | AccountNotInitializedError
-    | DocumentAlreadyFinishedError
-    | InvalidParamError
-    | ProviderNotInitializeError
-  401: NotInitValidatedError | NotSetupError
+  400: DocumentAlreadyFinishedError | ProviderNotInitializeError
   403: DatasetAccessDeniedError
   404: NotFoundError
   500: IndexingEstimateError
@@ -1950,13 +1875,11 @@ export type GetDatasetsByDatasetIdBatchByBatchIndexingStatusData = {
 
 export type GetDatasetsByDatasetIdBatchByBatchIndexingStatusErrors = {
   400:
-    | AccountNotInitializedError
     | DocumentIndexingError
     | InvalidActionError
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  401: NotInitValidatedError | NotSetupError
   403: ArchivedDocumentImmutableError
   default: ErrorResponse
 }
@@ -1982,13 +1905,11 @@ export type DeleteDatasetsByDatasetIdDocumentsData = {
 
 export type DeleteDatasetsByDatasetIdDocumentsErrors = {
   400:
-    | AccountNotInitializedError
     | DocumentIndexingError
     | InvalidActionError
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  401: NotInitValidatedError | NotSetupError
   403: ArchivedDocumentImmutableError
   default: ErrorResponse
 }
@@ -2021,13 +1942,11 @@ export type GetDatasetsByDatasetIdDocumentsData = {
 
 export type GetDatasetsByDatasetIdDocumentsErrors = {
   400:
-    | AccountNotInitializedError
     | DocumentIndexingError
     | InvalidActionError
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  401: NotInitValidatedError | NotSetupError
   403: ArchivedDocumentImmutableError
   default: ErrorResponse
 }
@@ -2053,13 +1972,11 @@ export type PostDatasetsByDatasetIdDocumentsData = {
 
 export type PostDatasetsByDatasetIdDocumentsErrors = {
   400:
-    | AccountNotInitializedError
     | DocumentIndexingError
     | InvalidActionError
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  401: NotInitValidatedError | NotSetupError
   403: ArchivedDocumentImmutableError
   default: ErrorResponse
 }
@@ -2085,13 +2002,11 @@ export type PostDatasetsByDatasetIdDocumentsDownloadZipData = {
 
 export type PostDatasetsByDatasetIdDocumentsDownloadZipErrors = {
   400:
-    | AccountNotInitializedError
     | DocumentIndexingError
     | InvalidActionError
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  401: NotInitValidatedError | NotSetupError
   403: ArchivedDocumentImmutableError
   default: ErrorResponse
 }
@@ -2119,13 +2034,11 @@ export type PostDatasetsByDatasetIdDocumentsGenerateSummaryData = {
 
 export type PostDatasetsByDatasetIdDocumentsGenerateSummaryErrors = {
   400:
-    | AccountNotInitializedError
     | DocumentIndexingError
     | InvalidActionError
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  401: NotInitValidatedError | NotSetupError
   403: ArchivedDocumentImmutableError
   404: ErrorResponse
   default: ErrorResponse
@@ -2151,8 +2064,6 @@ export type PostDatasetsByDatasetIdDocumentsMetadataData = {
 }
 
 export type PostDatasetsByDatasetIdDocumentsMetadataErrors = {
-  400: AccountNotInitializedError
-  401: NotInitValidatedError | NotSetupError
   404: ErrorResponse
   default: ErrorResponse
 }
@@ -2179,13 +2090,11 @@ export type PatchDatasetsByDatasetIdDocumentsStatusByActionBatchData = {
 
 export type PatchDatasetsByDatasetIdDocumentsStatusByActionBatchErrors = {
   400:
-    | AccountNotInitializedError
     | DocumentIndexingError
     | InvalidActionError
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  401: NotInitValidatedError | NotSetupError
   403: ArchivedDocumentImmutableError
   default: ErrorResponse
 }
@@ -2212,13 +2121,11 @@ export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdData = {
 
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdErrors = {
   400:
-    | AccountNotInitializedError
     | DocumentIndexingError
     | InvalidActionError
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  401: NotInitValidatedError | NotSetupError
   403: ArchivedDocumentImmutableError
   default: ErrorResponse
 }
@@ -2247,14 +2154,12 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdData = {
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdErrors = {
   400:
-    | AccountNotInitializedError
     | DocumentIndexingError
     | InvalidActionError
     | InvalidMetadataError
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  401: NotInitValidatedError | NotSetupError
   403: ArchivedDocumentImmutableError
   404: ErrorResponse
   default: ErrorResponse
@@ -2282,13 +2187,11 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadData = {
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadErrors = {
   400:
-    | AccountNotInitializedError
     | DocumentIndexingError
     | InvalidActionError
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  401: NotInitValidatedError | NotSetupError
   403: ArchivedDocumentImmutableError
   default: ErrorResponse
 }
@@ -2314,12 +2217,7 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingEstimateData = {
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingEstimateErrors = {
-  400:
-    | AccountNotInitializedError
-    | DocumentAlreadyFinishedError
-    | InvalidParamError
-    | ProviderNotInitializeError
-  401: NotInitValidatedError | NotSetupError
+  400: DocumentAlreadyFinishedError | ProviderNotInitializeError
   403: DatasetAccessDeniedError
   404: NotFoundError
   500: IndexingEstimateError
@@ -2348,13 +2246,11 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingStatusData = {
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingStatusErrors = {
   400:
-    | AccountNotInitializedError
     | DocumentIndexingError
     | InvalidActionError
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  401: NotInitValidatedError | NotSetupError
   403: ArchivedDocumentImmutableError
   404: ErrorResponse
   default: ErrorResponse
@@ -2382,13 +2278,11 @@ export type PutDatasetsByDatasetIdDocumentsByDocumentIdMetadataData = {
 
 export type PutDatasetsByDatasetIdDocumentsByDocumentIdMetadataErrors = {
   400:
-    | AccountNotInitializedError
     | DocumentIndexingError
     | InvalidActionError
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  401: NotInitValidatedError | NotSetupError
   403: ArchivedDocumentImmutableError
   404: ErrorResponse
   default: ErrorResponse
@@ -2415,8 +2309,6 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdNotionSyncData = {
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdNotionSyncErrors = {
-  400: AccountNotInitializedError | InvalidParamError
-  401: NotInitValidatedError | NotSetupError
   403: DatasetAccessDeniedError
   404: NotFoundError
   default: ErrorResponse
@@ -2444,13 +2336,11 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdPipelineExecutionLogData 
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdPipelineExecutionLogErrors = {
   400:
-    | AccountNotInitializedError
     | DocumentIndexingError
     | InvalidActionError
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  401: NotInitValidatedError | NotSetupError
   403: ArchivedDocumentImmutableError
   default: ErrorResponse
 }
@@ -2477,13 +2367,11 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingPauseData = {
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingPauseErrors = {
   400:
-    | AccountNotInitializedError
     | DocumentIndexingError
     | InvalidActionError
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  401: NotInitValidatedError | NotSetupError
   403: ArchivedDocumentImmutableError
   default: ErrorResponse
 }
@@ -2510,13 +2398,11 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingResumeData = 
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingResumeErrors = {
   400:
-    | AccountNotInitializedError
     | DocumentIndexingError
     | InvalidActionError
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  401: NotInitValidatedError | NotSetupError
   403: ArchivedDocumentImmutableError
   default: ErrorResponse
 }
@@ -2544,13 +2430,11 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionData 
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionErrors = {
   400:
-    | AccountNotInitializedError
     | DocumentIndexingError
     | InvalidActionError
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  401: NotInitValidatedError | NotSetupError
   403: ArchivedDocumentImmutableError
   404: ErrorResponse
   default: ErrorResponse
@@ -2578,13 +2462,11 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdRenameData = {
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdRenameErrors = {
   400:
-    | AccountNotInitializedError
     | DocumentIndexingError
     | InvalidActionError
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  401: NotInitValidatedError | NotSetupError
   403: ArchivedDocumentImmutableError
   default: ErrorResponse
 }
@@ -2610,8 +2492,7 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentData = {
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentErrors = {
-  400: AccountNotInitializedError | InvalidActionError | ProviderNotInitializeError
-  401: NotInitValidatedError | NotSetupError
+  400: InvalidActionError | ProviderNotInitializeError
   500: ChildChunkDeleteIndexError | ChildChunkIndexingError
   default: ErrorResponse
 }
@@ -2640,8 +2521,7 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionData = {
 }
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionErrors = {
-  400: AccountNotInitializedError | InvalidActionError | ProviderNotInitializeError
-  401: NotInitValidatedError | NotSetupError
+  400: InvalidActionError | ProviderNotInitializeError
   500: ChildChunkDeleteIndexError | ChildChunkIndexingError
   default: ErrorResponse
 }
@@ -2669,8 +2549,7 @@ export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsData = {
 }
 
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsErrors = {
-  400: AccountNotInitializedError | InvalidActionError | ProviderNotInitializeError
-  401: NotInitValidatedError | NotSetupError
+  400: InvalidActionError | ProviderNotInitializeError
   500: ChildChunkDeleteIndexError | ChildChunkIndexingError
   default: ErrorResponse
 }
@@ -2703,8 +2582,7 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsData = {
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsErrors = {
-  400: AccountNotInitializedError | InvalidActionError | ProviderNotInitializeError
-  401: NotInitValidatedError | NotSetupError
+  400: InvalidActionError | ProviderNotInitializeError
   500: ChildChunkDeleteIndexError | ChildChunkIndexingError
   default: ErrorResponse
 }
@@ -2730,8 +2608,7 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportData 
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportErrors = {
-  400: AccountNotInitializedError | InvalidActionError | ProviderNotInitializeError
-  401: NotInitValidatedError | NotSetupError
+  400: InvalidActionError | ProviderNotInitializeError
   500: ErrorMessageResponse | ChildChunkDeleteIndexError | ChildChunkIndexingError
   default: ErrorResponse
 }
@@ -2758,8 +2635,7 @@ export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdDat
 }
 
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdErrors = {
-  400: AccountNotInitializedError | InvalidActionError | ProviderNotInitializeError
-  401: NotInitValidatedError | NotSetupError
+  400: InvalidActionError | ProviderNotInitializeError
   500: ChildChunkDeleteIndexError | ChildChunkIndexingError
   default: ErrorResponse
 }
@@ -2786,8 +2662,7 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdData
 }
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdErrors = {
-  400: AccountNotInitializedError | InvalidActionError | ProviderNotInitializeError
-  401: NotInitValidatedError | NotSetupError
+  400: InvalidActionError | ProviderNotInitializeError
   500: ChildChunkDeleteIndexError | ChildChunkIndexingError
   default: ErrorResponse
 }
@@ -2818,8 +2693,7 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildC
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksErrors = {
-  400: AccountNotInitializedError | InvalidActionError | ProviderNotInitializeError
-  401: NotInitValidatedError | NotSetupError
+  400: InvalidActionError | ProviderNotInitializeError
   500: ChildChunkDeleteIndexError | ChildChunkIndexingError
   default: ErrorResponse
 }
@@ -2846,8 +2720,7 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChil
 }
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksErrors = {
-  400: AccountNotInitializedError | InvalidActionError | ProviderNotInitializeError
-  401: NotInitValidatedError | NotSetupError
+  400: InvalidActionError | ProviderNotInitializeError
   500: ChildChunkDeleteIndexError | ChildChunkIndexingError
   default: ErrorResponse
 }
@@ -2874,8 +2747,7 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChild
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksErrors = {
-  400: AccountNotInitializedError | InvalidActionError | ProviderNotInitializeError
-  401: NotInitValidatedError | NotSetupError
+  400: InvalidActionError | ProviderNotInitializeError
   500: ChildChunkDeleteIndexError | ChildChunkIndexingError
   default: ErrorResponse
 }
@@ -2905,8 +2777,7 @@ export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChi
 
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdErrors =
   {
-    400: AccountNotInitializedError | InvalidActionError | ProviderNotInitializeError
-    401: NotInitValidatedError | NotSetupError
+    400: InvalidActionError | ProviderNotInitializeError
     500: ChildChunkDeleteIndexError | ChildChunkIndexingError
     default: ErrorResponse
   }
@@ -2937,8 +2808,7 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChil
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdErrors =
   {
-    400: AccountNotInitializedError | InvalidActionError | ProviderNotInitializeError
-    401: NotInitValidatedError | NotSetupError
+    400: InvalidActionError | ProviderNotInitializeError
     500: ChildChunkDeleteIndexError | ChildChunkIndexingError
     default: ErrorResponse
   }
@@ -2966,13 +2836,11 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdSummaryStatusData = {
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSummaryStatusErrors = {
   400:
-    | AccountNotInitializedError
     | DocumentIndexingError
     | InvalidActionError
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  401: NotInitValidatedError | NotSetupError
   403: ArchivedDocumentImmutableError
   404: ErrorResponse
   default: ErrorResponse
@@ -3000,13 +2868,11 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdWebsiteSyncData = {
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdWebsiteSyncErrors = {
   400:
-    | AccountNotInitializedError
     | DocumentIndexingError
     | InvalidActionError
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  401: NotInitValidatedError | NotSetupError
   403: ArchivedDocumentImmutableError
   default: ErrorResponse
 }
@@ -3031,8 +2897,6 @@ export type GetDatasetsByDatasetIdErrorDocsData = {
 }
 
 export type GetDatasetsByDatasetIdErrorDocsErrors = {
-  400: AccountNotInitializedError
-  401: NotInitValidatedError | NotSetupError
   404: ErrorResponse
   409: DatasetInUseError | DatasetNameDuplicateError
   default: ErrorResponse
@@ -3058,8 +2922,7 @@ export type PostDatasetsByDatasetIdExternalHitTestingData = {
 }
 
 export type PostDatasetsByDatasetIdExternalHitTestingErrors = {
-  400: AccountNotInitializedError
-  401: NotInitValidatedError | NotSetupError
+  400: ErrorResponse
   404: ErrorResponse
   409: DatasetNameDuplicateError
   default: ErrorResponse
@@ -3086,12 +2949,10 @@ export type PostDatasetsByDatasetIdHitTestingData = {
 
 export type PostDatasetsByDatasetIdHitTestingErrors = {
   400:
-    | AccountNotInitializedError
     | CompletionRequestError
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  401: NotInitValidatedError | NotSetupError
   404: ErrorResponse
   default: ErrorResponse
 }
@@ -3116,8 +2977,6 @@ export type GetDatasetsByDatasetIdIndexingStatusData = {
 }
 
 export type GetDatasetsByDatasetIdIndexingStatusErrors = {
-  400: AccountNotInitializedError
-  401: NotInitValidatedError | NotSetupError
   409: DatasetInUseError | DatasetNameDuplicateError
   default: ErrorResponse
 }
@@ -3142,8 +3001,6 @@ export type GetDatasetsByDatasetIdMetadataData = {
 }
 
 export type GetDatasetsByDatasetIdMetadataErrors = {
-  400: AccountNotInitializedError
-  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -3167,8 +3024,6 @@ export type PostDatasetsByDatasetIdMetadataData = {
 }
 
 export type PostDatasetsByDatasetIdMetadataErrors = {
-  400: AccountNotInitializedError
-  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -3193,8 +3048,6 @@ export type PostDatasetsByDatasetIdMetadataBuiltInByActionData = {
 }
 
 export type PostDatasetsByDatasetIdMetadataBuiltInByActionErrors = {
-  400: AccountNotInitializedError
-  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -3219,8 +3072,6 @@ export type DeleteDatasetsByDatasetIdMetadataByMetadataIdData = {
 }
 
 export type DeleteDatasetsByDatasetIdMetadataByMetadataIdErrors = {
-  400: AccountNotInitializedError
-  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -3245,8 +3096,6 @@ export type PatchDatasetsByDatasetIdMetadataByMetadataIdData = {
 }
 
 export type PatchDatasetsByDatasetIdMetadataByMetadataIdErrors = {
-  400: AccountNotInitializedError
-  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -3270,8 +3119,6 @@ export type GetDatasetsByDatasetIdNotionSyncData = {
 }
 
 export type GetDatasetsByDatasetIdNotionSyncErrors = {
-  400: AccountNotInitializedError
-  401: NotInitValidatedError | NotSetupError
   403: DatasetAccessDeniedError
   404: NotFoundError
   default: ErrorResponse
@@ -3297,8 +3144,6 @@ export type GetDatasetsByDatasetIdPermissionPartUsersData = {
 }
 
 export type GetDatasetsByDatasetIdPermissionPartUsersErrors = {
-  400: AccountNotInitializedError
-  401: NotInitValidatedError | NotSetupError
   403: ErrorResponse
   404: ErrorResponse
   409: DatasetInUseError | DatasetNameDuplicateError
@@ -3325,8 +3170,6 @@ export type GetDatasetsByDatasetIdQueriesData = {
 }
 
 export type GetDatasetsByDatasetIdQueriesErrors = {
-  400: AccountNotInitializedError
-  401: NotInitValidatedError | NotSetupError
   409: DatasetInUseError | DatasetNameDuplicateError
   default: ErrorResponse
 }
@@ -3351,8 +3194,6 @@ export type GetDatasetsByDatasetIdRelatedAppsData = {
 }
 
 export type GetDatasetsByDatasetIdRelatedAppsErrors = {
-  400: AccountNotInitializedError
-  401: NotInitValidatedError | NotSetupError
   409: DatasetInUseError | DatasetNameDuplicateError
   default: ErrorResponse
 }
@@ -3378,13 +3219,11 @@ export type PostDatasetsByDatasetIdRetryData = {
 
 export type PostDatasetsByDatasetIdRetryErrors = {
   400:
-    | AccountNotInitializedError
     | DocumentIndexingError
     | InvalidActionError
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  401: NotInitValidatedError | NotSetupError
   403: ArchivedDocumentImmutableError
   default: ErrorResponse
 }
@@ -3409,8 +3248,6 @@ export type GetDatasetsByDatasetIdUseCheckData = {
 }
 
 export type GetDatasetsByDatasetIdUseCheckErrors = {
-  400: AccountNotInitializedError
-  401: NotInitValidatedError | NotSetupError
   409: DatasetInUseError | DatasetNameDuplicateError
   default: ErrorResponse
 }
@@ -3435,8 +3272,7 @@ export type GetDatasetsByResourceIdApiKeysData = {
 }
 
 export type GetDatasetsByResourceIdApiKeysErrors = {
-  400: AccountNotInitializedError | MaxKeysExceededError
-  401: NotInitValidatedError | NotSetupError
+  400: MaxKeysExceededError
   409: AgentNotPublishedError
   default: ErrorResponse
 }
@@ -3461,8 +3297,7 @@ export type PostDatasetsByResourceIdApiKeysData = {
 }
 
 export type PostDatasetsByResourceIdApiKeysErrors = {
-  400: AccountNotInitializedError | MaxKeysExceededError
-  401: NotInitValidatedError | NotSetupError
+  400: MaxKeysExceededError
   409: AgentNotPublishedError
   default: ErrorResponse
 }
@@ -3488,8 +3323,7 @@ export type DeleteDatasetsByResourceIdApiKeysByApiKeyIdData = {
 }
 
 export type DeleteDatasetsByResourceIdApiKeysByApiKeyIdErrors = {
-  400: AccountNotInitializedError | MaxKeysExceededError
-  401: NotInitValidatedError | NotSetupError
+  400: MaxKeysExceededError
   409: AgentNotPublishedError
   default: ErrorResponse
 }

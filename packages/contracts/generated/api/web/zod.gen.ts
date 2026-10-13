@@ -235,18 +235,6 @@ export const zAppMoreLikeThisDisabledError = zErrorResponse.and(
 )
 
 /**
- * AppNotFoundError
- *
- * App not found.
- */
-export const zAppNotFoundError = zErrorResponse.and(
-  z.object({
-    code: z.literal('app_not_found'),
-    status: z.literal(404),
-  }),
-)
-
-/**
  * AppSuggestedQuestionsAfterAnswerDisabledError
  *
  * The 'Suggested Questions After Answer' feature is disabled. Please refresh your page.
@@ -799,30 +787,6 @@ export const zNotFoundError = zErrorResponse.and(
   z.object({
     code: z.literal('not_found'),
     status: z.literal(404),
-  }),
-)
-
-/**
- * NotInitValidatedError
- *
- * Init validation has not been completed yet. Please proceed with the init validation process first.
- */
-export const zNotInitValidatedError = zErrorResponse.and(
-  z.object({
-    code: z.literal('not_init_validated'),
-    status: z.literal(401),
-  }),
-)
-
-/**
- * NotSetupError
- *
- * Dify has not been initialized and installed yet. Please proceed with the initialization and installation process first.
- */
-export const zNotSetupError = zErrorResponse.and(
-  z.object({
-    code: z.literal('not_setup'),
-    status: z.literal(401),
   }),
 )
 
@@ -1698,30 +1662,6 @@ export const zVerificationTokenResponse = z.object({
 })
 
 /**
- * WebAppAccessDeniedError
- *
- * You do not have permission to access this web app.
- */
-export const zWebAppAccessDeniedError = zErrorResponse.and(
-  z.object({
-    code: z.literal('web_app_access_denied'),
-    status: z.literal(401),
-  }),
-)
-
-/**
- * WebAppAccessUnavailableError
- *
- * Web app access service is unavailable.
- */
-export const zWebAppAccessUnavailableError = zErrorResponse.and(
-  z.object({
-    code: z.literal('web_app_access_unavailable'),
-    status: z.literal(503),
-  }),
-)
-
-/**
  * WebAppAuthSSOModel
  */
 export const zWebAppAuthSsoModel = z.object({
@@ -1899,18 +1839,6 @@ export const zHumanInputFormDefinitionResponse = z.object({
   site: zWebAppSiteResponse.nullish(),
   user_actions: z.array(zUserActionConfig),
 })
-
-/**
- * WebSsoAuthRequiredError
- *
- * Web app authentication required.
- */
-export const zWebSsoAuthRequiredError = zErrorResponse.and(
-  z.object({
-    code: z.literal('web_sso_auth_required'),
-    status: z.literal(401),
-  }),
-)
 
 /**
  * WorkflowRunPayload

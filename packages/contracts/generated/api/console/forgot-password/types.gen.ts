@@ -24,16 +24,6 @@ export type ErrorResponse = {
   status: number
 }
 
-export type NotInitValidatedError = ErrorResponse & {
-  code: 'not_init_validated'
-  status: 401
-}
-
-export type NotSetupError = ErrorResponse & {
-  code: 'not_setup'
-  status: 401
-}
-
 export type EmailSendIpLimitError = ErrorResponse & {
   code: 'email_send_ip_limit'
   status: 429
@@ -105,7 +95,6 @@ export type PostForgotPasswordData = {
 
 export type PostForgotPasswordErrors = {
   400: ErrorResponse
-  401: NotInitValidatedError | NotSetupError
   429: EmailSendIpLimitError | PasswordResetRateLimitExceededError
   default: ErrorResponse
 }
@@ -128,7 +117,6 @@ export type PostForgotPasswordResetsData = {
 
 export type PostForgotPasswordResetsErrors = {
   400: AccountNotFoundError | InvalidOrExpiredTokenError | PasswordMismatchError
-  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -151,7 +139,6 @@ export type PostForgotPasswordValidityData = {
 
 export type PostForgotPasswordValidityErrors = {
   400: EmailCodeError | InvalidEmailError | InvalidOrExpiredTokenError
-  401: NotInitValidatedError | NotSetupError
   429: EmailPasswordResetLimitError
   default: ErrorResponse
 }

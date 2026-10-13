@@ -2,7 +2,6 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-import { zAccountNotInitializedError, zNotInitValidatedError, zNotSetupError } from './zod.gen.ts'
 import {
   zDeleteApiBasedExtensionByIdPath,
   zDeleteApiBasedExtensionByIdResponse,
@@ -31,11 +30,6 @@ export const delete_ = oc
   })
   .input(z.object({ params: zDeleteApiBasedExtensionByIdPath }))
   .output(zDeleteApiBasedExtensionByIdResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
 
 /**
  * Get API-based extension by ID
@@ -51,11 +45,6 @@ export const get = oc
   })
   .input(z.object({ params: zGetApiBasedExtensionByIdPath }))
   .output(zGetApiBasedExtensionByIdResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
 
 /**
  * Update API-based extension
@@ -71,11 +60,6 @@ export const post = oc
   })
   .input(z.object({ body: zPostApiBasedExtensionByIdBody, params: zPostApiBasedExtensionByIdPath }))
   .output(zPostApiBasedExtensionByIdResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
 
 export const byId = {
   delete: delete_,
@@ -96,11 +80,6 @@ export const get2 = oc
     tags: ['console'],
   })
   .output(zGetApiBasedExtensionResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
 
 /**
  * Create a new API-based extension
@@ -117,11 +96,6 @@ export const post2 = oc
   })
   .input(z.object({ body: zPostApiBasedExtensionBody }))
   .output(zPostApiBasedExtensionResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
-    not_init_validated: { status: 401, data: zNotInitValidatedError },
-    not_setup: { status: 401, data: zNotSetupError },
-  })
 
 export const apiBasedExtension = {
   get: get2,
