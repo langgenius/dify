@@ -19,11 +19,11 @@ import {
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useRefWithInit } from '@langgenius/dify-ui/use-ref-with-init'
-import { ORPCError } from '@orpc/client'
 import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from '@/next/navigation'
 import { consoleClient } from '@/service/console'
+import { getHttpErrorStatus } from '@/service/http-error'
 import { registerPageLeaveGuard } from '@/utils/page-leave-guard'
 import { CrawlSelectionForm } from './crawl-selection-form'
 import { createRequestId } from './request-id'
@@ -105,12 +105,8 @@ function workflowAttemptKey(run: SourceWorkflowRun) {
   return `${run.id}:${run.executionAttempts}`
 }
 
-function responseStatus(error: unknown): number | undefined {
-  return error instanceof ORPCError ? error.status : undefined
-}
-
 function isDefinitiveRequestFailure(error: unknown) {
-  const status = responseStatus(error)
+  const status = getHttpErrorStatus(error)
   return status !== undefined && [400, 401, 403, 404, 409, 422, 429].includes(status)
 }
 

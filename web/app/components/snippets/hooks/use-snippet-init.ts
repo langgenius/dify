@@ -1,8 +1,8 @@
 import type { SnippetWorkflow } from '@/types/snippet'
-import { ORPCError } from '@orpc/client'
 import isEqual from 'fast-deep-equal'
 import { useEffect, useMemo, useState } from 'react'
 import { useWorkflowStore } from '@/app/components/workflow/store'
+import { isNotFoundError } from '@/service/http-error'
 import {
   fetchSnippetDraftWorkflow,
   useSnippetDefaultBlockConfigs,
@@ -31,10 +31,6 @@ const normalizeNodesDefaultConfigs = (nodesDefaultConfigs: unknown) => {
     },
     {} as Record<string, unknown>,
   )
-}
-
-const isNotFoundError = (error: unknown) => {
-  return error instanceof ORPCError && error.status === 404
 }
 
 const getComparableWorkflowData = (workflow?: SnippetWorkflow | null) => {

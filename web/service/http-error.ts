@@ -1,5 +1,13 @@
 import { ORPCError } from '@orpc/client'
 
+export function getHttpErrorStatus(error: unknown): number | undefined {
+  return error instanceof ORPCError ? error.status : undefined
+}
+
+export function isNotFoundError(error: unknown): boolean {
+  return getHttpErrorStatus(error) === 404
+}
+
 const asRecord = (value: unknown): Record<string, unknown> | undefined =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
     ? (value as Record<string, unknown>)
