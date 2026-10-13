@@ -350,11 +350,32 @@ textarea::placeholder {
 }
 
 /*
-Set the default cursor for buttons.
+Set the default cursor for buttons and for controls that act on a press.
+Dify UI leaves the enabled cursor to this rule, so a role its controls render belongs here.
 */
 
 button,
 [role='button'] {
+  cursor: pointer;
+}
+
+:is(
+  [role='switch'],
+  [role='checkbox'],
+  [role='radio'],
+  [role='tab'],
+  [role='option'],
+  [role='menuitem'],
+  [role='menuitemcheckbox'],
+  [role='menuitemradio']
+):not(:disabled, [aria-disabled='true'], [aria-readonly='true'], [data-disabled], [data-readonly]) {
+  cursor: pointer;
+}
+
+/*
+An item laid out in a grid takes the gridcell role. A cell that holds its own button or link is not the control.
+*/
+[role='gridcell']:not(:has(button, a), [aria-disabled='true'], [data-disabled]) {
   cursor: pointer;
 }
 
