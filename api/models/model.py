@@ -27,7 +27,7 @@ from graphon.file import helpers as file_helpers
 from libs.helper import generate_string  # type: ignore[import-not-found]
 from libs.url_utils import normalize_api_base_url
 from libs.uuid_utils import uuidv7
-from models.utils.file_input_compat import build_file_from_input_mapping
+from models.utils.file_input_compat import build_file_from_input_mapping, restore_input_files
 
 from .account import Account, Tenant
 from .base import Base, TypeBase, gen_uuidv4_string
@@ -1198,47 +1198,14 @@ class Conversation(Base):
     inputs = property(fset=_set_inputs)
 
     def inputs_with_session(self, *, session: Session) -> dict[str, Any]:
-        inputs = self._inputs.copy()
-        # Compatibility bridge: stored input payloads may come from before or after the
-        # graph-layer file refactor. Newer rows may omit `tenant_id`, so keep tenant
-        # resolution at the SQLAlchemy model boundary instead of pushing ownership back
-        # into `graphon.file.File`.
-        tenant_resolver = _build_app_tenant_resolver(
-            app_id=self.app_id,
-            session=session,
-            owner_tenant_id=cast(str | None, getattr(self, "_owner_tenant_id", None)),
+        return restore_input_files(
+            inputs=self._inputs,
+            tenant_resolver=_build_app_tenant_resolver(
+                app_id=self.app_id,
+                session=session,
+                owner_tenant_id=cast(str | None, getattr(self, "_owner_tenant_id", None)),
+            ),
         )
-
-        # Convert file mapping to File object
-        for key, value in inputs.items():
-            match value:
-                case dict() if cast(dict[str, Any], value).get("dify_model_identity") == FILE_MODEL_IDENTITY:
-                    value_dict = cast(dict[str, Any], value)
-                    inputs[key] = build_file_from_input_mapping(
-                        file_mapping=value_dict,
-                        tenant_resolver=tenant_resolver,
-                    )
-                case list():
-                    value_list = value
-                    if all(
-                        isinstance(item, dict)
-                        and cast(dict[str, Any], item).get("dify_model_identity") == FILE_MODEL_IDENTITY
-                        for item in value_list
-                    ):
-                        file_list: list[File] = []
-                        for item in value_list:
-                            if not isinstance(item, dict):
-                                continue
-                            item_dict = cast(dict[str, Any], item)
-                            file_list.append(
-                                build_file_from_input_mapping(
-                                    file_mapping=item_dict,
-                                    tenant_resolver=tenant_resolver,
-                                )
-                            )
-                        inputs[key] = file_list
-
-        return inputs
 
     def model_config_with_session(self, *, session: Session) -> AppModelConfigDict:
         model_config = cast(AppModelConfigDict, {})

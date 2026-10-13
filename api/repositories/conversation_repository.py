@@ -3,12 +3,10 @@
 from copy import deepcopy
 from dataclasses import replace
 from datetime import datetime
-from typing import cast
 
 from sqlalchemy import Select, exists, or_, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.app.entities.app_invoke_entities import InvokeFrom
 from models.enums import ConversationFromSource, CreatorUserRole
 from models.model import App, Conversation, EndUser, InstalledApp, Message
 from models.web import PinnedConversation
@@ -16,11 +14,15 @@ from repositories.conversation_lifecycle import retire_conversation
 from services.entities.conversation_entities import (
     ConversationDeletion,
     ConversationInputValue,
+    ConversationListSource,
     ConversationNameSource,
     ConversationPage,
     ConversationRecord,
     ConversationRef,
+    ConversationScope,
+    ConversationSort,
     InstalledAppConversationRef,
+    InstalledAppConversationScope,
 )
 from services.errors.conversation import ConversationNotExistsError, LastConversationNotExistsError
 from services.errors.message import MessageNotExistsError
@@ -34,47 +36,96 @@ class ConversationRepository:
     def get(self, *, ref: ConversationRef) -> ConversationRecord:
         with self._session_factory() as session:
             _, conversation = self._resolve(session=session, ref=ref)
-            return self._to_record(conversation=conversation, session=session)
+            return self._to_record(conversation=conversation, inputs=conversation.inputs_with_session(session=session))
 
     def get_page(
-        self, *, installed_app: InstalledAppRef, account_id: str, last_id: str | None, limit: int, pinned: bool | None
+        self,
+        *,
+        scope: ConversationScope,
+        invoke_from: ConversationListSource,
+        last_id: str | None,
+        limit: int,
+        pinned: bool | None,
+        sort_by: ConversationSort,
     ) -> ConversationPage:
         with self._session_factory() as session:
-            app = self._get_app(session=session, installed_app=installed_app)
-            statement = self._conversation_statement(app_id=app.id, account_id=account_id).where(
-                or_(Conversation.invoke_from.is_(None), Conversation.invoke_from == InvokeFrom.EXPLORE)
+            if isinstance(scope, InstalledAppConversationScope):
+                app = self._get_app(session=session, installed_app=scope.installed_app)
+                statement = self._conversation_statement(app_id=app.id, account_id=scope.account_id)
+                role, actor_id = CreatorUserRole.ACCOUNT, scope.account_id
+            else:
+                app = session.scalar(
+                    select(App)
+                    .join(EndUser, EndUser.app_id == App.id)
+                    .where(
+                        App.id == scope.app_id,
+                        App.tenant_id == scope.tenant_id,
+                        EndUser.id == scope.end_user_id,
+                        EndUser.tenant_id == App.tenant_id,
+                    )
+                )
+                if app is None:
+                    raise ConversationNotExistsError(
+                        f"Conversations for app {scope.app_id} are unavailable for this end user and workspace."
+                    )
+                statement = select(Conversation).where(
+                    Conversation.app_id == app.id,
+                    Conversation.from_source == ConversationFromSource.API,
+                    Conversation.from_end_user_id == scope.end_user_id,
+                    Conversation.from_account_id.is_(None),
+                    Conversation.is_deleted.is_(False),
+                )
+                role, actor_id = CreatorUserRole.END_USER, scope.end_user_id
+            statement = statement.where(
+                or_(Conversation.invoke_from.is_(None), Conversation.invoke_from == invoke_from)
             )
             if pinned is not None:
                 pinned_ids = session.scalars(
                     select(PinnedConversation.conversation_id).where(
                         PinnedConversation.app_id == app.id,
-                        PinnedConversation.created_by_role == CreatorUserRole.ACCOUNT,
-                        PinnedConversation.created_by == account_id,
+                        PinnedConversation.created_by_role == role,
+                        PinnedConversation.created_by == actor_id,
                     )
                 ).all()
                 if pinned:
                     if not pinned_ids:
-                        return ConversationPage(limit=limit, has_more=False, data=())
+                        return ConversationPage(tenant_id=app.tenant_id, limit=limit, has_more=False, data=())
                     statement = statement.where(Conversation.id.in_(pinned_ids))
                 elif pinned_ids:
                     statement = statement.where(Conversation.id.not_in(pinned_ids))
 
+            by_created_at = sort_by in {"created_at", "-created_at"}
+            column = Conversation.created_at if by_created_at else Conversation.updated_at
+            descending = sort_by.startswith("-")
             if last_id:
                 last_conversation = session.scalar(statement.where(Conversation.id == last_id))
                 if last_conversation is None:
                     raise LastConversationNotExistsError("The last_id cursor does not belong to these conversations.")
-                statement = statement.where(Conversation.updated_at < last_conversation.updated_at)
+                timestamp = last_conversation.created_at if by_created_at else last_conversation.updated_at
+                statement = statement.where(column < timestamp if descending else column > timestamp)
 
-            conversations = session.scalars(statement.order_by(Conversation.updated_at.desc()).limit(limit)).all()
+            conversations = session.scalars(
+                statement.order_by(column.desc() if descending else column.asc()).limit(limit)
+            ).all()
             # Keep the existing strict timestamp cursor, including tied timestamps.
-            has_more = len(conversations) == limit and bool(
-                session.scalar(select(exists(statement.where(Conversation.updated_at < conversations[-1].updated_at))))
-            )
+            has_more = False
+            if conversations and len(conversations) == limit:
+                last = conversations[-1]
+                timestamp = last.created_at if by_created_at else last.updated_at
+                has_more = bool(
+                    session.scalar(
+                        select(exists(statement.where(column < timestamp if descending else column > timestamp)))
+                    )
+                )
             return ConversationPage(
+                tenant_id=app.tenant_id,
                 limit=limit,
                 has_more=has_more,
+                # Input restoration can load file metadata. The shared query service
+                # performs it after this read transaction has released its connection.
                 data=tuple(
-                    self._to_record(conversation=conversation, session=session) for conversation in conversations
+                    self._to_record(conversation=conversation, inputs=conversation._inputs)
+                    for conversation in conversations
                 ),
             )
 
@@ -96,7 +147,9 @@ class ConversationRepository:
     def rename(self, *, ref: ConversationRef, name: str, updated_at: datetime | None) -> ConversationRecord:
         with self._session_factory.begin() as session:
             _, conversation = self._resolve(session=session, ref=ref)
-            record = self._to_record(conversation=conversation, session=session)
+            record = self._to_record(
+                conversation=conversation, inputs=conversation.inputs_with_session(session=session)
+            )
             conversation.name = name
             if updated_at is not None:
                 conversation.updated_at = updated_at
@@ -230,13 +283,11 @@ class ConversationRepository:
         return conversation
 
     @staticmethod
-    def _to_record(*, conversation: Conversation, session: Session) -> ConversationRecord:
-        # Reuse the model's input/file restoration until that legacy I/O boundary
-        # is migrated; do not duplicate its reconstruction logic in this repository.
+    def _to_record(*, conversation: Conversation, inputs: dict[str, ConversationInputValue]) -> ConversationRecord:
         return ConversationRecord(
             id=conversation.id,
             name=conversation.name,
-            inputs=deepcopy(cast(dict[str, ConversationInputValue], conversation.inputs_with_session(session=session))),
+            inputs=deepcopy(inputs),
             status=conversation.status,
             introduction=conversation.introduction,
             created_at=conversation.created_at,

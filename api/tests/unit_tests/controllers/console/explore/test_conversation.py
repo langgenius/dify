@@ -16,10 +16,12 @@ import controllers.console.explore.conversation as module
 from core.app.entities.app_invoke_entities import InvokeFrom
 from models.enums import ConversationFromSource, ConversationStatus, CreatorUserRole
 from models.model import App, AppMode, Conversation, Message
+from models.utils.file_input_compat import restore_input_files
 from models.web import PinnedConversation
 from repositories.conversation_repository import ConversationRepository
 from services.conversation_command_service import ConversationCommandService
 from services.conversation_name_service import ConversationNameService
+from services.conversation_query_service import ConversationQueryService
 from services.installed_app_conversation_service import InstalledAppConversationService
 from tests.unit_tests.controllers.console.explore.test_installed_app_admission import (
     _assert_json_response,
@@ -118,7 +120,9 @@ def conversations(
     services = _Services(
         installed_apps=_InstalledAppServices(
             conversations=InstalledAppConversationService(
-                conversations=ConversationRepository(session_factory=factory),
+                queries=ConversationQueryService(
+                    conversations=ConversationRepository(session_factory=factory), restore_inputs=restore_input_files
+                ),
                 names=ConversationNameService(
                     conversations=ConversationRepository(session_factory=factory), generate_name=state.generate_name
                 ),

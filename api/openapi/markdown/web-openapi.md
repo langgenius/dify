@@ -126,10 +126,10 @@ Retrieve paginated list of conversations for a chat application.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ConversationInfiniteScrollPagination](#conversationinfinitescrollpagination)<br> |
-| 400 | Bad Request |  |
+| 400 | Invalid conversation list query or app mode does not match the API route. |  |
 | 401 | Unauthorized |  |
 | 403 | Forbidden |  |
-| 404 | App Not Found or Not a Chat App |  |
+| 404 | `conversation_cursor_not_found`: Cursor is outside the current list. `conversation_not_found`: The app or user is no longer available. |  |
 | 500 | Internal Server Error |  |
 
 ### [DELETE] /conversations/{c_id}

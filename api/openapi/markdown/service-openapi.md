@@ -609,11 +609,12 @@ Retrieve the conversation list for the current user, ordered by most recently ac
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Successfully retrieved conversations list. | **application/json**: [ConversationInfiniteScrollPagination](#conversationinfinitescrollpagination)<br> |
-| 400 | `not_chat_app` : App mode does not match the API route. |  |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
-| 404 | `not_found` : Last conversation does not exist (invalid `last_id`). |  |
+| 200 | Conversations retrieved successfully. | **application/json**: [ConversationInfiniteScrollPagination](#conversationinfinitescrollpagination)<br> |
+| 400 | Invalid app selection or app mode does not match the API route. |  |
+| 401 | Invalid API credentials. |  |
+| 403 | API credential, app or workspace access is unavailable. |  |
+| 404 | `conversation_cursor_not_found`: Cursor is outside the current list. `conversation_not_found`: The app or user is no longer available. |  |
+| 422 | Invalid conversation list query. |  |
 
 ### [DELETE] /conversations/{conversation_id}
 **Delete Conversation**
