@@ -152,7 +152,11 @@ from services.workflow.workflow_converter import WorkflowConverter
 from services.workflow_ref_service import WorkflowRef
 from services.workflow_version_number_service import allocate_version_number
 
-from .errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
+from .errors.workflow_service import (
+    DraftWorkflowDeletionError,
+    EmptyWorkflowConfirmationRequiredError,
+    WorkflowInUseError,
+)
 from .human_input_delivery_test_service import (
     DeliveryTestContext,
     DeliveryTestEmailRecipient,
@@ -424,6 +428,7 @@ class WorkflowService:
         commit: bool = True,
         sync_agent_bindings: bool = True,
         graph_only: bool = False,
+        require_empty_graph_confirmation: bool = False,
     ) -> Workflow:
         """
         Sync draft workflow.
@@ -436,7 +441,13 @@ class WorkflowService:
         graph-only saves preserve independently persisted draft fields, while
         an explicit per-ID environment patch is merged with the graph.
 
+        Public unconfirmed saves require an empty graph to match an already-empty
+        draft. The False default preserves trusted DSL import initialization and
+        Builder repair/rollback clears; public force=true uses the same overload.
+        Neither overload bypasses the existing draft hash check.
+
         :raises WorkflowHashNotEqualError
+        :raises EmptyWorkflowConfirmationRequiredError
         """
         if environment_variable_upserts is None and deleted_environment_variable_ids:
             raise ValueError("Deleted environment variable ids require an environment variable patch.")
@@ -446,6 +457,11 @@ class WorkflowService:
 
         if workflow and workflow.unique_hash != unique_hash:
             raise WorkflowHashNotEqualError()
+
+        if require_empty_graph_confirmation and graph.get("nodes") == [] and graph.get("edges") == []:
+            previous_graph = workflow.graph_dict if workflow is not None else None
+            if previous_graph is None or previous_graph.get("nodes") != [] or previous_graph.get("edges") != []:
+                raise EmptyWorkflowConfirmationRequiredError("Saving an empty workflow requires force=true.")
 
         # Collaboration persists features and variables through dedicated endpoints. A graph save
         # must not overwrite those newer database values with another collaborator's stale cache.
