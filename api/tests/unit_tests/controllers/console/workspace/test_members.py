@@ -190,9 +190,9 @@ def test_member_mutation_delegates_admitted_ids(app: Flask, services: Mock, oper
 @pytest.mark.parametrize(
     ("error", "code", "status"),
     [
-        (CannotOperateSelfError("self"), "cannot-operate-self", 400),
+        (CannotOperateSelfError("self"), "cannot_operate_self", 400),
         (NoPermissionError("denied"), "forbidden", 403),
-        (MemberNotInTenantError("missing"), "member-not-found", 404),
+        (MemberNotInTenantError("missing"), "member_not_found", 404),
     ],
 )
 def test_member_mutation_maps_errors(
@@ -226,8 +226,8 @@ def test_member_mutation_maps_missing_account(app: Flask, services: Mock, operat
 @pytest.mark.parametrize(
     ("error", "code", "message"),
     [
-        (InvalidWorkspaceMemberRoleError(), "invalid-role", "Invalid role"),
-        (RoleAlreadyAssignedError("unchanged"), "role-already-assigned", "unchanged"),
+        (InvalidWorkspaceMemberRoleError(), "invalid_role", "Invalid role."),
+        (RoleAlreadyAssignedError("unchanged"), "role_already_assigned", "unchanged"),
     ],
 )
 def test_update_role_maps_role_errors(app: Flask, services: Mock, error: Exception, code: str, message: str) -> None:

@@ -16,7 +16,7 @@ describe('getInviteErrorCode', () => {
     expect(getInviteErrorCode(createHttpError(new Response(null, { status: 503 })))).toBeNull()
     expect(
       getInviteErrorCode(
-        createHttpError(new Response(null, { status: 400 }), { code: 'invalid-role' }),
+        createHttpError(new Response(null, { status: 400 }), { code: 'member_not_found' }),
       ),
     ).toBeNull()
   })

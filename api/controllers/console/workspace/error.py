@@ -73,25 +73,19 @@ class SkillFilenameMissingError(BaseHTTPException):
     code = 400
 
 
-class MemberRoleInvalidError(BaseHTTPException):
-    error_code = "invalid-role"
-    description = "Invalid role"
-    code = 400
-
-
 class MemberCannotOperateSelfError(BaseHTTPException):
-    error_code = "cannot-operate-self"
+    error_code = "cannot_operate_self"
     description = "Cannot operate on yourself."
     code = 400
 
 
 class MemberNotFoundError(BaseHTTPException):
-    error_code = "member-not-found"
+    error_code = "member_not_found"
     description = "Member not found."
     code = 404
 
 
 class MemberRoleAlreadyAssignedError(BaseHTTPException):
-    error_code = "role-already-assigned"
+    error_code = "role_already_assigned"
     description = "Role already assigned."
     code = 400
