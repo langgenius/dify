@@ -5,6 +5,7 @@ Uses a toy two-state registry rather than the real fix-flow handlers
 (handlers land in Task 6/7).
 """
 
+import json
 import logging
 from collections.abc import Callable
 from datetime import datetime
@@ -16,6 +17,8 @@ from core.dify_builder.errors import ConflictError
 from core.dify_builder.models import Action, Actor, ConversationItem, DifyBuilderContext, EntryMode, Session, Turn
 from core.dify_builder.runner import Env, Handler, Runner, StepResult
 from core.dify_builder.state import PcState
+from services.dify_builder.agent import localize as localize_mod
+from services.dify_builder.agent.localize import Localizer
 from tests.unit_tests.core.dify_builder.fakes import FakeDifyPort, InMemoryRepository, StubAgent
 
 
@@ -515,6 +518,44 @@ def test_message_retry_resumes_after_user_half_committed():
     items = repo.list_conversation(s.id)
     assert [item.kind for item in items] == ["user", "assistant_turn"]
     assert items[-1].payload["reply_text"] == "Recovered reply"
+
+
+def test_localized_message_retry_keeps_catalog_colliding_client_turn_id_and_raw_text(monkeypatch):
+    monkeypatch.setattr(localize_mod, "_TRANSLATION_CACHE", {})
+
+    def translate(_model, *, system, user):  # noqa: ARG001
+        return {index: "目标" if source == "Goal" else source for index, source in json.loads(user).items()}
+
+    monkeypatch.setattr(localize_mod.llm, "invoke_json", translate)
+    env, repo = _new_env()
+    env.detect_language = lambda _text: "zh-Hans"
+    env.localize_items = Localizer(lambda: object()).localize_items
+    session = _session(current_state=PcState.FIX_AWAIT_APPROVAL)
+    repo.create_session(session, DifyBuilderContext(), [])
+    action = Action(
+        kind="message",
+        payload={"text": "请构建目标工作流", "client_turn_id": "Goal"},
+        base_version=1,
+    )
+
+    def fail_reply(*_args):
+        raise RuntimeError("model unavailable")
+
+    env.agent.respond_to_message = fail_reply  # type: ignore[method-assign]
+    with pytest.raises(RuntimeError, match="model unavailable"):
+        Runner(env, {}).advance(session.id, Turn(action=action, actor=_actor()))
+
+    [stored_user] = repo.list_conversation(session.id)
+    assert stored_user.payload == {"text": "请构建目标工作流", "turn_id": "Goal"}
+    assert repo.get_conversation_turn_kinds(session.id, "Goal") == frozenset({"user"})
+
+    env.agent.respond_to_message = lambda *_args: "Recovered reply"  # type: ignore[method-assign]
+    Runner(env, {}).advance(session.id, Turn(action=action, actor=_actor()))
+
+    items = repo.list_conversation(session.id)
+    assert [item.kind for item in items] == ["user", "assistant_turn"]
+    assert items[1].payload["turn_id"] == "Goal"
+    assert repo.get_conversation_turn_kinds(session.id, "Goal") == frozenset({"user", "assistant_turn"})
 
 
 def test_fail_after_message_user_half_commits_against_the_new_head():
