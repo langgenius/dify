@@ -31,8 +31,13 @@ export const post = oc
   .output(zPostTagBindingsRemoveResponse)
   .errors({
     account_not_initialized: { status: 400, data: zRemoveTagBindingsError400 },
+    bad_host: { status: 400, data: zRemoveTagBindingsError400 },
     bad_request: { status: 400, data: zRemoveTagBindingsError400 },
+    bad_request_key_error: { status: 400, data: zRemoveTagBindingsError400 },
+    client_disconnected: { status: 400, data: zRemoveTagBindingsError400 },
     invalid_param: { status: 400, data: zRemoveTagBindingsError400 },
+    security_error: { status: 400, data: zRemoveTagBindingsError400 },
+    websocket_mismatch: { status: 400, data: zRemoveTagBindingsError400 },
     not_init_validated: { status: 401, data: zRemoveTagBindingsError401 },
     not_setup: { status: 401, data: zRemoveTagBindingsError401 },
     unauthorized: { status: 401, data: zRemoveTagBindingsError401 },
@@ -54,8 +59,13 @@ export const post2 = oc
   .output(zPostTagBindingsResponse)
   .errors({
     account_not_initialized: { status: 400, data: zCreateTagBindingError400 },
+    bad_host: { status: 400, data: zCreateTagBindingError400 },
     bad_request: { status: 400, data: zCreateTagBindingError400 },
+    bad_request_key_error: { status: 400, data: zCreateTagBindingError400 },
+    client_disconnected: { status: 400, data: zCreateTagBindingError400 },
     invalid_param: { status: 400, data: zCreateTagBindingError400 },
+    security_error: { status: 400, data: zCreateTagBindingError400 },
+    websocket_mismatch: { status: 400, data: zCreateTagBindingError400 },
     not_init_validated: { status: 401, data: zCreateTagBindingError401 },
     not_setup: { status: 401, data: zCreateTagBindingError401 },
     unauthorized: { status: 401, data: zCreateTagBindingError401 },

@@ -38,8 +38,13 @@ export const get = oc
   .output(zGetFormHumanInputByFormTokenResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetConsoleHumanInputFormApiError400 },
+    bad_host: { status: 400, data: zGetConsoleHumanInputFormApiError400 },
     bad_request: { status: 400, data: zGetConsoleHumanInputFormApiError400 },
+    bad_request_key_error: { status: 400, data: zGetConsoleHumanInputFormApiError400 },
+    client_disconnected: { status: 400, data: zGetConsoleHumanInputFormApiError400 },
     invalid_param: { status: 400, data: zGetConsoleHumanInputFormApiError400 },
+    security_error: { status: 400, data: zGetConsoleHumanInputFormApiError400 },
+    websocket_mismatch: { status: 400, data: zGetConsoleHumanInputFormApiError400 },
     not_init_validated: { status: 401, data: zGetConsoleHumanInputFormApiError401 },
     not_setup: { status: 401, data: zGetConsoleHumanInputFormApiError401 },
     unauthorized: { status: 401, data: zGetConsoleHumanInputFormApiError401 },
@@ -81,9 +86,14 @@ export const post = oc
   .output(zPostFormHumanInputByFormTokenResponse)
   .errors({
     account_not_initialized: { status: 400, data: zPostConsoleHumanInputFormApiError400 },
+    bad_host: { status: 400, data: zPostConsoleHumanInputFormApiError400 },
     bad_request: { status: 400, data: zPostConsoleHumanInputFormApiError400 },
+    bad_request_key_error: { status: 400, data: zPostConsoleHumanInputFormApiError400 },
+    client_disconnected: { status: 400, data: zPostConsoleHumanInputFormApiError400 },
     invalid_form_data: { status: 400, data: zPostConsoleHumanInputFormApiError400 },
     invalid_param: { status: 400, data: zPostConsoleHumanInputFormApiError400 },
+    security_error: { status: 400, data: zPostConsoleHumanInputFormApiError400 },
+    websocket_mismatch: { status: 400, data: zPostConsoleHumanInputFormApiError400 },
     not_found: { status: 404, data: zPostConsoleHumanInputFormApiError404 },
     human_input_form_expired: { status: 412, data: zPostConsoleHumanInputFormApiError412 },
     human_input_form_submitted: { status: 412, data: zPostConsoleHumanInputFormApiError412 },

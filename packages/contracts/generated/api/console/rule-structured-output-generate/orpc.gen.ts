@@ -24,12 +24,17 @@ export const post = oc
   .output(zPostRuleStructuredOutputGenerateResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGenerateStructuredOutputError400 },
+    bad_host: { status: 400, data: zGenerateStructuredOutputError400 },
     bad_request: { status: 400, data: zGenerateStructuredOutputError400 },
+    bad_request_key_error: { status: 400, data: zGenerateStructuredOutputError400 },
+    client_disconnected: { status: 400, data: zGenerateStructuredOutputError400 },
     completion_request_error: { status: 400, data: zGenerateStructuredOutputError400 },
     invalid_param: { status: 400, data: zGenerateStructuredOutputError400 },
     model_currently_not_support: { status: 400, data: zGenerateStructuredOutputError400 },
     provider_not_initialize: { status: 400, data: zGenerateStructuredOutputError400 },
     provider_quota_exceeded: { status: 400, data: zGenerateStructuredOutputError400 },
+    security_error: { status: 400, data: zGenerateStructuredOutputError400 },
+    websocket_mismatch: { status: 400, data: zGenerateStructuredOutputError400 },
     not_init_validated: { status: 401, data: zGenerateStructuredOutputError401 },
     not_setup: { status: 401, data: zGenerateStructuredOutputError401 },
     unauthorized: { status: 401, data: zGenerateStructuredOutputError401 },

@@ -52,9 +52,14 @@ export const post = oc
   .output(zPostActivateResponse)
   .errors({
     account_in_freeze: { status: 400, data: zActivateAccountError400 },
+    bad_host: { status: 400, data: zActivateAccountError400 },
     bad_request: { status: 400, data: zActivateAccountError400 },
+    bad_request_key_error: { status: 400, data: zActivateAccountError400 },
+    client_disconnected: { status: 400, data: zActivateAccountError400 },
     email_domain_suspended: { status: 400, data: zActivateAccountError400 },
     invalid_param: { status: 400, data: zActivateAccountError400 },
+    security_error: { status: 400, data: zActivateAccountError400 },
+    websocket_mismatch: { status: 400, data: zActivateAccountError400 },
     already_activate: { status: 403, data: zActivateAccountError403 },
     forbidden: { status: 403, data: zActivateAccountError403 },
     invitation_account_mismatch: { status: 403, data: zActivateAccountError403 },

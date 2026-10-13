@@ -27,9 +27,14 @@ export const patch = oc
   .output(zPatchDataSourceIntegratesByBindingIdByActionResponse)
   .errors({
     account_not_initialized: { status: 400, data: zPatchDataSourceIntegrationApiError400 },
+    bad_host: { status: 400, data: zPatchDataSourceIntegrationApiError400 },
     bad_request: { status: 400, data: zPatchDataSourceIntegrationApiError400 },
+    bad_request_key_error: { status: 400, data: zPatchDataSourceIntegrationApiError400 },
+    client_disconnected: { status: 400, data: zPatchDataSourceIntegrationApiError400 },
     invalid_action: { status: 400, data: zPatchDataSourceIntegrationApiError400 },
     invalid_param: { status: 400, data: zPatchDataSourceIntegrationApiError400 },
+    security_error: { status: 400, data: zPatchDataSourceIntegrationApiError400 },
+    websocket_mismatch: { status: 400, data: zPatchDataSourceIntegrationApiError400 },
     not_init_validated: { status: 401, data: zPatchDataSourceIntegrationApiError401 },
     not_setup: { status: 401, data: zPatchDataSourceIntegrationApiError401 },
     unauthorized: { status: 401, data: zPatchDataSourceIntegrationApiError401 },
@@ -55,8 +60,13 @@ export const get = oc
   .output(zGetDataSourceIntegratesResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetDataSourceIntegrationListApiError400 },
+    bad_host: { status: 400, data: zGetDataSourceIntegrationListApiError400 },
     bad_request: { status: 400, data: zGetDataSourceIntegrationListApiError400 },
+    bad_request_key_error: { status: 400, data: zGetDataSourceIntegrationListApiError400 },
+    client_disconnected: { status: 400, data: zGetDataSourceIntegrationListApiError400 },
     invalid_param: { status: 400, data: zGetDataSourceIntegrationListApiError400 },
+    security_error: { status: 400, data: zGetDataSourceIntegrationListApiError400 },
+    websocket_mismatch: { status: 400, data: zGetDataSourceIntegrationListApiError400 },
     not_init_validated: { status: 401, data: zGetDataSourceIntegrationListApiError401 },
     not_setup: { status: 401, data: zGetDataSourceIntegrationListApiError401 },
     unauthorized: { status: 401, data: zGetDataSourceIntegrationListApiError401 },

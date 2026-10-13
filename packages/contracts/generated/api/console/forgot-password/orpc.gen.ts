@@ -36,10 +36,15 @@ export const post = oc
   .output(zPostForgotPasswordResetsResponse)
   .errors({
     account_not_found: { status: 400, data: zResetPasswordError400 },
+    bad_host: { status: 400, data: zResetPasswordError400 },
     bad_request: { status: 400, data: zResetPasswordError400 },
+    bad_request_key_error: { status: 400, data: zResetPasswordError400 },
+    client_disconnected: { status: 400, data: zResetPasswordError400 },
     invalid_or_expired_token: { status: 400, data: zResetPasswordError400 },
     invalid_param: { status: 400, data: zResetPasswordError400 },
     password_mismatch: { status: 400, data: zResetPasswordError400 },
+    security_error: { status: 400, data: zResetPasswordError400 },
+    websocket_mismatch: { status: 400, data: zResetPasswordError400 },
     not_init_validated: { status: 401, data: zResetPasswordError401 },
     not_setup: { status: 401, data: zResetPasswordError401 },
     unauthorized: { status: 401, data: zResetPasswordError401 },
@@ -64,11 +69,16 @@ export const post2 = oc
   .input(z.object({ body: zPostForgotPasswordValidityBody }))
   .output(zPostForgotPasswordValidityResponse)
   .errors({
+    bad_host: { status: 400, data: zCheckForgotPasswordCodeError400 },
     bad_request: { status: 400, data: zCheckForgotPasswordCodeError400 },
+    bad_request_key_error: { status: 400, data: zCheckForgotPasswordCodeError400 },
+    client_disconnected: { status: 400, data: zCheckForgotPasswordCodeError400 },
     email_code_error: { status: 400, data: zCheckForgotPasswordCodeError400 },
     invalid_email: { status: 400, data: zCheckForgotPasswordCodeError400 },
     invalid_or_expired_token: { status: 400, data: zCheckForgotPasswordCodeError400 },
     invalid_param: { status: 400, data: zCheckForgotPasswordCodeError400 },
+    security_error: { status: 400, data: zCheckForgotPasswordCodeError400 },
+    websocket_mismatch: { status: 400, data: zCheckForgotPasswordCodeError400 },
     not_init_validated: { status: 401, data: zCheckForgotPasswordCodeError401 },
     not_setup: { status: 401, data: zCheckForgotPasswordCodeError401 },
     unauthorized: { status: 401, data: zCheckForgotPasswordCodeError401 },

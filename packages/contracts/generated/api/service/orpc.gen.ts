@@ -506,7 +506,10 @@ export const post3 = oc
   .output(zPostAudioToTextResponse)
   .errors({
     app_unavailable: { status: 400, data: zAudioToTextError400 },
+    bad_host: { status: 400, data: zAudioToTextError400 },
     bad_request: { status: 400, data: zAudioToTextError400 },
+    bad_request_key_error: { status: 400, data: zAudioToTextError400 },
+    client_disconnected: { status: 400, data: zAudioToTextError400 },
     completion_request_error: { status: 400, data: zAudioToTextError400 },
     invalid_param: { status: 400, data: zAudioToTextError400 },
     model_currently_not_support: { status: 400, data: zAudioToTextError400 },
@@ -514,7 +517,9 @@ export const post3 = oc
     provider_not_initialize: { status: 400, data: zAudioToTextError400 },
     provider_not_support_speech_to_text: { status: 400, data: zAudioToTextError400 },
     provider_quota_exceeded: { status: 400, data: zAudioToTextError400 },
+    security_error: { status: 400, data: zAudioToTextError400 },
     speech_to_text_disabled: { status: 400, data: zAudioToTextError400 },
+    websocket_mismatch: { status: 400, data: zAudioToTextError400 },
     agent_version_not_found_error: { status: 404, data: zAudioToTextError404 },
     not_found: { status: 404, data: zAudioToTextError404 },
     audio_too_large: { status: 413, data: zAudioToTextError413 },
@@ -550,9 +555,14 @@ export const post4 = oc
   )
   .output(zPostChatMessagesByTaskIdStopResponse)
   .errors({
+    bad_host: { status: 400, data: zStopChatMessageError400 },
     bad_request: { status: 400, data: zStopChatMessageError400 },
+    bad_request_key_error: { status: 400, data: zStopChatMessageError400 },
+    client_disconnected: { status: 400, data: zStopChatMessageError400 },
     invalid_param: { status: 400, data: zStopChatMessageError400 },
     not_chat_app: { status: 400, data: zStopChatMessageError400 },
+    security_error: { status: 400, data: zStopChatMessageError400 },
+    websocket_mismatch: { status: 400, data: zStopChatMessageError400 },
   })
 
 export const stop = {
@@ -583,13 +593,18 @@ export const post5 = oc
   .errors({
     agent_not_published: { status: 400, data: zCreateChatMessageError400 },
     app_unavailable: { status: 400, data: zCreateChatMessageError400 },
+    bad_host: { status: 400, data: zCreateChatMessageError400 },
     bad_request: { status: 400, data: zCreateChatMessageError400 },
+    bad_request_key_error: { status: 400, data: zCreateChatMessageError400 },
+    client_disconnected: { status: 400, data: zCreateChatMessageError400 },
     completion_request_error: { status: 400, data: zCreateChatMessageError400 },
     invalid_param: { status: 400, data: zCreateChatMessageError400 },
     model_currently_not_support: { status: 400, data: zCreateChatMessageError400 },
     not_chat_app: { status: 400, data: zCreateChatMessageError400 },
     provider_not_initialize: { status: 400, data: zCreateChatMessageError400 },
     provider_quota_exceeded: { status: 400, data: zCreateChatMessageError400 },
+    security_error: { status: 400, data: zCreateChatMessageError400 },
+    websocket_mismatch: { status: 400, data: zCreateChatMessageError400 },
     forbidden: { status: 403, data: zCreateChatMessageError403 },
     workflow_version_execution_not_allowed: { status: 403, data: zCreateChatMessageError403 },
     rate_limit_error: { status: 429, data: zCreateChatMessageError429 },
@@ -625,8 +640,13 @@ export const post6 = oc
   .output(zPostCompletionMessagesByTaskIdStopResponse)
   .errors({
     app_unavailable: { status: 400, data: zStopCompletionError400 },
+    bad_host: { status: 400, data: zStopCompletionError400 },
     bad_request: { status: 400, data: zStopCompletionError400 },
+    bad_request_key_error: { status: 400, data: zStopCompletionError400 },
+    client_disconnected: { status: 400, data: zStopCompletionError400 },
     invalid_param: { status: 400, data: zStopCompletionError400 },
+    security_error: { status: 400, data: zStopCompletionError400 },
+    websocket_mismatch: { status: 400, data: zStopCompletionError400 },
   })
 
 export const stop2 = {
@@ -657,12 +677,17 @@ export const post7 = oc
   .errors({
     agent_not_published: { status: 400, data: zCreateCompletionError400 },
     app_unavailable: { status: 400, data: zCreateCompletionError400 },
+    bad_host: { status: 400, data: zCreateCompletionError400 },
     bad_request: { status: 400, data: zCreateCompletionError400 },
+    bad_request_key_error: { status: 400, data: zCreateCompletionError400 },
+    client_disconnected: { status: 400, data: zCreateCompletionError400 },
     completion_request_error: { status: 400, data: zCreateCompletionError400 },
     invalid_param: { status: 400, data: zCreateCompletionError400 },
     model_currently_not_support: { status: 400, data: zCreateCompletionError400 },
     provider_not_initialize: { status: 400, data: zCreateCompletionError400 },
     provider_quota_exceeded: { status: 400, data: zCreateCompletionError400 },
+    security_error: { status: 400, data: zCreateCompletionError400 },
+    websocket_mismatch: { status: 400, data: zCreateCompletionError400 },
   })
 
 export const completionMessages = {
@@ -694,9 +719,14 @@ export const post8 = oc
   )
   .output(zPostConversationsByConversationIdNameResponse)
   .errors({
+    bad_host: { status: 400, data: zRenameConversationError400 },
     bad_request: { status: 400, data: zRenameConversationError400 },
+    bad_request_key_error: { status: 400, data: zRenameConversationError400 },
+    client_disconnected: { status: 400, data: zRenameConversationError400 },
     invalid_param: { status: 400, data: zRenameConversationError400 },
     not_chat_app: { status: 400, data: zRenameConversationError400 },
+    security_error: { status: 400, data: zRenameConversationError400 },
+    websocket_mismatch: { status: 400, data: zRenameConversationError400 },
   })
 
 export const name = {
@@ -727,9 +757,14 @@ export const put2 = oc
   )
   .output(zPutConversationsByConversationIdVariablesByVariableIdResponse)
   .errors({
+    bad_host: { status: 400, data: zUpdateConversationVariableError400 },
     bad_request: { status: 400, data: zUpdateConversationVariableError400 },
+    bad_request_key_error: { status: 400, data: zUpdateConversationVariableError400 },
+    client_disconnected: { status: 400, data: zUpdateConversationVariableError400 },
     invalid_param: { status: 400, data: zUpdateConversationVariableError400 },
     not_chat_app: { status: 400, data: zUpdateConversationVariableError400 },
+    security_error: { status: 400, data: zUpdateConversationVariableError400 },
+    websocket_mismatch: { status: 400, data: zUpdateConversationVariableError400 },
   })
 
 export const byVariableId = {
@@ -759,9 +794,14 @@ export const get5 = oc
   )
   .output(zGetConversationsByConversationIdVariablesResponse)
   .errors({
+    bad_host: { status: 400, data: zListConversationVariablesError400 },
     bad_request: { status: 400, data: zListConversationVariablesError400 },
+    bad_request_key_error: { status: 400, data: zListConversationVariablesError400 },
+    client_disconnected: { status: 400, data: zListConversationVariablesError400 },
     invalid_param: { status: 400, data: zListConversationVariablesError400 },
     not_chat_app: { status: 400, data: zListConversationVariablesError400 },
+    security_error: { status: 400, data: zListConversationVariablesError400 },
+    websocket_mismatch: { status: 400, data: zListConversationVariablesError400 },
   })
 
 export const variables = {
@@ -793,9 +833,14 @@ export const delete2 = oc
   )
   .output(zDeleteConversationsByConversationIdResponse)
   .errors({
+    bad_host: { status: 400, data: zDeleteConversationError400 },
     bad_request: { status: 400, data: zDeleteConversationError400 },
+    bad_request_key_error: { status: 400, data: zDeleteConversationError400 },
+    client_disconnected: { status: 400, data: zDeleteConversationError400 },
     invalid_param: { status: 400, data: zDeleteConversationError400 },
     not_chat_app: { status: 400, data: zDeleteConversationError400 },
+    security_error: { status: 400, data: zDeleteConversationError400 },
+    websocket_mismatch: { status: 400, data: zDeleteConversationError400 },
   })
 
 export const byConversationId = {
@@ -823,9 +868,14 @@ export const get6 = oc
   .input(z.object({ query: zGetConversationsQuery.optional() }))
   .output(zGetConversationsResponse)
   .errors({
+    bad_host: { status: 400, data: zListConversationsError400 },
     bad_request: { status: 400, data: zListConversationsError400 },
+    bad_request_key_error: { status: 400, data: zListConversationsError400 },
+    client_disconnected: { status: 400, data: zListConversationsError400 },
     invalid_param: { status: 400, data: zListConversationsError400 },
     not_chat_app: { status: 400, data: zListConversationsError400 },
+    security_error: { status: 400, data: zListConversationsError400 },
+    websocket_mismatch: { status: 400, data: zListConversationsError400 },
   })
 
 export const conversations = {
@@ -853,11 +903,16 @@ export const post9 = oc
   .input(z.object({ body: zPostDatasetsPipelineFileUploadBody }))
   .output(zPostDatasetsPipelineFileUploadResponse)
   .errors({
+    bad_host: { status: 400, data: zKnowledgebasePipelineFileUploadError400 },
     bad_request: { status: 400, data: zKnowledgebasePipelineFileUploadError400 },
+    bad_request_key_error: { status: 400, data: zKnowledgebasePipelineFileUploadError400 },
+    client_disconnected: { status: 400, data: zKnowledgebasePipelineFileUploadError400 },
     filename_not_exists_error: { status: 400, data: zKnowledgebasePipelineFileUploadError400 },
     invalid_param: { status: 400, data: zKnowledgebasePipelineFileUploadError400 },
     no_file_uploaded: { status: 400, data: zKnowledgebasePipelineFileUploadError400 },
+    security_error: { status: 400, data: zKnowledgebasePipelineFileUploadError400 },
     too_many_files: { status: 400, data: zKnowledgebasePipelineFileUploadError400 },
+    websocket_mismatch: { status: 400, data: zKnowledgebasePipelineFileUploadError400 },
     file_too_large: { status: 413, data: zKnowledgebasePipelineFileUploadError413 },
     request_entity_too_large: { status: 413, data: zKnowledgebasePipelineFileUploadError413 },
     unsupported_file_type: { status: 415, data: zKnowledgebasePipelineFileUploadError415 },
@@ -1025,12 +1080,17 @@ export const post13 = oc
   )
   .output(zPostDatasetsByDatasetIdDocumentCreateByFileResponse)
   .errors({
+    bad_host: { status: 400, data: zCreateDocumentByFile75A87285Error400 },
     bad_request: { status: 400, data: zCreateDocumentByFile75A87285Error400 },
+    bad_request_key_error: { status: 400, data: zCreateDocumentByFile75A87285Error400 },
+    client_disconnected: { status: 400, data: zCreateDocumentByFile75A87285Error400 },
     filename_not_exists_error: { status: 400, data: zCreateDocumentByFile75A87285Error400 },
     invalid_param: { status: 400, data: zCreateDocumentByFile75A87285Error400 },
     no_file_uploaded: { status: 400, data: zCreateDocumentByFile75A87285Error400 },
     provider_not_initialize: { status: 400, data: zCreateDocumentByFile75A87285Error400 },
+    security_error: { status: 400, data: zCreateDocumentByFile75A87285Error400 },
     too_many_files: { status: 400, data: zCreateDocumentByFile75A87285Error400 },
+    websocket_mismatch: { status: 400, data: zCreateDocumentByFile75A87285Error400 },
     file_too_large: { status: 413, data: zCreateDocumentByFile75A87285Error413 },
     request_entity_too_large: { status: 413, data: zCreateDocumentByFile75A87285Error413 },
   })
@@ -1062,12 +1122,17 @@ export const post14 = oc
   )
   .output(zPostDatasetsByDatasetIdDocumentCreateByFile2Response)
   .errors({
+    bad_host: { status: 400, data: zCreateDocumentByFile75A87285Error400 },
     bad_request: { status: 400, data: zCreateDocumentByFile75A87285Error400 },
+    bad_request_key_error: { status: 400, data: zCreateDocumentByFile75A87285Error400 },
+    client_disconnected: { status: 400, data: zCreateDocumentByFile75A87285Error400 },
     filename_not_exists_error: { status: 400, data: zCreateDocumentByFile75A87285Error400 },
     invalid_param: { status: 400, data: zCreateDocumentByFile75A87285Error400 },
     no_file_uploaded: { status: 400, data: zCreateDocumentByFile75A87285Error400 },
     provider_not_initialize: { status: 400, data: zCreateDocumentByFile75A87285Error400 },
+    security_error: { status: 400, data: zCreateDocumentByFile75A87285Error400 },
     too_many_files: { status: 400, data: zCreateDocumentByFile75A87285Error400 },
+    websocket_mismatch: { status: 400, data: zCreateDocumentByFile75A87285Error400 },
     file_too_large: { status: 413, data: zCreateDocumentByFile75A87285Error413 },
     request_entity_too_large: { status: 413, data: zCreateDocumentByFile75A87285Error413 },
   })
@@ -1100,9 +1165,14 @@ export const post15 = oc
   )
   .output(zPostDatasetsByDatasetIdDocumentCreateByTextResponse)
   .errors({
+    bad_host: { status: 400, data: zCreateDocumentByTextDeprecatedError400 },
     bad_request: { status: 400, data: zCreateDocumentByTextDeprecatedError400 },
+    bad_request_key_error: { status: 400, data: zCreateDocumentByTextDeprecatedError400 },
+    client_disconnected: { status: 400, data: zCreateDocumentByTextDeprecatedError400 },
     invalid_param: { status: 400, data: zCreateDocumentByTextDeprecatedError400 },
     provider_not_initialize: { status: 400, data: zCreateDocumentByTextDeprecatedError400 },
+    security_error: { status: 400, data: zCreateDocumentByTextDeprecatedError400 },
+    websocket_mismatch: { status: 400, data: zCreateDocumentByTextDeprecatedError400 },
   })
 
 /**
@@ -1132,9 +1202,14 @@ export const post16 = oc
   )
   .output(zPostDatasetsByDatasetIdDocumentCreateByText2Response)
   .errors({
+    bad_host: { status: 400, data: zCreateDocumentByTextDeprecatedError400 },
     bad_request: { status: 400, data: zCreateDocumentByTextDeprecatedError400 },
+    bad_request_key_error: { status: 400, data: zCreateDocumentByTextDeprecatedError400 },
+    client_disconnected: { status: 400, data: zCreateDocumentByTextDeprecatedError400 },
     invalid_param: { status: 400, data: zCreateDocumentByTextDeprecatedError400 },
     provider_not_initialize: { status: 400, data: zCreateDocumentByTextDeprecatedError400 },
+    security_error: { status: 400, data: zCreateDocumentByTextDeprecatedError400 },
+    websocket_mismatch: { status: 400, data: zCreateDocumentByTextDeprecatedError400 },
   })
 
 export const createByText = {
@@ -1225,9 +1300,14 @@ export const patch2 = oc
   )
   .output(zPatchDatasetsByDatasetIdDocumentsStatusByActionResponse)
   .errors({
+    bad_host: { status: 400, data: zUpdateDocumentStatusError400 },
     bad_request: { status: 400, data: zUpdateDocumentStatusError400 },
+    bad_request_key_error: { status: 400, data: zUpdateDocumentStatusError400 },
+    client_disconnected: { status: 400, data: zUpdateDocumentStatusError400 },
     invalid_action: { status: 400, data: zUpdateDocumentStatusError400 },
     invalid_param: { status: 400, data: zUpdateDocumentStatusError400 },
+    security_error: { status: 400, data: zUpdateDocumentStatusError400 },
+    websocket_mismatch: { status: 400, data: zUpdateDocumentStatusError400 },
   })
 
 export const byAction2 = {
@@ -1393,9 +1473,14 @@ export const post19 = oc
   )
   .output(zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse)
   .errors({
+    bad_host: { status: 400, data: zCreateChildChunkError400 },
     bad_request: { status: 400, data: zCreateChildChunkError400 },
+    bad_request_key_error: { status: 400, data: zCreateChildChunkError400 },
+    client_disconnected: { status: 400, data: zCreateChildChunkError400 },
     invalid_param: { status: 400, data: zCreateChildChunkError400 },
     provider_not_initialize: { status: 400, data: zCreateChildChunkError400 },
+    security_error: { status: 400, data: zCreateChildChunkError400 },
+    websocket_mismatch: { status: 400, data: zCreateChildChunkError400 },
   })
 
 export const childChunks = {
@@ -1468,9 +1553,14 @@ export const post20 = oc
   )
   .output(zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse)
   .errors({
+    bad_host: { status: 400, data: zUpdateSegmentError400 },
     bad_request: { status: 400, data: zUpdateSegmentError400 },
+    bad_request_key_error: { status: 400, data: zUpdateSegmentError400 },
+    client_disconnected: { status: 400, data: zUpdateSegmentError400 },
     invalid_param: { status: 400, data: zUpdateSegmentError400 },
     provider_not_initialize: { status: 400, data: zUpdateSegmentError400 },
+    security_error: { status: 400, data: zUpdateSegmentError400 },
+    websocket_mismatch: { status: 400, data: zUpdateSegmentError400 },
   })
 
 export const bySegmentId = {
@@ -1504,9 +1594,14 @@ export const get12 = oc
   )
   .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse)
   .errors({
+    bad_host: { status: 400, data: zListSegmentsError400 },
     bad_request: { status: 400, data: zListSegmentsError400 },
+    bad_request_key_error: { status: 400, data: zListSegmentsError400 },
+    client_disconnected: { status: 400, data: zListSegmentsError400 },
     invalid_param: { status: 400, data: zListSegmentsError400 },
     provider_not_initialize: { status: 400, data: zListSegmentsError400 },
+    security_error: { status: 400, data: zListSegmentsError400 },
+    websocket_mismatch: { status: 400, data: zListSegmentsError400 },
   })
 
 /**
@@ -1533,9 +1628,14 @@ export const post21 = oc
   )
   .output(zPostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse)
   .errors({
+    bad_host: { status: 400, data: zCreateSegmentsError400 },
     bad_request: { status: 400, data: zCreateSegmentsError400 },
+    bad_request_key_error: { status: 400, data: zCreateSegmentsError400 },
+    client_disconnected: { status: 400, data: zCreateSegmentsError400 },
     invalid_param: { status: 400, data: zCreateSegmentsError400 },
     provider_not_initialize: { status: 400, data: zCreateSegmentsError400 },
+    security_error: { status: 400, data: zCreateSegmentsError400 },
+    websocket_mismatch: { status: 400, data: zCreateSegmentsError400 },
   })
 
 export const segments = {
@@ -1571,14 +1671,19 @@ export const post22 = oc
   )
   .output(zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileResponse)
   .errors({
+    bad_host: { status: 400, data: zUpdateDocumentByFileDeprecated5Dc5Fe59Error400 },
     bad_request: { status: 400, data: zUpdateDocumentByFileDeprecated5Dc5Fe59Error400 },
+    bad_request_key_error: { status: 400, data: zUpdateDocumentByFileDeprecated5Dc5Fe59Error400 },
+    client_disconnected: { status: 400, data: zUpdateDocumentByFileDeprecated5Dc5Fe59Error400 },
     filename_not_exists_error: {
       status: 400,
       data: zUpdateDocumentByFileDeprecated5Dc5Fe59Error400,
     },
     invalid_param: { status: 400, data: zUpdateDocumentByFileDeprecated5Dc5Fe59Error400 },
     provider_not_initialize: { status: 400, data: zUpdateDocumentByFileDeprecated5Dc5Fe59Error400 },
+    security_error: { status: 400, data: zUpdateDocumentByFileDeprecated5Dc5Fe59Error400 },
     too_many_files: { status: 400, data: zUpdateDocumentByFileDeprecated5Dc5Fe59Error400 },
+    websocket_mismatch: { status: 400, data: zUpdateDocumentByFileDeprecated5Dc5Fe59Error400 },
     file_too_large: { status: 413, data: zUpdateDocumentByFileDeprecated5Dc5Fe59Error413 },
     request_entity_too_large: {
       status: 413,
@@ -1615,14 +1720,19 @@ export const post23 = oc
   )
   .output(zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Response)
   .errors({
+    bad_host: { status: 400, data: zUpdateDocumentByFileDeprecated5Dc5Fe59Error400 },
     bad_request: { status: 400, data: zUpdateDocumentByFileDeprecated5Dc5Fe59Error400 },
+    bad_request_key_error: { status: 400, data: zUpdateDocumentByFileDeprecated5Dc5Fe59Error400 },
+    client_disconnected: { status: 400, data: zUpdateDocumentByFileDeprecated5Dc5Fe59Error400 },
     filename_not_exists_error: {
       status: 400,
       data: zUpdateDocumentByFileDeprecated5Dc5Fe59Error400,
     },
     invalid_param: { status: 400, data: zUpdateDocumentByFileDeprecated5Dc5Fe59Error400 },
     provider_not_initialize: { status: 400, data: zUpdateDocumentByFileDeprecated5Dc5Fe59Error400 },
+    security_error: { status: 400, data: zUpdateDocumentByFileDeprecated5Dc5Fe59Error400 },
     too_many_files: { status: 400, data: zUpdateDocumentByFileDeprecated5Dc5Fe59Error400 },
+    websocket_mismatch: { status: 400, data: zUpdateDocumentByFileDeprecated5Dc5Fe59Error400 },
     file_too_large: { status: 413, data: zUpdateDocumentByFileDeprecated5Dc5Fe59Error413 },
     request_entity_too_large: {
       status: 413,
@@ -1660,9 +1770,14 @@ export const post24 = oc
   )
   .output(zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextResponse)
   .errors({
+    bad_host: { status: 400, data: zUpdateDocumentByTextDeprecatedError400 },
     bad_request: { status: 400, data: zUpdateDocumentByTextDeprecatedError400 },
+    bad_request_key_error: { status: 400, data: zUpdateDocumentByTextDeprecatedError400 },
+    client_disconnected: { status: 400, data: zUpdateDocumentByTextDeprecatedError400 },
     invalid_param: { status: 400, data: zUpdateDocumentByTextDeprecatedError400 },
     provider_not_initialize: { status: 400, data: zUpdateDocumentByTextDeprecatedError400 },
+    security_error: { status: 400, data: zUpdateDocumentByTextDeprecatedError400 },
+    websocket_mismatch: { status: 400, data: zUpdateDocumentByTextDeprecatedError400 },
   })
 
 /**
@@ -1692,9 +1807,14 @@ export const post25 = oc
   )
   .output(zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Response)
   .errors({
+    bad_host: { status: 400, data: zUpdateDocumentByTextDeprecatedError400 },
     bad_request: { status: 400, data: zUpdateDocumentByTextDeprecatedError400 },
+    bad_request_key_error: { status: 400, data: zUpdateDocumentByTextDeprecatedError400 },
+    client_disconnected: { status: 400, data: zUpdateDocumentByTextDeprecatedError400 },
     invalid_param: { status: 400, data: zUpdateDocumentByTextDeprecatedError400 },
     provider_not_initialize: { status: 400, data: zUpdateDocumentByTextDeprecatedError400 },
+    security_error: { status: 400, data: zUpdateDocumentByTextDeprecatedError400 },
+    websocket_mismatch: { status: 400, data: zUpdateDocumentByTextDeprecatedError400 },
   })
 
 export const updateByText = {
@@ -1772,11 +1892,16 @@ export const patch4 = oc
   )
   .output(zPatchDatasetsByDatasetIdDocumentsByDocumentIdResponse)
   .errors({
+    bad_host: { status: 400, data: zUpdateDocumentByFileError400 },
     bad_request: { status: 400, data: zUpdateDocumentByFileError400 },
+    bad_request_key_error: { status: 400, data: zUpdateDocumentByFileError400 },
+    client_disconnected: { status: 400, data: zUpdateDocumentByFileError400 },
     filename_not_exists_error: { status: 400, data: zUpdateDocumentByFileError400 },
     invalid_param: { status: 400, data: zUpdateDocumentByFileError400 },
     provider_not_initialize: { status: 400, data: zUpdateDocumentByFileError400 },
+    security_error: { status: 400, data: zUpdateDocumentByFileError400 },
     too_many_files: { status: 400, data: zUpdateDocumentByFileError400 },
+    websocket_mismatch: { status: 400, data: zUpdateDocumentByFileError400 },
     file_too_large: { status: 413, data: zUpdateDocumentByFileError413 },
     request_entity_too_large: { status: 413, data: zUpdateDocumentByFileError413 },
     unsupported_file_type: { status: 415, data: zUpdateDocumentByFileError415 },
@@ -1853,12 +1978,17 @@ export const post26 = oc
   )
   .output(zPostDatasetsByDatasetIdHitTestingResponse)
   .errors({
+    bad_host: { status: 400, data: zDatasetHitTestingF584B2DdError400 },
     bad_request: { status: 400, data: zDatasetHitTestingF584B2DdError400 },
+    bad_request_key_error: { status: 400, data: zDatasetHitTestingF584B2DdError400 },
+    client_disconnected: { status: 400, data: zDatasetHitTestingF584B2DdError400 },
     completion_request_error: { status: 400, data: zDatasetHitTestingF584B2DdError400 },
     invalid_param: { status: 400, data: zDatasetHitTestingF584B2DdError400 },
     model_currently_not_support: { status: 400, data: zDatasetHitTestingF584B2DdError400 },
     provider_not_initialize: { status: 400, data: zDatasetHitTestingF584B2DdError400 },
     provider_quota_exceeded: { status: 400, data: zDatasetHitTestingF584B2DdError400 },
+    security_error: { status: 400, data: zDatasetHitTestingF584B2DdError400 },
+    websocket_mismatch: { status: 400, data: zDatasetHitTestingF584B2DdError400 },
   })
 
 export const hitTesting = {
@@ -2141,12 +2271,17 @@ export const post31 = oc
   )
   .output(zPostDatasetsByDatasetIdRetrieveResponse)
   .errors({
+    bad_host: { status: 400, data: zDatasetHitTestingError400 },
     bad_request: { status: 400, data: zDatasetHitTestingError400 },
+    bad_request_key_error: { status: 400, data: zDatasetHitTestingError400 },
+    client_disconnected: { status: 400, data: zDatasetHitTestingError400 },
     completion_request_error: { status: 400, data: zDatasetHitTestingError400 },
     invalid_param: { status: 400, data: zDatasetHitTestingError400 },
     model_currently_not_support: { status: 400, data: zDatasetHitTestingError400 },
     provider_not_initialize: { status: 400, data: zDatasetHitTestingError400 },
     provider_quota_exceeded: { status: 400, data: zDatasetHitTestingError400 },
+    security_error: { status: 400, data: zDatasetHitTestingError400 },
+    websocket_mismatch: { status: 400, data: zDatasetHitTestingError400 },
   })
 
 export const retrieve = {
@@ -2346,12 +2481,17 @@ export const post33 = oc
   .input(z.object({ body: zPostFilesUploadBody }))
   .output(zPostFilesUploadResponse)
   .errors({
+    bad_host: { status: 400, data: zUploadFileError400 },
     bad_request: { status: 400, data: zUploadFileError400 },
+    bad_request_key_error: { status: 400, data: zUploadFileError400 },
+    client_disconnected: { status: 400, data: zUploadFileError400 },
     file_extension_blocked: { status: 400, data: zUploadFileError400 },
     filename_not_exists_error: { status: 400, data: zUploadFileError400 },
     invalid_param: { status: 400, data: zUploadFileError400 },
     no_file_uploaded: { status: 400, data: zUploadFileError400 },
+    security_error: { status: 400, data: zUploadFileError400 },
     too_many_files: { status: 400, data: zUploadFileError400 },
+    websocket_mismatch: { status: 400, data: zUploadFileError400 },
     file_too_large: { status: 413, data: zUploadFileError413 },
     request_entity_too_large: { status: 413, data: zUploadFileError413 },
     unsupported_file_type: { status: 415, data: zUploadFileError415 },
@@ -2453,9 +2593,14 @@ export const post34 = oc
   )
   .output(zPostFormHumanInputByFormTokenResponse)
   .errors({
+    bad_host: { status: 400, data: zSubmitHumanInputFormError400 },
     bad_request: { status: 400, data: zSubmitHumanInputFormError400 },
+    bad_request_key_error: { status: 400, data: zSubmitHumanInputFormError400 },
+    client_disconnected: { status: 400, data: zSubmitHumanInputFormError400 },
     invalid_form_data: { status: 400, data: zSubmitHumanInputFormError400 },
     invalid_param: { status: 400, data: zSubmitHumanInputFormError400 },
+    security_error: { status: 400, data: zSubmitHumanInputFormError400 },
+    websocket_mismatch: { status: 400, data: zSubmitHumanInputFormError400 },
     human_input_form_expired: { status: 412, data: zSubmitHumanInputFormError412 },
     human_input_form_submitted: { status: 412, data: zSubmitHumanInputFormError412 },
     precondition_failed: { status: 412, data: zSubmitHumanInputFormError412 },
@@ -2493,8 +2638,13 @@ export const get24 = oc
   .output(zGetInfoResponse)
   .errors({
     app_unavailable: { status: 400, data: zGetAppInfoError400 },
+    bad_host: { status: 400, data: zGetAppInfoError400 },
     bad_request: { status: 400, data: zGetAppInfoError400 },
+    bad_request_key_error: { status: 400, data: zGetAppInfoError400 },
+    client_disconnected: { status: 400, data: zGetAppInfoError400 },
     invalid_param: { status: 400, data: zGetAppInfoError400 },
+    security_error: { status: 400, data: zGetAppInfoError400 },
+    websocket_mismatch: { status: 400, data: zGetAppInfoError400 },
   })
 
 export const info = {
@@ -2552,9 +2702,14 @@ export const get25 = oc
   )
   .output(zGetMessagesByMessageIdSuggestedResponse)
   .errors({
+    bad_host: { status: 400, data: zGetSuggestedQuestionsError400 },
     bad_request: { status: 400, data: zGetSuggestedQuestionsError400 },
+    bad_request_key_error: { status: 400, data: zGetSuggestedQuestionsError400 },
+    client_disconnected: { status: 400, data: zGetSuggestedQuestionsError400 },
     invalid_param: { status: 400, data: zGetSuggestedQuestionsError400 },
     not_chat_app: { status: 400, data: zGetSuggestedQuestionsError400 },
+    security_error: { status: 400, data: zGetSuggestedQuestionsError400 },
+    websocket_mismatch: { status: 400, data: zGetSuggestedQuestionsError400 },
   })
 
 export const suggested = {
@@ -2585,9 +2740,14 @@ export const get26 = oc
   .input(z.object({ query: zGetMessagesQuery }))
   .output(zGetMessagesResponse)
   .errors({
+    bad_host: { status: 400, data: zListMessagesError400 },
     bad_request: { status: 400, data: zListMessagesError400 },
+    bad_request_key_error: { status: 400, data: zListMessagesError400 },
+    client_disconnected: { status: 400, data: zListMessagesError400 },
     invalid_param: { status: 400, data: zListMessagesError400 },
     not_chat_app: { status: 400, data: zListMessagesError400 },
+    security_error: { status: 400, data: zListMessagesError400 },
+    websocket_mismatch: { status: 400, data: zListMessagesError400 },
   })
 
 export const messages = {
@@ -2614,8 +2774,13 @@ export const get27 = oc
   .output(zGetMetaResponse)
   .errors({
     app_unavailable: { status: 400, data: zGetAppMetaError400 },
+    bad_host: { status: 400, data: zGetAppMetaError400 },
     bad_request: { status: 400, data: zGetAppMetaError400 },
+    bad_request_key_error: { status: 400, data: zGetAppMetaError400 },
+    client_disconnected: { status: 400, data: zGetAppMetaError400 },
     invalid_param: { status: 400, data: zGetAppMetaError400 },
+    security_error: { status: 400, data: zGetAppMetaError400 },
+    websocket_mismatch: { status: 400, data: zGetAppMetaError400 },
   })
 
 export const meta = {
@@ -2642,8 +2807,13 @@ export const get28 = oc
   .errors({
     agent_not_published: { status: 400, data: zGetAppParametersError400 },
     app_unavailable: { status: 400, data: zGetAppParametersError400 },
+    bad_host: { status: 400, data: zGetAppParametersError400 },
     bad_request: { status: 400, data: zGetAppParametersError400 },
+    bad_request_key_error: { status: 400, data: zGetAppParametersError400 },
+    client_disconnected: { status: 400, data: zGetAppParametersError400 },
     invalid_param: { status: 400, data: zGetAppParametersError400 },
+    security_error: { status: 400, data: zGetAppParametersError400 },
+    websocket_mismatch: { status: 400, data: zGetAppParametersError400 },
   })
 
 export const parameters = {
@@ -2691,7 +2861,10 @@ export const post36 = oc
   .output(zPostTextToAudioResponse)
   .errors({
     app_unavailable: { status: 400, data: zTextToAudioError400 },
+    bad_host: { status: 400, data: zTextToAudioError400 },
     bad_request: { status: 400, data: zTextToAudioError400 },
+    bad_request_key_error: { status: 400, data: zTextToAudioError400 },
+    client_disconnected: { status: 400, data: zTextToAudioError400 },
     completion_request_error: { status: 400, data: zTextToAudioError400 },
     invalid_param: { status: 400, data: zTextToAudioError400 },
     model_currently_not_support: { status: 400, data: zTextToAudioError400 },
@@ -2699,6 +2872,8 @@ export const post36 = oc
     provider_not_initialize: { status: 400, data: zTextToAudioError400 },
     provider_not_support_speech_to_text: { status: 400, data: zTextToAudioError400 },
     provider_quota_exceeded: { status: 400, data: zTextToAudioError400 },
+    security_error: { status: 400, data: zTextToAudioError400 },
+    websocket_mismatch: { status: 400, data: zTextToAudioError400 },
     audio_too_large: { status: 413, data: zTextToAudioError413 },
     request_entity_too_large: { status: 413, data: zTextToAudioError413 },
     unsupported_audio_type: { status: 415, data: zTextToAudioError415 },
@@ -2733,9 +2908,14 @@ export const get30 = oc
   )
   .output(zGetWorkflowByWorkflowRunIdEventsResponse)
   .errors({
+    bad_host: { status: 400, data: zGetWorkflowEventsError400 },
     bad_request: { status: 400, data: zGetWorkflowEventsError400 },
+    bad_request_key_error: { status: 400, data: zGetWorkflowEventsError400 },
+    client_disconnected: { status: 400, data: zGetWorkflowEventsError400 },
     invalid_param: { status: 400, data: zGetWorkflowEventsError400 },
     not_workflow_app: { status: 400, data: zGetWorkflowEventsError400 },
+    security_error: { status: 400, data: zGetWorkflowEventsError400 },
+    websocket_mismatch: { status: 400, data: zGetWorkflowEventsError400 },
   })
 
 export const events = {
@@ -2791,9 +2971,14 @@ export const get32 = oc
   .input(z.object({ params: zGetWorkflowsRunByWorkflowRunIdPath }))
   .output(zGetWorkflowsRunByWorkflowRunIdResponse)
   .errors({
+    bad_host: { status: 400, data: zGetWorkflowRunDetailError400 },
     bad_request: { status: 400, data: zGetWorkflowRunDetailError400 },
+    bad_request_key_error: { status: 400, data: zGetWorkflowRunDetailError400 },
+    client_disconnected: { status: 400, data: zGetWorkflowRunDetailError400 },
     invalid_param: { status: 400, data: zGetWorkflowRunDetailError400 },
     not_workflow_app: { status: 400, data: zGetWorkflowRunDetailError400 },
+    security_error: { status: 400, data: zGetWorkflowRunDetailError400 },
+    websocket_mismatch: { status: 400, data: zGetWorkflowRunDetailError400 },
   })
 
 export const byWorkflowRunId2 = {
@@ -2818,13 +3003,18 @@ export const post37 = oc
   .input(z.object({ body: zPostWorkflowsRunBody }))
   .output(zPostWorkflowsRunResponse)
   .errors({
+    bad_host: { status: 400, data: zRunWorkflowError400 },
     bad_request: { status: 400, data: zRunWorkflowError400 },
+    bad_request_key_error: { status: 400, data: zRunWorkflowError400 },
+    client_disconnected: { status: 400, data: zRunWorkflowError400 },
     completion_request_error: { status: 400, data: zRunWorkflowError400 },
     invalid_param: { status: 400, data: zRunWorkflowError400 },
     model_currently_not_support: { status: 400, data: zRunWorkflowError400 },
     not_workflow_app: { status: 400, data: zRunWorkflowError400 },
     provider_not_initialize: { status: 400, data: zRunWorkflowError400 },
     provider_quota_exceeded: { status: 400, data: zRunWorkflowError400 },
+    security_error: { status: 400, data: zRunWorkflowError400 },
+    websocket_mismatch: { status: 400, data: zRunWorkflowError400 },
     forbidden: { status: 403, data: zRunWorkflowError403 },
     trigger_workflow_service_mode_unavailable: { status: 403, data: zRunWorkflowError403 },
     rate_limit_error: { status: 429, data: zRunWorkflowError429 },
@@ -2859,9 +3049,14 @@ export const post38 = oc
   )
   .output(zPostWorkflowsTasksByTaskIdStopResponse)
   .errors({
+    bad_host: { status: 400, data: zStopWorkflowTaskError400 },
     bad_request: { status: 400, data: zStopWorkflowTaskError400 },
+    bad_request_key_error: { status: 400, data: zStopWorkflowTaskError400 },
+    client_disconnected: { status: 400, data: zStopWorkflowTaskError400 },
     invalid_param: { status: 400, data: zStopWorkflowTaskError400 },
     not_workflow_app: { status: 400, data: zStopWorkflowTaskError400 },
+    security_error: { status: 400, data: zStopWorkflowTaskError400 },
+    websocket_mismatch: { status: 400, data: zStopWorkflowTaskError400 },
   })
 
 export const stop3 = {
@@ -2900,13 +3095,18 @@ export const post39 = oc
   )
   .output(zPostWorkflowsByWorkflowIdRunResponse)
   .errors({
+    bad_host: { status: 400, data: zRunWorkflowByIdError400 },
     bad_request: { status: 400, data: zRunWorkflowByIdError400 },
+    bad_request_key_error: { status: 400, data: zRunWorkflowByIdError400 },
+    client_disconnected: { status: 400, data: zRunWorkflowByIdError400 },
     completion_request_error: { status: 400, data: zRunWorkflowByIdError400 },
     invalid_param: { status: 400, data: zRunWorkflowByIdError400 },
     model_currently_not_support: { status: 400, data: zRunWorkflowByIdError400 },
     not_workflow_app: { status: 400, data: zRunWorkflowByIdError400 },
     provider_not_initialize: { status: 400, data: zRunWorkflowByIdError400 },
     provider_quota_exceeded: { status: 400, data: zRunWorkflowByIdError400 },
+    security_error: { status: 400, data: zRunWorkflowByIdError400 },
+    websocket_mismatch: { status: 400, data: zRunWorkflowByIdError400 },
     forbidden: { status: 403, data: zRunWorkflowByIdError403 },
     trigger_workflow_service_mode_unavailable: { status: 403, data: zRunWorkflowByIdError403 },
     workflow_version_execution_not_allowed: { status: 403, data: zRunWorkflowByIdError403 },

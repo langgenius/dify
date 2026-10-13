@@ -31,8 +31,13 @@ export const post = oc
   .output(zPostInstructionGenerateTemplateResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetInstructionTemplateError400 },
+    bad_host: { status: 400, data: zGetInstructionTemplateError400 },
     bad_request: { status: 400, data: zGetInstructionTemplateError400 },
+    bad_request_key_error: { status: 400, data: zGetInstructionTemplateError400 },
+    client_disconnected: { status: 400, data: zGetInstructionTemplateError400 },
     invalid_param: { status: 400, data: zGetInstructionTemplateError400 },
+    security_error: { status: 400, data: zGetInstructionTemplateError400 },
+    websocket_mismatch: { status: 400, data: zGetInstructionTemplateError400 },
     not_init_validated: { status: 401, data: zGetInstructionTemplateError401 },
     not_setup: { status: 401, data: zGetInstructionTemplateError401 },
     unauthorized: { status: 401, data: zGetInstructionTemplateError401 },
@@ -58,12 +63,17 @@ export const post2 = oc
   .output(zPostInstructionGenerateResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGenerateInstructionError400 },
+    bad_host: { status: 400, data: zGenerateInstructionError400 },
     bad_request: { status: 400, data: zGenerateInstructionError400 },
+    bad_request_key_error: { status: 400, data: zGenerateInstructionError400 },
+    client_disconnected: { status: 400, data: zGenerateInstructionError400 },
     completion_request_error: { status: 400, data: zGenerateInstructionError400 },
     invalid_param: { status: 400, data: zGenerateInstructionError400 },
     model_currently_not_support: { status: 400, data: zGenerateInstructionError400 },
     provider_not_initialize: { status: 400, data: zGenerateInstructionError400 },
     provider_quota_exceeded: { status: 400, data: zGenerateInstructionError400 },
+    security_error: { status: 400, data: zGenerateInstructionError400 },
+    websocket_mismatch: { status: 400, data: zGenerateInstructionError400 },
     not_init_validated: { status: 401, data: zGenerateInstructionError401 },
     not_setup: { status: 401, data: zGenerateInstructionError401 },
     unauthorized: { status: 401, data: zGenerateInstructionError401 },

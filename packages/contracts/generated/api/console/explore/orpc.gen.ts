@@ -34,8 +34,13 @@ export const get = oc
   .output(zGetExploreAppsLearnDifyResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetLearnDifyAppListApiError400 },
+    bad_host: { status: 400, data: zGetLearnDifyAppListApiError400 },
     bad_request: { status: 400, data: zGetLearnDifyAppListApiError400 },
+    bad_request_key_error: { status: 400, data: zGetLearnDifyAppListApiError400 },
+    client_disconnected: { status: 400, data: zGetLearnDifyAppListApiError400 },
     invalid_param: { status: 400, data: zGetLearnDifyAppListApiError400 },
+    security_error: { status: 400, data: zGetLearnDifyAppListApiError400 },
+    websocket_mismatch: { status: 400, data: zGetLearnDifyAppListApiError400 },
     not_init_validated: { status: 401, data: zGetLearnDifyAppListApiError401 },
     not_setup: { status: 401, data: zGetLearnDifyAppListApiError401 },
     unauthorized: { status: 401, data: zGetLearnDifyAppListApiError401 },
@@ -57,8 +62,13 @@ export const get2 = oc
   .output(zGetExploreAppsByAppIdResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetRecommendedAppApiError400 },
+    bad_host: { status: 400, data: zGetRecommendedAppApiError400 },
     bad_request: { status: 400, data: zGetRecommendedAppApiError400 },
+    bad_request_key_error: { status: 400, data: zGetRecommendedAppApiError400 },
+    client_disconnected: { status: 400, data: zGetRecommendedAppApiError400 },
     invalid_param: { status: 400, data: zGetRecommendedAppApiError400 },
+    security_error: { status: 400, data: zGetRecommendedAppApiError400 },
+    websocket_mismatch: { status: 400, data: zGetRecommendedAppApiError400 },
     not_init_validated: { status: 401, data: zGetRecommendedAppApiError401 },
     not_setup: { status: 401, data: zGetRecommendedAppApiError401 },
     unauthorized: { status: 401, data: zGetRecommendedAppApiError401 },
@@ -82,8 +92,13 @@ export const get3 = oc
   .output(zGetExploreAppsResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetRecommendedAppListApiError400 },
+    bad_host: { status: 400, data: zGetRecommendedAppListApiError400 },
     bad_request: { status: 400, data: zGetRecommendedAppListApiError400 },
+    bad_request_key_error: { status: 400, data: zGetRecommendedAppListApiError400 },
+    client_disconnected: { status: 400, data: zGetRecommendedAppListApiError400 },
     invalid_param: { status: 400, data: zGetRecommendedAppListApiError400 },
+    security_error: { status: 400, data: zGetRecommendedAppListApiError400 },
+    websocket_mismatch: { status: 400, data: zGetRecommendedAppListApiError400 },
     not_init_validated: { status: 401, data: zGetRecommendedAppListApiError401 },
     not_setup: { status: 401, data: zGetRecommendedAppListApiError401 },
     unauthorized: { status: 401, data: zGetRecommendedAppListApiError401 },

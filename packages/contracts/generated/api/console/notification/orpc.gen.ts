@@ -31,8 +31,13 @@ export const post = oc
   .output(zPostNotificationDismissResponse)
   .errors({
     account_not_initialized: { status: 400, data: zDismissNotificationError400 },
+    bad_host: { status: 400, data: zDismissNotificationError400 },
     bad_request: { status: 400, data: zDismissNotificationError400 },
+    bad_request_key_error: { status: 400, data: zDismissNotificationError400 },
+    client_disconnected: { status: 400, data: zDismissNotificationError400 },
     invalid_param: { status: 400, data: zDismissNotificationError400 },
+    security_error: { status: 400, data: zDismissNotificationError400 },
+    websocket_mismatch: { status: 400, data: zDismissNotificationError400 },
     not_init_validated: { status: 401, data: zDismissNotificationError401 },
     not_setup: { status: 401, data: zDismissNotificationError401 },
     unauthorized: { status: 401, data: zDismissNotificationError401 },
@@ -59,8 +64,13 @@ export const get = oc
   .output(zGetNotificationResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetNotificationError400 },
+    bad_host: { status: 400, data: zGetNotificationError400 },
     bad_request: { status: 400, data: zGetNotificationError400 },
+    bad_request_key_error: { status: 400, data: zGetNotificationError400 },
+    client_disconnected: { status: 400, data: zGetNotificationError400 },
     invalid_param: { status: 400, data: zGetNotificationError400 },
+    security_error: { status: 400, data: zGetNotificationError400 },
+    websocket_mismatch: { status: 400, data: zGetNotificationError400 },
     not_init_validated: { status: 401, data: zGetNotificationError401 },
     not_setup: { status: 401, data: zGetNotificationError401 },
     unauthorized: { status: 401, data: zGetNotificationError401 },

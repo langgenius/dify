@@ -27,8 +27,13 @@ export const get = oc
   .output(zGetComplianceDownloadResponse)
   .errors({
     account_not_initialized: { status: 400, data: zDownloadComplianceDocumentError400 },
+    bad_host: { status: 400, data: zDownloadComplianceDocumentError400 },
     bad_request: { status: 400, data: zDownloadComplianceDocumentError400 },
+    bad_request_key_error: { status: 400, data: zDownloadComplianceDocumentError400 },
+    client_disconnected: { status: 400, data: zDownloadComplianceDocumentError400 },
     invalid_param: { status: 400, data: zDownloadComplianceDocumentError400 },
+    security_error: { status: 400, data: zDownloadComplianceDocumentError400 },
+    websocket_mismatch: { status: 400, data: zDownloadComplianceDocumentError400 },
     not_init_validated: { status: 401, data: zDownloadComplianceDocumentError401 },
     not_setup: { status: 401, data: zDownloadComplianceDocumentError401 },
     unauthorized: { status: 401, data: zDownloadComplianceDocumentError401 },

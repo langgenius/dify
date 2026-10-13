@@ -35,8 +35,13 @@ export const post = oc
   .output(zPostWorkflowGenerateStreamResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGenerateWorkflowGraphStreamError400 },
+    bad_host: { status: 400, data: zGenerateWorkflowGraphStreamError400 },
     bad_request: { status: 400, data: zGenerateWorkflowGraphStreamError400 },
+    bad_request_key_error: { status: 400, data: zGenerateWorkflowGraphStreamError400 },
+    client_disconnected: { status: 400, data: zGenerateWorkflowGraphStreamError400 },
     invalid_param: { status: 400, data: zGenerateWorkflowGraphStreamError400 },
+    security_error: { status: 400, data: zGenerateWorkflowGraphStreamError400 },
+    websocket_mismatch: { status: 400, data: zGenerateWorkflowGraphStreamError400 },
     not_init_validated: { status: 401, data: zGenerateWorkflowGraphStreamError401 },
     not_setup: { status: 401, data: zGenerateWorkflowGraphStreamError401 },
     unauthorized: { status: 401, data: zGenerateWorkflowGraphStreamError401 },
@@ -62,8 +67,13 @@ export const post2 = oc
   .output(zPostWorkflowGenerateSuggestionsResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGenerateWorkflowInstructionSuggestionsError400 },
+    bad_host: { status: 400, data: zGenerateWorkflowInstructionSuggestionsError400 },
     bad_request: { status: 400, data: zGenerateWorkflowInstructionSuggestionsError400 },
+    bad_request_key_error: { status: 400, data: zGenerateWorkflowInstructionSuggestionsError400 },
+    client_disconnected: { status: 400, data: zGenerateWorkflowInstructionSuggestionsError400 },
     invalid_param: { status: 400, data: zGenerateWorkflowInstructionSuggestionsError400 },
+    security_error: { status: 400, data: zGenerateWorkflowInstructionSuggestionsError400 },
+    websocket_mismatch: { status: 400, data: zGenerateWorkflowInstructionSuggestionsError400 },
     not_init_validated: { status: 401, data: zGenerateWorkflowInstructionSuggestionsError401 },
     not_setup: { status: 401, data: zGenerateWorkflowInstructionSuggestionsError401 },
     unauthorized: { status: 401, data: zGenerateWorkflowInstructionSuggestionsError401 },
@@ -89,12 +99,17 @@ export const post3 = oc
   .output(zPostWorkflowGenerateResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGenerateWorkflowGraphError400 },
+    bad_host: { status: 400, data: zGenerateWorkflowGraphError400 },
     bad_request: { status: 400, data: zGenerateWorkflowGraphError400 },
+    bad_request_key_error: { status: 400, data: zGenerateWorkflowGraphError400 },
+    client_disconnected: { status: 400, data: zGenerateWorkflowGraphError400 },
     completion_request_error: { status: 400, data: zGenerateWorkflowGraphError400 },
     invalid_param: { status: 400, data: zGenerateWorkflowGraphError400 },
     model_currently_not_support: { status: 400, data: zGenerateWorkflowGraphError400 },
     provider_not_initialize: { status: 400, data: zGenerateWorkflowGraphError400 },
     provider_quota_exceeded: { status: 400, data: zGenerateWorkflowGraphError400 },
+    security_error: { status: 400, data: zGenerateWorkflowGraphError400 },
+    websocket_mismatch: { status: 400, data: zGenerateWorkflowGraphError400 },
     not_init_validated: { status: 401, data: zGenerateWorkflowGraphError401 },
     not_setup: { status: 401, data: zGenerateWorkflowGraphError401 },
     unauthorized: { status: 401, data: zGenerateWorkflowGraphError401 },

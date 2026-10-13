@@ -29,8 +29,13 @@ export const get = oc
   .output(zGetOnboardingStepByStepTourStateResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetStepByStepTourStateError400 },
+    bad_host: { status: 400, data: zGetStepByStepTourStateError400 },
     bad_request: { status: 400, data: zGetStepByStepTourStateError400 },
+    bad_request_key_error: { status: 400, data: zGetStepByStepTourStateError400 },
+    client_disconnected: { status: 400, data: zGetStepByStepTourStateError400 },
     invalid_param: { status: 400, data: zGetStepByStepTourStateError400 },
+    security_error: { status: 400, data: zGetStepByStepTourStateError400 },
+    websocket_mismatch: { status: 400, data: zGetStepByStepTourStateError400 },
     not_init_validated: { status: 401, data: zGetStepByStepTourStateError401 },
     not_setup: { status: 401, data: zGetStepByStepTourStateError401 },
     unauthorized: { status: 401, data: zGetStepByStepTourStateError401 },
@@ -52,8 +57,13 @@ export const patch = oc
   .output(zPatchOnboardingStepByStepTourStateResponse)
   .errors({
     account_not_initialized: { status: 400, data: zPatchStepByStepTourStateError400 },
+    bad_host: { status: 400, data: zPatchStepByStepTourStateError400 },
     bad_request: { status: 400, data: zPatchStepByStepTourStateError400 },
+    bad_request_key_error: { status: 400, data: zPatchStepByStepTourStateError400 },
+    client_disconnected: { status: 400, data: zPatchStepByStepTourStateError400 },
     invalid_param: { status: 400, data: zPatchStepByStepTourStateError400 },
+    security_error: { status: 400, data: zPatchStepByStepTourStateError400 },
+    websocket_mismatch: { status: 400, data: zPatchStepByStepTourStateError400 },
     not_init_validated: { status: 401, data: zPatchStepByStepTourStateError401 },
     not_setup: { status: 401, data: zPatchStepByStepTourStateError401 },
     unauthorized: { status: 401, data: zPatchStepByStepTourStateError401 },

@@ -937,8 +937,13 @@ export const get = oc
   .output(zGetAppsImportsByAppIdCheckDependenciesResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetAppImportCheckDependenciesApiError400 },
+    bad_host: { status: 400, data: zGetAppImportCheckDependenciesApiError400 },
     bad_request: { status: 400, data: zGetAppImportCheckDependenciesApiError400 },
+    bad_request_key_error: { status: 400, data: zGetAppImportCheckDependenciesApiError400 },
+    client_disconnected: { status: 400, data: zGetAppImportCheckDependenciesApiError400 },
     invalid_param: { status: 400, data: zGetAppImportCheckDependenciesApiError400 },
+    security_error: { status: 400, data: zGetAppImportCheckDependenciesApiError400 },
+    websocket_mismatch: { status: 400, data: zGetAppImportCheckDependenciesApiError400 },
     not_init_validated: { status: 401, data: zGetAppImportCheckDependenciesApiError401 },
     not_setup: { status: 401, data: zGetAppImportCheckDependenciesApiError401 },
     unauthorized: { status: 401, data: zGetAppImportCheckDependenciesApiError401 },
@@ -966,8 +971,13 @@ export const post = oc
   .output(zPostAppsImportsByImportIdConfirmResponse)
   .errors({
     account_not_initialized: { status: 400, data: zPostAppImportConfirmApiError400 },
+    bad_host: { status: 400, data: zPostAppImportConfirmApiError400 },
     bad_request: { status: 400, data: zPostAppImportConfirmApiError400 },
+    bad_request_key_error: { status: 400, data: zPostAppImportConfirmApiError400 },
+    client_disconnected: { status: 400, data: zPostAppImportConfirmApiError400 },
     invalid_param: { status: 400, data: zPostAppImportConfirmApiError400 },
+    security_error: { status: 400, data: zPostAppImportConfirmApiError400 },
+    websocket_mismatch: { status: 400, data: zPostAppImportConfirmApiError400 },
     not_init_validated: { status: 401, data: zPostAppImportConfirmApiError401 },
     not_setup: { status: 401, data: zPostAppImportConfirmApiError401 },
     unauthorized: { status: 401, data: zPostAppImportConfirmApiError401 },
@@ -993,9 +1003,14 @@ export const post2 = oc
   .output(zPostAppsImportsResponse)
   .errors({
     account_not_initialized: { status: 400, data: zPostAppImportApiError400 },
+    bad_host: { status: 400, data: zPostAppImportApiError400 },
     bad_request: { status: 400, data: zPostAppImportApiError400 },
+    bad_request_key_error: { status: 400, data: zPostAppImportApiError400 },
+    client_disconnected: { status: 400, data: zPostAppImportApiError400 },
     invalid_param: { status: 400, data: zPostAppImportApiError400 },
     invalid_roster_agent_package: { status: 400, data: zPostAppImportApiError400 },
+    security_error: { status: 400, data: zPostAppImportApiError400 },
+    websocket_mismatch: { status: 400, data: zPostAppImportApiError400 },
     not_init_validated: { status: 401, data: zPostAppImportApiError401 },
     not_setup: { status: 401, data: zPostAppImportApiError401 },
     unauthorized: { status: 401, data: zPostAppImportApiError401 },
@@ -1025,8 +1040,13 @@ export const get2 = oc
   .output(zGetAppsRecentResponse)
   .errors({
     account_not_initialized: { status: 400, data: zListRecentAppsError400 },
+    bad_host: { status: 400, data: zListRecentAppsError400 },
     bad_request: { status: 400, data: zListRecentAppsError400 },
+    bad_request_key_error: { status: 400, data: zListRecentAppsError400 },
+    client_disconnected: { status: 400, data: zListRecentAppsError400 },
     invalid_param: { status: 400, data: zListRecentAppsError400 },
+    security_error: { status: 400, data: zListRecentAppsError400 },
+    websocket_mismatch: { status: 400, data: zListRecentAppsError400 },
     not_init_validated: { status: 401, data: zListRecentAppsError401 },
     not_setup: { status: 401, data: zListRecentAppsError401 },
     unauthorized: { status: 401, data: zListRecentAppsError401 },
@@ -1053,8 +1073,13 @@ export const get3 = oc
   .output(zGetAppsStarredResponse)
   .errors({
     account_not_initialized: { status: 400, data: zListStarredAppsError400 },
+    bad_host: { status: 400, data: zListStarredAppsError400 },
     bad_request: { status: 400, data: zListStarredAppsError400 },
+    bad_request_key_error: { status: 400, data: zListStarredAppsError400 },
+    client_disconnected: { status: 400, data: zListStarredAppsError400 },
     invalid_param: { status: 400, data: zListStarredAppsError400 },
+    security_error: { status: 400, data: zListStarredAppsError400 },
+    websocket_mismatch: { status: 400, data: zListStarredAppsError400 },
     not_init_validated: { status: 401, data: zListStarredAppsError401 },
     not_setup: { status: 401, data: zListStarredAppsError401 },
     unauthorized: { status: 401, data: zListStarredAppsError401 },
@@ -1081,8 +1106,13 @@ export const post3 = oc
   .output(zPostAppsWorkflowsOnlineUsersResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetWorkflowOnlineUsersError400 },
+    bad_host: { status: 400, data: zGetWorkflowOnlineUsersError400 },
     bad_request: { status: 400, data: zGetWorkflowOnlineUsersError400 },
+    bad_request_key_error: { status: 400, data: zGetWorkflowOnlineUsersError400 },
+    client_disconnected: { status: 400, data: zGetWorkflowOnlineUsersError400 },
     invalid_param: { status: 400, data: zGetWorkflowOnlineUsersError400 },
+    security_error: { status: 400, data: zGetWorkflowOnlineUsersError400 },
+    websocket_mismatch: { status: 400, data: zGetWorkflowOnlineUsersError400 },
     not_init_validated: { status: 401, data: zGetWorkflowOnlineUsersError401 },
     not_setup: { status: 401, data: zGetWorkflowOnlineUsersError401 },
     unauthorized: { status: 401, data: zGetWorkflowOnlineUsersError401 },
@@ -1120,8 +1150,13 @@ export const get4 = oc
   .output(zGetAppsByAppIdAdvancedChatWorkflowRunsCountResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetAdvancedChatWorkflowRunsCountError400 },
+    bad_host: { status: 400, data: zGetAdvancedChatWorkflowRunsCountError400 },
     bad_request: { status: 400, data: zGetAdvancedChatWorkflowRunsCountError400 },
+    bad_request_key_error: { status: 400, data: zGetAdvancedChatWorkflowRunsCountError400 },
+    client_disconnected: { status: 400, data: zGetAdvancedChatWorkflowRunsCountError400 },
     invalid_param: { status: 400, data: zGetAdvancedChatWorkflowRunsCountError400 },
+    security_error: { status: 400, data: zGetAdvancedChatWorkflowRunsCountError400 },
+    websocket_mismatch: { status: 400, data: zGetAdvancedChatWorkflowRunsCountError400 },
     not_init_validated: { status: 401, data: zGetAdvancedChatWorkflowRunsCountError401 },
     not_setup: { status: 401, data: zGetAdvancedChatWorkflowRunsCountError401 },
     unauthorized: { status: 401, data: zGetAdvancedChatWorkflowRunsCountError401 },
@@ -1157,8 +1192,13 @@ export const get5 = oc
   .output(zGetAppsByAppIdAdvancedChatWorkflowRunsResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetAdvancedChatWorkflowRunsError400 },
+    bad_host: { status: 400, data: zGetAdvancedChatWorkflowRunsError400 },
     bad_request: { status: 400, data: zGetAdvancedChatWorkflowRunsError400 },
+    bad_request_key_error: { status: 400, data: zGetAdvancedChatWorkflowRunsError400 },
+    client_disconnected: { status: 400, data: zGetAdvancedChatWorkflowRunsError400 },
     invalid_param: { status: 400, data: zGetAdvancedChatWorkflowRunsError400 },
+    security_error: { status: 400, data: zGetAdvancedChatWorkflowRunsError400 },
+    websocket_mismatch: { status: 400, data: zGetAdvancedChatWorkflowRunsError400 },
     not_init_validated: { status: 401, data: zGetAdvancedChatWorkflowRunsError401 },
     not_setup: { status: 401, data: zGetAdvancedChatWorkflowRunsError401 },
     unauthorized: { status: 401, data: zGetAdvancedChatWorkflowRunsError401 },
@@ -1195,8 +1235,13 @@ export const post4 = oc
   .output(zPostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormPreviewResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetAdvancedChatDraftHumanInputFormError400 },
+    bad_host: { status: 400, data: zGetAdvancedChatDraftHumanInputFormError400 },
     bad_request: { status: 400, data: zGetAdvancedChatDraftHumanInputFormError400 },
+    bad_request_key_error: { status: 400, data: zGetAdvancedChatDraftHumanInputFormError400 },
+    client_disconnected: { status: 400, data: zGetAdvancedChatDraftHumanInputFormError400 },
     invalid_param: { status: 400, data: zGetAdvancedChatDraftHumanInputFormError400 },
+    security_error: { status: 400, data: zGetAdvancedChatDraftHumanInputFormError400 },
+    websocket_mismatch: { status: 400, data: zGetAdvancedChatDraftHumanInputFormError400 },
     not_init_validated: { status: 401, data: zGetAdvancedChatDraftHumanInputFormError401 },
     not_setup: { status: 401, data: zGetAdvancedChatDraftHumanInputFormError401 },
     unauthorized: { status: 401, data: zGetAdvancedChatDraftHumanInputFormError401 },
@@ -1232,8 +1277,13 @@ export const post5 = oc
   .output(zPostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormRunResponse)
   .errors({
     account_not_initialized: { status: 400, data: zSubmitAdvancedChatDraftHumanInputFormError400 },
+    bad_host: { status: 400, data: zSubmitAdvancedChatDraftHumanInputFormError400 },
     bad_request: { status: 400, data: zSubmitAdvancedChatDraftHumanInputFormError400 },
+    bad_request_key_error: { status: 400, data: zSubmitAdvancedChatDraftHumanInputFormError400 },
+    client_disconnected: { status: 400, data: zSubmitAdvancedChatDraftHumanInputFormError400 },
     invalid_param: { status: 400, data: zSubmitAdvancedChatDraftHumanInputFormError400 },
+    security_error: { status: 400, data: zSubmitAdvancedChatDraftHumanInputFormError400 },
+    websocket_mismatch: { status: 400, data: zSubmitAdvancedChatDraftHumanInputFormError400 },
     not_init_validated: { status: 401, data: zSubmitAdvancedChatDraftHumanInputFormError401 },
     not_setup: { status: 401, data: zSubmitAdvancedChatDraftHumanInputFormError401 },
     unauthorized: { status: 401, data: zSubmitAdvancedChatDraftHumanInputFormError401 },
@@ -1286,8 +1336,13 @@ export const post6 = oc
   .output(zPostAppsByAppIdAdvancedChatWorkflowsDraftIterationNodesByNodeIdRunResponse)
   .errors({
     account_not_initialized: { status: 400, data: zRunAdvancedChatDraftIterationNodeError400 },
+    bad_host: { status: 400, data: zRunAdvancedChatDraftIterationNodeError400 },
     bad_request: { status: 400, data: zRunAdvancedChatDraftIterationNodeError400 },
+    bad_request_key_error: { status: 400, data: zRunAdvancedChatDraftIterationNodeError400 },
+    client_disconnected: { status: 400, data: zRunAdvancedChatDraftIterationNodeError400 },
     invalid_param: { status: 400, data: zRunAdvancedChatDraftIterationNodeError400 },
+    security_error: { status: 400, data: zRunAdvancedChatDraftIterationNodeError400 },
+    websocket_mismatch: { status: 400, data: zRunAdvancedChatDraftIterationNodeError400 },
     not_init_validated: { status: 401, data: zRunAdvancedChatDraftIterationNodeError401 },
     not_setup: { status: 401, data: zRunAdvancedChatDraftIterationNodeError401 },
     unauthorized: { status: 401, data: zRunAdvancedChatDraftIterationNodeError401 },
@@ -1335,8 +1390,13 @@ export const post7 = oc
   .output(zPostAppsByAppIdAdvancedChatWorkflowsDraftLoopNodesByNodeIdRunResponse)
   .errors({
     account_not_initialized: { status: 400, data: zRunAdvancedChatDraftLoopNodeError400 },
+    bad_host: { status: 400, data: zRunAdvancedChatDraftLoopNodeError400 },
     bad_request: { status: 400, data: zRunAdvancedChatDraftLoopNodeError400 },
+    bad_request_key_error: { status: 400, data: zRunAdvancedChatDraftLoopNodeError400 },
+    client_disconnected: { status: 400, data: zRunAdvancedChatDraftLoopNodeError400 },
     invalid_param: { status: 400, data: zRunAdvancedChatDraftLoopNodeError400 },
+    security_error: { status: 400, data: zRunAdvancedChatDraftLoopNodeError400 },
+    websocket_mismatch: { status: 400, data: zRunAdvancedChatDraftLoopNodeError400 },
     not_init_validated: { status: 401, data: zRunAdvancedChatDraftLoopNodeError401 },
     not_setup: { status: 401, data: zRunAdvancedChatDraftLoopNodeError401 },
     unauthorized: { status: 401, data: zRunAdvancedChatDraftLoopNodeError401 },
@@ -1384,8 +1444,13 @@ export const post8 = oc
   .output(zPostAppsByAppIdAdvancedChatWorkflowsDraftRunResponse)
   .errors({
     account_not_initialized: { status: 400, data: zRunAdvancedChatDraftWorkflowError400 },
+    bad_host: { status: 400, data: zRunAdvancedChatDraftWorkflowError400 },
     bad_request: { status: 400, data: zRunAdvancedChatDraftWorkflowError400 },
+    bad_request_key_error: { status: 400, data: zRunAdvancedChatDraftWorkflowError400 },
+    client_disconnected: { status: 400, data: zRunAdvancedChatDraftWorkflowError400 },
     invalid_param: { status: 400, data: zRunAdvancedChatDraftWorkflowError400 },
+    security_error: { status: 400, data: zRunAdvancedChatDraftWorkflowError400 },
+    websocket_mismatch: { status: 400, data: zRunAdvancedChatDraftWorkflowError400 },
     not_init_validated: { status: 401, data: zRunAdvancedChatDraftWorkflowError401 },
     not_setup: { status: 401, data: zRunAdvancedChatDraftWorkflowError401 },
     unauthorized: { status: 401, data: zRunAdvancedChatDraftWorkflowError401 },
@@ -1730,8 +1795,13 @@ export const get16 = oc
   .output(zGetAppsByAppIdAgentLogsResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetAgentLogsError400 },
+    bad_host: { status: 400, data: zGetAgentLogsError400 },
     bad_request: { status: 400, data: zGetAgentLogsError400 },
+    bad_request_key_error: { status: 400, data: zGetAgentLogsError400 },
+    client_disconnected: { status: 400, data: zGetAgentLogsError400 },
     invalid_param: { status: 400, data: zGetAgentLogsError400 },
+    security_error: { status: 400, data: zGetAgentLogsError400 },
+    websocket_mismatch: { status: 400, data: zGetAgentLogsError400 },
     not_init_validated: { status: 401, data: zGetAgentLogsError401 },
     not_setup: { status: 401, data: zGetAgentLogsError401 },
     unauthorized: { status: 401, data: zGetAgentLogsError401 },
@@ -1764,8 +1834,13 @@ export const get17 = oc
   .output(zGetAppsByAppIdAnnotationReplyByActionStatusByJobIdResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetAnnotationReplyActionStatusError400 },
+    bad_host: { status: 400, data: zGetAnnotationReplyActionStatusError400 },
     bad_request: { status: 400, data: zGetAnnotationReplyActionStatusError400 },
+    bad_request_key_error: { status: 400, data: zGetAnnotationReplyActionStatusError400 },
+    client_disconnected: { status: 400, data: zGetAnnotationReplyActionStatusError400 },
     invalid_param: { status: 400, data: zGetAnnotationReplyActionStatusError400 },
+    security_error: { status: 400, data: zGetAnnotationReplyActionStatusError400 },
+    websocket_mismatch: { status: 400, data: zGetAnnotationReplyActionStatusError400 },
     not_init_validated: { status: 401, data: zGetAnnotationReplyActionStatusError401 },
     not_setup: { status: 401, data: zGetAnnotationReplyActionStatusError401 },
     unauthorized: { status: 401, data: zGetAnnotationReplyActionStatusError401 },
@@ -1800,8 +1875,13 @@ export const post11 = oc
   .output(zPostAppsByAppIdAnnotationReplyByActionResponse)
   .errors({
     account_not_initialized: { status: 400, data: zAnnotationReplyActionError400 },
+    bad_host: { status: 400, data: zAnnotationReplyActionError400 },
     bad_request: { status: 400, data: zAnnotationReplyActionError400 },
+    bad_request_key_error: { status: 400, data: zAnnotationReplyActionError400 },
+    client_disconnected: { status: 400, data: zAnnotationReplyActionError400 },
     invalid_param: { status: 400, data: zAnnotationReplyActionError400 },
+    security_error: { status: 400, data: zAnnotationReplyActionError400 },
+    websocket_mismatch: { status: 400, data: zAnnotationReplyActionError400 },
     not_init_validated: { status: 401, data: zAnnotationReplyActionError401 },
     not_setup: { status: 401, data: zAnnotationReplyActionError401 },
     unauthorized: { status: 401, data: zAnnotationReplyActionError401 },
@@ -1832,8 +1912,13 @@ export const get18 = oc
   .output(zGetAppsByAppIdAnnotationSettingResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetAnnotationSettingError400 },
+    bad_host: { status: 400, data: zGetAnnotationSettingError400 },
     bad_request: { status: 400, data: zGetAnnotationSettingError400 },
+    bad_request_key_error: { status: 400, data: zGetAnnotationSettingError400 },
+    client_disconnected: { status: 400, data: zGetAnnotationSettingError400 },
     invalid_param: { status: 400, data: zGetAnnotationSettingError400 },
+    security_error: { status: 400, data: zGetAnnotationSettingError400 },
+    websocket_mismatch: { status: 400, data: zGetAnnotationSettingError400 },
     not_init_validated: { status: 401, data: zGetAnnotationSettingError401 },
     not_setup: { status: 401, data: zGetAnnotationSettingError401 },
     unauthorized: { status: 401, data: zGetAnnotationSettingError401 },
@@ -1864,8 +1949,13 @@ export const post12 = oc
   .output(zPostAppsByAppIdAnnotationSettingsByAnnotationSettingIdResponse)
   .errors({
     account_not_initialized: { status: 400, data: zUpdateAnnotationSettingError400 },
+    bad_host: { status: 400, data: zUpdateAnnotationSettingError400 },
     bad_request: { status: 400, data: zUpdateAnnotationSettingError400 },
+    bad_request_key_error: { status: 400, data: zUpdateAnnotationSettingError400 },
+    client_disconnected: { status: 400, data: zUpdateAnnotationSettingError400 },
     invalid_param: { status: 400, data: zUpdateAnnotationSettingError400 },
+    security_error: { status: 400, data: zUpdateAnnotationSettingError400 },
+    websocket_mismatch: { status: 400, data: zUpdateAnnotationSettingError400 },
     not_init_validated: { status: 401, data: zUpdateAnnotationSettingError401 },
     not_setup: { status: 401, data: zUpdateAnnotationSettingError401 },
     unauthorized: { status: 401, data: zUpdateAnnotationSettingError401 },
@@ -1895,10 +1985,15 @@ export const post13 = oc
   .output(zPostAppsByAppIdAnnotationsBatchImportResponse)
   .errors({
     account_not_initialized: { status: 400, data: zBatchImportAnnotationsError400 },
+    bad_host: { status: 400, data: zBatchImportAnnotationsError400 },
     bad_request: { status: 400, data: zBatchImportAnnotationsError400 },
+    bad_request_key_error: { status: 400, data: zBatchImportAnnotationsError400 },
+    client_disconnected: { status: 400, data: zBatchImportAnnotationsError400 },
     invalid_param: { status: 400, data: zBatchImportAnnotationsError400 },
     no_file_uploaded: { status: 400, data: zBatchImportAnnotationsError400 },
+    security_error: { status: 400, data: zBatchImportAnnotationsError400 },
     too_many_files: { status: 400, data: zBatchImportAnnotationsError400 },
+    websocket_mismatch: { status: 400, data: zBatchImportAnnotationsError400 },
     not_init_validated: { status: 401, data: zBatchImportAnnotationsError401 },
     not_setup: { status: 401, data: zBatchImportAnnotationsError401 },
     unauthorized: { status: 401, data: zBatchImportAnnotationsError401 },
@@ -1924,8 +2019,13 @@ export const get19 = oc
   .output(zGetAppsByAppIdAnnotationsBatchImportStatusByJobIdResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetBatchImportStatusError400 },
+    bad_host: { status: 400, data: zGetBatchImportStatusError400 },
     bad_request: { status: 400, data: zGetBatchImportStatusError400 },
+    bad_request_key_error: { status: 400, data: zGetBatchImportStatusError400 },
+    client_disconnected: { status: 400, data: zGetBatchImportStatusError400 },
     invalid_param: { status: 400, data: zGetBatchImportStatusError400 },
+    security_error: { status: 400, data: zGetBatchImportStatusError400 },
+    websocket_mismatch: { status: 400, data: zGetBatchImportStatusError400 },
     not_init_validated: { status: 401, data: zGetBatchImportStatusError401 },
     not_setup: { status: 401, data: zGetBatchImportStatusError401 },
     unauthorized: { status: 401, data: zGetBatchImportStatusError401 },
@@ -1955,8 +2055,13 @@ export const get20 = oc
   .output(zGetAppsByAppIdAnnotationsCountResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetAnnotationCountError400 },
+    bad_host: { status: 400, data: zGetAnnotationCountError400 },
     bad_request: { status: 400, data: zGetAnnotationCountError400 },
+    bad_request_key_error: { status: 400, data: zGetAnnotationCountError400 },
+    client_disconnected: { status: 400, data: zGetAnnotationCountError400 },
     invalid_param: { status: 400, data: zGetAnnotationCountError400 },
+    security_error: { status: 400, data: zGetAnnotationCountError400 },
+    websocket_mismatch: { status: 400, data: zGetAnnotationCountError400 },
     not_init_validated: { status: 401, data: zGetAnnotationCountError401 },
     not_setup: { status: 401, data: zGetAnnotationCountError401 },
     unauthorized: { status: 401, data: zGetAnnotationCountError401 },
@@ -1984,8 +2089,13 @@ export const get21 = oc
   .output(zGetAppsByAppIdAnnotationsExportResponse)
   .errors({
     account_not_initialized: { status: 400, data: zExportAnnotationsError400 },
+    bad_host: { status: 400, data: zExportAnnotationsError400 },
     bad_request: { status: 400, data: zExportAnnotationsError400 },
+    bad_request_key_error: { status: 400, data: zExportAnnotationsError400 },
+    client_disconnected: { status: 400, data: zExportAnnotationsError400 },
     invalid_param: { status: 400, data: zExportAnnotationsError400 },
+    security_error: { status: 400, data: zExportAnnotationsError400 },
+    websocket_mismatch: { status: 400, data: zExportAnnotationsError400 },
     not_init_validated: { status: 401, data: zExportAnnotationsError401 },
     not_setup: { status: 401, data: zExportAnnotationsError401 },
     unauthorized: { status: 401, data: zExportAnnotationsError401 },
@@ -2016,8 +2126,13 @@ export const get22 = oc
   .output(zGetAppsByAppIdAnnotationsByAnnotationIdHitHistoriesResponse)
   .errors({
     account_not_initialized: { status: 400, data: zListAnnotationHitHistoriesError400 },
+    bad_host: { status: 400, data: zListAnnotationHitHistoriesError400 },
     bad_request: { status: 400, data: zListAnnotationHitHistoriesError400 },
+    bad_request_key_error: { status: 400, data: zListAnnotationHitHistoriesError400 },
+    client_disconnected: { status: 400, data: zListAnnotationHitHistoriesError400 },
     invalid_param: { status: 400, data: zListAnnotationHitHistoriesError400 },
+    security_error: { status: 400, data: zListAnnotationHitHistoriesError400 },
+    websocket_mismatch: { status: 400, data: zListAnnotationHitHistoriesError400 },
     not_init_validated: { status: 401, data: zListAnnotationHitHistoriesError401 },
     not_setup: { status: 401, data: zListAnnotationHitHistoriesError401 },
     unauthorized: { status: 401, data: zListAnnotationHitHistoriesError401 },
@@ -2040,8 +2155,13 @@ export const delete3 = oc
   .output(zDeleteAppsByAppIdAnnotationsByAnnotationIdResponse)
   .errors({
     account_not_initialized: { status: 400, data: zDeleteAnnotationUpdateDeleteApiError400 },
+    bad_host: { status: 400, data: zDeleteAnnotationUpdateDeleteApiError400 },
     bad_request: { status: 400, data: zDeleteAnnotationUpdateDeleteApiError400 },
+    bad_request_key_error: { status: 400, data: zDeleteAnnotationUpdateDeleteApiError400 },
+    client_disconnected: { status: 400, data: zDeleteAnnotationUpdateDeleteApiError400 },
     invalid_param: { status: 400, data: zDeleteAnnotationUpdateDeleteApiError400 },
+    security_error: { status: 400, data: zDeleteAnnotationUpdateDeleteApiError400 },
+    websocket_mismatch: { status: 400, data: zDeleteAnnotationUpdateDeleteApiError400 },
     not_init_validated: { status: 401, data: zDeleteAnnotationUpdateDeleteApiError401 },
     not_setup: { status: 401, data: zDeleteAnnotationUpdateDeleteApiError401 },
     unauthorized: { status: 401, data: zDeleteAnnotationUpdateDeleteApiError401 },
@@ -2068,8 +2188,13 @@ export const post14 = oc
   .output(zPostAppsByAppIdAnnotationsByAnnotationIdResponse)
   .errors({
     account_not_initialized: { status: 400, data: zUpdateDeleteAnnotationError400 },
+    bad_host: { status: 400, data: zUpdateDeleteAnnotationError400 },
     bad_request: { status: 400, data: zUpdateDeleteAnnotationError400 },
+    bad_request_key_error: { status: 400, data: zUpdateDeleteAnnotationError400 },
+    client_disconnected: { status: 400, data: zUpdateDeleteAnnotationError400 },
     invalid_param: { status: 400, data: zUpdateDeleteAnnotationError400 },
+    security_error: { status: 400, data: zUpdateDeleteAnnotationError400 },
+    websocket_mismatch: { status: 400, data: zUpdateDeleteAnnotationError400 },
     not_init_validated: { status: 401, data: zUpdateDeleteAnnotationError401 },
     not_setup: { status: 401, data: zUpdateDeleteAnnotationError401 },
     unauthorized: { status: 401, data: zUpdateDeleteAnnotationError401 },
@@ -2094,8 +2219,13 @@ export const delete4 = oc
   .output(zDeleteAppsByAppIdAnnotationsResponse)
   .errors({
     account_not_initialized: { status: 400, data: zDeleteAnnotationApiError400 },
+    bad_host: { status: 400, data: zDeleteAnnotationApiError400 },
     bad_request: { status: 400, data: zDeleteAnnotationApiError400 },
+    bad_request_key_error: { status: 400, data: zDeleteAnnotationApiError400 },
+    client_disconnected: { status: 400, data: zDeleteAnnotationApiError400 },
     invalid_param: { status: 400, data: zDeleteAnnotationApiError400 },
+    security_error: { status: 400, data: zDeleteAnnotationApiError400 },
+    websocket_mismatch: { status: 400, data: zDeleteAnnotationApiError400 },
     not_init_validated: { status: 401, data: zDeleteAnnotationApiError401 },
     not_setup: { status: 401, data: zDeleteAnnotationApiError401 },
     unauthorized: { status: 401, data: zDeleteAnnotationApiError401 },
@@ -2122,8 +2252,13 @@ export const get23 = oc
   .output(zGetAppsByAppIdAnnotationsResponse)
   .errors({
     account_not_initialized: { status: 400, data: zListAnnotationsError400 },
+    bad_host: { status: 400, data: zListAnnotationsError400 },
     bad_request: { status: 400, data: zListAnnotationsError400 },
+    bad_request_key_error: { status: 400, data: zListAnnotationsError400 },
+    client_disconnected: { status: 400, data: zListAnnotationsError400 },
     invalid_param: { status: 400, data: zListAnnotationsError400 },
+    security_error: { status: 400, data: zListAnnotationsError400 },
+    websocket_mismatch: { status: 400, data: zListAnnotationsError400 },
     not_init_validated: { status: 401, data: zListAnnotationsError401 },
     not_setup: { status: 401, data: zListAnnotationsError401 },
     unauthorized: { status: 401, data: zListAnnotationsError401 },
@@ -2148,8 +2283,13 @@ export const post15 = oc
   .output(zPostAppsByAppIdAnnotationsResponse)
   .errors({
     account_not_initialized: { status: 400, data: zCreateAnnotationError400 },
+    bad_host: { status: 400, data: zCreateAnnotationError400 },
     bad_request: { status: 400, data: zCreateAnnotationError400 },
+    bad_request_key_error: { status: 400, data: zCreateAnnotationError400 },
+    client_disconnected: { status: 400, data: zCreateAnnotationError400 },
     invalid_param: { status: 400, data: zCreateAnnotationError400 },
+    security_error: { status: 400, data: zCreateAnnotationError400 },
+    websocket_mismatch: { status: 400, data: zCreateAnnotationError400 },
     not_init_validated: { status: 401, data: zCreateAnnotationError401 },
     not_setup: { status: 401, data: zCreateAnnotationError401 },
     unauthorized: { status: 401, data: zCreateAnnotationError401 },
@@ -2182,8 +2322,13 @@ export const post16 = oc
   .output(zPostAppsByAppIdApiEnableResponse)
   .errors({
     account_not_initialized: { status: 400, data: zUpdateAppApiStatusError400 },
+    bad_host: { status: 400, data: zUpdateAppApiStatusError400 },
     bad_request: { status: 400, data: zUpdateAppApiStatusError400 },
+    bad_request_key_error: { status: 400, data: zUpdateAppApiStatusError400 },
+    client_disconnected: { status: 400, data: zUpdateAppApiStatusError400 },
     invalid_param: { status: 400, data: zUpdateAppApiStatusError400 },
+    security_error: { status: 400, data: zUpdateAppApiStatusError400 },
+    websocket_mismatch: { status: 400, data: zUpdateAppApiStatusError400 },
     not_init_validated: { status: 401, data: zUpdateAppApiStatusError401 },
     not_setup: { status: 401, data: zUpdateAppApiStatusError401 },
     unauthorized: { status: 401, data: zUpdateAppApiStatusError401 },
@@ -2212,7 +2357,10 @@ export const post17 = oc
   .errors({
     account_not_initialized: { status: 400, data: zChatMessageAudioTranscriptError400 },
     app_unavailable: { status: 400, data: zChatMessageAudioTranscriptError400 },
+    bad_host: { status: 400, data: zChatMessageAudioTranscriptError400 },
     bad_request: { status: 400, data: zChatMessageAudioTranscriptError400 },
+    bad_request_key_error: { status: 400, data: zChatMessageAudioTranscriptError400 },
+    client_disconnected: { status: 400, data: zChatMessageAudioTranscriptError400 },
     completion_request_error: { status: 400, data: zChatMessageAudioTranscriptError400 },
     invalid_param: { status: 400, data: zChatMessageAudioTranscriptError400 },
     model_currently_not_support: { status: 400, data: zChatMessageAudioTranscriptError400 },
@@ -2220,7 +2368,9 @@ export const post17 = oc
     provider_not_initialize: { status: 400, data: zChatMessageAudioTranscriptError400 },
     provider_not_support_speech_to_text: { status: 400, data: zChatMessageAudioTranscriptError400 },
     provider_quota_exceeded: { status: 400, data: zChatMessageAudioTranscriptError400 },
+    security_error: { status: 400, data: zChatMessageAudioTranscriptError400 },
     speech_to_text_disabled: { status: 400, data: zChatMessageAudioTranscriptError400 },
+    websocket_mismatch: { status: 400, data: zChatMessageAudioTranscriptError400 },
     not_init_validated: { status: 401, data: zChatMessageAudioTranscriptError401 },
     not_setup: { status: 401, data: zChatMessageAudioTranscriptError401 },
     unauthorized: { status: 401, data: zChatMessageAudioTranscriptError401 },
@@ -2254,8 +2404,13 @@ export const delete5 = oc
   .output(zDeleteAppsByAppIdChatConversationsByConversationIdResponse)
   .errors({
     account_not_initialized: { status: 400, data: zDeleteChatConversationError400 },
+    bad_host: { status: 400, data: zDeleteChatConversationError400 },
     bad_request: { status: 400, data: zDeleteChatConversationError400 },
+    bad_request_key_error: { status: 400, data: zDeleteChatConversationError400 },
+    client_disconnected: { status: 400, data: zDeleteChatConversationError400 },
     invalid_param: { status: 400, data: zDeleteChatConversationError400 },
+    security_error: { status: 400, data: zDeleteChatConversationError400 },
+    websocket_mismatch: { status: 400, data: zDeleteChatConversationError400 },
     not_init_validated: { status: 401, data: zDeleteChatConversationError401 },
     not_setup: { status: 401, data: zDeleteChatConversationError401 },
     unauthorized: { status: 401, data: zDeleteChatConversationError401 },
@@ -2279,8 +2434,13 @@ export const get24 = oc
   .output(zGetAppsByAppIdChatConversationsByConversationIdResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetChatConversationError400 },
+    bad_host: { status: 400, data: zGetChatConversationError400 },
     bad_request: { status: 400, data: zGetChatConversationError400 },
+    bad_request_key_error: { status: 400, data: zGetChatConversationError400 },
+    client_disconnected: { status: 400, data: zGetChatConversationError400 },
     invalid_param: { status: 400, data: zGetChatConversationError400 },
+    security_error: { status: 400, data: zGetChatConversationError400 },
+    websocket_mismatch: { status: 400, data: zGetChatConversationError400 },
     not_init_validated: { status: 401, data: zGetChatConversationError401 },
     not_setup: { status: 401, data: zGetChatConversationError401 },
     unauthorized: { status: 401, data: zGetChatConversationError401 },
@@ -2314,8 +2474,13 @@ export const get25 = oc
   .output(zGetAppsByAppIdChatConversationsResponse)
   .errors({
     account_not_initialized: { status: 400, data: zListChatConversationsError400 },
+    bad_host: { status: 400, data: zListChatConversationsError400 },
     bad_request: { status: 400, data: zListChatConversationsError400 },
+    bad_request_key_error: { status: 400, data: zListChatConversationsError400 },
+    client_disconnected: { status: 400, data: zListChatConversationsError400 },
     invalid_param: { status: 400, data: zListChatConversationsError400 },
+    security_error: { status: 400, data: zListChatConversationsError400 },
+    websocket_mismatch: { status: 400, data: zListChatConversationsError400 },
     not_init_validated: { status: 401, data: zListChatConversationsError401 },
     not_setup: { status: 401, data: zListChatConversationsError401 },
     unauthorized: { status: 401, data: zListChatConversationsError401 },
@@ -2345,12 +2510,17 @@ export const get26 = oc
   .errors({
     account_not_initialized: { status: 400, data: zGetMessageSuggestedQuestionsError400 },
     app_unavailable: { status: 400, data: zGetMessageSuggestedQuestionsError400 },
+    bad_host: { status: 400, data: zGetMessageSuggestedQuestionsError400 },
     bad_request: { status: 400, data: zGetMessageSuggestedQuestionsError400 },
+    bad_request_key_error: { status: 400, data: zGetMessageSuggestedQuestionsError400 },
+    client_disconnected: { status: 400, data: zGetMessageSuggestedQuestionsError400 },
     completion_request_error: { status: 400, data: zGetMessageSuggestedQuestionsError400 },
     invalid_param: { status: 400, data: zGetMessageSuggestedQuestionsError400 },
     model_currently_not_support: { status: 400, data: zGetMessageSuggestedQuestionsError400 },
     provider_not_initialize: { status: 400, data: zGetMessageSuggestedQuestionsError400 },
     provider_quota_exceeded: { status: 400, data: zGetMessageSuggestedQuestionsError400 },
+    security_error: { status: 400, data: zGetMessageSuggestedQuestionsError400 },
+    websocket_mismatch: { status: 400, data: zGetMessageSuggestedQuestionsError400 },
     not_init_validated: { status: 401, data: zGetMessageSuggestedQuestionsError401 },
     not_setup: { status: 401, data: zGetMessageSuggestedQuestionsError401 },
     unauthorized: { status: 401, data: zGetMessageSuggestedQuestionsError401 },
@@ -2387,8 +2557,13 @@ export const post18 = oc
   .output(zPostAppsByAppIdChatMessagesByTaskIdStopResponse)
   .errors({
     account_not_initialized: { status: 400, data: zStopChatMessageError400 },
+    bad_host: { status: 400, data: zStopChatMessageError400 },
     bad_request: { status: 400, data: zStopChatMessageError400 },
+    bad_request_key_error: { status: 400, data: zStopChatMessageError400 },
+    client_disconnected: { status: 400, data: zStopChatMessageError400 },
     invalid_param: { status: 400, data: zStopChatMessageError400 },
+    security_error: { status: 400, data: zStopChatMessageError400 },
+    websocket_mismatch: { status: 400, data: zStopChatMessageError400 },
     not_init_validated: { status: 401, data: zStopChatMessageError401 },
     not_setup: { status: 401, data: zStopChatMessageError401 },
     unauthorized: { status: 401, data: zStopChatMessageError401 },
@@ -2422,8 +2597,13 @@ export const get27 = oc
   .output(zGetAppsByAppIdChatMessagesResponse)
   .errors({
     account_not_initialized: { status: 400, data: zListChatMessagesError400 },
+    bad_host: { status: 400, data: zListChatMessagesError400 },
     bad_request: { status: 400, data: zListChatMessagesError400 },
+    bad_request_key_error: { status: 400, data: zListChatMessagesError400 },
+    client_disconnected: { status: 400, data: zListChatMessagesError400 },
     invalid_param: { status: 400, data: zListChatMessagesError400 },
+    security_error: { status: 400, data: zListChatMessagesError400 },
+    websocket_mismatch: { status: 400, data: zListChatMessagesError400 },
     not_init_validated: { status: 401, data: zListChatMessagesError401 },
     not_setup: { status: 401, data: zListChatMessagesError401 },
     unauthorized: { status: 401, data: zListChatMessagesError401 },
@@ -2454,8 +2634,13 @@ export const delete6 = oc
   .output(zDeleteAppsByAppIdCompletionConversationsByConversationIdResponse)
   .errors({
     account_not_initialized: { status: 400, data: zDeleteCompletionConversationError400 },
+    bad_host: { status: 400, data: zDeleteCompletionConversationError400 },
     bad_request: { status: 400, data: zDeleteCompletionConversationError400 },
+    bad_request_key_error: { status: 400, data: zDeleteCompletionConversationError400 },
+    client_disconnected: { status: 400, data: zDeleteCompletionConversationError400 },
     invalid_param: { status: 400, data: zDeleteCompletionConversationError400 },
+    security_error: { status: 400, data: zDeleteCompletionConversationError400 },
+    websocket_mismatch: { status: 400, data: zDeleteCompletionConversationError400 },
     not_init_validated: { status: 401, data: zDeleteCompletionConversationError401 },
     not_setup: { status: 401, data: zDeleteCompletionConversationError401 },
     unauthorized: { status: 401, data: zDeleteCompletionConversationError401 },
@@ -2479,8 +2664,13 @@ export const get28 = oc
   .output(zGetAppsByAppIdCompletionConversationsByConversationIdResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetCompletionConversationError400 },
+    bad_host: { status: 400, data: zGetCompletionConversationError400 },
     bad_request: { status: 400, data: zGetCompletionConversationError400 },
+    bad_request_key_error: { status: 400, data: zGetCompletionConversationError400 },
+    client_disconnected: { status: 400, data: zGetCompletionConversationError400 },
     invalid_param: { status: 400, data: zGetCompletionConversationError400 },
+    security_error: { status: 400, data: zGetCompletionConversationError400 },
+    websocket_mismatch: { status: 400, data: zGetCompletionConversationError400 },
     not_init_validated: { status: 401, data: zGetCompletionConversationError401 },
     not_setup: { status: 401, data: zGetCompletionConversationError401 },
     unauthorized: { status: 401, data: zGetCompletionConversationError401 },
@@ -2514,8 +2704,13 @@ export const get29 = oc
   .output(zGetAppsByAppIdCompletionConversationsResponse)
   .errors({
     account_not_initialized: { status: 400, data: zListCompletionConversationsError400 },
+    bad_host: { status: 400, data: zListCompletionConversationsError400 },
     bad_request: { status: 400, data: zListCompletionConversationsError400 },
+    bad_request_key_error: { status: 400, data: zListCompletionConversationsError400 },
+    client_disconnected: { status: 400, data: zListCompletionConversationsError400 },
     invalid_param: { status: 400, data: zListCompletionConversationsError400 },
+    security_error: { status: 400, data: zListCompletionConversationsError400 },
+    websocket_mismatch: { status: 400, data: zListCompletionConversationsError400 },
     not_init_validated: { status: 401, data: zListCompletionConversationsError401 },
     not_setup: { status: 401, data: zListCompletionConversationsError401 },
     unauthorized: { status: 401, data: zListCompletionConversationsError401 },
@@ -2544,8 +2739,13 @@ export const post19 = oc
   .output(zPostAppsByAppIdCompletionMessagesByTaskIdStopResponse)
   .errors({
     account_not_initialized: { status: 400, data: zStopCompletionMessageError400 },
+    bad_host: { status: 400, data: zStopCompletionMessageError400 },
     bad_request: { status: 400, data: zStopCompletionMessageError400 },
+    bad_request_key_error: { status: 400, data: zStopCompletionMessageError400 },
+    client_disconnected: { status: 400, data: zStopCompletionMessageError400 },
     invalid_param: { status: 400, data: zStopCompletionMessageError400 },
+    security_error: { status: 400, data: zStopCompletionMessageError400 },
+    websocket_mismatch: { status: 400, data: zStopCompletionMessageError400 },
     not_init_validated: { status: 401, data: zStopCompletionMessageError401 },
     not_setup: { status: 401, data: zStopCompletionMessageError401 },
     unauthorized: { status: 401, data: zStopCompletionMessageError401 },
@@ -2583,12 +2783,17 @@ export const post20 = oc
   .errors({
     account_not_initialized: { status: 400, data: zCreateCompletionMessageError400 },
     app_unavailable: { status: 400, data: zCreateCompletionMessageError400 },
+    bad_host: { status: 400, data: zCreateCompletionMessageError400 },
     bad_request: { status: 400, data: zCreateCompletionMessageError400 },
+    bad_request_key_error: { status: 400, data: zCreateCompletionMessageError400 },
+    client_disconnected: { status: 400, data: zCreateCompletionMessageError400 },
     completion_request_error: { status: 400, data: zCreateCompletionMessageError400 },
     invalid_param: { status: 400, data: zCreateCompletionMessageError400 },
     model_currently_not_support: { status: 400, data: zCreateCompletionMessageError400 },
     provider_not_initialize: { status: 400, data: zCreateCompletionMessageError400 },
     provider_quota_exceeded: { status: 400, data: zCreateCompletionMessageError400 },
+    security_error: { status: 400, data: zCreateCompletionMessageError400 },
+    websocket_mismatch: { status: 400, data: zCreateCompletionMessageError400 },
     not_init_validated: { status: 401, data: zCreateCompletionMessageError401 },
     not_setup: { status: 401, data: zCreateCompletionMessageError401 },
     unauthorized: { status: 401, data: zCreateCompletionMessageError401 },
@@ -2622,8 +2827,13 @@ export const get30 = oc
   .output(zGetAppsByAppIdConversationVariablesResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetConversationVariablesError400 },
+    bad_host: { status: 400, data: zGetConversationVariablesError400 },
     bad_request: { status: 400, data: zGetConversationVariablesError400 },
+    bad_request_key_error: { status: 400, data: zGetConversationVariablesError400 },
+    client_disconnected: { status: 400, data: zGetConversationVariablesError400 },
     invalid_param: { status: 400, data: zGetConversationVariablesError400 },
+    security_error: { status: 400, data: zGetConversationVariablesError400 },
+    websocket_mismatch: { status: 400, data: zGetConversationVariablesError400 },
     not_init_validated: { status: 401, data: zGetConversationVariablesError401 },
     not_setup: { status: 401, data: zGetConversationVariablesError401 },
     unauthorized: { status: 401, data: zGetConversationVariablesError401 },
@@ -2662,8 +2872,13 @@ export const post21 = oc
   .output(zPostAppsByAppIdConvertToWorkflowResponse)
   .errors({
     account_not_initialized: { status: 400, data: zConvertToWorkflowError400 },
+    bad_host: { status: 400, data: zConvertToWorkflowError400 },
     bad_request: { status: 400, data: zConvertToWorkflowError400 },
+    bad_request_key_error: { status: 400, data: zConvertToWorkflowError400 },
+    client_disconnected: { status: 400, data: zConvertToWorkflowError400 },
     invalid_param: { status: 400, data: zConvertToWorkflowError400 },
+    security_error: { status: 400, data: zConvertToWorkflowError400 },
+    websocket_mismatch: { status: 400, data: zConvertToWorkflowError400 },
     not_init_validated: { status: 401, data: zConvertToWorkflowError401 },
     not_setup: { status: 401, data: zConvertToWorkflowError401 },
     unauthorized: { status: 401, data: zConvertToWorkflowError401 },
@@ -2692,8 +2907,13 @@ export const post22 = oc
   .output(zPostAppsByAppIdCopyResponse)
   .errors({
     account_not_initialized: { status: 400, data: zCopyAppError400 },
+    bad_host: { status: 400, data: zCopyAppError400 },
     bad_request: { status: 400, data: zCopyAppError400 },
+    bad_request_key_error: { status: 400, data: zCopyAppError400 },
+    client_disconnected: { status: 400, data: zCopyAppError400 },
     invalid_param: { status: 400, data: zCopyAppError400 },
+    security_error: { status: 400, data: zCopyAppError400 },
+    websocket_mismatch: { status: 400, data: zCopyAppError400 },
     not_init_validated: { status: 401, data: zCopyAppError401 },
     not_setup: { status: 401, data: zCopyAppError401 },
     unauthorized: { status: 401, data: zCopyAppError401 },
@@ -2721,8 +2941,13 @@ export const get31 = oc
   .output(zGetAppsByAppIdExportResponse)
   .errors({
     account_not_initialized: { status: 400, data: zExportAppError400 },
+    bad_host: { status: 400, data: zExportAppError400 },
     bad_request: { status: 400, data: zExportAppError400 },
+    bad_request_key_error: { status: 400, data: zExportAppError400 },
+    client_disconnected: { status: 400, data: zExportAppError400 },
     invalid_param: { status: 400, data: zExportAppError400 },
+    security_error: { status: 400, data: zExportAppError400 },
+    websocket_mismatch: { status: 400, data: zExportAppError400 },
     not_init_validated: { status: 401, data: zExportAppError401 },
     not_setup: { status: 401, data: zExportAppError401 },
     unauthorized: { status: 401, data: zExportAppError401 },
@@ -2748,8 +2973,13 @@ export const post23 = oc
   .output(zPostAppsByAppIdFeedbacksResponse)
   .errors({
     account_not_initialized: { status: 400, data: zCreateMessageFeedbackError400 },
+    bad_host: { status: 400, data: zCreateMessageFeedbackError400 },
     bad_request: { status: 400, data: zCreateMessageFeedbackError400 },
+    bad_request_key_error: { status: 400, data: zCreateMessageFeedbackError400 },
+    client_disconnected: { status: 400, data: zCreateMessageFeedbackError400 },
     invalid_param: { status: 400, data: zCreateMessageFeedbackError400 },
+    security_error: { status: 400, data: zCreateMessageFeedbackError400 },
+    websocket_mismatch: { status: 400, data: zCreateMessageFeedbackError400 },
     not_init_validated: { status: 401, data: zCreateMessageFeedbackError401 },
     not_setup: { status: 401, data: zCreateMessageFeedbackError401 },
     unauthorized: { status: 401, data: zCreateMessageFeedbackError401 },
@@ -2777,8 +3007,13 @@ export const post24 = oc
   .output(zPostAppsByAppIdIconResponse)
   .errors({
     account_not_initialized: { status: 400, data: zUpdateAppIconError400 },
+    bad_host: { status: 400, data: zUpdateAppIconError400 },
     bad_request: { status: 400, data: zUpdateAppIconError400 },
+    bad_request_key_error: { status: 400, data: zUpdateAppIconError400 },
+    client_disconnected: { status: 400, data: zUpdateAppIconError400 },
     invalid_param: { status: 400, data: zUpdateAppIconError400 },
+    security_error: { status: 400, data: zUpdateAppIconError400 },
+    websocket_mismatch: { status: 400, data: zUpdateAppIconError400 },
     not_init_validated: { status: 401, data: zUpdateAppIconError401 },
     not_setup: { status: 401, data: zUpdateAppIconError401 },
     unauthorized: { status: 401, data: zUpdateAppIconError401 },
@@ -2804,8 +3039,13 @@ export const get32 = oc
   .output(zGetAppsByAppIdMessagesByMessageIdResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetMessageError400 },
+    bad_host: { status: 400, data: zGetMessageError400 },
     bad_request: { status: 400, data: zGetMessageError400 },
+    bad_request_key_error: { status: 400, data: zGetMessageError400 },
+    client_disconnected: { status: 400, data: zGetMessageError400 },
     invalid_param: { status: 400, data: zGetMessageError400 },
+    security_error: { status: 400, data: zGetMessageError400 },
+    websocket_mismatch: { status: 400, data: zGetMessageError400 },
     not_init_validated: { status: 401, data: zGetMessageError401 },
     not_setup: { status: 401, data: zGetMessageError401 },
     unauthorized: { status: 401, data: zGetMessageError401 },
@@ -2842,8 +3082,13 @@ export const post25 = oc
   .output(zPostAppsByAppIdModelConfigResponse)
   .errors({
     account_not_initialized: { status: 400, data: zUpdateAppModelConfigError400 },
+    bad_host: { status: 400, data: zUpdateAppModelConfigError400 },
     bad_request: { status: 400, data: zUpdateAppModelConfigError400 },
+    bad_request_key_error: { status: 400, data: zUpdateAppModelConfigError400 },
+    client_disconnected: { status: 400, data: zUpdateAppModelConfigError400 },
     invalid_param: { status: 400, data: zUpdateAppModelConfigError400 },
+    security_error: { status: 400, data: zUpdateAppModelConfigError400 },
+    websocket_mismatch: { status: 400, data: zUpdateAppModelConfigError400 },
     not_init_validated: { status: 401, data: zUpdateAppModelConfigError401 },
     not_setup: { status: 401, data: zUpdateAppModelConfigError401 },
     unauthorized: { status: 401, data: zUpdateAppModelConfigError401 },
@@ -2871,8 +3116,13 @@ export const post26 = oc
   .output(zPostAppsByAppIdNameResponse)
   .errors({
     account_not_initialized: { status: 400, data: zCheckAppNameError400 },
+    bad_host: { status: 400, data: zCheckAppNameError400 },
     bad_request: { status: 400, data: zCheckAppNameError400 },
+    bad_request_key_error: { status: 400, data: zCheckAppNameError400 },
+    client_disconnected: { status: 400, data: zCheckAppNameError400 },
     invalid_param: { status: 400, data: zCheckAppNameError400 },
+    security_error: { status: 400, data: zCheckAppNameError400 },
+    websocket_mismatch: { status: 400, data: zCheckAppNameError400 },
     not_init_validated: { status: 401, data: zCheckAppNameError401 },
     not_setup: { status: 401, data: zCheckAppNameError401 },
     unauthorized: { status: 401, data: zCheckAppNameError401 },
@@ -2894,8 +3144,13 @@ export const post27 = oc
   .output(zPostAppsByAppIdPublishToCreatorsPlatformResponse)
   .errors({
     account_not_initialized: { status: 400, data: zPostAppPublishToCreatorsPlatformApiError400 },
+    bad_host: { status: 400, data: zPostAppPublishToCreatorsPlatformApiError400 },
     bad_request: { status: 400, data: zPostAppPublishToCreatorsPlatformApiError400 },
+    bad_request_key_error: { status: 400, data: zPostAppPublishToCreatorsPlatformApiError400 },
+    client_disconnected: { status: 400, data: zPostAppPublishToCreatorsPlatformApiError400 },
     invalid_param: { status: 400, data: zPostAppPublishToCreatorsPlatformApiError400 },
+    security_error: { status: 400, data: zPostAppPublishToCreatorsPlatformApiError400 },
+    websocket_mismatch: { status: 400, data: zPostAppPublishToCreatorsPlatformApiError400 },
     not_init_validated: { status: 401, data: zPostAppPublishToCreatorsPlatformApiError401 },
     not_setup: { status: 401, data: zPostAppPublishToCreatorsPlatformApiError401 },
     unauthorized: { status: 401, data: zPostAppPublishToCreatorsPlatformApiError401 },
@@ -2921,8 +3176,13 @@ export const post28 = oc
   .output(zPostAppsByAppIdServerRefreshResponse)
   .errors({
     account_not_initialized: { status: 400, data: zRefreshAppMcpServerError400 },
+    bad_host: { status: 400, data: zRefreshAppMcpServerError400 },
     bad_request: { status: 400, data: zRefreshAppMcpServerError400 },
+    bad_request_key_error: { status: 400, data: zRefreshAppMcpServerError400 },
+    client_disconnected: { status: 400, data: zRefreshAppMcpServerError400 },
     invalid_param: { status: 400, data: zRefreshAppMcpServerError400 },
+    security_error: { status: 400, data: zRefreshAppMcpServerError400 },
+    websocket_mismatch: { status: 400, data: zRefreshAppMcpServerError400 },
     not_init_validated: { status: 401, data: zRefreshAppMcpServerError401 },
     not_setup: { status: 401, data: zRefreshAppMcpServerError401 },
     unauthorized: { status: 401, data: zRefreshAppMcpServerError401 },
@@ -2950,8 +3210,13 @@ export const get33 = oc
   .output(zGetAppsByAppIdServerResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetAppMcpServerError400 },
+    bad_host: { status: 400, data: zGetAppMcpServerError400 },
     bad_request: { status: 400, data: zGetAppMcpServerError400 },
+    bad_request_key_error: { status: 400, data: zGetAppMcpServerError400 },
+    client_disconnected: { status: 400, data: zGetAppMcpServerError400 },
     invalid_param: { status: 400, data: zGetAppMcpServerError400 },
+    security_error: { status: 400, data: zGetAppMcpServerError400 },
+    websocket_mismatch: { status: 400, data: zGetAppMcpServerError400 },
     not_init_validated: { status: 401, data: zGetAppMcpServerError401 },
     not_setup: { status: 401, data: zGetAppMcpServerError401 },
     unauthorized: { status: 401, data: zGetAppMcpServerError401 },
@@ -2976,8 +3241,13 @@ export const post29 = oc
   .output(zPostAppsByAppIdServerResponse)
   .errors({
     account_not_initialized: { status: 400, data: zCreateAppMcpServerError400 },
+    bad_host: { status: 400, data: zCreateAppMcpServerError400 },
     bad_request: { status: 400, data: zCreateAppMcpServerError400 },
+    bad_request_key_error: { status: 400, data: zCreateAppMcpServerError400 },
+    client_disconnected: { status: 400, data: zCreateAppMcpServerError400 },
     invalid_param: { status: 400, data: zCreateAppMcpServerError400 },
+    security_error: { status: 400, data: zCreateAppMcpServerError400 },
+    websocket_mismatch: { status: 400, data: zCreateAppMcpServerError400 },
     not_init_validated: { status: 401, data: zCreateAppMcpServerError401 },
     not_setup: { status: 401, data: zCreateAppMcpServerError401 },
     unauthorized: { status: 401, data: zCreateAppMcpServerError401 },
@@ -3001,8 +3271,13 @@ export const put = oc
   .output(zPutAppsByAppIdServerResponse)
   .errors({
     account_not_initialized: { status: 400, data: zUpdateAppMcpServerError400 },
+    bad_host: { status: 400, data: zUpdateAppMcpServerError400 },
     bad_request: { status: 400, data: zUpdateAppMcpServerError400 },
+    bad_request_key_error: { status: 400, data: zUpdateAppMcpServerError400 },
+    client_disconnected: { status: 400, data: zUpdateAppMcpServerError400 },
     invalid_param: { status: 400, data: zUpdateAppMcpServerError400 },
+    security_error: { status: 400, data: zUpdateAppMcpServerError400 },
+    websocket_mismatch: { status: 400, data: zUpdateAppMcpServerError400 },
     not_init_validated: { status: 401, data: zUpdateAppMcpServerError401 },
     not_setup: { status: 401, data: zUpdateAppMcpServerError401 },
     unauthorized: { status: 401, data: zUpdateAppMcpServerError401 },
@@ -3033,8 +3308,13 @@ export const post30 = oc
   .output(zPostAppsByAppIdSiteAccessTokenResetResponse)
   .errors({
     account_not_initialized: { status: 400, data: zResetAppSiteAccessTokenError400 },
+    bad_host: { status: 400, data: zResetAppSiteAccessTokenError400 },
     bad_request: { status: 400, data: zResetAppSiteAccessTokenError400 },
+    bad_request_key_error: { status: 400, data: zResetAppSiteAccessTokenError400 },
+    client_disconnected: { status: 400, data: zResetAppSiteAccessTokenError400 },
     invalid_param: { status: 400, data: zResetAppSiteAccessTokenError400 },
+    security_error: { status: 400, data: zResetAppSiteAccessTokenError400 },
+    websocket_mismatch: { status: 400, data: zResetAppSiteAccessTokenError400 },
     not_init_validated: { status: 401, data: zResetAppSiteAccessTokenError401 },
     not_setup: { status: 401, data: zResetAppSiteAccessTokenError401 },
     unauthorized: { status: 401, data: zResetAppSiteAccessTokenError401 },
@@ -3062,8 +3342,13 @@ export const post31 = oc
   .output(zPostAppsByAppIdSiteResponse)
   .errors({
     account_not_initialized: { status: 400, data: zUpdateAppSiteError400 },
+    bad_host: { status: 400, data: zUpdateAppSiteError400 },
     bad_request: { status: 400, data: zUpdateAppSiteError400 },
+    bad_request_key_error: { status: 400, data: zUpdateAppSiteError400 },
+    client_disconnected: { status: 400, data: zUpdateAppSiteError400 },
     invalid_param: { status: 400, data: zUpdateAppSiteError400 },
+    security_error: { status: 400, data: zUpdateAppSiteError400 },
+    websocket_mismatch: { status: 400, data: zUpdateAppSiteError400 },
     not_init_validated: { status: 401, data: zUpdateAppSiteError401 },
     not_setup: { status: 401, data: zUpdateAppSiteError401 },
     unauthorized: { status: 401, data: zUpdateAppSiteError401 },
@@ -3092,8 +3377,13 @@ export const post32 = oc
   .output(zPostAppsByAppIdSiteEnableResponse)
   .errors({
     account_not_initialized: { status: 400, data: zUpdateAppSiteStatusError400 },
+    bad_host: { status: 400, data: zUpdateAppSiteStatusError400 },
     bad_request: { status: 400, data: zUpdateAppSiteStatusError400 },
+    bad_request_key_error: { status: 400, data: zUpdateAppSiteStatusError400 },
+    client_disconnected: { status: 400, data: zUpdateAppSiteStatusError400 },
     invalid_param: { status: 400, data: zUpdateAppSiteStatusError400 },
+    security_error: { status: 400, data: zUpdateAppSiteStatusError400 },
+    websocket_mismatch: { status: 400, data: zUpdateAppSiteStatusError400 },
     not_init_validated: { status: 401, data: zUpdateAppSiteStatusError401 },
     not_setup: { status: 401, data: zUpdateAppSiteStatusError401 },
     unauthorized: { status: 401, data: zUpdateAppSiteStatusError401 },
@@ -3119,8 +3409,13 @@ export const delete7 = oc
   .output(zDeleteAppsByAppIdStarResponse)
   .errors({
     account_not_initialized: { status: 400, data: zUnstarAppError400 },
+    bad_host: { status: 400, data: zUnstarAppError400 },
     bad_request: { status: 400, data: zUnstarAppError400 },
+    bad_request_key_error: { status: 400, data: zUnstarAppError400 },
+    client_disconnected: { status: 400, data: zUnstarAppError400 },
     invalid_param: { status: 400, data: zUnstarAppError400 },
+    security_error: { status: 400, data: zUnstarAppError400 },
+    websocket_mismatch: { status: 400, data: zUnstarAppError400 },
     not_init_validated: { status: 401, data: zUnstarAppError401 },
     not_setup: { status: 401, data: zUnstarAppError401 },
     unauthorized: { status: 401, data: zUnstarAppError401 },
@@ -3143,8 +3438,13 @@ export const post33 = oc
   .output(zPostAppsByAppIdStarResponse)
   .errors({
     account_not_initialized: { status: 400, data: zStarAppError400 },
+    bad_host: { status: 400, data: zStarAppError400 },
     bad_request: { status: 400, data: zStarAppError400 },
+    bad_request_key_error: { status: 400, data: zStarAppError400 },
+    client_disconnected: { status: 400, data: zStarAppError400 },
     invalid_param: { status: 400, data: zStarAppError400 },
+    security_error: { status: 400, data: zStarAppError400 },
+    websocket_mismatch: { status: 400, data: zStarAppError400 },
     not_init_validated: { status: 401, data: zStarAppError401 },
     not_setup: { status: 401, data: zStarAppError401 },
     unauthorized: { status: 401, data: zStarAppError401 },
@@ -3177,8 +3477,13 @@ export const get34 = oc
   .output(zGetAppsByAppIdStatisticsAverageResponseTimeResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetAverageResponseTimeStatisticsError400 },
+    bad_host: { status: 400, data: zGetAverageResponseTimeStatisticsError400 },
     bad_request: { status: 400, data: zGetAverageResponseTimeStatisticsError400 },
+    bad_request_key_error: { status: 400, data: zGetAverageResponseTimeStatisticsError400 },
+    client_disconnected: { status: 400, data: zGetAverageResponseTimeStatisticsError400 },
     invalid_param: { status: 400, data: zGetAverageResponseTimeStatisticsError400 },
+    security_error: { status: 400, data: zGetAverageResponseTimeStatisticsError400 },
+    websocket_mismatch: { status: 400, data: zGetAverageResponseTimeStatisticsError400 },
     not_init_validated: { status: 401, data: zGetAverageResponseTimeStatisticsError401 },
     not_setup: { status: 401, data: zGetAverageResponseTimeStatisticsError401 },
     unauthorized: { status: 401, data: zGetAverageResponseTimeStatisticsError401 },
@@ -3211,8 +3516,13 @@ export const get35 = oc
   .output(zGetAppsByAppIdStatisticsAverageSessionInteractionsResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetAverageSessionInteractionStatisticsError400 },
+    bad_host: { status: 400, data: zGetAverageSessionInteractionStatisticsError400 },
     bad_request: { status: 400, data: zGetAverageSessionInteractionStatisticsError400 },
+    bad_request_key_error: { status: 400, data: zGetAverageSessionInteractionStatisticsError400 },
+    client_disconnected: { status: 400, data: zGetAverageSessionInteractionStatisticsError400 },
     invalid_param: { status: 400, data: zGetAverageSessionInteractionStatisticsError400 },
+    security_error: { status: 400, data: zGetAverageSessionInteractionStatisticsError400 },
+    websocket_mismatch: { status: 400, data: zGetAverageSessionInteractionStatisticsError400 },
     not_init_validated: { status: 401, data: zGetAverageSessionInteractionStatisticsError401 },
     not_setup: { status: 401, data: zGetAverageSessionInteractionStatisticsError401 },
     unauthorized: { status: 401, data: zGetAverageSessionInteractionStatisticsError401 },
@@ -3245,8 +3555,13 @@ export const get36 = oc
   .output(zGetAppsByAppIdStatisticsDailyConversationsResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetDailyConversationStatisticsError400 },
+    bad_host: { status: 400, data: zGetDailyConversationStatisticsError400 },
     bad_request: { status: 400, data: zGetDailyConversationStatisticsError400 },
+    bad_request_key_error: { status: 400, data: zGetDailyConversationStatisticsError400 },
+    client_disconnected: { status: 400, data: zGetDailyConversationStatisticsError400 },
     invalid_param: { status: 400, data: zGetDailyConversationStatisticsError400 },
+    security_error: { status: 400, data: zGetDailyConversationStatisticsError400 },
+    websocket_mismatch: { status: 400, data: zGetDailyConversationStatisticsError400 },
     not_init_validated: { status: 401, data: zGetDailyConversationStatisticsError401 },
     not_setup: { status: 401, data: zGetDailyConversationStatisticsError401 },
     unauthorized: { status: 401, data: zGetDailyConversationStatisticsError401 },
@@ -3279,8 +3594,13 @@ export const get37 = oc
   .output(zGetAppsByAppIdStatisticsDailyEndUsersResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetDailyTerminalsStatisticsError400 },
+    bad_host: { status: 400, data: zGetDailyTerminalsStatisticsError400 },
     bad_request: { status: 400, data: zGetDailyTerminalsStatisticsError400 },
+    bad_request_key_error: { status: 400, data: zGetDailyTerminalsStatisticsError400 },
+    client_disconnected: { status: 400, data: zGetDailyTerminalsStatisticsError400 },
     invalid_param: { status: 400, data: zGetDailyTerminalsStatisticsError400 },
+    security_error: { status: 400, data: zGetDailyTerminalsStatisticsError400 },
+    websocket_mismatch: { status: 400, data: zGetDailyTerminalsStatisticsError400 },
     not_init_validated: { status: 401, data: zGetDailyTerminalsStatisticsError401 },
     not_setup: { status: 401, data: zGetDailyTerminalsStatisticsError401 },
     unauthorized: { status: 401, data: zGetDailyTerminalsStatisticsError401 },
@@ -3313,8 +3633,13 @@ export const get38 = oc
   .output(zGetAppsByAppIdStatisticsDailyMessagesResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetDailyMessageStatisticsError400 },
+    bad_host: { status: 400, data: zGetDailyMessageStatisticsError400 },
     bad_request: { status: 400, data: zGetDailyMessageStatisticsError400 },
+    bad_request_key_error: { status: 400, data: zGetDailyMessageStatisticsError400 },
+    client_disconnected: { status: 400, data: zGetDailyMessageStatisticsError400 },
     invalid_param: { status: 400, data: zGetDailyMessageStatisticsError400 },
+    security_error: { status: 400, data: zGetDailyMessageStatisticsError400 },
+    websocket_mismatch: { status: 400, data: zGetDailyMessageStatisticsError400 },
     not_init_validated: { status: 401, data: zGetDailyMessageStatisticsError401 },
     not_setup: { status: 401, data: zGetDailyMessageStatisticsError401 },
     unauthorized: { status: 401, data: zGetDailyMessageStatisticsError401 },
@@ -3347,8 +3672,13 @@ export const get39 = oc
   .output(zGetAppsByAppIdStatisticsTokenCostsResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetDailyTokenCostStatisticsError400 },
+    bad_host: { status: 400, data: zGetDailyTokenCostStatisticsError400 },
     bad_request: { status: 400, data: zGetDailyTokenCostStatisticsError400 },
+    bad_request_key_error: { status: 400, data: zGetDailyTokenCostStatisticsError400 },
+    client_disconnected: { status: 400, data: zGetDailyTokenCostStatisticsError400 },
     invalid_param: { status: 400, data: zGetDailyTokenCostStatisticsError400 },
+    security_error: { status: 400, data: zGetDailyTokenCostStatisticsError400 },
+    websocket_mismatch: { status: 400, data: zGetDailyTokenCostStatisticsError400 },
     not_init_validated: { status: 401, data: zGetDailyTokenCostStatisticsError401 },
     not_setup: { status: 401, data: zGetDailyTokenCostStatisticsError401 },
     unauthorized: { status: 401, data: zGetDailyTokenCostStatisticsError401 },
@@ -3381,8 +3711,13 @@ export const get40 = oc
   .output(zGetAppsByAppIdStatisticsTokensPerSecondResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetTokensPerSecondStatisticsError400 },
+    bad_host: { status: 400, data: zGetTokensPerSecondStatisticsError400 },
     bad_request: { status: 400, data: zGetTokensPerSecondStatisticsError400 },
+    bad_request_key_error: { status: 400, data: zGetTokensPerSecondStatisticsError400 },
+    client_disconnected: { status: 400, data: zGetTokensPerSecondStatisticsError400 },
     invalid_param: { status: 400, data: zGetTokensPerSecondStatisticsError400 },
+    security_error: { status: 400, data: zGetTokensPerSecondStatisticsError400 },
+    websocket_mismatch: { status: 400, data: zGetTokensPerSecondStatisticsError400 },
     not_init_validated: { status: 401, data: zGetTokensPerSecondStatisticsError401 },
     not_setup: { status: 401, data: zGetTokensPerSecondStatisticsError401 },
     unauthorized: { status: 401, data: zGetTokensPerSecondStatisticsError401 },
@@ -3415,8 +3750,13 @@ export const get41 = oc
   .output(zGetAppsByAppIdStatisticsUserSatisfactionRateResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetUserSatisfactionRateStatisticsError400 },
+    bad_host: { status: 400, data: zGetUserSatisfactionRateStatisticsError400 },
     bad_request: { status: 400, data: zGetUserSatisfactionRateStatisticsError400 },
+    bad_request_key_error: { status: 400, data: zGetUserSatisfactionRateStatisticsError400 },
+    client_disconnected: { status: 400, data: zGetUserSatisfactionRateStatisticsError400 },
     invalid_param: { status: 400, data: zGetUserSatisfactionRateStatisticsError400 },
+    security_error: { status: 400, data: zGetUserSatisfactionRateStatisticsError400 },
+    websocket_mismatch: { status: 400, data: zGetUserSatisfactionRateStatisticsError400 },
     not_init_validated: { status: 401, data: zGetUserSatisfactionRateStatisticsError401 },
     not_setup: { status: 401, data: zGetUserSatisfactionRateStatisticsError401 },
     unauthorized: { status: 401, data: zGetUserSatisfactionRateStatisticsError401 },
@@ -3460,7 +3800,10 @@ export const get42 = oc
   .output(zGetAppsByAppIdTextToAudioVoicesResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetTextToSpeechVoicesError400 },
+    bad_host: { status: 400, data: zGetTextToSpeechVoicesError400 },
     bad_request: { status: 400, data: zGetTextToSpeechVoicesError400 },
+    bad_request_key_error: { status: 400, data: zGetTextToSpeechVoicesError400 },
+    client_disconnected: { status: 400, data: zGetTextToSpeechVoicesError400 },
     completion_request_error: { status: 400, data: zGetTextToSpeechVoicesError400 },
     invalid_param: { status: 400, data: zGetTextToSpeechVoicesError400 },
     model_currently_not_support: { status: 400, data: zGetTextToSpeechVoicesError400 },
@@ -3468,6 +3811,8 @@ export const get42 = oc
     provider_not_initialize: { status: 400, data: zGetTextToSpeechVoicesError400 },
     provider_not_support_speech_to_text: { status: 400, data: zGetTextToSpeechVoicesError400 },
     provider_quota_exceeded: { status: 400, data: zGetTextToSpeechVoicesError400 },
+    security_error: { status: 400, data: zGetTextToSpeechVoicesError400 },
+    websocket_mismatch: { status: 400, data: zGetTextToSpeechVoicesError400 },
     not_init_validated: { status: 401, data: zGetTextToSpeechVoicesError401 },
     not_setup: { status: 401, data: zGetTextToSpeechVoicesError401 },
     unauthorized: { status: 401, data: zGetTextToSpeechVoicesError401 },
@@ -3502,7 +3847,10 @@ export const post34 = oc
   .errors({
     account_not_initialized: { status: 400, data: zChatMessageTextToSpeechError400 },
     app_unavailable: { status: 400, data: zChatMessageTextToSpeechError400 },
+    bad_host: { status: 400, data: zChatMessageTextToSpeechError400 },
     bad_request: { status: 400, data: zChatMessageTextToSpeechError400 },
+    bad_request_key_error: { status: 400, data: zChatMessageTextToSpeechError400 },
+    client_disconnected: { status: 400, data: zChatMessageTextToSpeechError400 },
     completion_request_error: { status: 400, data: zChatMessageTextToSpeechError400 },
     invalid_param: { status: 400, data: zChatMessageTextToSpeechError400 },
     model_currently_not_support: { status: 400, data: zChatMessageTextToSpeechError400 },
@@ -3510,6 +3858,8 @@ export const post34 = oc
     provider_not_initialize: { status: 400, data: zChatMessageTextToSpeechError400 },
     provider_not_support_speech_to_text: { status: 400, data: zChatMessageTextToSpeechError400 },
     provider_quota_exceeded: { status: 400, data: zChatMessageTextToSpeechError400 },
+    security_error: { status: 400, data: zChatMessageTextToSpeechError400 },
+    websocket_mismatch: { status: 400, data: zChatMessageTextToSpeechError400 },
     not_init_validated: { status: 401, data: zChatMessageTextToSpeechError401 },
     not_setup: { status: 401, data: zChatMessageTextToSpeechError401 },
     unauthorized: { status: 401, data: zChatMessageTextToSpeechError401 },
@@ -3542,8 +3892,13 @@ export const get43 = oc
   .output(zGetAppsByAppIdTraceResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetAppTraceError400 },
+    bad_host: { status: 400, data: zGetAppTraceError400 },
     bad_request: { status: 400, data: zGetAppTraceError400 },
+    bad_request_key_error: { status: 400, data: zGetAppTraceError400 },
+    client_disconnected: { status: 400, data: zGetAppTraceError400 },
     invalid_param: { status: 400, data: zGetAppTraceError400 },
+    security_error: { status: 400, data: zGetAppTraceError400 },
+    websocket_mismatch: { status: 400, data: zGetAppTraceError400 },
     not_init_validated: { status: 401, data: zGetAppTraceError401 },
     not_setup: { status: 401, data: zGetAppTraceError401 },
     unauthorized: { status: 401, data: zGetAppTraceError401 },
@@ -3565,9 +3920,14 @@ export const post35 = oc
   .output(zPostAppsByAppIdTraceResponse)
   .errors({
     account_not_initialized: { status: 400, data: zUpdateAppTraceError400 },
+    bad_host: { status: 400, data: zUpdateAppTraceError400 },
     bad_request: { status: 400, data: zUpdateAppTraceError400 },
+    bad_request_key_error: { status: 400, data: zUpdateAppTraceError400 },
+    client_disconnected: { status: 400, data: zUpdateAppTraceError400 },
     invalid_param: { status: 400, data: zUpdateAppTraceError400 },
+    security_error: { status: 400, data: zUpdateAppTraceError400 },
     tracing_provider_unavailable: { status: 400, data: zUpdateAppTraceError400 },
+    websocket_mismatch: { status: 400, data: zUpdateAppTraceError400 },
     not_init_validated: { status: 401, data: zUpdateAppTraceError401 },
     not_setup: { status: 401, data: zUpdateAppTraceError401 },
     unauthorized: { status: 401, data: zUpdateAppTraceError401 },
@@ -3603,9 +3963,14 @@ export const delete8 = oc
   .output(zDeleteAppsByAppIdTraceConfigResponse)
   .errors({
     account_not_initialized: { status: 400, data: zDeleteTraceAppConfigError400 },
+    bad_host: { status: 400, data: zDeleteTraceAppConfigError400 },
     bad_request: { status: 400, data: zDeleteTraceAppConfigError400 },
+    bad_request_key_error: { status: 400, data: zDeleteTraceAppConfigError400 },
+    client_disconnected: { status: 400, data: zDeleteTraceAppConfigError400 },
     invalid_param: { status: 400, data: zDeleteTraceAppConfigError400 },
+    security_error: { status: 400, data: zDeleteTraceAppConfigError400 },
     unsupported_tracing_provider: { status: 400, data: zDeleteTraceAppConfigError400 },
+    websocket_mismatch: { status: 400, data: zDeleteTraceAppConfigError400 },
     not_init_validated: { status: 401, data: zDeleteTraceAppConfigError401 },
     not_setup: { status: 401, data: zDeleteTraceAppConfigError401 },
     unauthorized: { status: 401, data: zDeleteTraceAppConfigError401 },
@@ -3636,10 +4001,15 @@ export const get44 = oc
   .output(zGetAppsByAppIdTraceConfigResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetTraceAppConfigError400 },
+    bad_host: { status: 400, data: zGetTraceAppConfigError400 },
     bad_request: { status: 400, data: zGetTraceAppConfigError400 },
+    bad_request_key_error: { status: 400, data: zGetTraceAppConfigError400 },
+    client_disconnected: { status: 400, data: zGetTraceAppConfigError400 },
     invalid_param: { status: 400, data: zGetTraceAppConfigError400 },
+    security_error: { status: 400, data: zGetTraceAppConfigError400 },
     tracing_provider_unavailable: { status: 400, data: zGetTraceAppConfigError400 },
     unsupported_tracing_provider: { status: 400, data: zGetTraceAppConfigError400 },
+    websocket_mismatch: { status: 400, data: zGetTraceAppConfigError400 },
     not_init_validated: { status: 401, data: zGetTraceAppConfigError401 },
     not_setup: { status: 401, data: zGetTraceAppConfigError401 },
     unauthorized: { status: 401, data: zGetTraceAppConfigError401 },
@@ -3672,12 +4042,17 @@ export const patch = oc
   .output(zPatchAppsByAppIdTraceConfigResponse)
   .errors({
     account_not_initialized: { status: 400, data: zUpdateTraceAppConfigError400 },
+    bad_host: { status: 400, data: zUpdateTraceAppConfigError400 },
     bad_request: { status: 400, data: zUpdateTraceAppConfigError400 },
+    bad_request_key_error: { status: 400, data: zUpdateTraceAppConfigError400 },
+    client_disconnected: { status: 400, data: zUpdateTraceAppConfigError400 },
     invalid_param: { status: 400, data: zUpdateTraceAppConfigError400 },
     invalid_tracing_config: { status: 400, data: zUpdateTraceAppConfigError400 },
+    security_error: { status: 400, data: zUpdateTraceAppConfigError400 },
     tracing_config_verification_failed: { status: 400, data: zUpdateTraceAppConfigError400 },
     tracing_provider_unavailable: { status: 400, data: zUpdateTraceAppConfigError400 },
     unsupported_tracing_provider: { status: 400, data: zUpdateTraceAppConfigError400 },
+    websocket_mismatch: { status: 400, data: zUpdateTraceAppConfigError400 },
     not_init_validated: { status: 401, data: zUpdateTraceAppConfigError401 },
     not_setup: { status: 401, data: zUpdateTraceAppConfigError401 },
     unauthorized: { status: 401, data: zUpdateTraceAppConfigError401 },
@@ -3712,12 +4087,17 @@ export const post36 = oc
   .output(zPostAppsByAppIdTraceConfigResponse)
   .errors({
     account_not_initialized: { status: 400, data: zCreateTraceAppConfigError400 },
+    bad_host: { status: 400, data: zCreateTraceAppConfigError400 },
     bad_request: { status: 400, data: zCreateTraceAppConfigError400 },
+    bad_request_key_error: { status: 400, data: zCreateTraceAppConfigError400 },
+    client_disconnected: { status: 400, data: zCreateTraceAppConfigError400 },
     invalid_param: { status: 400, data: zCreateTraceAppConfigError400 },
     invalid_tracing_config: { status: 400, data: zCreateTraceAppConfigError400 },
+    security_error: { status: 400, data: zCreateTraceAppConfigError400 },
     tracing_config_verification_failed: { status: 400, data: zCreateTraceAppConfigError400 },
     tracing_provider_unavailable: { status: 400, data: zCreateTraceAppConfigError400 },
     unsupported_tracing_provider: { status: 400, data: zCreateTraceAppConfigError400 },
+    websocket_mismatch: { status: 400, data: zCreateTraceAppConfigError400 },
     not_init_validated: { status: 401, data: zCreateTraceAppConfigError401 },
     not_setup: { status: 401, data: zCreateTraceAppConfigError401 },
     unauthorized: { status: 401, data: zCreateTraceAppConfigError401 },
@@ -3759,8 +4139,13 @@ export const post37 = oc
   .output(zPostAppsByAppIdTriggerEnableResponse)
   .errors({
     account_not_initialized: { status: 400, data: zPostAppTriggerEnableApiError400 },
+    bad_host: { status: 400, data: zPostAppTriggerEnableApiError400 },
     bad_request: { status: 400, data: zPostAppTriggerEnableApiError400 },
+    bad_request_key_error: { status: 400, data: zPostAppTriggerEnableApiError400 },
+    client_disconnected: { status: 400, data: zPostAppTriggerEnableApiError400 },
     invalid_param: { status: 400, data: zPostAppTriggerEnableApiError400 },
+    security_error: { status: 400, data: zPostAppTriggerEnableApiError400 },
+    websocket_mismatch: { status: 400, data: zPostAppTriggerEnableApiError400 },
     not_init_validated: { status: 401, data: zPostAppTriggerEnableApiError401 },
     not_setup: { status: 401, data: zPostAppTriggerEnableApiError401 },
     unauthorized: { status: 401, data: zPostAppTriggerEnableApiError401 },
@@ -3788,8 +4173,13 @@ export const get45 = oc
   .output(zGetAppsByAppIdTriggersResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetAppTriggersApiError400 },
+    bad_host: { status: 400, data: zGetAppTriggersApiError400 },
     bad_request: { status: 400, data: zGetAppTriggersApiError400 },
+    bad_request_key_error: { status: 400, data: zGetAppTriggersApiError400 },
+    client_disconnected: { status: 400, data: zGetAppTriggersApiError400 },
     invalid_param: { status: 400, data: zGetAppTriggersApiError400 },
+    security_error: { status: 400, data: zGetAppTriggersApiError400 },
+    websocket_mismatch: { status: 400, data: zGetAppTriggersApiError400 },
     not_init_validated: { status: 401, data: zGetAppTriggersApiError401 },
     not_setup: { status: 401, data: zGetAppTriggersApiError401 },
     unauthorized: { status: 401, data: zGetAppTriggersApiError401 },
@@ -3825,8 +4215,13 @@ export const get46 = oc
   .output(zGetAppsByAppIdWorkflowAppLogsResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetWorkflowAppLogsError400 },
+    bad_host: { status: 400, data: zGetWorkflowAppLogsError400 },
     bad_request: { status: 400, data: zGetWorkflowAppLogsError400 },
+    bad_request_key_error: { status: 400, data: zGetWorkflowAppLogsError400 },
+    client_disconnected: { status: 400, data: zGetWorkflowAppLogsError400 },
     invalid_param: { status: 400, data: zGetWorkflowAppLogsError400 },
+    security_error: { status: 400, data: zGetWorkflowAppLogsError400 },
+    websocket_mismatch: { status: 400, data: zGetWorkflowAppLogsError400 },
     not_init_validated: { status: 401, data: zGetWorkflowAppLogsError401 },
     not_setup: { status: 401, data: zGetWorkflowAppLogsError401 },
     unauthorized: { status: 401, data: zGetWorkflowAppLogsError401 },
@@ -3862,8 +4257,13 @@ export const get47 = oc
   .output(zGetAppsByAppIdWorkflowRunsCountResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetWorkflowRunsCountError400 },
+    bad_host: { status: 400, data: zGetWorkflowRunsCountError400 },
     bad_request: { status: 400, data: zGetWorkflowRunsCountError400 },
+    bad_request_key_error: { status: 400, data: zGetWorkflowRunsCountError400 },
+    client_disconnected: { status: 400, data: zGetWorkflowRunsCountError400 },
     invalid_param: { status: 400, data: zGetWorkflowRunsCountError400 },
+    security_error: { status: 400, data: zGetWorkflowRunsCountError400 },
+    websocket_mismatch: { status: 400, data: zGetWorkflowRunsCountError400 },
     not_init_validated: { status: 401, data: zGetWorkflowRunsCountError401 },
     not_setup: { status: 401, data: zGetWorkflowRunsCountError401 },
     unauthorized: { status: 401, data: zGetWorkflowRunsCountError401 },
@@ -3894,8 +4294,13 @@ export const post38 = oc
   .output(zPostAppsByAppIdWorkflowRunsTasksByTaskIdStopResponse)
   .errors({
     account_not_initialized: { status: 400, data: zStopWorkflowTaskError400 },
+    bad_host: { status: 400, data: zStopWorkflowTaskError400 },
     bad_request: { status: 400, data: zStopWorkflowTaskError400 },
+    bad_request_key_error: { status: 400, data: zStopWorkflowTaskError400 },
+    client_disconnected: { status: 400, data: zStopWorkflowTaskError400 },
     invalid_param: { status: 400, data: zStopWorkflowTaskError400 },
+    security_error: { status: 400, data: zStopWorkflowTaskError400 },
+    websocket_mismatch: { status: 400, data: zStopWorkflowTaskError400 },
     not_init_validated: { status: 401, data: zStopWorkflowTaskError401 },
     not_setup: { status: 401, data: zStopWorkflowTaskError401 },
     unauthorized: { status: 401, data: zStopWorkflowTaskError401 },
@@ -3934,8 +4339,13 @@ export const get48 = oc
   .output(zGetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetWorkflowRunNodeExecutionsError400 },
+    bad_host: { status: 400, data: zGetWorkflowRunNodeExecutionsError400 },
     bad_request: { status: 400, data: zGetWorkflowRunNodeExecutionsError400 },
+    bad_request_key_error: { status: 400, data: zGetWorkflowRunNodeExecutionsError400 },
+    client_disconnected: { status: 400, data: zGetWorkflowRunNodeExecutionsError400 },
     invalid_param: { status: 400, data: zGetWorkflowRunNodeExecutionsError400 },
+    security_error: { status: 400, data: zGetWorkflowRunNodeExecutionsError400 },
+    websocket_mismatch: { status: 400, data: zGetWorkflowRunNodeExecutionsError400 },
     not_init_validated: { status: 401, data: zGetWorkflowRunNodeExecutionsError401 },
     not_setup: { status: 401, data: zGetWorkflowRunNodeExecutionsError401 },
     unauthorized: { status: 401, data: zGetWorkflowRunNodeExecutionsError401 },
@@ -3966,8 +4376,13 @@ export const get49 = oc
   .output(zGetAppsByAppIdWorkflowRunsByRunIdResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetWorkflowRunDetailError400 },
+    bad_host: { status: 400, data: zGetWorkflowRunDetailError400 },
     bad_request: { status: 400, data: zGetWorkflowRunDetailError400 },
+    bad_request_key_error: { status: 400, data: zGetWorkflowRunDetailError400 },
+    client_disconnected: { status: 400, data: zGetWorkflowRunDetailError400 },
     invalid_param: { status: 400, data: zGetWorkflowRunDetailError400 },
+    security_error: { status: 400, data: zGetWorkflowRunDetailError400 },
+    websocket_mismatch: { status: 400, data: zGetWorkflowRunDetailError400 },
     not_init_validated: { status: 401, data: zGetWorkflowRunDetailError401 },
     not_setup: { status: 401, data: zGetWorkflowRunDetailError401 },
     unauthorized: { status: 401, data: zGetWorkflowRunDetailError401 },
@@ -4095,8 +4510,13 @@ export const get52 = oc
   .output(zGetAppsByAppIdWorkflowRunsResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetWorkflowRunsError400 },
+    bad_host: { status: 400, data: zGetWorkflowRunsError400 },
     bad_request: { status: 400, data: zGetWorkflowRunsError400 },
+    bad_request_key_error: { status: 400, data: zGetWorkflowRunsError400 },
+    client_disconnected: { status: 400, data: zGetWorkflowRunsError400 },
     invalid_param: { status: 400, data: zGetWorkflowRunsError400 },
+    security_error: { status: 400, data: zGetWorkflowRunsError400 },
+    websocket_mismatch: { status: 400, data: zGetWorkflowRunsError400 },
     not_init_validated: { status: 401, data: zGetWorkflowRunsError401 },
     not_setup: { status: 401, data: zGetWorkflowRunsError401 },
     unauthorized: { status: 401, data: zGetWorkflowRunsError401 },
@@ -4131,8 +4551,13 @@ export const get53 = oc
   .output(zGetAppsByAppIdWorkflowCommentsMentionUsersResponse)
   .errors({
     account_not_initialized: { status: 400, data: zWorkflowCommentMentionUsersError400 },
+    bad_host: { status: 400, data: zWorkflowCommentMentionUsersError400 },
     bad_request: { status: 400, data: zWorkflowCommentMentionUsersError400 },
+    bad_request_key_error: { status: 400, data: zWorkflowCommentMentionUsersError400 },
+    client_disconnected: { status: 400, data: zWorkflowCommentMentionUsersError400 },
     invalid_param: { status: 400, data: zWorkflowCommentMentionUsersError400 },
+    security_error: { status: 400, data: zWorkflowCommentMentionUsersError400 },
+    websocket_mismatch: { status: 400, data: zWorkflowCommentMentionUsersError400 },
     not_init_validated: { status: 401, data: zWorkflowCommentMentionUsersError401 },
     not_setup: { status: 401, data: zWorkflowCommentMentionUsersError401 },
     unauthorized: { status: 401, data: zWorkflowCommentMentionUsersError401 },
@@ -4165,8 +4590,13 @@ export const delete9 = oc
   .output(zDeleteAppsByAppIdWorkflowCommentsByCommentIdRepliesByReplyIdResponse)
   .errors({
     account_not_initialized: { status: 400, data: zDeleteWorkflowCommentReplyError400 },
+    bad_host: { status: 400, data: zDeleteWorkflowCommentReplyError400 },
     bad_request: { status: 400, data: zDeleteWorkflowCommentReplyError400 },
+    bad_request_key_error: { status: 400, data: zDeleteWorkflowCommentReplyError400 },
+    client_disconnected: { status: 400, data: zDeleteWorkflowCommentReplyError400 },
     invalid_param: { status: 400, data: zDeleteWorkflowCommentReplyError400 },
+    security_error: { status: 400, data: zDeleteWorkflowCommentReplyError400 },
+    websocket_mismatch: { status: 400, data: zDeleteWorkflowCommentReplyError400 },
     not_init_validated: { status: 401, data: zDeleteWorkflowCommentReplyError401 },
     not_setup: { status: 401, data: zDeleteWorkflowCommentReplyError401 },
     unauthorized: { status: 401, data: zDeleteWorkflowCommentReplyError401 },
@@ -4199,8 +4629,13 @@ export const put2 = oc
   .output(zPutAppsByAppIdWorkflowCommentsByCommentIdRepliesByReplyIdResponse)
   .errors({
     account_not_initialized: { status: 400, data: zUpdateWorkflowCommentReplyError400 },
+    bad_host: { status: 400, data: zUpdateWorkflowCommentReplyError400 },
     bad_request: { status: 400, data: zUpdateWorkflowCommentReplyError400 },
+    bad_request_key_error: { status: 400, data: zUpdateWorkflowCommentReplyError400 },
+    client_disconnected: { status: 400, data: zUpdateWorkflowCommentReplyError400 },
     invalid_param: { status: 400, data: zUpdateWorkflowCommentReplyError400 },
+    security_error: { status: 400, data: zUpdateWorkflowCommentReplyError400 },
+    websocket_mismatch: { status: 400, data: zUpdateWorkflowCommentReplyError400 },
     not_init_validated: { status: 401, data: zUpdateWorkflowCommentReplyError401 },
     not_setup: { status: 401, data: zUpdateWorkflowCommentReplyError401 },
     unauthorized: { status: 401, data: zUpdateWorkflowCommentReplyError401 },
@@ -4239,8 +4674,13 @@ export const post40 = oc
   .output(zPostAppsByAppIdWorkflowCommentsByCommentIdRepliesResponse)
   .errors({
     account_not_initialized: { status: 400, data: zCreateWorkflowCommentReplyError400 },
+    bad_host: { status: 400, data: zCreateWorkflowCommentReplyError400 },
     bad_request: { status: 400, data: zCreateWorkflowCommentReplyError400 },
+    bad_request_key_error: { status: 400, data: zCreateWorkflowCommentReplyError400 },
+    client_disconnected: { status: 400, data: zCreateWorkflowCommentReplyError400 },
     invalid_param: { status: 400, data: zCreateWorkflowCommentReplyError400 },
+    security_error: { status: 400, data: zCreateWorkflowCommentReplyError400 },
+    websocket_mismatch: { status: 400, data: zCreateWorkflowCommentReplyError400 },
     not_init_validated: { status: 401, data: zCreateWorkflowCommentReplyError401 },
     not_setup: { status: 401, data: zCreateWorkflowCommentReplyError401 },
     unauthorized: { status: 401, data: zCreateWorkflowCommentReplyError401 },
@@ -4273,8 +4713,13 @@ export const post41 = oc
   .output(zPostAppsByAppIdWorkflowCommentsByCommentIdResolveResponse)
   .errors({
     account_not_initialized: { status: 400, data: zResolveWorkflowCommentError400 },
+    bad_host: { status: 400, data: zResolveWorkflowCommentError400 },
     bad_request: { status: 400, data: zResolveWorkflowCommentError400 },
+    bad_request_key_error: { status: 400, data: zResolveWorkflowCommentError400 },
+    client_disconnected: { status: 400, data: zResolveWorkflowCommentError400 },
     invalid_param: { status: 400, data: zResolveWorkflowCommentError400 },
+    security_error: { status: 400, data: zResolveWorkflowCommentError400 },
+    websocket_mismatch: { status: 400, data: zResolveWorkflowCommentError400 },
     not_init_validated: { status: 401, data: zResolveWorkflowCommentError401 },
     not_setup: { status: 401, data: zResolveWorkflowCommentError401 },
     unauthorized: { status: 401, data: zResolveWorkflowCommentError401 },
@@ -4307,8 +4752,13 @@ export const delete10 = oc
   .output(zDeleteAppsByAppIdWorkflowCommentsByCommentIdResponse)
   .errors({
     account_not_initialized: { status: 400, data: zDeleteWorkflowCommentError400 },
+    bad_host: { status: 400, data: zDeleteWorkflowCommentError400 },
     bad_request: { status: 400, data: zDeleteWorkflowCommentError400 },
+    bad_request_key_error: { status: 400, data: zDeleteWorkflowCommentError400 },
+    client_disconnected: { status: 400, data: zDeleteWorkflowCommentError400 },
     invalid_param: { status: 400, data: zDeleteWorkflowCommentError400 },
+    security_error: { status: 400, data: zDeleteWorkflowCommentError400 },
+    websocket_mismatch: { status: 400, data: zDeleteWorkflowCommentError400 },
     not_init_validated: { status: 401, data: zDeleteWorkflowCommentError401 },
     not_setup: { status: 401, data: zDeleteWorkflowCommentError401 },
     unauthorized: { status: 401, data: zDeleteWorkflowCommentError401 },
@@ -4336,8 +4786,13 @@ export const get54 = oc
   .output(zGetAppsByAppIdWorkflowCommentsByCommentIdResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetWorkflowCommentError400 },
+    bad_host: { status: 400, data: zGetWorkflowCommentError400 },
     bad_request: { status: 400, data: zGetWorkflowCommentError400 },
+    bad_request_key_error: { status: 400, data: zGetWorkflowCommentError400 },
+    client_disconnected: { status: 400, data: zGetWorkflowCommentError400 },
     invalid_param: { status: 400, data: zGetWorkflowCommentError400 },
+    security_error: { status: 400, data: zGetWorkflowCommentError400 },
+    websocket_mismatch: { status: 400, data: zGetWorkflowCommentError400 },
     not_init_validated: { status: 401, data: zGetWorkflowCommentError401 },
     not_setup: { status: 401, data: zGetWorkflowCommentError401 },
     unauthorized: { status: 401, data: zGetWorkflowCommentError401 },
@@ -4370,8 +4825,13 @@ export const put3 = oc
   .output(zPutAppsByAppIdWorkflowCommentsByCommentIdResponse)
   .errors({
     account_not_initialized: { status: 400, data: zUpdateWorkflowCommentError400 },
+    bad_host: { status: 400, data: zUpdateWorkflowCommentError400 },
     bad_request: { status: 400, data: zUpdateWorkflowCommentError400 },
+    bad_request_key_error: { status: 400, data: zUpdateWorkflowCommentError400 },
+    client_disconnected: { status: 400, data: zUpdateWorkflowCommentError400 },
     invalid_param: { status: 400, data: zUpdateWorkflowCommentError400 },
+    security_error: { status: 400, data: zUpdateWorkflowCommentError400 },
+    websocket_mismatch: { status: 400, data: zUpdateWorkflowCommentError400 },
     not_init_validated: { status: 401, data: zUpdateWorkflowCommentError401 },
     not_setup: { status: 401, data: zUpdateWorkflowCommentError401 },
     unauthorized: { status: 401, data: zUpdateWorkflowCommentError401 },
@@ -4407,8 +4867,13 @@ export const get55 = oc
   .output(zGetAppsByAppIdWorkflowCommentsResponse)
   .errors({
     account_not_initialized: { status: 400, data: zListWorkflowCommentsError400 },
+    bad_host: { status: 400, data: zListWorkflowCommentsError400 },
     bad_request: { status: 400, data: zListWorkflowCommentsError400 },
+    bad_request_key_error: { status: 400, data: zListWorkflowCommentsError400 },
+    client_disconnected: { status: 400, data: zListWorkflowCommentsError400 },
     invalid_param: { status: 400, data: zListWorkflowCommentsError400 },
+    security_error: { status: 400, data: zListWorkflowCommentsError400 },
+    websocket_mismatch: { status: 400, data: zListWorkflowCommentsError400 },
     not_init_validated: { status: 401, data: zListWorkflowCommentsError401 },
     not_setup: { status: 401, data: zListWorkflowCommentsError401 },
     unauthorized: { status: 401, data: zListWorkflowCommentsError401 },
@@ -4442,8 +4907,13 @@ export const post42 = oc
   .output(zPostAppsByAppIdWorkflowCommentsResponse)
   .errors({
     account_not_initialized: { status: 400, data: zCreateWorkflowCommentError400 },
+    bad_host: { status: 400, data: zCreateWorkflowCommentError400 },
     bad_request: { status: 400, data: zCreateWorkflowCommentError400 },
+    bad_request_key_error: { status: 400, data: zCreateWorkflowCommentError400 },
+    client_disconnected: { status: 400, data: zCreateWorkflowCommentError400 },
     invalid_param: { status: 400, data: zCreateWorkflowCommentError400 },
+    security_error: { status: 400, data: zCreateWorkflowCommentError400 },
+    websocket_mismatch: { status: 400, data: zCreateWorkflowCommentError400 },
     not_init_validated: { status: 401, data: zCreateWorkflowCommentError401 },
     not_setup: { status: 401, data: zCreateWorkflowCommentError401 },
     unauthorized: { status: 401, data: zCreateWorkflowCommentError401 },
@@ -4483,8 +4953,16 @@ export const get56 = oc
       status: 400,
       data: zGetWorkflowAverageAppInteractionStatisticError400,
     },
+    bad_host: { status: 400, data: zGetWorkflowAverageAppInteractionStatisticError400 },
     bad_request: { status: 400, data: zGetWorkflowAverageAppInteractionStatisticError400 },
+    bad_request_key_error: {
+      status: 400,
+      data: zGetWorkflowAverageAppInteractionStatisticError400,
+    },
+    client_disconnected: { status: 400, data: zGetWorkflowAverageAppInteractionStatisticError400 },
     invalid_param: { status: 400, data: zGetWorkflowAverageAppInteractionStatisticError400 },
+    security_error: { status: 400, data: zGetWorkflowAverageAppInteractionStatisticError400 },
+    websocket_mismatch: { status: 400, data: zGetWorkflowAverageAppInteractionStatisticError400 },
     not_init_validated: { status: 401, data: zGetWorkflowAverageAppInteractionStatisticError401 },
     not_setup: { status: 401, data: zGetWorkflowAverageAppInteractionStatisticError401 },
     unauthorized: { status: 401, data: zGetWorkflowAverageAppInteractionStatisticError401 },
@@ -4517,8 +4995,13 @@ export const get57 = oc
   .output(zGetAppsByAppIdWorkflowStatisticsDailyConversationsResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetWorkflowDailyRunsStatisticError400 },
+    bad_host: { status: 400, data: zGetWorkflowDailyRunsStatisticError400 },
     bad_request: { status: 400, data: zGetWorkflowDailyRunsStatisticError400 },
+    bad_request_key_error: { status: 400, data: zGetWorkflowDailyRunsStatisticError400 },
+    client_disconnected: { status: 400, data: zGetWorkflowDailyRunsStatisticError400 },
     invalid_param: { status: 400, data: zGetWorkflowDailyRunsStatisticError400 },
+    security_error: { status: 400, data: zGetWorkflowDailyRunsStatisticError400 },
+    websocket_mismatch: { status: 400, data: zGetWorkflowDailyRunsStatisticError400 },
     not_init_validated: { status: 401, data: zGetWorkflowDailyRunsStatisticError401 },
     not_setup: { status: 401, data: zGetWorkflowDailyRunsStatisticError401 },
     unauthorized: { status: 401, data: zGetWorkflowDailyRunsStatisticError401 },
@@ -4551,8 +5034,13 @@ export const get58 = oc
   .output(zGetAppsByAppIdWorkflowStatisticsDailyTerminalsResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetWorkflowDailyTerminalsStatisticError400 },
+    bad_host: { status: 400, data: zGetWorkflowDailyTerminalsStatisticError400 },
     bad_request: { status: 400, data: zGetWorkflowDailyTerminalsStatisticError400 },
+    bad_request_key_error: { status: 400, data: zGetWorkflowDailyTerminalsStatisticError400 },
+    client_disconnected: { status: 400, data: zGetWorkflowDailyTerminalsStatisticError400 },
     invalid_param: { status: 400, data: zGetWorkflowDailyTerminalsStatisticError400 },
+    security_error: { status: 400, data: zGetWorkflowDailyTerminalsStatisticError400 },
+    websocket_mismatch: { status: 400, data: zGetWorkflowDailyTerminalsStatisticError400 },
     not_init_validated: { status: 401, data: zGetWorkflowDailyTerminalsStatisticError401 },
     not_setup: { status: 401, data: zGetWorkflowDailyTerminalsStatisticError401 },
     unauthorized: { status: 401, data: zGetWorkflowDailyTerminalsStatisticError401 },
@@ -4585,8 +5073,13 @@ export const get59 = oc
   .output(zGetAppsByAppIdWorkflowStatisticsTokenCostsResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetWorkflowDailyTokenCostStatisticError400 },
+    bad_host: { status: 400, data: zGetWorkflowDailyTokenCostStatisticError400 },
     bad_request: { status: 400, data: zGetWorkflowDailyTokenCostStatisticError400 },
+    bad_request_key_error: { status: 400, data: zGetWorkflowDailyTokenCostStatisticError400 },
+    client_disconnected: { status: 400, data: zGetWorkflowDailyTokenCostStatisticError400 },
     invalid_param: { status: 400, data: zGetWorkflowDailyTokenCostStatisticError400 },
+    security_error: { status: 400, data: zGetWorkflowDailyTokenCostStatisticError400 },
+    websocket_mismatch: { status: 400, data: zGetWorkflowDailyTokenCostStatisticError400 },
     not_init_validated: { status: 401, data: zGetWorkflowDailyTokenCostStatisticError401 },
     not_setup: { status: 401, data: zGetWorkflowDailyTokenCostStatisticError401 },
     unauthorized: { status: 401, data: zGetWorkflowDailyTokenCostStatisticError401 },
@@ -4634,8 +5127,13 @@ export const get60 = oc
   .output(zGetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetDefaultBlockConfigError400 },
+    bad_host: { status: 400, data: zGetDefaultBlockConfigError400 },
     bad_request: { status: 400, data: zGetDefaultBlockConfigError400 },
+    bad_request_key_error: { status: 400, data: zGetDefaultBlockConfigError400 },
+    client_disconnected: { status: 400, data: zGetDefaultBlockConfigError400 },
     invalid_param: { status: 400, data: zGetDefaultBlockConfigError400 },
+    security_error: { status: 400, data: zGetDefaultBlockConfigError400 },
+    websocket_mismatch: { status: 400, data: zGetDefaultBlockConfigError400 },
     not_init_validated: { status: 401, data: zGetDefaultBlockConfigError401 },
     not_setup: { status: 401, data: zGetDefaultBlockConfigError401 },
     unauthorized: { status: 401, data: zGetDefaultBlockConfigError401 },
@@ -4666,8 +5164,13 @@ export const get61 = oc
   .output(zGetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetDefaultBlockConfigsError400 },
+    bad_host: { status: 400, data: zGetDefaultBlockConfigsError400 },
     bad_request: { status: 400, data: zGetDefaultBlockConfigsError400 },
+    bad_request_key_error: { status: 400, data: zGetDefaultBlockConfigsError400 },
+    client_disconnected: { status: 400, data: zGetDefaultBlockConfigsError400 },
     invalid_param: { status: 400, data: zGetDefaultBlockConfigsError400 },
+    security_error: { status: 400, data: zGetDefaultBlockConfigsError400 },
+    websocket_mismatch: { status: 400, data: zGetDefaultBlockConfigsError400 },
     not_init_validated: { status: 401, data: zGetDefaultBlockConfigsError401 },
     not_setup: { status: 401, data: zGetDefaultBlockConfigsError401 },
     unauthorized: { status: 401, data: zGetDefaultBlockConfigsError401 },
@@ -4696,8 +5199,13 @@ export const get62 = oc
   .output(zGetAppsByAppIdWorkflowsDraftConversationVariablesResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetConversationVariablesA709B7A1Error400 },
+    bad_host: { status: 400, data: zGetConversationVariablesA709B7A1Error400 },
     bad_request: { status: 400, data: zGetConversationVariablesA709B7A1Error400 },
+    bad_request_key_error: { status: 400, data: zGetConversationVariablesA709B7A1Error400 },
+    client_disconnected: { status: 400, data: zGetConversationVariablesA709B7A1Error400 },
     invalid_param: { status: 400, data: zGetConversationVariablesA709B7A1Error400 },
+    security_error: { status: 400, data: zGetConversationVariablesA709B7A1Error400 },
+    websocket_mismatch: { status: 400, data: zGetConversationVariablesA709B7A1Error400 },
     not_init_validated: { status: 401, data: zGetConversationVariablesA709B7A1Error401 },
     not_setup: { status: 401, data: zGetConversationVariablesA709B7A1Error401 },
     unauthorized: { status: 401, data: zGetConversationVariablesA709B7A1Error401 },
@@ -4726,8 +5234,13 @@ export const post43 = oc
   .output(zPostAppsByAppIdWorkflowsDraftConversationVariablesResponse)
   .errors({
     account_not_initialized: { status: 400, data: zUpdateConversationVariablesError400 },
+    bad_host: { status: 400, data: zUpdateConversationVariablesError400 },
     bad_request: { status: 400, data: zUpdateConversationVariablesError400 },
+    bad_request_key_error: { status: 400, data: zUpdateConversationVariablesError400 },
+    client_disconnected: { status: 400, data: zUpdateConversationVariablesError400 },
     invalid_param: { status: 400, data: zUpdateConversationVariablesError400 },
+    security_error: { status: 400, data: zUpdateConversationVariablesError400 },
+    websocket_mismatch: { status: 400, data: zUpdateConversationVariablesError400 },
     not_init_validated: { status: 401, data: zUpdateConversationVariablesError401 },
     not_setup: { status: 401, data: zUpdateConversationVariablesError401 },
     unauthorized: { status: 401, data: zUpdateConversationVariablesError401 },
@@ -4759,8 +5272,13 @@ export const get63 = oc
   .output(zGetAppsByAppIdWorkflowsDraftEnvironmentVariablesResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetEnvironmentVariablesError400 },
+    bad_host: { status: 400, data: zGetEnvironmentVariablesError400 },
     bad_request: { status: 400, data: zGetEnvironmentVariablesError400 },
+    bad_request_key_error: { status: 400, data: zGetEnvironmentVariablesError400 },
+    client_disconnected: { status: 400, data: zGetEnvironmentVariablesError400 },
     invalid_param: { status: 400, data: zGetEnvironmentVariablesError400 },
+    security_error: { status: 400, data: zGetEnvironmentVariablesError400 },
+    websocket_mismatch: { status: 400, data: zGetEnvironmentVariablesError400 },
     not_init_validated: { status: 401, data: zGetEnvironmentVariablesError401 },
     not_setup: { status: 401, data: zGetEnvironmentVariablesError401 },
     unauthorized: { status: 401, data: zGetEnvironmentVariablesError401 },
@@ -4790,8 +5308,13 @@ export const post44 = oc
   .output(zPostAppsByAppIdWorkflowsDraftEnvironmentVariablesResponse)
   .errors({
     account_not_initialized: { status: 400, data: zUpdateEnvironmentVariablesError400 },
+    bad_host: { status: 400, data: zUpdateEnvironmentVariablesError400 },
     bad_request: { status: 400, data: zUpdateEnvironmentVariablesError400 },
+    bad_request_key_error: { status: 400, data: zUpdateEnvironmentVariablesError400 },
+    client_disconnected: { status: 400, data: zUpdateEnvironmentVariablesError400 },
     invalid_param: { status: 400, data: zUpdateEnvironmentVariablesError400 },
+    security_error: { status: 400, data: zUpdateEnvironmentVariablesError400 },
+    websocket_mismatch: { status: 400, data: zUpdateEnvironmentVariablesError400 },
     not_init_validated: { status: 401, data: zUpdateEnvironmentVariablesError401 },
     not_setup: { status: 401, data: zUpdateEnvironmentVariablesError401 },
     unauthorized: { status: 401, data: zUpdateEnvironmentVariablesError401 },
@@ -4825,8 +5348,13 @@ export const post45 = oc
   .output(zPostAppsByAppIdWorkflowsDraftFeaturesResponse)
   .errors({
     account_not_initialized: { status: 400, data: zUpdateWorkflowFeaturesError400 },
+    bad_host: { status: 400, data: zUpdateWorkflowFeaturesError400 },
     bad_request: { status: 400, data: zUpdateWorkflowFeaturesError400 },
+    bad_request_key_error: { status: 400, data: zUpdateWorkflowFeaturesError400 },
+    client_disconnected: { status: 400, data: zUpdateWorkflowFeaturesError400 },
     invalid_param: { status: 400, data: zUpdateWorkflowFeaturesError400 },
+    security_error: { status: 400, data: zUpdateWorkflowFeaturesError400 },
+    websocket_mismatch: { status: 400, data: zUpdateWorkflowFeaturesError400 },
     not_init_validated: { status: 401, data: zUpdateWorkflowFeaturesError401 },
     not_setup: { status: 401, data: zUpdateWorkflowFeaturesError401 },
     unauthorized: { status: 401, data: zUpdateWorkflowFeaturesError401 },
@@ -4862,8 +5390,13 @@ export const post46 = oc
   .output(zPostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdDeliveryTestResponse)
   .errors({
     account_not_initialized: { status: 400, data: zTestWorkflowDraftHumanInputDeliveryError400 },
+    bad_host: { status: 400, data: zTestWorkflowDraftHumanInputDeliveryError400 },
     bad_request: { status: 400, data: zTestWorkflowDraftHumanInputDeliveryError400 },
+    bad_request_key_error: { status: 400, data: zTestWorkflowDraftHumanInputDeliveryError400 },
+    client_disconnected: { status: 400, data: zTestWorkflowDraftHumanInputDeliveryError400 },
     invalid_param: { status: 400, data: zTestWorkflowDraftHumanInputDeliveryError400 },
+    security_error: { status: 400, data: zTestWorkflowDraftHumanInputDeliveryError400 },
+    websocket_mismatch: { status: 400, data: zTestWorkflowDraftHumanInputDeliveryError400 },
     not_init_validated: { status: 401, data: zTestWorkflowDraftHumanInputDeliveryError401 },
     not_setup: { status: 401, data: zTestWorkflowDraftHumanInputDeliveryError401 },
     unauthorized: { status: 401, data: zTestWorkflowDraftHumanInputDeliveryError401 },
@@ -4899,8 +5432,13 @@ export const post47 = oc
   .output(zPostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormPreviewResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetWorkflowDraftHumanInputFormError400 },
+    bad_host: { status: 400, data: zGetWorkflowDraftHumanInputFormError400 },
     bad_request: { status: 400, data: zGetWorkflowDraftHumanInputFormError400 },
+    bad_request_key_error: { status: 400, data: zGetWorkflowDraftHumanInputFormError400 },
+    client_disconnected: { status: 400, data: zGetWorkflowDraftHumanInputFormError400 },
     invalid_param: { status: 400, data: zGetWorkflowDraftHumanInputFormError400 },
+    security_error: { status: 400, data: zGetWorkflowDraftHumanInputFormError400 },
+    websocket_mismatch: { status: 400, data: zGetWorkflowDraftHumanInputFormError400 },
     not_init_validated: { status: 401, data: zGetWorkflowDraftHumanInputFormError401 },
     not_setup: { status: 401, data: zGetWorkflowDraftHumanInputFormError401 },
     unauthorized: { status: 401, data: zGetWorkflowDraftHumanInputFormError401 },
@@ -4936,8 +5474,13 @@ export const post48 = oc
   .output(zPostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormRunResponse)
   .errors({
     account_not_initialized: { status: 400, data: zSubmitWorkflowDraftHumanInputFormError400 },
+    bad_host: { status: 400, data: zSubmitWorkflowDraftHumanInputFormError400 },
     bad_request: { status: 400, data: zSubmitWorkflowDraftHumanInputFormError400 },
+    bad_request_key_error: { status: 400, data: zSubmitWorkflowDraftHumanInputFormError400 },
+    client_disconnected: { status: 400, data: zSubmitWorkflowDraftHumanInputFormError400 },
     invalid_param: { status: 400, data: zSubmitWorkflowDraftHumanInputFormError400 },
+    security_error: { status: 400, data: zSubmitWorkflowDraftHumanInputFormError400 },
+    websocket_mismatch: { status: 400, data: zSubmitWorkflowDraftHumanInputFormError400 },
     not_init_validated: { status: 401, data: zSubmitWorkflowDraftHumanInputFormError401 },
     not_setup: { status: 401, data: zSubmitWorkflowDraftHumanInputFormError401 },
     unauthorized: { status: 401, data: zSubmitWorkflowDraftHumanInputFormError401 },
@@ -4991,8 +5534,13 @@ export const post49 = oc
   .output(zPostAppsByAppIdWorkflowsDraftIterationNodesByNodeIdRunResponse)
   .errors({
     account_not_initialized: { status: 400, data: zRunWorkflowDraftIterationNodeError400 },
+    bad_host: { status: 400, data: zRunWorkflowDraftIterationNodeError400 },
     bad_request: { status: 400, data: zRunWorkflowDraftIterationNodeError400 },
+    bad_request_key_error: { status: 400, data: zRunWorkflowDraftIterationNodeError400 },
+    client_disconnected: { status: 400, data: zRunWorkflowDraftIterationNodeError400 },
     invalid_param: { status: 400, data: zRunWorkflowDraftIterationNodeError400 },
+    security_error: { status: 400, data: zRunWorkflowDraftIterationNodeError400 },
+    websocket_mismatch: { status: 400, data: zRunWorkflowDraftIterationNodeError400 },
     not_init_validated: { status: 401, data: zRunWorkflowDraftIterationNodeError401 },
     not_setup: { status: 401, data: zRunWorkflowDraftIterationNodeError401 },
     unauthorized: { status: 401, data: zRunWorkflowDraftIterationNodeError401 },
@@ -5040,8 +5588,13 @@ export const post50 = oc
   .output(zPostAppsByAppIdWorkflowsDraftLoopNodesByNodeIdRunResponse)
   .errors({
     account_not_initialized: { status: 400, data: zRunWorkflowDraftLoopNodeError400 },
+    bad_host: { status: 400, data: zRunWorkflowDraftLoopNodeError400 },
     bad_request: { status: 400, data: zRunWorkflowDraftLoopNodeError400 },
+    bad_request_key_error: { status: 400, data: zRunWorkflowDraftLoopNodeError400 },
+    client_disconnected: { status: 400, data: zRunWorkflowDraftLoopNodeError400 },
     invalid_param: { status: 400, data: zRunWorkflowDraftLoopNodeError400 },
+    security_error: { status: 400, data: zRunWorkflowDraftLoopNodeError400 },
+    websocket_mismatch: { status: 400, data: zRunWorkflowDraftLoopNodeError400 },
     not_init_validated: { status: 401, data: zRunWorkflowDraftLoopNodeError401 },
     not_setup: { status: 401, data: zRunWorkflowDraftLoopNodeError401 },
     unauthorized: { status: 401, data: zRunWorkflowDraftLoopNodeError401 },
@@ -5079,8 +5632,13 @@ export const get64 = oc
   .output(zGetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetWorkflowAgentComposerCandidatesApiError400 },
+    bad_host: { status: 400, data: zGetWorkflowAgentComposerCandidatesApiError400 },
     bad_request: { status: 400, data: zGetWorkflowAgentComposerCandidatesApiError400 },
+    bad_request_key_error: { status: 400, data: zGetWorkflowAgentComposerCandidatesApiError400 },
+    client_disconnected: { status: 400, data: zGetWorkflowAgentComposerCandidatesApiError400 },
     invalid_param: { status: 400, data: zGetWorkflowAgentComposerCandidatesApiError400 },
+    security_error: { status: 400, data: zGetWorkflowAgentComposerCandidatesApiError400 },
+    websocket_mismatch: { status: 400, data: zGetWorkflowAgentComposerCandidatesApiError400 },
     not_init_validated: { status: 401, data: zGetWorkflowAgentComposerCandidatesApiError401 },
     not_setup: { status: 401, data: zGetWorkflowAgentComposerCandidatesApiError401 },
     unauthorized: { status: 401, data: zGetWorkflowAgentComposerCandidatesApiError401 },
@@ -5112,12 +5670,20 @@ export const post51 = oc
       status: 400,
       data: zPostWorkflowAgentComposerCopyFromRosterApiError400,
     },
+    bad_host: { status: 400, data: zPostWorkflowAgentComposerCopyFromRosterApiError400 },
     bad_request: { status: 400, data: zPostWorkflowAgentComposerCopyFromRosterApiError400 },
+    bad_request_key_error: {
+      status: 400,
+      data: zPostWorkflowAgentComposerCopyFromRosterApiError400,
+    },
+    client_disconnected: { status: 400, data: zPostWorkflowAgentComposerCopyFromRosterApiError400 },
     invalid_composer_config_error: {
       status: 400,
       data: zPostWorkflowAgentComposerCopyFromRosterApiError400,
     },
     invalid_param: { status: 400, data: zPostWorkflowAgentComposerCopyFromRosterApiError400 },
+    security_error: { status: 400, data: zPostWorkflowAgentComposerCopyFromRosterApiError400 },
+    websocket_mismatch: { status: 400, data: zPostWorkflowAgentComposerCopyFromRosterApiError400 },
     not_init_validated: { status: 401, data: zPostWorkflowAgentComposerCopyFromRosterApiError401 },
     not_setup: { status: 401, data: zPostWorkflowAgentComposerCopyFromRosterApiError401 },
     unauthorized: { status: 401, data: zPostWorkflowAgentComposerCopyFromRosterApiError401 },
@@ -5159,8 +5725,13 @@ export const post52 = oc
   .output(zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerImpactResponse)
   .errors({
     account_not_initialized: { status: 400, data: zPostWorkflowAgentComposerImpactApiError400 },
+    bad_host: { status: 400, data: zPostWorkflowAgentComposerImpactApiError400 },
     bad_request: { status: 400, data: zPostWorkflowAgentComposerImpactApiError400 },
+    bad_request_key_error: { status: 400, data: zPostWorkflowAgentComposerImpactApiError400 },
+    client_disconnected: { status: 400, data: zPostWorkflowAgentComposerImpactApiError400 },
     invalid_param: { status: 400, data: zPostWorkflowAgentComposerImpactApiError400 },
+    security_error: { status: 400, data: zPostWorkflowAgentComposerImpactApiError400 },
+    websocket_mismatch: { status: 400, data: zPostWorkflowAgentComposerImpactApiError400 },
     not_init_validated: { status: 401, data: zPostWorkflowAgentComposerImpactApiError401 },
     not_setup: { status: 401, data: zPostWorkflowAgentComposerImpactApiError401 },
     unauthorized: { status: 401, data: zPostWorkflowAgentComposerImpactApiError401 },
@@ -5196,7 +5767,10 @@ export const post53 = oc
       status: 400,
       data: zPostWorkflowAgentComposerSaveToRosterApiError400,
     },
+    bad_host: { status: 400, data: zPostWorkflowAgentComposerSaveToRosterApiError400 },
     bad_request: { status: 400, data: zPostWorkflowAgentComposerSaveToRosterApiError400 },
+    bad_request_key_error: { status: 400, data: zPostWorkflowAgentComposerSaveToRosterApiError400 },
+    client_disconnected: { status: 400, data: zPostWorkflowAgentComposerSaveToRosterApiError400 },
     invalid_composer_config_error: {
       status: 400,
       data: zPostWorkflowAgentComposerSaveToRosterApiError400,
@@ -5206,6 +5780,8 @@ export const post53 = oc
       status: 400,
       data: zPostWorkflowAgentComposerSaveToRosterApiError400,
     },
+    security_error: { status: 400, data: zPostWorkflowAgentComposerSaveToRosterApiError400 },
+    websocket_mismatch: { status: 400, data: zPostWorkflowAgentComposerSaveToRosterApiError400 },
     not_init_validated: { status: 401, data: zPostWorkflowAgentComposerSaveToRosterApiError401 },
     not_setup: { status: 401, data: zPostWorkflowAgentComposerSaveToRosterApiError401 },
     unauthorized: { status: 401, data: zPostWorkflowAgentComposerSaveToRosterApiError401 },
@@ -5240,7 +5816,10 @@ export const post54 = oc
   .errors({
     account_not_initialized: { status: 400, data: zPostWorkflowAgentComposerValidateApiError400 },
     agent_soul_locked_error: { status: 400, data: zPostWorkflowAgentComposerValidateApiError400 },
+    bad_host: { status: 400, data: zPostWorkflowAgentComposerValidateApiError400 },
     bad_request: { status: 400, data: zPostWorkflowAgentComposerValidateApiError400 },
+    bad_request_key_error: { status: 400, data: zPostWorkflowAgentComposerValidateApiError400 },
+    client_disconnected: { status: 400, data: zPostWorkflowAgentComposerValidateApiError400 },
     invalid_composer_config_error: {
       status: 400,
       data: zPostWorkflowAgentComposerValidateApiError400,
@@ -5250,6 +5829,8 @@ export const post54 = oc
       status: 400,
       data: zPostWorkflowAgentComposerValidateApiError400,
     },
+    security_error: { status: 400, data: zPostWorkflowAgentComposerValidateApiError400 },
+    websocket_mismatch: { status: 400, data: zPostWorkflowAgentComposerValidateApiError400 },
     not_init_validated: { status: 401, data: zPostWorkflowAgentComposerValidateApiError401 },
     not_setup: { status: 401, data: zPostWorkflowAgentComposerValidateApiError401 },
     unauthorized: { status: 401, data: zPostWorkflowAgentComposerValidateApiError401 },
@@ -5278,8 +5859,13 @@ export const get65 = oc
   .output(zGetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetWorkflowAgentComposerApiError400 },
+    bad_host: { status: 400, data: zGetWorkflowAgentComposerApiError400 },
     bad_request: { status: 400, data: zGetWorkflowAgentComposerApiError400 },
+    bad_request_key_error: { status: 400, data: zGetWorkflowAgentComposerApiError400 },
+    client_disconnected: { status: 400, data: zGetWorkflowAgentComposerApiError400 },
     invalid_param: { status: 400, data: zGetWorkflowAgentComposerApiError400 },
+    security_error: { status: 400, data: zGetWorkflowAgentComposerApiError400 },
+    websocket_mismatch: { status: 400, data: zGetWorkflowAgentComposerApiError400 },
     not_init_validated: { status: 401, data: zGetWorkflowAgentComposerApiError401 },
     not_setup: { status: 401, data: zGetWorkflowAgentComposerApiError401 },
     unauthorized: { status: 401, data: zGetWorkflowAgentComposerApiError401 },
@@ -5307,10 +5893,15 @@ export const put4 = oc
   .errors({
     account_not_initialized: { status: 400, data: zPutWorkflowAgentComposerApiError400 },
     agent_soul_locked_error: { status: 400, data: zPutWorkflowAgentComposerApiError400 },
+    bad_host: { status: 400, data: zPutWorkflowAgentComposerApiError400 },
     bad_request: { status: 400, data: zPutWorkflowAgentComposerApiError400 },
+    bad_request_key_error: { status: 400, data: zPutWorkflowAgentComposerApiError400 },
+    client_disconnected: { status: 400, data: zPutWorkflowAgentComposerApiError400 },
     invalid_composer_config_error: { status: 400, data: zPutWorkflowAgentComposerApiError400 },
     invalid_param: { status: 400, data: zPutWorkflowAgentComposerApiError400 },
     plaintext_secret_not_allowed_error: { status: 400, data: zPutWorkflowAgentComposerApiError400 },
+    security_error: { status: 400, data: zPutWorkflowAgentComposerApiError400 },
+    websocket_mismatch: { status: 400, data: zPutWorkflowAgentComposerApiError400 },
     not_init_validated: { status: 401, data: zPutWorkflowAgentComposerApiError401 },
     not_setup: { status: 401, data: zPutWorkflowAgentComposerApiError401 },
     unauthorized: { status: 401, data: zPutWorkflowAgentComposerApiError401 },
@@ -5346,8 +5937,13 @@ export const get66 = oc
   .output(zGetAppsByAppIdWorkflowsDraftNodesByNodeIdLastRunResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetDraftWorkflowNodeLastRunError400 },
+    bad_host: { status: 400, data: zGetDraftWorkflowNodeLastRunError400 },
     bad_request: { status: 400, data: zGetDraftWorkflowNodeLastRunError400 },
+    bad_request_key_error: { status: 400, data: zGetDraftWorkflowNodeLastRunError400 },
+    client_disconnected: { status: 400, data: zGetDraftWorkflowNodeLastRunError400 },
     invalid_param: { status: 400, data: zGetDraftWorkflowNodeLastRunError400 },
+    security_error: { status: 400, data: zGetDraftWorkflowNodeLastRunError400 },
+    websocket_mismatch: { status: 400, data: zGetDraftWorkflowNodeLastRunError400 },
     not_init_validated: { status: 401, data: zGetDraftWorkflowNodeLastRunError401 },
     not_setup: { status: 401, data: zGetDraftWorkflowNodeLastRunError401 },
     unauthorized: { status: 401, data: zGetDraftWorkflowNodeLastRunError401 },
@@ -5383,8 +5979,13 @@ export const post55 = oc
   .output(zPostAppsByAppIdWorkflowsDraftNodesByNodeIdRunResponse)
   .errors({
     account_not_initialized: { status: 400, data: zRunDraftWorkflowNodeError400 },
+    bad_host: { status: 400, data: zRunDraftWorkflowNodeError400 },
     bad_request: { status: 400, data: zRunDraftWorkflowNodeError400 },
+    bad_request_key_error: { status: 400, data: zRunDraftWorkflowNodeError400 },
+    client_disconnected: { status: 400, data: zRunDraftWorkflowNodeError400 },
     invalid_param: { status: 400, data: zRunDraftWorkflowNodeError400 },
+    security_error: { status: 400, data: zRunDraftWorkflowNodeError400 },
+    websocket_mismatch: { status: 400, data: zRunDraftWorkflowNodeError400 },
     not_init_validated: { status: 401, data: zRunDraftWorkflowNodeError401 },
     not_setup: { status: 401, data: zRunDraftWorkflowNodeError401 },
     unauthorized: { status: 401, data: zRunDraftWorkflowNodeError401 },
@@ -5415,8 +6016,13 @@ export const post56 = oc
   .output(zPostAppsByAppIdWorkflowsDraftNodesByNodeIdTriggerRunResponse)
   .errors({
     account_not_initialized: { status: 400, data: zPollDraftWorkflowTriggerNodeError400 },
+    bad_host: { status: 400, data: zPollDraftWorkflowTriggerNodeError400 },
     bad_request: { status: 400, data: zPollDraftWorkflowTriggerNodeError400 },
+    bad_request_key_error: { status: 400, data: zPollDraftWorkflowTriggerNodeError400 },
+    client_disconnected: { status: 400, data: zPollDraftWorkflowTriggerNodeError400 },
     invalid_param: { status: 400, data: zPollDraftWorkflowTriggerNodeError400 },
+    security_error: { status: 400, data: zPollDraftWorkflowTriggerNodeError400 },
+    websocket_mismatch: { status: 400, data: zPollDraftWorkflowTriggerNodeError400 },
     not_init_validated: { status: 401, data: zPollDraftWorkflowTriggerNodeError401 },
     not_setup: { status: 401, data: zPollDraftWorkflowTriggerNodeError401 },
     unauthorized: { status: 401, data: zPollDraftWorkflowTriggerNodeError401 },
@@ -5449,8 +6055,13 @@ export const delete11 = oc
   .output(zDeleteAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesResponse)
   .errors({
     account_not_initialized: { status: 400, data: zDeleteNodeVariablesError400 },
+    bad_host: { status: 400, data: zDeleteNodeVariablesError400 },
     bad_request: { status: 400, data: zDeleteNodeVariablesError400 },
+    bad_request_key_error: { status: 400, data: zDeleteNodeVariablesError400 },
+    client_disconnected: { status: 400, data: zDeleteNodeVariablesError400 },
     invalid_param: { status: 400, data: zDeleteNodeVariablesError400 },
+    security_error: { status: 400, data: zDeleteNodeVariablesError400 },
+    websocket_mismatch: { status: 400, data: zDeleteNodeVariablesError400 },
     not_init_validated: { status: 401, data: zDeleteNodeVariablesError401 },
     not_setup: { status: 401, data: zDeleteNodeVariablesError401 },
     unauthorized: { status: 401, data: zDeleteNodeVariablesError401 },
@@ -5474,8 +6085,13 @@ export const get67 = oc
   .output(zGetAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetNodeVariablesError400 },
+    bad_host: { status: 400, data: zGetNodeVariablesError400 },
     bad_request: { status: 400, data: zGetNodeVariablesError400 },
+    bad_request_key_error: { status: 400, data: zGetNodeVariablesError400 },
+    client_disconnected: { status: 400, data: zGetNodeVariablesError400 },
     invalid_param: { status: 400, data: zGetNodeVariablesError400 },
+    security_error: { status: 400, data: zGetNodeVariablesError400 },
+    websocket_mismatch: { status: 400, data: zGetNodeVariablesError400 },
     not_init_validated: { status: 401, data: zGetNodeVariablesError401 },
     not_setup: { status: 401, data: zGetNodeVariablesError401 },
     unauthorized: { status: 401, data: zGetNodeVariablesError401 },
@@ -5524,8 +6140,13 @@ export const post57 = oc
   .output(zPostAppsByAppIdWorkflowsDraftRunResponse)
   .errors({
     account_not_initialized: { status: 400, data: zRunDraftWorkflowError400 },
+    bad_host: { status: 400, data: zRunDraftWorkflowError400 },
     bad_request: { status: 400, data: zRunDraftWorkflowError400 },
+    bad_request_key_error: { status: 400, data: zRunDraftWorkflowError400 },
+    client_disconnected: { status: 400, data: zRunDraftWorkflowError400 },
     invalid_param: { status: 400, data: zRunDraftWorkflowError400 },
+    security_error: { status: 400, data: zRunDraftWorkflowError400 },
+    websocket_mismatch: { status: 400, data: zRunDraftWorkflowError400 },
     not_init_validated: { status: 401, data: zRunDraftWorkflowError401 },
     not_setup: { status: 401, data: zRunDraftWorkflowError401 },
     unauthorized: { status: 401, data: zRunDraftWorkflowError401 },
@@ -5555,8 +6176,13 @@ export const get68 = oc
   .output(zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEventsResponse)
   .errors({
     account_not_initialized: { status: 400, data: zStreamWorkflowDraftRunNodeOutputEventsError400 },
+    bad_host: { status: 400, data: zStreamWorkflowDraftRunNodeOutputEventsError400 },
     bad_request: { status: 400, data: zStreamWorkflowDraftRunNodeOutputEventsError400 },
+    bad_request_key_error: { status: 400, data: zStreamWorkflowDraftRunNodeOutputEventsError400 },
+    client_disconnected: { status: 400, data: zStreamWorkflowDraftRunNodeOutputEventsError400 },
     invalid_param: { status: 400, data: zStreamWorkflowDraftRunNodeOutputEventsError400 },
+    security_error: { status: 400, data: zStreamWorkflowDraftRunNodeOutputEventsError400 },
+    websocket_mismatch: { status: 400, data: zStreamWorkflowDraftRunNodeOutputEventsError400 },
     not_init_validated: { status: 401, data: zStreamWorkflowDraftRunNodeOutputEventsError401 },
     not_setup: { status: 401, data: zStreamWorkflowDraftRunNodeOutputEventsError401 },
     unauthorized: { status: 401, data: zStreamWorkflowDraftRunNodeOutputEventsError401 },
@@ -5589,8 +6215,13 @@ export const get69 = oc
   .output(zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetWorkflowDraftRunNodeOutputPreviewError400 },
+    bad_host: { status: 400, data: zGetWorkflowDraftRunNodeOutputPreviewError400 },
     bad_request: { status: 400, data: zGetWorkflowDraftRunNodeOutputPreviewError400 },
+    bad_request_key_error: { status: 400, data: zGetWorkflowDraftRunNodeOutputPreviewError400 },
+    client_disconnected: { status: 400, data: zGetWorkflowDraftRunNodeOutputPreviewError400 },
     invalid_param: { status: 400, data: zGetWorkflowDraftRunNodeOutputPreviewError400 },
+    security_error: { status: 400, data: zGetWorkflowDraftRunNodeOutputPreviewError400 },
+    websocket_mismatch: { status: 400, data: zGetWorkflowDraftRunNodeOutputPreviewError400 },
     not_init_validated: { status: 401, data: zGetWorkflowDraftRunNodeOutputPreviewError401 },
     not_setup: { status: 401, data: zGetWorkflowDraftRunNodeOutputPreviewError401 },
     unauthorized: { status: 401, data: zGetWorkflowDraftRunNodeOutputPreviewError401 },
@@ -5623,8 +6254,13 @@ export const get70 = oc
   .output(zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetWorkflowDraftRunNodeOutputDetailError400 },
+    bad_host: { status: 400, data: zGetWorkflowDraftRunNodeOutputDetailError400 },
     bad_request: { status: 400, data: zGetWorkflowDraftRunNodeOutputDetailError400 },
+    bad_request_key_error: { status: 400, data: zGetWorkflowDraftRunNodeOutputDetailError400 },
+    client_disconnected: { status: 400, data: zGetWorkflowDraftRunNodeOutputDetailError400 },
     invalid_param: { status: 400, data: zGetWorkflowDraftRunNodeOutputDetailError400 },
+    security_error: { status: 400, data: zGetWorkflowDraftRunNodeOutputDetailError400 },
+    websocket_mismatch: { status: 400, data: zGetWorkflowDraftRunNodeOutputDetailError400 },
     not_init_validated: { status: 401, data: zGetWorkflowDraftRunNodeOutputDetailError401 },
     not_setup: { status: 401, data: zGetWorkflowDraftRunNodeOutputDetailError401 },
     unauthorized: { status: 401, data: zGetWorkflowDraftRunNodeOutputDetailError401 },
@@ -5654,8 +6290,13 @@ export const get71 = oc
   .output(zGetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetWorkflowDraftRunNodeOutputsError400 },
+    bad_host: { status: 400, data: zGetWorkflowDraftRunNodeOutputsError400 },
     bad_request: { status: 400, data: zGetWorkflowDraftRunNodeOutputsError400 },
+    bad_request_key_error: { status: 400, data: zGetWorkflowDraftRunNodeOutputsError400 },
+    client_disconnected: { status: 400, data: zGetWorkflowDraftRunNodeOutputsError400 },
     invalid_param: { status: 400, data: zGetWorkflowDraftRunNodeOutputsError400 },
+    security_error: { status: 400, data: zGetWorkflowDraftRunNodeOutputsError400 },
+    websocket_mismatch: { status: 400, data: zGetWorkflowDraftRunNodeOutputsError400 },
     not_init_validated: { status: 401, data: zGetWorkflowDraftRunNodeOutputsError401 },
     not_setup: { status: 401, data: zGetWorkflowDraftRunNodeOutputsError401 },
     unauthorized: { status: 401, data: zGetWorkflowDraftRunNodeOutputsError401 },
@@ -5694,8 +6335,13 @@ export const get72 = oc
   .output(zGetAppsByAppIdWorkflowsDraftSystemVariablesResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetSystemVariablesError400 },
+    bad_host: { status: 400, data: zGetSystemVariablesError400 },
     bad_request: { status: 400, data: zGetSystemVariablesError400 },
+    bad_request_key_error: { status: 400, data: zGetSystemVariablesError400 },
+    client_disconnected: { status: 400, data: zGetSystemVariablesError400 },
     invalid_param: { status: 400, data: zGetSystemVariablesError400 },
+    security_error: { status: 400, data: zGetSystemVariablesError400 },
+    websocket_mismatch: { status: 400, data: zGetSystemVariablesError400 },
     not_init_validated: { status: 401, data: zGetSystemVariablesError401 },
     not_setup: { status: 401, data: zGetSystemVariablesError401 },
     unauthorized: { status: 401, data: zGetSystemVariablesError401 },
@@ -5731,8 +6377,13 @@ export const post58 = oc
   .output(zPostAppsByAppIdWorkflowsDraftTriggerRunResponse)
   .errors({
     account_not_initialized: { status: 400, data: zPollDraftWorkflowTriggerRunError400 },
+    bad_host: { status: 400, data: zPollDraftWorkflowTriggerRunError400 },
     bad_request: { status: 400, data: zPollDraftWorkflowTriggerRunError400 },
+    bad_request_key_error: { status: 400, data: zPollDraftWorkflowTriggerRunError400 },
+    client_disconnected: { status: 400, data: zPollDraftWorkflowTriggerRunError400 },
     invalid_param: { status: 400, data: zPollDraftWorkflowTriggerRunError400 },
+    security_error: { status: 400, data: zPollDraftWorkflowTriggerRunError400 },
+    websocket_mismatch: { status: 400, data: zPollDraftWorkflowTriggerRunError400 },
     not_init_validated: { status: 401, data: zPollDraftWorkflowTriggerRunError401 },
     not_setup: { status: 401, data: zPollDraftWorkflowTriggerRunError401 },
     unauthorized: { status: 401, data: zPollDraftWorkflowTriggerRunError401 },
@@ -5770,8 +6421,13 @@ export const post59 = oc
   .output(zPostAppsByAppIdWorkflowsDraftTriggerRunAllResponse)
   .errors({
     account_not_initialized: { status: 400, data: zDraftWorkflowTriggerRunAllError400 },
+    bad_host: { status: 400, data: zDraftWorkflowTriggerRunAllError400 },
     bad_request: { status: 400, data: zDraftWorkflowTriggerRunAllError400 },
+    bad_request_key_error: { status: 400, data: zDraftWorkflowTriggerRunAllError400 },
+    client_disconnected: { status: 400, data: zDraftWorkflowTriggerRunAllError400 },
     invalid_param: { status: 400, data: zDraftWorkflowTriggerRunAllError400 },
+    security_error: { status: 400, data: zDraftWorkflowTriggerRunAllError400 },
+    websocket_mismatch: { status: 400, data: zDraftWorkflowTriggerRunAllError400 },
     not_init_validated: { status: 401, data: zDraftWorkflowTriggerRunAllError401 },
     not_setup: { status: 401, data: zDraftWorkflowTriggerRunAllError401 },
     unauthorized: { status: 401, data: zDraftWorkflowTriggerRunAllError401 },
@@ -5806,8 +6462,13 @@ export const put5 = oc
   .output(zPutAppsByAppIdWorkflowsDraftVariablesByVariableIdResetResponse)
   .errors({
     account_not_initialized: { status: 400, data: zResetVariableError400 },
+    bad_host: { status: 400, data: zResetVariableError400 },
     bad_request: { status: 400, data: zResetVariableError400 },
+    bad_request_key_error: { status: 400, data: zResetVariableError400 },
+    client_disconnected: { status: 400, data: zResetVariableError400 },
     invalid_param: { status: 400, data: zResetVariableError400 },
+    security_error: { status: 400, data: zResetVariableError400 },
+    websocket_mismatch: { status: 400, data: zResetVariableError400 },
     not_init_validated: { status: 401, data: zResetVariableError401 },
     not_setup: { status: 401, data: zResetVariableError401 },
     unauthorized: { status: 401, data: zResetVariableError401 },
@@ -5836,8 +6497,13 @@ export const delete12 = oc
   .output(zDeleteAppsByAppIdWorkflowsDraftVariablesByVariableIdResponse)
   .errors({
     account_not_initialized: { status: 400, data: zDeleteVariableError400 },
+    bad_host: { status: 400, data: zDeleteVariableError400 },
     bad_request: { status: 400, data: zDeleteVariableError400 },
+    bad_request_key_error: { status: 400, data: zDeleteVariableError400 },
+    client_disconnected: { status: 400, data: zDeleteVariableError400 },
     invalid_param: { status: 400, data: zDeleteVariableError400 },
+    security_error: { status: 400, data: zDeleteVariableError400 },
+    websocket_mismatch: { status: 400, data: zDeleteVariableError400 },
     not_init_validated: { status: 401, data: zDeleteVariableError401 },
     not_setup: { status: 401, data: zDeleteVariableError401 },
     unauthorized: { status: 401, data: zDeleteVariableError401 },
@@ -5861,8 +6527,13 @@ export const get73 = oc
   .output(zGetAppsByAppIdWorkflowsDraftVariablesByVariableIdResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetVariableError400 },
+    bad_host: { status: 400, data: zGetVariableError400 },
     bad_request: { status: 400, data: zGetVariableError400 },
+    bad_request_key_error: { status: 400, data: zGetVariableError400 },
+    client_disconnected: { status: 400, data: zGetVariableError400 },
     invalid_param: { status: 400, data: zGetVariableError400 },
+    security_error: { status: 400, data: zGetVariableError400 },
+    websocket_mismatch: { status: 400, data: zGetVariableError400 },
     not_init_validated: { status: 401, data: zGetVariableError401 },
     not_setup: { status: 401, data: zGetVariableError401 },
     unauthorized: { status: 401, data: zGetVariableError401 },
@@ -5891,8 +6562,13 @@ export const patch2 = oc
   .output(zPatchAppsByAppIdWorkflowsDraftVariablesByVariableIdResponse)
   .errors({
     account_not_initialized: { status: 400, data: zUpdateVariableError400 },
+    bad_host: { status: 400, data: zUpdateVariableError400 },
     bad_request: { status: 400, data: zUpdateVariableError400 },
+    bad_request_key_error: { status: 400, data: zUpdateVariableError400 },
+    client_disconnected: { status: 400, data: zUpdateVariableError400 },
     invalid_param: { status: 400, data: zUpdateVariableError400 },
+    security_error: { status: 400, data: zUpdateVariableError400 },
+    websocket_mismatch: { status: 400, data: zUpdateVariableError400 },
     not_init_validated: { status: 401, data: zUpdateVariableError401 },
     not_setup: { status: 401, data: zUpdateVariableError401 },
     unauthorized: { status: 401, data: zUpdateVariableError401 },
@@ -5924,8 +6600,13 @@ export const delete13 = oc
   .output(zDeleteAppsByAppIdWorkflowsDraftVariablesResponse)
   .errors({
     account_not_initialized: { status: 400, data: zDeleteWorkflowVariablesError400 },
+    bad_host: { status: 400, data: zDeleteWorkflowVariablesError400 },
     bad_request: { status: 400, data: zDeleteWorkflowVariablesError400 },
+    bad_request_key_error: { status: 400, data: zDeleteWorkflowVariablesError400 },
+    client_disconnected: { status: 400, data: zDeleteWorkflowVariablesError400 },
     invalid_param: { status: 400, data: zDeleteWorkflowVariablesError400 },
+    security_error: { status: 400, data: zDeleteWorkflowVariablesError400 },
+    websocket_mismatch: { status: 400, data: zDeleteWorkflowVariablesError400 },
     not_init_validated: { status: 401, data: zDeleteWorkflowVariablesError401 },
     not_setup: { status: 401, data: zDeleteWorkflowVariablesError401 },
     unauthorized: { status: 401, data: zDeleteWorkflowVariablesError401 },
@@ -5957,8 +6638,13 @@ export const get74 = oc
   .output(zGetAppsByAppIdWorkflowsDraftVariablesResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetWorkflowVariablesError400 },
+    bad_host: { status: 400, data: zGetWorkflowVariablesError400 },
     bad_request: { status: 400, data: zGetWorkflowVariablesError400 },
+    bad_request_key_error: { status: 400, data: zGetWorkflowVariablesError400 },
+    client_disconnected: { status: 400, data: zGetWorkflowVariablesError400 },
     invalid_param: { status: 400, data: zGetWorkflowVariablesError400 },
+    security_error: { status: 400, data: zGetWorkflowVariablesError400 },
+    websocket_mismatch: { status: 400, data: zGetWorkflowVariablesError400 },
     not_init_validated: { status: 401, data: zGetWorkflowVariablesError401 },
     not_setup: { status: 401, data: zGetWorkflowVariablesError401 },
     unauthorized: { status: 401, data: zGetWorkflowVariablesError401 },
@@ -5992,8 +6678,13 @@ export const get75 = oc
   .output(zGetAppsByAppIdWorkflowsDraftResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetDraftWorkflowError400 },
+    bad_host: { status: 400, data: zGetDraftWorkflowError400 },
     bad_request: { status: 400, data: zGetDraftWorkflowError400 },
+    bad_request_key_error: { status: 400, data: zGetDraftWorkflowError400 },
+    client_disconnected: { status: 400, data: zGetDraftWorkflowError400 },
     invalid_param: { status: 400, data: zGetDraftWorkflowError400 },
+    security_error: { status: 400, data: zGetDraftWorkflowError400 },
+    websocket_mismatch: { status: 400, data: zGetDraftWorkflowError400 },
     not_init_validated: { status: 401, data: zGetDraftWorkflowError401 },
     not_setup: { status: 401, data: zGetDraftWorkflowError401 },
     unauthorized: { status: 401, data: zGetDraftWorkflowError401 },
@@ -6026,8 +6717,13 @@ export const post60 = oc
   .output(zPostAppsByAppIdWorkflowsDraftResponse)
   .errors({
     account_not_initialized: { status: 400, data: zSyncDraftWorkflowError400 },
+    bad_host: { status: 400, data: zSyncDraftWorkflowError400 },
     bad_request: { status: 400, data: zSyncDraftWorkflowError400 },
+    bad_request_key_error: { status: 400, data: zSyncDraftWorkflowError400 },
+    client_disconnected: { status: 400, data: zSyncDraftWorkflowError400 },
     invalid_param: { status: 400, data: zSyncDraftWorkflowError400 },
+    security_error: { status: 400, data: zSyncDraftWorkflowError400 },
+    websocket_mismatch: { status: 400, data: zSyncDraftWorkflowError400 },
     not_init_validated: { status: 401, data: zSyncDraftWorkflowError401 },
     not_setup: { status: 401, data: zSyncDraftWorkflowError401 },
     unauthorized: { status: 401, data: zSyncDraftWorkflowError401 },
@@ -6073,8 +6769,13 @@ export const get76 = oc
   .output(zGetAppsByAppIdWorkflowsPublishResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetPublishedWorkflowError400 },
+    bad_host: { status: 400, data: zGetPublishedWorkflowError400 },
     bad_request: { status: 400, data: zGetPublishedWorkflowError400 },
+    bad_request_key_error: { status: 400, data: zGetPublishedWorkflowError400 },
+    client_disconnected: { status: 400, data: zGetPublishedWorkflowError400 },
     invalid_param: { status: 400, data: zGetPublishedWorkflowError400 },
+    security_error: { status: 400, data: zGetPublishedWorkflowError400 },
+    websocket_mismatch: { status: 400, data: zGetPublishedWorkflowError400 },
     not_init_validated: { status: 401, data: zGetPublishedWorkflowError401 },
     not_setup: { status: 401, data: zGetPublishedWorkflowError401 },
     unauthorized: { status: 401, data: zGetPublishedWorkflowError401 },
@@ -6103,8 +6804,13 @@ export const post61 = oc
   .output(zPostAppsByAppIdWorkflowsPublishResponse)
   .errors({
     account_not_initialized: { status: 400, data: zPostPublishedWorkflowApiError400 },
+    bad_host: { status: 400, data: zPostPublishedWorkflowApiError400 },
     bad_request: { status: 400, data: zPostPublishedWorkflowApiError400 },
+    bad_request_key_error: { status: 400, data: zPostPublishedWorkflowApiError400 },
+    client_disconnected: { status: 400, data: zPostPublishedWorkflowApiError400 },
     invalid_param: { status: 400, data: zPostPublishedWorkflowApiError400 },
+    security_error: { status: 400, data: zPostPublishedWorkflowApiError400 },
+    websocket_mismatch: { status: 400, data: zPostPublishedWorkflowApiError400 },
     not_init_validated: { status: 401, data: zPostPublishedWorkflowApiError401 },
     not_setup: { status: 401, data: zPostPublishedWorkflowApiError401 },
     unauthorized: { status: 401, data: zPostPublishedWorkflowApiError401 },
@@ -6136,8 +6842,16 @@ export const get77 = oc
       status: 400,
       data: zStreamWorkflowPublishedRunNodeOutputEventsError400,
     },
+    bad_host: { status: 400, data: zStreamWorkflowPublishedRunNodeOutputEventsError400 },
     bad_request: { status: 400, data: zStreamWorkflowPublishedRunNodeOutputEventsError400 },
+    bad_request_key_error: {
+      status: 400,
+      data: zStreamWorkflowPublishedRunNodeOutputEventsError400,
+    },
+    client_disconnected: { status: 400, data: zStreamWorkflowPublishedRunNodeOutputEventsError400 },
     invalid_param: { status: 400, data: zStreamWorkflowPublishedRunNodeOutputEventsError400 },
+    security_error: { status: 400, data: zStreamWorkflowPublishedRunNodeOutputEventsError400 },
+    websocket_mismatch: { status: 400, data: zStreamWorkflowPublishedRunNodeOutputEventsError400 },
     not_init_validated: { status: 401, data: zStreamWorkflowPublishedRunNodeOutputEventsError401 },
     not_setup: { status: 401, data: zStreamWorkflowPublishedRunNodeOutputEventsError401 },
     unauthorized: { status: 401, data: zStreamWorkflowPublishedRunNodeOutputEventsError401 },
@@ -6177,8 +6891,13 @@ export const get78 = oc
       status: 400,
       data: zGetWorkflowPublishedRunNodeOutputPreviewError400,
     },
+    bad_host: { status: 400, data: zGetWorkflowPublishedRunNodeOutputPreviewError400 },
     bad_request: { status: 400, data: zGetWorkflowPublishedRunNodeOutputPreviewError400 },
+    bad_request_key_error: { status: 400, data: zGetWorkflowPublishedRunNodeOutputPreviewError400 },
+    client_disconnected: { status: 400, data: zGetWorkflowPublishedRunNodeOutputPreviewError400 },
     invalid_param: { status: 400, data: zGetWorkflowPublishedRunNodeOutputPreviewError400 },
+    security_error: { status: 400, data: zGetWorkflowPublishedRunNodeOutputPreviewError400 },
+    websocket_mismatch: { status: 400, data: zGetWorkflowPublishedRunNodeOutputPreviewError400 },
     not_init_validated: { status: 401, data: zGetWorkflowPublishedRunNodeOutputPreviewError401 },
     not_setup: { status: 401, data: zGetWorkflowPublishedRunNodeOutputPreviewError401 },
     unauthorized: { status: 401, data: zGetWorkflowPublishedRunNodeOutputPreviewError401 },
@@ -6214,8 +6933,13 @@ export const get79 = oc
       status: 400,
       data: zGetWorkflowPublishedRunNodeOutputDetailError400,
     },
+    bad_host: { status: 400, data: zGetWorkflowPublishedRunNodeOutputDetailError400 },
     bad_request: { status: 400, data: zGetWorkflowPublishedRunNodeOutputDetailError400 },
+    bad_request_key_error: { status: 400, data: zGetWorkflowPublishedRunNodeOutputDetailError400 },
+    client_disconnected: { status: 400, data: zGetWorkflowPublishedRunNodeOutputDetailError400 },
     invalid_param: { status: 400, data: zGetWorkflowPublishedRunNodeOutputDetailError400 },
+    security_error: { status: 400, data: zGetWorkflowPublishedRunNodeOutputDetailError400 },
+    websocket_mismatch: { status: 400, data: zGetWorkflowPublishedRunNodeOutputDetailError400 },
     not_init_validated: { status: 401, data: zGetWorkflowPublishedRunNodeOutputDetailError401 },
     not_setup: { status: 401, data: zGetWorkflowPublishedRunNodeOutputDetailError401 },
     unauthorized: { status: 401, data: zGetWorkflowPublishedRunNodeOutputDetailError401 },
@@ -6245,8 +6969,13 @@ export const get80 = oc
   .output(zGetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetWorkflowPublishedRunNodeOutputsError400 },
+    bad_host: { status: 400, data: zGetWorkflowPublishedRunNodeOutputsError400 },
     bad_request: { status: 400, data: zGetWorkflowPublishedRunNodeOutputsError400 },
+    bad_request_key_error: { status: 400, data: zGetWorkflowPublishedRunNodeOutputsError400 },
+    client_disconnected: { status: 400, data: zGetWorkflowPublishedRunNodeOutputsError400 },
     invalid_param: { status: 400, data: zGetWorkflowPublishedRunNodeOutputsError400 },
+    security_error: { status: 400, data: zGetWorkflowPublishedRunNodeOutputsError400 },
+    websocket_mismatch: { status: 400, data: zGetWorkflowPublishedRunNodeOutputsError400 },
     not_init_validated: { status: 401, data: zGetWorkflowPublishedRunNodeOutputsError401 },
     not_setup: { status: 401, data: zGetWorkflowPublishedRunNodeOutputsError401 },
     unauthorized: { status: 401, data: zGetWorkflowPublishedRunNodeOutputsError401 },
@@ -6294,8 +7023,13 @@ export const get81 = oc
   .output(zGetAppsByAppIdWorkflowsTriggersWebhookResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetWebhookTriggerApiError400 },
+    bad_host: { status: 400, data: zGetWebhookTriggerApiError400 },
     bad_request: { status: 400, data: zGetWebhookTriggerApiError400 },
+    bad_request_key_error: { status: 400, data: zGetWebhookTriggerApiError400 },
+    client_disconnected: { status: 400, data: zGetWebhookTriggerApiError400 },
     invalid_param: { status: 400, data: zGetWebhookTriggerApiError400 },
+    security_error: { status: 400, data: zGetWebhookTriggerApiError400 },
+    websocket_mismatch: { status: 400, data: zGetWebhookTriggerApiError400 },
     not_init_validated: { status: 401, data: zGetWebhookTriggerApiError401 },
     not_setup: { status: 401, data: zGetWebhookTriggerApiError401 },
     unauthorized: { status: 401, data: zGetWebhookTriggerApiError401 },
@@ -6327,8 +7061,13 @@ export const post62 = oc
   .output(zPostAppsByAppIdWorkflowsByWorkflowIdRestoreResponse)
   .errors({
     account_not_initialized: { status: 400, data: zRestoreWorkflowToDraftError400 },
+    bad_host: { status: 400, data: zRestoreWorkflowToDraftError400 },
     bad_request: { status: 400, data: zRestoreWorkflowToDraftError400 },
+    bad_request_key_error: { status: 400, data: zRestoreWorkflowToDraftError400 },
+    client_disconnected: { status: 400, data: zRestoreWorkflowToDraftError400 },
     invalid_param: { status: 400, data: zRestoreWorkflowToDraftError400 },
+    security_error: { status: 400, data: zRestoreWorkflowToDraftError400 },
+    websocket_mismatch: { status: 400, data: zRestoreWorkflowToDraftError400 },
     not_init_validated: { status: 401, data: zRestoreWorkflowToDraftError401 },
     not_setup: { status: 401, data: zRestoreWorkflowToDraftError401 },
     unauthorized: { status: 401, data: zRestoreWorkflowToDraftError401 },
@@ -6357,8 +7096,13 @@ export const delete14 = oc
   .output(zDeleteAppsByAppIdWorkflowsByWorkflowIdResponse)
   .errors({
     account_not_initialized: { status: 400, data: zDeleteWorkflowByIdApiError400 },
+    bad_host: { status: 400, data: zDeleteWorkflowByIdApiError400 },
     bad_request: { status: 400, data: zDeleteWorkflowByIdApiError400 },
+    bad_request_key_error: { status: 400, data: zDeleteWorkflowByIdApiError400 },
+    client_disconnected: { status: 400, data: zDeleteWorkflowByIdApiError400 },
     invalid_param: { status: 400, data: zDeleteWorkflowByIdApiError400 },
+    security_error: { status: 400, data: zDeleteWorkflowByIdApiError400 },
+    websocket_mismatch: { status: 400, data: zDeleteWorkflowByIdApiError400 },
     not_init_validated: { status: 401, data: zDeleteWorkflowByIdApiError401 },
     not_setup: { status: 401, data: zDeleteWorkflowByIdApiError401 },
     unauthorized: { status: 401, data: zDeleteWorkflowByIdApiError401 },
@@ -6390,8 +7134,13 @@ export const patch3 = oc
   .output(zPatchAppsByAppIdWorkflowsByWorkflowIdResponse)
   .errors({
     account_not_initialized: { status: 400, data: zUpdateWorkflowByIdError400 },
+    bad_host: { status: 400, data: zUpdateWorkflowByIdError400 },
     bad_request: { status: 400, data: zUpdateWorkflowByIdError400 },
+    bad_request_key_error: { status: 400, data: zUpdateWorkflowByIdError400 },
+    client_disconnected: { status: 400, data: zUpdateWorkflowByIdError400 },
     invalid_param: { status: 400, data: zUpdateWorkflowByIdError400 },
+    security_error: { status: 400, data: zUpdateWorkflowByIdError400 },
+    websocket_mismatch: { status: 400, data: zUpdateWorkflowByIdError400 },
     not_init_validated: { status: 401, data: zUpdateWorkflowByIdError401 },
     not_setup: { status: 401, data: zUpdateWorkflowByIdError401 },
     unauthorized: { status: 401, data: zUpdateWorkflowByIdError401 },
@@ -6429,8 +7178,13 @@ export const get82 = oc
   .output(zGetAppsByAppIdWorkflowsResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetAllPublishedWorkflowsError400 },
+    bad_host: { status: 400, data: zGetAllPublishedWorkflowsError400 },
     bad_request: { status: 400, data: zGetAllPublishedWorkflowsError400 },
+    bad_request_key_error: { status: 400, data: zGetAllPublishedWorkflowsError400 },
+    client_disconnected: { status: 400, data: zGetAllPublishedWorkflowsError400 },
     invalid_param: { status: 400, data: zGetAllPublishedWorkflowsError400 },
+    security_error: { status: 400, data: zGetAllPublishedWorkflowsError400 },
+    websocket_mismatch: { status: 400, data: zGetAllPublishedWorkflowsError400 },
     not_init_validated: { status: 401, data: zGetAllPublishedWorkflowsError401 },
     not_setup: { status: 401, data: zGetAllPublishedWorkflowsError401 },
     unauthorized: { status: 401, data: zGetAllPublishedWorkflowsError401 },
@@ -6465,8 +7219,13 @@ export const delete15 = oc
   .output(zDeleteAppsByAppIdResponse)
   .errors({
     account_not_initialized: { status: 400, data: zDeleteAppError400 },
+    bad_host: { status: 400, data: zDeleteAppError400 },
     bad_request: { status: 400, data: zDeleteAppError400 },
+    bad_request_key_error: { status: 400, data: zDeleteAppError400 },
+    client_disconnected: { status: 400, data: zDeleteAppError400 },
     invalid_param: { status: 400, data: zDeleteAppError400 },
+    security_error: { status: 400, data: zDeleteAppError400 },
+    websocket_mismatch: { status: 400, data: zDeleteAppError400 },
     not_init_validated: { status: 401, data: zDeleteAppError401 },
     not_setup: { status: 401, data: zDeleteAppError401 },
     unauthorized: { status: 401, data: zDeleteAppError401 },
@@ -6488,8 +7247,13 @@ export const get83 = oc
   .output(zGetAppsByAppIdResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetAppDetailError400 },
+    bad_host: { status: 400, data: zGetAppDetailError400 },
     bad_request: { status: 400, data: zGetAppDetailError400 },
+    bad_request_key_error: { status: 400, data: zGetAppDetailError400 },
+    client_disconnected: { status: 400, data: zGetAppDetailError400 },
     invalid_param: { status: 400, data: zGetAppDetailError400 },
+    security_error: { status: 400, data: zGetAppDetailError400 },
+    websocket_mismatch: { status: 400, data: zGetAppDetailError400 },
     not_init_validated: { status: 401, data: zGetAppDetailError401 },
     not_setup: { status: 401, data: zGetAppDetailError401 },
     unauthorized: { status: 401, data: zGetAppDetailError401 },
@@ -6512,8 +7276,13 @@ export const put6 = oc
   .output(zPutAppsByAppIdResponse)
   .errors({
     account_not_initialized: { status: 400, data: zUpdateAppError400 },
+    bad_host: { status: 400, data: zUpdateAppError400 },
     bad_request: { status: 400, data: zUpdateAppError400 },
+    bad_request_key_error: { status: 400, data: zUpdateAppError400 },
+    client_disconnected: { status: 400, data: zUpdateAppError400 },
     invalid_param: { status: 400, data: zUpdateAppError400 },
+    security_error: { status: 400, data: zUpdateAppError400 },
+    websocket_mismatch: { status: 400, data: zUpdateAppError400 },
     not_init_validated: { status: 401, data: zUpdateAppError401 },
     not_setup: { status: 401, data: zUpdateAppError401 },
     unauthorized: { status: 401, data: zUpdateAppError401 },
@@ -6578,9 +7347,14 @@ export const delete16 = oc
   .output(zDeleteAppsByResourceIdApiKeysByApiKeyIdResponse)
   .errors({
     account_not_initialized: { status: 400, data: zDeleteAppApiKeyError400 },
+    bad_host: { status: 400, data: zDeleteAppApiKeyError400 },
     bad_request: { status: 400, data: zDeleteAppApiKeyError400 },
+    bad_request_key_error: { status: 400, data: zDeleteAppApiKeyError400 },
+    client_disconnected: { status: 400, data: zDeleteAppApiKeyError400 },
     invalid_param: { status: 400, data: zDeleteAppApiKeyError400 },
     max_keys_exceeded: { status: 400, data: zDeleteAppApiKeyError400 },
+    security_error: { status: 400, data: zDeleteAppApiKeyError400 },
+    websocket_mismatch: { status: 400, data: zDeleteAppApiKeyError400 },
     not_init_validated: { status: 401, data: zDeleteAppApiKeyError401 },
     not_setup: { status: 401, data: zDeleteAppApiKeyError401 },
     unauthorized: { status: 401, data: zDeleteAppApiKeyError401 },
@@ -6608,9 +7382,14 @@ export const get84 = oc
   .output(zGetAppsByResourceIdApiKeysResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetAppApiKeysError400 },
+    bad_host: { status: 400, data: zGetAppApiKeysError400 },
     bad_request: { status: 400, data: zGetAppApiKeysError400 },
+    bad_request_key_error: { status: 400, data: zGetAppApiKeysError400 },
+    client_disconnected: { status: 400, data: zGetAppApiKeysError400 },
     invalid_param: { status: 400, data: zGetAppApiKeysError400 },
     max_keys_exceeded: { status: 400, data: zGetAppApiKeysError400 },
+    security_error: { status: 400, data: zGetAppApiKeysError400 },
+    websocket_mismatch: { status: 400, data: zGetAppApiKeysError400 },
     not_init_validated: { status: 401, data: zGetAppApiKeysError401 },
     not_setup: { status: 401, data: zGetAppApiKeysError401 },
     unauthorized: { status: 401, data: zGetAppApiKeysError401 },
@@ -6635,9 +7414,14 @@ export const post63 = oc
   .output(zPostAppsByResourceIdApiKeysResponse)
   .errors({
     account_not_initialized: { status: 400, data: zCreateAppApiKeyError400 },
+    bad_host: { status: 400, data: zCreateAppApiKeyError400 },
     bad_request: { status: 400, data: zCreateAppApiKeyError400 },
+    bad_request_key_error: { status: 400, data: zCreateAppApiKeyError400 },
+    client_disconnected: { status: 400, data: zCreateAppApiKeyError400 },
     invalid_param: { status: 400, data: zCreateAppApiKeyError400 },
     max_keys_exceeded: { status: 400, data: zCreateAppApiKeyError400 },
+    security_error: { status: 400, data: zCreateAppApiKeyError400 },
+    websocket_mismatch: { status: 400, data: zCreateAppApiKeyError400 },
     not_init_validated: { status: 401, data: zCreateAppApiKeyError401 },
     not_setup: { status: 401, data: zCreateAppApiKeyError401 },
     unauthorized: { status: 401, data: zCreateAppApiKeyError401 },
@@ -6671,8 +7455,13 @@ export const get85 = oc
   .output(zGetAppsResponse)
   .errors({
     account_not_initialized: { status: 400, data: zListAppsError400 },
+    bad_host: { status: 400, data: zListAppsError400 },
     bad_request: { status: 400, data: zListAppsError400 },
+    bad_request_key_error: { status: 400, data: zListAppsError400 },
+    client_disconnected: { status: 400, data: zListAppsError400 },
     invalid_param: { status: 400, data: zListAppsError400 },
+    security_error: { status: 400, data: zListAppsError400 },
+    websocket_mismatch: { status: 400, data: zListAppsError400 },
     not_init_validated: { status: 401, data: zListAppsError401 },
     not_setup: { status: 401, data: zListAppsError401 },
     unauthorized: { status: 401, data: zListAppsError401 },
@@ -6696,8 +7485,13 @@ export const post64 = oc
   .output(zPostAppsResponse)
   .errors({
     account_not_initialized: { status: 400, data: zCreateAppError400 },
+    bad_host: { status: 400, data: zCreateAppError400 },
     bad_request: { status: 400, data: zCreateAppError400 },
+    bad_request_key_error: { status: 400, data: zCreateAppError400 },
+    client_disconnected: { status: 400, data: zCreateAppError400 },
     invalid_param: { status: 400, data: zCreateAppError400 },
+    security_error: { status: 400, data: zCreateAppError400 },
+    websocket_mismatch: { status: 400, data: zCreateAppError400 },
     not_init_validated: { status: 401, data: zCreateAppError401 },
     not_setup: { status: 401, data: zCreateAppError401 },
     unauthorized: { status: 401, data: zCreateAppError401 },

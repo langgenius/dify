@@ -25,8 +25,13 @@ export const get = oc
   .output(zGetSpecSchemaDefinitionsResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetSpecSchemaDefinitionsApiError400 },
+    bad_host: { status: 400, data: zGetSpecSchemaDefinitionsApiError400 },
     bad_request: { status: 400, data: zGetSpecSchemaDefinitionsApiError400 },
+    bad_request_key_error: { status: 400, data: zGetSpecSchemaDefinitionsApiError400 },
+    client_disconnected: { status: 400, data: zGetSpecSchemaDefinitionsApiError400 },
     invalid_param: { status: 400, data: zGetSpecSchemaDefinitionsApiError400 },
+    security_error: { status: 400, data: zGetSpecSchemaDefinitionsApiError400 },
+    websocket_mismatch: { status: 400, data: zGetSpecSchemaDefinitionsApiError400 },
     not_init_validated: { status: 401, data: zGetSpecSchemaDefinitionsApiError401 },
     not_setup: { status: 401, data: zGetSpecSchemaDefinitionsApiError401 },
     unauthorized: { status: 401, data: zGetSpecSchemaDefinitionsApiError401 },

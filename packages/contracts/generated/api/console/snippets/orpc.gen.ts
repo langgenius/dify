@@ -206,8 +206,13 @@ export const post = oc
   .output(zPostSnippetsBySnippetIdWorkflowRunsTasksByTaskIdStopResponse)
   .errors({
     account_not_initialized: { status: 400, data: zStopSnippetWorkflowTaskError400 },
+    bad_host: { status: 400, data: zStopSnippetWorkflowTaskError400 },
     bad_request: { status: 400, data: zStopSnippetWorkflowTaskError400 },
+    bad_request_key_error: { status: 400, data: zStopSnippetWorkflowTaskError400 },
+    client_disconnected: { status: 400, data: zStopSnippetWorkflowTaskError400 },
     invalid_param: { status: 400, data: zStopSnippetWorkflowTaskError400 },
+    security_error: { status: 400, data: zStopSnippetWorkflowTaskError400 },
+    websocket_mismatch: { status: 400, data: zStopSnippetWorkflowTaskError400 },
     not_init_validated: { status: 401, data: zStopSnippetWorkflowTaskError401 },
     not_setup: { status: 401, data: zStopSnippetWorkflowTaskError401 },
     unauthorized: { status: 401, data: zStopSnippetWorkflowTaskError401 },
@@ -241,8 +246,13 @@ export const get = oc
   .output(zGetSnippetsBySnippetIdWorkflowRunsByRunIdNodeExecutionsResponse)
   .errors({
     account_not_initialized: { status: 400, data: zListSnippetWorkflowRunNodeExecutionsError400 },
+    bad_host: { status: 400, data: zListSnippetWorkflowRunNodeExecutionsError400 },
     bad_request: { status: 400, data: zListSnippetWorkflowRunNodeExecutionsError400 },
+    bad_request_key_error: { status: 400, data: zListSnippetWorkflowRunNodeExecutionsError400 },
+    client_disconnected: { status: 400, data: zListSnippetWorkflowRunNodeExecutionsError400 },
     invalid_param: { status: 400, data: zListSnippetWorkflowRunNodeExecutionsError400 },
+    security_error: { status: 400, data: zListSnippetWorkflowRunNodeExecutionsError400 },
+    websocket_mismatch: { status: 400, data: zListSnippetWorkflowRunNodeExecutionsError400 },
     not_init_validated: { status: 401, data: zListSnippetWorkflowRunNodeExecutionsError401 },
     not_setup: { status: 401, data: zListSnippetWorkflowRunNodeExecutionsError401 },
     unauthorized: { status: 401, data: zListSnippetWorkflowRunNodeExecutionsError401 },
@@ -268,8 +278,13 @@ export const get2 = oc
   .output(zGetSnippetsBySnippetIdWorkflowRunsByRunIdResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetSnippetWorkflowRunDetailError400 },
+    bad_host: { status: 400, data: zGetSnippetWorkflowRunDetailError400 },
     bad_request: { status: 400, data: zGetSnippetWorkflowRunDetailError400 },
+    bad_request_key_error: { status: 400, data: zGetSnippetWorkflowRunDetailError400 },
+    client_disconnected: { status: 400, data: zGetSnippetWorkflowRunDetailError400 },
     invalid_param: { status: 400, data: zGetSnippetWorkflowRunDetailError400 },
+    security_error: { status: 400, data: zGetSnippetWorkflowRunDetailError400 },
+    websocket_mismatch: { status: 400, data: zGetSnippetWorkflowRunDetailError400 },
     not_init_validated: { status: 401, data: zGetSnippetWorkflowRunDetailError401 },
     not_setup: { status: 401, data: zGetSnippetWorkflowRunDetailError401 },
     unauthorized: { status: 401, data: zGetSnippetWorkflowRunDetailError401 },
@@ -301,8 +316,13 @@ export const get3 = oc
   .output(zGetSnippetsBySnippetIdWorkflowRunsResponse)
   .errors({
     account_not_initialized: { status: 400, data: zListSnippetWorkflowRunsError400 },
+    bad_host: { status: 400, data: zListSnippetWorkflowRunsError400 },
     bad_request: { status: 400, data: zListSnippetWorkflowRunsError400 },
+    bad_request_key_error: { status: 400, data: zListSnippetWorkflowRunsError400 },
+    client_disconnected: { status: 400, data: zListSnippetWorkflowRunsError400 },
     invalid_param: { status: 400, data: zListSnippetWorkflowRunsError400 },
+    security_error: { status: 400, data: zListSnippetWorkflowRunsError400 },
+    websocket_mismatch: { status: 400, data: zListSnippetWorkflowRunsError400 },
     not_init_validated: { status: 401, data: zListSnippetWorkflowRunsError401 },
     not_setup: { status: 401, data: zListSnippetWorkflowRunsError401 },
     unauthorized: { status: 401, data: zListSnippetWorkflowRunsError401 },
@@ -330,8 +350,13 @@ export const get4 = oc
   .output(zGetSnippetsBySnippetIdWorkflowsDefaultWorkflowBlockConfigsResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetSnippetDefaultBlockConfigsError400 },
+    bad_host: { status: 400, data: zGetSnippetDefaultBlockConfigsError400 },
     bad_request: { status: 400, data: zGetSnippetDefaultBlockConfigsError400 },
+    bad_request_key_error: { status: 400, data: zGetSnippetDefaultBlockConfigsError400 },
+    client_disconnected: { status: 400, data: zGetSnippetDefaultBlockConfigsError400 },
     invalid_param: { status: 400, data: zGetSnippetDefaultBlockConfigsError400 },
+    security_error: { status: 400, data: zGetSnippetDefaultBlockConfigsError400 },
+    websocket_mismatch: { status: 400, data: zGetSnippetDefaultBlockConfigsError400 },
     not_init_validated: { status: 401, data: zGetSnippetDefaultBlockConfigsError401 },
     not_setup: { status: 401, data: zGetSnippetDefaultBlockConfigsError401 },
     unauthorized: { status: 401, data: zGetSnippetDefaultBlockConfigsError401 },
@@ -357,8 +382,13 @@ export const get5 = oc
   .output(zGetSnippetsBySnippetIdWorkflowsDraftConfigResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetSnippetDraftConfigError400 },
+    bad_host: { status: 400, data: zGetSnippetDraftConfigError400 },
     bad_request: { status: 400, data: zGetSnippetDraftConfigError400 },
+    bad_request_key_error: { status: 400, data: zGetSnippetDraftConfigError400 },
+    client_disconnected: { status: 400, data: zGetSnippetDraftConfigError400 },
     invalid_param: { status: 400, data: zGetSnippetDraftConfigError400 },
+    security_error: { status: 400, data: zGetSnippetDraftConfigError400 },
+    websocket_mismatch: { status: 400, data: zGetSnippetDraftConfigError400 },
     not_init_validated: { status: 401, data: zGetSnippetDraftConfigError401 },
     not_setup: { status: 401, data: zGetSnippetDraftConfigError401 },
     unauthorized: { status: 401, data: zGetSnippetDraftConfigError401 },
@@ -385,8 +415,13 @@ export const get6 = oc
   .output(zGetSnippetsBySnippetIdWorkflowsDraftConversationVariablesResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetSnippetConversationVariablesError400 },
+    bad_host: { status: 400, data: zGetSnippetConversationVariablesError400 },
     bad_request: { status: 400, data: zGetSnippetConversationVariablesError400 },
+    bad_request_key_error: { status: 400, data: zGetSnippetConversationVariablesError400 },
+    client_disconnected: { status: 400, data: zGetSnippetConversationVariablesError400 },
     invalid_param: { status: 400, data: zGetSnippetConversationVariablesError400 },
+    security_error: { status: 400, data: zGetSnippetConversationVariablesError400 },
+    websocket_mismatch: { status: 400, data: zGetSnippetConversationVariablesError400 },
     not_init_validated: { status: 401, data: zGetSnippetConversationVariablesError401 },
     not_setup: { status: 401, data: zGetSnippetConversationVariablesError401 },
     unauthorized: { status: 401, data: zGetSnippetConversationVariablesError401 },
@@ -412,8 +447,13 @@ export const get7 = oc
   .output(zGetSnippetsBySnippetIdWorkflowsDraftEnvironmentVariablesResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetSnippetEnvironmentVariablesError400 },
+    bad_host: { status: 400, data: zGetSnippetEnvironmentVariablesError400 },
     bad_request: { status: 400, data: zGetSnippetEnvironmentVariablesError400 },
+    bad_request_key_error: { status: 400, data: zGetSnippetEnvironmentVariablesError400 },
+    client_disconnected: { status: 400, data: zGetSnippetEnvironmentVariablesError400 },
     invalid_param: { status: 400, data: zGetSnippetEnvironmentVariablesError400 },
+    security_error: { status: 400, data: zGetSnippetEnvironmentVariablesError400 },
+    websocket_mismatch: { status: 400, data: zGetSnippetEnvironmentVariablesError400 },
     not_init_validated: { status: 401, data: zGetSnippetEnvironmentVariablesError401 },
     not_setup: { status: 401, data: zGetSnippetEnvironmentVariablesError401 },
     unauthorized: { status: 401, data: zGetSnippetEnvironmentVariablesError401 },
@@ -452,8 +492,13 @@ export const post2 = oc
   .output(zPostSnippetsBySnippetIdWorkflowsDraftIterationNodesByNodeIdRunResponse)
   .errors({
     account_not_initialized: { status: 400, data: zRunSnippetDraftIterationNodeError400 },
+    bad_host: { status: 400, data: zRunSnippetDraftIterationNodeError400 },
     bad_request: { status: 400, data: zRunSnippetDraftIterationNodeError400 },
+    bad_request_key_error: { status: 400, data: zRunSnippetDraftIterationNodeError400 },
+    client_disconnected: { status: 400, data: zRunSnippetDraftIterationNodeError400 },
     invalid_param: { status: 400, data: zRunSnippetDraftIterationNodeError400 },
+    security_error: { status: 400, data: zRunSnippetDraftIterationNodeError400 },
+    websocket_mismatch: { status: 400, data: zRunSnippetDraftIterationNodeError400 },
     not_init_validated: { status: 401, data: zRunSnippetDraftIterationNodeError401 },
     not_setup: { status: 401, data: zRunSnippetDraftIterationNodeError401 },
     unauthorized: { status: 401, data: zRunSnippetDraftIterationNodeError401 },
@@ -502,8 +547,13 @@ export const post3 = oc
   .output(zPostSnippetsBySnippetIdWorkflowsDraftLoopNodesByNodeIdRunResponse)
   .errors({
     account_not_initialized: { status: 400, data: zRunSnippetDraftLoopNodeError400 },
+    bad_host: { status: 400, data: zRunSnippetDraftLoopNodeError400 },
     bad_request: { status: 400, data: zRunSnippetDraftLoopNodeError400 },
+    bad_request_key_error: { status: 400, data: zRunSnippetDraftLoopNodeError400 },
+    client_disconnected: { status: 400, data: zRunSnippetDraftLoopNodeError400 },
     invalid_param: { status: 400, data: zRunSnippetDraftLoopNodeError400 },
+    security_error: { status: 400, data: zRunSnippetDraftLoopNodeError400 },
+    websocket_mismatch: { status: 400, data: zRunSnippetDraftLoopNodeError400 },
     not_init_validated: { status: 401, data: zRunSnippetDraftLoopNodeError401 },
     not_setup: { status: 401, data: zRunSnippetDraftLoopNodeError401 },
     unauthorized: { status: 401, data: zRunSnippetDraftLoopNodeError401 },
@@ -541,8 +591,13 @@ export const get8 = oc
   .output(zGetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetSnippetAgentComposerCandidatesApiError400 },
+    bad_host: { status: 400, data: zGetSnippetAgentComposerCandidatesApiError400 },
     bad_request: { status: 400, data: zGetSnippetAgentComposerCandidatesApiError400 },
+    bad_request_key_error: { status: 400, data: zGetSnippetAgentComposerCandidatesApiError400 },
+    client_disconnected: { status: 400, data: zGetSnippetAgentComposerCandidatesApiError400 },
     invalid_param: { status: 400, data: zGetSnippetAgentComposerCandidatesApiError400 },
+    security_error: { status: 400, data: zGetSnippetAgentComposerCandidatesApiError400 },
+    websocket_mismatch: { status: 400, data: zGetSnippetAgentComposerCandidatesApiError400 },
     not_init_validated: { status: 401, data: zGetSnippetAgentComposerCandidatesApiError401 },
     not_setup: { status: 401, data: zGetSnippetAgentComposerCandidatesApiError401 },
     unauthorized: { status: 401, data: zGetSnippetAgentComposerCandidatesApiError401 },
@@ -572,12 +627,20 @@ export const post4 = oc
       status: 400,
       data: zPostSnippetAgentComposerCopyFromRosterApiError400,
     },
+    bad_host: { status: 400, data: zPostSnippetAgentComposerCopyFromRosterApiError400 },
     bad_request: { status: 400, data: zPostSnippetAgentComposerCopyFromRosterApiError400 },
+    bad_request_key_error: {
+      status: 400,
+      data: zPostSnippetAgentComposerCopyFromRosterApiError400,
+    },
+    client_disconnected: { status: 400, data: zPostSnippetAgentComposerCopyFromRosterApiError400 },
     invalid_composer_config_error: {
       status: 400,
       data: zPostSnippetAgentComposerCopyFromRosterApiError400,
     },
     invalid_param: { status: 400, data: zPostSnippetAgentComposerCopyFromRosterApiError400 },
+    security_error: { status: 400, data: zPostSnippetAgentComposerCopyFromRosterApiError400 },
+    websocket_mismatch: { status: 400, data: zPostSnippetAgentComposerCopyFromRosterApiError400 },
     not_init_validated: { status: 401, data: zPostSnippetAgentComposerCopyFromRosterApiError401 },
     not_setup: { status: 401, data: zPostSnippetAgentComposerCopyFromRosterApiError401 },
     unauthorized: { status: 401, data: zPostSnippetAgentComposerCopyFromRosterApiError401 },
@@ -618,8 +681,13 @@ export const post5 = oc
   .output(zPostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerImpactResponse)
   .errors({
     account_not_initialized: { status: 400, data: zPostSnippetAgentComposerImpactApiError400 },
+    bad_host: { status: 400, data: zPostSnippetAgentComposerImpactApiError400 },
     bad_request: { status: 400, data: zPostSnippetAgentComposerImpactApiError400 },
+    bad_request_key_error: { status: 400, data: zPostSnippetAgentComposerImpactApiError400 },
+    client_disconnected: { status: 400, data: zPostSnippetAgentComposerImpactApiError400 },
     invalid_param: { status: 400, data: zPostSnippetAgentComposerImpactApiError400 },
+    security_error: { status: 400, data: zPostSnippetAgentComposerImpactApiError400 },
+    websocket_mismatch: { status: 400, data: zPostSnippetAgentComposerImpactApiError400 },
     not_init_validated: { status: 401, data: zPostSnippetAgentComposerImpactApiError401 },
     not_setup: { status: 401, data: zPostSnippetAgentComposerImpactApiError401 },
     unauthorized: { status: 401, data: zPostSnippetAgentComposerImpactApiError401 },
@@ -653,7 +721,10 @@ export const post6 = oc
       status: 400,
       data: zPostSnippetAgentComposerSaveToRosterApiError400,
     },
+    bad_host: { status: 400, data: zPostSnippetAgentComposerSaveToRosterApiError400 },
     bad_request: { status: 400, data: zPostSnippetAgentComposerSaveToRosterApiError400 },
+    bad_request_key_error: { status: 400, data: zPostSnippetAgentComposerSaveToRosterApiError400 },
+    client_disconnected: { status: 400, data: zPostSnippetAgentComposerSaveToRosterApiError400 },
     invalid_composer_config_error: {
       status: 400,
       data: zPostSnippetAgentComposerSaveToRosterApiError400,
@@ -663,6 +734,8 @@ export const post6 = oc
       status: 400,
       data: zPostSnippetAgentComposerSaveToRosterApiError400,
     },
+    security_error: { status: 400, data: zPostSnippetAgentComposerSaveToRosterApiError400 },
+    websocket_mismatch: { status: 400, data: zPostSnippetAgentComposerSaveToRosterApiError400 },
     not_init_validated: { status: 401, data: zPostSnippetAgentComposerSaveToRosterApiError401 },
     not_setup: { status: 401, data: zPostSnippetAgentComposerSaveToRosterApiError401 },
     unauthorized: { status: 401, data: zPostSnippetAgentComposerSaveToRosterApiError401 },
@@ -696,7 +769,10 @@ export const post7 = oc
   .errors({
     account_not_initialized: { status: 400, data: zPostSnippetAgentComposerValidateApiError400 },
     agent_soul_locked_error: { status: 400, data: zPostSnippetAgentComposerValidateApiError400 },
+    bad_host: { status: 400, data: zPostSnippetAgentComposerValidateApiError400 },
     bad_request: { status: 400, data: zPostSnippetAgentComposerValidateApiError400 },
+    bad_request_key_error: { status: 400, data: zPostSnippetAgentComposerValidateApiError400 },
+    client_disconnected: { status: 400, data: zPostSnippetAgentComposerValidateApiError400 },
     invalid_composer_config_error: {
       status: 400,
       data: zPostSnippetAgentComposerValidateApiError400,
@@ -706,6 +782,8 @@ export const post7 = oc
       status: 400,
       data: zPostSnippetAgentComposerValidateApiError400,
     },
+    security_error: { status: 400, data: zPostSnippetAgentComposerValidateApiError400 },
+    websocket_mismatch: { status: 400, data: zPostSnippetAgentComposerValidateApiError400 },
     not_init_validated: { status: 401, data: zPostSnippetAgentComposerValidateApiError401 },
     not_setup: { status: 401, data: zPostSnippetAgentComposerValidateApiError401 },
     unauthorized: { status: 401, data: zPostSnippetAgentComposerValidateApiError401 },
@@ -732,8 +810,13 @@ export const get9 = oc
   .output(zGetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetSnippetAgentComposerApiError400 },
+    bad_host: { status: 400, data: zGetSnippetAgentComposerApiError400 },
     bad_request: { status: 400, data: zGetSnippetAgentComposerApiError400 },
+    bad_request_key_error: { status: 400, data: zGetSnippetAgentComposerApiError400 },
+    client_disconnected: { status: 400, data: zGetSnippetAgentComposerApiError400 },
     invalid_param: { status: 400, data: zGetSnippetAgentComposerApiError400 },
+    security_error: { status: 400, data: zGetSnippetAgentComposerApiError400 },
+    websocket_mismatch: { status: 400, data: zGetSnippetAgentComposerApiError400 },
     not_init_validated: { status: 401, data: zGetSnippetAgentComposerApiError401 },
     not_setup: { status: 401, data: zGetSnippetAgentComposerApiError401 },
     unauthorized: { status: 401, data: zGetSnippetAgentComposerApiError401 },
@@ -760,10 +843,15 @@ export const put = oc
   .errors({
     account_not_initialized: { status: 400, data: zPutSnippetAgentComposerApiError400 },
     agent_soul_locked_error: { status: 400, data: zPutSnippetAgentComposerApiError400 },
+    bad_host: { status: 400, data: zPutSnippetAgentComposerApiError400 },
     bad_request: { status: 400, data: zPutSnippetAgentComposerApiError400 },
+    bad_request_key_error: { status: 400, data: zPutSnippetAgentComposerApiError400 },
+    client_disconnected: { status: 400, data: zPutSnippetAgentComposerApiError400 },
     invalid_composer_config_error: { status: 400, data: zPutSnippetAgentComposerApiError400 },
     invalid_param: { status: 400, data: zPutSnippetAgentComposerApiError400 },
     plaintext_secret_not_allowed_error: { status: 400, data: zPutSnippetAgentComposerApiError400 },
+    security_error: { status: 400, data: zPutSnippetAgentComposerApiError400 },
+    websocket_mismatch: { status: 400, data: zPutSnippetAgentComposerApiError400 },
     not_init_validated: { status: 401, data: zPutSnippetAgentComposerApiError401 },
     not_setup: { status: 401, data: zPutSnippetAgentComposerApiError401 },
     unauthorized: { status: 401, data: zPutSnippetAgentComposerApiError401 },
@@ -804,8 +892,13 @@ export const get10 = oc
   .output(zGetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdLastRunResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetSnippetDraftNodeLastRunError400 },
+    bad_host: { status: 400, data: zGetSnippetDraftNodeLastRunError400 },
     bad_request: { status: 400, data: zGetSnippetDraftNodeLastRunError400 },
+    bad_request_key_error: { status: 400, data: zGetSnippetDraftNodeLastRunError400 },
+    client_disconnected: { status: 400, data: zGetSnippetDraftNodeLastRunError400 },
     invalid_param: { status: 400, data: zGetSnippetDraftNodeLastRunError400 },
+    security_error: { status: 400, data: zGetSnippetDraftNodeLastRunError400 },
+    websocket_mismatch: { status: 400, data: zGetSnippetDraftNodeLastRunError400 },
     not_init_validated: { status: 401, data: zGetSnippetDraftNodeLastRunError401 },
     not_setup: { status: 401, data: zGetSnippetDraftNodeLastRunError401 },
     unauthorized: { status: 401, data: zGetSnippetDraftNodeLastRunError401 },
@@ -842,8 +935,13 @@ export const post8 = oc
   .output(zPostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdRunResponse)
   .errors({
     account_not_initialized: { status: 400, data: zRunSnippetDraftNodeError400 },
+    bad_host: { status: 400, data: zRunSnippetDraftNodeError400 },
     bad_request: { status: 400, data: zRunSnippetDraftNodeError400 },
+    bad_request_key_error: { status: 400, data: zRunSnippetDraftNodeError400 },
+    client_disconnected: { status: 400, data: zRunSnippetDraftNodeError400 },
     invalid_param: { status: 400, data: zRunSnippetDraftNodeError400 },
+    security_error: { status: 400, data: zRunSnippetDraftNodeError400 },
+    websocket_mismatch: { status: 400, data: zRunSnippetDraftNodeError400 },
     not_init_validated: { status: 401, data: zRunSnippetDraftNodeError401 },
     not_setup: { status: 401, data: zRunSnippetDraftNodeError401 },
     unauthorized: { status: 401, data: zRunSnippetDraftNodeError401 },
@@ -870,8 +968,13 @@ export const delete_ = oc
   .output(zDeleteSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesResponse)
   .errors({
     account_not_initialized: { status: 400, data: zDeleteSnippetNodeVariablesError400 },
+    bad_host: { status: 400, data: zDeleteSnippetNodeVariablesError400 },
     bad_request: { status: 400, data: zDeleteSnippetNodeVariablesError400 },
+    bad_request_key_error: { status: 400, data: zDeleteSnippetNodeVariablesError400 },
+    client_disconnected: { status: 400, data: zDeleteSnippetNodeVariablesError400 },
     invalid_param: { status: 400, data: zDeleteSnippetNodeVariablesError400 },
+    security_error: { status: 400, data: zDeleteSnippetNodeVariablesError400 },
+    websocket_mismatch: { status: 400, data: zDeleteSnippetNodeVariablesError400 },
     not_init_validated: { status: 401, data: zDeleteSnippetNodeVariablesError401 },
     not_setup: { status: 401, data: zDeleteSnippetNodeVariablesError401 },
     unauthorized: { status: 401, data: zDeleteSnippetNodeVariablesError401 },
@@ -893,8 +996,13 @@ export const get11 = oc
   .output(zGetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetSnippetNodeVariablesError400 },
+    bad_host: { status: 400, data: zGetSnippetNodeVariablesError400 },
     bad_request: { status: 400, data: zGetSnippetNodeVariablesError400 },
+    bad_request_key_error: { status: 400, data: zGetSnippetNodeVariablesError400 },
+    client_disconnected: { status: 400, data: zGetSnippetNodeVariablesError400 },
     invalid_param: { status: 400, data: zGetSnippetNodeVariablesError400 },
+    security_error: { status: 400, data: zGetSnippetNodeVariablesError400 },
+    websocket_mismatch: { status: 400, data: zGetSnippetNodeVariablesError400 },
     not_init_validated: { status: 401, data: zGetSnippetNodeVariablesError401 },
     not_setup: { status: 401, data: zGetSnippetNodeVariablesError401 },
     unauthorized: { status: 401, data: zGetSnippetNodeVariablesError401 },
@@ -942,8 +1050,13 @@ export const post9 = oc
   .output(zPostSnippetsBySnippetIdWorkflowsDraftRunResponse)
   .errors({
     account_not_initialized: { status: 400, data: zRunSnippetDraftWorkflowError400 },
+    bad_host: { status: 400, data: zRunSnippetDraftWorkflowError400 },
     bad_request: { status: 400, data: zRunSnippetDraftWorkflowError400 },
+    bad_request_key_error: { status: 400, data: zRunSnippetDraftWorkflowError400 },
+    client_disconnected: { status: 400, data: zRunSnippetDraftWorkflowError400 },
     invalid_param: { status: 400, data: zRunSnippetDraftWorkflowError400 },
+    security_error: { status: 400, data: zRunSnippetDraftWorkflowError400 },
+    websocket_mismatch: { status: 400, data: zRunSnippetDraftWorkflowError400 },
     not_init_validated: { status: 401, data: zRunSnippetDraftWorkflowError401 },
     not_setup: { status: 401, data: zRunSnippetDraftWorkflowError401 },
     unauthorized: { status: 401, data: zRunSnippetDraftWorkflowError401 },
@@ -970,8 +1083,13 @@ export const get12 = oc
   .output(zGetSnippetsBySnippetIdWorkflowsDraftSystemVariablesResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetSnippetSystemVariablesError400 },
+    bad_host: { status: 400, data: zGetSnippetSystemVariablesError400 },
     bad_request: { status: 400, data: zGetSnippetSystemVariablesError400 },
+    bad_request_key_error: { status: 400, data: zGetSnippetSystemVariablesError400 },
+    client_disconnected: { status: 400, data: zGetSnippetSystemVariablesError400 },
     invalid_param: { status: 400, data: zGetSnippetSystemVariablesError400 },
+    security_error: { status: 400, data: zGetSnippetSystemVariablesError400 },
+    websocket_mismatch: { status: 400, data: zGetSnippetSystemVariablesError400 },
     not_init_validated: { status: 401, data: zGetSnippetSystemVariablesError401 },
     not_setup: { status: 401, data: zGetSnippetSystemVariablesError401 },
     unauthorized: { status: 401, data: zGetSnippetSystemVariablesError401 },
@@ -997,8 +1115,13 @@ export const put2 = oc
   .output(zPutSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResetResponse)
   .errors({
     account_not_initialized: { status: 400, data: zResetSnippetWorkflowVariableError400 },
+    bad_host: { status: 400, data: zResetSnippetWorkflowVariableError400 },
     bad_request: { status: 400, data: zResetSnippetWorkflowVariableError400 },
+    bad_request_key_error: { status: 400, data: zResetSnippetWorkflowVariableError400 },
+    client_disconnected: { status: 400, data: zResetSnippetWorkflowVariableError400 },
     invalid_param: { status: 400, data: zResetSnippetWorkflowVariableError400 },
+    security_error: { status: 400, data: zResetSnippetWorkflowVariableError400 },
+    websocket_mismatch: { status: 400, data: zResetSnippetWorkflowVariableError400 },
     not_init_validated: { status: 401, data: zResetSnippetWorkflowVariableError401 },
     not_setup: { status: 401, data: zResetSnippetWorkflowVariableError401 },
     unauthorized: { status: 401, data: zResetSnippetWorkflowVariableError401 },
@@ -1026,8 +1149,13 @@ export const delete2 = oc
   .output(zDeleteSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResponse)
   .errors({
     account_not_initialized: { status: 400, data: zDeleteSnippetWorkflowVariableError400 },
+    bad_host: { status: 400, data: zDeleteSnippetWorkflowVariableError400 },
     bad_request: { status: 400, data: zDeleteSnippetWorkflowVariableError400 },
+    bad_request_key_error: { status: 400, data: zDeleteSnippetWorkflowVariableError400 },
+    client_disconnected: { status: 400, data: zDeleteSnippetWorkflowVariableError400 },
     invalid_param: { status: 400, data: zDeleteSnippetWorkflowVariableError400 },
+    security_error: { status: 400, data: zDeleteSnippetWorkflowVariableError400 },
+    websocket_mismatch: { status: 400, data: zDeleteSnippetWorkflowVariableError400 },
     not_init_validated: { status: 401, data: zDeleteSnippetWorkflowVariableError401 },
     not_setup: { status: 401, data: zDeleteSnippetWorkflowVariableError401 },
     unauthorized: { status: 401, data: zDeleteSnippetWorkflowVariableError401 },
@@ -1050,8 +1178,13 @@ export const get13 = oc
   .output(zGetSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetSnippetWorkflowVariableError400 },
+    bad_host: { status: 400, data: zGetSnippetWorkflowVariableError400 },
     bad_request: { status: 400, data: zGetSnippetWorkflowVariableError400 },
+    bad_request_key_error: { status: 400, data: zGetSnippetWorkflowVariableError400 },
+    client_disconnected: { status: 400, data: zGetSnippetWorkflowVariableError400 },
     invalid_param: { status: 400, data: zGetSnippetWorkflowVariableError400 },
+    security_error: { status: 400, data: zGetSnippetWorkflowVariableError400 },
+    websocket_mismatch: { status: 400, data: zGetSnippetWorkflowVariableError400 },
     not_init_validated: { status: 401, data: zGetSnippetWorkflowVariableError401 },
     not_setup: { status: 401, data: zGetSnippetWorkflowVariableError401 },
     unauthorized: { status: 401, data: zGetSnippetWorkflowVariableError401 },
@@ -1079,8 +1212,13 @@ export const patch = oc
   .output(zPatchSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResponse)
   .errors({
     account_not_initialized: { status: 400, data: zUpdateSnippetWorkflowVariableError400 },
+    bad_host: { status: 400, data: zUpdateSnippetWorkflowVariableError400 },
     bad_request: { status: 400, data: zUpdateSnippetWorkflowVariableError400 },
+    bad_request_key_error: { status: 400, data: zUpdateSnippetWorkflowVariableError400 },
+    client_disconnected: { status: 400, data: zUpdateSnippetWorkflowVariableError400 },
     invalid_param: { status: 400, data: zUpdateSnippetWorkflowVariableError400 },
+    security_error: { status: 400, data: zUpdateSnippetWorkflowVariableError400 },
+    websocket_mismatch: { status: 400, data: zUpdateSnippetWorkflowVariableError400 },
     not_init_validated: { status: 401, data: zUpdateSnippetWorkflowVariableError401 },
     not_setup: { status: 401, data: zUpdateSnippetWorkflowVariableError401 },
     unauthorized: { status: 401, data: zUpdateSnippetWorkflowVariableError401 },
@@ -1111,8 +1249,13 @@ export const delete3 = oc
   .output(zDeleteSnippetsBySnippetIdWorkflowsDraftVariablesResponse)
   .errors({
     account_not_initialized: { status: 400, data: zDeleteSnippetWorkflowVariablesError400 },
+    bad_host: { status: 400, data: zDeleteSnippetWorkflowVariablesError400 },
     bad_request: { status: 400, data: zDeleteSnippetWorkflowVariablesError400 },
+    bad_request_key_error: { status: 400, data: zDeleteSnippetWorkflowVariablesError400 },
+    client_disconnected: { status: 400, data: zDeleteSnippetWorkflowVariablesError400 },
     invalid_param: { status: 400, data: zDeleteSnippetWorkflowVariablesError400 },
+    security_error: { status: 400, data: zDeleteSnippetWorkflowVariablesError400 },
+    websocket_mismatch: { status: 400, data: zDeleteSnippetWorkflowVariablesError400 },
     not_init_validated: { status: 401, data: zDeleteSnippetWorkflowVariablesError401 },
     not_setup: { status: 401, data: zDeleteSnippetWorkflowVariablesError401 },
     unauthorized: { status: 401, data: zDeleteSnippetWorkflowVariablesError401 },
@@ -1139,8 +1282,13 @@ export const get14 = oc
   .output(zGetSnippetsBySnippetIdWorkflowsDraftVariablesResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetSnippetWorkflowVariablesError400 },
+    bad_host: { status: 400, data: zGetSnippetWorkflowVariablesError400 },
     bad_request: { status: 400, data: zGetSnippetWorkflowVariablesError400 },
+    bad_request_key_error: { status: 400, data: zGetSnippetWorkflowVariablesError400 },
+    client_disconnected: { status: 400, data: zGetSnippetWorkflowVariablesError400 },
     invalid_param: { status: 400, data: zGetSnippetWorkflowVariablesError400 },
+    security_error: { status: 400, data: zGetSnippetWorkflowVariablesError400 },
+    websocket_mismatch: { status: 400, data: zGetSnippetWorkflowVariablesError400 },
     not_init_validated: { status: 401, data: zGetSnippetWorkflowVariablesError401 },
     not_setup: { status: 401, data: zGetSnippetWorkflowVariablesError401 },
     unauthorized: { status: 401, data: zGetSnippetWorkflowVariablesError401 },
@@ -1170,8 +1318,13 @@ export const get15 = oc
   .output(zGetSnippetsBySnippetIdWorkflowsDraftResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetSnippetDraftWorkflowError400 },
+    bad_host: { status: 400, data: zGetSnippetDraftWorkflowError400 },
     bad_request: { status: 400, data: zGetSnippetDraftWorkflowError400 },
+    bad_request_key_error: { status: 400, data: zGetSnippetDraftWorkflowError400 },
+    client_disconnected: { status: 400, data: zGetSnippetDraftWorkflowError400 },
     invalid_param: { status: 400, data: zGetSnippetDraftWorkflowError400 },
+    security_error: { status: 400, data: zGetSnippetDraftWorkflowError400 },
+    websocket_mismatch: { status: 400, data: zGetSnippetDraftWorkflowError400 },
     not_init_validated: { status: 401, data: zGetSnippetDraftWorkflowError401 },
     not_setup: { status: 401, data: zGetSnippetDraftWorkflowError401 },
     unauthorized: { status: 401, data: zGetSnippetDraftWorkflowError401 },
@@ -1200,8 +1353,13 @@ export const post10 = oc
   .output(zPostSnippetsBySnippetIdWorkflowsDraftResponse)
   .errors({
     account_not_initialized: { status: 400, data: zSyncSnippetDraftWorkflowError400 },
+    bad_host: { status: 400, data: zSyncSnippetDraftWorkflowError400 },
     bad_request: { status: 400, data: zSyncSnippetDraftWorkflowError400 },
+    bad_request_key_error: { status: 400, data: zSyncSnippetDraftWorkflowError400 },
+    client_disconnected: { status: 400, data: zSyncSnippetDraftWorkflowError400 },
     invalid_param: { status: 400, data: zSyncSnippetDraftWorkflowError400 },
+    security_error: { status: 400, data: zSyncSnippetDraftWorkflowError400 },
+    websocket_mismatch: { status: 400, data: zSyncSnippetDraftWorkflowError400 },
     not_init_validated: { status: 401, data: zSyncSnippetDraftWorkflowError401 },
     not_setup: { status: 401, data: zSyncSnippetDraftWorkflowError401 },
     unauthorized: { status: 401, data: zSyncSnippetDraftWorkflowError401 },
@@ -1239,8 +1397,13 @@ export const get16 = oc
   .output(zGetSnippetsBySnippetIdWorkflowsPublishResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetSnippetPublishedWorkflowError400 },
+    bad_host: { status: 400, data: zGetSnippetPublishedWorkflowError400 },
     bad_request: { status: 400, data: zGetSnippetPublishedWorkflowError400 },
+    bad_request_key_error: { status: 400, data: zGetSnippetPublishedWorkflowError400 },
+    client_disconnected: { status: 400, data: zGetSnippetPublishedWorkflowError400 },
     invalid_param: { status: 400, data: zGetSnippetPublishedWorkflowError400 },
+    security_error: { status: 400, data: zGetSnippetPublishedWorkflowError400 },
+    websocket_mismatch: { status: 400, data: zGetSnippetPublishedWorkflowError400 },
     not_init_validated: { status: 401, data: zGetSnippetPublishedWorkflowError401 },
     not_setup: { status: 401, data: zGetSnippetPublishedWorkflowError401 },
     unauthorized: { status: 401, data: zGetSnippetPublishedWorkflowError401 },
@@ -1267,8 +1430,13 @@ export const post11 = oc
   .output(zPostSnippetsBySnippetIdWorkflowsPublishResponse)
   .errors({
     account_not_initialized: { status: 400, data: zPublishSnippetWorkflowError400 },
+    bad_host: { status: 400, data: zPublishSnippetWorkflowError400 },
     bad_request: { status: 400, data: zPublishSnippetWorkflowError400 },
+    bad_request_key_error: { status: 400, data: zPublishSnippetWorkflowError400 },
+    client_disconnected: { status: 400, data: zPublishSnippetWorkflowError400 },
     invalid_param: { status: 400, data: zPublishSnippetWorkflowError400 },
+    security_error: { status: 400, data: zPublishSnippetWorkflowError400 },
+    websocket_mismatch: { status: 400, data: zPublishSnippetWorkflowError400 },
     not_init_validated: { status: 401, data: zPublishSnippetWorkflowError401 },
     not_setup: { status: 401, data: zPublishSnippetWorkflowError401 },
     unauthorized: { status: 401, data: zPublishSnippetWorkflowError401 },
@@ -1298,8 +1466,13 @@ export const post12 = oc
   .output(zPostSnippetsBySnippetIdWorkflowsByWorkflowIdRestoreResponse)
   .errors({
     account_not_initialized: { status: 400, data: zRestoreSnippetWorkflowToDraftError400 },
+    bad_host: { status: 400, data: zRestoreSnippetWorkflowToDraftError400 },
     bad_request: { status: 400, data: zRestoreSnippetWorkflowToDraftError400 },
+    bad_request_key_error: { status: 400, data: zRestoreSnippetWorkflowToDraftError400 },
+    client_disconnected: { status: 400, data: zRestoreSnippetWorkflowToDraftError400 },
     invalid_param: { status: 400, data: zRestoreSnippetWorkflowToDraftError400 },
+    security_error: { status: 400, data: zRestoreSnippetWorkflowToDraftError400 },
+    websocket_mismatch: { status: 400, data: zRestoreSnippetWorkflowToDraftError400 },
     not_init_validated: { status: 401, data: zRestoreSnippetWorkflowToDraftError401 },
     not_setup: { status: 401, data: zRestoreSnippetWorkflowToDraftError401 },
     unauthorized: { status: 401, data: zRestoreSnippetWorkflowToDraftError401 },
@@ -1329,8 +1502,13 @@ export const delete4 = oc
   .output(zDeleteSnippetsBySnippetIdWorkflowsByWorkflowIdResponse)
   .errors({
     account_not_initialized: { status: 400, data: zDeleteSnippetWorkflowByIdError400 },
+    bad_host: { status: 400, data: zDeleteSnippetWorkflowByIdError400 },
     bad_request: { status: 400, data: zDeleteSnippetWorkflowByIdError400 },
+    bad_request_key_error: { status: 400, data: zDeleteSnippetWorkflowByIdError400 },
+    client_disconnected: { status: 400, data: zDeleteSnippetWorkflowByIdError400 },
     invalid_param: { status: 400, data: zDeleteSnippetWorkflowByIdError400 },
+    security_error: { status: 400, data: zDeleteSnippetWorkflowByIdError400 },
+    websocket_mismatch: { status: 400, data: zDeleteSnippetWorkflowByIdError400 },
     not_init_validated: { status: 401, data: zDeleteSnippetWorkflowByIdError401 },
     not_setup: { status: 401, data: zDeleteSnippetWorkflowByIdError401 },
     unauthorized: { status: 401, data: zDeleteSnippetWorkflowByIdError401 },
@@ -1360,8 +1538,13 @@ export const patch2 = oc
   .output(zPatchSnippetsBySnippetIdWorkflowsByWorkflowIdResponse)
   .errors({
     account_not_initialized: { status: 400, data: zUpdateSnippetWorkflowByIdError400 },
+    bad_host: { status: 400, data: zUpdateSnippetWorkflowByIdError400 },
     bad_request: { status: 400, data: zUpdateSnippetWorkflowByIdError400 },
+    bad_request_key_error: { status: 400, data: zUpdateSnippetWorkflowByIdError400 },
+    client_disconnected: { status: 400, data: zUpdateSnippetWorkflowByIdError400 },
     invalid_param: { status: 400, data: zUpdateSnippetWorkflowByIdError400 },
+    security_error: { status: 400, data: zUpdateSnippetWorkflowByIdError400 },
+    websocket_mismatch: { status: 400, data: zUpdateSnippetWorkflowByIdError400 },
     not_init_validated: { status: 401, data: zUpdateSnippetWorkflowByIdError401 },
     not_setup: { status: 401, data: zUpdateSnippetWorkflowByIdError401 },
     unauthorized: { status: 401, data: zUpdateSnippetWorkflowByIdError401 },
@@ -1397,8 +1580,13 @@ export const get17 = oc
   .output(zGetSnippetsBySnippetIdWorkflowsResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetAllSnippetPublishedWorkflowsError400 },
+    bad_host: { status: 400, data: zGetAllSnippetPublishedWorkflowsError400 },
     bad_request: { status: 400, data: zGetAllSnippetPublishedWorkflowsError400 },
+    bad_request_key_error: { status: 400, data: zGetAllSnippetPublishedWorkflowsError400 },
+    client_disconnected: { status: 400, data: zGetAllSnippetPublishedWorkflowsError400 },
     invalid_param: { status: 400, data: zGetAllSnippetPublishedWorkflowsError400 },
+    security_error: { status: 400, data: zGetAllSnippetPublishedWorkflowsError400 },
+    websocket_mismatch: { status: 400, data: zGetAllSnippetPublishedWorkflowsError400 },
     not_init_validated: { status: 401, data: zGetAllSnippetPublishedWorkflowsError401 },
     not_setup: { status: 401, data: zGetAllSnippetPublishedWorkflowsError401 },
     unauthorized: { status: 401, data: zGetAllSnippetPublishedWorkflowsError401 },

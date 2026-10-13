@@ -22,8 +22,13 @@ export const get = oc
   .output(zGetTrialModelsResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetTrialModelsError400 },
+    bad_host: { status: 400, data: zGetTrialModelsError400 },
     bad_request: { status: 400, data: zGetTrialModelsError400 },
+    bad_request_key_error: { status: 400, data: zGetTrialModelsError400 },
+    client_disconnected: { status: 400, data: zGetTrialModelsError400 },
     invalid_param: { status: 400, data: zGetTrialModelsError400 },
+    security_error: { status: 400, data: zGetTrialModelsError400 },
+    websocket_mismatch: { status: 400, data: zGetTrialModelsError400 },
     not_init_validated: { status: 401, data: zGetTrialModelsError401 },
     not_setup: { status: 401, data: zGetTrialModelsError401 },
     unauthorized: { status: 401, data: zGetTrialModelsError401 },

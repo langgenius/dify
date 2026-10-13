@@ -29,8 +29,13 @@ export const get = oc
   .output(zGetBillingInvoicesResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetInvoicesError400 },
+    bad_host: { status: 400, data: zGetInvoicesError400 },
     bad_request: { status: 400, data: zGetInvoicesError400 },
+    bad_request_key_error: { status: 400, data: zGetInvoicesError400 },
+    client_disconnected: { status: 400, data: zGetInvoicesError400 },
     invalid_param: { status: 400, data: zGetInvoicesError400 },
+    security_error: { status: 400, data: zGetInvoicesError400 },
+    websocket_mismatch: { status: 400, data: zGetInvoicesError400 },
     not_init_validated: { status: 401, data: zGetInvoicesError401 },
     not_setup: { status: 401, data: zGetInvoicesError401 },
     unauthorized: { status: 401, data: zGetInvoicesError401 },
@@ -57,8 +62,13 @@ export const get2 = oc
   .output(zGetBillingSubscriptionResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetSubscriptionError400 },
+    bad_host: { status: 400, data: zGetSubscriptionError400 },
     bad_request: { status: 400, data: zGetSubscriptionError400 },
+    bad_request_key_error: { status: 400, data: zGetSubscriptionError400 },
+    client_disconnected: { status: 400, data: zGetSubscriptionError400 },
     invalid_param: { status: 400, data: zGetSubscriptionError400 },
+    security_error: { status: 400, data: zGetSubscriptionError400 },
+    websocket_mismatch: { status: 400, data: zGetSubscriptionError400 },
     not_init_validated: { status: 401, data: zGetSubscriptionError401 },
     not_setup: { status: 401, data: zGetSubscriptionError401 },
     unauthorized: { status: 401, data: zGetSubscriptionError401 },

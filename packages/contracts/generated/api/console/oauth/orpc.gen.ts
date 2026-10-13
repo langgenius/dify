@@ -64,8 +64,13 @@ export const get = oc
   .output(zGetOauthDataSourceBindingByProviderResponse)
   .errors({
     account_not_initialized: { status: 400, data: zOauthDataSourceBindingError400 },
+    bad_host: { status: 400, data: zOauthDataSourceBindingError400 },
     bad_request: { status: 400, data: zOauthDataSourceBindingError400 },
+    bad_request_key_error: { status: 400, data: zOauthDataSourceBindingError400 },
+    client_disconnected: { status: 400, data: zOauthDataSourceBindingError400 },
     invalid_param: { status: 400, data: zOauthDataSourceBindingError400 },
+    security_error: { status: 400, data: zOauthDataSourceBindingError400 },
+    websocket_mismatch: { status: 400, data: zOauthDataSourceBindingError400 },
     not_init_validated: { status: 401, data: zOauthDataSourceBindingError401 },
     not_setup: { status: 401, data: zOauthDataSourceBindingError401 },
     unauthorized: { status: 401, data: zOauthDataSourceBindingError401 },
@@ -95,8 +100,13 @@ export const get2 = oc
   .output(zGetOauthDataSourceByProviderByBindingIdSyncResponse)
   .errors({
     account_not_initialized: { status: 400, data: zOauthDataSourceSyncError400 },
+    bad_host: { status: 400, data: zOauthDataSourceSyncError400 },
     bad_request: { status: 400, data: zOauthDataSourceSyncError400 },
+    bad_request_key_error: { status: 400, data: zOauthDataSourceSyncError400 },
+    client_disconnected: { status: 400, data: zOauthDataSourceSyncError400 },
     invalid_param: { status: 400, data: zOauthDataSourceSyncError400 },
+    security_error: { status: 400, data: zOauthDataSourceSyncError400 },
+    websocket_mismatch: { status: 400, data: zOauthDataSourceSyncError400 },
     not_init_validated: { status: 401, data: zOauthDataSourceSyncError401 },
     not_setup: { status: 401, data: zOauthDataSourceSyncError401 },
     unauthorized: { status: 401, data: zOauthDataSourceSyncError401 },
@@ -126,8 +136,13 @@ export const get3 = oc
   .output(zGetOauthDataSourceByProviderResponse)
   .errors({
     account_not_initialized: { status: 400, data: zOauthDataSourceError400 },
+    bad_host: { status: 400, data: zOauthDataSourceError400 },
     bad_request: { status: 400, data: zOauthDataSourceError400 },
+    bad_request_key_error: { status: 400, data: zOauthDataSourceError400 },
+    client_disconnected: { status: 400, data: zOauthDataSourceError400 },
     invalid_param: { status: 400, data: zOauthDataSourceError400 },
+    security_error: { status: 400, data: zOauthDataSourceError400 },
+    websocket_mismatch: { status: 400, data: zOauthDataSourceError400 },
     not_init_validated: { status: 401, data: zOauthDataSourceError401 },
     not_setup: { status: 401, data: zOauthDataSourceError401 },
     unauthorized: { status: 401, data: zOauthDataSourceError401 },
@@ -163,8 +178,13 @@ export const get4 = oc
       status: 400,
       data: zGetDatasourcePluginOAuthAuthorizationUrlError400,
     },
+    bad_host: { status: 400, data: zGetDatasourcePluginOAuthAuthorizationUrlError400 },
     bad_request: { status: 400, data: zGetDatasourcePluginOAuthAuthorizationUrlError400 },
+    bad_request_key_error: { status: 400, data: zGetDatasourcePluginOAuthAuthorizationUrlError400 },
+    client_disconnected: { status: 400, data: zGetDatasourcePluginOAuthAuthorizationUrlError400 },
     invalid_param: { status: 400, data: zGetDatasourcePluginOAuthAuthorizationUrlError400 },
+    security_error: { status: 400, data: zGetDatasourcePluginOAuthAuthorizationUrlError400 },
+    websocket_mismatch: { status: 400, data: zGetDatasourcePluginOAuthAuthorizationUrlError400 },
     not_init_validated: { status: 401, data: zGetDatasourcePluginOAuthAuthorizationUrlError401 },
     not_setup: { status: 401, data: zGetDatasourcePluginOAuthAuthorizationUrlError401 },
     unauthorized: { status: 401, data: zGetDatasourcePluginOAuthAuthorizationUrlError401 },
@@ -199,8 +219,13 @@ export const get5 = oc
   .output(zGetOauthPluginByProviderToolAuthorizationUrlResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetToolPluginOAuthApiError400 },
+    bad_host: { status: 400, data: zGetToolPluginOAuthApiError400 },
     bad_request: { status: 400, data: zGetToolPluginOAuthApiError400 },
+    bad_request_key_error: { status: 400, data: zGetToolPluginOAuthApiError400 },
+    client_disconnected: { status: 400, data: zGetToolPluginOAuthApiError400 },
     invalid_param: { status: 400, data: zGetToolPluginOAuthApiError400 },
+    security_error: { status: 400, data: zGetToolPluginOAuthApiError400 },
+    websocket_mismatch: { status: 400, data: zGetToolPluginOAuthApiError400 },
     not_init_validated: { status: 401, data: zGetToolPluginOAuthApiError401 },
     not_setup: { status: 401, data: zGetToolPluginOAuthApiError401 },
     unauthorized: { status: 401, data: zGetToolPluginOAuthApiError401 },
@@ -255,8 +280,13 @@ export const post2 = oc
   .output(zPostOauthProviderAuthorizeResponse)
   .errors({
     account_not_initialized: { status: 400, data: zPostOAuthServerUserAuthorizeApiError400 },
+    bad_host: { status: 400, data: zPostOAuthServerUserAuthorizeApiError400 },
     bad_request: { status: 400, data: zPostOAuthServerUserAuthorizeApiError400 },
+    bad_request_key_error: { status: 400, data: zPostOAuthServerUserAuthorizeApiError400 },
+    client_disconnected: { status: 400, data: zPostOAuthServerUserAuthorizeApiError400 },
     invalid_param: { status: 400, data: zPostOAuthServerUserAuthorizeApiError400 },
+    security_error: { status: 400, data: zPostOAuthServerUserAuthorizeApiError400 },
+    websocket_mismatch: { status: 400, data: zPostOAuthServerUserAuthorizeApiError400 },
     not_init_validated: { status: 401, data: zPostOAuthServerUserAuthorizeApiError401 },
     not_setup: { status: 401, data: zPostOAuthServerUserAuthorizeApiError401 },
     unauthorized: { status: 401, data: zPostOAuthServerUserAuthorizeApiError401 },

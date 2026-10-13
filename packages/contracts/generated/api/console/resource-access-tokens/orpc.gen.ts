@@ -37,8 +37,13 @@ export const delete_ = oc
   .output(zDeleteResourceAccessTokensByTokenIdRelationsByRelationIdResponse)
   .errors({
     account_not_initialized: { status: 400, data: zDeleteResourceAccessTokenRelationError400 },
+    bad_host: { status: 400, data: zDeleteResourceAccessTokenRelationError400 },
     bad_request: { status: 400, data: zDeleteResourceAccessTokenRelationError400 },
+    bad_request_key_error: { status: 400, data: zDeleteResourceAccessTokenRelationError400 },
+    client_disconnected: { status: 400, data: zDeleteResourceAccessTokenRelationError400 },
     invalid_param: { status: 400, data: zDeleteResourceAccessTokenRelationError400 },
+    security_error: { status: 400, data: zDeleteResourceAccessTokenRelationError400 },
+    websocket_mismatch: { status: 400, data: zDeleteResourceAccessTokenRelationError400 },
     not_init_validated: { status: 401, data: zDeleteResourceAccessTokenRelationError401 },
     not_setup: { status: 401, data: zDeleteResourceAccessTokenRelationError401 },
     unauthorized: { status: 401, data: zDeleteResourceAccessTokenRelationError401 },
@@ -69,8 +74,13 @@ export const patch = oc
   .output(zPatchResourceAccessTokensByTokenIdResponse)
   .errors({
     account_not_initialized: { status: 400, data: zUpdateResourceAccessTokenError400 },
+    bad_host: { status: 400, data: zUpdateResourceAccessTokenError400 },
     bad_request: { status: 400, data: zUpdateResourceAccessTokenError400 },
+    bad_request_key_error: { status: 400, data: zUpdateResourceAccessTokenError400 },
+    client_disconnected: { status: 400, data: zUpdateResourceAccessTokenError400 },
     invalid_param: { status: 400, data: zUpdateResourceAccessTokenError400 },
+    security_error: { status: 400, data: zUpdateResourceAccessTokenError400 },
+    websocket_mismatch: { status: 400, data: zUpdateResourceAccessTokenError400 },
     not_init_validated: { status: 401, data: zUpdateResourceAccessTokenError401 },
     not_setup: { status: 401, data: zUpdateResourceAccessTokenError401 },
     unauthorized: { status: 401, data: zUpdateResourceAccessTokenError401 },
@@ -93,8 +103,13 @@ export const get = oc
   .output(zGetResourceAccessTokensResponse)
   .errors({
     account_not_initialized: { status: 400, data: zListResourceAccessTokensError400 },
+    bad_host: { status: 400, data: zListResourceAccessTokensError400 },
     bad_request: { status: 400, data: zListResourceAccessTokensError400 },
+    bad_request_key_error: { status: 400, data: zListResourceAccessTokensError400 },
+    client_disconnected: { status: 400, data: zListResourceAccessTokensError400 },
     invalid_param: { status: 400, data: zListResourceAccessTokensError400 },
+    security_error: { status: 400, data: zListResourceAccessTokensError400 },
+    websocket_mismatch: { status: 400, data: zListResourceAccessTokensError400 },
     not_init_validated: { status: 401, data: zListResourceAccessTokensError401 },
     not_setup: { status: 401, data: zListResourceAccessTokensError401 },
     unauthorized: { status: 401, data: zListResourceAccessTokensError401 },
@@ -113,8 +128,13 @@ export const post = oc
   .output(zPostResourceAccessTokensResponse)
   .errors({
     account_not_initialized: { status: 400, data: zCreateResourceAccessTokenError400 },
+    bad_host: { status: 400, data: zCreateResourceAccessTokenError400 },
     bad_request: { status: 400, data: zCreateResourceAccessTokenError400 },
+    bad_request_key_error: { status: 400, data: zCreateResourceAccessTokenError400 },
+    client_disconnected: { status: 400, data: zCreateResourceAccessTokenError400 },
     invalid_param: { status: 400, data: zCreateResourceAccessTokenError400 },
+    security_error: { status: 400, data: zCreateResourceAccessTokenError400 },
+    websocket_mismatch: { status: 400, data: zCreateResourceAccessTokenError400 },
     not_init_validated: { status: 401, data: zCreateResourceAccessTokenError401 },
     not_setup: { status: 401, data: zCreateResourceAccessTokenError401 },
     unauthorized: { status: 401, data: zCreateResourceAccessTokenError401 },

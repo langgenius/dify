@@ -34,8 +34,13 @@ export const get = oc
   .output(zGetFilesSupportTypeResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetFileSupportTypeApiError400 },
+    bad_host: { status: 400, data: zGetFileSupportTypeApiError400 },
     bad_request: { status: 400, data: zGetFileSupportTypeApiError400 },
+    bad_request_key_error: { status: 400, data: zGetFileSupportTypeApiError400 },
+    client_disconnected: { status: 400, data: zGetFileSupportTypeApiError400 },
     invalid_param: { status: 400, data: zGetFileSupportTypeApiError400 },
+    security_error: { status: 400, data: zGetFileSupportTypeApiError400 },
+    websocket_mismatch: { status: 400, data: zGetFileSupportTypeApiError400 },
     not_init_validated: { status: 401, data: zGetFileSupportTypeApiError401 },
     not_setup: { status: 401, data: zGetFileSupportTypeApiError401 },
     unauthorized: { status: 401, data: zGetFileSupportTypeApiError401 },
@@ -56,8 +61,13 @@ export const get2 = oc
   .output(zGetFilesUploadResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetFileApiError400 },
+    bad_host: { status: 400, data: zGetFileApiError400 },
     bad_request: { status: 400, data: zGetFileApiError400 },
+    bad_request_key_error: { status: 400, data: zGetFileApiError400 },
+    client_disconnected: { status: 400, data: zGetFileApiError400 },
     invalid_param: { status: 400, data: zGetFileApiError400 },
+    security_error: { status: 400, data: zGetFileApiError400 },
+    websocket_mismatch: { status: 400, data: zGetFileApiError400 },
     not_init_validated: { status: 401, data: zGetFileApiError401 },
     not_setup: { status: 401, data: zGetFileApiError401 },
     unauthorized: { status: 401, data: zGetFileApiError401 },
@@ -76,12 +86,17 @@ export const post = oc
   .output(zPostFilesUploadResponse)
   .errors({
     account_not_initialized: { status: 400, data: zPostFileApiError400 },
+    bad_host: { status: 400, data: zPostFileApiError400 },
     bad_request: { status: 400, data: zPostFileApiError400 },
+    bad_request_key_error: { status: 400, data: zPostFileApiError400 },
+    client_disconnected: { status: 400, data: zPostFileApiError400 },
     file_extension_blocked: { status: 400, data: zPostFileApiError400 },
     filename_not_exists_error: { status: 400, data: zPostFileApiError400 },
     invalid_param: { status: 400, data: zPostFileApiError400 },
     no_file_uploaded: { status: 400, data: zPostFileApiError400 },
+    security_error: { status: 400, data: zPostFileApiError400 },
     too_many_files: { status: 400, data: zPostFileApiError400 },
+    websocket_mismatch: { status: 400, data: zPostFileApiError400 },
     not_init_validated: { status: 401, data: zPostFileApiError401 },
     not_setup: { status: 401, data: zPostFileApiError401 },
     unauthorized: { status: 401, data: zPostFileApiError401 },
@@ -108,8 +123,13 @@ export const get3 = oc
   .output(zGetFilesByFileIdPreviewResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetFilePreviewApiError400 },
+    bad_host: { status: 400, data: zGetFilePreviewApiError400 },
     bad_request: { status: 400, data: zGetFilePreviewApiError400 },
+    bad_request_key_error: { status: 400, data: zGetFilePreviewApiError400 },
+    client_disconnected: { status: 400, data: zGetFilePreviewApiError400 },
     invalid_param: { status: 400, data: zGetFilePreviewApiError400 },
+    security_error: { status: 400, data: zGetFilePreviewApiError400 },
+    websocket_mismatch: { status: 400, data: zGetFilePreviewApiError400 },
     not_init_validated: { status: 401, data: zGetFilePreviewApiError401 },
     not_setup: { status: 401, data: zGetFilePreviewApiError401 },
     unauthorized: { status: 401, data: zGetFilePreviewApiError401 },

@@ -44,8 +44,13 @@ export const delete_ = oc
   .output(zDeleteApiBasedExtensionByIdResponse)
   .errors({
     account_not_initialized: { status: 400, data: zDeleteApiBasedExtensionError400 },
+    bad_host: { status: 400, data: zDeleteApiBasedExtensionError400 },
     bad_request: { status: 400, data: zDeleteApiBasedExtensionError400 },
+    bad_request_key_error: { status: 400, data: zDeleteApiBasedExtensionError400 },
+    client_disconnected: { status: 400, data: zDeleteApiBasedExtensionError400 },
     invalid_param: { status: 400, data: zDeleteApiBasedExtensionError400 },
+    security_error: { status: 400, data: zDeleteApiBasedExtensionError400 },
+    websocket_mismatch: { status: 400, data: zDeleteApiBasedExtensionError400 },
     not_init_validated: { status: 401, data: zDeleteApiBasedExtensionError401 },
     not_setup: { status: 401, data: zDeleteApiBasedExtensionError401 },
     unauthorized: { status: 401, data: zDeleteApiBasedExtensionError401 },
@@ -67,8 +72,13 @@ export const get = oc
   .output(zGetApiBasedExtensionByIdResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetApiBasedExtensionError400 },
+    bad_host: { status: 400, data: zGetApiBasedExtensionError400 },
     bad_request: { status: 400, data: zGetApiBasedExtensionError400 },
+    bad_request_key_error: { status: 400, data: zGetApiBasedExtensionError400 },
+    client_disconnected: { status: 400, data: zGetApiBasedExtensionError400 },
     invalid_param: { status: 400, data: zGetApiBasedExtensionError400 },
+    security_error: { status: 400, data: zGetApiBasedExtensionError400 },
+    websocket_mismatch: { status: 400, data: zGetApiBasedExtensionError400 },
     not_init_validated: { status: 401, data: zGetApiBasedExtensionError401 },
     not_setup: { status: 401, data: zGetApiBasedExtensionError401 },
     unauthorized: { status: 401, data: zGetApiBasedExtensionError401 },
@@ -90,8 +100,13 @@ export const post = oc
   .output(zPostApiBasedExtensionByIdResponse)
   .errors({
     account_not_initialized: { status: 400, data: zUpdateApiBasedExtensionError400 },
+    bad_host: { status: 400, data: zUpdateApiBasedExtensionError400 },
     bad_request: { status: 400, data: zUpdateApiBasedExtensionError400 },
+    bad_request_key_error: { status: 400, data: zUpdateApiBasedExtensionError400 },
+    client_disconnected: { status: 400, data: zUpdateApiBasedExtensionError400 },
     invalid_param: { status: 400, data: zUpdateApiBasedExtensionError400 },
+    security_error: { status: 400, data: zUpdateApiBasedExtensionError400 },
+    websocket_mismatch: { status: 400, data: zUpdateApiBasedExtensionError400 },
     not_init_validated: { status: 401, data: zUpdateApiBasedExtensionError401 },
     not_setup: { status: 401, data: zUpdateApiBasedExtensionError401 },
     unauthorized: { status: 401, data: zUpdateApiBasedExtensionError401 },
@@ -118,8 +133,13 @@ export const get2 = oc
   .output(zGetApiBasedExtensionResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetApiBasedExtensionsError400 },
+    bad_host: { status: 400, data: zGetApiBasedExtensionsError400 },
     bad_request: { status: 400, data: zGetApiBasedExtensionsError400 },
+    bad_request_key_error: { status: 400, data: zGetApiBasedExtensionsError400 },
+    client_disconnected: { status: 400, data: zGetApiBasedExtensionsError400 },
     invalid_param: { status: 400, data: zGetApiBasedExtensionsError400 },
+    security_error: { status: 400, data: zGetApiBasedExtensionsError400 },
+    websocket_mismatch: { status: 400, data: zGetApiBasedExtensionsError400 },
     not_init_validated: { status: 401, data: zGetApiBasedExtensionsError401 },
     not_setup: { status: 401, data: zGetApiBasedExtensionsError401 },
     unauthorized: { status: 401, data: zGetApiBasedExtensionsError401 },
@@ -142,8 +162,13 @@ export const post2 = oc
   .output(zPostApiBasedExtensionResponse)
   .errors({
     account_not_initialized: { status: 400, data: zCreateApiBasedExtensionError400 },
+    bad_host: { status: 400, data: zCreateApiBasedExtensionError400 },
     bad_request: { status: 400, data: zCreateApiBasedExtensionError400 },
+    bad_request_key_error: { status: 400, data: zCreateApiBasedExtensionError400 },
+    client_disconnected: { status: 400, data: zCreateApiBasedExtensionError400 },
     invalid_param: { status: 400, data: zCreateApiBasedExtensionError400 },
+    security_error: { status: 400, data: zCreateApiBasedExtensionError400 },
+    websocket_mismatch: { status: 400, data: zCreateApiBasedExtensionError400 },
     not_init_validated: { status: 401, data: zCreateApiBasedExtensionError401 },
     not_setup: { status: 401, data: zCreateApiBasedExtensionError401 },
     unauthorized: { status: 401, data: zCreateApiBasedExtensionError401 },

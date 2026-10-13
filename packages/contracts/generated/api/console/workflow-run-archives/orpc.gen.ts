@@ -34,8 +34,13 @@ export const get = oc
   .output(zGetWorkflowRunArchivesDownloadsByDownloadIdResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetWorkflowRunArchiveDownloadError400 },
+    bad_host: { status: 400, data: zGetWorkflowRunArchiveDownloadError400 },
     bad_request: { status: 400, data: zGetWorkflowRunArchiveDownloadError400 },
+    bad_request_key_error: { status: 400, data: zGetWorkflowRunArchiveDownloadError400 },
+    client_disconnected: { status: 400, data: zGetWorkflowRunArchiveDownloadError400 },
     invalid_param: { status: 400, data: zGetWorkflowRunArchiveDownloadError400 },
+    security_error: { status: 400, data: zGetWorkflowRunArchiveDownloadError400 },
+    websocket_mismatch: { status: 400, data: zGetWorkflowRunArchiveDownloadError400 },
     not_init_validated: { status: 401, data: zGetWorkflowRunArchiveDownloadError401 },
     not_setup: { status: 401, data: zGetWorkflowRunArchiveDownloadError401 },
     unauthorized: { status: 401, data: zGetWorkflowRunArchiveDownloadError401 },
@@ -62,8 +67,13 @@ export const post = oc
   .output(zPostWorkflowRunArchivesDownloadsResponse)
   .errors({
     account_not_initialized: { status: 400, data: zCreateWorkflowRunArchiveDownloadError400 },
+    bad_host: { status: 400, data: zCreateWorkflowRunArchiveDownloadError400 },
     bad_request: { status: 400, data: zCreateWorkflowRunArchiveDownloadError400 },
+    bad_request_key_error: { status: 400, data: zCreateWorkflowRunArchiveDownloadError400 },
+    client_disconnected: { status: 400, data: zCreateWorkflowRunArchiveDownloadError400 },
     invalid_param: { status: 400, data: zCreateWorkflowRunArchiveDownloadError400 },
+    security_error: { status: 400, data: zCreateWorkflowRunArchiveDownloadError400 },
+    websocket_mismatch: { status: 400, data: zCreateWorkflowRunArchiveDownloadError400 },
     not_init_validated: { status: 401, data: zCreateWorkflowRunArchiveDownloadError401 },
     not_setup: { status: 401, data: zCreateWorkflowRunArchiveDownloadError401 },
     unauthorized: { status: 401, data: zCreateWorkflowRunArchiveDownloadError401 },
@@ -89,8 +99,13 @@ export const get2 = oc
   .output(zGetWorkflowRunArchivesResponse)
   .errors({
     account_not_initialized: { status: 400, data: zListWorkflowRunArchivesError400 },
+    bad_host: { status: 400, data: zListWorkflowRunArchivesError400 },
     bad_request: { status: 400, data: zListWorkflowRunArchivesError400 },
+    bad_request_key_error: { status: 400, data: zListWorkflowRunArchivesError400 },
+    client_disconnected: { status: 400, data: zListWorkflowRunArchivesError400 },
     invalid_param: { status: 400, data: zListWorkflowRunArchivesError400 },
+    security_error: { status: 400, data: zListWorkflowRunArchivesError400 },
+    websocket_mismatch: { status: 400, data: zListWorkflowRunArchivesError400 },
     not_init_validated: { status: 401, data: zListWorkflowRunArchivesError401 },
     not_setup: { status: 401, data: zListWorkflowRunArchivesError401 },
     unauthorized: { status: 401, data: zListWorkflowRunArchivesError401 },

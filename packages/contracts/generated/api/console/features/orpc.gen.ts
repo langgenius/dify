@@ -27,8 +27,13 @@ export const get = oc
   .output(zGetFeaturesVectorSpaceResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetTenantFeatureVectorSpaceError400 },
+    bad_host: { status: 400, data: zGetTenantFeatureVectorSpaceError400 },
     bad_request: { status: 400, data: zGetTenantFeatureVectorSpaceError400 },
+    bad_request_key_error: { status: 400, data: zGetTenantFeatureVectorSpaceError400 },
+    client_disconnected: { status: 400, data: zGetTenantFeatureVectorSpaceError400 },
     invalid_param: { status: 400, data: zGetTenantFeatureVectorSpaceError400 },
+    security_error: { status: 400, data: zGetTenantFeatureVectorSpaceError400 },
+    websocket_mismatch: { status: 400, data: zGetTenantFeatureVectorSpaceError400 },
     not_init_validated: { status: 401, data: zGetTenantFeatureVectorSpaceError401 },
     not_setup: { status: 401, data: zGetTenantFeatureVectorSpaceError401 },
     unauthorized: { status: 401, data: zGetTenantFeatureVectorSpaceError401 },
@@ -56,8 +61,13 @@ export const get2 = oc
   .output(zGetFeaturesResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetTenantFeaturesError400 },
+    bad_host: { status: 400, data: zGetTenantFeaturesError400 },
     bad_request: { status: 400, data: zGetTenantFeaturesError400 },
+    bad_request_key_error: { status: 400, data: zGetTenantFeaturesError400 },
+    client_disconnected: { status: 400, data: zGetTenantFeaturesError400 },
     invalid_param: { status: 400, data: zGetTenantFeaturesError400 },
+    security_error: { status: 400, data: zGetTenantFeaturesError400 },
+    websocket_mismatch: { status: 400, data: zGetTenantFeaturesError400 },
     not_init_validated: { status: 401, data: zGetTenantFeaturesError401 },
     not_setup: { status: 401, data: zGetTenantFeaturesError401 },
     unauthorized: { status: 401, data: zGetTenantFeaturesError401 },

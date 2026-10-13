@@ -36,8 +36,13 @@ export const get = oc
   .output(zGetNotionPagesByPageIdByPageTypePreviewResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetDataSourceNotionPreviewApiError400 },
+    bad_host: { status: 400, data: zGetDataSourceNotionPreviewApiError400 },
     bad_request: { status: 400, data: zGetDataSourceNotionPreviewApiError400 },
+    bad_request_key_error: { status: 400, data: zGetDataSourceNotionPreviewApiError400 },
+    client_disconnected: { status: 400, data: zGetDataSourceNotionPreviewApiError400 },
     invalid_param: { status: 400, data: zGetDataSourceNotionPreviewApiError400 },
+    security_error: { status: 400, data: zGetDataSourceNotionPreviewApiError400 },
+    websocket_mismatch: { status: 400, data: zGetDataSourceNotionPreviewApiError400 },
     not_init_validated: { status: 401, data: zGetDataSourceNotionPreviewApiError401 },
     not_setup: { status: 401, data: zGetDataSourceNotionPreviewApiError401 },
     unauthorized: { status: 401, data: zGetDataSourceNotionPreviewApiError401 },
@@ -72,8 +77,13 @@ export const get2 = oc
   .output(zGetNotionPreImportPagesResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetDataSourceNotionListApiError400 },
+    bad_host: { status: 400, data: zGetDataSourceNotionListApiError400 },
     bad_request: { status: 400, data: zGetDataSourceNotionListApiError400 },
+    bad_request_key_error: { status: 400, data: zGetDataSourceNotionListApiError400 },
+    client_disconnected: { status: 400, data: zGetDataSourceNotionListApiError400 },
     invalid_param: { status: 400, data: zGetDataSourceNotionListApiError400 },
+    security_error: { status: 400, data: zGetDataSourceNotionListApiError400 },
+    websocket_mismatch: { status: 400, data: zGetDataSourceNotionListApiError400 },
     not_init_validated: { status: 401, data: zGetDataSourceNotionListApiError401 },
     not_setup: { status: 401, data: zGetDataSourceNotionListApiError401 },
     unauthorized: { status: 401, data: zGetDataSourceNotionListApiError401 },

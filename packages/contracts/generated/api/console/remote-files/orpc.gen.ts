@@ -32,12 +32,17 @@ export const post = oc
   .input(z.object({ body: zPostRemoteFilesUploadBody }))
   .output(zPostRemoteFilesUploadResponse)
   .errors({
+    bad_host: { status: 400, data: zPostRemoteFileUploadError400 },
     bad_request: { status: 400, data: zPostRemoteFileUploadError400 },
+    bad_request_key_error: { status: 400, data: zPostRemoteFileUploadError400 },
+    client_disconnected: { status: 400, data: zPostRemoteFileUploadError400 },
     file_extension_blocked: { status: 400, data: zPostRemoteFileUploadError400 },
     invalid_param: { status: 400, data: zPostRemoteFileUploadError400 },
     remote_file_access_denied: { status: 400, data: zPostRemoteFileUploadError400 },
     remote_file_invalid_url: { status: 400, data: zPostRemoteFileUploadError400 },
     remote_file_url_blocked: { status: 400, data: zPostRemoteFileUploadError400 },
+    security_error: { status: 400, data: zPostRemoteFileUploadError400 },
+    websocket_mismatch: { status: 400, data: zPostRemoteFileUploadError400 },
     not_found: { status: 404, data: zPostRemoteFileUploadError404 },
     remote_file_not_found: { status: 404, data: zPostRemoteFileUploadError404 },
     file_too_large: { status: 413, data: zPostRemoteFileUploadError413 },
@@ -66,11 +71,16 @@ export const get = oc
   .output(zGetRemoteFilesByUrlResponse)
   .errors({
     account_not_initialized: { status: 400, data: zGetGetRemoteFileInfoError400 },
+    bad_host: { status: 400, data: zGetGetRemoteFileInfoError400 },
     bad_request: { status: 400, data: zGetGetRemoteFileInfoError400 },
+    bad_request_key_error: { status: 400, data: zGetGetRemoteFileInfoError400 },
+    client_disconnected: { status: 400, data: zGetGetRemoteFileInfoError400 },
     invalid_param: { status: 400, data: zGetGetRemoteFileInfoError400 },
     remote_file_access_denied: { status: 400, data: zGetGetRemoteFileInfoError400 },
     remote_file_invalid_url: { status: 400, data: zGetGetRemoteFileInfoError400 },
     remote_file_url_blocked: { status: 400, data: zGetGetRemoteFileInfoError400 },
+    security_error: { status: 400, data: zGetGetRemoteFileInfoError400 },
+    websocket_mismatch: { status: 400, data: zGetGetRemoteFileInfoError400 },
     not_init_validated: { status: 401, data: zGetGetRemoteFileInfoError401 },
     not_setup: { status: 401, data: zGetGetRemoteFileInfoError401 },
     unauthorized: { status: 401, data: zGetGetRemoteFileInfoError401 },
