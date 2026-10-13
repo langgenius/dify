@@ -217,11 +217,9 @@ export function DatasetScopeDialog({
                         aria-label={searchLabel}
                         className="w-[min(20rem,var(--available-width))]"
                       >
-                        <div className="p-1 pb-0">
-                          <ComboboxInputGroup>
-                            <ComboboxInput aria-label={searchLabel} placeholder={searchLabel} />
-                          </ComboboxInputGroup>
-                        </div>
+                        <ComboboxInputGroup>
+                          <ComboboxInput aria-label={searchLabel} placeholder={searchLabel} />
+                        </ComboboxInputGroup>
                         <ComboboxStatus>
                           {isLoading ? t(($) => $.loading, { ns: 'common' }) : null}
                         </ComboboxStatus>

@@ -370,7 +370,9 @@ class ConsoleAppService:
         self._apps.set_starred(context, app_id, starred)
 
     def copy(self, context: RequestContext, app_id: str, params: CopyAppParams) -> tuple[Import, AppRecord | None]:
-        dsl = self._transfers.export_dsl(context, app_id, AppExportOptions(include_secret=True))
+        dsl = self._transfers.export_dsl(
+            context, app_id, AppExportOptions(include_secret=True, preserve_agent_bindings=True)
+        )
         result = self._transfers.import_dsl(
             context,
             AppImportParams(mode="yaml-content", yaml_content=dsl, **params.model_dump()),

@@ -209,7 +209,7 @@ function ContextMenuSubTrigger({
       {children}
       <span
         aria-hidden
-        className="ms-auto i-ri-arrow-right-s-line size-4 shrink-0 text-text-tertiary"
+        className="ms-auto i-ri-arrow-right-s-line size-4 shrink-0 text-text-tertiary [&:dir(rtl)]:-scale-x-100"
       />
     </BaseContextMenu.SubmenuTrigger>
   )
@@ -217,9 +217,10 @@ function ContextMenuSubTrigger({
 
 type ContextMenuSubContentProps = ContextMenuContentProps
 
+// Base UI's own submenu default: it opens away from the trigger and follows the text direction.
 function ContextMenuSubContent({
   children,
-  placement = 'right-start',
+  placement = 'inline-end-start',
   sideOffset = 4,
   alignOffset = 0,
   className,
@@ -258,7 +259,9 @@ type ContextMenuGroupLabelProps = BaseContextMenu.GroupLabel.Props
 function ContextMenuGroupLabel({ className, ...props }: ContextMenuGroupLabelProps) {
   return (
     <BaseContextMenu.GroupLabel
-      className={(state) => cn(floatingGroupLabelClassName, resolveClassName(className, state))}
+      className={(state) =>
+        cn(floatingGroupLabelClassName, 'px-3', resolveClassName(className, state))
+      }
       {...props}
     />
   )

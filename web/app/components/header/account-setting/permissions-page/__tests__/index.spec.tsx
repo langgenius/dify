@@ -1,7 +1,6 @@
 import type { Role } from '@/models/access-control'
 import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { toast } from '@/app/notifications'
 import {
   useCreateWorkspaceRole,
   useUpdateWorkspaceRole,
@@ -209,7 +208,6 @@ describe('PermissionsPage', () => {
       },
       expect.any(Object),
     )
-    expect(toast.success).toHaveBeenCalledWith('permission.role.created')
   })
 
   it('updates the selected workspace role from the edit modal', async () => {
@@ -230,6 +228,5 @@ describe('PermissionsPage', () => {
       },
       expect.any(Object),
     )
-    expect(toast.success).toHaveBeenCalledWith('permission.role.updated')
   })
 })

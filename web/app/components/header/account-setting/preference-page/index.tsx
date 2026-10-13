@@ -73,7 +73,6 @@ export default function PreferencePage() {
     setEditing(true)
     try {
       await updateProfile.mutateAsync({ body: { interface_language: item.value } })
-      toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
       setLocaleOnClient(item.value.toString() as Locale, false)
       router.refresh()
     } catch (e) {
@@ -86,7 +85,6 @@ export default function PreferencePage() {
     setEditing(true)
     try {
       await updateProfile.mutateAsync({ body: { timezone: item.value } })
-      toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
     } catch (e) {
       toast.error((e as Error).message)
     } finally {

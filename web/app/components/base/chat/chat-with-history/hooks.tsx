@@ -557,7 +557,6 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
       setConversationRenaming(true)
       try {
         await renameConversation(appSourceType, appId, conversationId, newName)
-        toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
         setOriginConversationList(
           produce((draft) => {
             const index = originConversationList.findIndex((item) => item.id === conversationId)
@@ -594,9 +593,8 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
         appSourceType,
         appId,
       )
-      toast.success(t(($) => $['api.success'], { ns: 'common' }))
     },
-    [appSourceType, appId, t],
+    [appSourceType, appId],
   )
   return {
     isInstalledApp,

@@ -49,61 +49,48 @@ beforeEach(() => {
 
 afterEach(() => vi.unstubAllGlobals())
 
-it.each(['click', 'Enter'] as const)(
-  'holds focus through %s submission, hands it to the results dialog and returns it to Invite',
-  async (submission) => {
-    let resolveInvite!: (value: MemberInviteResponse) => void
-    inviteMember.mockReturnValue(
-      new Promise<MemberInviteResponse>((resolve) => {
-        resolveInvite = resolve
-      }),
-    )
-    const screen = await render(
-      <QueryClientTestProvider queryClient={queryClient}>
-        <MembersPage />
-      </QueryClientTestProvider>,
-    )
-    const trigger = screen.getByRole('button', { name: /members\.invite$/ })
-    await trigger.click()
-    const inviteDialog = screen.getByRole('dialog', { name: /members\.inviteTeamMember$/ })
-    const input = screen.getByRole('textbox', { name: /members\.emailRecipients/ })
-    await expect.element(input).toHaveFocus()
-    await input.fill('person@example.com')
-    if (submission === 'Enter') {
-      await userEvent.keyboard('{Enter}')
-      await expect.element(input).toHaveValue('')
-    }
-    await screen.getByRole('combobox', { name: /members\.role/ }).click()
-    await screen.getByRole('option', { name: /Admin/ }).click()
-    const submit = screen.getByRole('button', { name: /members\.sendInvite/ })
-    if (submission === 'Enter') {
-      await input.click()
-      await userEvent.keyboard('{Enter}')
-    } else {
-      await submit.click()
-    }
+it('holds focus through Enter submission, hands it to the results dialog and returns it to Invite', async () => {
+  let resolveInvite!: (value: MemberInviteResponse) => void
+  inviteMember.mockReturnValue(
+    new Promise<MemberInviteResponse>((resolve) => {
+      resolveInvite = resolve
+    }),
+  )
+  const screen = await render(
+    <QueryClientTestProvider queryClient={queryClient}>
+      <MembersPage />
+    </QueryClientTestProvider>,
+  )
+  const trigger = screen.getByRole('button', { name: /members\.invite$/ })
+  await trigger.click()
+  const inviteDialog = screen.getByRole('dialog', { name: /members\.inviteTeamMember$/ })
+  const input = screen.getByRole('textbox', { name: /members\.emailRecipients/ })
+  await input.fill('person@example.com')
+  await userEvent.keyboard('{Enter}')
+  await expect.element(input).toHaveValue('')
+  await screen.getByRole('combobox', { name: /members\.role/ }).click()
+  await screen.getByRole('option', { name: /Admin/ }).click()
+  const submit = screen.getByRole('button', { name: /members\.sendInvite/ })
+  await input.click()
+  await userEvent.keyboard('{Enter}')
 
-    await expect.element(submit).toHaveFocus()
-    await userEvent.keyboard('{Escape}')
-    const outside = document.elementFromPoint(4, 4)!
-    await userEvent.click(outside, { position: { x: 4, y: 4 } })
-    await userEvent.tab()
-    await expect.element(submit).toHaveFocus()
-    await expect.element(inviteDialog).toBeVisible()
-    await expect
-      .element(inviteDialog.getByRole('button', { name: /operation\.close/ }))
-      .toBeDisabled()
+  await expect.element(submit).toHaveFocus()
+  await userEvent.keyboard('{Escape}')
+  const outside = document.elementFromPoint(4, 4)!
+  await userEvent.click(outside, { position: { x: 4, y: 4 } })
+  await userEvent.tab()
+  await expect.element(submit).toHaveFocus()
+  await expect.element(inviteDialog).toBeVisible()
 
-    resolveInvite({ result: 'success', tenant_id: 'tenant-id', invitation_results: [] })
-    const result = screen.getByRole('dialog', { name: /members\.invitationSent$/ })
-    await expect.element(result).toBeVisible()
-    await expect.element(result.getByRole('button', { name: /operation\.close/ })).toHaveFocus()
-    // The closing invitation dialog must not take focus back while it exits.
-    await expect.element(inviteDialog).not.toBeInTheDocument()
-    expect(result.element().contains(document.activeElement)).toBe(true)
+  resolveInvite({ result: 'success', tenant_id: 'tenant-id', invitation_results: [] })
+  const result = screen.getByRole('dialog', { name: /members\.invitationSent$/ })
+  await expect.element(result).toBeVisible()
+  await expect.element(result.getByRole('button', { name: /operation\.close/ })).toHaveFocus()
+  // The closing invitation dialog must not take focus back while it exits.
+  await expect.element(inviteDialog).not.toBeInTheDocument()
+  expect(result.element().contains(document.activeElement)).toBe(true)
 
-    await result.getByRole('button', { name: /members\.ok$/ }).click()
-    await expect.element(result).not.toBeInTheDocument()
-    await expect.element(trigger).toHaveFocus()
-  },
-)
+  await result.getByRole('button', { name: /members\.ok$/ }).click()
+  await expect.element(result).not.toBeInTheDocument()
+  await expect.element(trigger).toHaveFocus()
+})

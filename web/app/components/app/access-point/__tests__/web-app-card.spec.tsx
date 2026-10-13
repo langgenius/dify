@@ -92,10 +92,6 @@ vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs.example.test/en${path}`,
 }))
 
-vi.mock('@/app/components/app/overview/settings', () => ({
-  default: () => null,
-}))
-
 function createAppInfo(mode: AppModeEnum): AppDetailWithSite {
   return createAppDetailFixture({
     access_mode: AccessMode.PUBLIC,
@@ -182,7 +178,7 @@ function QueryConnectedWebAppCard({
       canManageAccessPoint={canManageAccessPoint}
       showAccessControl={showAccessControl}
       onRefreshApp={onRefreshApp}
-      onSaveSiteConfig={vi.fn().mockResolvedValue(undefined)}
+      onSaveSiteConfig={vi.fn().mockResolvedValue(true)}
       workflow={workflow}
     />
   )
