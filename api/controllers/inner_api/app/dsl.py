@@ -20,7 +20,7 @@ from controllers.inner_api.wraps import enterprise_inner_api_only
 from extensions.ext_database import db
 from models import Account, App
 from models.account import AccountStatus
-from services.app_dsl_service import AppDslService
+from services.app_dsl_service import AppDslService, initialize_imported_app_creator_access
 from services.entities.dsl_entities import ImportMode, ImportStatus
 from services.errors.app import IsDraftWorkflowError, WorkflowNotFoundError
 
@@ -83,6 +83,7 @@ class EnterpriseAppDSLImport(Resource):
                 session.rollback()
             else:
                 session.commit()
+        initialize_imported_app_creator_access(result, tenant_id=workspace_id, account_id=account.id)
 
         if result.status == ImportStatus.FAILED:
             return result.model_dump(mode="json"), 400
