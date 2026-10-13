@@ -77,6 +77,10 @@ def _documented_codes(schema: Mapping[str, object]) -> set[str] | None:
     return None
 
 
+def _mapping(value: object) -> Mapping[str, object]:
+    return cast(Mapping[str, object], value) if isinstance(value, Mapping) else {}
+
+
 def _is_error_body(schema: Mapping[str, object], error_models: set[str]) -> bool:
     return schema.get("title") in error_models or bool(schema.get("allOf"))
 
@@ -84,15 +88,13 @@ def _is_error_body(schema: Mapping[str, object], error_models: set[str]) -> bool
 def violation(api: ExternalApi, response: Response) -> str | None:
     """Why ``response`` contradicts the operation's documented error contract, if it does."""
     document = _document(api)
-    components = cast(Mapping[str, object], (document.get("components") or {}).get("schemas") or {})
+    components = _mapping(_mapping(document.get("components")).get("schemas"))
     rule = request.url_rule
     if rule is None:
         return None
     prefix = (api.blueprint.url_prefix if api.blueprint is not None else "") or ""
     path = extract_path(rule.rule).removeprefix(prefix).removeprefix(api.prefix or "") or "/"
-    operation = (cast(Mapping[str, Mapping[str, object]], document.get("paths") or {}).get(path) or {}).get(
-        request.method.lower()
-    )
+    operation = _mapping(_mapping(document.get("paths")).get(path)).get(request.method.lower())
     if not isinstance(operation, Mapping):
         return None
 
