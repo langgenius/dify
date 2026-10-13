@@ -478,7 +478,7 @@ Upload a file to use as an input variable when running the app
 | ---- | ----------- | ------ |
 | 200 | Import completed | **application/json**: [AppDslImportResponse](#appdslimportresponse)<br> |
 | 202 | Import pending confirmation | **application/json**: [AppDslImportResponse](#appdslimportresponse)<br> |
-| 400 | Import failed | **application/json**: [AppDslImportResponse](#appdslimportresponse)<br> |
+| 400 | Import failed | **application/json**: <br> |
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
@@ -495,7 +495,7 @@ Upload a file to use as an input variable when running the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Import confirmed | **application/json**: [Import](#import)<br> |
-| 400 | Import failed | **application/json**: [Import](#import)<br> |
+| 400 | Import failed | **application/json**: <br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [GET] /workspaces/{workspace_id}/members

@@ -3489,7 +3489,7 @@ export type PostWorkspacesCurrentMembersInviteEmailData = {
 }
 
 export type PostWorkspacesCurrentMembersInviteEmailErrors = {
-  400: MemberInviteErrorResponse
+  400: MemberInviteErrorResponse | ErrorResponse
 }
 
 export type PostWorkspacesCurrentMembersInviteEmailError =
@@ -6722,7 +6722,7 @@ export type GetWorkspacesCurrentTriggerProviderByProviderSubscriptionsListData =
 }
 
 export type GetWorkspacesCurrentTriggerProviderByProviderSubscriptionsListErrors = {
-  404: TriggerProviderErrorResponse
+  404: TriggerProviderErrorResponse | ErrorResponse
 }
 
 export type GetWorkspacesCurrentTriggerProviderByProviderSubscriptionsListError =

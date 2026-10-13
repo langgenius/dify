@@ -889,7 +889,7 @@ export type PostRagPipelinesImportsData = {
 }
 
 export type PostRagPipelinesImportsErrors = {
-  400: RagPipelineImportResponse
+  400: RagPipelineImportResponse | ErrorResponse
 }
 
 export type PostRagPipelinesImportsError =
@@ -913,7 +913,7 @@ export type PostRagPipelinesImportsByImportIdConfirmData = {
 }
 
 export type PostRagPipelinesImportsByImportIdConfirmErrors = {
-  400: RagPipelineImportResponse
+  400: RagPipelineImportResponse | ErrorResponse
 }
 
 export type PostRagPipelinesImportsByImportIdConfirmError =

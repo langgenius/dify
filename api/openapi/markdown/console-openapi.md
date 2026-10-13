@@ -1554,7 +1554,7 @@ Create a new application
 | ---- | ----------- | ------ |
 | 200 | Import completed | **application/json**: [Import](#import)<br> |
 | 202 | Import pending confirmation | **application/json**: [Import](#import)<br> |
-| 400 | Import failed | **application/json**: [Import](#import)<br> |
+| 400 | Import failed | **application/json**: <br> |
 | 403 | Insufficient import permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 409 | Agent name conflict | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 413 | Roster Agent package exceeds the size limit | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -1584,7 +1584,7 @@ Create a new application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Import confirmed | **application/json**: [Import](#import)<br> |
-| 400 | Import failed | **application/json**: [Import](#import)<br> |
+| 400 | Import failed | **application/json**: <br> |
 
 ### [GET] /apps/recent
 Get recently modified apps for the home Continue Work section
@@ -4983,8 +4983,8 @@ Delete an API key for an app
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [BillingInvoiceResponse](#billinginvoiceresponse)<br> |
 | 403 | Forbidden | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 502 | Billing operation failed | **application/json**: [BillingOperationFailedErrorResponse](#billingoperationfailederrorresponse)<br> |
-| 503 | Billing unavailable | **application/json**: [BillingUnavailableErrorResponse](#billingunavailableerrorresponse)<br> |
+| 502 | Billing operation failed | **application/json**: <br> |
+| 503 | Billing unavailable | **application/json**: <br> |
 
 ### [GET] /billing/subscription
 #### Parameters
@@ -5000,9 +5000,9 @@ Delete an API key for an app
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [BillingSubscriptionResponse](#billingsubscriptionresponse)<br> |
 | 403 | Forbidden | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 422 | Invalid subscription query | **application/json**: [BillingUnprocessableEntityErrorResponse](#billingunprocessableentityerrorresponse)<br> |
-| 502 | Billing operation failed | **application/json**: [BillingOperationFailedErrorResponse](#billingoperationfailederrorresponse)<br> |
-| 503 | Billing unavailable | **application/json**: [BillingUnavailableErrorResponse](#billingunavailableerrorresponse)<br> |
+| 422 | Invalid subscription query | **application/json**: <br> |
+| 502 | Billing operation failed | **application/json**: <br> |
+| 503 | Billing unavailable | **application/json**: <br> |
 
 ### [GET] /code-based-extension
 Get code-based extension data by module name
@@ -5033,10 +5033,10 @@ Get compliance document download link
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ComplianceDownloadResponse](#compliancedownloadresponse)<br> |
-| 422 | Invalid compliance download query | **application/json**: [BillingUnprocessableEntityErrorResponse](#billingunprocessableentityerrorresponse)<br> |
-| 429 | Compliance download rate limit exceeded | **application/json**: [ComplianceRateLimitErrorResponse](#complianceratelimiterrorresponse)<br> |
-| 502 | Compliance download failed | **application/json**: [BillingOperationFailedErrorResponse](#billingoperationfailederrorresponse)<br> |
-| 503 | Billing unavailable | **application/json**: [BillingUnavailableErrorResponse](#billingunavailableerrorresponse)<br> |
+| 422 | Invalid compliance download query | **application/json**: <br> |
+| 429 | Compliance download rate limit exceeded | **application/json**: <br> |
+| 502 | Compliance download failed | **application/json**: <br> |
+| 503 | Billing unavailable | **application/json**: <br> |
 
 ### [GET] /data-source/integrates
 #### Responses
@@ -7197,7 +7197,7 @@ Handle OAuth callback and complete login process
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 302 | Redirect to console with access token | **application/json**: [RedirectResponse](#redirectresponse)<br> |
-| 400 | OAuth process failed | **application/json**: [OAuthErrorResponse](#oautherrorresponse)<br> |
+| 400 | OAuth process failed | **application/json**: <br> |
 
 ### [GET] /oauth/data-source/binding/{provider}
 Bind OAuth data source with authorization code
@@ -7286,7 +7286,7 @@ Initiate OAuth login process
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 302 | Redirect to OAuth authorization URL | **application/json**: [RedirectResponse](#redirectresponse)<br> |
-| 400 | Invalid provider | **application/json**: [OAuthErrorResponse](#oautherrorresponse)<br> |
+| 400 | Invalid provider | **application/json**: <br> |
 
 ### [GET] /oauth/plugin/{provider_id}/datasource/callback
 #### Parameters
@@ -7553,7 +7553,7 @@ Update account-level Step-by-step Tour state
 | ---- | ----------- | ------ |
 | 200 | Import completed | **application/json**: [RagPipelineImportResponse](#ragpipelineimportresponse)<br> |
 | 202 | Import pending confirmation | **application/json**: [RagPipelineImportResponse](#ragpipelineimportresponse)<br> |
-| 400 | Import failed | **application/json**: [RagPipelineImportResponse](#ragpipelineimportresponse)<br> |
+| 400 | Import failed | **application/json**: <br> |
 
 ### [POST] /rag/pipelines/imports/{import_id}/confirm
 #### Parameters
@@ -7567,7 +7567,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Import confirmed | **application/json**: [RagPipelineImportResponse](#ragpipelineimportresponse)<br> |
-| 400 | Import failed | **application/json**: [RagPipelineImportResponse](#ragpipelineimportresponse)<br> |
+| 400 | Import failed | **application/json**: <br> |
 
 ### [GET] /rag/pipelines/imports/{pipeline_id}/check-dependencies
 #### Parameters
@@ -8310,7 +8310,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 401 | Unauthorized | **application/json**: [SimpleResultMessageResponse](#simpleresultmessageresponse)<br> |
+| 401 | Unauthorized | **application/json**: <br> |
 
 ### [POST] /remote-files/upload
 #### Request Body
@@ -10374,7 +10374,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Success | **application/json**: [MemberInviteResponse](#memberinviteresponse)<br> |
-| 400 | Invalid email, role, or workspace member limit exceeded | **application/json**: [MemberInviteErrorResponse](#memberinviteerrorresponse)<br> |
+| 400 | Invalid email, role, or workspace member limit exceeded | **application/json**: <br> |
 
 ### [POST] /workspaces/current/members/owner-transfer-check
 #### Request Body
@@ -13224,7 +13224,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Trigger subscriptions retrieved successfully | **application/json**: [TriggerProviderSubscriptionListResponse](#triggerprovidersubscriptionlistresponse)<br> |
-| 404 | Trigger provider not found | **application/json**: [TriggerProviderErrorResponse](#triggerprovidererrorresponse)<br> |
+| 404 | Trigger provider not found | **application/json**: <br> |
 
 ### [GET] /workspaces/current/trigger-provider/{provider}/subscriptions/oauth/authorize
 **Initiate OAuth authorization flow for a trigger provider**

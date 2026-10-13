@@ -4247,7 +4247,7 @@ export type PostAppsImportsData = {
 }
 
 export type PostAppsImportsErrors = {
-  400: Import
+  400: Import | ErrorResponse
   403: ErrorResponse
   409: ErrorResponse
   413: ErrorResponse
@@ -4288,7 +4288,7 @@ export type PostAppsImportsByImportIdConfirmData = {
 }
 
 export type PostAppsImportsByImportIdConfirmErrors = {
-  400: Import
+  400: Import | ErrorResponse
 }
 
 export type PostAppsImportsByImportIdConfirmError =

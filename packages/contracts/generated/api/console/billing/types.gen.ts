@@ -49,8 +49,8 @@ export type GetBillingInvoicesData = {
 
 export type GetBillingInvoicesErrors = {
   403: ErrorResponse
-  502: BillingOperationFailedErrorResponse
-  503: BillingUnavailableErrorResponse
+  502: BillingOperationFailedErrorResponse | ErrorResponse
+  503: BillingUnavailableErrorResponse | ErrorResponse
 }
 
 export type GetBillingInvoicesError = GetBillingInvoicesErrors[keyof GetBillingInvoicesErrors]
@@ -74,9 +74,9 @@ export type GetBillingSubscriptionData = {
 
 export type GetBillingSubscriptionErrors = {
   403: ErrorResponse
-  422: BillingUnprocessableEntityErrorResponse
-  502: BillingOperationFailedErrorResponse
-  503: BillingUnavailableErrorResponse
+  422: BillingUnprocessableEntityErrorResponse | ErrorResponse
+  502: BillingOperationFailedErrorResponse | ErrorResponse
+  503: BillingUnavailableErrorResponse | ErrorResponse
 }
 
 export type GetBillingSubscriptionError =

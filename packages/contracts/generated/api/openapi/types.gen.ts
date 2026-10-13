@@ -1209,7 +1209,7 @@ export type PostWorkspacesByWorkspaceIdAppsImportsData = {
 }
 
 export type PostWorkspacesByWorkspaceIdAppsImportsErrors = {
-  400: AppDslImportResponse
+  400: AppDslImportResponse | ErrorBody
   422: ErrorBody
   default: ErrorBody
 }
@@ -1236,7 +1236,7 @@ export type PostWorkspacesByWorkspaceIdAppsImportsByImportIdConfirmData = {
 }
 
 export type PostWorkspacesByWorkspaceIdAppsImportsByImportIdConfirmErrors = {
-  400: Import
+  400: Import | ErrorBody
   default: ErrorBody
 }
 
