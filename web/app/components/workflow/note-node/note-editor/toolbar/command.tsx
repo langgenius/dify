@@ -99,7 +99,7 @@ const Command = ({ type }: CommandProps) => {
             aria-label={tip}
             pressed={pressed}
             onPressedChange={() => handleCommand(type)}
-            className="flex size-8 items-center justify-center rounded-md text-text-tertiary hover:bg-state-accent-active hover:text-text-accent focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-pressed:bg-state-accent-active"
+            className="flex size-8 items-center justify-center rounded-md text-text-tertiary hover:bg-state-accent-active hover:text-text-accent data-pressed:bg-state-accent-active"
           >
             {icon}
           </Toggle>
