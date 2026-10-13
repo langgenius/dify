@@ -25,6 +25,7 @@ from tests.workflow_test_utils import build_test_graph_init_params, build_test_v
 if TYPE_CHECKING:  # pragma: no cover - imported for type checking only
     from graphon.nodes.tool.tool_node import ToolNode
 
+
 class _StubToolRuntime:
     def get_runtime(
         self,
