@@ -2628,28 +2628,25 @@ class TestWorkflowServiceCredentialValidation:
     ) -> None:
         """Missing provider or model in node_data should be a no-op."""
         # Arrange
-        workflow = self._make_workflow([])
         node_data: dict[str, Any] = {}  # no model key
 
         # Act + Assert (no error expected)
-        service._validate_load_balancing_credentials(workflow, node_data, "node-1", session=sqlite_session)
+        service._validate_load_balancing_credentials("tenant-1", node_data, "node-1", session=sqlite_session)
 
     def test_validate_load_balancing_credentials_should_skip_when_lb_not_enabled(
         self, service: WorkflowService, sqlite_session: Session
     ) -> None:
         # Arrange
-        workflow = self._make_workflow([])
         node_data = {"model": {"provider": "openai", "name": "gpt-4"}}
 
         # Act + Assert (no error expected)
         with patch.object(service, "_is_load_balancing_enabled", return_value=False):
-            service._validate_load_balancing_credentials(workflow, node_data, "node-1", session=sqlite_session)
+            service._validate_load_balancing_credentials("tenant-1", node_data, "node-1", session=sqlite_session)
 
     def test_validate_load_balancing_credentials_should_raise_when_compliance_fails(
         self, service: WorkflowService, sqlite_session: Session
     ) -> None:
         # Arrange
-        workflow = self._make_workflow([])
         node_data = {"model": {"provider": "openai", "name": "gpt-4"}}
         lb_configs = [{"credential_id": "cred-lb-1"}]
 
@@ -2663,7 +2660,7 @@ class TestWorkflowServiceCredentialValidation:
             ),
         ):
             with pytest.raises(ValueError, match="Invalid load balancing credentials"):
-                service._validate_load_balancing_credentials(workflow, node_data, "node-1", session=sqlite_session)
+                service._validate_load_balancing_credentials("tenant-1", node_data, "node-1", session=sqlite_session)
 
 
 # ===========================================================================

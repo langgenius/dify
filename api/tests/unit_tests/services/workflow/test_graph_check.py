@@ -1,7 +1,13 @@
 from collections.abc import Mapping
+from typing import cast
+from unittest.mock import Mock, patch
+
+import pytest
+from sqlalchemy.orm import Session
 
 from models import AppMode
-from services.workflow.graph_check import IssueCode, IssueSeverity, check_graph
+from services.workflow.graph_check import IssueCode, IssueSeverity, check_graph, credential_check
+from services.workflow_service import WorkflowService
 
 
 def _node(node_id: str, data: dict[str, object]) -> dict[str, object]:
@@ -131,3 +137,42 @@ def test_unexpected_node_validation_error_is_located_and_later_nodes_are_checked
     by_node = {i.node_id: i for i in issues}
     assert (by_node["h"].code, by_node["h"].loc) == (IssueCode.NODE_DATA_INVALID, ("nodes", "h", "data"))
     assert by_node["l"].code is IssueCode.NODE_DATA_INVALID
+
+
+@pytest.fixture(autouse=True)
+def service_without_storage():
+    with (
+        patch.object(WorkflowService, "__init__", return_value=None),
+        patch.object(WorkflowService, "_is_load_balancing_enabled", return_value=False),
+    ):
+        yield
+
+
+def test_credential_check_reports_what_publish_refuses_for_a_node() -> None:
+    llm = _node("l", {"type": "llm", "model": {"provider": "openai", "name": "gpt-4o"}})
+    check = credential_check("ws-1", {}, cast(Session, Mock()))
+
+    with patch.object(WorkflowService, "_validate_llm_model_config", side_effect=ValueError("no credential")) as v:
+        assert check(llm) == "no credential"
+
+    v.assert_called_once_with("ws-1", "openai", "gpt-4o")
+
+
+def test_credential_check_wraps_unexpected_errors_with_the_node() -> None:
+    llm = _node("l", {"type": "llm", "model": {"provider": "openai", "name": "gpt-4o"}})
+    check = credential_check("ws-1", {}, cast(Session, Mock()))
+
+    with patch.object(WorkflowService, "_validate_llm_model_config", side_effect=RuntimeError("boom")):
+        assert check(llm) == "Node l (llm): boom"
+
+
+@pytest.mark.parametrize("node_type", ["knowledge-retrieval", "parameter-extractor", "question-classifier"])
+def test_credential_check_matches_publish_for_model_nodes_publish_skips(node_type: str) -> None:
+    """Publish lists these types with underscores, so it never checks them; the release check must agree."""
+    node = _node("n", {"type": node_type, "model": {"provider": "openai", "name": "gpt-4o"}})
+    check = credential_check("ws-1", {}, cast(Session, Mock()))
+
+    with patch.object(WorkflowService, "_validate_llm_model_config", side_effect=ValueError("no credential")) as v:
+        assert check(node) is None
+
+    v.assert_not_called()
