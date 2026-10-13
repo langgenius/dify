@@ -402,6 +402,18 @@ class ExecutionEvidenceSummary(_TrustedModel):
     action_state: Literal["completed", "failed", "unknown"] | None = None
     action_reason_code: ReasonCode | None = None
 
+    @model_validator(mode="before")
+    @classmethod
+    def require_raw_json_seal(cls, raw: Any) -> Any:
+        if (
+            isinstance(raw, Mapping)
+            and raw.get("policy_version") == "builder-json-parse-v1"
+            and "sealed" in raw
+            and type(raw["sealed"]) is not bool
+        ):
+            raise ValueError("JSON sealed evidence requires an exact boolean")
+        return raw
+
     @model_validator(mode="after")
     def validate_variant(self) -> "ExecutionEvidenceSummary":
         if self.policy_version == "builder-restricted-v1":
