@@ -449,14 +449,15 @@ def test_list_tools(streams):
         ("list_prompts", "prompts/list", "prompts"),
     ],
 )
-def test_list_methods_send_cursor(streams, method_name, wire_method, result_key):
+@pytest.mark.parametrize("cursor", ["opaque-cursor-1", ""])
+def test_list_methods_send_cursor(streams, method_name, wire_method, result_key, cursor: str):
     read_stream, write_stream = streams
     session = ClientSession(read_stream, write_stream)
 
     def mock_server():
         msg = write_stream.get(timeout=2)
         assert msg.message.root.method == wire_method
-        assert msg.message.root.params == {"cursor": "opaque-cursor-1"}
+        assert msg.message.root.params == {"cursor": cursor}
         req_id = msg.message.root.id
         resp = types.JSONRPCResponse(jsonrpc="2.0", id=req_id, result={result_key: [], "nextCursor": "cursor-2"})
         read_stream.put(SessionMessage(message=types.JSONRPCMessage(resp)))
@@ -473,7 +474,7 @@ def test_list_methods_send_cursor(streams, method_name, wire_method, result_key)
             "list_resource_templates": session.list_resource_templates,
             "list_prompts": session.list_prompts,
         }[method_name]
-        result = method(cursor="opaque-cursor-1")
+        result = method(cursor=cursor)
         assert result.nextCursor == "cursor-2"
     t.join(timeout=1)
 

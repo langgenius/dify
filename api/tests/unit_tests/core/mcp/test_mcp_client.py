@@ -421,6 +421,8 @@ class TestMCPClient:
         def mock_server():
             for page in pages:
                 msg = write_stream.get(timeout=5)
+                if msg is None:
+                    return
                 params = msg.message.root.params or {}
                 seen_cursors.append(params.get("cursor"))
                 resp = JSONRPCResponse(jsonrpc="2.0", id=msg.message.root.id, result=page)
@@ -431,6 +433,10 @@ class TestMCPClient:
                 msg = write_stream.get(timeout=2)
             except queue.Empty:
                 return
+            if msg is None:
+                return
+            params = msg.message.root.params or {}
+            seen_cursors.append(params.get("cursor"))
             err = JSONRPCError(
                 jsonrpc="2.0",
                 id=msg.message.root.id,
@@ -445,12 +451,13 @@ class TestMCPClient:
         client._session = session
         return client, session, t, seen_cursors
 
-    def test_list_tools_paginates_until_cursor_exhausted(self):
-        """Test list_tools follows nextCursor across pages."""
+    @pytest.mark.parametrize("cursor", ["cursor-1", ""])
+    def test_list_tools_paginates_until_cursor_exhausted(self, cursor: str):
+        """Follow opaque nextCursor values, including the empty string."""
         pages = [
             {
                 "tools": [{"name": "alpha", "inputSchema": {"type": "object", "properties": {}}}],
-                "nextCursor": "cursor-1",
+                "nextCursor": cursor,
             },
             {"tools": [{"name": "beta", "inputSchema": {"type": "object", "properties": {}}}]},
         ]
@@ -461,29 +468,30 @@ class TestMCPClient:
         t.join(timeout=5)
 
         assert [tool.name for tool in result] == ["alpha", "beta"]
-        assert seen_cursors == [None, "cursor-1"]
+        assert seen_cursors == [None, cursor]
 
-    def test_list_tools_stops_on_repeated_cursor(self):
-        """Test list_tools does not loop forever when the server echoes a cursor."""
+    @pytest.mark.parametrize(
+        "cursors",
+        [["cursor-1", "cursor-1"], ["cursor-1", "cursor-2", "cursor-1"], ["", ""]],
+        ids=["repeated", "cycle", "empty-repeated"],
+    )
+    def test_list_tools_raises_on_repeated_cursor(self, cursors: list[str]):
+        """Reject incomplete tool directories without requesting a page twice."""
         pages = [
             {
-                "tools": [{"name": "alpha", "inputSchema": {"type": "object", "properties": {}}}],
-                "nextCursor": "cursor-1",
-            },
-            {
-                "tools": [{"name": "beta", "inputSchema": {"type": "object", "properties": {}}}],
-                "nextCursor": "cursor-1",
-            },
+                "tools": [{"name": f"tool-{index}", "inputSchema": {"type": "object", "properties": {}}}],
+                "nextCursor": cursor,
+            }
+            for index, cursor in enumerate(cursors)
         ]
         client, session, t, seen_cursors = self._client_with_paginated_server(pages, fail_on_extra_page=True)
 
         with session:
-            result = client.list_tools()
+            with pytest.raises(MCPConnectionError, match="repeated cursor"):
+                client.list_tools()
         t.join(timeout=5)
 
-        # The echoed cursor must not trigger a third request for the same page.
-        assert [tool.name for tool in result] == ["alpha", "beta"]
-        assert seen_cursors == [None, "cursor-1"]
+        assert seen_cursors == [None, *cursors[:-1]]
 
     def test_list_tools_empty_first_page_with_cursor(self):
         """Test list_tools keeps paging when an early page returns no tools."""

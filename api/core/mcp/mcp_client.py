@@ -111,7 +111,7 @@ class MCPClient:
         self._session.initialize()
 
     def list_tools(self) -> list[Tool]:
-        """List available tools from the MCP server"""
+        """List all available tools, rejecting cursor cycles rather than returning a partial list."""
         if not self._session:
             raise ValueError("Session not initialized.")
         tools: list[Tool] = []
@@ -121,9 +121,11 @@ class MCPClient:
             response = self._session.list_tools(cursor=cursor)
             tools.extend(response.tools)
             cursor = response.nextCursor
-            # A server echoing the same cursor would loop forever, so stop there.
-            if not cursor or cursor in seen_cursors:
+            if cursor is None:
                 break
+            # A repeated cursor means the directory is incomplete and must not be saved.
+            if cursor in seen_cursors:
+                raise MCPConnectionError("MCP server returned a repeated cursor while listing tools")
             seen_cursors.add(cursor)
         return tools
 
