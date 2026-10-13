@@ -899,6 +899,7 @@ export type OpenApiErrorCode =
   | 'webapp_access_mode_console_only'
   | 'webapp_access_requires_ee'
   | 'webapp_access_unavailable'
+  | 'webapp_public_access_disabled'
 
 export type OpenApiFormSubmitPayload = {
   action: string
