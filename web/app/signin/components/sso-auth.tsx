@@ -23,7 +23,7 @@ const SSOAuth: FC<SSOAuthProps> = ({ protocol }) => {
 
   const [isLoading, setIsLoading] = useState(false)
 
-  const handleSSOError = async (error: unknown) => {
+  const handleSSOError = (error: unknown) => {
     if (error instanceof Error && error.name === 'AbortError') return
     toast.error(
       error instanceof ORPCError ? error.message : t(($) => $['error.ssoFailed'], { ns: 'login' }),

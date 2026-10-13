@@ -246,9 +246,7 @@ describe('Uploading', () => {
   // ================================
   describe('Edge Cases', () => {
     it('should fail gracefully when upload response is empty', async () => {
-      mockUploadFile.mockRejectedValue({
-        response: {},
-      })
+      mockUploadFile.mockResolvedValue({})
 
       const onPackageUploaded = vi.fn()
       const onFailed = vi.fn()
@@ -263,9 +261,7 @@ describe('Uploading', () => {
     })
 
     it('should fail gracefully when upload response has no manifest', async () => {
-      mockUploadFile.mockRejectedValue({
-        response: { unique_identifier: 'only-uid' },
-      })
+      mockUploadFile.mockResolvedValue({ unique_identifier: 'only-uid' })
 
       const onPackageUploaded = vi.fn()
       const onFailed = vi.fn()
@@ -280,9 +276,7 @@ describe('Uploading', () => {
     })
 
     it('should fail gracefully when upload response is null', async () => {
-      mockUploadFile.mockRejectedValue({
-        response: null,
-      })
+      mockUploadFile.mockResolvedValue(null)
 
       const onPackageUploaded = vi.fn()
       const onFailed = vi.fn()
