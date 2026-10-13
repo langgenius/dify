@@ -27,9 +27,13 @@ import WorkflowPanel from './workflow-panel'
 const Features = dynamic(() => import('@/app/components/workflow/features'), {
   ssr: false,
 })
-const UpdateDSLModal = dynamic(() => import('@/app/components/workflow/update-dsl-modal'), {
-  ssr: false,
-})
+const UpdateDSLDialog = dynamic(
+  () =>
+    import('@/app/components/workflow/update-dsl-modal').then((module) => module.UpdateDSLDialog),
+  {
+    ssr: false,
+  },
+)
 const AppExportConfirmModal = dynamic(() => import('@/app/components/app/export-confirm-modal'), {
   ssr: false,
 })
@@ -72,6 +76,11 @@ const WorkflowChildren = () => {
   const setShowImportDSLModal = useStore((s) => s.setShowImportDSLModal)
   const showOnboarding = useStore((s) => s.showOnboarding)
   const canImportExportDSL = useHooksStore((s) => s.accessControl.canImportExportDSL)
+  const [hasActivatedImportDialog, setHasActivatedImportDialog] = useState(() =>
+    Boolean(appId && canImportExportDSL && showImportDSLModal),
+  )
+  if (appId && canImportExportDSL && showImportDSLModal && !hasActivatedImportDialog)
+    setHasActivatedImportDialog(true)
   const canEdit = useHooksStore((s) => s.accessControl.canEdit)
   const setShowOnboarding = useStore((s) => s.setShowOnboarding)
   const setHasSelectedStartNode = useStore((s) => s.setHasSelectedStartNode)
@@ -173,11 +182,13 @@ const WorkflowChildren = () => {
           onSelectStartNode={handleSelectStartNode}
         />
       )}
-      {appId && canImportExportDSL && showImportDSLModal && (
-        <UpdateDSLModal
+      {appId && canImportExportDSL && hasActivatedImportDialog && (
+        <UpdateDSLDialog
+          key={appId}
+          open={showImportDSLModal}
+          onOpenChange={setShowImportDSLModal}
           appId={appId}
           appMode={isChatMode ? 'advanced-chat' : 'workflow'}
-          onCancel={() => setShowImportDSLModal(false)}
           onBackup={exportCheck!}
           onImport={handlePaneContextmenuCancel}
         />

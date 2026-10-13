@@ -32,9 +32,13 @@ const CreateAppModal = dynamic(() => import('@/app/components/explore/create-app
 const DuplicateAppModal = dynamic(() => import('@/app/components/app/duplicate-modal'), {
   ssr: false,
 })
-const UpdateDSLModal = dynamic(() => import('@/app/components/workflow/update-dsl-modal'), {
-  ssr: false,
-})
+const UpdateDSLDialog = dynamic(
+  () =>
+    import('@/app/components/workflow/update-dsl-modal').then((module) => module.UpdateDSLDialog),
+  {
+    ssr: false,
+  },
+)
 
 type AppInfoModalsProps = {
   appDetail: AppDetailWithSite
@@ -67,6 +71,10 @@ const AppInfoModals = ({
 }: AppInfoModalsProps) => {
   const { t } = useTranslation(['app', 'common', 'workflow'])
   const [confirmDeleteInput, setConfirmDeleteInput] = useState('')
+  const [hasActivatedImportDialog, setHasActivatedImportDialog] = useState(
+    () => activeModal === 'importDSL',
+  )
+  if (activeModal === 'importDSL' && !hasActivatedImportDialog) setHasActivatedImportDialog(true)
   const exportConfirmLabelId = React.useId()
   const isDeleteConfirmDisabled = confirmDeleteInput !== appDetail.name
   const exportDialogMode =
@@ -196,11 +204,14 @@ const AppInfoModals = ({
           </form>
         </AlertDialogContent>
       </AlertDialog>
-      {activeModal === 'importDSL' && (
-        <UpdateDSLModal
+      {hasActivatedImportDialog && (
+        <UpdateDSLDialog
+          open={activeModal === 'importDSL'}
+          onOpenChange={(open) => {
+            if (!open) closeModal()
+          }}
           appId={appDetail.id}
           appMode={appDetail.mode}
-          onCancel={closeModal}
           onBackup={exportCheck}
         />
       )}

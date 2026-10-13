@@ -1,23 +1,32 @@
 import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
+import type { DynamicOptions, Loader } from 'next/dynamic'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import * as React from 'react'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { AppModeEnum } from '@/types/app'
 import AppInfoModals from '../app-info-modals'
 
-vi.mock('next/dynamic', () => ({
-  default: (loader: () => Promise<{ default: React.ComponentType }>) => {
-    const LazyComp = React.lazy(loader)
-    return function DynamicWrapper(props: Record<string, unknown>) {
-      return React.createElement(
-        React.Suspense,
-        { fallback: null },
-        React.createElement(LazyComp, props),
-      )
-    }
-  },
+const { loadDynamic, observeImportOpen } = vi.hoisted(() => ({
+  loadDynamic: vi.fn(),
+  observeImportOpen: vi.fn(),
 }))
+
+vi.mock('next/dynamic', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('next/dynamic')>()
+  return {
+    ...actual,
+    default: <Props,>(
+      loader: DynamicOptions<Props> | Loader<Props>,
+      options?: DynamicOptions<Props>,
+    ) => {
+      if (typeof loader !== 'function') return actual.default(loader, options)
+      return actual.default(() => {
+        loadDynamic()
+        return loader()
+      }, options)
+    },
+  }
+})
 
 vi.mock('@/app/components/app/switch-app-modal', () => ({
   default: ({ show, onClose }: { show: boolean; onClose: () => void }) =>
@@ -61,16 +70,27 @@ vi.mock('@/app/components/app/duplicate-modal', () => ({
 }))
 
 vi.mock('@/app/components/workflow/update-dsl-modal', () => ({
-  default: ({ onCancel, onBackup }: { onCancel: () => void; onBackup: () => void }) => (
-    <div data-testid="import-dsl-modal">
-      <button type="button" onClick={onCancel}>
-        Cancel Import
-      </button>
-      <button type="button" onClick={onBackup}>
-        Backup
-      </button>
-    </div>
-  ),
+  UpdateDSLDialog: ({
+    open,
+    onOpenChange,
+    onBackup,
+  }: {
+    open: boolean
+    onOpenChange: (open: boolean) => void
+    onBackup: () => void
+  }) => {
+    observeImportOpen(open)
+    return open ? (
+      <div data-testid="import-dsl-modal">
+        <button type="button" onClick={() => onOpenChange(false)}>
+          Cancel Import
+        </button>
+        <button type="button" onClick={onBackup}>
+          Backup
+        </button>
+      </div>
+    ) : null
+  },
 }))
 
 vi.mock('@/app/components/app/export-confirm-modal', () => ({
@@ -144,6 +164,24 @@ describe('AppInfoModals', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  it('loads the import module only on first activation and retains its closed owner', async () => {
+    const { rerender } = render(<AppInfoModals {...defaultProps} activeModal={null} />)
+    expect(loadDynamic).not.toHaveBeenCalled()
+    expect(observeImportOpen).not.toHaveBeenCalled()
+
+    rerender(<AppInfoModals {...defaultProps} activeModal="importDSL" />)
+    expect(await screen.findByTestId('import-dsl-modal')).toBeInTheDocument()
+    expect(loadDynamic).toHaveBeenCalledTimes(1)
+
+    rerender(<AppInfoModals {...defaultProps} activeModal={null} />)
+    expect(observeImportOpen).toHaveBeenLastCalledWith(false)
+    expect(screen.queryByTestId('import-dsl-modal')).not.toBeInTheDocument()
+
+    rerender(<AppInfoModals {...defaultProps} activeModal="importDSL" />)
+    expect(await screen.findByTestId('import-dsl-modal')).toBeInTheDocument()
+    expect(loadDynamic).toHaveBeenCalledTimes(1)
   })
 
   it('should render nothing when activeModal is null', async () => {
