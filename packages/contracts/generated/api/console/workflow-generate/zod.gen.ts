@@ -109,6 +109,16 @@ export const zWorkflowGenerateErrorResponse = z.object({
 })
 
 /**
+ * WorkflowGenerateRejectedResponse
+ *
+ * 400 body when the boundary guard rejects the instruction before generating.
+ */
+export const zWorkflowGenerateRejectedResponse = z.object({
+  error: z.string(),
+  errors: z.array(zWorkflowGenerateErrorResponse),
+})
+
+/**
  * WorkflowPlanNodeResponse
  */
 export const zWorkflowPlanNodeResponse = z.object({

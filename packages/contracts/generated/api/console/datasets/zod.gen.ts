@@ -216,6 +216,15 @@ export const zBatchImportPayload = z.object({
 })
 
 /**
+ * ErrorMessageResponse
+ *
+ * Legacy ``{"error": message}`` body a few endpoints return instead of the standard error body.
+ */
+export const zErrorMessageResponse = z.object({
+  error: z.string(),
+})
+
+/**
  * SegmentUpdatePayload
  */
 export const zSegmentUpdatePayload = z.object({
