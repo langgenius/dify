@@ -5,7 +5,10 @@ is flagged. A producer that always runs, a parallel branch, and an aggregator
 are not.
 """
 
+import pytest
+
 from services.workflow_variable_reference_validator import (
+    branch_handles,
     format_variable_reference_errors,
     validate_variable_references,
 )
@@ -433,6 +436,109 @@ class TestValidateVariableReferences:
                 _edge("router", "nested-cons", "false"),
                 _edge("router", "root-cons", "false"),
             ],
+        }
+        assert validate_variable_references(graph) == []
+
+
+def _routed_agent(*route_ids: str, error_strategy: str | None = None, enabled: object = True) -> dict[str, object]:
+    data: dict[str, object] = {
+        "type": "agent",
+        "agent_output_routes": {"enabled": enabled, "routes": [{"id": route_id} for route_id in route_ids]},
+    }
+    if error_strategy is not None:
+        data["error_strategy"] = error_strategy
+    return data
+
+
+class TestBranchHandles:
+    @pytest.mark.parametrize(
+        ("data", "expected"),
+        [
+            ({"type": "if-else", "cases": [{"case_id": "a"}, {"case_id": "b"}]}, {"a", "b", "false"}),
+            ({"type": "if-else"}, {"true", "false"}),
+            ({"type": "question-classifier", "classes": [{"id": "c1"}, {"id": "c2"}]}, {"c1", "c2"}),
+            ({"type": "human-input", "user_actions": [{"id": "ok"}]}, {"ok", "__timeout"}),
+            ({"type": "tool", "error_strategy": "fail-branch"}, {"source", "fail-branch"}),
+            (
+                {"type": "if-else", "cases": [{"case_id": "a"}], "error_strategy": "fail-branch"},
+                {"a", "false", "source", "fail-branch"},
+            ),
+            (_routed_agent("yes", "no"), {"yes", "no"}),
+            (_routed_agent("yes", "no", error_strategy="fail-branch"), {"yes", "no", "fail-branch"}),
+            (_routed_agent("yes", "no", enabled=False, error_strategy="fail-branch"), {"source", "fail-branch"}),
+        ],
+    )
+    def test_branch_nodes_list_their_handles(self, data: dict[str, object], expected: set[str]) -> None:
+        assert branch_handles(data) == expected
+
+    @pytest.mark.parametrize(
+        "data",
+        [
+            {"type": "tool"},
+            {"type": "llm", "error_strategy": "default-value"},
+            _routed_agent("yes", "no", enabled=False),
+            _routed_agent("yes", "no", enabled="true"),
+            {"type": "agent", "agent_output_routes": None},
+            {"type": "agent"},
+            {"type": "future-node-type"},
+            {},
+        ],
+    )
+    def test_nodes_that_follow_every_edge_have_none(self, data: dict[str, object]) -> None:
+        assert branch_handles(data) is None
+
+    @pytest.mark.parametrize(
+        ("data", "expected"),
+        [
+            ({"type": "question-classifier", "classes": [{"name": "no id"}, "c", None, {"id": "c1"}]}, {"c1"}),
+            ({"type": "question-classifier", "classes": None}, set()),
+            ({"type": "human-input", "user_actions": 5}, {"__timeout"}),
+            ({"type": "if-else", "cases": [{"id": "x"}, {"case_id": "a"}]}, {"a", "false"}),
+            ({"type": "agent", "agent_output_routes": {"enabled": True, "routes": [{"name": "x"}, 3]}}, set()),
+            ({"type": "agent", "agent_output_routes": {"enabled": True, "routes": "yes"}}, set()),
+        ],
+    )
+    def test_malformed_items_are_skipped(self, data: dict[str, object], expected: set[str]) -> None:
+        assert branch_handles(data) == expected
+
+
+class TestAgentOutputRoutes:
+    def _graph(self, agent_data: dict[str, object], *edges: dict[str, str]) -> dict[str, object]:
+        return {
+            "nodes": [
+                _node("start", "start"),
+                {"id": "agent", "data": {**agent_data, "title": "Agent"}},
+                _node("prod", "tool"),
+                _node("cons", "llm", selector=["prod", "text"]),
+            ],
+            "edges": [_edge("start", "agent"), *edges],
+        }
+
+    def test_a_route_that_skips_the_producer_is_flagged(self) -> None:
+        graph = self._graph(_routed_agent("yes", "no"), _edge("agent", "prod", "yes"), _edge("agent", "cons", "no"))
+        assert [(i.node_id, i.referenced_node_id) for i in validate_variable_references(graph)] == [("cons", "prod")]
+
+    def test_an_unwired_route_can_skip_the_producer(self) -> None:
+        graph = self._graph(_routed_agent("yes", "no"), _edge("agent", "prod", "yes"), _edge("start", "cons"))
+        assert [(i.node_id, i.referenced_node_id) for i in validate_variable_references(graph)] == [("cons", "prod")]
+
+    def test_disabled_routes_follow_every_edge(self) -> None:
+        graph = self._graph(_routed_agent("yes", "no", enabled=False), _edge("agent", "prod"), _edge("prod", "cons"))
+        assert validate_variable_references(graph) == []
+
+
+class TestMalformedBranchData:
+    def test_branch_items_without_ids_do_not_raise(self) -> None:
+        router = _node("router", "question-classifier")
+        _node_data(router)["classes"] = [{"name": "no id"}, {"id": "c1"}]
+        graph = {
+            "nodes": [
+                _node("start", "start"),
+                router,
+                _node("prod", "tool"),
+                _node("cons", "llm", selector=["prod", "x"]),
+            ],
+            "edges": [_edge("start", "router"), _edge("router", "prod", "c1"), _edge("prod", "cons")],
         }
         assert validate_variable_references(graph) == []
 

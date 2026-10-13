@@ -20,9 +20,9 @@ from graphon.enums import BuiltinNodeTypes
 from graphon.nodes.base.node import Node
 from graphon.variables import VariableBase
 from models import AppMode
-from services.workflow.branch_handles import SOURCE_HANDLE, branch_handles
 from services.workflow.node_defaults import complete_sub_models, editor_defaults, node_data_type
 from services.workflow_service import WorkflowService
+from services.workflow_variable_reference_validator import SOURCE_HANDLE, branch_handles
 
 logger = logging.getLogger(__name__)
 
