@@ -9,6 +9,7 @@ import yaml
 from sqlalchemy import event, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from constants.dsl_version import CURRENT_APP_DSL_VERSION
 from core.rbac import RBACPermission, RBACResourceScope
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable
 from models import Account, App, AppMode, Tenant
@@ -144,7 +145,10 @@ def test_copy_app_commits_before_inheriting_access(
 
     def import_app(**_kwargs: object) -> Import:
         sqlite_session.add(_app(app_id=copied_id, tenant_id=_TENANT_ID))
-        return Import(id="import-1", status=status, app_id=copied_id)
+        return Import(id="import-1", status=status, app_id=copied_id, app_mode=AppMode.WORKFLOW, app_created=True)
+
+    def sync_creator(*_args: object) -> None:
+        assert not sqlite_session.in_transaction()
 
     def get_access_mode(app_id: str) -> SimpleNamespace:
         assert not sqlite_session.in_transaction()
@@ -163,13 +167,18 @@ def test_copy_app_commits_before_inheriting_access(
     monkeypatch.setattr(EnterpriseService.WebAppAuth, "get_app_access_mode_by_id", get_access_mode)
     update_access = Mock(side_effect=update_access_mode)
     monkeypatch.setattr(EnterpriseService.WebAppAuth, "update_app_access_mode", update_access)
+    sync = Mock(side_effect=sync_creator)
+    monkeypatch.setattr("services.enterprise.rbac_service.try_sync_creator_access_policy_member_bindings", sync)
 
-    result, copied = service.copy_app(app_model=original, account=_account(tenant_id=_TENANT_ID), tenant_id=_TENANT_ID)
+    result, copied = service.copy_app(
+        app_model=original, account=_account(account_id=_CALLER_ID, tenant_id=_TENANT_ID), tenant_id=_TENANT_ID
+    )
 
     assert result.status == status
     assert copied is not None
     assert copied.id == copied_id
     update_access.assert_called_once()
+    sync.assert_called_once_with(_TENANT_ID, _CALLER_ID, "app", copied_id)
 
 
 def test_copy_app_scopes_result_to_current_tenant(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -795,3 +804,92 @@ def test_append_workflow_export_data_reports_missing_selected_workflow(
             session=unbound_session,
             workflow_id=workflow_id,
         )
+
+
+@pytest.mark.parametrize("confirmed", [False, True])
+@pytest.mark.parametrize("overwrite", [False, True])
+def test_import_creation_marker_tracks_persisted_app(
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch, confirmed: bool, overwrite: bool
+) -> None:
+    account = _account(account_id=_CALLER_ID, tenant_id=_TENANT_ID)
+    target = _persist_overwrite_target(sqlite_session) if overwrite else None
+    data = yaml.safe_dump(
+        {
+            "version": CURRENT_APP_DSL_VERSION,
+            "kind": "app",
+            "app": {"name": "Imported", "mode": "workflow"},
+            "workflow": {"graph": {"nodes": [], "edges": []}, "features": {}},
+        }
+    )
+    monkeypatch.setattr("services.app_dsl_service.WorkflowService", Mock())
+    service = AppDslService(sqlite_session)
+    if confirmed:
+        pending = PendingData(
+            tenant_id=_TENANT_ID,
+            account_id=_CALLER_ID,
+            import_mode="yaml-content",
+            yaml_content=data,
+            app_id=_OVERWRITE_APP_ID if overwrite else None,
+        )
+        monkeypatch.setattr("services.app_dsl_service.redis_client.get", lambda _: pending.model_dump_json())
+        result = service.confirm_import(import_id="pending", account=account)
+    else:
+        result = service.import_app(
+            account=account,
+            import_mode="yaml-content",
+            yaml_content=data,
+            app_id=_OVERWRITE_APP_ID if overwrite else None,
+        )
+    assert result.status == ImportStatus.COMPLETED, result.error
+    assert result.app_created is (not overwrite)
+    assert sqlite_session.get(App, result.app_id) is not None
+    assert "app_created" not in result.model_dump()
+    assert "app_created" not in result.model_json_schema(mode="serialization")["properties"]
+
+
+@pytest.mark.parametrize("mode", list(AppMode) + [None])
+def test_import_creator_access_only_initializes_ordinary_apps(
+    mode: AppMode | None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from services.app_dsl_service import initialize_imported_app_creator_access
+
+    sync = Mock()
+    monkeypatch.setattr("services.enterprise.rbac_service.try_sync_creator_access_policy_member_bindings", sync)
+    result = Import(id="import", status=ImportStatus.COMPLETED, app_id="app", app_mode=mode, app_created=True)
+    initialize_imported_app_creator_access(result, tenant_id="tenant", account_id="creator")
+    assert sync.call_count == (
+        1
+        if mode in {AppMode.CHAT, AppMode.COMPLETION, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}
+        else 0
+    )
+
+
+@pytest.mark.parametrize("confirmed", [False, True])
+def test_failed_import_does_not_report_creation(
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch, confirmed: bool
+) -> None:
+    data = "version: " + CURRENT_APP_DSL_VERSION + "\nkind: app\napp: {name: Broken, mode: chat}\n"
+    service = AppDslService(sqlite_session)
+    if confirmed:
+        pending = PendingData(
+            tenant_id="tenant-1", account_id="account-1", import_mode="yaml-content", yaml_content=data
+        )
+        monkeypatch.setattr("services.app_dsl_service.redis_client.get", lambda _: pending.model_dump_json())
+        result = service.confirm_import(import_id="pending", account=_account())
+    else:
+        result = service.import_app(account=_account(), import_mode="yaml-content", yaml_content=data)
+    assert result.status == ImportStatus.FAILED
+    assert not result.app_created
+
+
+def test_pending_import_does_not_report_creation_or_cache_marker(
+    unbound_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    cache = Mock()
+    monkeypatch.setattr("services.app_dsl_service.redis_client.setex", cache)
+    result = AppDslService(unbound_session).import_app(
+        account=_account(), import_mode="yaml-content", yaml_content=_PENDING_WORKFLOW_DSL
+    )
+    assert result.status == ImportStatus.PENDING
+    assert not result.app_created
+    assert "app_created" not in cache.call_args.args[2]

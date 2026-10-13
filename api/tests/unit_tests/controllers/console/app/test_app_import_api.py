@@ -17,7 +17,8 @@ from models.account import Account, Tenant
 from models.base import TypeBase
 from models.engine import db
 from models.model import App, AppMode
-from services.app_dsl_service import ImportStatus
+from services.app_dsl_service import Import, ImportStatus
+from services.enterprise import rbac_service
 from services.entities.dsl_entities import CheckDependenciesResult
 from tests.unit_tests.config_override import apply_config_overrides
 
@@ -37,9 +38,12 @@ class _Result:
         status: ImportStatus,
         app_id: str | None = "app-1",
         permission_keys: list[str] | None = None,
+        app_created: bool = False,
     ):
         self.status = status
         self.app_id = app_id
+        self.app_mode = AppMode.WORKFLOW
+        self.app_created = app_created
         self.permission_keys = permission_keys or []
 
     def model_dump(self, mode: str = "json"):
@@ -126,6 +130,17 @@ def _install_persisting_service_result(
 
     monkeypatch.setattr(app_import_module.AppDslService, method_name, _return_result)
     return app_id
+
+
+def _install_creator_sync(monkeypatch: pytest.MonkeyPatch, transaction_events: TransactionEvents) -> list[tuple]:
+    """Record creator sync calls with the number of commits observed at call time."""
+    calls: list[tuple] = []
+
+    def _sync(*args) -> None:
+        calls.append((*args, transaction_events.commits))
+
+    monkeypatch.setattr(rbac_service, "try_sync_creator_access_policy_member_bindings", _sync)
+    return calls
 
 
 def _assert_app_persistence(sqlite_app_engine: Engine, app_id: str, *, persisted: bool) -> None:
@@ -239,8 +254,9 @@ class TestAppImportApi:
         app_id = _install_persisting_service_result(
             monkeypatch,
             method_name="import_app",
-            result=_Result(ImportStatus.COMPLETED, app_id="app-123"),
+            result=_Result(ImportStatus.COMPLETED, app_id="app-123", app_created=True),
         )
+        sync_calls = _install_creator_sync(monkeypatch, transaction_events)
         monkeypatch.setattr(
             app_import_module,
             "get_app_permission_keys",
@@ -251,6 +267,7 @@ class TestAppImportApi:
             response, status = method(app_import_module.AppImportPayload(mode="yaml-content"))
 
         assert transaction_events.commits == 1
+        assert sync_calls == [("tenant-1", "u1", rbac_service.RBACResourceType.APP, "app-123", 1)]
         _assert_app_persistence(sqlite_app_engine, app_id, persisted=True)
         assert status == 200
         assert response["permission_keys"] == ["app.acl.view_layout", "app.acl.edit"]
@@ -277,6 +294,7 @@ class TestAppImportApi:
             method_name="import_app",
             result=_Result(ImportStatus.COMPLETED, app_id="app-123"),
         )
+        sync_calls = _install_creator_sync(monkeypatch, transaction_events)
         monkeypatch.setattr(
             app_import_module,
             "get_app_permission_keys",
@@ -291,6 +309,7 @@ class TestAppImportApi:
             response, status = method(app_import_module.AppImportPayload(mode="yaml-content", app_id="existing-app"))
 
         assert transaction_events.commits == 1
+        assert sync_calls == []
         _assert_app_persistence(sqlite_app_engine, app_id, persisted=True)
         assert status == 200
         assert response["permission_keys"] == []
@@ -341,20 +360,13 @@ class TestAppImportConfirmApi:
             "current_account_with_tenant",
             lambda: (_make_account(), "tenant-1"),
         )
-        redis_get = MagicMock(
-            return_value=(
-                b'{"tenant_id":"tenant-1","account_id":"u1","import_mode":"yaml-content",'
-                b'"yaml_content":"app: {}","app_id":null,'
-                b'"name":null,"description":null,"icon_type":null,"icon":null,"icon_background":null}'
-            )
-        )
-        monkeypatch.setattr(app_import_module.redis_client, "get", redis_get)
         apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
         app_id = _install_persisting_service_result(
             monkeypatch,
             method_name="confirm_import",
-            result=_Result(ImportStatus.COMPLETED, app_id="app-456"),
+            result=_Result(ImportStatus.COMPLETED, app_id="app-456", app_created=True),
         )
+        sync_calls = _install_creator_sync(monkeypatch, transaction_events)
         monkeypatch.setattr(
             app_import_module,
             "get_app_permission_keys",
@@ -368,7 +380,7 @@ class TestAppImportConfirmApi:
         _assert_app_persistence(sqlite_app_engine, app_id, persisted=True)
         assert status == 200
         assert response["permission_keys"] == ["app.acl.view_layout", "app.acl.edit"]
-        redis_get.assert_called_once_with("app_import_info:import-1")
+        assert sync_calls == [("tenant-1", "u1", rbac_service.RBACResourceType.APP, "app-456", 1)]
 
     def test_import_confirm_does_not_attach_permission_keys_when_overwriting_existing_app(
         self,
@@ -385,21 +397,13 @@ class TestAppImportConfirmApi:
             "current_account_with_tenant",
             lambda: (_make_account(), "tenant-1"),
         )
-        monkeypatch.setattr(
-            app_import_module.redis_client,
-            "get",
-            lambda *_args, **_kwargs: (
-                b'{"tenant_id":"tenant-1","account_id":"u1","import_mode":"yaml-content",'
-                b'"yaml_content":"app: {}","app_id":"existing-app",'
-                b'"name":null,"description":null,"icon_type":null,"icon":null,"icon_background":null}'
-            ),
-        )
         apply_config_overrides(monkeypatch, RBAC_ENABLED=True)
         app_id = _install_persisting_service_result(
             monkeypatch,
             method_name="confirm_import",
             result=_Result(ImportStatus.COMPLETED, app_id="app-456"),
         )
+        sync_calls = _install_creator_sync(monkeypatch, transaction_events)
         monkeypatch.setattr(
             app_import_module,
             "get_app_permission_keys",
@@ -410,6 +414,7 @@ class TestAppImportConfirmApi:
             response, status = method(import_id="import-1")
 
         assert transaction_events.commits == 1
+        assert sync_calls == []
         _assert_app_persistence(sqlite_app_engine, app_id, persisted=True)
         assert status == 200
         assert response["permission_keys"] == []
@@ -434,3 +439,7 @@ class TestAppImportCheckDependenciesApi:
 
         assert status == 200
         assert response["leaked_dependencies"] == []
+
+
+def test_import_response_schema_hides_creation_marker() -> None:
+    assert "app_created" not in app_import_module.console_ns.models[Import.__name__].__schema__["properties"]

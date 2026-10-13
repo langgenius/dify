@@ -5,7 +5,7 @@ from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
 from controllers.common.rbac import PlainApp, RBACCheck, Workspace
-from controllers.common.schema import register_enum_models, register_schema_models
+from controllers.common.schema import register_enum_models, register_response_schema_models, register_schema_models
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
     RBACPermission,
@@ -18,16 +18,10 @@ from controllers.console.wraps import (
     with_current_user,
 )
 from extensions.ext_database import db
-from extensions.ext_redis import redis_client
 from libs.login import current_account_with_tenant, login_required
 from models.account import Account
 from models.model import App
-from services.app_dsl_service import (
-    IMPORT_INFO_REDIS_KEY_PREFIX,
-    AppDslService,
-    Import,
-    PendingData,
-)
+from services.app_dsl_service import AppDslService, Import, initialize_imported_app_creator_access
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.dsl_entities import CheckDependenciesResult, ImportStatus
 from services.errors.account import NoPermissionError
@@ -50,7 +44,8 @@ class AppImportPayload(BaseModel):
 
 
 register_enum_models(console_ns, ImportStatus)
-register_schema_models(console_ns, AppImportPayload, Import, CheckDependenciesResult)
+register_schema_models(console_ns, AppImportPayload, CheckDependenciesResult)
+register_response_schema_models(console_ns, Import)
 
 
 def _current_user_and_tenant_id(current_user: Account | None) -> tuple[Account, str | None]:
@@ -114,13 +109,14 @@ class AppImportApi(Resource):
             else:
                 session.commit()
 
-        is_created_app = req_data.app_id is None and result.status in {
+        is_created_app = result.app_created and result.status in {
             ImportStatus.COMPLETED,
             ImportStatus.COMPLETED_WITH_WARNINGS,
         }
         if dify_config.RBAC_ENABLED and is_created_app and result.app_id:
             current_user, current_tenant_id = _current_user_and_tenant_id(current_user)
             if current_tenant_id:
+                initialize_imported_app_creator_access(result, tenant_id=current_tenant_id, account_id=current_user.id)
                 result.permission_keys = get_app_permission_keys(
                     current_tenant_id,
                     current_user.id,
@@ -153,11 +149,6 @@ class AppImportConfirmApi(Resource):
     @with_current_user
     def post(self, current_user: Account | None = None, import_id: str = ""):
         current_user = current_user if current_user is not None else _current_user_and_tenant_id(None)[0]
-        redis_key = f"{IMPORT_INFO_REDIS_KEY_PREFIX}{import_id}"
-        pending_data_raw = redis_client.get(redis_key)
-        pending_data: PendingData | None = None
-        if pending_data_raw:
-            pending_data = PendingData.model_validate_json(pending_data_raw)
 
         with Session(db.engine, expire_on_commit=False) as session:
             import_service = AppDslService(session)
@@ -172,18 +163,14 @@ class AppImportConfirmApi(Resource):
             else:
                 session.commit()
 
-        is_created_app = bool(
-            pending_data
-            and pending_data.app_id is None
-            and result.status
-            in {
-                ImportStatus.COMPLETED,
-                ImportStatus.COMPLETED_WITH_WARNINGS,
-            }
-        )
+        is_created_app = result.app_created and result.status in {
+            ImportStatus.COMPLETED,
+            ImportStatus.COMPLETED_WITH_WARNINGS,
+        }
         if dify_config.RBAC_ENABLED and is_created_app and result.app_id:
             current_user, current_tenant_id = _current_user_and_tenant_id(current_user)
             if current_tenant_id:
+                initialize_imported_app_creator_access(result, tenant_id=current_tenant_id, account_id=current_user.id)
                 result.permission_keys = get_app_permission_keys(
                     current_tenant_id,
                     current_user.id,

@@ -543,7 +543,16 @@ class DatasetService:
             pipeline_id=pipeline.id,
         )
         session.add(dataset)
+        session.flush()
+        dataset_id = dataset.id
+        creator_id = current_user.id
         session.commit()
+        enterprise_rbac_service.try_sync_creator_access_policy_member_bindings(
+            tenant_id,
+            creator_id,
+            enterprise_rbac_service.RBACResourceType.DATASET,
+            dataset_id,
+        )
         return dataset
 
     @staticmethod

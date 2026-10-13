@@ -16,7 +16,7 @@ from extensions.ext_database import db
 from libs.oauth_bearer import Scope, TokenType
 from models import Account, App
 from models.account import TenantAccountRole
-from services.app_dsl_service import AppDslService, Import
+from services.app_dsl_service import AppDslService, Import, initialize_imported_app_creator_access
 from services.entities.dsl_entities import CheckDependenciesResult, ImportStatus
 from services.errors.account import NoPermissionError
 from services.errors.app import WorkflowNotFoundError
@@ -70,6 +70,7 @@ class AppDslImportApi(Resource):
                 session.rollback()
             else:
                 session.commit()
+        initialize_imported_app_creator_access(result, tenant_id=workspace_id, account_id=account.id)
 
         match result.status:
             case ImportStatus.FAILED:
@@ -113,6 +114,7 @@ class AppDslImportConfirmApi(Resource):
                 session.rollback()
             else:
                 session.commit()
+        initialize_imported_app_creator_access(result, tenant_id=workspace_id, account_id=account.id)
 
         if result.status == ImportStatus.FAILED:
             return result, 400
