@@ -18,6 +18,7 @@ from libs.external_api import (
     attach_error_response_schema,
     document_errors,
     error_responses,
+    keeps_placeholder_error_code,
 )
 from libs.rate_limit import _BearerRateLimited
 
@@ -624,3 +625,15 @@ def test_documenting_relayed_errors_adds_nothing_beyond_the_default_error():
     assert responses["409"]["content"]["application/json"]["schema"] == {
         "$ref": "#/components/schemas/DocumentedConflictError"
     }
+
+
+def test_keeps_placeholder_error_code_spots_undeclared_business_errors():
+    from libs.exception import RelayedHTTPError
+
+    class _Placeholder(BaseHTTPException):
+        code = 404
+
+    assert keeps_placeholder_error_code(_Placeholder)
+    assert not keeps_placeholder_error_code(_ItemMissingError)
+    assert not keeps_placeholder_error_code(RelayedHTTPError)
+    assert not keeps_placeholder_error_code(NotFound)
