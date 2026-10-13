@@ -461,6 +461,8 @@ def _admit_disabled_feature(key: str, value: Any) -> None:
 
 
 def admit_raw_execution_metadata(snapshot: RestrictedAdmissionSnapshot) -> None:
+    from services.dify_builder.execution_features import is_citation_display_metadata
+
     if snapshot.app_mode != "workflow" or snapshot.workflow_kind != "standard":
         raise BuilderExecutionPolicyError("unsupported_workflow")
     if snapshot.has_environment_variables or snapshot.has_conversation_variables:
@@ -468,6 +470,8 @@ def admit_raw_execution_metadata(snapshot: RestrictedAdmissionSnapshot) -> None:
     if snapshot.has_external_tracing:
         raise BuilderExecutionPolicyError("unsupported_external_tracing")
     for key, value in snapshot.features.items():
+        if key == "retriever_resource" and is_citation_display_metadata(value):
+            continue
         if key in {"opening_statement", "suggested_questions", "external_data_tools", "external_data_variables"}:
             if value not in ("", [], None):
                 raise BuilderExecutionPolicyError("unsupported_features")
