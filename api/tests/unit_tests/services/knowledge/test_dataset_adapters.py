@@ -13,7 +13,6 @@ from controllers.console.datasets.datasets import (
     RelatedAppListResponse,
 )
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
-from extensions.application_services.app import AppServices
 from graphon.model_runtime.entities.model_entities import ModelType
 from machinery.context import RequestContext
 from models import Account, App, Dataset, Document
@@ -26,6 +25,7 @@ from models.dataset import (
     DocumentSegment,
 )
 from models.enums import CreatorUserRole, DatasetQuerySource, IndexingStatus, SegmentStatus
+from repositories.app.console_repository import ConsoleAppRepository
 from services.enterprise import rbac_service
 from services.knowledge.dataset_access import DatasetNotFoundError
 from services.knowledge.datasets.adapters import SQLAlchemyDatasetOperations
@@ -135,7 +135,6 @@ def operations(
     sqlite_session_factory: sessionmaker[Session],
     monkeypatch: pytest.MonkeyPatch,
     application_tags: TagApplicationService,
-    app_services: AppServices,
     rbac_domain: RBACDomain,
 ) -> SQLAlchemyDatasetOperations:
     apply_config_overrides(monkeypatch, RBAC_ENABLED=False)
@@ -156,7 +155,7 @@ def operations(
     return SQLAlchemyDatasetOperations(
         session_factory=sqlite_session_factory,
         tags=application_tags,
-        app_queries=app_services.queries,
+        app_queries=ConsoleAppRepository(session_factory=sqlite_session_factory),
         members=rbac_domain.rbac.members,
     )
 

@@ -7,8 +7,8 @@ import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { refreshWorkspacePermissionKeysAfterMutationDenialAtom } from '@/context/permission-state'
 import { consoleQuery } from '@/service/console'
+import { getHttpErrorStatus } from '@/service/http-error'
 import { DatasetACLPermission, hasPermission } from '@/utils/permission'
-import { responseStatus } from './document-detail-model'
 import { useDocumentTaskStatus } from './use-document-task-status'
 
 const REINDEX_CONFIRMATION_TIMEOUT = 30000
@@ -210,7 +210,7 @@ export function useDocumentReindex({
       ])
       toast.success(t(($) => $['newKnowledge.documentsReindexStarted']))
     } catch (error) {
-      if (responseStatus(error) === 403) {
+      if (getHttpErrorStatus(error) === 403) {
         setWritePermissionRevoked(true)
         await retryWritePermission()
       }

@@ -181,6 +181,31 @@ export type WorkflowResponse = {
   version_number?: number | null
 }
 
+export type DraftWorkflowSyncPayload = {
+  conversation_variables?: Array<{
+    [key: string]: unknown
+  }> | null
+  environment_variables?: Array<{
+    [key: string]: unknown
+  }> | null
+  features?: {
+    [key: string]: unknown
+  } | null
+  graph: {
+    [key: string]: unknown
+  }
+  hash?: string | null
+  rag_pipeline_variables?: Array<{
+    [key: string]: unknown
+  }> | null
+}
+
+export type RagPipelineWorkflowSyncResponse = {
+  hash: string
+  result: string
+  updated_at: number
+}
+
 export type DatasourceNodeRunPayload = {
   credential_id?: string | null
   datasource_type: string
@@ -278,6 +303,11 @@ export type WorkflowDraftVariableResponse = {
   visible: boolean
 }
 
+export type WorkflowDraftVariablePatchPayload = {
+  name?: string | null
+  value?: unknown | null
+}
+
 export type RagPipelineWorkflowPublishResponse = {
   created_at: number
   result: string
@@ -305,10 +335,9 @@ export type PublishedWorkflowRunPayload = {
   start_node_id: string
 }
 
-export type RagPipelineWorkflowSyncResponse = {
-  hash: string
-  result: string
-  updated_at: number
+export type WorkflowUpdatePayload = {
+  marked_comment?: string | null
+  marked_name?: string | null
 }
 
 export type ImportStatus = 'completed' | 'completed-with-warnings' | 'failed' | 'pending'
@@ -1123,7 +1152,7 @@ export type GetRagPipelinesByPipelineIdWorkflowsDraftResponse =
   GetRagPipelinesByPipelineIdWorkflowsDraftResponses[keyof GetRagPipelinesByPipelineIdWorkflowsDraftResponses]
 
 export type PostRagPipelinesByPipelineIdWorkflowsDraftData = {
-  body?: never
+  body: DraftWorkflowSyncPayload
   path: {
     pipeline_id: string
   }
@@ -1132,9 +1161,7 @@ export type PostRagPipelinesByPipelineIdWorkflowsDraftData = {
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsDraftResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: RagPipelineWorkflowSyncResponse
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsDraftResponse =
@@ -1429,7 +1456,7 @@ export type GetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdRespon
   GetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponses[keyof GetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponses]
 
 export type PatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdData = {
-  body?: never
+  body: WorkflowDraftVariablePatchPayload
   path: {
     pipeline_id: string
     variable_id: string
@@ -1602,7 +1629,7 @@ export type DeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponse =
   DeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponses[keyof DeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponses]
 
 export type PatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdData = {
-  body?: never
+  body: WorkflowUpdatePayload
   path: {
     pipeline_id: string
     workflow_id: string

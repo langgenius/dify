@@ -168,7 +168,10 @@ const EmailConfigureModal = ({
               <RiBugLine className="size-3.5 text-text-primary-on-surface" />
             </div>
             <div className="grow space-y-1">
-              <label htmlFor={debugModeId} className="system-sm-medium text-text-secondary">
+              <label
+                htmlFor={debugModeId}
+                className="cursor-pointer system-sm-medium text-text-secondary"
+              >
                 {t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.debugMode`], {
                   ns: 'workflowHumanInput',
                 })}

@@ -63,7 +63,6 @@ from services.entities.app_entities import (
     CreateAppParams,
 )
 from services.model_provider.service import ModelProviderService
-from services.openapi.visibility import apply_openapi_gate, is_openapi_visible
 from services.rbac import contracts as rbac_contracts
 from services.rbac_agent_access_service import initialize_agent_rbac_access
 from services.system_feature_service import SystemFeatureService
@@ -322,25 +321,6 @@ class AppService:
         the caller so each admission surface retains its error contract.
         """
         return session.scalar(select(App).where(App.id == app_id, App.tenant_id == tenant_id))
-
-    @staticmethod
-    def get_visible_app_by_id(
-        app_id: str,
-        session: Session,
-    ) -> App | None:
-        app = session.get(App, app_id)
-        if not app or app.status != "normal" or not is_openapi_visible(app):
-            return None
-        return app
-
-    @staticmethod
-    def find_visible_apps_by_ids(
-        app_ids: Sequence[str],
-        session: Session,
-    ) -> list[App]:
-        if not app_ids:
-            return []
-        return list(session.execute(apply_openapi_gate(select(App).where(App.id.in_(list(app_ids))))).scalars().all())
 
     def get_paginate_apps(
         self,

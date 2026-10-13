@@ -60,6 +60,7 @@ export const zOAuthClientPayload = z.object({
  */
 export const zOAuthProviderAccountResponse = z.object({
   avatar: z.string().nullish(),
+  created_at: z.int(),
   email: z.string(),
   id: z.string(),
   interface_language: z.string().nullable(),
