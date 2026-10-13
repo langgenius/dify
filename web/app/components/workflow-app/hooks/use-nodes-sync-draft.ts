@@ -1,10 +1,10 @@
+import type { PostAppsByAppIdWorkflowsDraftErrors } from '@dify/contracts/api/console/apps/types.gen'
 import type {
   SyncDraftCallback,
   SyncDraftOptions,
   SyncDraftResult,
 } from '@/app/components/workflow/hooks-store'
 import type { WorkflowDraftFeaturesPayload } from '@/service/workflow'
-import { ORPCError } from '@orpc/client'
 import { skipToken, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
 import { useCallback, useEffect, useRef } from 'react'
@@ -29,6 +29,7 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { isAppDeletingOrDeleted } from '@/service/app-deletion'
 import { consoleQuery } from '@/service/console'
 import { postWithKeepalive } from '@/service/fetch'
+import { isApiErrorCode } from '@/service/http-error'
 import { syncWorkflowDraft } from '@/service/workflow'
 import { useWorkflowRefreshDraft } from './use-workflow-refresh-draft'
 
@@ -230,8 +231,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         if (shouldSkipDraftSync(appId, isWorkflowDataLoaded)) return null
 
         if (
-          error instanceof ORPCError &&
-          error.code === 'draft_workflow_not_sync' &&
+          isApiErrorCode<PostAppsByAppIdWorkflowsDraftErrors>(error, 'draft_workflow_not_sync') &&
           !notRefreshWhenSyncError
         )
           handleRefreshWorkflowDraft(true)

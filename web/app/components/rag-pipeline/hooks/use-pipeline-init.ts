@@ -1,8 +1,9 @@
+import type { GetRagPipelinesByPipelineIdWorkflowsDraftErrors } from '@dify/contracts/api/console/rag/types.gen'
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
-import { ORPCError } from '@orpc/client'
 import { useCallback, useEffect, useState } from 'react'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
+import { isApiErrorCode } from '@/service/http-error'
 import { fetchWorkflowDraft, syncWorkflowDraft } from '@/service/workflow'
 import { usePipelineConfig } from './use-pipeline-config'
 import { usePipelineTemplate } from './use-pipeline-template'
@@ -57,8 +58,13 @@ export const usePipelineInit = () => {
       workflowStore.setState({ isWorkflowDataLoaded: true })
       setIsLoading(false)
     } catch (error: any) {
-      if (error instanceof ORPCError && datasetId) {
-        if (error.code === 'draft_workflow_not_exist') {
+      if (datasetId) {
+        if (
+          isApiErrorCode<GetRagPipelinesByPipelineIdWorkflowsDraftErrors>(
+            error,
+            'draft_workflow_not_exist',
+          )
+        ) {
           workflowStore.setState({
             notInitialWorkflow: true,
             shouldAutoOpenStartNodeSelector: true,

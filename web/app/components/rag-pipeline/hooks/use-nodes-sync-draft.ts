@@ -1,5 +1,5 @@
+import type { PostRagPipelinesByPipelineIdWorkflowsDraftErrors } from '@dify/contracts/api/console/rag/types.gen'
 import type { SyncDraftCallback } from '@/app/components/workflow/hooks-store'
-import { ORPCError } from '@orpc/client'
 import { produce } from 'immer'
 import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
@@ -11,6 +11,7 @@ import {
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { API_PREFIX } from '@/config'
 import { postWithKeepalive } from '@/service/fetch'
+import { isApiErrorCode } from '@/service/http-error'
 import { syncWorkflowDraft } from '@/service/workflow'
 import { usePipelineRefreshDraft } from './use-pipeline-refresh-draft'
 
@@ -94,8 +95,10 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         callback?.onSuccess?.()
       } catch (error: any) {
         if (
-          error instanceof ORPCError &&
-          error.code === 'draft_workflow_not_sync' &&
+          isApiErrorCode<PostRagPipelinesByPipelineIdWorkflowsDraftErrors>(
+            error,
+            'draft_workflow_not_sync',
+          ) &&
           !notRefreshWhenSyncError
         )
           handleRefreshWorkflowDraft()

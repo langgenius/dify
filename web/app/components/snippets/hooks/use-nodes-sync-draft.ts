@@ -1,3 +1,4 @@
+import type { PostSnippetsBySnippetIdWorkflowsDraftErrors } from '@dify/contracts/api/console/snippets/types.gen'
 import type { SyncDraftCallback } from '@/app/components/workflow/hooks-store'
 import type { SnippetInputField } from '@/models/snippet'
 import type {
@@ -5,7 +6,6 @@ import type {
   SnippetDraftSyncResponse,
   SnippetWorkflow,
 } from '@/types/snippet'
-import { ORPCError } from '@orpc/client'
 import { produce } from 'immer'
 import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
@@ -15,6 +15,7 @@ import { API_PREFIX } from '@/config'
 import { consoleClient } from '@/service/console'
 // oxlint-disable-next-line no-restricted-imports
 import { postWithKeepalive } from '@/service/fetch'
+import { isApiErrorCode } from '@/service/http-error'
 import { useSnippetDraftStore } from '../draft-store'
 import { useSnippetRefreshDraft } from './use-snippet-refresh-draft'
 
@@ -119,8 +120,10 @@ export const useNodesSyncDraft = (snippetId: string) => {
         return response
       } catch (error: unknown) {
         if (
-          error instanceof ORPCError &&
-          error.code === 'draft_workflow_not_sync' &&
+          isApiErrorCode<PostSnippetsBySnippetIdWorkflowsDraftErrors>(
+            error,
+            'draft_workflow_not_sync',
+          ) &&
           !notRefreshWhenSyncError
         )
           handleRefreshWorkflowDraft(onRefresh)

@@ -4,6 +4,30 @@ export function getHttpErrorStatus(error: unknown): number | undefined {
   return error instanceof ORPCError ? error.status : undefined
 }
 
+/**
+ * Literal `code` values an operation documents across its error statuses, from a generated
+ * `*Errors` type. Open error bodies (`code: string`) contribute nothing, so only codes the
+ * backend actually documents for that operation are accepted.
+ */
+export type DocumentedErrorCode<TErrors> = {
+  [Status in keyof TErrors]: TErrors[Status] extends { code: infer Code extends string }
+    ? string extends Code
+      ? never
+      : Code
+    : never
+}[keyof TErrors]
+
+/**
+ * Whether `error` is the backend error `code` for the operation whose generated `*Errors` type is
+ * `TErrors`. A code the operation does not document fails to type-check.
+ */
+export function isApiErrorCode<TErrors>(
+  error: unknown,
+  code: DocumentedErrorCode<TErrors>,
+): error is ORPCError<DocumentedErrorCode<TErrors>, unknown> {
+  return error instanceof ORPCError && error.code === code
+}
+
 export function isUnauthorizedError(error: unknown): boolean {
   return getHttpErrorStatus(error) === 401
 }

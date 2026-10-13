@@ -1,9 +1,11 @@
+import type { PostAppsByAppIdWorkflowsDraftErrors } from '@dify/contracts/api/console/apps/types.gen'
 import { ORPCError } from '@orpc/client'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { toast } from '@/app/notifications'
 // oxlint-disable-next-line no-restricted-imports -- Exercise the HTTP transport and auth recovery together.
 import { get, post, request, upload } from './base'
 import { consoleClient } from './console'
+import { isApiErrorCode } from './http-error'
 
 const refresh = vi.hoisted(() => vi.fn())
 vi.mock('./refresh-token', () => ({ refreshAccessTokenOrReLogin: refresh }))
@@ -272,5 +274,31 @@ describe('HTTP failure contract', () => {
       .catch((error: unknown) => error)
     expect(error).toBeInstanceOf(ORPCError)
     expect(error).toMatchObject({ message: 'Profile is read-only', status: 403, code: 'forbidden' })
+  })
+})
+
+describe('documented API error codes', () => {
+  it('matches only the backend code the operation documents', () => {
+    const notSynced = new ORPCError('draft_workflow_not_sync', { status: 409 })
+
+    expect(
+      isApiErrorCode<PostAppsByAppIdWorkflowsDraftErrors>(notSynced, 'draft_workflow_not_sync'),
+    ).toBe(true)
+    expect(isApiErrorCode<PostAppsByAppIdWorkflowsDraftErrors>(notSynced, 'app_not_found')).toBe(
+      false,
+    )
+    expect(
+      isApiErrorCode<PostAppsByAppIdWorkflowsDraftErrors>(
+        new Error('draft_workflow_not_sync'),
+        'draft_workflow_not_sync',
+      ),
+    ).toBe(false)
+
+    const isUndocumented = isApiErrorCode<PostAppsByAppIdWorkflowsDraftErrors>(
+      notSynced,
+      // @ts-expect-error The draft sync operation does not document this code.
+      'draft_workflow_not_exist',
+    )
+    expect(isUndocumented).toBe(false)
   })
 })
