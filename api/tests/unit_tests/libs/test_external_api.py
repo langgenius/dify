@@ -407,7 +407,7 @@ def test_error_responses_document_handler_wrapper_and_class_errors_by_code():
                     "code": {"const": "item_missing", "type": "string"},
                     "status": {"const": 404, "type": "integer"},
                 },
-                "required": ["code"],
+                "required": ["code", "status"],
                 "type": "object",
             },
         ],

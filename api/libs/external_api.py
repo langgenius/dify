@@ -255,7 +255,10 @@ class _ErrorComponent:
         if self.details_model is not None:
             properties["details"] = {"$ref": _ERROR_SCHEMA_REF_TEMPLATE.format(model=self.details_model.__name__)}
         schema: dict[str, object] = {
-            "allOf": [dict(error_body_ref), {"properties": properties, "required": ["code"], "type": "object"}],
+            "allOf": [
+                dict(error_body_ref),
+                {"properties": properties, "required": ["code", "status"], "type": "object"},
+            ],
             "title": name,
         }
         description = _class_attribute(self.exception, "description")
