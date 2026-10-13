@@ -124,6 +124,9 @@ jobs:
                   "test_json_native_end_matches_tool_and_start_selectors_exactly": 4,
                   "test_json_first_seal_requires_single_trusted_completed_observation": 7,
                   "test_json_unknown_first_seal_cannot_upgrade_after_receipt_repair": 1,
+                  "test_json_optional_graph_plugin_identifier_seals_without_saved_graph_rewrite": 2,
+                  "test_json_supplied_mismatched_graph_plugin_identifier_refuses_before_allocation": 1,
+                  "test_json_constant_only_graph_without_start_inputs_seals_native_completion": 1,
               },
               "test_workflow_empty_draft": {
                   "test_postgres_empty_save_state_transition": 20,
@@ -410,6 +413,10 @@ jobs:
               "test_qualified_binding_is_frozen_and_strict": 1,
               "test_reserved_native_owner_refuses_for_every_node": 9,
               "test_optional_start_user_id_cannot_collide_with_native_system_owner": 1,
+              "test_constant_json_parameters_need_no_start_declarations_or_inputs": 1,
+              "test_empty_start_declarations_still_refuse_variable_selector": 1,
+              "test_jsonpath_detailed_grammar_boundaries_admit": 3,
+              "test_jsonpath_detailed_grammar_boundaries_refuse": 8,
           }
           json_runtime_expected = {
               "tests.unit_tests.services.dify_builder.test_json_tool_metadata": {
