@@ -33,6 +33,8 @@ export type WorkflowSliceShape = {
   setIsListening: (listening: boolean) => void
   canvasReadOnly: boolean
   setCanvasReadOnly: (readOnly: boolean) => void
+  builderViewportManuallyChanged: boolean
+  setBuilderViewportManuallyChanged: (changed: boolean) => void
   listeningTriggerType: TriggerNodeType | null
   setListeningTriggerType: (triggerType: TriggerNodeType | null) => void
   listeningTriggerNodeId: string | null
@@ -79,6 +81,9 @@ export const createWorkflowSlice: StateCreator<WorkflowSliceShape> = (set) => ({
   setIsListening: (listening) => set(() => ({ isListening: listening })),
   canvasReadOnly: false,
   setCanvasReadOnly: (canvasReadOnly) => set(() => ({ canvasReadOnly })),
+  builderViewportManuallyChanged: false,
+  setBuilderViewportManuallyChanged: (builderViewportManuallyChanged) =>
+    set({ builderViewportManuallyChanged }),
   listeningTriggerType: null,
   setListeningTriggerType: (triggerType) => set(() => ({ listeningTriggerType: triggerType })),
   listeningTriggerNodeId: null,

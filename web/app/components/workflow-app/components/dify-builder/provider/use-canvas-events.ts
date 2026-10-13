@@ -1,6 +1,7 @@
 import type { CanvasEventData } from '../types'
 import { useSetAtom } from 'jotai'
 import { useCallback, useMemo } from 'react'
+import { useWorkflowStore } from '@/app/components/workflow/store'
 import { selectWorkflowNode } from '@/app/components/workflow/utils/node-navigation'
 import { difyBuilderCanvasPendingRefreshAtom } from '../store'
 
@@ -9,13 +10,18 @@ export const useDifyBuilderCanvasEvents = (
   onResetPublication?: () => void,
 ) => {
   const setPendingRefresh = useSetAtom(difyBuilderCanvasPendingRefreshAtom)
+  const workflowStore = useWorkflowStore()
+  const shouldFocus = useCallback(
+    () => !workflowStore.getState().builderViewportManuallyChanged,
+    [workflowStore],
+  )
 
   const onCanvasEvent = useCallback(
     (data: CanvasEventData) => {
       const event = data.event
       switch (event) {
         case 'highlight_edit_target':
-          if (data.node_id) selectWorkflowNode(data.node_id, true)
+          if (data.node_id) selectWorkflowNode(data.node_id, shouldFocus(), shouldFocus)
           return
         case 'reset_build_canvas':
         case 'revert_checkpoint':
@@ -40,7 +46,7 @@ export const useDifyBuilderCanvasEvents = (
           event satisfies never
       }
     },
-    [onPublishWorkflow, setPendingRefresh],
+    [onPublishWorkflow, setPendingRefresh, shouldFocus],
   )
   const reset = useCallback(() => {
     onResetPublication?.()

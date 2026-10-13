@@ -26,6 +26,7 @@ const mocks = vi.hoisted(() => ({
   push: vi.fn(),
   setShowPanel: vi.fn(),
   setCanvasReadOnly: vi.fn(),
+  setBuilderViewportManuallyChanged: vi.fn(),
   syncDraft: vi.fn(async () => undefined),
   startBuild: vi.fn(async () => true),
   useSessionController: vi.fn(),
@@ -82,6 +83,12 @@ vi.mock('@/app/components/workflow/store', () => ({
       setShowDifyBuilderPanel: mocks.setShowPanel,
       setCanvasReadOnly: mocks.setCanvasReadOnly,
     }),
+  useWorkflowStore: () => ({
+    getState: () => ({
+      builderViewportManuallyChanged: false,
+      setBuilderViewportManuallyChanged: mocks.setBuilderViewportManuallyChanged,
+    }),
+  }),
 }))
 vi.mock('@/app/components/workflow-app/components/dify-builder/provider/use-run-events', () => ({
   useDifyBuilderRunEvents: () => mocks.runEvents,
