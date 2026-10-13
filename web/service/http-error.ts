@@ -43,8 +43,10 @@ export async function httpErrorFromResponse(response: Response) {
   let body: unknown
   try {
     body = await response.clone().json()
-  } catch {
+  } catch (error) {
     // Empty, malformed JSON and proxy HTML errors still carry an HTTP status.
+    // Body read failures, including cancellation, must keep their original identity.
+    if (!(error instanceof SyntaxError)) throw error
   }
   return createHttpError(response, body)
 }
