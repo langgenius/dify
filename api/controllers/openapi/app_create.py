@@ -1,4 +1,7 @@
-"""Create blank workflow and advanced-chat apps with an empty draft; export then gives the starting DSL."""
+"""Create workflow and advanced-chat apps with the editor's starter draft; export then gives the starting DSL.
+
+A workflow starts empty; an advanced-chat app starts with Start -> LLM -> Answer, the LLM without a model.
+"""
 
 from __future__ import annotations
 
@@ -52,7 +55,7 @@ class AdvancedChatAppCreateApi(Resource):
         account_context=True,
         op="create.console_app.advanced_chat",
         kind=Kind.OBJECT,
-        summary="Create a blank advanced-chat app; export its DSL to start building",
+        summary="Create an advanced-chat app with a Start, LLM and Answer draft; export its DSL to start building",
         examples=(Example(title="Create an advanced-chat app", input={"name": "Support bot"}),),
         requirements=_CREATE_GUARDS,
         body=CreateAppPayload,

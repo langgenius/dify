@@ -16,6 +16,9 @@ from configs import dify_config
 from core.rbac import RBACPermission
 from enums import DeploymentEdition
 from events.app_event import app_was_updated
+from graphon.enums import BuiltinNodeTypes
+from graphon.model_runtime.entities.llm_entities import LLMMode
+from graphon.model_runtime.entities.message_entities import PromptMessageRole
 from machinery.context import RequestContext
 from models.account import Account
 from models.agent import AgentIconType
@@ -72,9 +75,70 @@ from services.system_feature_service import SystemFeatureService
 from services.workflow_service import WorkflowService
 from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
 
-# The draft a new workflow app starts with, as the console editor creates it.
-_EMPTY_DRAFT_GRAPH: Final[dict[str, Any]] = {"nodes": [], "edges": []}
-_EMPTY_DRAFT_FEATURES: Final[dict[str, Any]] = {"retriever_resource": {"enabled": True}}
+# Positions as the console editor lays out its templates (START_INITIAL_POSITION and
+# NODE_WIDTH_X_OFFSET in web/app/components/workflow/constants.ts).
+_START_POSITION: Final = (80, 282)
+_NODE_X_STEP: Final = 300
+
+
+def _editor_node(node_id: str, column: int, data: dict[str, Any]) -> dict[str, Any]:
+    """A node as the editor's generateNewNode shapes it."""
+    x, y = _START_POSITION
+    return {
+        "id": node_id,
+        "type": "custom",
+        "data": data,
+        "position": {"x": x + _NODE_X_STEP * column, "y": y},
+        "targetPosition": "left",
+        "sourcePosition": "right",
+    }
+
+
+def _editor_edge(source: str, target: str) -> dict[str, Any]:
+    return {
+        "id": f"{source}-{target}",
+        "source": source,
+        "sourceHandle": "source",
+        "target": target,
+        "targetHandle": "target",
+    }
+
+
+# The Chatflow template the console editor saves on first open (use-workflow-template.ts).
+_CHATFLOW_STARTER_GRAPH: Final[dict[str, Any]] = {
+    "nodes": [
+        _editor_node("start", 0, {"type": BuiltinNodeTypes.START, "title": "Start", "variables": []}),
+        _editor_node(
+            "llm",
+            1,
+            {
+                "type": BuiltinNodeTypes.LLM,
+                "title": "LLM",
+                "model": {"provider": "", "name": "", "mode": LLMMode.CHAT, "completion_params": {"temperature": 0.7}},
+                "prompt_template": [{"role": PromptMessageRole.SYSTEM, "text": ""}],
+                "context": {"enabled": False, "variable_selector": []},
+                "vision": {"enabled": False},
+                "memory": {
+                    "window": {"enabled": False, "size": 10},
+                    "query_prompt_template": "{{#sys.query#}}\n\n{{#sys.files#}}",
+                },
+            },
+        ),
+        _editor_node(
+            "answer",
+            2,
+            {"type": BuiltinNodeTypes.ANSWER, "title": "Answer", "variables": [], "answer": "{{#llm.text#}}"},
+        ),
+    ],
+    "edges": [_editor_edge("start", "llm"), _editor_edge("llm", "answer")],
+}
+
+# The draft a new app starts with. A workflow starts empty: its entry (Start or a trigger) is chosen while building.
+_STARTER_DRAFT_GRAPHS: Final[dict[AppMode, dict[str, Any]]] = {
+    AppMode.WORKFLOW: {"nodes": [], "edges": []},
+    AppMode.ADVANCED_CHAT: _CHATFLOW_STARTER_GRAPH,
+}
+_STARTER_DRAFT_FEATURES: Final[dict[str, Any]] = {"retriever_resource": {"enabled": True}}
 
 
 @dataclass(frozen=True)
@@ -398,10 +462,11 @@ class AppLifecycleGateway(AppLifecycle):
     @override
     def create_draft(self, context: RequestContext, app_id: str) -> None:
         with self._session_factory() as session:
+            app = require_console_app(session, context, app_id)
             WorkflowService(self._session_factory).sync_draft_workflow(
-                app_model=require_console_app(session, context, app_id),
-                graph=copy.deepcopy(_EMPTY_DRAFT_GRAPH),
-                features=copy.deepcopy(_EMPTY_DRAFT_FEATURES),
+                app_model=app,
+                graph=copy.deepcopy(_STARTER_DRAFT_GRAPHS[AppMode(app.mode)]),
+                features=copy.deepcopy(_STARTER_DRAFT_FEATURES),
                 unique_hash=None,
                 account=console_app_actor(session, context),
                 environment_variables=[],

@@ -38,7 +38,8 @@ from services.agent.package_resource_exporter import AgentPackageResourceExporte
 from services.agent.roster_package_exporter import RosterAgentPackageExporter
 from services.agent.roster_package_importer import RosterAgentPackageImporter
 from services.agent.roster_service import AgentRosterService
-from services.app.console_gateway import AppTransferGateway, EnterpriseConsoleAppAccess
+from services.app import console_gateway
+from services.app.console_gateway import AppLifecycleGateway, AppTransferGateway, EnterpriseConsoleAppAccess
 from services.app.console_service import ConsoleAppNotFoundError, InvalidAppAccessModesError
 from services.app_dsl_service import AppDslService
 from services.app_package_service import AppPackageService, PreparedAppPackage
@@ -722,3 +723,45 @@ def test_dsl_import_forwards_only_a_guarded_draft_hash(
     app_services.console.import_app(context, params)
 
     assert import_app.call_args.kwargs["draft_hash"] == draft_hash
+
+
+@pytest.mark.parametrize("mode", [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
+def test_create_draft_saves_the_starter_graph_of_the_apps_mode(monkeypatch: pytest.MonkeyPatch, mode: AppMode) -> None:
+    session = Mock()
+    session_factory = Mock(return_value=Mock(__enter__=Mock(return_value=session), __exit__=Mock(return_value=None)))
+    app = Mock(mode=mode.value)
+    monkeypatch.setattr(console_gateway, "require_console_app", Mock(return_value=app))
+    monkeypatch.setattr(console_gateway, "console_app_actor", Mock())
+    workflow_service = Mock()
+    monkeypatch.setattr(console_gateway, "WorkflowService", Mock(return_value=workflow_service))
+
+    AppLifecycleGateway(session_factory=session_factory).create_draft(
+        RequestContext("request-1", None, "account-1", "workspace-1"), "app-1"
+    )
+
+    graph = workflow_service.sync_draft_workflow.call_args.kwargs["graph"]
+    assert graph == console_gateway._STARTER_DRAFT_GRAPHS[mode]
+    assert graph is not console_gateway._STARTER_DRAFT_GRAPHS[mode]
+
+
+def test_chatflow_starter_draft_is_start_llm_answer_as_the_editor_saves_it() -> None:
+    graph = console_gateway._STARTER_DRAFT_GRAPHS[AppMode.ADVANCED_CHAT]
+
+    assert [(n["id"], n["data"]["type"], n["data"]["title"], n["position"]) for n in graph["nodes"]] == [
+        ("start", "start", "Start", {"x": 80, "y": 282}),
+        ("llm", "llm", "LLM", {"x": 380, "y": 282}),
+        ("answer", "answer", "Answer", {"x": 680, "y": 282}),
+    ]
+    assert all(
+        (n["type"], n["targetPosition"], n["sourcePosition"]) == ("custom", "left", "right") for n in graph["nodes"]
+    )
+    assert [(e["id"], e["source"], e["sourceHandle"], e["target"], e["targetHandle"]) for e in graph["edges"]] == [
+        ("start-llm", "start", "source", "llm", "target"),
+        ("llm-answer", "llm", "source", "answer", "target"),
+    ]
+    assert graph["nodes"][2]["data"]["answer"] == "{{#llm.text#}}"
+    assert json.loads(json.dumps(graph))["nodes"][1]["data"]["model"]["mode"] == "chat"
+
+
+def test_workflow_starter_draft_is_empty() -> None:
+    assert console_gateway._STARTER_DRAFT_GRAPHS[AppMode.WORKFLOW] == {"nodes": [], "edges": []}

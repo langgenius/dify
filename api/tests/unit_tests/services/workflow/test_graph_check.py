@@ -201,3 +201,17 @@ def test_credential_check_matches_publish_for_model_nodes_publish_skips(node_typ
         assert check(node) is None
 
     v.assert_not_called()
+
+
+def test_chatflow_starter_draft_only_lacks_a_model() -> None:
+    from services.app.console_gateway import _STARTER_DRAFT_GRAPHS
+
+    issues = check_graph(
+        _STARTER_DRAFT_GRAPHS[AppMode.ADVANCED_CHAT],
+        mode=AppMode.ADVANCED_CHAT,
+        resources=credential_check("ws-1", {}, cast(Session, Mock())),
+    )
+
+    assert [(i.code, i.node_id, i.message) for i in issues] == [
+        (IssueCode.RESOURCE_UNAVAILABLE, "llm", "Node llm (llm): Missing provider or model configuration")
+    ]

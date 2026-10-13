@@ -351,7 +351,7 @@ class ConsoleAppService:
         return self._lifecycle.present(context, replace(app, permission_keys=keys))
 
     def create_with_draft(self, context: RequestContext, params: CreateAppParams) -> AppRecord:
-        """Create a workflow-type app with the empty draft the editor saves on first open, so it exports as DSL.
+        """Create a workflow-type app with the starter draft the editor saves on first open, so it exports as DSL.
         An app whose draft could not be saved is deleted again."""
         app = self.create(context, params)
         try:
