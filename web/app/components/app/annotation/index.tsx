@@ -37,6 +37,7 @@ import {
 import { consoleQuery } from '@/service/console'
 import { AppModeEnum } from '@/types/app'
 import { sleep } from '@/utils'
+import { getServerErrorMessage } from '@/utils/error-message'
 import PageTitle from '../log-annotation/page-title'
 import EmptyElement from './empty-element'
 import Filter from './filter'
@@ -124,14 +125,22 @@ const Annotation: FC<Props> = (props) => {
   }, [currPage, limit, debouncedQueryParams])
 
   const handleAdd = async (payload: AnnotationItemBasic) => {
-    await addAnnotation(appDetail.id, payload)
+    await addAnnotation(appDetail.id, payload).catch((error: unknown) => {
+      const message = getServerErrorMessage(error)
+      if (message) toast.error(message)
+      throw error
+    })
     toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
     fetchList()
     setControlUpdateList(Date.now())
   }
 
   const handleRemove = async (id: string) => {
-    await delAnnotation(appDetail.id, id)
+    await delAnnotation(appDetail.id, id).catch((error: unknown) => {
+      const message = getServerErrorMessage(error)
+      if (message) toast.error(message)
+      throw error
+    })
     toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
     fetchList()
     setControlUpdateList(Date.now())
@@ -157,7 +166,13 @@ const Annotation: FC<Props> = (props) => {
 
   const handleSave = async (question: string, answer: string) => {
     if (!currItem) return
-    await editAnnotation(appDetail.id, currItem.id, { question, answer })
+    await editAnnotation(appDetail.id, currItem.id, { question, answer }).catch(
+      (error: unknown) => {
+        const message = getServerErrorMessage(error)
+        if (message) toast.error(message)
+        throw error
+      },
+    )
     toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
     fetchList()
     setControlUpdateList(Date.now())
@@ -199,23 +214,29 @@ const Annotation: FC<Props> = (props) => {
                     disabled={!annotationConfig?.enabled && isAnnotationQuotaUnavailable}
                     size="md"
                     onCheckedChange={async (value) => {
-                      if (value) {
-                        if (isAnnotationQuotaUnavailable) return
-                        if (isAnnotationFull) {
-                          setIsShowAnnotationFullModal(true)
-                          setControlRefreshSwitch(Date.now())
-                          return
+                      try {
+                        if (value) {
+                          if (isAnnotationQuotaUnavailable) return
+                          if (isAnnotationFull) {
+                            setIsShowAnnotationFullModal(true)
+                            setControlRefreshSwitch(Date.now())
+                            return
+                          }
+                          setIsShowEdit(true)
+                        } else {
+                          const { job_id: jobId }: any = await updateAnnotationStatus(
+                            appDetail.id,
+                            AnnotationEnableStatus.disable,
+                            annotationConfig?.embedding_model,
+                            annotationConfig?.score_threshold,
+                          )
+                          await ensureJobCompleted(jobId, AnnotationEnableStatus.disable)
+                          await fetchAnnotationConfig()
                         }
-                        setIsShowEdit(true)
-                      } else {
-                        const { job_id: jobId }: any = await updateAnnotationStatus(
-                          appDetail.id,
-                          AnnotationEnableStatus.disable,
-                          annotationConfig?.embedding_model,
-                          annotationConfig?.score_threshold,
-                        )
-                        await ensureJobCompleted(jobId, AnnotationEnableStatus.disable)
-                        await fetchAnnotationConfig()
+                      } catch (error) {
+                        const message = getServerErrorMessage(error)
+                        if (message) toast.error(message)
+                        throw error
                       }
                     }}
                   ></Switch>
@@ -314,27 +335,33 @@ const Annotation: FC<Props> = (props) => {
               setIsShowEdit(false)
             }}
             onSave={async (embeddingModel, score) => {
-              if (
-                embeddingModel.embedding_model_name !==
-                  annotationConfig?.embedding_model?.embedding_model_name ||
-                embeddingModel.embedding_provider_name !==
-                  annotationConfig?.embedding_model?.embedding_provider_name
-              ) {
-                const { job_id: jobId }: any = await updateAnnotationStatus(
-                  appDetail.id,
-                  AnnotationEnableStatus.enable,
-                  embeddingModel,
-                  score,
-                )
-                await ensureJobCompleted(jobId, AnnotationEnableStatus.enable)
-              }
-              const annotationId = await fetchAnnotationConfig()
-              if (score !== annotationConfig?.score_threshold)
-                await updateAnnotationScore(appDetail.id, annotationId, score)
+              try {
+                if (
+                  embeddingModel.embedding_model_name !==
+                    annotationConfig?.embedding_model?.embedding_model_name ||
+                  embeddingModel.embedding_provider_name !==
+                    annotationConfig?.embedding_model?.embedding_provider_name
+                ) {
+                  const { job_id: jobId }: any = await updateAnnotationStatus(
+                    appDetail.id,
+                    AnnotationEnableStatus.enable,
+                    embeddingModel,
+                    score,
+                  )
+                  await ensureJobCompleted(jobId, AnnotationEnableStatus.enable)
+                }
+                const annotationId = await fetchAnnotationConfig()
+                if (score !== annotationConfig?.score_threshold)
+                  await updateAnnotationScore(appDetail.id, annotationId, score)
 
-              await fetchAnnotationConfig()
-              toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
-              setIsShowEdit(false)
+                await fetchAnnotationConfig()
+                toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
+                setIsShowEdit(false)
+              } catch (error) {
+                const message = getServerErrorMessage(error)
+                if (message) toast.error(message)
+                throw error
+              }
             }}
             annotationConfig={annotationConfig!}
           />

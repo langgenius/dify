@@ -1,6 +1,8 @@
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { toast } from '@/app/notifications'
+import { httpErrorFromResponse } from '@/service/http-error'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import MailAndCodeAuth from '../mail-and-code-auth'
 
@@ -74,6 +76,30 @@ vi.mock('@/service/common', () => ({
 }))
 
 describe('MailAndCodeAuth', () => {
+  it('shows backend failure feedback and preserves the email for a later attempt', async () => {
+    const user = userEvent.setup()
+    const error = await httpErrorFromResponse(
+      Response.json({ message: 'Too many verification requests' }, { status: 429 }),
+    )
+    mocks.sendEMailLoginCode.mockRejectedValueOnce(error)
+    const notify = vi.spyOn(toast, 'error').mockReturnValue('error-toast')
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    renderMailAndCodeAuth('COMMUNITY')
+    const email = screen.getByRole('textbox', { name: 'login.email' })
+    const submit = screen.getByRole('button', { name: 'login.signup.verifyMail' })
+    await user.type(email, 'user@example.com')
+    await user.click(submit)
+    await waitFor(() =>
+      expect(notify).toHaveBeenCalledExactlyOnceWith('Too many verification requests'),
+    )
+    expect(email).toHaveValue('user@example.com')
+    expect(submit).toBeEnabled()
+    expect(mocks.push).not.toHaveBeenCalled()
+    await user.click(submit)
+    await waitFor(() => expect(mocks.push).toHaveBeenCalledTimes(1))
+    expect(notify).toHaveBeenCalledTimes(1)
+  })
+
   beforeEach(() => {
     vi.clearAllMocks()
     turnstileOptions = undefined

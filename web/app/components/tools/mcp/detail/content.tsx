@@ -22,6 +22,7 @@ import { useCallback, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import Icon from '@/app/components/plugins/card/base/card-icon'
 import { useCanManageMCP } from '@/app/components/tools/hooks/use-tool-permissions'
+import { toast } from '@/app/notifications'
 import { openOAuthPopup } from '@/hooks/use-oauth'
 import {
   useAuthorizeMCP,
@@ -30,6 +31,7 @@ import {
   useMCPTools,
   useUpdateMCPTools,
 } from '@/service/use-tools'
+import { getServerErrorMessage } from '@/utils/error-message'
 import ListLoading from './list-loading'
 import OperationDropdown from './operation-dropdown'
 import ToolItem from './tool-item'
@@ -103,7 +105,10 @@ const MCPDetailContent: FC<Props> = ({
       })
       if (res.result === 'success') handleUpdateTools()
       else if (res.authorization_url) openOAuthPopup(res.authorization_url, handleOAuthCallback)
-    } catch {
+    } catch (error) {
+      const errorMessage = getServerErrorMessage(error)
+      if (errorMessage) toast.error(errorMessage)
+
       // On authorization error, refresh the parent component state
       // to update the connection status indicator
       onUpdate()

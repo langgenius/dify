@@ -62,6 +62,7 @@ import {
 import { AppSourceType } from '@/service/share'
 import { useChatConversationDetail, useCompletionConversationDetail } from '@/service/use-log'
 import { AppModeEnum } from '@/types/app'
+import { getServerErrorMessage } from '@/utils/error-message'
 import PromptLogModal from '../../base/prompt-log-modal'
 import {
   applyAnnotationAdded,
@@ -637,11 +638,17 @@ const CompletionConversationDetailComp: FC<ConversationDetailProps> = ({
   const { t } = useTranslation(['appLog', 'common'])
 
   const handleFeedback = async (mid: string, { rating, content }: FeedbackType) => {
-    await updateLogMessageFeedbacks({
-      url: `/apps/${appDetail.id}/feedbacks`,
-      body: { message_id: mid, rating, content: content ?? undefined },
-    })
-    conversationDetailMutate()
+    try {
+      await updateLogMessageFeedbacks({
+        url: `/apps/${appDetail.id}/feedbacks`,
+        body: { message_id: mid, rating, content: content ?? undefined },
+      })
+      conversationDetailMutate()
+    } catch (error) {
+      const message = getServerErrorMessage(error)
+      if (message) toast.error(message)
+      throw error
+    }
   }
 
   const handleAnnotation = async (mid: string, value: string): Promise<boolean> => {
@@ -691,10 +698,16 @@ const ChatConversationDetailComp: FC<ConversationDetailProps> = ({
   const { t } = useTranslation(['appLog', 'common'])
 
   const handleFeedback = async (mid: string, { rating, content }: FeedbackType) => {
-    await updateLogMessageFeedbacks({
-      url: `/apps/${appDetail.id}/feedbacks`,
-      body: { message_id: mid, rating, content: content ?? undefined },
-    })
+    try {
+      await updateLogMessageFeedbacks({
+        url: `/apps/${appDetail.id}/feedbacks`,
+        body: { message_id: mid, rating, content: content ?? undefined },
+      })
+    } catch (error) {
+      const message = getServerErrorMessage(error)
+      if (message) toast.error(message)
+      throw error
+    }
   }
 
   const handleAnnotation = async (mid: string, value: string): Promise<boolean> => {

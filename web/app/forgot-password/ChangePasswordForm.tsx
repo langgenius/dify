@@ -14,11 +14,13 @@ import { Input } from '@langgenius/dify-ui/input'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { toast } from '@/app/notifications'
 import { validPassword } from '@/config'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useSearchParams } from '@/next/navigation'
 import { changePasswordWithToken } from '@/service/common'
 import { useVerifyForgotPasswordToken } from '@/service/use-common'
+import { getServerErrorMessage } from '@/utils/error-message'
 import { basePath } from '@/utils/var'
 
 type PasswordFormValues = {
@@ -65,7 +67,10 @@ const ChangePasswordForm = () => {
           },
         })
         setShowSuccess(true)
-      } catch {
+      } catch (error) {
+        const errorMessage = getServerErrorMessage(error)
+        if (errorMessage) toast.error(errorMessage)
+
         await revalidateToken()
       } finally {
         setIsSubmitting(false)

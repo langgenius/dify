@@ -2,6 +2,7 @@ import type { ReactElement } from 'react'
 import type { Mock } from 'vite-plus/test'
 import type { AnnotationItem } from '../type'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { toast } from '@/app/notifications'
 import {
@@ -15,6 +16,7 @@ import {
   updateAnnotationScore,
   updateAnnotationStatus,
 } from '@/service/annotation'
+import { httpErrorFromResponse } from '@/service/http-error'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { AppModeEnum } from '@/types/app'
@@ -58,7 +60,9 @@ vi.mock('../header-opts', () => ({
     <div data-testid="header-opts">
       <button
         data-testid="trigger-add"
-        onClick={() => props.onAdd({ question: 'new question', answer: 'new answer' })}
+        onClick={() =>
+          props.onAdd({ question: 'new question', answer: 'new answer' }).catch(() => {})
+        }
       >
         add
       </button>
@@ -239,6 +243,24 @@ describe('Annotation', () => {
         keyword: '',
       }),
     )
+  })
+
+  it('reports rejected annotation creation without refreshing the list or showing success', async () => {
+    const user = userEvent.setup()
+    const error = await httpErrorFromResponse(
+      Response.json({ message: 'Annotation quota exceeded' }, { status: 400 }),
+    )
+    addAnnotationMock.mockRejectedValueOnce(error)
+    renderComponent()
+    await screen.findByTestId('empty-element')
+    await user.click(screen.getByRole('button', { name: 'add' }))
+    await waitFor(() =>
+      expect(mockNotify).toHaveBeenCalledExactlyOnceWith({
+        type: 'error',
+        message: 'Annotation quota exceeded',
+      }),
+    )
+    expect(fetchAnnotationListMock).toHaveBeenCalledTimes(1)
   })
 
   it('should handle annotation creation and refresh list data', async () => {

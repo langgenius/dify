@@ -24,6 +24,7 @@ import {
 import { useGetTryAppParams } from '@/service/use-try-app'
 import { getWebAppConversationScopeId, resolveWebAppAddress } from '@/service/webapp-address'
 import { TransferMethod } from '@/types/app'
+import { getServerErrorMessage } from '@/utils/error-message'
 import { getProcessedFilesFromResponse } from '../../file-uploader/utils'
 import {
   buildChatItemTree,
@@ -426,14 +427,20 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
   )
   const handleFeedback: OnFeedback = useCallback(
     async (messageId, feedback) => {
-      await updateFeedback(
-        {
-          url: `/messages/${messageId}/feedbacks`,
-          body: { rating: feedback.rating, content: feedback.content },
-        },
-        appSourceType,
-        appId,
-      )
+      try {
+        await updateFeedback(
+          {
+            url: `/messages/${messageId}/feedbacks`,
+            body: { rating: feedback.rating, content: feedback.content },
+          },
+          appSourceType,
+          appId,
+        )
+      } catch (error) {
+        const message = getServerErrorMessage(error)
+        if (message) toast.error(message)
+        throw error
+      }
     },
     [appSourceType, appId],
   )

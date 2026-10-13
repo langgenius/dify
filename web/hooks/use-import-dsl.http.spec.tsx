@@ -34,7 +34,7 @@ describe('import action feedback across HTTP requests', () => {
   afterEach(() => vi.unstubAllGlobals())
 
   it.each([false, true])(
-    'reports one warning after dependency failure (confirmation: %s)',
+    'preserves the import success and separate dependency error (confirmation: %s)',
     async (confirm) => {
       const fetch = vi.fn(async (request: RequestInfo | URL) => {
         const url = request instanceof Request ? request.url : String(request)
@@ -64,19 +64,22 @@ describe('import action feedback across HTTP requests', () => {
           await result.current.handleImportDSLConfirm({ onSuccess, onFailed })
         })
       }
-      expect(mocks.warning).toHaveBeenCalledTimes(1)
-      expect(mocks.success).not.toHaveBeenCalled()
-      expect(mocks.error).not.toHaveBeenCalled()
+      expect(mocks.warning).not.toHaveBeenCalled()
+      expect(mocks.success).toHaveBeenCalledTimes(1)
+      expect(mocks.error).toHaveBeenCalledExactlyOnceWith('common.error', {
+        description: 'Dependency service unavailable',
+      })
+      expect(mocks.success.mock.invocationCallOrder[0]).toBeLessThan(
+        mocks.error.mock.invocationCallOrder[0]!,
+      )
       expect(onSuccess).toHaveBeenCalledTimes(1)
       expect(onFailed).not.toHaveBeenCalled()
       expect(mocks.redirect).toHaveBeenCalledTimes(1)
       expect(result.current.isFetching).toBe(false)
-      render(<>{mocks.warning.mock.calls[0]![1].description}</>)
-      expect(screen.getByText('Dependency service unavailable')).toBeInTheDocument()
     },
   )
 
-  it('waits for follow-up requests and combines all warnings into one notification', async () => {
+  it('preserves the import warning before the dependency check finishes', async () => {
     let finishDependencies!: (response: Response) => void
     const dependencies = new Promise<Response>((resolve) => {
       finishDependencies = resolve
@@ -98,8 +101,8 @@ describe('import action feedback across HTTP requests', () => {
     act(() => {
       completion = result.current.handleImportDSL(input, {})
     })
-    await waitFor(() => expect(result.current.isFetching).toBe(true))
-    expect(mocks.warning).not.toHaveBeenCalled()
+    await waitFor(() => expect(mocks.warning).toHaveBeenCalledTimes(1))
+    expect(result.current.isFetching).toBe(true)
     expect(mocks.success).not.toHaveBeenCalled()
     await act(async () => {
       finishDependencies(
@@ -108,11 +111,13 @@ describe('import action feedback across HTTP requests', () => {
       await completion
     })
     expect(mocks.warning).toHaveBeenCalledTimes(1)
-    expect(mocks.error).not.toHaveBeenCalled()
+    expect(mocks.error).toHaveBeenCalledExactlyOnceWith('common.error', {
+      description: 'Dependency service unavailable',
+    })
     expect(mocks.success).not.toHaveBeenCalled()
     render(<>{mocks.warning.mock.calls[0]![1].description}</>)
     expect(screen.getByText('Tool authorization required')).toBeInTheDocument()
-    expect(screen.getByText('Dependency service unavailable')).toBeInTheDocument()
+    expect(screen.queryByText('Dependency service unavailable')).not.toBeInTheDocument()
   })
 
   it('reports each failed user attempt once and preserves the draft for retry', async () => {
@@ -137,23 +142,29 @@ describe('import action feedback across HTTP requests', () => {
     expect(mocks.redirect).not.toHaveBeenCalled()
   })
 
-  it.each(['import', 'dependencies'])('keeps cancellation quiet during %s', async (stage) => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async (request: RequestInfo | URL) => {
-        const url = request instanceof Request ? request.url : String(request)
-        if (stage === 'import' || url.endsWith('/check-dependencies'))
-          throw new DOMException('Cancelled', 'AbortError')
-        return Response.json(completed)
-      }),
-    )
-    const { result } = renderHookWithConsoleQuery(() => useImportDSL())
-    await act(async () => {
-      await result.current.handleImportDSL(input, {})
-    })
-    expect(mocks.error).not.toHaveBeenCalled()
-    expect(mocks.warning).not.toHaveBeenCalled()
-    expect(mocks.success).not.toHaveBeenCalled()
-    expect(result.current.isFetching).toBe(false)
-  })
+  it.each(['import', 'dependencies'])(
+    'preserves the existing business feedback when %s is cancelled',
+    async (stage) => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async (request: RequestInfo | URL) => {
+          const url = request instanceof Request ? request.url : String(request)
+          if (stage === 'import' || url.endsWith('/check-dependencies'))
+            throw new DOMException('Cancelled', 'AbortError')
+          return Response.json(completed)
+        }),
+      )
+      const { result } = renderHookWithConsoleQuery(() => useImportDSL())
+      await act(async () => {
+        await result.current.handleImportDSL(input, {})
+      })
+      expect(mocks.error).toHaveBeenCalledExactlyOnceWith(
+        stage === 'import' ? 'app.newApp.appCreateFailed' : 'common.error',
+        { description: 'Cancelled' },
+      )
+      expect(mocks.warning).not.toHaveBeenCalled()
+      expect(mocks.success).toHaveBeenCalledTimes(stage === 'dependencies' ? 1 : 0)
+      expect(result.current.isFetching).toBe(false)
+    },
+  )
 })

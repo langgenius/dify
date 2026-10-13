@@ -23,6 +23,7 @@ import { toast } from '@/app/notifications'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
 import { useFileUploadConfig } from '@/service/use-common'
+import { getServerErrorMessage } from '@/utils/error-message'
 import { formatFileSize } from '@/utils/format'
 
 const skillPackageAccept = '.zip,.skill'
@@ -254,10 +255,20 @@ export function AgentSkillUploadDialog({
   const { t: tCommon } = useTranslation(['common'])
   const [file, setFile] = useState<File>()
   const uploadAgentSkillMutation = useMutation(
-    consoleQuery.agent.byAgentId.config.skills.upload.post.mutationOptions(),
+    consoleQuery.agent.byAgentId.config.skills.upload.post.mutationOptions({
+      onError: (error) => {
+        const message = getServerErrorMessage(error)
+        if (message) toast.error(message)
+      },
+    }),
   )
   const uploadWorkflowSkillMutation = useMutation(
-    consoleQuery.apps.byAppId.agent.config.skills.upload.post.mutationOptions(),
+    consoleQuery.apps.byAppId.agent.config.skills.upload.post.mutationOptions({
+      onError: (error) => {
+        const message = getServerErrorMessage(error)
+        if (message) toast.error(message)
+      },
+    }),
   )
   const uploadSkillMutation = apiContext.workflow
     ? uploadWorkflowSkillMutation

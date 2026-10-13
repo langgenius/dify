@@ -13,7 +13,9 @@ import { Button } from '@langgenius/dify-ui/button'
 import { useMutation } from '@tanstack/react-query'
 import { useId, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
+import { getServerErrorMessage } from '@/utils/error-message'
 
 type ItemProps = {
   apiBasedExtension: ApiBasedExtensionResponse
@@ -27,7 +29,12 @@ export function Item({ apiBasedExtension, onEdit, canManage = true }: ItemProps)
   const deleteLabelId = useId()
   const actionsRef = useRef<AlertDialogActions>(null)
   const deleteApiBasedExtensionMutation = useMutation(
-    consoleQuery.apiBasedExtension.byId.delete.mutationOptions(),
+    consoleQuery.apiBasedExtension.byId.delete.mutationOptions({
+      onError: (error) => {
+        const message = getServerErrorMessage(error)
+        if (message) toast.error(message)
+      },
+    }),
   )
 
   const handleOpenApiBasedExtensionModal = () => {

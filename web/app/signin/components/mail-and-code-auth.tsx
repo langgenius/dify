@@ -7,10 +7,12 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { COUNT_DOWN_TIME_MS, useSetCountdownLeftTime } from '@/app/components/signin/storage'
+import { toast } from '@/app/notifications'
 import { emailRegex, TURNSTILE_SITE_KEY } from '@/config'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { sendEMailLoginCode } from '@/service/common'
+import { getServerErrorMessage } from '@/utils/error-message'
 import Turnstile from './turnstile'
 
 type MailAndCodeAuthProps = {
@@ -53,6 +55,9 @@ export default function MailAndCodeAuth({ isInvite }: MailAndCodeAuthProps) {
         shouldResetTurnstile = false
       }
     } catch (error) {
+      const errorMessage = getServerErrorMessage(error)
+      if (errorMessage) toast.error(errorMessage)
+
       console.error(error)
     } finally {
       setLoading(false)

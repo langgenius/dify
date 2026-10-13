@@ -24,7 +24,6 @@ import {
   useInvalidCustomizedTemplateList,
   usePipelineTemplateById,
 } from '@/service/use-pipeline'
-import { asyncRunSafe } from '@/utils'
 import { downloadBlob } from '@/utils/download'
 import Actions from './actions'
 import Content from './content'
@@ -63,29 +62,23 @@ const TemplateCard = ({ pipeline, showMoreOperations = true, type }: TemplateCar
     const request = {
       yaml_content: pipelineTemplateInfo.export_data,
     }
-    try {
-      const newDataset = await createDataset(request)
-      invalidDatasetList()
-      const [dependencyError] = newDataset.pipeline_id
-        ? await asyncRunSafe(handleCheckPluginDependencies(newDataset.pipeline_id, true))
-        : [null]
-      trackEvent('create_datasets_with_pipeline', {
-        template_name: pipeline.name,
-        template_id: pipeline.id,
-        template_type: type,
-      })
-      push(`/datasets/${newDataset.dataset_id}/pipeline`)
-      if (dependencyError?.name === 'AbortError') return
-      if (dependencyError)
-        toast.warning(
-          t(($) => $['creation.successTip'], { ns: 'datasetPipeline' }),
-          { description: dependencyError.message },
-        )
-      else toast.success(t(($) => $['creation.successTip'], { ns: 'datasetPipeline' }))
-    } catch (error) {
-      if (!(error instanceof Error && error.name === 'AbortError'))
+    await createDataset(request, {
+      onSuccess: async (newDataset) => {
+        toast.success(t(($) => $['creation.successTip'], { ns: 'datasetPipeline' }))
+        invalidDatasetList()
+        if (newDataset.pipeline_id)
+          await handleCheckPluginDependencies(newDataset.pipeline_id, true)
+        trackEvent('create_datasets_with_pipeline', {
+          template_name: pipeline.name,
+          template_id: pipeline.id,
+          template_type: type,
+        })
+        push(`/datasets/${newDataset.dataset_id}/pipeline`)
+      },
+      onError: () => {
         toast.error(t(($) => $['creation.errorTip'], { ns: 'datasetPipeline' }))
-    }
+      },
+    })
   }, [
     getPipelineTemplateInfo,
     createDataset,

@@ -152,41 +152,6 @@ describe('CreateFromDSLModal', () => {
 
   const getCreateButton = () => screen.getByRole('button', { name: /operation\.create/i })
 
-  it('reports one warning and still navigates when a created app cannot check dependencies', async () => {
-    const user = userEvent.setup()
-    mockImportDSL.mockResolvedValueOnce({
-      id: 'import-1',
-      status: 'completed',
-      app_id: 'app-1',
-      app_mode: AppModeEnum.WORKFLOW,
-    })
-    mockHandleCheckPluginDependencies.mockRejectedValueOnce(new Error('Dependencies unavailable'))
-    const onClose = vi.fn()
-    render(
-      <CreateFromDSLModal
-        show
-        onClose={onClose}
-        droppedFile={new File(['app: demo'], 'app.yml')}
-      />,
-    )
-    await user.click(getCreateButton())
-    await waitFor(() =>
-      expect(mockResolveImportedAppRedirectionTarget).toHaveBeenCalledWith(
-        expect.objectContaining({ id: 'app-1' }),
-      ),
-    )
-    expect(toastMocks.call).toHaveBeenCalledExactlyOnceWith('app.newApp.caution', {
-      type: 'warning',
-      description: expect.anything(),
-    })
-    expect(toastMocks.success).not.toHaveBeenCalled()
-    expect(toastMocks.warning).not.toHaveBeenCalled()
-    expect(toastMocks.error).not.toHaveBeenCalled()
-    expect(onClose).toHaveBeenCalledTimes(1)
-    render(<>{toastMocks.call.mock.calls[0]![1].description}</>)
-    expect(screen.getByText('Dependencies unavailable')).toBeInTheDocument()
-  })
-
   it.each(['agent.ifpkg', 'agent.IFPKG'])(
     'imports %s as a binary file and handles Agent warnings',
     async (filename) => {

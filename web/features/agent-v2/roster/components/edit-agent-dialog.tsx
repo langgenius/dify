@@ -15,7 +15,9 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useMutation } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
+import { getServerErrorMessage } from '@/utils/error-message'
 import { createAgentIconSelection, getAgentIconKey } from './agent-form'
 import { AgentFormFields } from './agent-form-fields'
 
@@ -124,7 +126,14 @@ function EditAgentFormSession({
 export function EditAgentDialog({ agent, open, onOpenChange }: EditAgentDialogProps) {
   const { t } = useTranslation(['common'])
   const nameInputRef = useRef<HTMLInputElement>(null)
-  const updateAgentMutation = useMutation(consoleQuery.agent.byAgentId.put.mutationOptions())
+  const updateAgentMutation = useMutation(
+    consoleQuery.agent.byAgentId.put.mutationOptions({
+      onError: (error) => {
+        const message = getServerErrorMessage(error)
+        if (message) toast.error(message)
+      },
+    }),
+  )
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen && updateAgentMutation.isPending) return

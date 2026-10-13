@@ -9,6 +9,7 @@ import isEqual from 'fast-deep-equal'
 import { useStore as useJotaiStore, useSetAtom } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
+import { toast } from '@/app/notifications'
 import {
   agentSoulConfigToFormState,
   formStateToAgentSoulConfig,
@@ -20,6 +21,7 @@ import {
 } from '@/features/agent-v2/agent-composer/store'
 import { consoleQuery } from '@/service/console'
 import { FlowType } from '@/types/common'
+import { getServerErrorMessage } from '@/utils/error-message'
 import { useSerialAsyncCallback } from '../../hooks/use-serial-async-callback'
 
 const DRAFT_AUTOSAVE_WAIT = 5000
@@ -83,10 +85,22 @@ export function useWorkflowInlineAgentConfigureSync({
   const onDraftSavedRef = useRef(onDraftSaved)
   const lastAutosavedDraftKeyRef = useRef<string | undefined>(undefined)
   const { mutateAsync: saveAppComposer } = useMutation(
-    consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.put.mutationOptions(),
+    consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.put.mutationOptions({
+      onError: (error) => {
+        const message = getServerErrorMessage(error)
+        if (message) toast.error(message)
+      },
+    }),
   )
   const { mutateAsync: saveSnippetComposer } = useMutation(
-    consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.put.mutationOptions(),
+    consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.put.mutationOptions(
+      {
+        onError: (error) => {
+          const message = getServerErrorMessage(error)
+          if (message) toast.error(message)
+        },
+      },
+    ),
   )
 
   useEffect(() => {

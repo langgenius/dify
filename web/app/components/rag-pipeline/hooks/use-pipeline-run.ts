@@ -9,10 +9,12 @@ import { useWorkflowRunEvent } from '@/app/components/workflow/hooks/use-workflo
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-update'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
 import { ssePost } from '@/service/base'
 import { useInvalidAllLastRun, useInvalidateWorkflowRunHistory } from '@/service/use-workflow'
 import { stopWorkflowRun } from '@/service/workflow'
 import { FlowType } from '@/types/common'
+import { getServerErrorMessage } from '@/utils/error-message'
 import { useNodesSyncDraftByCanEdit } from './use-nodes-sync-draft'
 
 type DoSyncWorkflowDraft = ReturnType<typeof useNodesSyncDraft>['doSyncWorkflowDraft']
@@ -261,7 +263,12 @@ const usePipelineRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
     (taskId: string) => {
       const { pipelineId } = workflowStore.getState()
 
-      stopWorkflowRun(`/rag/pipelines/${pipelineId}/workflow-runs/tasks/${taskId}/stop`)
+      stopWorkflowRun(`/rag/pipelines/${pipelineId}/workflow-runs/tasks/${taskId}/stop`).catch(
+        (error: unknown) => {
+          const message = getServerErrorMessage(error)
+          if (message) toast.error(message)
+        },
+      )
 
       if (abortControllerRef.current) abortControllerRef.current.abort()
 

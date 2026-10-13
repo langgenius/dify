@@ -9,10 +9,12 @@ import { useAtomValue } from 'jotai'
 import { memo, useCallback, useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
+import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { disableModel, enableModel } from '@/service/common'
 import { consoleQuery } from '@/service/console'
+import { getServerErrorMessage } from '@/utils/error-message'
 import { hasPermission } from '@/utils/permission'
 import { ModelStatusEnum } from '../declarations'
 import { useUpdateModelList } from '../hooks'
@@ -66,24 +68,30 @@ const ModelListItem = ({
 
   const toggleModelEnablingStatus = useCallback(
     async (enabled: boolean) => {
-      if (enabled)
-        await enableModel(
-          `/workspaces/current/model-providers/${provider.provider}/models/enable`,
-          { model: model.model, model_type: model.model_type },
-        )
-      else
-        await disableModel(
-          `/workspaces/current/model-providers/${provider.provider}/models/disable`,
-          { model: model.model, model_type: model.model_type },
-        )
+      try {
+        if (enabled)
+          await enableModel(
+            `/workspaces/current/model-providers/${provider.provider}/models/enable`,
+            { model: model.model, model_type: model.model_type },
+          )
+        else
+          await disableModel(
+            `/workspaces/current/model-providers/${provider.provider}/models/disable`,
+            { model: model.model, model_type: model.model_type },
+          )
 
-      queryClient.invalidateQueries({
-        queryKey: modelProviderModelListQueryKey,
-        exact: true,
-        refetchType: 'none',
-      })
-      updateModelList(model.model_type)
-      onChange?.(provider.provider)
+        queryClient.invalidateQueries({
+          queryKey: modelProviderModelListQueryKey,
+          exact: true,
+          refetchType: 'none',
+        })
+        updateModelList(model.model_type)
+        onChange?.(provider.provider)
+      } catch (error) {
+        const message = getServerErrorMessage(error)
+        if (message) toast.error(message)
+        throw error
+      }
     },
     [
       model.model,

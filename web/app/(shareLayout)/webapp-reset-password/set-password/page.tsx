@@ -15,6 +15,7 @@ import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { changeWebAppPasswordWithToken } from '@/service/common'
+import { getServerErrorMessage } from '@/utils/error-message'
 
 const ChangePasswordForm = () => {
   const { t } = useTranslation(['common', 'login', 'accountSettings'])
@@ -80,6 +81,9 @@ const ChangePasswordForm = () => {
       setShowSuccess(true)
       setLeftTime(AUTO_REDIRECT_TIME)
     } catch (error) {
+      const errorMessage = getServerErrorMessage(error)
+      if (errorMessage) toast.error(errorMessage)
+
       console.error(error)
     }
   }, [password, token, valid, confirmPassword])

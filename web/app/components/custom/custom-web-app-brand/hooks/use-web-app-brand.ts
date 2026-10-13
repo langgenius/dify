@@ -9,6 +9,7 @@ import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/console'
+import { getServerErrorMessage } from '@/utils/error-message'
 import { hasPermission } from '@/utils/permission'
 
 const MAX_LOGO_FILE_SIZE = 5 * 1024 * 1024
@@ -29,7 +30,12 @@ const useWebAppBrand = () => {
   const customConfigQuery = useQuery(consoleQuery.workspaces.customConfig.get.queryOptions())
   const { data: customConfig } = customConfigQuery
   const updateCustomConfigMutation = useMutation(
-    consoleQuery.workspaces.customConfig.post.mutationOptions(),
+    consoleQuery.workspaces.customConfig.post.mutationOptions({
+      onError: (error) => {
+        const message = getServerErrorMessage(error)
+        if (message) toast.error(message)
+      },
+    }),
   )
   const uploading = uploadProgress > 0 && uploadProgress < 100
   const webappLogo = customConfig?.replace_webapp_logo || ''

@@ -4,8 +4,10 @@ import type { InSiteMessageActionItem } from './index'
 import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
+import { toast } from '@/app/notifications'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/console'
+import { getServerErrorMessage } from '@/utils/error-message'
 import InSiteMessage from './index'
 
 type NotificationBodyPayload = {
@@ -64,7 +66,12 @@ function InSiteMessageNotification() {
   })
   const isCloudEdition = deploymentEdition === 'CLOUD'
   const dismissNotificationMutation = useMutation(
-    consoleQuery.notification.dismiss.post.mutationOptions(),
+    consoleQuery.notification.dismiss.post.mutationOptions({
+      onError: (error) => {
+        const message = getServerErrorMessage(error)
+        if (message) toast.error(message)
+      },
+    }),
   )
 
   const { data } = useQuery(

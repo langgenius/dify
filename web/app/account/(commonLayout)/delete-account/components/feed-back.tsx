@@ -7,8 +7,10 @@ import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useLogout } from '@/service/use-common'
+import { getServerErrorMessage } from '@/utils/error-message'
 import { useDeleteAccountFeedback } from '../state'
 
 type DeleteAccountProps = {
@@ -33,6 +35,9 @@ export default function FeedBack(props: DeleteAccountProps) {
     try {
       await logout()
     } catch (error) {
+      const errorMessage = getServerErrorMessage(error)
+      if (errorMessage) toast.error(errorMessage)
+
       console.error(error)
     }
   }, [logout])
@@ -44,6 +49,9 @@ export default function FeedBack(props: DeleteAccountProps) {
         props.onConfirm()
         await handleSuccess()
       } catch (error) {
+        const errorMessage = getServerErrorMessage(error)
+        if (errorMessage) toast.error(errorMessage)
+
         console.error(error)
       }
     },

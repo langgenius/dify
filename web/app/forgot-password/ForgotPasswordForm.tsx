@@ -9,6 +9,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import * as z from 'zod'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { toast } from '@/app/notifications'
 import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
 import {
@@ -16,6 +17,7 @@ import {
   fetchSetupStatus,
   sendForgotPasswordEmail,
 } from '@/service/common'
+import { getServerErrorMessage } from '@/utils/error-message'
 import { basePath } from '@/utils/var'
 
 type ForgotPasswordFormValues = {
@@ -50,6 +52,9 @@ const ForgotPasswordForm = () => {
       if (res.result === 'success') setIsEmailSent(true)
       else console.error('Email verification failed')
     } catch (error) {
+      const errorMessage = getServerErrorMessage(error)
+      if (errorMessage) toast.error(errorMessage)
+
       console.error('Request failed:', error)
     } finally {
       setIsSubmitting(false)

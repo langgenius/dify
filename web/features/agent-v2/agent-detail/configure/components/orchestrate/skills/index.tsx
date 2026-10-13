@@ -41,6 +41,7 @@ import { getSkillErrorCode, getSkillErrorDetailString } from '@/features/skills/
 import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
+import { getServerErrorMessage } from '@/utils/error-message'
 import { useRegisterAgentOrchestrateAddAction } from '../add-actions-context'
 import { ConfigureSectionEmpty } from '../common/empty'
 import { ConfigureSection } from '../common/section'
@@ -470,10 +471,20 @@ export function AgentSkills() {
   const upsertAgentSkill = useSetAtom(upsertAgentSkillAtom)
   const removeAgentSkill = useSetAtom(removeAgentSkillAtom)
   const { mutate: deleteAgentSkill } = useMutation(
-    consoleQuery.agent.byAgentId.config.skills.byName.delete.mutationOptions(),
+    consoleQuery.agent.byAgentId.config.skills.byName.delete.mutationOptions({
+      onError: (error) => {
+        const message = getServerErrorMessage(error)
+        if (message) toast.error(message)
+      },
+    }),
   )
   const { mutate: deleteAppSkill } = useMutation(
-    consoleQuery.apps.byAppId.agent.config.skills.byName.delete.mutationOptions(),
+    consoleQuery.apps.byAppId.agent.config.skills.byName.delete.mutationOptions({
+      onError: (error) => {
+        const message = getServerErrorMessage(error)
+        if (message) toast.error(message)
+      },
+    }),
   )
   const agentSkillBindingsQueryOptions =
     consoleQuery.workspaces.current.agents.byAgentId.skills.get.queryOptions({

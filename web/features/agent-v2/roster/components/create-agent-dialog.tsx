@@ -16,10 +16,12 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useMutation } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { AgentScope } from '@/features/agent-v2/analytics'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { trackCreateApp } from '@/utils/create-app-tracking'
+import { getServerErrorMessage } from '@/utils/error-message'
 import { getAgentDetailPath } from '../../agent-detail/routes'
 import { defaultAgentIcon } from './agent-form'
 import { AgentFormFields } from './agent-form-fields'
@@ -91,7 +93,14 @@ export function CreateAgentDialog({ open, onOpenChange }: CreateAgentDialogProps
   const router = useRouter()
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
   const nameInputRef = useRef<HTMLInputElement>(null)
-  const createAgentMutation = useMutation(consoleQuery.agent.post.mutationOptions())
+  const createAgentMutation = useMutation(
+    consoleQuery.agent.post.mutationOptions({
+      onError: (error) => {
+        const message = getServerErrorMessage(error)
+        if (message) toast.error(message)
+      },
+    }),
+  )
 
   const setDialogOpen = (nextOpen: boolean) => {
     if (open === undefined) setUncontrolledOpen(nextOpen)

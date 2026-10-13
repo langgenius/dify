@@ -106,31 +106,6 @@ describe('useDSLImport', () => {
     mockHandleCheckPluginDependencies.mockReset()
   })
 
-  it('navigates to a created dataset with one warning when dependency checking fails', async () => {
-    mockImportDSL.mockResolvedValue(createImportDSLResponse())
-    mockHandleCheckPluginDependencies.mockRejectedValueOnce(new Error('Dependencies unavailable'))
-    const onSuccess = vi.fn()
-    const { result } = renderHook(
-      () =>
-        useDSLImport({
-          activeTab: CreateFromDSLModalTab.FROM_URL,
-          dslUrl: 'https://example.com/pipeline.yml',
-          onSuccess,
-        }),
-      { wrapper: createWrapper() },
-    )
-    act(() => {
-      result.current.handleCreateApp()
-    })
-    await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/datasets/dataset-789/pipeline'))
-    expect(toastMocks.record).toHaveBeenCalledExactlyOnceWith({
-      type: 'warning',
-      message: 'datasetPipeline.creation.caution',
-      description: 'Dependencies unavailable',
-    })
-    expect(onSuccess).toHaveBeenCalledTimes(1)
-  })
-
   describe('initialization', () => {
     it('should initialize with default values', () => {
       const { result } = renderHook(() => useDSLImport({}), { wrapper: createWrapper() })

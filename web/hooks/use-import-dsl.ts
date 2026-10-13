@@ -12,7 +12,6 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { DSLImportStatus } from '@/models/app'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
-import { asyncRunSafe } from '@/utils'
 import { getRedirection } from '@/utils/app-redirection'
 import { getErrorMessage } from '@/utils/error-message'
 import { resolveImportedAppRedirectionTarget } from '@/utils/imported-app-redirection'
@@ -44,45 +43,6 @@ export const useImportDSL = () => {
   const [versions, setVersions] = useState<{ importedVersion: string; systemVersion: string }>()
   const importIdRef = useRef<string>('')
 
-  const completeImport = useCallback(
-    async (response: Import, { onSuccess, skipRedirectOnSuccess }: ResponseCallback) => {
-      const { app_id, app_mode, permission_keys } = response
-      if (!app_id || !app_mode) throw new Error('Completed import is missing app metadata')
-
-      onSuccess?.(response)
-      const [dependencyError] = await asyncRunSafe(handleCheckPluginDependencies(app_id))
-      if (!skipRedirectOnSuccess) {
-        const redirectionTarget = await resolveImportedAppRedirectionTarget({
-          id: app_id,
-          mode: app_mode,
-          permission_keys,
-        })
-        getRedirection(redirectionTarget, push, {
-          currentUserId,
-          resourceMaintainer: currentUserId,
-          workspacePermissionKeys,
-          isRbacEnabled,
-        })
-      }
-      if (dependencyError?.name === 'AbortError') return
-
-      const warnings: { message: string }[] = [...(response.warnings ?? [])]
-      if (dependencyError) warnings.push({ message: dependencyError.message })
-      const isWarning =
-        response.status === DSLImportStatus.COMPLETED_WITH_WARNINGS || !!dependencyError
-      const message = t(($) => $[isWarning ? 'newApp.caution' : 'newApp.appCreated'], { ns: 'app' })
-      if (isWarning)
-        toast.warning(message, {
-          description: createElement(DSLImportWarningDescription, {
-            warnings,
-            fallback: t(($) => $['newApp.appCreateDSLWarning'], { ns: 'app' }),
-          }),
-        })
-      else toast.success(message)
-    },
-    [handleCheckPluginDependencies, push, currentUserId, workspacePermissionKeys, isRbacEnabled, t],
-  )
-
   const handleImportDSL = useCallback(
     async (
       payload: AppImportPayload,
@@ -97,13 +57,51 @@ export const useImportDSL = () => {
 
         if (!response) return
 
-        const { id, status, imported_dsl_version, current_dsl_version } = response
+        const {
+          id,
+          status,
+          app_id,
+          app_mode,
+          imported_dsl_version,
+          current_dsl_version,
+          permission_keys,
+        } = response
 
         if (
           status === DSLImportStatus.COMPLETED ||
           status === DSLImportStatus.COMPLETED_WITH_WARNINGS
         ) {
-          await completeImport(response, { onSuccess, skipRedirectOnSuccess })
+          if (!app_id || !app_mode) throw new Error('Completed import is missing app metadata')
+
+          const message = t(
+            ($) => $[status === DSLImportStatus.COMPLETED ? 'newApp.appCreated' : 'newApp.caution'],
+            { ns: 'app' },
+          )
+          const description =
+            status === DSLImportStatus.COMPLETED_WITH_WARNINGS
+              ? createElement(DSLImportWarningDescription, {
+                  warnings: response.warnings,
+                  fallback: t(($) => $['newApp.appCreateDSLWarning'], { ns: 'app' }),
+                })
+              : undefined
+
+          if (status === DSLImportStatus.COMPLETED) toast.success(message)
+          else toast.warning(message, { description })
+          onSuccess?.(response)
+          await handleCheckPluginDependencies(app_id)
+          if (!skipRedirectOnSuccess) {
+            const redirectionTarget = await resolveImportedAppRedirectionTarget({
+              id: app_id,
+              mode: app_mode,
+              permission_keys,
+            })
+            getRedirection(redirectionTarget, push, {
+              currentUserId,
+              resourceMaintainer: currentUserId,
+              workspacePermissionKeys,
+              isRbacEnabled,
+            })
+          }
         } else if (status === DSLImportStatus.PENDING) {
           setVersions({
             importedVersion: imported_dsl_version ?? '',
@@ -121,7 +119,6 @@ export const useImportDSL = () => {
           onFailed?.()
         }
       } catch (error) {
-        if (error instanceof Error && error.name === 'AbortError') return
         toast.error(
           t(($) => $['newApp.appCreateFailed'], { ns: 'app' }),
           {
@@ -134,7 +131,15 @@ export const useImportDSL = () => {
         setIsFetching(false)
       }
     },
-    [t, completeImport, importApp],
+    [
+      t,
+      handleCheckPluginDependencies,
+      isRbacEnabled,
+      push,
+      importApp,
+      currentUserId,
+      workspacePermissionKeys,
+    ],
   )
 
   const handleImportDSLConfirm = useCallback(
@@ -153,7 +158,7 @@ export const useImportDSL = () => {
           params: { import_id: importIdRef.current },
         })
 
-        const { status, app_id } = response
+        const { status, app_id, app_mode, permission_keys } = response
         if (status === DSLImportStatus.FAILED) {
           toast.error(
             t(($) => $['newApp.appCreateFailed'], { ns: 'app' }),
@@ -170,10 +175,39 @@ export const useImportDSL = () => {
           status === DSLImportStatus.COMPLETED ||
           status === DSLImportStatus.COMPLETED_WITH_WARNINGS
         ) {
-          await completeImport(response, { onSuccess, skipRedirectOnSuccess })
+          if (!app_id || !app_mode) throw new Error('Completed import is missing app metadata')
+
+          onSuccess?.(response)
+          const message = t(
+            ($) => $[status === DSLImportStatus.COMPLETED ? 'newApp.appCreated' : 'newApp.caution'],
+            { ns: 'app' },
+          )
+          const description =
+            status === DSLImportStatus.COMPLETED_WITH_WARNINGS
+              ? createElement(DSLImportWarningDescription, {
+                  warnings: response.warnings,
+                  fallback: t(($) => $['newApp.appCreateDSLWarning'], { ns: 'app' }),
+                })
+              : undefined
+
+          if (status === DSLImportStatus.COMPLETED) toast.success(message)
+          else toast.warning(message, { description })
+          await handleCheckPluginDependencies(app_id)
+          if (!skipRedirectOnSuccess) {
+            const redirectionTarget = await resolveImportedAppRedirectionTarget({
+              id: app_id,
+              mode: app_mode,
+              permission_keys,
+            })
+            getRedirection(redirectionTarget, push, {
+              currentUserId,
+              resourceMaintainer: currentUserId,
+              workspacePermissionKeys,
+              isRbacEnabled,
+            })
+          }
         }
       } catch (error) {
-        if (error instanceof Error && error.name === 'AbortError') return
         toast.error(
           t(($) => $['newApp.appCreateFailed'], { ns: 'app' }),
           {
@@ -186,7 +220,15 @@ export const useImportDSL = () => {
         setIsFetching(false)
       }
     },
-    [t, completeImport, confirmImport],
+    [
+      t,
+      handleCheckPluginDependencies,
+      isRbacEnabled,
+      push,
+      confirmImport,
+      currentUserId,
+      workspacePermissionKeys,
+    ],
   )
 
   return {

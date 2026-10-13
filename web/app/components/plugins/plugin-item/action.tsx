@@ -20,6 +20,7 @@ import { toast } from '@/app/notifications'
 import { useModalContext } from '@/context/modal-context'
 import { uninstallPlugin } from '@/service/plugins'
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
+import { getServerErrorMessage } from '@/utils/error-message'
 import { checkForUpdates, fetchReleases } from '../install-plugin/hooks'
 import PluginInfo from '../plugin-page/plugin-info'
 import { PluginSource } from '../types'
@@ -61,7 +62,10 @@ const Action: FC<Props> = ({
   const handleFetchNewVersion = async () => {
     const owner = meta!.repo.split('/')[0] || author
     const repo = meta!.repo.split('/')[1] || pluginName
-    const fetchedReleases = await fetchReleases(owner, repo)
+    const fetchedReleases = await fetchReleases(owner, repo).catch((error: unknown) => {
+      toast.error(error instanceof Error ? error.message : 'Failed to fetch repository releases')
+      return []
+    })
     if (fetchedReleases.length === 0) return
     const { needUpdate, toastProps } = checkForUpdates(fetchedReleases, meta!.version)
     toast(toastProps.message, { type: toastProps.type })
@@ -100,6 +104,9 @@ const Action: FC<Props> = ({
         onDelete()
       }
     } catch (error) {
+      const errorMessage = getServerErrorMessage(error)
+      if (errorMessage) toast.error(errorMessage)
+
       console.error('uninstallPlugin error', error)
     } finally {
       hideDeleting()

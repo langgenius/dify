@@ -15,11 +15,13 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-u
 import { useCountDown } from 'ahooks'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { validPassword } from '@/config'
 import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { changePasswordWithToken } from '@/service/common'
+import { getServerErrorMessage } from '@/utils/error-message'
 
 type PasswordFormValues = {
   password: string
@@ -86,6 +88,9 @@ const ChangePasswordForm = () => {
         setShowSuccess(true)
         setLeftTime(AUTO_REDIRECT_TIME)
       } catch (error) {
+        const errorMessage = getServerErrorMessage(error)
+        if (errorMessage) toast.error(errorMessage)
+
         console.error(error)
       } finally {
         setIsSubmitting(false)

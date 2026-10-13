@@ -18,6 +18,7 @@ import { useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { rememberRegistrationSuccess } from '@/app/components/base/amplitude/registration-tracking'
+import { toast } from '@/app/notifications'
 import { resolvePostLoginRedirect } from '@/app/signin/utils/post-login-redirect'
 import { validPassword } from '@/config'
 import useDocumentTitle from '@/hooks/use-document-title'
@@ -25,6 +26,7 @@ import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { useMailRegister } from '@/service/use-common'
 import { rememberCreateAppExternalAttribution } from '@/utils/create-app-tracking'
+import { getServerErrorMessage } from '@/utils/error-message'
 import { sendGAEvent } from '@/utils/gtag'
 import { replaceLoginRedirect } from '@/utils/login-redirect.client'
 import { getBrowserTimezone } from '@/utils/timezone'
@@ -93,6 +95,9 @@ const ChangePasswordForm = () => {
           replaceLoginRedirect(resolvePostLoginRedirect(searchParams), router.replace, basePath)
         }
       } catch (error) {
+        const errorMessage = getServerErrorMessage(error)
+        if (errorMessage) toast.error(errorMessage)
+
         console.error(error)
       }
     },

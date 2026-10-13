@@ -17,11 +17,13 @@ import { useSetWorkflowVarsWithValue } from '@/app/components/workflow/hooks/use
 import { useWorkflowRunEvent } from '@/app/components/workflow/hooks/use-workflow-run-event/use-workflow-run-event'
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-update'
 import { useWorkflowStore } from '@/app/components/workflow/store'
+import { toast } from '@/app/notifications'
 import { usePathname } from '@/next/navigation'
 import { ssePost } from '@/service/base'
 import { useInvalidAllLastRun, useInvalidateWorkflowRunHistory } from '@/service/use-workflow'
 import { stopWorkflowRun } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
+import { getServerErrorMessage } from '@/utils/error-message'
 import { useConfigsMap } from './use-configs-map'
 import { useNodesSyncDraft, useNodesSyncDraftByCanEdit } from './use-nodes-sync-draft'
 import {
@@ -497,7 +499,12 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
 
       if (taskId) {
         const appId = useAppStore.getState().appDetail?.id
-        stopWorkflowRun(`/apps/${appId}/workflow-runs/tasks/${taskId}/stop`)
+        stopWorkflowRun(`/apps/${appId}/workflow-runs/tasks/${taskId}/stop`).catch(
+          (error: unknown) => {
+            const message = getServerErrorMessage(error)
+            if (message) toast.error(message)
+          },
+        )
         setStoppedState()
         return
       }

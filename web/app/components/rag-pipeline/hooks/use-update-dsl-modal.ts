@@ -10,7 +10,6 @@ import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { DSLImportMode, DSLImportStatus } from '@/models/app'
 import { useImportPipelineDSL, useImportPipelineDSLConfirm } from '@/service/use-pipeline'
 import { fetchWorkflowDraft } from '@/service/workflow'
-import { asyncRunSafe } from '@/utils'
 import { getErrorMessage } from '@/utils/error-message'
 
 type VersionInfo = {
@@ -85,39 +84,19 @@ export const useUpdateDSLModal = ({ onCancel, onImport }: UseUpdateDSLModalParam
         notifyError()
         return
       }
-      const [refreshError] = await asyncRunSafe(updateWorkflow(pipelineId))
-      if (refreshError) {
-        setLoading(false)
-        if (refreshError.name !== 'AbortError')
-          toast.warning(
-            t(($) => $['common.importWarning'], { ns: 'workflow' }),
-            {
-              description: refreshError.message,
-            },
-          )
-        window.location.reload()
-        return
-      }
+      updateWorkflow(pipelineId)
       onImport?.()
-      const [dependencyError] = await asyncRunSafe(handleCheckPluginDependencies(pipelineId, true))
-      const isWarning = status === DSLImportStatus.COMPLETED_WITH_WARNINGS || !!dependencyError
-      if (dependencyError?.name !== 'AbortError')
-        toast(
-          t(($) => $[isWarning ? 'common.importWarning' : 'common.importSuccess'], {
-            ns: 'workflow',
-          }),
-          {
-            type: isWarning ? 'warning' : 'success',
-            description:
-              [
-                status === DSLImportStatus.COMPLETED_WITH_WARNINGS &&
-                  t(($) => $['common.importWarningDetails'], { ns: 'workflow' }),
-                dependencyError?.message,
-              ]
-                .filter(Boolean)
-                .join('\n') || undefined,
-          },
-        )
+      const isWarning = status === DSLImportStatus.COMPLETED_WITH_WARNINGS
+      toast(
+        t(($) => $[isWarning ? 'common.importWarning' : 'common.importSuccess'], {
+          ns: 'workflow',
+        }),
+        {
+          type: isWarning ? 'warning' : 'success',
+          description: isWarning && t(($) => $['common.importWarningDetails'], { ns: 'workflow' }),
+        },
+      )
+      await handleCheckPluginDependencies(pipelineId, true)
       setLoading(false)
       onCancel()
     },
@@ -138,8 +117,8 @@ export const useUpdateDSLModal = ({ onCancel, onImport }: UseUpdateDSLModalParam
   const handleImport: MouseEventHandler = useCallback(async () => {
     const { pipelineId } = workflowStore.getState()
     if (isCreatingRef.current) return
-    if (!currentFile) return
     isCreatingRef.current = true
+    if (!currentFile) return
     try {
       if (!pipelineId || !fileContent) return
       setLoading(true)
@@ -154,12 +133,9 @@ export const useUpdateDSLModal = ({ onCancel, onImport }: UseUpdateDSLModalParam
         showVersionMismatch(id, imported_dsl_version, current_dsl_version)
       else notifyError(response.error)
     } catch (error) {
-      if (!(error instanceof Error && error.name === 'AbortError'))
-        notifyError(getErrorMessage(error)?.trim() || undefined)
-    } finally {
-      isCreatingRef.current = false
-      setLoading(false)
+      notifyError(getErrorMessage(error)?.trim() || undefined)
     }
+    isCreatingRef.current = false
   }, [
     currentFile,
     fileContent,
@@ -170,22 +146,16 @@ export const useUpdateDSLModal = ({ onCancel, onImport }: UseUpdateDSLModalParam
     notifyError,
   ])
   const onUpdateDSLConfirm: MouseEventHandler = useCallback(async () => {
-    if (!importId || isCreatingRef.current) return
-    isCreatingRef.current = true
-    setLoading(true)
+    if (!importId) return
     try {
       const { status, pipeline_id, error } = await importDSLConfirm(importId)
-      if (isCompletedStatus(status)) {
-        await completeImport(pipeline_id, status)
+      if (status === DSLImportStatus.COMPLETED) {
+        await completeImport(pipeline_id)
         return
       }
       if (status === DSLImportStatus.FAILED) notifyError(error)
     } catch (error) {
-      if (!(error instanceof Error && error.name === 'AbortError'))
-        notifyError(getErrorMessage(error)?.trim() || undefined)
-    } finally {
-      isCreatingRef.current = false
-      setLoading(false)
+      notifyError(getErrorMessage(error)?.trim() || undefined)
     }
   }, [importId, importDSLConfirm, completeImport, notifyError])
   return {

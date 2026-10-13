@@ -252,6 +252,7 @@ const createWorkflowStoreState = () => ({
 describe('useWorkflowRun', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.mockStopWorkflowRun.mockResolvedValue(undefined)
     document.body.innerHTML = '<div id="workflow-container"></div>'
     const workflowContainer = document.getElementById('workflow-container')!
     Object.defineProperty(workflowContainer, 'clientWidth', { value: 960, configurable: true })

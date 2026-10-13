@@ -18,6 +18,7 @@ import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { emailLoginWithCode, sendEMailLoginCode } from '@/service/common'
 import { encryptVerificationCode } from '@/utils/encryption'
+import { getServerErrorMessage } from '@/utils/error-message'
 import { replaceLoginRedirect } from '@/utils/login-redirect.client'
 import { getBrowserTimezone } from '@/utils/timezone'
 import { basePath } from '@/utils/var'
@@ -89,6 +90,9 @@ export default function CheckCode() {
         toast.error(ret.data)
       }
     } catch (error) {
+      const errorMessage = getServerErrorMessage(error)
+      if (errorMessage) toast.error(errorMessage)
+
       console.error(error)
     } finally {
       setLoading(false)
@@ -119,6 +123,9 @@ export default function CheckCode() {
         router.replace(`/signin/check-code?${params.toString()}`)
       }
     } catch (error) {
+      const errorMessage = getServerErrorMessage(error)
+      if (errorMessage) toast.error(errorMessage)
+
       console.error(error)
     } finally {
       setIsResending(false)

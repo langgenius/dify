@@ -12,6 +12,7 @@ import { useModalContext } from '@/context/modal-context'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { addAnnotation } from '@/service/annotation'
 import { consoleQuery } from '@/service/console'
+import { getServerErrorMessage } from '@/utils/error-message'
 
 type Props = Readonly<{
   appId: string
@@ -49,18 +50,24 @@ const AnnotationCtrlButton: FC<Props> = ({
     annotationQuota.size >= annotationQuota.limit
   const { setShowAnnotationFullModal } = useModalContext()
   const handleAdd = async () => {
-    if (isAnnotationQuotaUnavailable) return
-    if (isAnnotationFull) {
-      setShowAnnotationFullModal()
-      return
+    try {
+      if (isAnnotationQuotaUnavailable) return
+      if (isAnnotationFull) {
+        setShowAnnotationFullModal()
+        return
+      }
+      const res = await addAnnotation(appId, {
+        message_id: messageId,
+        question: query,
+        answer,
+      })
+      toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }) as string)
+      onAdded(res.id, res.account?.name ?? '')
+    } catch (error) {
+      const message = getServerErrorMessage(error)
+      if (message) toast.error(message)
+      throw error
     }
-    const res = await addAnnotation(appId, {
-      message_id: messageId,
-      question: query,
-      answer,
-    })
-    toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }) as string)
-    onAdded(res.id, res.account?.name ?? '')
   }
   return (
     <>

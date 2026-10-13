@@ -12,6 +12,7 @@ import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { getAccessControlTemplateLanguage } from '@/i18n/language'
 import { consoleQuery } from '@/service/console'
+import { getServerErrorMessage } from '@/utils/error-message'
 import { hasPermission } from '@/utils/permission'
 import AccessRuleSection from './access-rule-section'
 import PermissionSetModal from './permission-set-modal'
@@ -47,10 +48,20 @@ export function ResourceAccessRuleSection({
     }),
   )
   const createRule = useMutation(
-    consoleQuery.workspaces.current.rbac.accessPolicies.post.mutationOptions(),
+    consoleQuery.workspaces.current.rbac.accessPolicies.post.mutationOptions({
+      onError: (error) => {
+        const message = getServerErrorMessage(error)
+        if (message) toast.error(message)
+      },
+    }),
   )
   const updateRule = useMutation(
-    consoleQuery.workspaces.current.rbac.accessPolicies.byPolicyId.put.mutationOptions(),
+    consoleQuery.workspaces.current.rbac.accessPolicies.byPolicyId.put.mutationOptions({
+      onError: (error) => {
+        const message = getServerErrorMessage(error)
+        if (message) toast.error(message)
+      },
+    }),
   )
   const rules = (rulesQuery.data?.pages.flatMap((page) => page.items ?? []) ?? []).flatMap(
     (rule) => (rule.policy ? [{ ...rule, policy: rule.policy }] : []),

@@ -12,6 +12,7 @@ import { toast } from '@/app/notifications'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { useMailValidity, useSendMail } from '@/service/use-common'
+import { getServerErrorMessage } from '@/utils/error-message'
 
 type CheckCodeFormValues = {
   code: string
@@ -43,6 +44,9 @@ export default function CheckCode() {
         toast.error(t(($) => $['checkCode.invalidCode'], { ns: 'login' }))
       }
     } catch (error) {
+      const errorMessage = getServerErrorMessage(error)
+      if (errorMessage) toast.error(errorMessage)
+
       console.error(error)
     } finally {
       setLoading(false)
@@ -60,6 +64,9 @@ export default function CheckCode() {
         router.replace(`/signup/check-code?${params.toString()}`)
       }
     } catch (error) {
+      const errorMessage = getServerErrorMessage(error)
+      if (errorMessage) toast.error(errorMessage)
+
       console.error(error)
     }
   }

@@ -15,6 +15,7 @@ import { useTranslation } from 'react-i18next'
 import { PluginSearchInput } from '@/app/components/plugins/plugin-search-input'
 import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal'
 import { useCanManageTools } from '@/app/components/tools/hooks/use-tool-permissions'
+import { toast } from '@/app/notifications'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { createCustomCollection } from '@/service/tools'
 import { useFeaturedToolsRecommendations } from '@/service/use-plugins'
@@ -28,6 +29,7 @@ import {
   useInvalidateAllMCPTools,
   useInvalidateAllWorkflowTools,
 } from '@/service/use-tools'
+import { getServerErrorMessage } from '@/utils/error-message'
 
 const ToolBrowser = dynamic(() => import('./tool-browser'), {
   loading: () => <div className="h-24 animate-pulse rounded-lg bg-background-section" />,
@@ -134,11 +136,17 @@ export function ToolPickerContent({
   ] = useBoolean(false)
 
   const doCreateCustomToolCollection = async (data: CustomCollectionBackend) => {
-    if (!canManageTools) return
+    try {
+      if (!canManageTools) return
 
-    await createCustomCollection(data)
-    hideEditCustomCollectionModal()
-    invalidateCustomTools()
+      await createCustomCollection(data)
+      hideEditCustomCollectionModal()
+      invalidateCustomTools()
+    } catch (error) {
+      const message = getServerErrorMessage(error)
+      if (message) toast.error(message)
+      throw error
+    }
   }
 
   if (isShowEditCollectionToolModal && canManageTools) {

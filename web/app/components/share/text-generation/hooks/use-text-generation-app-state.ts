@@ -24,6 +24,7 @@ import {
   saveMessage,
 } from '@/service/share'
 import { Resolution, TransferMethod } from '@/types/app'
+import { getServerErrorMessage } from '@/utils/error-message'
 import { userInputsFormToPromptVariables } from '@/utils/model-config'
 
 type UseTextGenerationAppStateOptions = {
@@ -109,19 +110,31 @@ export const useTextGenerationAppState = ({
   )
   const handleSaveMessage = useCallback(
     async (messageId: string) => {
-      if (!appId) return
-      await saveMessage(messageId, appSourceType, appId)
-      toast.success(t(($) => $['api.saved'], { ns: 'common' }))
-      await fetchSavedMessages(appId)
+      try {
+        if (!appId) return
+        await saveMessage(messageId, appSourceType, appId)
+        toast.success(t(($) => $['api.saved'], { ns: 'common' }))
+        await fetchSavedMessages(appId)
+      } catch (error) {
+        const message = getServerErrorMessage(error)
+        if (message) toast.error(message)
+        throw error
+      }
     },
     [appId, appSourceType, fetchSavedMessages, t],
   )
   const handleRemoveSavedMessage = useCallback(
     async (messageId: string) => {
-      if (!appId) return
-      await removeMessage(messageId, appSourceType, appId)
-      toast.success(t(($) => $['api.remove'], { ns: 'common' }))
-      await fetchSavedMessages(appId)
+      try {
+        if (!appId) return
+        await removeMessage(messageId, appSourceType, appId)
+        toast.success(t(($) => $['api.remove'], { ns: 'common' }))
+        await fetchSavedMessages(appId)
+      } catch (error) {
+        const message = getServerErrorMessage(error)
+        if (message) toast.error(message)
+        throw error
+      }
     },
     [appId, appSourceType, fetchSavedMessages, t],
   )

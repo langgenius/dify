@@ -31,7 +31,6 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { AppModeEnum as AppMode } from '@/types/app'
-import { asyncRunSafe } from '@/utils'
 import { getRedirection } from '@/utils/app-redirection'
 import { trackCreateApp } from '@/utils/create-app-tracking'
 import { getErrorMessage } from '@/utils/error-message'
@@ -165,31 +164,25 @@ function CreateFromDSLModal({
     onSuccess?.()
     onClose()
 
-    const [dependencyError] =
-      response.app_id && appMode
-        ? await asyncRunSafe(handleCheckPluginDependencies(response.app_id))
-        : [null]
-    if (dependencyError?.name !== 'AbortError') {
-      const isWarning = response.status === 'completed-with-warnings' || !!dependencyError
-      const warnings = [
-        ...(response.warnings ?? []),
-        ...(dependencyError ? [{ message: dependencyError.message }] : []),
-      ]
-      toast(
-        t(($) => $[isWarning ? 'newApp.caution' : 'newApp.appCreated'], { ns: 'app' }),
-        {
-          type: isWarning ? 'warning' : 'success',
-          description: isWarning ? (
+    toast(
+      t(($) => $[response.status === 'completed' ? 'newApp.appCreated' : 'newApp.caution'], {
+        ns: 'app',
+      }),
+      {
+        type: response.status === 'completed' ? 'success' : 'warning',
+        description:
+          response.status === 'completed-with-warnings' ? (
             <DSLImportWarningDescription
-              warnings={warnings}
+              warnings={response.warnings}
               fallback={t(($) => $['newApp.appCreateDSLWarning'], { ns: 'app' })}
             />
           ) : undefined,
-        },
-      )
-    }
+      },
+    )
     if (!response.app_id || !appMode) return
 
+    // Dependency checks own their error feedback; a created app remains navigable.
+    await handleCheckPluginDependencies(response.app_id)
     const redirectionTarget = await resolveImportedAppRedirectionTarget({
       id: response.app_id,
       mode: appMode,
@@ -243,7 +236,6 @@ function CreateFromDSLModal({
 
       response = await importMutation.mutateAsync(source)
     } catch (error) {
-      if (error instanceof Error && error.name === 'AbortError') return
       toast.error(
         t(($) => $['newApp.appCreateFailed'], { ns: 'app' }),
         {
@@ -264,7 +256,6 @@ function CreateFromDSLModal({
         params: { import_id: pendingImport.id },
       })
     } catch (error) {
-      if (error instanceof Error && error.name === 'AbortError') return
       toast.error(
         t(($) => $['newApp.appCreateFailed'], { ns: 'app' }),
         {

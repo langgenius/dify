@@ -10,8 +10,10 @@ import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/inf
 import { useMutation } from '@tanstack/react-query'
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import useTimestamp from '@/hooks/use-timestamp'
 import { consoleQuery } from '@/service/console'
+import { getServerErrorMessage } from '@/utils/error-message'
 import { DeleteTokenDialogContent } from './delete-token-dialog'
 
 const getResourceSummary = (
@@ -59,6 +61,10 @@ export default function ResourceAccessTokenRow({
   const deleteDialogActionsRef = useRef<AlertDialogActions>(null)
   const deleteMutation = useMutation(
     consoleQuery.resourceAccessTokens.byTokenId.relations.byRelationId.delete.mutationOptions({
+      onError: (error) => {
+        const message = getServerErrorMessage(error)
+        if (message) toast.error(message)
+      },
       onSuccess: () => deleteDialogActionsRef.current?.close(),
     }),
   )

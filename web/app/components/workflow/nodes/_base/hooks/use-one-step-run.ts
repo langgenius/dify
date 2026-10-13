@@ -63,6 +63,7 @@ import {
   getLoopSingleNodeRunUrl,
   singleNodeRun,
 } from '@/service/workflow'
+import { getServerErrorMessage } from '@/utils/error-message'
 import useInspectVarsCrud from '../../../hooks/use-inspect-vars-crud'
 import { useNodeDataUpdate } from '../../../hooks/use-node-data-update'
 import { useIsChatMode, useWorkflow } from '../../../hooks/use-workflow'
@@ -992,6 +993,9 @@ const useOneStepRun = <T>({
       }
       if (res && res.error) throw new Error(res.error)
     } catch (e: any) {
+      const errorMessage = getServerErrorMessage(e)
+      if (errorMessage) toast.error(errorMessage)
+
       console.error(e)
       hasError = true
       invalidLastRun()

@@ -38,6 +38,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import useTimestamp from '@/hooks/use-timestamp'
 import { consoleQuery } from '@/service/console'
+import { getServerErrorMessage } from '@/utils/error-message'
 import { RestoreVersionDialogContent } from './restore-version-dialog-content'
 import { getSkillVersionTitle, invalidateSkillDetail } from './shared'
 
@@ -204,6 +205,10 @@ function VersionRow({
   )
   const restoreMutation = useMutation(
     consoleQuery.workspaces.current.skills.bySkillId.restore.post.mutationOptions({
+      onError: (error) => {
+        const message = getServerErrorMessage(error)
+        if (message) toast.error(message)
+      },
       onSuccess: () => {
         restoreActionsRef.current?.close()
         onSelect(null)
@@ -212,6 +217,10 @@ function VersionRow({
   )
   const deleteMutation = useMutation(
     consoleQuery.workspaces.current.skills.bySkillId.versions.byVersionId.delete.mutationOptions({
+      onError: (error) => {
+        const message = getServerErrorMessage(error)
+        if (message) toast.error(message)
+      },
       onSuccess: () => {
         deleteActionsRef.current?.close()
         onSelect(null)

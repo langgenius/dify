@@ -19,6 +19,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { toast } from '@/app/notifications'
 import { LICENSE_LINK } from '@/constants/link'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -32,6 +33,7 @@ import { activateMember } from '@/service/common'
 import { consoleQuery } from '@/service/console'
 import { isUnauthorizedError } from '@/service/http-error'
 import { useInvitationCheck } from '@/service/use-common'
+import { getServerErrorMessage } from '@/utils/error-message'
 import { replaceLoginRedirect } from '@/utils/login-redirect.client'
 import { getBrowserTimezone, timezones } from '@/utils/timezone'
 import { basePath } from '@/utils/var'
@@ -166,7 +168,10 @@ export default function InviteSettingsPage() {
         await queryClient.resetQueries({ queryKey: consoleQuery.account.profile.get.key() })
         replaceLoginRedirect(resolvePostLoginRedirect(searchParams), router.replace, basePath)
       }
-    } catch {
+    } catch (error) {
+      const errorMessage = getServerErrorMessage(error)
+      if (errorMessage) toast.error(errorMessage)
+
       recheck()
       setIsActivating(false)
     }

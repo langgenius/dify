@@ -7,10 +7,12 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import AccessRulesEditor from '@/app/components/access-rules-editor'
+import { toast } from '@/app/notifications'
 import { useAgentPermissions } from '@/features/agent-v2/permissions'
 import { getAccessControlTemplateLanguage } from '@/i18n/language'
 import { RESOURCE_ACCESS_SETTINGS_PAGE_SIZE } from '@/service/access-control/constants'
 import { consoleQuery } from '@/service/console'
+import { getServerErrorMessage } from '@/utils/error-message'
 
 export function AgentAccessConfigPage({ agentId }: { agentId: string }) {
   const { t } = useTranslation(['common', 'permission', 'navigation'])
@@ -41,12 +43,29 @@ export function AgentAccessConfigPage({ agentId }: { agentId: string }) {
   const config = useQuery(
     resource.whitelistConfig.get.queryOptions({ input: { params }, enabled: canAccessConfig }),
   )
-  const updateScope = useMutation(resource.whitelist.put.mutationOptions())
+  const updateScope = useMutation(
+    resource.whitelist.put.mutationOptions({
+      onError: (error) => {
+        const message = getServerErrorMessage(error)
+        if (message) toast.error(message)
+      },
+    }),
+  )
   const updateUser = useMutation(
-    resource.users.byTargetAccountId.accessPolicies.put.mutationOptions(),
+    resource.users.byTargetAccountId.accessPolicies.put.mutationOptions({
+      onError: (error) => {
+        const message = getServerErrorMessage(error)
+        if (message) toast.error(message)
+      },
+    }),
   )
   const removeMembers = useMutation(
-    resource.accessPolicies.byPolicyId.memberBindings.delete.mutationOptions(),
+    resource.accessPolicies.byPolicyId.memberBindings.delete.mutationOptions({
+      onError: (error) => {
+        const message = getServerErrorMessage(error)
+        if (message) toast.error(message)
+      },
+    }),
   )
   const automaticIncludeWorkspaceMembers = updateScope.isPending
     ? updateScope.variables.body.automatic_include_workspace_members

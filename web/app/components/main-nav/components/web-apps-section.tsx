@@ -31,6 +31,7 @@ import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { usePathname } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
+import { getServerErrorMessage } from '@/utils/error-message'
 import { hasPermission } from '@/utils/permission'
 
 const emptyInstalledApps: InstalledAppResponse[] = []
@@ -87,7 +88,12 @@ const WebAppsSectionContent = () => {
   )
   const installedApps = installedAppsQuery.data ?? emptyInstalledApps
   const updatePinStatusMutation = useMutation(
-    consoleQuery.installedApps.byInstalledAppId.patch.mutationOptions(),
+    consoleQuery.installedApps.byInstalledAppId.patch.mutationOptions({
+      onError: (error) => {
+        const message = getServerErrorMessage(error)
+        if (message) toast.error(message)
+      },
+    }),
   )
 
   const webAppRows = useMemo<WebAppListRow[]>(() => {

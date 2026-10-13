@@ -25,8 +25,10 @@ import { useTranslation } from 'react-i18next'
 import Textarea from 'react-textarea-autosize'
 import { visit } from 'unist-util-visit'
 import { Markdown } from '@/app/components/base/markdown'
+import { toast } from '@/app/notifications'
 import useTimestamp from '@/hooks/use-timestamp'
 import { consoleQuery } from '@/service/console'
+import { getServerErrorMessage } from '@/utils/error-message'
 import styles from './markdown-editor.module.css'
 import { RestoreVersionDialogContent } from './restore-version-dialog-content'
 import {
@@ -1160,6 +1162,10 @@ export function VersionActionBar({
   const actionsRef = useRef<AlertDialogActions>(null)
   const restoreMutation = useMutation(
     consoleQuery.workspaces.current.skills.bySkillId.restore.post.mutationOptions({
+      onError: (error) => {
+        const message = getServerErrorMessage(error)
+        if (message) toast.error(message)
+      },
       onSuccess: () => {
         actionsRef.current?.close()
         onRestored()

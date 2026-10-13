@@ -5,6 +5,8 @@ import type { ComponentProps } from 'react'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { toast } from '@/app/notifications'
+import { httpErrorFromResponse } from '@/service/http-error'
 import { render } from '@/test/console/render'
 import { createTestQueryClient } from '@/test/query-client'
 import { ApiKeyModal } from '../api-key-modal'
@@ -198,6 +200,34 @@ describe('ApiKeyModal', () => {
     expect(
       await screen.findByRole('textbox', { name: 'appApi.apiKeyModal.secretKey' }),
     ).toHaveValue('new-app-token-123')
+  })
+
+  it('reports failed creation once and keeps the key dialog available for retry', async () => {
+    const user = userEvent.setup()
+    const errorToast = vi.spyOn(toast, 'error')
+    const error = await httpErrorFromResponse(
+      Response.json({ message: 'Key limit reached' }, { status: 400 }),
+    )
+    apiMocks.createApp.mockRejectedValueOnce(error)
+    const { onOpenChange } = await renderModal(appScope)
+    const createButton = screen.getByRole('button', {
+      name: 'appApi.apiKeyModal.createNewSecretKey',
+    })
+
+    await user.click(createButton)
+
+    await waitFor(() => expect(errorToast).toHaveBeenCalledExactlyOnceWith('Key limit reached'))
+    expect(
+      screen.queryByRole('textbox', { name: 'appApi.apiKeyModal.secretKey' }),
+    ).not.toBeInTheDocument()
+    expect(onOpenChange).not.toHaveBeenCalled()
+    await waitFor(() => expect(createButton).toBeEnabled())
+
+    await user.click(createButton)
+    expect(
+      await screen.findByRole('textbox', { name: 'appApi.apiKeyModal.secretKey' }),
+    ).toHaveValue('new-app-token-123')
+    expect(errorToast).toHaveBeenCalledTimes(1)
   })
 
   it('creates a workspace dataset API key scoped to all knowledge bases', async () => {

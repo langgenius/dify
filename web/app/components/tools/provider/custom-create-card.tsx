@@ -5,8 +5,10 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal'
 import { useCanManageTools } from '@/app/components/tools/hooks/use-tool-permissions'
+import { toast } from '@/app/notifications'
 import { useDocLink } from '@/context/i18n'
 import { createCustomCollection } from '@/service/tools'
+import { getServerErrorMessage } from '@/utils/error-message'
 import CreateEntryCard from './create-entry-card'
 
 type Props = Readonly<{
@@ -19,11 +21,17 @@ function useCustomToolCreateAction({ onRefreshData }: Props) {
   const [isShowEditCustomCollectionModal, setIsShowEditCustomCollectionModal] = useState(false)
 
   const doCreateCustomToolCollection = async (data: CustomCollectionBackend) => {
-    if (!canManageTools) return
+    try {
+      if (!canManageTools) return
 
-    await createCustomCollection(data)
-    setIsShowEditCustomCollectionModal(false)
-    onRefreshData()
+      await createCustomCollection(data)
+      setIsShowEditCustomCollectionModal(false)
+      onRefreshData()
+    } catch (error) {
+      const message = getServerErrorMessage(error)
+      if (message) toast.error(message)
+      throw error
+    }
   }
 
   return {

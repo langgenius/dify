@@ -18,6 +18,7 @@ import { noop } from 'es-toolkit/function'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useCallback, useId, useRef, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { useDocLink } from '@/context/i18n'
 import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
 import {
@@ -28,6 +29,7 @@ import {
 } from '@/features/agent-v2/agent-composer/store-modules/files'
 import { consoleQuery } from '@/service/console'
 import { downloadBlob, downloadUrl } from '@/utils/download'
+import { getServerErrorMessage } from '@/utils/error-message'
 import { useRegisterAgentOrchestrateAddAction } from '../add-actions-context'
 import { ConfigureSectionAddButton } from '../common/add-button'
 import { DocsLink } from '../common/docs-link'
@@ -450,10 +452,20 @@ export function AgentFiles() {
   const visibleFiles = buildNoteFile ? [buildNoteFile, ...files] : files
   const previewFiles = visibleFiles.filter((file) => !file.isMissing)
   const { mutate: deleteAgentFile } = useMutation(
-    consoleQuery.agent.byAgentId.config.files.byName.delete.mutationOptions(),
+    consoleQuery.agent.byAgentId.config.files.byName.delete.mutationOptions({
+      onError: (error) => {
+        const message = getServerErrorMessage(error)
+        if (message) toast.error(message)
+      },
+    }),
   )
   const { mutate: deleteWorkflowAgentFile } = useMutation(
-    consoleQuery.apps.byAppId.agent.config.files.byName.delete.mutationOptions(),
+    consoleQuery.apps.byAppId.agent.config.files.byName.delete.mutationOptions({
+      onError: (error) => {
+        const message = getServerErrorMessage(error)
+        if (message) toast.error(message)
+      },
+    }),
   )
   const removeFile = useCallback(
     (fileId: string) => {

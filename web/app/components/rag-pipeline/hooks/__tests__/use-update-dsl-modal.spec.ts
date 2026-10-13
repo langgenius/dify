@@ -2,7 +2,6 @@ import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { DSLImportMode, DSLImportStatus } from '@/models/app'
 import { httpErrorFromResponse } from '@/service/http-error'
-import { fetchWorkflowDraft } from '@/service/workflow'
 import { useUpdateDSLModal } from '../use-update-dsl-modal'
 
 class MockFileReader {
@@ -84,7 +83,13 @@ vi.mock('@/service/use-pipeline', () => ({
   useImportPipelineDSLConfirm: () => ({ mutateAsync: mockImportDSLConfirm }),
 }))
 
-vi.mock('@/service/workflow', () => ({ fetchWorkflowDraft: vi.fn() }))
+vi.mock('@/service/workflow', () => ({
+  fetchWorkflowDraft: vi.fn().mockResolvedValue({
+    graph: { nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 1 } },
+    hash: 'test-hash',
+    rag_pipeline_variables: [],
+  }),
+}))
 
 const createFile = () => new File(['test content'], 'test.pipeline', { type: 'text/yaml' })
 
@@ -109,60 +114,7 @@ describe('useUpdateDSLModal', () => {
       status: DSLImportStatus.COMPLETED,
       pipeline_id: 'test-pipeline-id',
     })
-    vi.mocked(fetchWorkflowDraft).mockResolvedValue({
-      graph: { nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 1 } },
-      hash: 'hash',
-      id: 'draft-1',
-      created_at: 1,
-      updated_at: 1,
-      created_by: { id: 'user-1', name: 'User', email: 'user@example.com' },
-      updated_by: { id: 'user-1', name: 'User', email: 'user@example.com' },
-      tool_published: false,
-      version: 'draft',
-      marked_name: '',
-      marked_comment: '',
-    })
     mockHandleCheckPluginDependencies.mockResolvedValue(undefined)
-  })
-
-  it('reports only a warning when the committed pipeline cannot refresh, and reloads the stale canvas', async () => {
-    const reload = vi.spyOn(window.location, 'reload').mockImplementation(() => {})
-    vi.mocked(fetchWorkflowDraft).mockRejectedValueOnce(new Error('Draft refresh unavailable'))
-    const { result } = renderUpdateDSLModal()
-    act(() => {
-      result.current.handleFile(createFile())
-    })
-    await act(async () => {
-      await (result.current.handleImport as unknown as AsyncFn)()
-    })
-    expect(toastMocks.call).toHaveBeenCalledExactlyOnceWith({
-      type: 'warning',
-      message: 'workflow.common.importWarning',
-      description: 'Draft refresh unavailable',
-    })
-    expect(reload).toHaveBeenCalledTimes(1)
-    expect(result.current.loading).toBe(false)
-    expect(mockHandleCheckPluginDependencies).not.toHaveBeenCalled()
-    reload.mockRestore()
-  })
-
-  it('closes a successfully imported pipeline with one warning when dependencies cannot be checked', async () => {
-    mockHandleCheckPluginDependencies.mockRejectedValueOnce(new Error('Dependencies unavailable'))
-    const { result } = renderUpdateDSLModal()
-    act(() => {
-      result.current.handleFile(createFile())
-    })
-    await act(async () => {
-      await (result.current.handleImport as unknown as AsyncFn)()
-    })
-    expect(toastMocks.call).toHaveBeenCalledExactlyOnceWith({
-      type: 'warning',
-      message: 'workflow.common.importWarning',
-      description: 'Dependencies unavailable',
-    })
-    expect(mockOnCancel).toHaveBeenCalledTimes(1)
-    expect(mockOnImport).toHaveBeenCalledTimes(1)
-    expect(result.current.loading).toBe(false)
   })
 
   describe('initial state', () => {

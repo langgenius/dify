@@ -24,6 +24,7 @@ import {
   trackAgentPreviewModeRun,
 } from '@/features/agent-v2/analytics'
 import { consoleQuery } from '@/service/console'
+import { getServerErrorMessage } from '@/utils/error-message'
 import {
   agentConfigureConversationIdsAtom,
   agentConfigureShowChatFeaturesAtom,
@@ -153,6 +154,10 @@ function AgentConfigurePageComposerSession({
   })
   const refreshDebugConversationMutation = useMutation(
     consoleQuery.agent.byAgentId.debugConversation.refresh.post.mutationOptions({
+      onError: (error) => {
+        const message = getServerErrorMessage(error)
+        if (message) toast.error(message)
+      },
       onSuccess: ({
         debug_conversation_id,
         debug_conversation_has_messages,
@@ -180,7 +185,14 @@ function AgentConfigurePageComposerSession({
     isPending: isRefreshingBuildConversation,
   } = refreshDebugConversationMutation
   const { mutate: refreshPreviewConversationRequest, isPending: isRefreshingPreviewConversation } =
-    useMutation(consoleQuery.agent.byAgentId.debugConversation.refresh.post.mutationOptions())
+    useMutation(
+      consoleQuery.agent.byAgentId.debugConversation.refresh.post.mutationOptions({
+        onError: (error) => {
+          const message = getServerErrorMessage(error)
+          if (message) toast.error(message)
+        },
+      }),
+    )
   const refreshDebugConversationInput = useCallback(
     () => ({
       params: {

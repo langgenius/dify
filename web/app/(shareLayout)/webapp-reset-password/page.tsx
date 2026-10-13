@@ -13,6 +13,7 @@ import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { sendResetPasswordCode } from '@/service/common'
+import { getServerErrorMessage } from '@/utils/error-message'
 
 export default function CheckCode() {
   const { t } = useTranslation(['login'])
@@ -50,6 +51,9 @@ export default function CheckCode() {
         toast.error(res.data)
       }
     } catch (error) {
+      const errorMessage = getServerErrorMessage(error)
+      if (errorMessage) toast.error(errorMessage)
+
       console.error(error)
     } finally {
       setIsLoading(false)

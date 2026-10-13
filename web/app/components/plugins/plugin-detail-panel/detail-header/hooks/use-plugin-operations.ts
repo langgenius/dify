@@ -9,6 +9,7 @@ import { toast } from '@/app/notifications'
 import { useModalContext } from '@/context/modal-context'
 import { uninstallPlugin } from '@/service/plugins'
 import { useInvalidateCheckInstalled } from '@/service/use-plugins'
+import { getServerErrorMessage } from '@/utils/error-message'
 import { checkForUpdates, fetchReleases } from '../../../install-plugin/hooks'
 import { PluginSource } from '../../../types'
 
@@ -71,7 +72,10 @@ export const usePluginOperations = ({
 
       const owner = meta.repo.split('/')[0] || author
       const repo = meta.repo.split('/')[1] || name
-      const fetchedReleases = await fetchReleases(owner, repo)
+      const fetchedReleases = await fetchReleases(owner, repo).catch((error: unknown) => {
+        toast.error(error instanceof Error ? error.message : 'Failed to fetch repository releases')
+        return []
+      })
       if (fetchedReleases.length === 0) return
 
       const { needUpdate, toastProps } = checkForUpdates(fetchedReleases, meta.version)
@@ -119,8 +123,16 @@ export const usePluginOperations = ({
     if (!canDeletePlugin) return
 
     modalStates.showDeleting()
-    const res = await uninstallPlugin(id)
-    modalStates.hideDeleting()
+    let res
+    try {
+      res = await uninstallPlugin(id)
+    } catch (error) {
+      const message = getServerErrorMessage(error)
+      if (message) toast.error(message)
+      return
+    } finally {
+      modalStates.hideDeleting()
+    }
 
     if (res.success) {
       modalStates.hideDeleteConfirm()

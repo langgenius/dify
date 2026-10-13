@@ -10,6 +10,7 @@ import { toast } from '@/app/notifications'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { sendWebAppResetPasswordCode, verifyWebAppResetPasswordCode } from '@/service/common'
+import { getServerErrorMessage } from '@/utils/error-message'
 
 export default function CheckCode() {
   const { t } = useTranslation(['login'])
@@ -41,6 +42,9 @@ export default function CheckCode() {
         router.push(`/webapp-reset-password/set-password?${params.toString()}`)
       }
     } catch (error) {
+      const errorMessage = getServerErrorMessage(error)
+      if (errorMessage) toast.error(errorMessage)
+
       console.error(error)
     } finally {
       setIsLoading(false)
@@ -56,6 +60,9 @@ export default function CheckCode() {
         router.replace(`/webapp-reset-password/check-code?${params.toString()}`)
       }
     } catch (error) {
+      const errorMessage = getServerErrorMessage(error)
+      if (errorMessage) toast.error(errorMessage)
+
       console.error(error)
     }
   }

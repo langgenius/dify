@@ -21,6 +21,7 @@ import { currentWorkspaceAtom, isCurrentWorkspaceManagerAtom } from '@/context/w
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import Link from '@/next/link'
 import { consoleClient, consoleQuery } from '@/service/console'
+import { getServerErrorMessage } from '@/utils/error-message'
 import UserInfo from '../user-info'
 import AppliedEducationContent from './applied-education-content'
 import InstitutionField from './institution-field'
@@ -48,7 +49,12 @@ const EducationApplyPage = ({ plan, token }: EducationApplyPageProps) => {
   const [hasSubmittedEducation, setHasSubmittedEducation] = useState(false)
   const [isOpeningBillingPortal, setIsOpeningBillingPortal] = useState(false)
   const { isPending, mutate: educationAdd } = useMutation(
-    consoleQuery.account.education.post.mutationOptions(),
+    consoleQuery.account.education.post.mutationOptions({
+      onError: (error) => {
+        const message = getServerErrorMessage(error)
+        if (message) toast.error(message)
+      },
+    }),
   )
   const { data: isEducationAccount = false } = useQuery(
     consoleQuery.account.education.get.queryOptions({

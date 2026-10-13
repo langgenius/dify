@@ -19,6 +19,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { consoleClient, consoleQuery } from '@/service/console'
+import { getServerErrorMessage } from '@/utils/error-message'
 import { hasPermission } from '@/utils/permission'
 import { ModelTypeEnum } from '../declarations'
 import {
@@ -172,40 +173,46 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
       setChangedModelTypes([...changedModelTypes, modelType])
   }
   const handleSave = async () => {
-    if (!canManageSystemDefaultModel || isSystemModelListLoading) return
+    try {
+      if (!canManageSystemDefaultModel || isSystemModelListLoading) return
 
-    const res = await consoleClient.workspaces.current.defaultModel.post({
-      body: {
-        model_settings: [
+      const res = await consoleClient.workspaces.current.defaultModel.post({
+        body: {
+          model_settings: [
+            ModelTypeEnum.textGeneration,
+            ModelTypeEnum.textEmbedding,
+            ModelTypeEnum.rerank,
+            ModelTypeEnum.speech2text,
+            ModelTypeEnum.tts,
+          ].map((modelType) => {
+            return {
+              model_type: modelType,
+              provider: getCurrentDefaultModelByModelType(modelType)?.provider ?? null,
+              model: getCurrentDefaultModelByModelType(modelType)?.model ?? null,
+            }
+          }),
+        },
+      })
+      if (res.result === 'success') {
+        toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
+        setManuallyOpen(false)
+        if (activeDialog === 'system-models') void setActiveDialog(null)
+        setChangedModelTypes([])
+
+        const allModelTypes = [
           ModelTypeEnum.textGeneration,
           ModelTypeEnum.textEmbedding,
           ModelTypeEnum.rerank,
           ModelTypeEnum.speech2text,
           ModelTypeEnum.tts,
-        ].map((modelType) => {
-          return {
-            model_type: modelType,
-            provider: getCurrentDefaultModelByModelType(modelType)?.provider ?? null,
-            model: getCurrentDefaultModelByModelType(modelType)?.model ?? null,
-          }
-        }),
-      },
-    })
-    if (res.result === 'success') {
-      toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
-      setManuallyOpen(false)
-      if (activeDialog === 'system-models') void setActiveDialog(null)
-      setChangedModelTypes([])
-
-      const allModelTypes = [
-        ModelTypeEnum.textGeneration,
-        ModelTypeEnum.textEmbedding,
-        ModelTypeEnum.rerank,
-        ModelTypeEnum.speech2text,
-        ModelTypeEnum.tts,
-      ]
-      allModelTypes.forEach((type) => invalidateDefaultModel(type))
-      changedModelTypes.forEach((type) => updateModelList(type))
+        ]
+        allModelTypes.forEach((type) => invalidateDefaultModel(type))
+        changedModelTypes.forEach((type) => updateModelList(type))
+      }
+    } catch (error) {
+      const message = getServerErrorMessage(error)
+      if (message) toast.error(message)
+      throw error
     }
   }
 

@@ -28,6 +28,7 @@ import {
   fetchTracingStatus,
   updateTracingStatus,
 } from '@/service/apps'
+import { getServerErrorMessage } from '@/utils/error-message'
 import ConfigButton from './config-button'
 import TracingIcon from './tracing-icon'
 import { TracingProvider } from './type'
@@ -46,13 +47,19 @@ const Panel: FC<PanelProps> = ({ appId, readOnly }) => {
   const [tracingStatus, setTracingStatus] = useState<TracingStatus | null>(null)
   const enabled = tracingStatus?.enabled || false
   const handleTracingStatusChange = async (tracingStatus: TracingStatus, noToast?: boolean) => {
-    await updateTracingStatus({ appId, body: tracingStatus })
-    setTracingStatus(tracingStatus)
-    if (!noToast) {
-      toast(
-        t(($) => $['api.success'], { ns: 'common' }),
-        { type: 'success' },
-      )
+    try {
+      await updateTracingStatus({ appId, body: tracingStatus })
+      setTracingStatus(tracingStatus)
+      if (!noToast) {
+        toast(
+          t(($) => $['api.success'], { ns: 'common' }),
+          { type: 'success' },
+        )
+      }
+    } catch (error) {
+      const message = getServerErrorMessage(error)
+      if (message) toast.error(message)
+      throw error
     }
   }
 

@@ -13,6 +13,7 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
+import { getServerErrorMessage } from '@/utils/error-message'
 import { candidateKey } from './resource-key'
 import ResourceSelector from './resource-selector'
 
@@ -45,9 +46,21 @@ export default function ResourceAccessTokenDialog({
     () => new Map(initialResources.map((resource) => [candidateKey(resource), resource])),
   )
   const [createdToken, setCreatedToken] = useState<string | null>(null)
-  const createMutation = useMutation(consoleQuery.resourceAccessTokens.post.mutationOptions())
+  const createMutation = useMutation(
+    consoleQuery.resourceAccessTokens.post.mutationOptions({
+      onError: (error) => {
+        const message = getServerErrorMessage(error)
+        if (message) toast.error(message)
+      },
+    }),
+  )
   const updateMutation = useMutation(
-    consoleQuery.resourceAccessTokens.byTokenId.patch.mutationOptions(),
+    consoleQuery.resourceAccessTokens.byTokenId.patch.mutationOptions({
+      onError: (error) => {
+        const message = getServerErrorMessage(error)
+        if (message) toast.error(message)
+      },
+    }),
   )
   const isSaving = createMutation.isPending || updateMutation.isPending
   const nameLabel = t(($) => $['resourceAccessToken.name'], { ns: 'accountSettings' })

@@ -100,6 +100,7 @@ describe('usePipelineRunByCanEdit', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockStopWorkflowRun.mockResolvedValue(undefined)
 
     const mockWorkflowContainer = document.createElement('div')
     mockWorkflowContainer.id = 'workflow-container'

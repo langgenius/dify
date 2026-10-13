@@ -15,7 +15,9 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
+import { getServerErrorMessage } from '@/utils/error-message'
 import { createAgentIconSelection } from './agent-form'
 import { AgentFormFields } from './agent-form-fields'
 
@@ -113,7 +115,12 @@ export function DuplicateAgentDialog({ agent, open, onOpenChange }: DuplicateAge
     ) ?? agent
   const nameInputRef = useRef<HTMLInputElement>(null)
   const duplicateAgentMutation = useMutation(
-    consoleQuery.agent.byAgentId.copy.post.mutationOptions(),
+    consoleQuery.agent.byAgentId.copy.post.mutationOptions({
+      onError: (error) => {
+        const message = getServerErrorMessage(error)
+        if (message) toast.error(message)
+      },
+    }),
   )
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen && duplicateAgentMutation.isPending) return

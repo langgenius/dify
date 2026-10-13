@@ -9,6 +9,7 @@ import { toast } from '@/app/notifications'
 import { emailRegex } from '@/config'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { sendWebAppEMailLoginCode } from '@/service/common'
+import { getServerErrorMessage } from '@/utils/error-message'
 import { getClientLoginFallback } from '@/utils/login-redirect'
 import { replaceLoginRedirect } from '@/utils/login-redirect.client'
 import { basePath } from '@/utils/var'
@@ -56,6 +57,9 @@ export default function MailAndCodeAuth() {
         router.push(`/webapp-signin/check-code?${params.toString()}`)
       }
     } catch (error) {
+      const errorMessage = getServerErrorMessage(error)
+      if (errorMessage) toast.error(errorMessage)
+
       console.error(error)
     } finally {
       setLoading(false)

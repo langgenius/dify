@@ -71,6 +71,7 @@ import { useCanCreateAgents } from '@/features/agent-v2/permissions'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/console'
 import { FlowType } from '@/types/common'
+import { getServerErrorMessage } from '@/utils/error-message'
 import { useWorkflowInlineAgentConfigureSync } from '../agent-soul-config'
 import { InlineAgentLoading } from './inline-agent-loading'
 
@@ -334,6 +335,10 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
   })
   const refreshDebugConversationMutation = useMutation(
     consoleQuery.agent.byAgentId.debugConversation.refresh.post.mutationOptions({
+      onError: (error) => {
+        const message = getServerErrorMessage(error)
+        if (message) toast.error(message)
+      },
       onSuccess: ({
         debug_conversation_has_messages,
         debug_conversation_id,
@@ -408,7 +413,14 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
     isPending: isRefreshingBuildConversation,
   } = refreshDebugConversationMutation
   const { mutate: refreshPreviewConversationRequest, isPending: isRefreshingPreviewConversation } =
-    useMutation(consoleQuery.agent.byAgentId.debugConversation.refresh.post.mutationOptions())
+    useMutation(
+      consoleQuery.agent.byAgentId.debugConversation.refresh.post.mutationOptions({
+        onError: (error) => {
+          const message = getServerErrorMessage(error)
+          if (message) toast.error(message)
+        },
+      }),
+    )
   const refreshDebugConversationInput = useCallback(
     () => ({
       params: {

@@ -24,8 +24,10 @@ import { useAtomValue } from 'jotai'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { toast } from '@/app/notifications'
 import { currentWorkspaceAtom } from '@/context/workspace-state'
 import { consoleQuery } from '@/service/console'
+import { getServerErrorMessage } from '@/utils/error-message'
 import { ApiKeyTable } from './api-key-table'
 import { CreatedApiKeyDialog } from './created-api-key-dialog'
 import { DatasetScopeDialog } from './dataset-scope-dialog'
@@ -70,19 +72,53 @@ export function ApiKeyModal({ open, canManage, scope, onOpenChange }: ApiKeyModa
     }),
   )
 
-  const createAppApiKey = useMutation(consoleQuery.apps.byResourceId.apiKeys.post.mutationOptions())
-  const deleteAppApiKey = useMutation(
-    consoleQuery.apps.byResourceId.apiKeys.byApiKeyId.delete.mutationOptions(),
+  const createAppApiKey = useMutation(
+    consoleQuery.apps.byResourceId.apiKeys.post.mutationOptions({
+      onError: (error) => {
+        const message = getServerErrorMessage(error)
+        if (message) toast.error(message)
+      },
+    }),
   )
-  const createDatasetApiKey = useMutation(consoleQuery.datasets.apiKeys.post.mutationOptions())
+  const deleteAppApiKey = useMutation(
+    consoleQuery.apps.byResourceId.apiKeys.byApiKeyId.delete.mutationOptions({
+      onError: (error) => {
+        const message = getServerErrorMessage(error)
+        if (message) toast.error(message)
+      },
+    }),
+  )
+  const createDatasetApiKey = useMutation(
+    consoleQuery.datasets.apiKeys.post.mutationOptions({
+      onError: (error) => {
+        const message = getServerErrorMessage(error)
+        if (message) toast.error(message)
+      },
+    }),
+  )
   const deleteDatasetApiKey = useMutation(
-    consoleQuery.datasets.apiKeys.byApiKeyId.delete.mutationOptions(),
+    consoleQuery.datasets.apiKeys.byApiKeyId.delete.mutationOptions({
+      onError: (error) => {
+        const message = getServerErrorMessage(error)
+        if (message) toast.error(message)
+      },
+    }),
   )
   const createEnvironmentApiKey = useMutation(
-    consoleQuery.enterprise.appDeploy.accessService.createEnvironmentApiKey.mutationOptions(),
+    consoleQuery.enterprise.appDeploy.accessService.createEnvironmentApiKey.mutationOptions({
+      onError: (error) => {
+        const message = getServerErrorMessage(error)
+        if (message) toast.error(message)
+      },
+    }),
   )
   const deleteEnvironmentApiKey = useMutation(
-    consoleQuery.enterprise.appDeploy.accessService.deleteEnvironmentApiKey.mutationOptions(),
+    consoleQuery.enterprise.appDeploy.accessService.deleteEnvironmentApiKey.mutationOptions({
+      onError: (error) => {
+        const message = getServerErrorMessage(error)
+        if (message) toast.error(message)
+      },
+    }),
   )
 
   const apiKeys =

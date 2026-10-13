@@ -14,6 +14,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { useModalContext } from '@/context/modal-context'
 import { consoleQuery } from '@/service/console'
 import {
@@ -22,6 +23,7 @@ import {
   fetchExternalAPI,
   updateExternalAPI,
 } from '@/service/datasets'
+import { getServerErrorMessage } from '@/utils/error-message'
 
 type ExternalKnowledgeAPICardProps = {
   api: ExternalKnowledgeApiResponse
@@ -80,11 +82,17 @@ const ExternalKnowledgeAPICard: React.FC<ExternalKnowledgeAPICardProps> = ({
             })
             await queryClient.invalidateQueries({ queryKey: externalKnowledgeApiQueryKey })
           } catch (error) {
+            const errorMessage = getServerErrorMessage(error)
+            if (errorMessage) toast.error(errorMessage)
+
             console.error('Error updating external knowledge API:', error)
           }
         },
       })
     } catch (error) {
+      const errorMessage = getServerErrorMessage(error)
+      if (errorMessage) toast.error(errorMessage)
+
       console.error('Error fetching external knowledge API data:', error)
     }
   }
@@ -98,6 +106,9 @@ const ExternalKnowledgeAPICard: React.FC<ExternalKnowledgeAPICardProps> = ({
 
       setShowConfirm(true)
     } catch (error) {
+      const errorMessage = getServerErrorMessage(error)
+      if (errorMessage) toast.error(errorMessage)
+
       console.error('Error checking external API usage:', error)
     }
   }
@@ -114,6 +125,9 @@ const ExternalKnowledgeAPICard: React.FC<ExternalKnowledgeAPICardProps> = ({
         console.error('Failed to delete external API')
       }
     } catch (error) {
+      const errorMessage = getServerErrorMessage(error)
+      if (errorMessage) toast.error(errorMessage)
+
       console.error('Error deleting external knowledge API:', error)
     }
   }

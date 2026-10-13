@@ -1,5 +1,7 @@
-import { act, renderHook } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { toast } from '@/app/notifications'
+import { httpErrorFromResponse } from '@/service/http-error'
 import { useSnippetRun } from '../use-snippet-run'
 
 type WorkflowStoreState = {
@@ -133,6 +135,7 @@ const createRunningData = (taskId?: string): WorkflowStoreState['workflowRunning
 describe('useSnippetRun', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.mockStopWorkflowRun.mockResolvedValue(undefined)
     mocks.workflowStoreState.workflowRunningData = undefined
     mocks.workflowStoreState.backupDraft = undefined
   })
@@ -151,6 +154,23 @@ describe('useSnippetRun', () => {
     expect(mocks.workflowStoreState.workflowRunningData?.result.status).toBe(
       WorkflowRunningStatus.Stopped,
     )
+  })
+
+  it('reports a rejected stop request without interrupting the local stopped state', async () => {
+    const errorToast = vi.spyOn(toast, 'error')
+    const error = await httpErrorFromResponse(
+      Response.json({ message: 'Unable to stop task' }, { status: 503 }),
+    )
+    mocks.mockStopWorkflowRun.mockRejectedValueOnce(error)
+    mocks.workflowStoreState.workflowRunningData = createRunningData()
+    const { result } = renderHook(() => useSnippetRun('snippet-1'))
+
+    act(() => result.current.handleStopRun('task-1'))
+
+    expect(mocks.workflowStoreState.workflowRunningData?.result.status).toBe(
+      WorkflowRunningStatus.Stopped,
+    )
+    await waitFor(() => expect(errorToast).toHaveBeenCalledExactlyOnceWith('Unable to stop task'))
   })
 
   it('does not fall back to the workflow running task id when stop is called without one', () => {

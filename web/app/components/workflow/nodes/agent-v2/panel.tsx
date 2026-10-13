@@ -20,8 +20,10 @@ import {
 } from '@/app/components/base/prompt-editor/plugins/agent-output-block/utils'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { useStore } from '@/app/components/workflow/store'
+import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import { FlowType } from '@/types/common'
+import { getServerErrorMessage } from '@/utils/error-message'
 import { useNodeDataUpdate } from '../../hooks/use-node-data-update'
 import useNodeCrud from '../_base/hooks/use-node-crud'
 import {
@@ -178,10 +180,24 @@ export function AgentV2Panel({ id, data }: NodePanelProps<AgentV2NodeType>) {
   const isInlineAgentPanelOpen =
     (isInlineAgentCreated || isInlineAgentPending) && openInlineAgentPanelNodeId === id
   const { isPending: isAppCopyingFromRoster, mutate: copyFromRosterApp } = useMutation(
-    consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.copyFromRoster.post.mutationOptions(),
+    consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.copyFromRoster.post.mutationOptions(
+      {
+        onError: (error) => {
+          const message = getServerErrorMessage(error)
+          if (message) toast.error(message)
+        },
+      },
+    ),
   )
   const { isPending: isSnippetCopyingFromRoster, mutate: copyFromRosterSnippet } = useMutation(
-    consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.copyFromRoster.post.mutationOptions(),
+    consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.copyFromRoster.post.mutationOptions(
+      {
+        onError: (error) => {
+          const message = getServerErrorMessage(error)
+          if (message) toast.error(message)
+        },
+      },
+    ),
   )
   const isCopyingFromRoster = isAppCopyingFromRoster || isSnippetCopyingFromRoster
   const isAgentPanelOpen =

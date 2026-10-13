@@ -40,23 +40,19 @@ A success toast is appropriate when the result is not on screen: a background jo
 
 - The page or business hook owns error presentation. HTTP clients return results or reject with an error; they do not import toast, decide presentation, deduplicate notifications, or accept a `silent` option.
 - Handle an HTTP failure as `ORPCError`: use `status` and `code` for recovery, and `message` for feedback. Read backend `reason`, `hint`, and `details` from `error.data`; response headers are retained in `error.cause.headers`. Declared operation errors become `defined` only after their code, status, and data schema validate. Do not parse the rejected value as a Response.
-- Choose one owner for the whole action, including follow-up requests. A lower-level operation that rethrows must not also show a toast. Keep cleanup and rollback in the appropriate callbacks.
+- Choose one business owner for each failure so callers do not repeat its notification. Keep cleanup and rollback in the appropriate callbacks.
 - Prefer an inline or field error when the user can resolve the failure where they acted. Use a toast only when the result is otherwise not visible.
 - Intentional cancellation, automatic retries, and intermediate recovery failures must not produce toasts. Report the final failure at the action owner. Do not use runtime error-object deduplication to coordinate competing owners.
 - Client-side validation belongs at the field through the [form contract], never in a toast.
 
-## Multi-request Actions
-
-Delay the final notification until the action's follow-up requests settle. For imports and
-resource creation, a failed dependency check must not report that the already committed
-operation failed. The action owner combines server warnings and follow-up failures into one
-warning and preserves access to the created resource. Dependency helpers update state or throw;
-they do not notify independently. If the imported editor graph cannot be refreshed safely,
-show a single warning and reload before the stale canvas can save over the committed graph.
-
 ## Existing Code
 
 When migrating a request, inspect its caller before removing error feedback. The HTTP layer does not provide a fallback. Background queries should expose their error state at the consuming surface instead of producing unsolicited toasts.
+
+A migration that only moves HTTP feedback into the business layer must preserve existing
+messages, notification order, recovery, and follow-up behavior. Keep existing business-owned
+feedback in place, including separate import and dependency-check results. Change those
+interaction patterns separately rather than bundling them into the ownership migration.
 
 [CopyFeedback]: ../app/components/base/copy-feedback/index.tsx
 [form contract]: ../../packages/dify-ui/docs/forms.md

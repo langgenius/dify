@@ -34,6 +34,7 @@ import {
 } from '@/service/use-share'
 import { getWebAppConversationScopeId, resolveWebAppAddress } from '@/service/webapp-address'
 import { TransferMethod } from '@/types/app'
+import { getServerErrorMessage } from '@/utils/error-message'
 import { addFileInfos, sortAgentSorts } from '../../../tools/utils'
 import { enrichSubmittedHumanInputFormData } from '../chat/answer/human-input-content/submitted-utils'
 import {
@@ -531,17 +532,23 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
   const [conversationDeleting, setConversationDeleting] = useState(false)
   const handleDeleteConversation = useCallback(
     async (conversationId: string, { onSuccess }: Callback) => {
-      if (conversationDeleting) return
       try {
-        setConversationDeleting(true)
-        await delConversation(appSourceType, appId, conversationId)
-        toast.success(t(($) => $['api.success'], { ns: 'common' }))
-        onSuccess()
-      } finally {
-        setConversationDeleting(false)
+        if (conversationDeleting) return
+        try {
+          setConversationDeleting(true)
+          await delConversation(appSourceType, appId, conversationId)
+          toast.success(t(($) => $['api.success'], { ns: 'common' }))
+          onSuccess()
+        } finally {
+          setConversationDeleting(false)
+        }
+        if (conversationId === currentConversationId) handleNewConversation()
+        handleUpdateConversationList()
+      } catch (error) {
+        const message = getServerErrorMessage(error)
+        if (message) toast.error(message)
+        throw error
       }
-      if (conversationId === currentConversationId) handleNewConversation()
-      handleUpdateConversationList()
     },
     [
       appSourceType,
@@ -556,27 +563,33 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
   const [conversationRenaming, setConversationRenaming] = useState(false)
   const handleRenameConversation = useCallback(
     async (conversationId: string, newName: string, { onSuccess }: Callback) => {
-      if (conversationRenaming) return
-      if (!newName.trim()) {
-        toast.error(t(($) => $['chat.conversationNameCanNotEmpty'], { ns: 'common' }))
-        return
-      }
-      setConversationRenaming(true)
       try {
-        await renameConversation(appSourceType, appId, conversationId, newName)
-        setOriginConversationList(
-          produce((draft) => {
-            const index = originConversationList.findIndex((item) => item.id === conversationId)
-            const item = draft[index]!
-            draft[index] = {
-              ...item,
-              name: newName,
-            }
-          }),
-        )
-        onSuccess()
-      } finally {
-        setConversationRenaming(false)
+        if (conversationRenaming) return
+        if (!newName.trim()) {
+          toast.error(t(($) => $['chat.conversationNameCanNotEmpty'], { ns: 'common' }))
+          return
+        }
+        setConversationRenaming(true)
+        try {
+          await renameConversation(appSourceType, appId, conversationId, newName)
+          setOriginConversationList(
+            produce((draft) => {
+              const index = originConversationList.findIndex((item) => item.id === conversationId)
+              const item = draft[index]!
+              draft[index] = {
+                ...item,
+                name: newName,
+              }
+            }),
+          )
+          onSuccess()
+        } finally {
+          setConversationRenaming(false)
+        }
+      } catch (error) {
+        const message = getServerErrorMessage(error)
+        if (message) toast.error(message)
+        throw error
       }
     },
     [appSourceType, appId, t, conversationRenaming, originConversationList],
@@ -592,14 +605,20 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
   )
   const handleFeedback: OnFeedback = useCallback(
     async (messageId, feedback) => {
-      await updateFeedback(
-        {
-          url: `/messages/${messageId}/feedbacks`,
-          body: { rating: feedback.rating, content: feedback.content },
-        },
-        appSourceType,
-        appId,
-      )
+      try {
+        await updateFeedback(
+          {
+            url: `/messages/${messageId}/feedbacks`,
+            body: { rating: feedback.rating, content: feedback.content },
+          },
+          appSourceType,
+          appId,
+        )
+      } catch (error) {
+        const message = getServerErrorMessage(error)
+        if (message) toast.error(message)
+        throw error
+      }
     },
     [appSourceType, appId],
   )

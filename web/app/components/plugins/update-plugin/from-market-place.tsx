@@ -14,6 +14,7 @@ import { pluginManifestToCardPluginProps } from '@/app/components/plugins/instal
 import { toast } from '@/app/notifications'
 import { updateFromMarketPlace } from '@/service/plugins'
 import { usePluginTaskList, useRemoveAutoUpgrade } from '@/service/use-plugins'
+import { getServerErrorMessage } from '@/utils/error-message'
 import useGetIcon from '../install-plugin/base/use-get-icon'
 import { TaskStatus } from '../types'
 import DowngradeWarningModal from './downgrade-warning'
@@ -115,7 +116,10 @@ const UpdatePluginModal = ({
           return
         }
         await onSave()
-      } catch {
+      } catch (error) {
+        const errorMessage = getServerErrorMessage(error)
+        if (errorMessage) toast.error(errorMessage)
+
         setUploadStep(UploadStep.notStarted)
       }
       return

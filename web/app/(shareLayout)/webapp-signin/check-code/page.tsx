@@ -17,6 +17,7 @@ import { sendWebAppEMailLoginCode, webAppEmailLoginWithCode } from '@/service/co
 import { fetchAccessToken } from '@/service/share'
 import { setWebAppAccessToken, setWebAppPassport } from '@/service/webapp-auth'
 import { encryptVerificationCode } from '@/utils/encryption'
+import { getServerErrorMessage } from '@/utils/error-message'
 import { getClientLoginFallback } from '@/utils/login-redirect'
 import { replaceLoginRedirect } from '@/utils/login-redirect.client'
 import { basePath } from '@/utils/var'
@@ -72,6 +73,9 @@ export default function CheckCode() {
         navigateAfterWebAppLogin(loginRedirect, router.replace, basePath)
       }
     } catch (error) {
+      const errorMessage = getServerErrorMessage(error)
+      if (errorMessage) toast.error(errorMessage)
+
       console.error(error)
     } finally {
       setLoading(false)
@@ -102,6 +106,9 @@ export default function CheckCode() {
         router.replace(`/webapp-signin/check-code?${params.toString()}`)
       }
     } catch (error) {
+      const errorMessage = getServerErrorMessage(error)
+      if (errorMessage) toast.error(errorMessage)
+
       console.error(error)
     }
   }

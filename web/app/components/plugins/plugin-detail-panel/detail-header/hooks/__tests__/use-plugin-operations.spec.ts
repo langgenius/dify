@@ -25,7 +25,9 @@ const {
     mockInvalidateCheckInstalled: vi.fn(),
     mockRefreshPluginList: vi.fn(),
     mockUninstallPlugin: vi.fn(() => Promise.resolve({ success: true })),
-    mockFetchReleases: vi.fn(() => Promise.resolve([{ tag_name: 'v2.0.0' }])),
+    mockFetchReleases: vi.fn((_owner: string, _repo: string) =>
+      Promise.resolve([{ tag_name: 'v2.0.0' }]),
+    ),
     mockCheckForUpdates: vi.fn(() => ({
       needUpdate: true,
       toastProps: { type: 'success', message: 'Update available' },
@@ -134,6 +136,40 @@ describe('usePluginOperations', () => {
   let modalStates: ModalStates
   let versionPicker: VersionPickerMock
   let mockOnUpdate: (isDelete?: boolean) => void
+
+  it('handles GitHub release failures at the update action', async () => {
+    const { fetchReleases } = await vi.importActual<
+      typeof import('../../../../install-plugin/hooks')
+    >('../../../../install-plugin/hooks')
+    const fetch = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new TypeError('Failed to fetch'))
+    mockFetchReleases.mockImplementationOnce(fetchReleases)
+    try {
+      const detail = createPluginDetail({
+        source: PluginSource.github,
+        meta: { repo: 'owner/repo', version: 'v1.0.0', package: 'pkg' },
+      })
+      const { result } = renderHook(() =>
+        usePluginOperations({
+          detail,
+          modalStates,
+          versionPicker,
+          isFromMarketplace: false,
+          onUpdate: mockOnUpdate,
+        }),
+      )
+      await act(async () => {
+        await result.current.handleUpdate()
+      })
+      expect(mockToastNotify).toHaveBeenCalledExactlyOnceWith({
+        type: 'error',
+        message: 'Failed to fetch',
+      })
+      expect(mockSetShowUpdatePluginModal).not.toHaveBeenCalled()
+      expect(mockOnUpdate).not.toHaveBeenCalled()
+    } finally {
+      fetch.mockRestore()
+    }
+  })
 
   beforeEach(() => {
     vi.clearAllMocks()

@@ -10,8 +10,10 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
 import { useMutation } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { useDocLink } from '@/context/i18n'
 import { consoleQuery } from '@/service/console'
+import { getServerErrorMessage } from '@/utils/error-message'
 
 type ApiBasedExtensionModalProps = {
   open: boolean
@@ -32,10 +34,20 @@ export function ApiBasedExtensionModal(props: ApiBasedExtensionModalProps) {
   const { t } = useTranslation(['common'])
   const docLink = useDocLink()
   const createApiBasedExtensionMutation = useMutation(
-    consoleQuery.apiBasedExtension.post.mutationOptions(),
+    consoleQuery.apiBasedExtension.post.mutationOptions({
+      onError: (error) => {
+        const message = getServerErrorMessage(error)
+        if (message) toast.error(message)
+      },
+    }),
   )
   const updateApiBasedExtensionMutation = useMutation(
-    consoleQuery.apiBasedExtension.byId.post.mutationOptions(),
+    consoleQuery.apiBasedExtension.byId.post.mutationOptions({
+      onError: (error) => {
+        const message = getServerErrorMessage(error)
+        if (message) toast.error(message)
+      },
+    }),
   )
   const editingApiBasedExtension = mode === 'edit' ? props.apiBasedExtension : null
   const isSaving =

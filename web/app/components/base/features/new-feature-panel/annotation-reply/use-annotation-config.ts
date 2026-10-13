@@ -6,11 +6,13 @@ import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useState } from 'react'
 import { AnnotationEnableStatus, JobStatus } from '@/app/components/app/annotation/type'
+import { toast } from '@/app/notifications'
 import { ANNOTATION_DEFAULT } from '@/config'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { queryAnnotationJobStatus, updateAnnotationStatus } from '@/service/annotation'
 import { consoleQuery } from '@/service/console'
 import { sleep } from '@/utils'
+import { getServerErrorMessage } from '@/utils/error-message'
 
 type Params = {
   appId: string
@@ -57,23 +59,29 @@ const useAnnotationConfig = ({ appId, annotationConfig, setAnnotationConfig }: P
   }
 
   const handleEnableAnnotation = async (embeddingModel: EmbeddingModelConfig, score?: number) => {
-    if (!annotationConfig.enabled && (isAnnotationQuotaUnavailable || isAnnotationFull)) return
+    try {
+      if (!annotationConfig.enabled && (isAnnotationQuotaUnavailable || isAnnotationFull)) return
 
-    const { job_id: jobId }: any = await updateAnnotationStatus(
-      appId,
-      AnnotationEnableStatus.enable,
-      embeddingModel,
-      score,
-    )
-    await ensureJobCompleted(jobId, AnnotationEnableStatus.enable)
-    setAnnotationConfig(
-      produce(annotationConfig, (draft: AnnotationReplyConfig) => {
-        draft.enabled = true
-        draft.embedding_model = embeddingModel
-        if (draft.score_threshold === undefined || draft.score_threshold === null)
-          draft.score_threshold = ANNOTATION_DEFAULT.score_threshold
-      }),
-    )
+      const { job_id: jobId }: any = await updateAnnotationStatus(
+        appId,
+        AnnotationEnableStatus.enable,
+        embeddingModel,
+        score,
+      )
+      await ensureJobCompleted(jobId, AnnotationEnableStatus.enable)
+      setAnnotationConfig(
+        produce(annotationConfig, (draft: AnnotationReplyConfig) => {
+          draft.enabled = true
+          draft.embedding_model = embeddingModel
+          if (draft.score_threshold === undefined || draft.score_threshold === null)
+            draft.score_threshold = ANNOTATION_DEFAULT.score_threshold
+        }),
+      )
+    } catch (error) {
+      const message = getServerErrorMessage(error)
+      if (message) toast.error(message)
+      throw error
+    }
   }
 
   const setScore = (score: number, embeddingModel?: EmbeddingModelConfig) => {
@@ -86,14 +94,20 @@ const useAnnotationConfig = ({ appId, annotationConfig, setAnnotationConfig }: P
   }
 
   const handleDisableAnnotation = async (embeddingModel: EmbeddingModelConfig) => {
-    if (!annotationConfig.enabled) return
+    try {
+      if (!annotationConfig.enabled) return
 
-    await updateAnnotationStatus(appId, AnnotationEnableStatus.disable, embeddingModel)
-    setAnnotationConfig(
-      produce(annotationConfig, (draft: AnnotationReplyConfig) => {
-        draft.enabled = false
-      }),
-    )
+      await updateAnnotationStatus(appId, AnnotationEnableStatus.disable, embeddingModel)
+      setAnnotationConfig(
+        produce(annotationConfig, (draft: AnnotationReplyConfig) => {
+          draft.enabled = false
+        }),
+      )
+    } catch (error) {
+      const message = getServerErrorMessage(error)
+      if (message) toast.error(message)
+      throw error
+    }
   }
 
   return {

@@ -21,10 +21,12 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useMutation } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from '@/app/notifications'
 import { createAgentIconSelection } from '@/features/agent-v2/roster/components/agent-form'
 import { AgentFormFields } from '@/features/agent-v2/roster/components/agent-form-fields'
 import { consoleQuery } from '@/service/console'
 import { FlowType } from '@/types/common'
+import { getServerErrorMessage } from '@/utils/error-message'
 
 type SaveInlineAgentToRosterDialogProps = {
   flowId: string
@@ -109,10 +111,24 @@ export function SaveInlineAgentToRosterDialog({
   const { t } = useTranslation(['common'])
   const nameInputRef = useRef<HTMLInputElement>(null)
   const appSaveToRosterMutation = useMutation(
-    consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.saveToRoster.post.mutationOptions(),
+    consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.saveToRoster.post.mutationOptions(
+      {
+        onError: (error) => {
+          const message = getServerErrorMessage(error)
+          if (message) toast.error(message)
+        },
+      },
+    ),
   )
   const snippetSaveToRosterMutation = useMutation(
-    consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.saveToRoster.post.mutationOptions(),
+    consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.saveToRoster.post.mutationOptions(
+      {
+        onError: (error) => {
+          const message = getServerErrorMessage(error)
+          if (message) toast.error(message)
+        },
+      },
+    ),
   )
   const isSavingToRoster =
     appSaveToRosterMutation.isPending || snippetSaveToRosterMutation.isPending

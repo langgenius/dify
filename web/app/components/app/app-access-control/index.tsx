@@ -14,6 +14,7 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AccessMode, isAccessMode, SubjectType } from '@/models/access-control'
 import { useAppWhiteListSubjects } from '@/service/access-control'
 import { consoleQuery } from '@/service/console'
+import { getServerErrorMessage } from '@/utils/error-message'
 import { AccessControlForm } from './access-control-form'
 
 const EMPTY_SUBJECTS: AccessControlSubjects = {
@@ -54,7 +55,12 @@ function AppAccessControlContainer({ app, onClose, onConfirm }: AccessControlPro
           ? 'error'
           : 'loading'
   const updateAccessModeMutation = useMutation(
-    consoleQuery.enterprise.webAppAuth.updateWebAppWhitelistSubjects.mutationOptions(),
+    consoleQuery.enterprise.webAppAuth.updateWebAppWhitelistSubjects.mutationOptions({
+      onError: (error) => {
+        const message = getServerErrorMessage(error)
+        if (message) toast.error(message)
+      },
+    }),
   )
   const externalMembersTipHidden =
     systemFeatures.webapp_auth.enabled &&

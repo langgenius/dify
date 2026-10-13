@@ -26,6 +26,7 @@ import useTimestamp from '@/hooks/use-timestamp'
 import { useParams, usePathname } from '@/next/navigation'
 import { sseGet, ssePost } from '@/service/base'
 import { TransferMethod } from '@/types/app'
+import { getServerErrorMessage } from '@/utils/error-message'
 import { getThreadMessages } from '../utils'
 import { getProcessedInputs, processOpeningStatement } from './utils'
 
@@ -192,7 +193,7 @@ export const useChat = (
     inputsForm: InputForm[]
   },
   prevChatTree?: ChatItemInTree[],
-  stopChat?: (taskId: string) => void,
+  stopChat?: (taskId: string) => void | Promise<unknown>,
   clearChatList?: boolean,
   clearChatListCallback?: (state: boolean) => void,
   initialConversationId?: string,
@@ -527,7 +528,12 @@ export const useChat = (
   const handleStop = useCallback(() => {
     hasStopRespondedRef.current = true
     handleResponding(false)
-    if (stopChat && taskIdRef.current && !pausedStateRef.current) stopChat(taskIdRef.current)
+    if (stopChat && taskIdRef.current && !pausedStateRef.current) {
+      void Promise.resolve(stopChat(taskIdRef.current)).catch((error: unknown) => {
+        const message = getServerErrorMessage(error)
+        if (message) toast.error(message)
+      })
+    }
     if (conversationMessagesAbortControllerRef.current)
       conversationMessagesAbortControllerRef.current.abort()
     if (suggestedQuestionsAbortControllerRef.current)

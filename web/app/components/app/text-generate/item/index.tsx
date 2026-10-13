@@ -23,6 +23,7 @@ import {
   updateFeedback,
 } from '@/service/share'
 import { submitHumanInputForm as submitHumanInputFormService } from '@/service/workflow'
+import { getServerErrorMessage } from '@/utils/error-message'
 import GenerationActionGroups from './action-groups'
 import {
   buildPromptLogItem,
@@ -102,12 +103,18 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   const { config } = useChatContext()
 
   const handleFeedback = async (childFeedback: FeedbackType) => {
-    await updateFeedback(
-      { url: `/messages/${childMessageId}/feedbacks`, body: { rating: childFeedback.rating } },
-      appSourceType,
-      installedAppId,
-    )
-    setChildFeedback(childFeedback)
+    try {
+      await updateFeedback(
+        { url: `/messages/${childMessageId}/feedbacks`, body: { rating: childFeedback.rating } },
+        appSourceType,
+        installedAppId,
+      )
+      setChildFeedback(childFeedback)
+    } catch (error) {
+      const message = getServerErrorMessage(error)
+      if (message) toast.error(message)
+      throw error
+    }
   }
 
   const [isQuerying, { setTrue: startQuerying, setFalse: stopQuerying }] = useBoolean(false)

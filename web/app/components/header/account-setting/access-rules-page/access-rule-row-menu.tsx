@@ -23,6 +23,7 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
+import { getServerErrorMessage } from '@/utils/error-message'
 
 type AccessRuleRowMenuProps = {
   rule: AccessPolicy
@@ -35,10 +36,20 @@ const AccessRuleRowMenu = ({ rule, onView, onEdit }: AccessRuleRowMenuProps) => 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   const { mutate: copyAccessRule } = useMutation(
-    consoleQuery.workspaces.current.rbac.accessPolicies.byPolicyId.copy.post.mutationOptions(),
+    consoleQuery.workspaces.current.rbac.accessPolicies.byPolicyId.copy.post.mutationOptions({
+      onError: (error) => {
+        const message = getServerErrorMessage(error)
+        if (message) toast.error(message)
+      },
+    }),
   )
   const { mutate: deleteAccessRule, isPending: isDeletingAccessRule } = useMutation(
-    consoleQuery.workspaces.current.rbac.accessPolicies.byPolicyId.delete.mutationOptions(),
+    consoleQuery.workspaces.current.rbac.accessPolicies.byPolicyId.delete.mutationOptions({
+      onError: (error) => {
+        const message = getServerErrorMessage(error)
+        if (message) toast.error(message)
+      },
+    }),
   )
 
   const handleView = useCallback(() => {

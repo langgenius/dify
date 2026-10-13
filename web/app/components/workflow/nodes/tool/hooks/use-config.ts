@@ -12,8 +12,10 @@ import {
 } from '@/app/components/tools/utils/to-form-schema'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { useWorkflowStore } from '@/app/components/workflow/store'
+import { toast } from '@/app/notifications'
 import { updateBuiltInToolCredential } from '@/service/tools'
 import { useInvalidToolsByType } from '@/service/use-tools'
+import { getServerErrorMessage } from '@/utils/error-message'
 import { useNodesReadOnly } from '../../../hooks/use-workflow'
 import { isToolAuthorizationRequired } from '../auth'
 import { normalizeJsonSchemaType } from '../output-schema-utils'
@@ -45,10 +47,16 @@ const useConfig = (id: string, payload: ToolNodeType) => {
   const invalidToolsByType = useInvalidToolsByType(provider_type)
   const handleSaveAuth = useCallback(
     async (value: any) => {
-      await updateBuiltInToolCredential(currCollection?.name as string, value)
+      try {
+        await updateBuiltInToolCredential(currCollection?.name as string, value)
 
-      invalidToolsByType()
-      setShowSetAuth(false)
+        invalidToolsByType()
+        setShowSetAuth(false)
+      } catch (error) {
+        const message = getServerErrorMessage(error)
+        if (message) toast.error(message)
+        throw error
+      }
     },
     [currCollection?.name, invalidToolsByType],
   )

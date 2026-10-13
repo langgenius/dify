@@ -143,6 +143,32 @@ const getDeleteButton = () => screen.getByRole('button', { name: 'plugin.action.
 const queryActionButtons = () => screen.queryAllByRole('button')
 
 describe('Action Component', () => {
+  it('reports failed release checks on every attempt without opening an update modal', async () => {
+    const user = userEvent.setup()
+    const { fetchReleases } = await vi.importActual<typeof import('../../install-plugin/hooks')>(
+      '../../install-plugin/hooks',
+    )
+    const fetch = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response(null, { status: 503 }))
+    mockFetchReleases.mockImplementation(fetchReleases)
+    try {
+      render(<Action {...createActionProps({ isShowFetchNewVersion: true })} />)
+      for (const attempt of [1, 2]) {
+        await user.click(getCheckForUpdatesButton())
+        await waitFor(() => expect(mockToastNotify).toHaveBeenCalledTimes(attempt))
+      }
+      expect(mockToastNotify).toHaveBeenLastCalledWith({
+        type: 'error',
+        message: 'Failed to fetch repository releases',
+      })
+      expect(mockCheckForUpdates).not.toHaveBeenCalled()
+      expect(mockSetShowUpdatePluginModal).not.toHaveBeenCalled()
+    } finally {
+      fetch.mockRestore()
+    }
+  })
+
   beforeEach(() => {
     vi.clearAllMocks()
     mockUninstallPlugin.mockResolvedValue({ success: true })

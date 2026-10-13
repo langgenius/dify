@@ -30,6 +30,7 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { addTracingConfig, removeTracingConfig, updateTracingConfig } from '@/service/apps'
+import { getServerErrorMessage } from '@/utils/error-message'
 import { docURL } from './config'
 import Field from './field'
 import { TracingProvider } from './type'
@@ -184,16 +185,22 @@ const ProviderConfigModal: FC<Props> = ({
   ] = useBoolean(false)
 
   const handleRemove = useCallback(async () => {
-    await removeTracingConfig({
-      appId,
-      provider: type,
-    })
-    toast(
-      t(($) => $['api.remove'], { ns: 'common' }),
-      { type: 'success' },
-    )
-    onRemoved()
-    hideRemoveConfirm()
+    try {
+      await removeTracingConfig({
+        appId,
+        provider: type,
+      })
+      toast(
+        t(($) => $['api.remove'], { ns: 'common' }),
+        { type: 'success' },
+      )
+      onRemoved()
+      hideRemoveConfirm()
+    } catch (error) {
+      const message = getServerErrorMessage(error)
+      if (message) toast.error(message)
+      throw error
+    }
   }, [hideRemoveConfirm, appId, type, t, onRemoved])
 
   const handleConfigChange = useCallback(
