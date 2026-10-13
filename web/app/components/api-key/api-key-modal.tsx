@@ -9,6 +9,7 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogTitle,
+  createAlertDialogHandle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import {
@@ -48,7 +49,8 @@ export function ApiKeyModal({ open, canManage, scope, onOpenChange }: ApiKeyModa
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
   const deleteActionsRef = useRef<AlertDialogActions>(null)
   const createButtonRef = useRef<HTMLButtonElement>(null)
-  const deletionSucceededRef = useRef(false)
+  const finalFocusRef = useRef<HTMLElement>(null)
+  const [deleteDialogHandle] = useState(() => createAlertDialogHandle<string>())
   const [createdApiKey, setCreatedApiKey] = useState<CreatedApiKey>()
   const [scopeDialogOpen, setScopeDialogOpen] = useState(false)
   // Bumped on each open so the scope dialog remounts with fresh selection state.
@@ -105,12 +107,12 @@ export function ApiKeyModal({ open, canManage, scope, onOpenChange }: ApiKeyModa
       : scope.type === 'dataset'
         ? createDatasetApiKey.isPending
         : createEnvironmentApiKey.isPending
-  const isDeleting =
+  const deleteMutation =
     scope.type === 'app'
-      ? deleteAppApiKey.isPending
+      ? deleteAppApiKey
       : scope.type === 'dataset'
-        ? deleteDatasetApiKey.isPending
-        : deleteEnvironmentApiKey.isPending
+        ? deleteDatasetApiKey
+        : deleteEnvironmentApiKey
   const createDisabled = !currentWorkspace.id || !canManage
 
   const handleOpenChange = (nextOpen: boolean) => {
@@ -160,10 +162,10 @@ export function ApiKeyModal({ open, canManage, scope, onOpenChange }: ApiKeyModa
   }
 
   const handleDelete = (deleteKeyId: string | undefined) => {
-    if (!deleteKeyId || !canManage || isDeleting) return
+    if (!deleteKeyId || !canManage || deleteMutation.isPending) return
 
     const onSuccess = () => {
-      deletionSucceededRef.current = true
+      finalFocusRef.current = createButtonRef.current
       deleteActionsRef.current?.close()
     }
     switch (scope.type) {
@@ -219,62 +221,62 @@ export function ApiKeyModal({ open, canManage, scope, onOpenChange }: ApiKeyModa
               <LoadingPlaceholder />
             </div>
           )}
-          <AlertDialog<string>
+          {!!apiKeys?.length && (
+            <ApiKeyTable
+              apiKeys={apiKeys}
+              canManage={canManage}
+              deleteDialogHandle={deleteDialogHandle}
+              showScope={scope.type === 'dataset'}
+            />
+          )}
+          <div className="flex shrink-0 px-6 py-4">
+            <Button
+              ref={createButtonRef}
+              disabled={createDisabled}
+              loading={isCreating}
+              onClick={handleCreate}
+            >
+              <span aria-hidden className="i-ri-add-line size-4 shrink-0" />
+              {t(($) => $['apiKeyModal.createNewSecretKey'], { ns: 'appApi' })}
+            </Button>
+          </div>
+          <AlertDialog
+            handle={deleteDialogHandle}
             actionsRef={deleteActionsRef}
             onOpenChange={(nextOpen, details) => {
-              if (!nextOpen && isDeleting && details.reason !== 'imperative-action') {
+              if (!nextOpen && deleteMutation.isPending && details.reason !== 'imperative-action') {
                 details.cancel()
                 return
               }
-              if (nextOpen) deletionSucceededRef.current = false
+              if (nextOpen) finalFocusRef.current = null
             }}
           >
             {({ payload }) => (
-              <>
-                {!!apiKeys?.length && (
-                  <ApiKeyTable
-                    apiKeys={apiKeys}
-                    canManage={canManage}
-                    showScope={scope.type === 'dataset'}
-                  />
-                )}
-                <div className="flex shrink-0 px-6 py-4">
-                  <Button
-                    ref={createButtonRef}
-                    disabled={createDisabled}
-                    loading={isCreating}
-                    onClick={handleCreate}
-                  >
-                    <span aria-hidden className="i-ri-add-line size-4 shrink-0" />
-                    {t(($) => $['apiKeyModal.createNewSecretKey'], { ns: 'appApi' })}
-                  </Button>
+              <AlertDialogContent
+                backdropProps={{ forceRender: true }}
+                finalFocus={() => finalFocusRef.current ?? true}
+              >
+                <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+                  <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+                    {t(($) => $['actionMsg.deleteConfirmTitle'], { ns: 'appApi' })}
+                  </AlertDialogTitle>
+                  <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+                    {t(($) => $['actionMsg.deleteConfirmTips'], { ns: 'appApi' })}
+                  </AlertDialogDescription>
                 </div>
-                <AlertDialogContent
-                  backdropProps={{ forceRender: true }}
-                  finalFocus={() => (deletionSucceededRef.current ? createButtonRef.current : true)}
-                >
-                  <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-                    <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-                      {t(($) => $['actionMsg.deleteConfirmTitle'], { ns: 'appApi' })}
-                    </AlertDialogTitle>
-                    <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-                      {t(($) => $['actionMsg.deleteConfirmTips'], { ns: 'appApi' })}
-                    </AlertDialogDescription>
-                  </div>
-                  <AlertDialogFooter>
-                    <AlertDialogCancelButton disabled={isDeleting}>
-                      {t(($) => $['operation.cancel'], { ns: 'common' })}
-                    </AlertDialogCancelButton>
-                    <AlertDialogConfirmButton
-                      loading={isDeleting}
-                      disabled={!canManage}
-                      onClick={() => handleDelete(payload)}
-                    >
-                      {t(($) => $['operation.confirm'], { ns: 'common' })}
-                    </AlertDialogConfirmButton>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </>
+                <AlertDialogFooter>
+                  <AlertDialogCancelButton disabled={deleteMutation.isPending}>
+                    {t(($) => $['operation.cancel'], { ns: 'common' })}
+                  </AlertDialogCancelButton>
+                  <AlertDialogConfirmButton
+                    loading={deleteMutation.isPending}
+                    disabled={!canManage}
+                    onClick={() => handleDelete(payload)}
+                  >
+                    {t(($) => $['operation.confirm'], { ns: 'common' })}
+                  </AlertDialogConfirmButton>
+                </AlertDialogFooter>
+              </AlertDialogContent>
             )}
           </AlertDialog>
         </DialogContent>

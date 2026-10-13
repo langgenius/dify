@@ -467,6 +467,33 @@ describe('ApiKeyModal', () => {
     },
   )
 
+  it('returns cancellation focus to the new trigger after a successful deletion', async () => {
+    const user = userEvent.setup()
+    apiMocks.environmentKeys = [
+      { id: 'first', token: 'env-first', type: 'api', created_at: 1 },
+      { id: 'second', token: 'env-second', type: 'api', created_at: 1 },
+    ]
+    apiMocks.deleteEnvironment.mockImplementationOnce(async () => {
+      apiMocks.environmentKeys = apiMocks.environmentKeys.filter((key) => key.id !== 'first')
+    })
+    await renderModal(environmentScope)
+    await confirmKeyDeletion('common.operation.delete env...env-first')
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+    expect(
+      screen.getByRole('button', { name: 'appApi.apiKeyModal.createNewSecretKey' }),
+    ).toHaveFocus()
+
+    const secondTrigger = screen.getByRole('button', {
+      name: 'common.operation.delete env...env-second',
+    })
+    await user.click(secondTrigger)
+    const dialog = await screen.findByRole('alertdialog')
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+    await waitFor(() => expect(dialog).not.toBeInTheDocument())
+    expect(secondTrigger).toHaveFocus()
+    expect(apiMocks.deleteEnvironment).toHaveBeenCalledTimes(1)
+  })
+
   it('disables creation when the caller cannot manage keys', async () => {
     await renderModal(datasetScope, { canManage: false })
 
