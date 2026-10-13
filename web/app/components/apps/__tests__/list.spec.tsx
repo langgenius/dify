@@ -1217,7 +1217,7 @@ describe('List', () => {
   })
 
   describe('Creators Filter', () => {
-    it('should handle creator selection', async () => {
+    it('should show the selected creator without an overflow count', async () => {
       const user = userEvent.setup()
       renderList()
 
@@ -1225,7 +1225,11 @@ describe('List', () => {
       await user.click(trigger)
       await user.click(screen.getByRole('option', { name: /Bob/ }))
 
-      expect(trigger).toHaveTextContent('+1')
+      expect(within(trigger).getByText('B')).toBeInTheDocument()
+      expect(
+        within(trigger).getByText('common.dynamicSelect.selected:{"count":1}'),
+      ).toBeInTheDocument()
+      expect(within(trigger).queryByText(/^\+\d+$/)).not.toBeInTheDocument()
     })
   })
 

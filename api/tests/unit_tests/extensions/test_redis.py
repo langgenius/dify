@@ -59,6 +59,9 @@ class _RecordingRedisClient:
     def zadd(self, name: str | bytes, mapping: Mapping[object, object], **kwargs: object) -> None:
         self._record("zadd", name, mapping, **kwargs)
 
+    def zrem(self, name: str | bytes, *values: str | bytes) -> None:
+        self._record("zrem", name, *values)
+
 
 @pytest.fixture(autouse=True)
 def _redis_config(config_overrides: Callable[..., None]) -> None:
@@ -192,6 +195,16 @@ class TestRedisKeyPrefixHelpers:
 
 
 class TestRedisClientWrapperKeyPrefix:
+    def test_wrapper_zrem_prefixes_key_but_not_members(self, config_overrides: Callable[..., None]) -> None:
+        client = _RecordingRedisClient()
+        wrapper = RedisClientWrapper()
+        wrapper.initialize(client)  # type: ignore[arg-type]
+        config_overrides(REDIS_KEY_PREFIX="enterprise-a")
+
+        wrapper.zrem("reset:user@example.com", "reservation")
+
+        assert client.calls == [("zrem", ("enterprise-a:reset:user@example.com", "reservation"), {})]
+
     def test_wrapper_registered_script_prefixes_key_arguments(self, config_overrides: Callable[..., None]) -> None:
         raw_client = _RecordingRedisClient()
         wrapper = RedisClientWrapper()

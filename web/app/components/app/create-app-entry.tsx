@@ -20,9 +20,9 @@ import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { getRedirection } from '@/utils/app-redirection'
 import { trackCreateApp } from '@/utils/create-app-tracking'
+import { getErrorMessage } from '@/utils/error-message'
 import { hasPermission } from '@/utils/permission'
 import { CreateAppTypeDropdown } from './create-app-type-dropdown'
-import { getAppTransferErrorMessage } from './transfer-error'
 
 const ChatInputStarter = dynamic(() => import('./chat-input-starter'), { ssr: false })
 
@@ -94,9 +94,7 @@ export function CreateAppCreationFlow({ children, onCreateTemplate }: CreateAppC
         isRbacEnabled: systemFeatures.rbac_enabled,
       })
     } catch (cause) {
-      const message =
-        (await getAppTransferErrorMessage(cause)) ||
-        t(($) => $['newApp.appCreateFailed'], { ns: 'app' })
+      const message = getErrorMessage(cause) || t(($) => $['newApp.appCreateFailed'], { ns: 'app' })
       setError(message)
     } finally {
       creatingRef.current = false

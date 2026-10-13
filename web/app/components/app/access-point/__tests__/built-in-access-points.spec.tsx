@@ -2,6 +2,7 @@ import type { ReactElement } from 'react'
 import type { AppModeEnum } from '@/types/app'
 import { screen } from '@testing-library/react'
 import { consoleQuery } from '@/service/console'
+import { createHttpError } from '@/service/http-error'
 import { createQueryClientWrapper } from '@/test/console/query-client'
 import { render as renderWithConsole } from '@/test/console/render'
 import { createAppDetailFixture } from '@/test/fixtures/app'
@@ -285,8 +286,8 @@ describe('BuiltInAccessPoints', () => {
       retry: (failureCount: number, error: unknown) => boolean
     }
 
-    expect(options.retry(0, new Response(null, { status: 403 }))).toBe(false)
-    expect(options.retry(0, new Response(null, { status: 500 }))).toBe(true)
-    expect(options.retry(3, new Response(null, { status: 500 }))).toBe(false)
+    expect(options.retry(0, createHttpError(new Response(null, { status: 403 })))).toBe(false)
+    expect(options.retry(0, createHttpError(new Response(null, { status: 500 })))).toBe(true)
+    expect(options.retry(3, createHttpError(new Response(null, { status: 500 })))).toBe(false)
   })
 })

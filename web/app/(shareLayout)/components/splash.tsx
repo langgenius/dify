@@ -1,4 +1,5 @@
 'use client'
+
 import type { PropsWithChildren } from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -12,6 +13,7 @@ import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useWebAppStore } from '@/context/web-app-context'
 import { AccessMode } from '@/models/access-control'
 import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
+import { getHttpErrorStatus, isNotFoundError } from '@/service/http-error'
 import { fetchAccessToken } from '@/service/share'
 import { resolveWebAppAddress } from '@/service/webapp-address'
 import {
@@ -121,13 +123,13 @@ function Splash({ children }: PropsWithChildren) {
           setWebAppPassport(address, access_token)
           redirectOrFinish()
         } catch (error) {
-          if (error instanceof Response && error.status === 404) {
+          if (isNotFoundError(error)) {
             setUnavailableShareCode(effectiveShareCode)
             await webAppLogout(address)
             return
           }
           await webAppLogout(address)
-          proceedToAuth(error instanceof Response && error.status === 401)
+          proceedToAuth(getHttpErrorStatus(error) === 401)
         }
       }
     })()

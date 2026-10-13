@@ -7,6 +7,7 @@ import { createWorkflowStore } from '@/app/components/workflow/store/workflow'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { markAppDeletionFailed, markAppDeletionStarted } from '@/service/app-deletion'
 import { consoleQuery } from '@/service/console'
+import { createHttpError } from '@/service/http-error'
 import { createConsoleQueryClient, renderHookWithConsoleQuery } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { AppModeEnum } from '@/types/app'
@@ -612,11 +613,9 @@ describe('useNodesSyncDraft', () => {
   })
 
   it('pauses all save entry points after a draft conflict without refreshing the canvas', async () => {
-    const error = {
-      status: 409,
-      json: vi.fn().mockResolvedValue({ code: 'draft_workflow_not_sync' }),
-      bodyUsed: false,
-    }
+    const error = createHttpError(new Response(null, { status: 409 }), {
+      code: 'draft_workflow_not_sync',
+    })
     mockSyncWorkflowDraft.mockRejectedValue(error)
 
     const { result } = renderUseNodesSyncDraft()
@@ -635,11 +634,9 @@ describe('useNodesSyncDraft', () => {
   })
 
   it('pauses saves even when the caller disabled automatic refresh', async () => {
-    const error = {
-      status: 409,
-      json: vi.fn().mockResolvedValue({ code: 'draft_workflow_not_sync' }),
-      bodyUsed: false,
-    }
+    const error = createHttpError(new Response(null, { status: 409 }), {
+      code: 'draft_workflow_not_sync',
+    })
     mockSyncWorkflowDraft.mockRejectedValue(error)
 
     const { result } = renderUseNodesSyncDraft()
@@ -655,7 +652,7 @@ describe('useNodesSyncDraft', () => {
 
   it('drops queued saves after a conflict and settles both callers', async () => {
     mockSyncWorkflowDraft.mockRejectedValueOnce(
-      new Response(JSON.stringify({ code: 'draft_workflow_not_sync' }), { status: 409 }),
+      createHttpError(new Response(null, { status: 409 }), { code: 'draft_workflow_not_sync' }),
     )
     const first = { onError: vi.fn(), onSettled: vi.fn() }
     const second = { onError: vi.fn(), onSettled: vi.fn() }
@@ -676,10 +673,13 @@ describe('useNodesSyncDraft', () => {
   })
 
   it.each([
+    { status: 400, code: 'other_error' },
     { status: 409, code: 'other_error' },
     { status: 500, code: 'draft_workflow_not_sync' },
   ])('does not lock the editor for $status $code', async ({ status, code }) => {
-    mockSyncWorkflowDraft.mockRejectedValueOnce(new Response(JSON.stringify({ code }), { status }))
+    mockSyncWorkflowDraft.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status }), { code }),
+    )
 
     const { result } = renderUseNodesSyncDraft()
     await act(async () => {
@@ -692,7 +692,7 @@ describe('useNodesSyncDraft', () => {
   })
 
   it('ignores a conflict response from before the latest draft reload', async () => {
-    let rejectSync!: (error: Response) => void
+    let rejectSync!: (error: ReturnType<typeof createHttpError>) => void
     mockSyncWorkflowDraft.mockReturnValueOnce(
       new Promise((_, reject) => {
         rejectSync = reject
@@ -703,7 +703,9 @@ describe('useNodesSyncDraft', () => {
     await vi.waitFor(() => expect(mockSyncWorkflowDraft).toHaveBeenCalledOnce())
     workflowStoreState.workflowDraftGeneration += 1
     workflowStoreState.syncWorkflowDraftHash = 'reloaded-hash'
-    rejectSync(new Response(JSON.stringify({ code: 'draft_workflow_not_sync' }), { status: 409 }))
+    rejectSync(
+      createHttpError(new Response(null, { status: 409 }), { code: 'draft_workflow_not_sync' }),
+    )
 
     expect(await pending).toBeNull()
     await result.current.doSyncWorkflowDraft()
@@ -717,10 +719,7 @@ describe('useNodesSyncDraft', () => {
   })
 
   it('should ignore non-JSON sync errors without throwing an unhandled rejection', async () => {
-    const error = {
-      json: vi.fn().mockRejectedValue(new SyntaxError('Unexpected token U')),
-      bodyUsed: false,
-    }
+    const error = createHttpError(new Response(null, { status: 502 }))
     const callbacks = {
       onError: vi.fn(),
       onSettled: vi.fn(),
@@ -732,7 +731,6 @@ describe('useNodesSyncDraft', () => {
       await expect(result.current.doSyncWorkflowDraft(false, callbacks)).resolves.toBeNull()
     })
 
-    expect(error.json).toHaveBeenCalled()
     expect(mockHandleRefreshWorkflowDraft).not.toHaveBeenCalled()
     expect(callbacks.onError).toHaveBeenCalled()
     expect(callbacks.onSettled).toHaveBeenCalled()
@@ -1001,7 +999,9 @@ describe('useNodesSyncDraft', () => {
     mockSyncWorkflowDraft.mockImplementationOnce(({ params }) => {
       if (!params.force)
         return Promise.reject(
-          new Response('Saving an empty workflow requires force=true.', { status: 400 }),
+          createHttpError(new Response(null, { status: 400 }), {
+            message: 'Saving an empty workflow requires force=true.',
+          }),
         )
       return Promise.resolve({ hash: 'cleared', updated_at: 1 })
     })
@@ -1023,7 +1023,7 @@ describe('useNodesSyncDraft', () => {
   it.each([true, false])(
     'preserves local edits when a drained save conflicts before Builder preparation with saveDraft=%s',
     async (saveDraft) => {
-      let rejectSave!: (error: Response) => void
+      let rejectSave!: (error: ReturnType<typeof createHttpError>) => void
       mockSyncWorkflowDraft.mockReturnValueOnce(
         new Promise((_, reject) => {
           rejectSave = reject
@@ -1036,7 +1036,9 @@ describe('useNodesSyncDraft', () => {
         result.current.prepareWorkflowDraftForBuilder(saveDraft, new AbortController().signal),
       ).rejects.toThrow('workflow.draftConflict.message')
 
-      rejectSave(new Response(JSON.stringify({ code: 'draft_workflow_not_sync' }), { status: 409 }))
+      rejectSave(
+        createHttpError(new Response(null, { status: 409 }), { code: 'draft_workflow_not_sync' }),
+      )
       await saving
       await preparing
       expect(draftStore.getState().hasWorkflowDraftConflict).toBe(true)

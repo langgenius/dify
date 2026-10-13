@@ -1,9 +1,9 @@
-import type { ResponseError } from '@/service/fetch'
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Input } from '@langgenius/dify-ui/input'
+import { ORPCError } from '@orpc/client'
 import { RiCloseLine } from '@remixicon/react'
 import { useDebounceFn } from 'ahooks'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -11,7 +11,7 @@ import { Trans, useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { checkEmailExisted, resetEmail, sendVerifyCode, verifyEmail } from '@/service/common'
 import { useLogout } from '@/service/use-common'
-import { asyncRunSafe } from '@/utils'
+import { getErrorMessage } from '@/utils/error-message'
 
 type Props = {
   onClose: () => void
@@ -28,27 +28,6 @@ const STEP = {
 type Step = (typeof STEP)[keyof typeof STEP]
 
 const emailPattern = /^[\w.!#$%&'*+\-/=?^`{|}~]+@(?:[\w-]+\.)+[\w-]{2,}$/
-
-type FetchResponseError = {
-  status: number
-  json: () => Promise<ResponseError>
-}
-
-function getErrorMessage(error: unknown) {
-  if (error instanceof Error) return error.message
-  if (typeof error === 'object' && error !== null && 'message' in error) {
-    const message = (error as { message?: unknown }).message
-    return typeof message === 'string' ? message : ''
-  }
-  return ''
-}
-
-function isFetchResponseError(error: unknown): error is FetchResponseError {
-  if (typeof error !== 'object' || error === null) return false
-
-  const maybeError = error as { status?: unknown; json?: unknown }
-  return typeof maybeError.status === 'number' && typeof maybeError.json === 'function'
-}
 
 const EmailChangeModal = ({ onClose, email }: Props) => {
   const { t } = useTranslation(['common', 'accountSettings'])
@@ -96,7 +75,7 @@ const EmailChangeModal = ({ onClose, email }: Props) => {
       startCount()
       if (res.data) setStepToken(res.data)
     } catch (error) {
-      toast.error(`Error sending verification code: ${getErrorMessage(error)}`)
+      toast.error(`Error sending verification code: ${getErrorMessage(error) ?? ''}`)
     }
   }
 
@@ -119,7 +98,7 @@ const EmailChangeModal = ({ onClose, email }: Props) => {
         toast.error('Verifying email failed')
       }
     } catch (error) {
-      toast.error(`Error verifying email: ${getErrorMessage(error)}`)
+      toast.error(`Error verifying email: ${getErrorMessage(error) ?? ''}`)
     }
   }
 
@@ -148,9 +127,8 @@ const EmailChangeModal = ({ onClose, email }: Props) => {
       setUnAvailableEmail(false)
     } catch (e: unknown) {
       if (latestEmailRef.current !== email) return
-      if (isFetchResponseError(e) && e.status === 400) {
-        const [, errRespData] = await asyncRunSafe<ResponseError>(e.json())
-        const { code } = errRespData || {}
+      if (e instanceof ORPCError && e.status === 400) {
+        const { code } = e
         if (code === 'email_already_in_use') setNewEmailExited(true)
         if (code === 'account_in_freeze') setUnAvailableEmail(true)
       }
@@ -200,7 +178,7 @@ const EmailChangeModal = ({ onClose, email }: Props) => {
       })
       await logout()
     } catch (error) {
-      toast.error(`Error changing email: ${getErrorMessage(error)}`)
+      toast.error(`Error changing email: ${getErrorMessage(error) ?? ''}`)
     }
   }
 

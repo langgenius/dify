@@ -2,6 +2,7 @@ import type { WorkflowRunDetailResponse } from '@/models/log'
 import type { NodeTracing, NodeTracingListResponse } from '@/types/workflow'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { createHttpError } from '@/service/http-error'
 import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
 import { BlockEnum, NodeRunningStatus } from '../../types'
 import RunPanel from '../index'
@@ -240,8 +241,12 @@ describe('RunPanel', () => {
   })
 
   it('reports run-detail and tracing failures through toast.error', async () => {
-    mockFetchRunDetail.mockRejectedValueOnce(new Error('detail boom'))
-    mockFetchTracingList.mockRejectedValueOnce(new Error('tracing boom'))
+    mockFetchRunDetail.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 500 }), { message: 'detail boom' }),
+    )
+    mockFetchTracingList.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 500 }), { message: 'tracing boom' }),
+    )
 
     renderWorkflowComponent(
       <RunPanel
@@ -251,8 +256,8 @@ describe('RunPanel', () => {
     )
 
     await waitFor(() => {
-      expect(mockToastError).toHaveBeenCalledWith('Error: detail boom')
-      expect(mockToastError).toHaveBeenCalledWith('Error: tracing boom')
+      expect(mockToastError).toHaveBeenCalledWith('detail boom')
+      expect(mockToastError).toHaveBeenCalledWith('tracing boom')
     })
   })
 

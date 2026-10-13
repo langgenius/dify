@@ -2,6 +2,7 @@ import { act, waitFor } from '@testing-library/react'
 import { renderWorkflowHook } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { DSL_EXPORT_CHECK } from '@/app/components/workflow/constants'
 import { consoleQuery } from '@/service/console'
+import { httpErrorFromResponse } from '@/service/http-error'
 import { createConsoleQueryClient } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { useDSLByCanEdit } from '../use-DSL'
@@ -341,7 +342,11 @@ workflow:
 
   it('should notify when export fails', async () => {
     mockExportAppConfig.mockRejectedValue(
-      new Response(JSON.stringify({ message: 'Package contains unusable Skill' }), { status: 500 }),
+      await httpErrorFromResponse(
+        new Response(JSON.stringify({ message: 'Package contains unusable Skill' }), {
+          status: 500,
+        }),
+      ),
     )
 
     const { result } = renderHook(() => useDSLByCanEdit(true))

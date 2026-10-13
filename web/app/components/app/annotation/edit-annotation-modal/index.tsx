@@ -1,4 +1,5 @@
 'use client'
+import type { AlertDialogActions } from '@langgenius/dify-ui/alert-dialog'
 import type { FC } from 'react'
 import {
   AlertDialog,
@@ -7,6 +8,7 @@ import {
   AlertDialogContent,
   AlertDialogFooter,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from '@langgenius/dify-ui/alert-dialog'
 import {
   Drawer,
@@ -20,7 +22,7 @@ import {
 } from '@langgenius/dify-ui/drawer'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import * as React from 'react'
-import { useState } from 'react'
+import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import useTimestamp from '@/hooks/use-timestamp'
@@ -78,7 +80,7 @@ const EditAnnotationModal: FC<Props> = ({
       throw error
     }
   }
-  const [showModal, setShowModal] = useState(false)
+  const removeActionsRef = useRef<AlertDialogActions>(null)
   if (!isShow) return null
 
   return (
@@ -127,10 +129,20 @@ const EditAnnotationModal: FC<Props> = ({
                       content={answer}
                       onSave={(editedContent) => handleSave(EditItemType.Answer, editedContent)}
                     />
-                    <AlertDialog
-                      open={showModal}
-                      onOpenChange={(open) => !open && setShowModal(false)}
-                    >
+                  </div>
+                </div>
+                <div className="shrink-0">
+                  <div className="flex h-16 items-center justify-between rounded-b-xl border-t border-divider-subtle bg-background-section-burn px-4 system-sm-medium text-text-tertiary">
+                    <AlertDialog actionsRef={removeActionsRef}>
+                      <AlertDialogTrigger className="flex cursor-pointer items-center space-x-2 pl-3">
+                        <span
+                          aria-hidden
+                          className="i-custom-vender-line-communication-message-check-remove h-6 w-6"
+                        />
+                        <span>
+                          {t(($) => $['editModal.removeThisCache'], { ns: 'appAnnotation' })}
+                        </span>
+                      </AlertDialogTrigger>
                       <AlertDialogContent>
                         <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
                           <AlertDialogTitle
@@ -150,7 +162,7 @@ const EditAnnotationModal: FC<Props> = ({
                             tone="destructive"
                             onClick={() => {
                               onRemove()
-                              setShowModal(false)
+                              removeActionsRef.current?.close()
                               onHide()
                             }}
                           >
@@ -159,20 +171,6 @@ const EditAnnotationModal: FC<Props> = ({
                         </AlertDialogFooter>
                       </AlertDialogContent>
                     </AlertDialog>
-                  </div>
-                </div>
-                <div className="shrink-0">
-                  <div className="flex h-16 items-center justify-between rounded-b-xl border-t border-divider-subtle bg-background-section-burn px-4 system-sm-medium text-text-tertiary">
-                    <div
-                      className="flex cursor-pointer items-center space-x-2 pl-3"
-                      onClick={() => setShowModal(true)}
-                    >
-                      <span
-                        aria-hidden
-                        className="i-custom-vender-line-communication-message-check-remove h-6 w-6"
-                      />
-                      <div>{t(($) => $['editModal.removeThisCache'], { ns: 'appAnnotation' })}</div>
-                    </div>
                     {!!createdAt && (
                       <div>
                         {t(($) => $['editModal.createdAt'], { ns: 'appAnnotation' })}

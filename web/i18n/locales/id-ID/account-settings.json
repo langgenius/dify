@@ -55,6 +55,8 @@
   "account.sendVerificationButton": "Kirim Kode Verifikasi",
   "account.setPassword": "Menetapkan kata sandi",
   "account.showAppLength": "Tampilkan {{length}} aplikasi",
+  "account.timezoneNoResults": "Tidak ditemukan zona waktu yang cocok",
+  "account.timezoneSearchPlaceholder": "Cari kota atau zona waktu...",
   "account.verificationLabel": "Kode Verifikasi",
   "account.verificationPlaceholder": "Tempel kode 6 digit",
   "account.workspaceName": "Nama Ruang Kerja",

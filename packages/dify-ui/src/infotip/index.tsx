@@ -1,13 +1,13 @@
 'use client'
 
 import type * as React from 'react'
-import type { Placement } from '../placement'
+import type { Placement } from '../internal/placement'
 import { Popover as BasePopover } from '@base-ui/react/popover'
 import { cn } from '../cn'
 import { iconButtonVariants } from '../icon-button'
-import { resolveClassName } from '../internals/resolve-class-name'
-import { hintPopupClassName } from '../overlay-shared'
-import { parsePlacement } from '../placement'
+import { hintPopupClassName, positionerClassName } from '../internal/overlay'
+import { parsePlacement } from '../internal/placement'
+import { resolveClassName } from '../internal/resolve-class-name'
 
 const iconClassNames = {
   question: 'i-ri-question-line',
@@ -96,7 +96,7 @@ function InfotipContent({
         align={align}
         sideOffset={sideOffset}
         alignOffset={alignOffset}
-        className="z-50 outline-hidden"
+        className={positionerClassName}
       >
         <BasePopover.Popup
           {...props}

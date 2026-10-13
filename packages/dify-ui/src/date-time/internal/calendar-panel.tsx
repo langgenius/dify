@@ -1,10 +1,10 @@
 import type { DayPickerProps } from '@daypicker/react'
 import * as React from 'react'
 import { Button } from '../../button'
-import { OptionColumn } from '../internal/option-column'
-import { PickerColumns, PickerPanel, PickerPanelHeader } from '../internal/picker-panel'
-import { usePickerNumbers } from '../internal/use-picker-numbers'
 import { CalendarGrid, toCalendarDate } from './calendar-grid'
+import { OptionColumn } from './option-column'
+import { PickerColumns, PickerPanel, PickerPanelHeader } from './picker-panel'
+import { usePickerNumbers } from './use-picker-numbers'
 
 type CalendarPanelLabels = {
   previousMonth: string
@@ -52,13 +52,18 @@ function CalendarPanel({
   const [focusCalendar, setFocusCalendar] = React.useState(false)
   const panelRef = React.useRef<HTMLDivElement>(null)
   const headerRef = React.useRef<HTMLButtonElement>(null)
-  React.useEffect(() => {
-    if (choosingMonth || !focusCalendar) return
-    const frame = requestAnimationFrame(() => {
-      if (!panelRef.current?.querySelector('[role="grid"] button[tabindex="0"]'))
-        headerRef.current?.focus()
-    })
-    return () => cancelAnimationFrame(frame)
+  const restoreHeaderFocusRef = React.useRef(false)
+  React.useLayoutEffect(() => {
+    if (choosingMonth) return
+    if (restoreHeaderFocusRef.current) {
+      restoreHeaderFocusRef.current = false
+      headerRef.current?.focus()
+    } else if (
+      focusCalendar &&
+      !panelRef.current?.querySelector('[role="grid"] button[tabindex="0"]')
+    ) {
+      headerRef.current?.focus()
+    }
   }, [choosingMonth, focusCalendar])
   const year = Number(draftMonth.slice(0, 4))
   const month = Number(draftMonth.slice(5, 7))
@@ -101,10 +106,10 @@ function CalendarPanel({
   function finish(apply: boolean) {
     if (apply && outOfBounds(draftMonth)) return
     focusPopup()
+    restoreHeaderFocusRef.current = !apply
     setFocusCalendar(apply)
     if (apply) onDisplayMonthChange(draftMonth)
     setMonthPickerHeight(null)
-    if (!apply) requestAnimationFrame(() => headerRef.current?.focus())
   }
   const monthTrigger = (
     <Button

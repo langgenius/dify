@@ -3,11 +3,11 @@
 import type * as React from 'react'
 import { Checkbox as BaseCheckbox } from '@base-ui/react/checkbox'
 import { cn } from '../cn'
-import { checkedControlFocusClassName } from '../form-control-shared'
-import { resolveClassName } from '../internals/resolve-class-name'
+import { checkedControlFocusClassName } from '../internal/focus'
+import { resolveClassName } from '../internal/resolve-class-name'
 
 const checkboxRootClassName = cn(
-  'inline-flex size-4 shrink-0 touch-manipulation items-center justify-center rounded-sm shadow-xs shadow-shadow-shadow-3 transition-colors motion-reduce:transition-none',
+  'inline-flex size-4 shrink-0 touch-manipulation items-center justify-center rounded-sm shadow-xs shadow-shadow-shadow-3',
   'border border-components-checkbox-border bg-components-checkbox-bg-unchecked text-components-checkbox-icon',
   'hover:border-components-checkbox-border-hover hover:bg-components-checkbox-bg-unchecked-hover',
   checkedControlFocusClassName,
@@ -52,9 +52,7 @@ function Checkbox({ className, ...props }: CheckboxProps) {
   )
 }
 
-type CheckboxSkeletonProps = Omit<React.ComponentProps<'div'>, 'className'> & {
-  className?: string
-}
+type CheckboxSkeletonProps = React.ComponentProps<'div'>
 
 function CheckboxSkeleton({ className, ...props }: CheckboxSkeletonProps) {
   return <div className={cn(checkboxSkeletonClassName, className)} {...props} />

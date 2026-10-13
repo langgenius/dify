@@ -1,4 +1,5 @@
 import type { ConversationItem, SessionModel, SessionView } from '../types'
+import type { MarkdownProps } from '@/app/components/base/markdown'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider } from 'jotai'
@@ -91,6 +92,11 @@ const malformedConversation = [
     payload: { text: { privateConfiguration: 'Do not expose this' }, turn_id: 'turn-user-1' },
   },
 ] as unknown as ConversationItem[]
+
+// Markdown has its own rendering tests; panel recovery must not depend on its dynamic import.
+vi.mock('@/app/components/base/markdown', () => ({
+  Markdown: ({ content }: MarkdownProps) => <div>{content}</div>,
+}))
 
 vi.mock('../model-selector', () => ({
   default: () => <button type="button">Model selector</button>,

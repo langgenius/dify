@@ -5,6 +5,7 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { emailLoginWithCode, sendEMailLoginCode } from '@/service/common'
+import { createHttpError } from '@/service/http-error'
 import { seedSystemFeatures } from '@/test/console/query-data'
 import CheckCode from '../page'
 
@@ -533,7 +534,7 @@ describe('CheckCode', () => {
         resolveProfileResponse = resolve
       })
       serviceBaseMocks.get
-        .mockRejectedValueOnce(new Response(null, { status: 401 }))
+        .mockRejectedValueOnce(createHttpError(new Response(null, { status: 401 })))
         .mockReturnValueOnce(profileResponse)
       await queryClient.query(profileQueryOptions).catch(noop)
       expect(queryClient.getQueryState(profileQueryKey)?.status).toBe('error')

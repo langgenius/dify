@@ -55,6 +55,8 @@
   "account.sendVerificationButton": "確認コードの送信",
   "account.setPassword": "パスワードを設定",
   "account.showAppLength": "{{length}}アプリを表示",
+  "account.timezoneNoResults": "一致するタイムゾーンが見つかりません",
+  "account.timezoneSearchPlaceholder": "都市またはタイムゾーンを検索…",
   "account.verificationLabel": "認証コード",
   "account.verificationPlaceholder": "6 桁のコードを貼り付けます",
   "account.workspaceName": "ワークスペース名",

@@ -2,6 +2,7 @@ import type { WorkflowResponse } from '@dify/contracts/api/console/apps/types.ge
 import { act, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { createHttpError } from '@/service/http-error'
 import { appWorkflowQueryOptions } from '@/service/workflow-queries'
 import {
   createAccountProfileQueryClient,
@@ -98,10 +99,8 @@ vi.mock('@/service/workflow', () => ({
   fetchNodesDefaultConfigs: (...args: unknown[]) => mockFetchNodesDefaultConfigs(...args),
 }))
 
-const notExistError = () => ({
-  json: vi.fn().mockResolvedValue({ code: 'draft_workflow_not_exist' }),
-  bodyUsed: false,
-})
+const notExistError = () =>
+  createHttpError(new Response(null, { status: 400 }), { code: 'draft_workflow_not_exist' })
 
 const draftResponse = {
   id: 'draft-id',
