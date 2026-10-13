@@ -254,7 +254,6 @@ class RuleGenerateApi(Resource):
         console_ns.models[GeneratorResponse.__name__],
     )
     @console_ns.response(400, "Invalid request parameters")
-    @console_ns.response(402, "Provider quota exceeded")
     @setup_required
     @login_required
     @account_initialization_required
@@ -289,7 +288,6 @@ class RuleCodeGenerateApi(Resource):
     @console_ns.expect(console_ns.models[RuleCodeGeneratePayload.__name__])
     @console_ns.response(200, "Code rules generated successfully", console_ns.models[GeneratorResponse.__name__])
     @console_ns.response(400, "Invalid request parameters")
-    @console_ns.response(402, "Provider quota exceeded")
     @setup_required
     @login_required
     @account_initialization_required
@@ -327,7 +325,6 @@ class RuleStructuredOutputGenerateApi(Resource):
     @console_ns.expect(console_ns.models[RuleStructuredOutputPayload.__name__])
     @console_ns.response(200, "Structured output generated successfully", console_ns.models[GeneratorResponse.__name__])
     @console_ns.response(400, "Invalid request parameters")
-    @console_ns.response(402, "Provider quota exceeded")
     @setup_required
     @login_required
     @account_initialization_required
@@ -369,7 +366,6 @@ class InstructionGenerateApi(Resource):
         "Invalid request parameters or flow/workflow not found",
         console_ns.models[ErrorMessageResponse.__name__],
     )
-    @console_ns.response(402, "Provider quota exceeded")
     @setup_required
     @login_required
     @account_initialization_required
@@ -543,7 +539,6 @@ class WorkflowGenerateApi(Resource):
     @console_ns.response(
         400, "Invalid request parameters", console_ns.models[WorkflowGenerateRejectedResponse.__name__]
     )
-    @console_ns.response(402, "Provider quota exceeded")
     @setup_required
     @login_required
     @account_initialization_required

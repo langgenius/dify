@@ -32,7 +32,6 @@ class SavedMessageListApi(WebApiResource):
             200: "Success",
             400: "Bad Request - Not a completion app",
             401: "Unauthorized",
-            403: "Forbidden",
             404: "App Not Found",
             500: "Internal Server Error",
         }
@@ -64,7 +63,6 @@ class SavedMessageListApi(WebApiResource):
             200: "Message saved successfully",
             400: "Bad Request - Not a completion app",
             401: "Unauthorized",
-            403: "Forbidden",
             404: "Message Not Found",
             500: "Internal Server Error",
         }
@@ -99,7 +97,6 @@ class SavedMessageApi(WebApiResource):
             204: "Message removed successfully",
             400: "Bad Request - Not a completion app",
             401: "Unauthorized",
-            403: "Forbidden",
             404: "Message Not Found",
             500: "Internal Server Error",
         }

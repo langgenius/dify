@@ -99,7 +99,6 @@ class LoginApi(Resource):
             200: "Authentication successful",
             400: "Bad request - invalid email or password format",
             401: "Authentication failed - email or password mismatch",
-            403: "Account banned or login disabled",
             404: "Account not found",
         }
     )

@@ -115,7 +115,6 @@ class CompletionApi(WebApiResource):
             200: "Success",
             400: "Bad Request",
             401: "Unauthorized",
-            403: "Forbidden",
             404: "App Not Found",
             500: "Internal Server Error",
         }
@@ -179,7 +178,6 @@ class CompletionStopApi(WebApiResource):
             200: "Success",
             400: "Bad Request",
             401: "Unauthorized",
-            403: "Forbidden",
             404: "Task Not Found",
             500: "Internal Server Error",
         }
@@ -219,7 +217,6 @@ class ChatApi(WebApiResource):
             200: "Success",
             400: "Bad Request",
             401: "Unauthorized",
-            403: "Forbidden",
             404: "App Not Found",
             500: "Internal Server Error",
         }
@@ -295,7 +292,6 @@ class ChatStopApi(WebApiResource):
             200: "Success",
             400: "Bad Request",
             401: "Unauthorized",
-            403: "Forbidden",
             404: "Task Not Found",
             500: "Internal Server Error",
         }

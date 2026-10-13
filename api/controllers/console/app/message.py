@@ -200,7 +200,6 @@ class MessageFeedbackApi(Resource):
     @console_ns.expect(console_ns.models[MessageFeedbackPayload.__name__])
     @console_ns.response(200, "Feedback updated successfully", console_ns.models[SimpleResultResponse.__name__])
     @console_ns.response(404, "Message not found")
-    @console_ns.response(403, "Insufficient permissions")
     @setup_required
     @login_required
     @account_initialization_required

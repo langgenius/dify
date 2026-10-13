@@ -126,7 +126,6 @@ class WorkflowTaskStopApi(WebApiResource):
             200: "Success",
             400: "Bad Request",
             401: "Unauthorized",
-            403: "Forbidden",
             404: "Task Not Found",
             500: "Internal Server Error",
         }
