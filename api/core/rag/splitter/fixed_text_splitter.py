@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import codecs
 import re
+from collections import deque
 from collections.abc import Set as AbstractSet
 from typing import Any, Literal, override
 
@@ -111,26 +112,23 @@ class FixedRecursiveCharacterTextSplitter(EnhanceRecursiveCharacterTextSplitter)
                 merged_text = self._merge_splits(_good_splits, _separator, _good_splits_lengths)
                 final_chunks.extend(merged_text)
         else:
-            current_part = ""
+            current_part: deque[str] = deque()
+            current_part_lengths: deque[int] = deque()
             current_length = 0
-            overlap_part = ""
-            overlap_part_length = 0
             for s, s_len in zip(splits, s_lens):
-                if current_length + s_len <= self._chunk_size - self._chunk_overlap:
-                    current_part += s
-                    current_length += s_len
-                elif current_length + s_len <= self._chunk_size:
-                    current_part += s
-                    current_length += s_len
-                    overlap_part += s
-                    overlap_part_length += s_len
-                else:
-                    final_chunks.append(current_part)
-                    current_part = overlap_part + s
-                    current_length = s_len + overlap_part_length
-                    overlap_part = ""
-                    overlap_part_length = 0
+                if current_length + s_len > self._chunk_size:
+                    if current_part:
+                        final_chunks.append("".join(current_part))
+                    while current_part and (
+                        current_length > self._chunk_overlap or current_length + s_len > self._chunk_size
+                    ):
+                        current_part.popleft()
+                        current_length -= current_part_lengths.popleft()
+
+                current_part.append(s)
+                current_part_lengths.append(s_len)
+                current_length += s_len
             if current_part:
-                final_chunks.append(current_part)
+                final_chunks.append("".join(current_part))
 
         return final_chunks
