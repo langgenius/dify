@@ -10,14 +10,13 @@ import { helpHint } from '@/plugins/commands/command'
 import { ENV, env } from '@/plugins/env'
 import { io } from '@/plugins/io'
 import { session } from '@/plugins/session'
+import { DIR_PERM, FILE_PERM } from '@/store/dir'
 import { pid, resolvePlatform } from '@/sys'
 import { bareHost } from '@/util/host'
 import { parseCatalog } from './types'
 
 export const CATALOG_DIR_NAME = 'catalog'
 const HOST_SEPARATOR_REPLACEMENT = '_'
-const FILE_MODE = 0o600
-const DIR_MODE = 0o700
 const UNREADABLE_CACHE_PREFIX = 'ignoring unreadable catalog cache '
 const CACHE_DIR_RETIRED = `${ENV.CacheDir} is no longer used; the catalog cache follows ${ENV.ConfigDir}`
 const ENOENT = 'ENOENT'
@@ -54,8 +53,8 @@ function isMissingFile(err: unknown): boolean {
 async function writeAtomically(path: string, bytes: Uint8Array): Promise<void> {
   const tmp = `${path}.tmp.${pid()}.${Date.now()}`
   try {
-    await fsp.mkdir(dirname(path), { recursive: true, mode: DIR_MODE })
-    await fsp.writeFile(tmp, bytes, { mode: FILE_MODE })
+    await fsp.mkdir(dirname(path), { recursive: true, mode: DIR_PERM })
+    await fsp.writeFile(tmp, bytes, { mode: FILE_PERM })
     resolvePlatform().atomicReplace(tmp, path)
   } catch (cause) {
     try {
