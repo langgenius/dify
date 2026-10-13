@@ -301,10 +301,12 @@ def attach_error_response_schema(
 
     Each business error an operation documents with ``error_responses`` is one shared
     ``{Code}Error`` component: the error body with ``code`` and ``status`` fixed, plus the
-    class's ``details_model`` when it declares one. The response of its status references
-    it; several codes on one status are an ``anyOf``, and a status that also declares its
-    own body schema keeps that schema beside them. A code maps to exactly one status in a
-    document, and two classes may share a code only when they agree on it. A documented
+    class's ``details_model`` when it declares one. The response of its status lists it in
+    an ``anyOf`` that always ends with the open error body, since a generic error can answer
+    that status too and ``default`` only covers statuses the operation leaves undeclared; a
+    status that also declares its own body schema keeps that schema in front of them. A code
+    maps to exactly one status in a document, and two classes may share a code only when
+    they agree on it. A documented
     ``RelayedHTTPError`` adds no component, since its status and code are only known at
     runtime; it marks the operation with ``x-dify-relays-errors`` instead.
     """
@@ -370,9 +372,10 @@ def attach_error_response_schema(
                 if explicit is not None:
                     # The declared body and the documented errors can all answer this status.
                     options.insert(0, explicit)
-                response["content"] = {
-                    "application/json": {"schema": options[0] if len(options) == 1 else {"anyOf": options}}
-                }
+                # Generic errors (validation, auth) answer this status as well, and ``default``
+                # does not apply to a status the operation declares, so the open body stays.
+                options.append(dict(ref))
+                response["content"] = {"application/json": {"schema": {"anyOf": options}}}
                 used = True
 
             responses.setdefault("default", {"description": "Error"})

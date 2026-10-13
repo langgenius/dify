@@ -4,8 +4,10 @@ Static checks (``dev/lint_error_responses.py``) cannot follow instance calls, si
 other dynamic dispatch. This catches what they miss on every path a test exercises: each
 4xx/5xx JSON response served by an ``ExternalApi`` must carry the standard error body,
 and its ``code`` must be one the operation documents for that status or one of the
-surface's generic codes (``ExternalApi.implicit_error_codes``). Operations that relay
-downstream errors admit any code. On APIs that do not document business errors
+surface's generic codes (``ExternalApi.implicit_error_codes``). The body must also satisfy
+the status's complete documented schema and, for a documented code, that code's component
+(fixed ``status`` and any ``details`` model). Operations that relay downstream errors admit
+any code. On APIs that do not document business errors
 (``/openapi/v1``, test-built APIs) only statuses that document a code are checked.
 """
 
@@ -161,9 +163,25 @@ def violation(api: ExternalApi, response: Response) -> str | None:
         return f"{where}: error body does not match {error_model} ({'; '.join(problems)}): {body!r}"
     if body["status"] != response.status_code:
         return f"{where}: body status {body['status']!r} differs from the HTTP status"
-    documented = {code for option in error_options if (code := _documented_code(_resolve(option, components)))}
+    if schema is not None and (problems := _schema_errors(_mapping(schema), components, body)):
+        # The status's own schema must admit the body: the open error body must stay beside
+        # the per-code components, or a generic error on this status contradicts the document.
+        return (
+            f"{where}: error body does not match the documented {response.status_code} schema "
+            f"({'; '.join(problems)}): {body!r}"
+        )
+    components_by_code = {
+        code: option for option in error_options if (code := _documented_code(_resolve(option, components)))
+    }
+    documented = set(components_by_code)
     if operation.get(RELAYS_ERRORS_EXTENSION) is True and body["code"] not in documented:
         # The operation relays downstream errors, whose codes the document cannot know.
+        return None
+    if (component := components_by_code.get(body["code"])) is not None:
+        if problems := _schema_errors(component, components, body):
+            return (
+                f"{where}: error body does not match its {body['code']!r} component ({'; '.join(problems)}): {body!r}"
+            )
         return None
     if not documented and not _documents_business_errors(api):
         return None

@@ -15,6 +15,16 @@ class _ItemGoneError(BaseHTTPException):
     code = 404
 
 
+class _ItemLockedDetails(BaseModel):
+    locked_by: str
+
+
+class _ItemLockedError(BaseHTTPException):
+    error_code = "item_locked"
+    code = 404
+    details_model = _ItemLockedDetails
+
+
 class _LegacyConflict(BaseModel):
     error: str
 
@@ -29,7 +39,7 @@ def _api() -> tuple[Flask, ExternalApi]:
     @ns.route("/items")
     class Items(Resource):
         @ns.response(409, "Legacy conflict", ns.models[_LegacyConflict.__name__])
-        @error_responses(_ItemGoneError)
+        @error_responses(_ItemGoneError, _ItemLockedError)
         def get(self) -> dict[str, str]:
             return {}
 
@@ -65,6 +75,27 @@ def test_rejects_a_code_the_operation_does_not_document_for_the_status() -> None
 def test_accepts_documented_and_implied_codes() -> None:
     assert _check({"code": "item_gone", "message": "m", "status": 404}, 404) is None
     assert _check({"code": "not_found", "message": "m", "status": 404}, 404) is None
+
+
+def test_generic_codes_satisfy_the_full_schema_of_a_status_that_documents_business_errors() -> None:
+    # A generic 404 answers an operation that documents its own 404 codes: the status's complete
+    # schema (not only ``default``) must admit it, so the open error body stays in the ``anyOf``.
+    app, api = _api()
+    with app.test_request_context("/check/items"):
+        schema = error_contract._document(api)["paths"]["/items"]["get"]["responses"]["404"]["content"][  # type: ignore[index]
+            "application/json"
+        ]["schema"]
+    assert schema["anyOf"][-1] == {"$ref": "#/components/schemas/ErrorResponse"}
+    assert _check({"code": "not_found", "message": "m", "status": 404}, 404) is None
+
+
+def test_validates_a_documented_code_against_its_component() -> None:
+    assert _check({"code": "item_locked", "message": "m", "status": 404, "details": {"locked_by": "a"}}, 404) is None
+
+    found = _check({"code": "item_locked", "message": "m", "status": 404, "details": {}}, 404)
+    assert found is not None
+    assert "'item_locked' component" in found
+    assert "locked_by" in found
 
 
 def test_accepts_a_body_matching_a_legacy_model_the_status_declares() -> None:

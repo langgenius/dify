@@ -369,11 +369,13 @@ def _responses(document: dict) -> dict:
     return document["paths"]["/documented"]["get"]["responses"]
 
 
-def _error_options(document: dict, status: str) -> list[str]:
-    """The component names a status documents, in order."""
+def _error_options(document: dict, status: str, body_ref: dict[str, str] = _ERROR_BODY_REF) -> list[str]:
+    """The component names a status documents, in order, before the open error body that ends them."""
     schema = _responses(document)[status]["content"]["application/json"]["schema"]
     options = schema.get("anyOf", [schema])
-    return [option["$ref"].rsplit("/", 1)[-1] for option in options]
+    # A generic error can answer any documented status, so the open body is always the last option.
+    assert options[-1] == body_ref
+    return [option["$ref"].rsplit("/", 1)[-1] for option in options[:-1]]
 
 
 def _documented_names_for(*exceptions: type[Exception]) -> dict[str, bool]:
@@ -425,9 +427,10 @@ def test_openapi_surface_resolves_codes_like_its_formatter():
         _DocumentedError,
     )
 
-    assert _error_options(document, "400") == ["DocumentedError"]
+    body_ref = {"$ref": "#/components/schemas/ErrorBody"}
+    assert _error_options(document, "400", body_ref) == ["DocumentedError"]
     component = document["components"]["schemas"]["DocumentedError"]
-    assert component["allOf"][0] == {"$ref": "#/components/schemas/ErrorBody"}
+    assert component["allOf"][0] == body_ref
     assert component["allOf"][1]["properties"]["code"] == {"const": "documented_error", "type": "string"}
 
 
@@ -475,7 +478,11 @@ def test_error_components_are_shared_across_operations_and_carry_details():
     component_ref = {"$ref": "#/components/schemas/DocumentedConflictError"}
     for method in ("post", "put"):
         response = document["paths"]["/items"][method]["responses"]["409"]  # type: ignore[index]
-        assert response == {"description": "Conflict", "content": {"application/json": {"schema": component_ref}}}
+        # The open error body stays beside the component: a generic error can answer 409 too.
+        assert response == {
+            "description": "Conflict",
+            "content": {"application/json": {"schema": {"anyOf": [component_ref, _ERROR_BODY_REF]}}},
+        }
     schemas = document["components"]["schemas"]  # type: ignore[index]
     assert schemas["DocumentedConflictError"]["allOf"][1]["properties"]["details"] == {
         "$ref": "#/components/schemas/_ConflictDetails"
@@ -504,6 +511,7 @@ def test_error_responses_union_explicit_schema_with_documented_codes():
                 "anyOf": [
                     {"$ref": "#/components/schemas/Custom"},
                     {"$ref": "#/components/schemas/DocumentedConflictError"},
+                    _ERROR_BODY_REF,
                 ]
             }
         }
@@ -624,7 +632,7 @@ def test_documenting_relayed_errors_adds_nothing_beyond_the_default_error():
     assert responses["400"]["content"] == {"application/json": {"schema": _ERROR_BODY_REF}}
     assert responses["default"]["content"] == {"application/json": {"schema": _ERROR_BODY_REF}}
     assert responses["409"]["content"]["application/json"]["schema"] == {
-        "$ref": "#/components/schemas/DocumentedConflictError"
+        "anyOf": [{"$ref": "#/components/schemas/DocumentedConflictError"}, _ERROR_BODY_REF]
     }
     assert operation["x-dify-relays-errors"] is True
 
