@@ -82,7 +82,16 @@ export const zErrorResponse = z.object({
  */
 export const zGetDatasetsError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -105,7 +114,16 @@ export const zGetDatasetsError401 = zErrorResponse.and(
  */
 export const zCreateDatasetError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -132,7 +150,16 @@ export const zCreateDatasetError409 = zErrorResponse.and(
  */
 export const zGetDatasetApiBaseInfoError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -150,7 +177,17 @@ export const zGetDatasetApiBaseInfoError401 = zErrorResponse.and(
  */
 export const zGetDatasetApiKeysError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param', 'max_keys_exceeded']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'max_keys_exceeded',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -177,7 +214,17 @@ export const zGetDatasetApiKeysError409 = zErrorResponse.and(
  */
 export const zPostDatasetApiKeyApiError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param', 'max_keys_exceeded']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'max_keys_exceeded',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -204,7 +251,17 @@ export const zPostDatasetApiKeyApiError409 = zErrorResponse.and(
  */
 export const zDeleteDatasetApiKeyError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param', 'max_keys_exceeded']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'max_keys_exceeded',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -231,7 +288,16 @@ export const zDeleteDatasetApiKeyError409 = zErrorResponse.and(
  */
 export const zGetDatasetDocumentSegmentBatchImportStatusApiError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -249,7 +315,16 @@ export const zGetDatasetDocumentSegmentBatchImportStatusApiError401 = zErrorResp
  */
 export const zCreateExternalDatasetError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -276,7 +351,16 @@ export const zCreateExternalDatasetError409 = zErrorResponse.and(
  */
 export const zGetExternalApiTemplatesError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -302,7 +386,16 @@ export const zExternalKnowledgeApiPayload = z.object({
  */
 export const zCreateExternalApiTemplateError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -329,7 +422,16 @@ export const zCreateExternalApiTemplateError409 = zErrorResponse.and(
  */
 export const zDeleteExternalApiTemplateApiError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -356,7 +458,16 @@ export const zDeleteExternalApiTemplateApiError409 = zErrorResponse.and(
  */
 export const zGetExternalApiTemplateError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -383,7 +494,16 @@ export const zGetExternalApiTemplateError409 = zErrorResponse.and(
  */
 export const zUpdateExternalApiTemplateError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -418,7 +538,16 @@ export const zUsageCountResponse = z.object({
  */
 export const zCheckExternalApiUsageError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -450,9 +579,14 @@ export const zEstimateDatasetIndexingError400 = zErrorResponse.and(
   z.object({
     code: z.enum([
       'account_not_initialized',
+      'bad_host',
       'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
       'invalid_param',
       'provider_not_initialize',
+      'security_error',
+      'websocket_mismatch',
     ]),
   }),
 )
@@ -505,13 +639,18 @@ export const zInitDatasetError400 = zErrorResponse.and(
   z.object({
     code: z.enum([
       'account_not_initialized',
+      'bad_host',
       'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
       'document_indexing',
       'invalid_action',
       'invalid_param',
       'model_currently_not_support',
       'provider_not_initialize',
       'provider_quota_exceeded',
+      'security_error',
+      'websocket_mismatch',
     ]),
   }),
 )
@@ -539,7 +678,16 @@ export const zInitDatasetError403 = zErrorResponse.and(
  */
 export const zGetDatasetMetadataBuiltInFieldApiError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -559,9 +707,14 @@ export const zPostDataSourceNotionIndexingEstimateApiError400 = zErrorResponse.a
   z.object({
     code: z.enum([
       'account_not_initialized',
+      'bad_host',
       'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
       'invalid_param',
       'provider_not_initialize',
+      'security_error',
+      'websocket_mismatch',
     ]),
   }),
 )
@@ -605,13 +758,18 @@ export const zGetProcessRuleError400 = zErrorResponse.and(
   z.object({
     code: z.enum([
       'account_not_initialized',
+      'bad_host',
       'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
       'document_indexing',
       'invalid_action',
       'invalid_param',
       'model_currently_not_support',
       'provider_not_initialize',
       'provider_quota_exceeded',
+      'security_error',
+      'websocket_mismatch',
     ]),
   }),
 )
@@ -646,7 +804,16 @@ export const zRetrievalSettingResponse = z.object({
  */
 export const zGetDatasetRetrievalSettingError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -664,7 +831,16 @@ export const zGetDatasetRetrievalSettingError401 = zErrorResponse.and(
  */
 export const zGetDatasetRetrievalSettingMockError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -682,7 +858,16 @@ export const zGetDatasetRetrievalSettingMockError401 = zErrorResponse.and(
  */
 export const zDeleteDatasetApiError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -709,7 +894,16 @@ export const zDeleteDatasetApiError409 = zErrorResponse.and(
  */
 export const zGetDatasetError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -736,7 +930,16 @@ export const zGetDatasetError409 = zErrorResponse.and(
  */
 export const zUpdateDatasetError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -770,7 +973,16 @@ export const zSimpleResultResponse = z.object({
  */
 export const zPostDatasetEnableApiApiError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -805,7 +1017,16 @@ export const zAutoDisableLogsResponse = z.object({
  */
 export const zGetDatasetAutoDisableLogsError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -834,10 +1055,15 @@ export const zGetDocumentBatchIndexingEstimateApiError400 = zErrorResponse.and(
   z.object({
     code: z.enum([
       'account_not_initialized',
+      'bad_host',
       'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
       'document_already_finished',
       'invalid_param',
       'provider_not_initialize',
+      'security_error',
+      'websocket_mismatch',
     ]),
   }),
 )
@@ -890,13 +1116,18 @@ export const zGetDocumentBatchIndexingStatusApiError400 = zErrorResponse.and(
   z.object({
     code: z.enum([
       'account_not_initialized',
+      'bad_host',
       'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
       'document_indexing',
       'invalid_action',
       'invalid_param',
       'model_currently_not_support',
       'provider_not_initialize',
       'provider_quota_exceeded',
+      'security_error',
+      'websocket_mismatch',
     ]),
   }),
 )
@@ -926,13 +1157,18 @@ export const zDeleteDatasetDocumentListApiError400 = zErrorResponse.and(
   z.object({
     code: z.enum([
       'account_not_initialized',
+      'bad_host',
       'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
       'document_indexing',
       'invalid_action',
       'invalid_param',
       'model_currently_not_support',
       'provider_not_initialize',
       'provider_quota_exceeded',
+      'security_error',
+      'websocket_mismatch',
     ]),
   }),
 )
@@ -962,13 +1198,18 @@ export const zGetDatasetDocumentsError400 = zErrorResponse.and(
   z.object({
     code: z.enum([
       'account_not_initialized',
+      'bad_host',
       'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
       'document_indexing',
       'invalid_action',
       'invalid_param',
       'model_currently_not_support',
       'provider_not_initialize',
       'provider_quota_exceeded',
+      'security_error',
+      'websocket_mismatch',
     ]),
   }),
 )
@@ -998,13 +1239,18 @@ export const zPostDatasetDocumentListApiError400 = zErrorResponse.and(
   z.object({
     code: z.enum([
       'account_not_initialized',
+      'bad_host',
       'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
       'document_indexing',
       'invalid_action',
       'invalid_param',
       'model_currently_not_support',
       'provider_not_initialize',
       'provider_quota_exceeded',
+      'security_error',
+      'websocket_mismatch',
     ]),
   }),
 )
@@ -1043,13 +1289,18 @@ export const zDownloadDatasetDocumentsAsZipError400 = zErrorResponse.and(
   z.object({
     code: z.enum([
       'account_not_initialized',
+      'bad_host',
       'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
       'document_indexing',
       'invalid_action',
       'invalid_param',
       'model_currently_not_support',
       'provider_not_initialize',
       'provider_quota_exceeded',
+      'security_error',
+      'websocket_mismatch',
     ]),
   }),
 )
@@ -1086,13 +1337,18 @@ export const zGenerateSummaryForDocumentsError400 = zErrorResponse.and(
   z.object({
     code: z.enum([
       'account_not_initialized',
+      'bad_host',
       'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
       'document_indexing',
       'invalid_action',
       'invalid_param',
       'model_currently_not_support',
       'provider_not_initialize',
       'provider_quota_exceeded',
+      'security_error',
+      'websocket_mismatch',
     ]),
   }),
 )
@@ -1120,7 +1376,16 @@ export const zGenerateSummaryForDocumentsError403 = zErrorResponse.and(
  */
 export const zPostDocumentMetadataEditApiError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -1140,13 +1405,18 @@ export const zPatchDocumentStatusApiError400 = zErrorResponse.and(
   z.object({
     code: z.enum([
       'account_not_initialized',
+      'bad_host',
       'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
       'document_indexing',
       'invalid_action',
       'invalid_param',
       'model_currently_not_support',
       'provider_not_initialize',
       'provider_quota_exceeded',
+      'security_error',
+      'websocket_mismatch',
     ]),
   }),
 )
@@ -1176,13 +1446,18 @@ export const zDeleteDocumentApiError400 = zErrorResponse.and(
   z.object({
     code: z.enum([
       'account_not_initialized',
+      'bad_host',
       'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
       'document_indexing',
       'invalid_action',
       'invalid_param',
       'model_currently_not_support',
       'provider_not_initialize',
       'provider_quota_exceeded',
+      'security_error',
+      'websocket_mismatch',
     ]),
   }),
 )
@@ -1212,7 +1487,10 @@ export const zGetDocumentError400 = zErrorResponse.and(
   z.object({
     code: z.enum([
       'account_not_initialized',
+      'bad_host',
       'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
       'document_indexing',
       'invalid_action',
       'invalid_metadata',
@@ -1220,6 +1498,8 @@ export const zGetDocumentError400 = zErrorResponse.and(
       'model_currently_not_support',
       'provider_not_initialize',
       'provider_quota_exceeded',
+      'security_error',
+      'websocket_mismatch',
     ]),
   }),
 )
@@ -1256,13 +1536,18 @@ export const zGetDatasetDocumentDownloadUrlError400 = zErrorResponse.and(
   z.object({
     code: z.enum([
       'account_not_initialized',
+      'bad_host',
       'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
       'document_indexing',
       'invalid_action',
       'invalid_param',
       'model_currently_not_support',
       'provider_not_initialize',
       'provider_quota_exceeded',
+      'security_error',
+      'websocket_mismatch',
     ]),
   }),
 )
@@ -1292,10 +1577,15 @@ export const zEstimateDocumentIndexingError400 = zErrorResponse.and(
   z.object({
     code: z.enum([
       'account_not_initialized',
+      'bad_host',
       'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
       'document_already_finished',
       'invalid_param',
       'provider_not_initialize',
+      'security_error',
+      'websocket_mismatch',
     ]),
   }),
 )
@@ -1373,13 +1663,18 @@ export const zGetDocumentIndexingStatusError400 = zErrorResponse.and(
   z.object({
     code: z.enum([
       'account_not_initialized',
+      'bad_host',
       'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
       'document_indexing',
       'invalid_action',
       'invalid_param',
       'model_currently_not_support',
       'provider_not_initialize',
       'provider_quota_exceeded',
+      'security_error',
+      'websocket_mismatch',
     ]),
   }),
 )
@@ -1425,13 +1720,18 @@ export const zUpdateDocumentMetadataError400 = zErrorResponse.and(
   z.object({
     code: z.enum([
       'account_not_initialized',
+      'bad_host',
       'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
       'document_indexing',
       'invalid_action',
       'invalid_param',
       'model_currently_not_support',
       'provider_not_initialize',
       'provider_quota_exceeded',
+      'security_error',
+      'websocket_mismatch',
     ]),
   }),
 )
@@ -1459,7 +1759,16 @@ export const zUpdateDocumentMetadataError403 = zErrorResponse.and(
  */
 export const zGetDataSourceNotionDocumentSyncApiError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -1497,13 +1806,18 @@ export const zGetDocumentPipelineExecutionLogApiError400 = zErrorResponse.and(
   z.object({
     code: z.enum([
       'account_not_initialized',
+      'bad_host',
       'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
       'document_indexing',
       'invalid_action',
       'invalid_param',
       'model_currently_not_support',
       'provider_not_initialize',
       'provider_quota_exceeded',
+      'security_error',
+      'websocket_mismatch',
     ]),
   }),
 )
@@ -1533,13 +1847,18 @@ export const zPatchDocumentPauseApiError400 = zErrorResponse.and(
   z.object({
     code: z.enum([
       'account_not_initialized',
+      'bad_host',
       'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
       'document_indexing',
       'invalid_action',
       'invalid_param',
       'model_currently_not_support',
       'provider_not_initialize',
       'provider_quota_exceeded',
+      'security_error',
+      'websocket_mismatch',
     ]),
   }),
 )
@@ -1569,13 +1888,18 @@ export const zPatchDocumentRecoverApiError400 = zErrorResponse.and(
   z.object({
     code: z.enum([
       'account_not_initialized',
+      'bad_host',
       'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
       'document_indexing',
       'invalid_action',
       'invalid_param',
       'model_currently_not_support',
       'provider_not_initialize',
       'provider_quota_exceeded',
+      'security_error',
+      'websocket_mismatch',
     ]),
   }),
 )
@@ -1605,13 +1929,18 @@ export const zUpdateDocumentProcessingError400 = zErrorResponse.and(
   z.object({
     code: z.enum([
       'account_not_initialized',
+      'bad_host',
       'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
       'document_indexing',
       'invalid_action',
       'invalid_param',
       'model_currently_not_support',
       'provider_not_initialize',
       'provider_quota_exceeded',
+      'security_error',
+      'websocket_mismatch',
     ]),
   }),
 )
@@ -1648,13 +1977,18 @@ export const zPostDocumentRenameApiError400 = zErrorResponse.and(
   z.object({
     code: z.enum([
       'account_not_initialized',
+      'bad_host',
       'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
       'document_indexing',
       'invalid_action',
       'invalid_param',
       'model_currently_not_support',
       'provider_not_initialize',
       'provider_quota_exceeded',
+      'security_error',
+      'websocket_mismatch',
     ]),
   }),
 )
@@ -1694,10 +2028,15 @@ export const zPostDatasetDocumentSegmentAddApiError400 = zErrorResponse.and(
   z.object({
     code: z.enum([
       'account_not_initialized',
+      'bad_host',
       'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
       'invalid_action',
       'invalid_param',
       'provider_not_initialize',
+      'security_error',
+      'websocket_mismatch',
     ]),
   }),
 )
@@ -1733,10 +2072,15 @@ export const zPatchDatasetDocumentSegmentApiError400 = zErrorResponse.and(
   z.object({
     code: z.enum([
       'account_not_initialized',
+      'bad_host',
       'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
       'invalid_action',
       'invalid_param',
       'provider_not_initialize',
+      'security_error',
+      'websocket_mismatch',
     ]),
   }),
 )
@@ -1772,10 +2116,15 @@ export const zDeleteDatasetDocumentSegmentListApiError400 = zErrorResponse.and(
   z.object({
     code: z.enum([
       'account_not_initialized',
+      'bad_host',
       'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
       'invalid_action',
       'invalid_param',
       'provider_not_initialize',
+      'security_error',
+      'websocket_mismatch',
     ]),
   }),
 )
@@ -1811,10 +2160,15 @@ export const zGetDatasetDocumentSegmentListApiError400 = zErrorResponse.and(
   z.object({
     code: z.enum([
       'account_not_initialized',
+      'bad_host',
       'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
       'invalid_action',
       'invalid_param',
       'provider_not_initialize',
+      'security_error',
+      'websocket_mismatch',
     ]),
   }),
 )
@@ -1857,10 +2211,15 @@ export const zPostDatasetDocumentSegmentBatchImportApiError400 = zErrorResponse.
   z.object({
     code: z.enum([
       'account_not_initialized',
+      'bad_host',
       'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
       'invalid_action',
       'invalid_param',
       'provider_not_initialize',
+      'security_error',
+      'websocket_mismatch',
     ]),
   }),
 )
@@ -1905,10 +2264,15 @@ export const zDeleteDatasetDocumentSegmentUpdateApiError400 = zErrorResponse.and
   z.object({
     code: z.enum([
       'account_not_initialized',
+      'bad_host',
       'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
       'invalid_action',
       'invalid_param',
       'provider_not_initialize',
+      'security_error',
+      'websocket_mismatch',
     ]),
   }),
 )
@@ -1956,10 +2320,15 @@ export const zPatchDatasetDocumentSegmentUpdateApiError400 = zErrorResponse.and(
   z.object({
     code: z.enum([
       'account_not_initialized',
+      'bad_host',
       'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
       'invalid_action',
       'invalid_param',
       'provider_not_initialize',
+      'security_error',
+      'websocket_mismatch',
     ]),
   }),
 )
@@ -1995,10 +2364,15 @@ export const zGetChildChunkAddApiError400 = zErrorResponse.and(
   z.object({
     code: z.enum([
       'account_not_initialized',
+      'bad_host',
       'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
       'invalid_action',
       'invalid_param',
       'provider_not_initialize',
+      'security_error',
+      'websocket_mismatch',
     ]),
   }),
 )
@@ -2034,10 +2408,15 @@ export const zPatchChildChunkAddApiError400 = zErrorResponse.and(
   z.object({
     code: z.enum([
       'account_not_initialized',
+      'bad_host',
       'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
       'invalid_action',
       'invalid_param',
       'provider_not_initialize',
+      'security_error',
+      'websocket_mismatch',
     ]),
   }),
 )
@@ -2080,10 +2459,15 @@ export const zPostChildChunkAddApiError400 = zErrorResponse.and(
   z.object({
     code: z.enum([
       'account_not_initialized',
+      'bad_host',
       'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
       'invalid_action',
       'invalid_param',
       'provider_not_initialize',
+      'security_error',
+      'websocket_mismatch',
     ]),
   }),
 )
@@ -2119,10 +2503,15 @@ export const zDeleteChildChunkUpdateApiError400 = zErrorResponse.and(
   z.object({
     code: z.enum([
       'account_not_initialized',
+      'bad_host',
       'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
       'invalid_action',
       'invalid_param',
       'provider_not_initialize',
+      'security_error',
+      'websocket_mismatch',
     ]),
   }),
 )
@@ -2165,10 +2554,15 @@ export const zPatchChildChunkUpdateApiError400 = zErrorResponse.and(
   z.object({
     code: z.enum([
       'account_not_initialized',
+      'bad_host',
       'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
       'invalid_action',
       'invalid_param',
       'provider_not_initialize',
+      'security_error',
+      'websocket_mismatch',
     ]),
   }),
 )
@@ -2204,13 +2598,18 @@ export const zGetDocumentSummaryStatusError400 = zErrorResponse.and(
   z.object({
     code: z.enum([
       'account_not_initialized',
+      'bad_host',
       'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
       'document_indexing',
       'invalid_action',
       'invalid_param',
       'model_currently_not_support',
       'provider_not_initialize',
       'provider_quota_exceeded',
+      'security_error',
+      'websocket_mismatch',
     ]),
   }),
 )
@@ -2240,13 +2639,18 @@ export const zGetWebsiteDocumentSyncApiError400 = zErrorResponse.and(
   z.object({
     code: z.enum([
       'account_not_initialized',
+      'bad_host',
       'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
       'document_indexing',
       'invalid_action',
       'invalid_param',
       'model_currently_not_support',
       'provider_not_initialize',
       'provider_quota_exceeded',
+      'security_error',
+      'websocket_mismatch',
     ]),
   }),
 )
@@ -2282,7 +2686,16 @@ export const zErrorDocsResponse = z.object({
  */
 export const zGetDatasetErrorDocsError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -2318,7 +2731,16 @@ export const zExternalHitTestingPayload = z.object({
  */
 export const zTestExternalKnowledgeRetrievalError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -2347,12 +2769,17 @@ export const zTestDatasetRetrievalError400 = zErrorResponse.and(
   z.object({
     code: z.enum([
       'account_not_initialized',
+      'bad_host',
       'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
       'completion_request_error',
       'invalid_param',
       'model_currently_not_support',
       'provider_not_initialize',
       'provider_quota_exceeded',
+      'security_error',
+      'websocket_mismatch',
     ]),
   }),
 )
@@ -2371,7 +2798,16 @@ export const zTestDatasetRetrievalError401 = zErrorResponse.and(
  */
 export const zGetDatasetIndexingStatusError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -2398,7 +2834,16 @@ export const zGetDatasetIndexingStatusError409 = zErrorResponse.and(
  */
 export const zGetDatasetMetadataCreateApiError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -2433,7 +2878,16 @@ export const zDatasetMetadataResponse = z.object({
  */
 export const zPostDatasetMetadataCreateApiError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -2451,7 +2905,16 @@ export const zPostDatasetMetadataCreateApiError401 = zErrorResponse.and(
  */
 export const zPostDatasetMetadataBuiltInFieldActionApiError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -2469,7 +2932,16 @@ export const zPostDatasetMetadataBuiltInFieldActionApiError401 = zErrorResponse.
  */
 export const zDeleteDatasetMetadataApiError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -2494,7 +2966,16 @@ export const zMetadataUpdatePayload = z.object({
  */
 export const zPatchDatasetMetadataApiError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -2512,7 +2993,16 @@ export const zPatchDatasetMetadataApiError401 = zErrorResponse.and(
  */
 export const zGetDataSourceNotionDatasetSyncApiError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -2555,7 +3045,16 @@ export const zPartialMemberListResponse = z.object({
  */
 export const zGetDatasetPermissionUsersError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -2582,7 +3081,16 @@ export const zGetDatasetPermissionUsersError409 = zErrorResponse.and(
  */
 export const zGetDatasetQueriesError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -2609,7 +3117,16 @@ export const zGetDatasetQueriesError409 = zErrorResponse.and(
  */
 export const zGetDatasetRelatedAppsError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -2645,13 +3162,18 @@ export const zPostDocumentRetryApiError400 = zErrorResponse.and(
   z.object({
     code: z.enum([
       'account_not_initialized',
+      'bad_host',
       'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
       'document_indexing',
       'invalid_action',
       'invalid_param',
       'model_currently_not_support',
       'provider_not_initialize',
       'provider_quota_exceeded',
+      'security_error',
+      'websocket_mismatch',
     ]),
   }),
 )
@@ -2686,7 +3208,16 @@ export const zUsageCheckResponse = z.object({
  */
 export const zCheckDatasetUseError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -2713,7 +3244,17 @@ export const zCheckDatasetUseError409 = zErrorResponse.and(
  */
 export const zGetDatasetApiKeys4114B8EbError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param', 'max_keys_exceeded']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'max_keys_exceeded',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -2740,7 +3281,17 @@ export const zGetDatasetApiKeys4114B8EbError409 = zErrorResponse.and(
  */
 export const zCreateDatasetApiKeyError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param', 'max_keys_exceeded']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'max_keys_exceeded',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -2767,7 +3318,17 @@ export const zCreateDatasetApiKeyError409 = zErrorResponse.and(
  */
 export const zDeleteDatasetApiKeyA407Edb2Error400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param', 'max_keys_exceeded']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'max_keys_exceeded',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 

@@ -193,7 +193,10 @@ export const zAudioToTextError400 = zErrorResponse.and(
   z.object({
     code: z.enum([
       'app_unavailable',
+      'bad_host',
       'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
       'completion_request_error',
       'invalid_param',
       'model_currently_not_support',
@@ -201,7 +204,9 @@ export const zAudioToTextError400 = zErrorResponse.and(
       'provider_not_initialize',
       'provider_not_support_speech_to_text',
       'provider_quota_exceeded',
+      'security_error',
       'speech_to_text_disabled',
+      'websocket_mismatch',
     ]),
   }),
 )
@@ -275,11 +280,16 @@ export const zCheckAppPermissionError503 = zErrorResponse.and(
 export const zCheckForgotPasswordTokenError400 = zErrorResponse.and(
   z.object({
     code: z.enum([
+      'bad_host',
       'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
       'email_code_error',
       'invalid_email',
       'invalid_or_expired_token',
       'invalid_param',
+      'security_error',
+      'websocket_mismatch',
     ]),
   }),
 )
@@ -310,13 +320,18 @@ export const zCreateChatMessageError400 = zErrorResponse.and(
     code: z.enum([
       'agent_not_published',
       'app_unavailable',
+      'bad_host',
       'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
       'completion_request_error',
       'invalid_param',
       'model_currently_not_support',
       'not_chat_app',
       'provider_not_initialize',
       'provider_quota_exceeded',
+      'security_error',
+      'websocket_mismatch',
     ]),
   }),
 )
@@ -365,13 +380,18 @@ export const zCreateCompletionMessageError400 = zErrorResponse.and(
     code: z.enum([
       'agent_not_published',
       'app_unavailable',
+      'bad_host',
       'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
       'completion_request_error',
       'invalid_param',
       'model_currently_not_support',
       'not_completion_app',
       'provider_not_initialize',
       'provider_quota_exceeded',
+      'security_error',
+      'websocket_mismatch',
     ]),
   }),
 )
@@ -453,7 +473,16 @@ export const zCreateMessageFeedbackError503 = zErrorResponse.and(
  */
 export const zDeleteConversationError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['bad_request', 'invalid_param', 'not_chat_app']),
+    code: z.enum([
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'not_chat_app',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -489,7 +518,16 @@ export const zDeleteConversationError503 = zErrorResponse.and(
  */
 export const zDeleteSavedMessageError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['bad_request', 'invalid_param', 'not_completion_app']),
+    code: z.enum([
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'not_completion_app',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -635,13 +673,18 @@ export const zForgotPasswordSendPayload = z.object({
 export const zGenerateMoreLikeThisError400 = zErrorResponse.and(
   z.object({
     code: z.enum([
+      'bad_host',
       'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
       'completion_request_error',
       'invalid_param',
       'model_currently_not_support',
       'not_completion_app',
       'provider_not_initialize',
       'provider_quota_exceeded',
+      'security_error',
+      'websocket_mismatch',
     ]),
   }),
 )
@@ -687,7 +730,15 @@ export const zGenerateMoreLikeThisError503 = zErrorResponse.and(
  */
 export const zGetAppAccessModeError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['bad_request', 'invalid_param']),
+    code: z.enum([
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -714,7 +765,16 @@ export const zGetAppAccessModeError503 = zErrorResponse.and(
  */
 export const zGetAppMetaError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['app_unavailable', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'app_unavailable',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -750,7 +810,17 @@ export const zGetAppMetaError503 = zErrorResponse.and(
  */
 export const zGetAppParametersError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['agent_not_published', 'app_unavailable', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'agent_not_published',
+      'app_unavailable',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -813,7 +883,16 @@ export const zGetAppSiteInfoError503 = zErrorResponse.and(
  */
 export const zGetConversationListError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['bad_request', 'invalid_param', 'not_chat_app']),
+    code: z.enum([
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'not_chat_app',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -867,7 +946,16 @@ export const zGetHumanInputFormError429 = zErrorResponse.and(
  */
 export const zGetMessageListError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['bad_request', 'invalid_param', 'not_chat_app']),
+    code: z.enum([
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'not_chat_app',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -913,11 +1001,16 @@ export const zGetPassportError401 = zErrorResponse.and(
 export const zGetRemoteFileInfoError400 = zErrorResponse.and(
   z.object({
     code: z.enum([
+      'bad_host',
       'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
       'invalid_param',
       'remote_file_access_denied',
       'remote_file_invalid_url',
       'remote_file_url_blocked',
+      'security_error',
+      'websocket_mismatch',
     ]),
   }),
 )
@@ -968,7 +1061,16 @@ export const zGetRemoteFileInfoError503 = zErrorResponse.and(
  */
 export const zGetSavedMessagesError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['bad_request', 'invalid_param', 'not_completion_app']),
+    code: z.enum([
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'not_completion_app',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -1005,13 +1107,18 @@ export const zGetSavedMessagesError503 = zErrorResponse.and(
 export const zGetSuggestedQuestionsError400 = zErrorResponse.and(
   z.object({
     code: z.enum([
+      'bad_host',
       'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
       'completion_request_error',
       'invalid_param',
       'model_currently_not_support',
       'not_chat_app',
       'provider_not_initialize',
       'provider_quota_exceeded',
+      'security_error',
+      'websocket_mismatch',
     ]),
   }),
 )
@@ -1057,7 +1164,15 @@ export const zGetSuggestedQuestionsError503 = zErrorResponse.and(
  */
 export const zGetWorkflowEventsApiError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['bad_request', 'invalid_param']),
+    code: z.enum([
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -1262,7 +1377,16 @@ export const zPassportQuery = z.object({
  */
 export const zPinConversationError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['bad_request', 'invalid_param', 'not_chat_app']),
+    code: z.enum([
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'not_chat_app',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -1317,7 +1441,10 @@ export const zPluginInstallationPermissionModel = z.object({
 export const zPostHumanInputFileUploadApiError400 = zErrorResponse.and(
   z.object({
     code: z.enum([
+      'bad_host',
       'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
       'file_extension_blocked',
       'filename_not_exists_error',
       'invalid_param',
@@ -1326,7 +1453,9 @@ export const zPostHumanInputFileUploadApiError400 = zErrorResponse.and(
       'remote_file_access_denied',
       'remote_file_invalid_url',
       'remote_file_url_blocked',
+      'security_error',
       'too_many_files',
+      'websocket_mismatch',
     ]),
   }),
 )
@@ -1410,7 +1539,16 @@ export const zRemoteFileUploadPayload = z.object({
  */
 export const zRenameConversationError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['bad_request', 'invalid_param', 'not_chat_app']),
+    code: z.enum([
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'not_chat_app',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -1446,7 +1584,17 @@ export const zRenameConversationError503 = zErrorResponse.and(
  */
 export const zResetPasswordError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['bad_request', 'invalid_or_expired_token', 'invalid_param', 'password_mismatch']),
+    code: z.enum([
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_or_expired_token',
+      'invalid_param',
+      'password_mismatch',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -1500,13 +1648,18 @@ export const zRetrieverResource = z.object({
 export const zRunWorkflowError400 = zErrorResponse.and(
   z.object({
     code: z.enum([
+      'bad_host',
       'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
       'completion_request_error',
       'invalid_param',
       'model_currently_not_support',
       'not_workflow_app',
       'provider_not_initialize',
       'provider_quota_exceeded',
+      'security_error',
+      'websocket_mismatch',
     ]),
   }),
 )
@@ -1566,7 +1719,16 @@ export const zSsoProtocol = z.enum(['oauth2', 'oidc', 'saml'])
  */
 export const zSaveMessageError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['bad_request', 'invalid_param', 'not_completion_app']),
+    code: z.enum([
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'not_completion_app',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -1714,7 +1876,16 @@ export const zSimpleResultResponse = z.object({
  */
 export const zStopChatMessageError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['bad_request', 'invalid_param', 'not_chat_app']),
+    code: z.enum([
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'not_chat_app',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -1750,7 +1921,16 @@ export const zStopChatMessageError503 = zErrorResponse.and(
  */
 export const zStopCompletionMessageError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['bad_request', 'invalid_param', 'not_completion_app']),
+    code: z.enum([
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'not_completion_app',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -1786,7 +1966,16 @@ export const zStopCompletionMessageError503 = zErrorResponse.and(
  */
 export const zStopWorkflowTaskError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['bad_request', 'invalid_param', 'not_workflow_app']),
+    code: z.enum([
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'not_workflow_app',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -2202,7 +2391,10 @@ export const zTextToAudioError400 = zErrorResponse.and(
   z.object({
     code: z.enum([
       'app_unavailable',
+      'bad_host',
       'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
       'completion_request_error',
       'invalid_param',
       'model_currently_not_support',
@@ -2210,6 +2402,8 @@ export const zTextToAudioError400 = zErrorResponse.and(
       'provider_not_initialize',
       'provider_not_support_speech_to_text',
       'provider_quota_exceeded',
+      'security_error',
+      'websocket_mismatch',
     ]),
   }),
 )
@@ -2274,7 +2468,16 @@ export const zTextToAudioPayload = z.object({
  */
 export const zUnpinConversationError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['bad_request', 'invalid_param', 'not_chat_app']),
+    code: z.enum([
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'not_chat_app',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -2311,12 +2514,17 @@ export const zUnpinConversationError503 = zErrorResponse.and(
 export const zUploadFileError400 = zErrorResponse.and(
   z.object({
     code: z.enum([
+      'bad_host',
       'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
       'file_extension_blocked',
       'filename_not_exists_error',
       'invalid_param',
       'no_file_uploaded',
+      'security_error',
       'too_many_files',
+      'websocket_mismatch',
     ]),
   }),
 )
@@ -2372,12 +2580,17 @@ export const zUploadFileError503 = zErrorResponse.and(
 export const zUploadRemoteFileError400 = zErrorResponse.and(
   z.object({
     code: z.enum([
+      'bad_host',
       'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
       'file_extension_blocked',
       'invalid_param',
       'remote_file_access_denied',
       'remote_file_invalid_url',
       'remote_file_url_blocked',
+      'security_error',
+      'websocket_mismatch',
     ]),
   }),
 )
@@ -2553,10 +2766,15 @@ export const zVerifyEmailCodeLoginError400 = zErrorResponse.and(
   z.object({
     code: z.enum([
       'account_banned',
+      'bad_host',
       'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
       'email_code_error',
       'invalid_email',
       'invalid_param',
+      'security_error',
+      'websocket_mismatch',
     ]),
   }),
 )
@@ -2641,7 +2859,16 @@ export const zWebAppCustomConfigResponse = z.object({
  */
 export const zWebAppLoginError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_banned', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_banned',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 

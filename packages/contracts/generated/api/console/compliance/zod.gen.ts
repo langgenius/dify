@@ -39,7 +39,16 @@ export const zErrorResponse = z.object({
  */
 export const zDownloadComplianceDocumentError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 

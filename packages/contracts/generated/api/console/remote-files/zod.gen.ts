@@ -45,12 +45,17 @@ export const zErrorResponse = z.object({
 export const zPostRemoteFileUploadError400 = zErrorResponse.and(
   z.object({
     code: z.enum([
+      'bad_host',
       'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
       'file_extension_blocked',
       'invalid_param',
       'remote_file_access_denied',
       'remote_file_invalid_url',
       'remote_file_url_blocked',
+      'security_error',
+      'websocket_mismatch',
     ]),
   }),
 )
@@ -111,11 +116,16 @@ export const zGetGetRemoteFileInfoError400 = zErrorResponse.and(
   z.object({
     code: z.enum([
       'account_not_initialized',
+      'bad_host',
       'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
       'invalid_param',
       'remote_file_access_denied',
       'remote_file_invalid_url',
       'remote_file_url_blocked',
+      'security_error',
+      'websocket_mismatch',
     ]),
   }),
 )

@@ -30,12 +30,17 @@ export const zGenerateStructuredOutputError400 = zErrorResponse.and(
   z.object({
     code: z.enum([
       'account_not_initialized',
+      'bad_host',
       'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
       'completion_request_error',
       'invalid_param',
       'model_currently_not_support',
       'provider_not_initialize',
       'provider_quota_exceeded',
+      'security_error',
+      'websocket_mismatch',
     ]),
   }),
 )

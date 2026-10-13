@@ -79,10 +79,15 @@ export const zResetPasswordError400 = zErrorResponse.and(
   z.object({
     code: z.enum([
       'account_not_found',
+      'bad_host',
       'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
       'invalid_or_expired_token',
       'invalid_param',
       'password_mismatch',
+      'security_error',
+      'websocket_mismatch',
     ]),
   }),
 )
@@ -120,11 +125,16 @@ export const zForgotPasswordCheckResponse = z.object({
 export const zCheckForgotPasswordCodeError400 = zErrorResponse.and(
   z.object({
     code: z.enum([
+      'bad_host',
       'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
       'email_code_error',
       'invalid_email',
       'invalid_or_expired_token',
       'invalid_param',
+      'security_error',
+      'websocket_mismatch',
     ]),
   }),
 )

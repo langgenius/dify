@@ -23,7 +23,16 @@ export const zErrorResponse = z.object({
  */
 export const zGetAgentAppListApiError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -41,7 +50,16 @@ export const zGetAgentAppListApiError401 = zErrorResponse.and(
  */
 export const zPostAgentAppListApiError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -68,7 +86,16 @@ export const zPostAgentAppListApiError404 = zErrorResponse.and(
  */
 export const zGetAgentInviteOptionsApiError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -86,7 +113,16 @@ export const zGetAgentInviteOptionsApiError401 = zErrorResponse.and(
  */
 export const zDeleteAgentAppApiError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -104,7 +140,16 @@ export const zDeleteAgentAppApiError401 = zErrorResponse.and(
  */
 export const zGetAgentAppApiError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -136,7 +181,16 @@ export const zGetAgentAppApiError404 = zErrorResponse.and(
  */
 export const zPutAgentAppApiError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -184,7 +238,16 @@ export const zAgentApiAccessResponse = z.object({
  */
 export const zGetAgentApiAccessApiError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -209,7 +272,16 @@ export const zAgentApiStatusPayload = z.object({
  */
 export const zPostAgentApiStatusApiError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -227,7 +299,17 @@ export const zPostAgentApiStatusApiError401 = zErrorResponse.and(
  */
 export const zGetAgentApiKeyListApiError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param', 'max_keys_exceeded']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'max_keys_exceeded',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -273,7 +355,17 @@ export const zApiKeyList = z.object({
  */
 export const zPostAgentApiKeyListApiError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param', 'max_keys_exceeded']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'max_keys_exceeded',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -300,7 +392,17 @@ export const zPostAgentApiKeyListApiError409 = zErrorResponse.and(
  */
 export const zDeleteAgentApiKeyApiError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param', 'max_keys_exceeded']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'max_keys_exceeded',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -337,7 +439,10 @@ export const zAgentChatMessageAudioTranscriptError400 = zErrorResponse.and(
     code: z.enum([
       'account_not_initialized',
       'app_unavailable',
+      'bad_host',
       'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
       'completion_request_error',
       'invalid_param',
       'model_currently_not_support',
@@ -345,7 +450,9 @@ export const zAgentChatMessageAudioTranscriptError400 = zErrorResponse.and(
       'provider_not_initialize',
       'provider_not_support_speech_to_text',
       'provider_quota_exceeded',
+      'security_error',
       'speech_to_text_disabled',
+      'websocket_mismatch',
     ]),
   }),
 )
@@ -401,12 +508,17 @@ export const zFinalizeAgentBuildChatError400 = zErrorResponse.and(
     code: z.enum([
       'account_not_initialized',
       'app_unavailable',
+      'bad_host',
       'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
       'completion_request_error',
       'invalid_param',
       'model_currently_not_support',
       'provider_not_initialize',
       'provider_quota_exceeded',
+      'security_error',
+      'websocket_mismatch',
     ]),
   }),
 )
@@ -450,7 +562,16 @@ export const zAgentSimpleResultResponse = z.object({
  */
 export const zDeleteAgentBuildDraftApiError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -477,7 +598,16 @@ export const zDeleteAgentBuildDraftApiError404 = zErrorResponse.and(
  */
 export const zGetAgentBuildDraftApiError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -507,8 +637,13 @@ export const zPutAgentBuildDraftApiError400 = zErrorResponse.and(
     code: z.enum([
       'account_not_initialized',
       'agent_soul_locked_error',
+      'bad_host',
       'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
       'invalid_param',
+      'security_error',
+      'websocket_mismatch',
     ]),
   }),
 )
@@ -547,10 +682,15 @@ export const zPostAgentBuildDraftApplyApiError400 = zErrorResponse.and(
     code: z.enum([
       'account_not_initialized',
       'agent_soul_locked_error',
+      'bad_host',
       'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
       'invalid_composer_config_error',
       'invalid_param',
       'plaintext_secret_not_allowed_error',
+      'security_error',
+      'websocket_mismatch',
     ]),
   }),
 )
@@ -590,7 +730,16 @@ export const zAgentBuildDraftCheckoutPayload = z.object({
  */
 export const zPostAgentBuildDraftCheckoutApiError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -622,7 +771,16 @@ export const zPostAgentBuildDraftCheckoutApiError404 = zErrorResponse.and(
  */
 export const zListAgentChatMessagesError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -650,12 +808,17 @@ export const zGetAgentMessageSuggestedQuestionsError400 = zErrorResponse.and(
     code: z.enum([
       'account_not_initialized',
       'app_unavailable',
+      'bad_host',
       'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
       'completion_request_error',
       'invalid_param',
       'model_currently_not_support',
       'provider_not_initialize',
       'provider_quota_exceeded',
+      'security_error',
+      'websocket_mismatch',
     ]),
   }),
 )
@@ -692,7 +855,16 @@ export const zGetAgentMessageSuggestedQuestionsError404 = zErrorResponse.and(
  */
 export const zStopAgentChatMessageError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -710,7 +882,16 @@ export const zStopAgentChatMessageError401 = zErrorResponse.and(
  */
 export const zGetAgentComposerApiError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -740,10 +921,15 @@ export const zPutAgentComposerApiError400 = zErrorResponse.and(
     code: z.enum([
       'account_not_initialized',
       'agent_soul_locked_error',
+      'bad_host',
       'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
       'invalid_composer_config_error',
       'invalid_param',
       'plaintext_secret_not_allowed_error',
+      'security_error',
+      'websocket_mismatch',
     ]),
   }),
 )
@@ -771,7 +957,16 @@ export const zPutAgentComposerApiError404 = zErrorResponse.and(
  */
 export const zGetAgentComposerCandidatesApiError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -801,10 +996,15 @@ export const zPostAgentComposerValidateApiError400 = zErrorResponse.and(
     code: z.enum([
       'account_not_initialized',
       'agent_soul_locked_error',
+      'bad_host',
       'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
       'invalid_composer_config_error',
       'invalid_param',
       'plaintext_secret_not_allowed_error',
+      'security_error',
+      'websocket_mismatch',
     ]),
   }),
 )
@@ -832,7 +1032,16 @@ export const zPostAgentComposerValidateApiError404 = zErrorResponse.and(
  */
 export const zGetAgentConfigFilesByAgentError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -866,7 +1075,16 @@ export const zAgentConfigFileUploadPayload = z.object({
  */
 export const zUploadAgentConfigFileByAgentError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -901,7 +1119,16 @@ export const zAgentConfigDeleteResponse = z.object({
  */
 export const zDeleteAgentConfigFileByAgentError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -935,7 +1162,16 @@ export const zAgentConfigDownloadResponse = z.object({
  */
 export const zDownloadAgentConfigFileByAgentError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -973,7 +1209,16 @@ export const zAgentConfigFilePreviewResponse = z.object({
  */
 export const zPreviewAgentConfigFileByAgentError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -1000,7 +1245,16 @@ export const zPreviewAgentConfigFileByAgentError404 = zErrorResponse.and(
  */
 export const zGetAgentConfigManifestByAgentError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -1027,7 +1281,16 @@ export const zGetAgentConfigManifestByAgentError404 = zErrorResponse.and(
  */
 export const zGetAgentConfigSkillsByAgentError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -1054,7 +1317,16 @@ export const zGetAgentConfigSkillsByAgentError404 = zErrorResponse.and(
  */
 export const zUploadAgentConfigSkillByAgentError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -1081,7 +1353,16 @@ export const zUploadAgentConfigSkillByAgentError404 = zErrorResponse.and(
  */
 export const zDeleteAgentConfigSkillByAgentError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -1108,7 +1389,16 @@ export const zDeleteAgentConfigSkillByAgentError404 = zErrorResponse.and(
  */
 export const zDownloadAgentConfigSkillByAgentError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -1135,7 +1425,16 @@ export const zDownloadAgentConfigSkillByAgentError404 = zErrorResponse.and(
  */
 export const zGetAgentConfigSkillFileDownloadContentByAgentApiError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -1162,7 +1461,16 @@ export const zGetAgentConfigSkillFileDownloadContentByAgentApiError404 = zErrorR
  */
 export const zDownloadAgentConfigSkillFileByAgentError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -1200,7 +1508,16 @@ export const zAgentConfigSkillFilePreviewResponse = z.object({
  */
 export const zPreviewAgentConfigSkillFileByAgentError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -1227,7 +1544,16 @@ export const zPreviewAgentConfigSkillFileByAgentError404 = zErrorResponse.and(
  */
 export const zInspectAgentConfigSkillByAgentError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -1254,7 +1580,16 @@ export const zInspectAgentConfigSkillByAgentError404 = zErrorResponse.and(
  */
 export const zPostAgentAppCopyApiError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -1290,7 +1625,16 @@ export const zAgentDebugConversationRefreshResponse = z.object({
  */
 export const zPostAgentDebugConversationRefreshApiError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -1308,7 +1652,16 @@ export const zPostAgentDebugConversationRefreshApiError401 = zErrorResponse.and(
  */
 export const zUpdateAgentAppFeaturesError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -1344,7 +1697,16 @@ export const zMessageFeedbackPayload = z.object({
  */
 export const zCreateAgentMessageFeedbackError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -1362,7 +1724,16 @@ export const zCreateAgentMessageFeedbackError401 = zErrorResponse.and(
  */
 export const zGetAgentLogSourcesApiError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -1380,7 +1751,16 @@ export const zGetAgentLogSourcesApiError401 = zErrorResponse.and(
  */
 export const zGetAgentLogsApiError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -1398,7 +1778,16 @@ export const zGetAgentLogsApiError401 = zErrorResponse.and(
  */
 export const zGetAgentLogMessagesApiError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -1416,7 +1805,16 @@ export const zGetAgentLogMessagesApiError401 = zErrorResponse.and(
  */
 export const zGetAgentMessageError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -1445,10 +1843,15 @@ export const zPostAgentPublishApiError400 = zErrorResponse.and(
       'account_not_initialized',
       'agent_model_not_configured',
       'agent_soul_locked_error',
+      'bad_host',
       'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
       'invalid_composer_config_error',
       'invalid_param',
       'plaintext_secret_not_allowed_error',
+      'security_error',
+      'websocket_mismatch',
     ]),
   }),
 )
@@ -1476,7 +1879,16 @@ export const zPostAgentPublishApiError404 = zErrorResponse.and(
  */
 export const zListAgentAppReferencingWorkflowsError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -1537,7 +1949,16 @@ export const zSandboxReadResponse = z.object({
  */
 export const zGetAgentStatisticsSummaryApiError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -1568,7 +1989,10 @@ export const zAgentChatMessageTextToSpeechError400 = zErrorResponse.and(
     code: z.enum([
       'account_not_initialized',
       'app_unavailable',
+      'bad_host',
       'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
       'completion_request_error',
       'invalid_param',
       'model_currently_not_support',
@@ -1576,6 +2000,8 @@ export const zAgentChatMessageTextToSpeechError400 = zErrorResponse.and(
       'provider_not_initialize',
       'provider_not_support_speech_to_text',
       'provider_quota_exceeded',
+      'security_error',
+      'websocket_mismatch',
     ]),
   }),
 )
@@ -1614,7 +2040,10 @@ export const zGetAgentTextToSpeechVoicesError400 = zErrorResponse.and(
   z.object({
     code: z.enum([
       'account_not_initialized',
+      'bad_host',
       'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
       'completion_request_error',
       'invalid_param',
       'model_currently_not_support',
@@ -1622,6 +2051,8 @@ export const zGetAgentTextToSpeechVoicesError400 = zErrorResponse.and(
       'provider_not_initialize',
       'provider_not_support_speech_to_text',
       'provider_quota_exceeded',
+      'security_error',
+      'websocket_mismatch',
     ]),
   }),
 )
@@ -1658,7 +2089,16 @@ export const zGetAgentTextToSpeechVoicesError415 = zErrorResponse.and(
  */
 export const zGetAgentRosterVersionsApiError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -1676,7 +2116,16 @@ export const zGetAgentRosterVersionsApiError401 = zErrorResponse.and(
  */
 export const zGetAgentRosterVersionDetailApiError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
@@ -1704,7 +2153,16 @@ export const zAgentConfigSnapshotRestoreResponse = z.object({
  */
 export const zPostAgentRosterVersionRestoreApiError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum([
+      'account_not_initialized',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 

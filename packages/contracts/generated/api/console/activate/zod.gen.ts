@@ -42,7 +42,17 @@ export const zErrorResponse = z.object({
  */
 export const zActivateAccountError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_in_freeze', 'bad_request', 'email_domain_suspended', 'invalid_param']),
+    code: z.enum([
+      'account_in_freeze',
+      'bad_host',
+      'bad_request',
+      'bad_request_key_error',
+      'client_disconnected',
+      'email_domain_suspended',
+      'invalid_param',
+      'security_error',
+      'websocket_mismatch',
+    ]),
   }),
 )
 
