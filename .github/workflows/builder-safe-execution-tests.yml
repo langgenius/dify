@@ -52,6 +52,11 @@ on:
       - 'api/schedule/dify_builder_reconcile_task.py'
       - 'api/tests/test_containers_integration_tests/conftest.py'
   workflow_dispatch:
+    inputs:
+      contract_codegen:
+        description: Generate API contracts only, returning reviewed outputs as artifacts
+        type: boolean
+        default: false
 permissions:
   contents: read
 concurrency:
@@ -59,6 +64,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   native-postgres:
+    if: github.event_name != 'workflow_dispatch' || !inputs.contract_codegen
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     env:
@@ -262,6 +268,7 @@ jobs:
             builder-safe-execution.xml
             builder-safe-execution.log
   confirmed-tool-units:
+    if: github.event_name != 'workflow_dispatch' || !inputs.contract_codegen
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -457,3 +464,42 @@ jobs:
           path: |
             builder-confirmed-tool-units.xml
             builder-confirmed-tool-units.log
+  api-contract-codegen:
+    if: github.event_name == 'workflow_dispatch' && inputs.contract_codegen
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7
+        with:
+          python-version: '3.13'
+          enable-cache: true
+          cache-dependency-glob: api/uv.lock
+      - run: uv sync --project api --dev --locked
+      - uses: ./.github/actions/setup-web
+      - name: Generate normal API docs and contracts
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p builder-api-contracts
+          git rev-parse HEAD > builder-api-contracts/source-commit.txt
+          (
+            cd api
+            uv run --no-sync dev/generate_swagger_markdown_docs.py --swagger-dir ../packages/contracts/openapi --markdown-dir openapi/markdown --keep-swagger-json
+          ) 2>&1 | tee builder-api-contracts/docs.log
+          pnpm --dir packages/contracts gen-api-contract 2>&1 | tee builder-api-contracts/codegen.log
+          git diff --binary -- api/openapi/markdown packages/contracts/generated/api > builder-api-contracts/generated.patch
+          git diff --stat -- api/openapi/markdown packages/contracts/generated/api > builder-api-contracts/diff-stat.txt
+          git diff --check -- api/openapi/markdown packages/contracts/generated/api
+      - name: Check generated contracts
+        shell: bash
+        run: |
+          set -o pipefail
+          pnpm --dir packages/contracts type-check 2>&1 | tee builder-api-contracts/type-check.log
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        if: always()
+        with:
+          name: builder-api-contracts
+          path: builder-api-contracts/
