@@ -16,7 +16,6 @@ vi.mock('@tanstack/react-query', async () => {
 })
 
 vi.mock('@/features/account-profile/client', () => ({
-  isLegacyBase401: vi.fn(() => false),
   userProfileQueryOptions: vi.fn(() => ({
     queryKey: ['account', 'profile'],
     queryFn: vi.fn(),

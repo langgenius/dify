@@ -296,10 +296,14 @@ def test_empty_list_skips_external_enrichment(ports: Ports) -> None:
 
 
 def test_starred_list_preserves_existing_visibility_contract(ports: Ports) -> None:
-    service, _, access, _, _ = ports
-    page = service.list_apps(CONTEXT, StarredAppListParams())
-    assert page.data[0].permission_keys == []
-    assert access.calls == [("modes", ["app"])]
+    service, apps, access, _, _ = ports
+    params = StarredAppListParams()
+    page = service.list_apps(CONTEXT, params)
+    assert page.data[0].permission_keys == ["app.preview"]
+    assert access.calls == [("permissions", CONTEXT, None), ("modes", ["app"])]
+    # visibility filtering is still skipped for starred lists
+    _, _, listed_params = apps.calls[0]
+    assert listed_params is params
 
 
 def test_recent_uses_list_visibility_and_permission_keys(ports: Ports) -> None:

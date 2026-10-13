@@ -210,7 +210,7 @@ function HybridSearchModeRadioCard({
         render={<button type="button" />}
         disabled={readonly}
         className={cn(
-          'w-full rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg p-3 text-left outline-hidden transition-colors',
+          'w-full rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg p-3 text-left outline-hidden',
           'data-checked:border-[1.5px] data-checked:bg-components-option-card-option-selected-bg',
           'focus-visible:ring-1 focus-visible:ring-components-input-border-active',
           'cursor-pointer hover:shadow-xs data-disabled:cursor-not-allowed data-disabled:hover:shadow-none',
@@ -283,7 +283,7 @@ export function SearchMethodOption({
           {showRerankModelSelectorSwitch ? (
             <Field name="reranking_model_enabled" className="mb-1 gap-0">
               <div className="flex items-center">
-                <FieldLabel className="flex min-w-0 items-center py-0 system-sm-semibold text-text-secondary">
+                <FieldLabel className="flex min-w-0 cursor-pointer items-center py-0 system-sm-semibold text-text-secondary has-data-disabled:cursor-not-allowed">
                   <Switch
                     className="mr-1"
                     checked={reranking.enabled ?? false}

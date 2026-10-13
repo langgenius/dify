@@ -146,6 +146,7 @@ const Annotation: FC<Props> = (props) => {
       setSelectedIds([])
     } catch (e: any) {
       toast.error(e.message || t(($) => $['api.actionFailed'], { ns: 'common' }))
+      throw e
     }
   }
 
@@ -253,8 +254,12 @@ const Annotation: FC<Props> = (props) => {
           <LoadingPlaceholder className="h-full" />
         ) : total > 0 ? (
           <List
+            appId={appDetail.id}
             list={list}
-            onRemove={handleRemove}
+            onRemoved={() => {
+              fetchList()
+              setControlUpdateList(Date.now())
+            }}
             onView={handleView}
             selectedIds={selectedIds}
             onSelectedIdsChange={setSelectedIds}

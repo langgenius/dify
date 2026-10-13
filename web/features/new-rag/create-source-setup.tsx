@@ -7,7 +7,11 @@ import type {
   NewKnowledgeWebsiteProvider,
 } from './routes'
 import { Button } from '@langgenius/dify-ui/button'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Field, FieldItem } from '@langgenius/dify-ui/field'
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
+import { Radio, RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -132,84 +136,97 @@ export function CreateSourceSetup({
 
   return (
     <div className="mx-4 mb-4 space-y-4 border-t border-divider-subtle pt-4">
-      <fieldset disabled={disabled}>
-        <legend className="mb-1.5 system-xs-medium text-text-secondary">
-          {t(($) => $['newKnowledge.sourceTypeLabel'])}
-        </legend>
-        <div className="grid grid-cols-1 gap-0.5 rounded-lg bg-background-default p-0.5 sm:grid-cols-3">
-          {sourceTypes.map((option) => (
-            <label
-              key={option.value}
-              className={cn(
-                'relative flex min-h-8 items-center justify-center gap-1.5 rounded-md px-2 system-xs-medium outline-hidden has-focus-visible:ring-2 has-focus-visible:ring-state-accent-solid',
-                sourceType === option.value
-                  ? 'bg-components-option-card-option-selected-bg text-text-primary shadow-xs'
-                  : 'cursor-pointer text-text-tertiary hover:text-text-secondary',
-                disabled && 'cursor-not-allowed opacity-60',
-              )}
-            >
-              <input
-                type="radio"
-                name="create-source-type"
-                value={option.value}
-                checked={sourceType === option.value}
-                onChange={() => {
-                  setBackendBoundaryVisible(false)
-                  onSourceTypeChange(option.value)
-                }}
-                className="sr-only"
-              />
-              <span aria-hidden className={`${option.icon} size-4`} />
-              {t(($) => $[`newKnowledge.${option.value}`])}
-            </label>
-          ))}
-        </div>
-      </fieldset>
+      <Field className="contents">
+        <Fieldset
+          render={
+            <RadioGroup<NewKnowledgeSourceDraft['sourceType']>
+              name="create-source-type"
+              value={sourceType}
+              disabled={disabled}
+              onValueChange={(value) => {
+                setBackendBoundaryVisible(false)
+                onSourceTypeChange(value)
+              }}
+              className="block"
+            />
+          }
+        >
+          <FieldsetLegend className="mb-1.5 py-0 system-xs-medium text-text-secondary">
+            {t(($) => $['newKnowledge.sourceTypeLabel'])}
+          </FieldsetLegend>
+          <div className="grid grid-cols-1 gap-0.5 rounded-lg bg-background-default p-0.5 sm:grid-cols-3">
+            {sourceTypes.map((option) => (
+              <FieldItem key={option.value} className="contents">
+                <label
+                  className={cn(
+                    'relative flex min-h-8 items-center justify-center gap-1.5 rounded-md px-2 system-xs-medium outline-hidden has-focus-visible:ring-2 has-focus-visible:ring-state-accent-solid',
+                    sourceType === option.value
+                      ? 'bg-components-option-card-option-selected-bg text-text-primary shadow-xs'
+                      : 'cursor-pointer text-text-tertiary hover:text-text-secondary',
+                    disabled && 'cursor-not-allowed opacity-60',
+                  )}
+                >
+                  <Radio value={option.value} className="sr-only" />
+                  <span aria-hidden className={`${option.icon} size-4`} />
+                  {t(($) => $[`newKnowledge.${option.value}`])}
+                </label>
+              </FieldItem>
+            ))}
+          </div>
+        </Fieldset>
+      </Field>
 
-      <fieldset disabled={disabled}>
-        <legend className="sr-only">{tCreation(($) => $['stepOne.website.chooseProvider'])}</legend>
-        <div className="mb-1.5 flex items-center justify-between gap-3">
-          <span className="system-xs-medium text-text-secondary">
+      <Field className="contents">
+        <Fieldset
+          render={
+            <RadioGroup
+              name="create-source-provider"
+              value={activeProvider}
+              disabled={disabled}
+              onValueChange={selectProvider}
+              className="block"
+            />
+          }
+        >
+          <FieldsetLegend className="sr-only">
             {tCreation(($) => $['stepOne.website.chooseProvider'])}
-          </span>
-          <button
-            type="button"
-            disabled={disabled}
-            className="rounded-sm system-xs-medium text-text-accent outline-hidden hover:text-text-accent-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:text-text-disabled"
-            onClick={showBackendBoundary}
-          >
-            {t(($) => $['newKnowledge.moreProviders'])}
-          </button>
-        </div>
-        <div className={cn('grid grid-cols-2 gap-2', 'sm:grid-cols-3')}>
-          {providers[sourceType].map((provider) => {
-            return (
-              <label
-                key={provider.label}
-                className={cn(
-                  'flex min-h-10 items-center gap-2 rounded-lg border bg-background-default px-3 system-xs-medium outline-hidden has-focus-visible:ring-2 has-focus-visible:ring-state-accent-solid',
-                  activeProvider === provider.label
-                    ? 'border-components-option-card-option-selected-border text-text-primary'
-                    : 'cursor-pointer border-divider-subtle text-text-secondary hover:bg-state-base-hover',
-                  disabled && 'cursor-not-allowed opacity-60',
-                )}
-              >
-                <input
-                  type="radio"
-                  name="create-source-provider"
-                  value={provider.label}
-                  checked={activeProvider === provider.label}
-                  disabled={disabled}
-                  onChange={() => selectProvider(provider.label)}
-                  className="sr-only"
-                />
-                <span aria-hidden className={`${provider.icon} size-4 shrink-0`} />
-                <span className="truncate">{provider.label}</span>
-              </label>
-            )
-          })}
-        </div>
-      </fieldset>
+          </FieldsetLegend>
+          <div className="mb-1.5 flex items-center justify-between gap-3">
+            <span className="system-xs-medium text-text-secondary">
+              {tCreation(($) => $['stepOne.website.chooseProvider'])}
+            </span>
+            <button
+              type="button"
+              disabled={disabled}
+              className="rounded-sm system-xs-medium text-text-accent outline-hidden hover:text-text-accent-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:text-text-disabled"
+              onClick={showBackendBoundary}
+            >
+              {t(($) => $['newKnowledge.moreProviders'])}
+            </button>
+          </div>
+          <div className={cn('grid grid-cols-2 gap-2', 'sm:grid-cols-3')}>
+            {providers[sourceType].map((provider) => {
+              return (
+                <FieldItem key={provider.label} className="contents">
+                  <label
+                    className={cn(
+                      'flex min-h-10 items-center gap-2 rounded-lg border bg-background-default px-3 system-xs-medium outline-hidden has-focus-visible:ring-2 has-focus-visible:ring-state-accent-solid',
+                      activeProvider === provider.label
+                        ? 'border-components-option-card-option-selected-border text-text-primary'
+                        : 'cursor-pointer border-divider-subtle text-text-secondary hover:bg-state-base-hover',
+                      disabled && 'cursor-not-allowed opacity-60',
+                    )}
+                  >
+                    <Radio value={provider.label} className="sr-only" />
+                    <span aria-hidden className={`${provider.icon} size-4 shrink-0`} />
+                    <span className="truncate">{provider.label}</span>
+                  </label>
+                </FieldItem>
+              )
+            })}
+          </div>
+        </Fieldset>
+      </Field>
 
       {draft.sourceType === 'websiteCrawl' && (
         <div className="space-y-4">
@@ -278,17 +295,17 @@ export function CreateSourceSetup({
               )}
             </button>
             {optionsExpanded && (
-              <fieldset
+              <Fieldset
                 disabled={disabled}
                 className="grid grid-cols-1 gap-3 px-3 pb-3 sm:grid-cols-2"
               >
-                <label className="flex items-center gap-2 system-xs-regular text-text-secondary">
-                  <input
-                    type="checkbox"
+                <label className="flex cursor-pointer items-center gap-2 system-xs-regular text-text-secondary has-data-disabled:cursor-not-allowed">
+                  <Checkbox
                     name="includeSubpages"
                     checked={draft.includeSubpages}
-                    onChange={(event) =>
-                      updateDraft({ ...draft, includeSubpages: event.target.checked })
+                    disabled={disabled}
+                    onCheckedChange={(checked) =>
+                      updateDraft({ ...draft, includeSubpages: checked })
                     }
                   />
                   {t(($) => $['newKnowledge.includeSubpages'])}
@@ -310,7 +327,7 @@ export function CreateSourceSetup({
                     }}
                   />
                 </label>
-              </fieldset>
+              </Fieldset>
             )}
           </div>
           <Button

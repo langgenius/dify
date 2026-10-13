@@ -1,12 +1,13 @@
 'use client'
 import type { FC } from 'react'
-import { Avatar } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMembers } from '@/service/use-common'
+import { getAvatarInitial } from '@/utils/avatar'
 
 type Props = Readonly<{
   value?: string
@@ -60,9 +61,10 @@ const MemberSelector: FC<Props> = ({ value, onSelect, exclude = [] }) => {
         )}
         {currentValue && (
           <>
-            <span aria-hidden>
-              <Avatar avatar={currentValue.avatar_url} size="sm" name={currentValue.name} />
-            </span>
+            <Avatar size="sm" aria-hidden="true">
+              <AvatarFallback>{getAvatarInitial(currentValue.name)}</AvatarFallback>
+              <AvatarImage src={currentValue.avatar_url || undefined} alt="" />
+            </Avatar>
             <span className="grow truncate system-sm-medium text-text-secondary">
               {currentValue.name}
             </span>
@@ -110,9 +112,10 @@ const MemberSelector: FC<Props> = ({ value, onSelect, exclude = [] }) => {
                   setOpen(false)
                 }}
               >
-                <span aria-hidden>
-                  <Avatar avatar={account.avatar_url} size="sm" name={account.name} />
-                </span>
+                <Avatar size="sm" aria-hidden="true">
+                  <AvatarFallback>{getAvatarInitial(account.name)}</AvatarFallback>
+                  <AvatarImage src={account.avatar_url || undefined} alt="" />
+                </Avatar>
                 <span className="grow truncate system-sm-medium text-text-secondary">
                   {account.name}
                 </span>

@@ -1,6 +1,6 @@
 'use client'
 
-import { Avatar } from '@langgenius/dify-ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -19,6 +19,7 @@ import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { consoleQuery } from '@/service/console'
+import { getAvatarInitial } from '@/utils/avatar'
 import { DEFAULT_ACCESS_POLICY_ID } from './constants'
 
 type AddAccessSubjectMenuProps = {
@@ -97,14 +98,12 @@ function AddAccessSubjectMenuContent({
               )}
               onClick={() => onAddAccessSubject(member.id, [DEFAULT_ACCESS_POLICY_ID])}
             >
-              <span aria-hidden="true" className="shrink-0">
-                <Avatar
-                  avatar={member.avatar_url ?? member.avatar ?? null}
-                  name={memberName}
-                  size="sm"
-                  className="bg-components-icon-bg-blue-solid"
-                />
-              </span>
+              <Avatar size="sm" aria-hidden="true">
+                <AvatarFallback className="bg-components-icon-bg-blue-solid">
+                  {getAvatarInitial(memberName)}
+                </AvatarFallback>
+                <AvatarImage src={(member.avatar_url ?? member.avatar) || undefined} alt="" />
+              </Avatar>
               <span className="min-w-0 flex-1">
                 <span className="block truncate system-sm-medium text-text-secondary">
                   {memberName}

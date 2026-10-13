@@ -10,7 +10,7 @@ from flask.testing import FlaskClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from controllers.console.app.message import ChatMessagesQuery, FeedbackExportQuery, MessageFeedbackPayload
+from controllers.console.app.message import ChatMessagesQuery, MessageFeedbackPayload
 from controllers.console.app.message import attach_message_extra_contents as _attach_message_extra_contents
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from libs.datetime_utils import naive_utc_now
@@ -102,16 +102,6 @@ class TestMessageValidators:
             MessageFeedbackPayload.validate_message_id("123e4567-e89b-12d3-a456-426614174000")
             == "123e4567-e89b-12d3-a456-426614174000"
         )
-
-    def test_feedback_export_validators(self) -> None:
-        assert FeedbackExportQuery.parse_bool(None) is None
-        assert FeedbackExportQuery.parse_bool(True) is True
-        assert FeedbackExportQuery.parse_bool("1") is True
-        assert FeedbackExportQuery.parse_bool("0") is False
-        assert FeedbackExportQuery.parse_bool("off") is False
-
-        with pytest.raises(ValueError):
-            FeedbackExportQuery.parse_bool("invalid")
 
 
 def test_chat_message_list_not_found(
@@ -303,23 +293,6 @@ def test_message_suggested_questions_errors(
     payload = response.get_json()
     assert payload is not None
     assert payload["code"] == expected_code
-
-
-def test_message_feedback_export_success(
-    db_session_with_containers: Session,
-    test_client_with_containers: FlaskClient,
-) -> None:
-    account, tenant = create_console_account_and_tenant(db_session_with_containers)
-    app = create_console_app(db_session_with_containers, tenant.id, account.id, AppMode.CHAT)
-
-    with patch("services.feedback_service.FeedbackService.export_feedbacks", return_value={"exported": True}):
-        response = test_client_with_containers.get(
-            f"/console/api/apps/{app.id}/feedbacks/export",
-            headers=authenticate_console_client(test_client_with_containers, account),
-        )
-
-    assert response.status_code == 200
-    assert response.get_json() == {"exported": True}
 
 
 def test_message_api_get_success(
