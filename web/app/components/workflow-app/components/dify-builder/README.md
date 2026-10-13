@@ -55,9 +55,10 @@ callbacks, including node, retry, iteration, loop, text, agent log, human-input,
 pause, and terminal events. An inner workflow `error` or `workflow_finished`
 does not terminate the outer Builder command. Chatflow message/text events
 without a run ID use the run started in the same command, with native message
-chunks and replacements handled by the shared text callbacks. Complete live runs need no
-subsequent detail or node-execution queries. Those queries use persisted test
-cards' `dify_run_id` only when reopening history or recovering missing events.
+chunks and replacements handled by the shared text callbacks. Complete live
+canvas updates need no subsequent detail or node-execution queries. Canvas
+recovery uses persisted test cards' `dify_run_id` when reopening history or
+recovering missing events.
 Native execution status remains
 authoritative over Builder validation cards. An interrupted run clears live
 animation without inventing a failed result. Canvas refresh completion reapplies
@@ -99,6 +100,17 @@ failed-run context, checklist preflight context, and test result. Change,
 error, summary, and publish details arrive as assistant text. The preflight
 card and its styles live in `conversation/`; they intentionally do not import
 or share the workflow header checklist component.
+
+Test result cards show final outputs directly for successful and failed runs,
+with text, JSON, and file rendering plus a scrollable full-content region.
+The header carries the execution status. The body retains exceptional-outcome
+headlines and failure reasons, without duplicate success/failure headlines,
+review boilerplate, raw JSON disclosures, or execution IDs.
+Saved `terminal_outputs` belong to their individual cards. When output evidence
+is absent, the card reads its native `dify_run_id` through the authorized run
+detail endpoint for display; native content is never copied into Builder
+conversation or session state. Known empty results and unavailable reads have
+distinct feedback. Expanding run details loads native node tracing on demand.
 
 ## External Modules
 
