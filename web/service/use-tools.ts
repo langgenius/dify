@@ -1,3 +1,4 @@
+import type { WorkflowTriggerResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { QueryKey, UseQueryOptions } from '@tanstack/react-query'
 import type {
   Collection,
@@ -8,9 +9,9 @@ import type {
 } from '@/app/components/tools/types'
 import type { RAGRecommendedPlugins, ToolWithProvider } from '@/app/components/workflow/types'
 import type { AppIconType } from '@/types/app'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { CollectionType } from '@/app/components/tools/types'
-import { consoleClient } from '@/service/console'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { del, get, post, put } from './base'
 import { useInvalid } from './use-base'
 
@@ -297,35 +298,27 @@ export const useInvalidateRAGRecommendedPlugins = () => {
 }
 
 // App Triggers API hooks
-export type AppTrigger = {
-  id: string
-  trigger_type: 'trigger-webhook' | 'trigger-schedule' | 'trigger-plugin'
-  title: string
-  node_id: string
-  provider_name: string
-  icon: string
-  status: 'enabled' | 'disabled' | 'unauthorized'
-  created_at: string
-  updated_at: string
-}
+export type AppTrigger = WorkflowTriggerResponse
 
 export const useAppTriggers = (
   appId: string | undefined,
   options?: Omit<UseQueryOptions<{ data: AppTrigger[] }>, 'queryKey' | 'queryFn'>,
 ) => {
-  return useQuery<{ data: AppTrigger[] }>({
-    queryKey: [NAME_SPACE, 'app-triggers', appId],
-    queryFn: () => get<{ data: AppTrigger[] }>(`/apps/${appId}/triggers`),
-    enabled: !!appId,
-    ...options, // Merge additional options while maintaining backward compatibility
-  })
+  return useQuery(
+    consoleQuery.apps.byAppId.triggers.get.queryOptions({
+      ...options,
+      input: appId ? { params: { app_id: appId } } : skipToken,
+    }),
+  )
 }
 
 export const useInvalidateAppTriggers = () => {
   const queryClient = useQueryClient()
   return (appId: string) => {
     return queryClient.invalidateQueries({
-      queryKey: [NAME_SPACE, 'app-triggers', appId],
+      queryKey: consoleQuery.apps.byAppId.triggers.get.queryKey({
+        input: { params: { app_id: appId } },
+      }),
     })
   }
 }
