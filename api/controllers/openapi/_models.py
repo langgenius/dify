@@ -714,10 +714,10 @@ class ReleaseCheckResponse(Hinted):
     changes: WorkflowDiff
 
 
-class FormSubmitResponse(BaseModel):
-    """Empty 200 body for POST /apps/<id>/human-input-forms/<token>:submit. `extra='forbid'`
-    pins `additionalProperties: false` so the generated contract is an exact `{}` rather
-    than an under-annotated open object."""
+class FormSubmitResponse(Hinted):
+    """200 body for POST /apps/<id>/human-input-forms/<token>:submit: the hint to follow the
+    resumed run. `extra='forbid'` pins `additionalProperties: false` so the generated contract
+    is exact rather than an under-annotated open object."""
 
     model_config = ConfigDict(extra="forbid")
 
