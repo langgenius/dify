@@ -224,6 +224,29 @@ return dump_response(WorkflowRunDetailResponse, workflow_run)
 Use manual `model_validate(...).model_dump(...)` only when the endpoint needs behavior that `dump_response(...)` does
 not provide, such as returning a non-dict payload, intentionally excluding fields, or composing a `(body, status)` tuple.
 
+## Error Responses
+
+Every 4xx/5xx response is documented with the surface's error body: `ErrorResponse` (`code`, `message`, `status`,
+optional `params`/`details`) on Console, Web and Service API, and `ErrorBody` on `/openapi/v1`. Responses that declare
+their own error schema keep it.
+
+Document business errors so clients can narrow `code` per status:
+
+- A handler lists what it and its callees raise with `@error_responses(SomeError, ...)` from `libs.external_api`.
+- A view decorator documents its own errors on the wrapper it returns: `return document_errors(decorated, SomeError)`.
+  Guards in a Resource's `method_decorators` are documented on the class with `document_errors(ResourceClass, ...)`.
+- List only business errors: `HTTPException` subclasses that declare an `error_code`. Werkzeug exceptions and
+  exceptions with a dedicated handler (`ValueError`, `NoPermissionError`, and others registered through
+  `ExternalApi.document_error_handler`) are implied; every narrowed status already admits their codes.
+- Record an error raised only from an unreachable branch, such as an `except` for a service error the call never
+  raises, as `@error_responses(..., unreachable=(SomeError,))`. It stays undocumented.
+- View decorators must keep `__apidoc__` from the view they wrap (`functools.wraps` does, unless `updated=()`; then
+  add `"__apidoc__"` to `assigned`), or the errors documented below them are lost.
+
+Each narrowed status becomes a named component, `{OperationId}Error{status}` (for example `ListAppsError400`), that
+extends the error body with a `code` enum. A status that also declares its own model documents both as `anyOf`.
+Statuses that no handler or decorator documents keep the open error body.
+
 ## Legacy Flask-RESTX Patterns
 
 Avoid adding these patterns to new or migrated endpoints:
