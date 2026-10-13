@@ -22,6 +22,8 @@ import { BadYamlFormatError, ConcurrentAccessError } from './errors'
 const FILE_PERM = 0o600
 const DIR_PERM = 0o700
 const LOCK_STALE_MS = 30_000
+// Parallel difyctl runs (an agent's usual case) wait their turn instead of failing.
+const LOCK_WAIT_MS = 5_000
 const YAML_LOAD_SCHEMA = CORE_SCHEMA.withTags(
   binaryTag,
   mergeTag,
@@ -110,6 +112,7 @@ abstract class FileBasedStore implements Store {
     try {
       await lockAsync(`${this.filePath}.lock`, {
         stale: LOCK_STALE_MS,
+        wait: LOCK_WAIT_MS,
       })
     } catch (err) {
       const code = (err as NodeJS.ErrnoException).code

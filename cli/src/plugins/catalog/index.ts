@@ -6,12 +6,12 @@ import { BaseError, notLoggedIn } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
 import { errorMessage } from '@/errors/message'
 import { definePlugin } from '@/kernel/plugin'
-import { env } from '@/plugins/env'
+import { helpHint } from '@/plugins/commands/command'
+import { ENV, env } from '@/plugins/env'
 import { io } from '@/plugins/io'
 import { session } from '@/plugins/session'
 import { pid, resolvePlatform } from '@/sys'
 import { bareHost } from '@/util/host'
-import { BINARY } from '@/version/info'
 import { parseCatalog } from './types'
 
 export const CATALOG_DIR_NAME = 'catalog'
@@ -19,6 +19,7 @@ const HOST_SEPARATOR_REPLACEMENT = '_'
 const FILE_MODE = 0o600
 const DIR_MODE = 0o700
 const UNREADABLE_CACHE_PREFIX = 'ignoring unreadable catalog cache '
+const CACHE_DIR_RETIRED = `${ENV.CacheDir} is no longer used; the catalog cache follows ${ENV.ConfigDir}`
 const ENOENT = 'ENOENT'
 
 export type { CatalogDoc, CatalogOp, Example, JsonSchema } from './types'
@@ -39,9 +40,9 @@ export function fingerprintOf(bytes: Uint8Array): string {
   return createHash('sha256').update(bytes).digest('hex')
 }
 
-function cachePath(cacheDir: string, server: string): string {
+function cachePath(configDir: string, server: string): string {
   const key = bareHost(server).split(':').join(HOST_SEPARATOR_REPLACEMENT)
-  return join(cacheDir, CATALOG_DIR_NAME, `${key}.json`)
+  return join(configDir, CATALOG_DIR_NAME, `${key}.json`)
 }
 
 function isMissingFile(err: unknown): boolean {
@@ -74,10 +75,11 @@ export const catalog = definePlugin({
   name: 'catalog',
   needs: [env, session, io],
   build: async (ctx): Promise<CatalogService> => {
-    const { cacheDir } = await ctx.get(env)
+    const { configDir, cacheDirSet } = await ctx.get(env)
+    if (cacheDirSet) (await ctx.get(io)).notice(CACHE_DIR_RETIRED)
     const sessionService = await ctx.get(session)
     const login = await sessionService.current()
-    const path = login === null ? undefined : cachePath(cacheDir, login.server)
+    const path = login === null ? undefined : cachePath(configDir, login.server)
 
     let bytes: Uint8Array | undefined
     let doc: CatalogDoc | undefined
@@ -116,7 +118,7 @@ export const catalog = definePlugin({
         throw new BaseError({
           code: ErrorCode.UnknownOp,
           message: `unknown op "${id}"`,
-          hint: `run ${BINARY} ops`,
+          hint: helpHint(),
         })
       },
       ops: () => doc?.ops ?? {},
