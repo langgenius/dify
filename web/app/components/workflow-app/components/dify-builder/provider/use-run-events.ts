@@ -212,8 +212,8 @@ export const useDifyBuilderRunEvents = (appId?: string) => {
   const onCanvasEvent = useCallback<SessionRunEvents['onCanvasEvent']>(
     (event) => {
       if (event.event === 'reset_build_canvas' || event.event === 'revert_checkpoint') reset()
-      // mark_test_* narrates Builder's validation decision. Only native workflow
-      // events own execution status; a paused/partial run must retain its status.
+      // Native workflow events own execution status; other canvas events
+      // preserve the status of paused and partially successful runs.
     },
     [reset],
   )

@@ -17558,13 +17558,13 @@ Button styles for user actions.
 
 Granular canvas-mutation signals (spec §6).
 
-Exactly 22 members, snake_cased from the mock's ``DifyBuilderCanvasEvent``
-union. Presentation of committed backend state: replaying these from a
-snapshot must reconstruct the same canvas.
+Signals emitted by Builder handlers and committed mutations. Presentation
+of committed backend state: replaying these from a snapshot must
+reconstruct the same canvas.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| CanvasEvent | string | Granular canvas-mutation signals (spec §6).  Exactly 22 members, snake_cased from the mock's ``DifyBuilderCanvasEvent`` union. Presentation of committed backend state: replaying these from a snapshot must reconstruct the same canvas. |  |
+| CanvasEvent | string | Granular canvas-mutation signals (spec §6).  Signals emitted by Builder handlers and committed mutations. Presentation of committed backend state: replaying these from a snapshot must reconstruct the same canvas. |  |
 
 #### CardOption
 

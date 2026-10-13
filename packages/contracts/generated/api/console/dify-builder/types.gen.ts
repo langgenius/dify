@@ -981,22 +981,10 @@ export type CanvasEvent =
   | 'add_start_node'
   | 'apply_edit_plan'
   | 'apply_error_fix'
-  | 'apply_preflight_fix'
-  | 'cancel_publish'
-  | 'create_checkpoint'
-  | 'focus_checklist_node'
-  | 'focus_error_node'
-  | 'focus_workflow'
   | 'highlight_edit_target'
-  | 'mark_repair_applied'
-  | 'mark_review_ready'
-  | 'mark_test_error'
-  | 'mark_test_success'
   | 'publish_workflow'
   | 'reset_build_canvas'
   | 'revert_checkpoint'
-  | 'start_retest'
-  | 'start_test_run'
 
 export type DifyBuilderExecutionProgressResponse = {
   activities?: Array<DifyBuilderExecutionActivityResponse>

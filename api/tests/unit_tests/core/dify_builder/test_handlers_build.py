@@ -402,7 +402,7 @@ def test_plan_approval_approve_builds_graph_and_reveals_nodes():
     assert len(dify.graph["nodes"]) == 4
     assert len(dify.graph["edges"]) == 3
     names = [e["event"] for e in events]
-    assert names[0] == "create_checkpoint"
+    assert names[0] == "add_start_node"
     assert [n for n in names if n.startswith("add_")] == [
         "add_start_node",
         "add_knowledge_node",
@@ -628,7 +628,7 @@ def test_execution_run_test_advances_to_test_and_repair():
     turn = Turn(action=Action(kind="run_test", base_version=1), actor=_actor())
     res = handle_execution(env, turn, *repo.get_session(s.id))
     assert res.next == PcState.BUILD_TEST_AND_REPAIR
-    assert {"event": "start_test_run"} in events
+    assert events == []
 
 
 def test_execution_revert_records_intent_only():
@@ -664,9 +664,7 @@ def test_test_and_repair_pass_goes_to_review_with_real_run():
     assert not any(i.kind == "summary" for i in result.items)
     assistant = next(i for i in result.items if i.kind == "assistant_turn")
     assert assistant.payload["cards"] == ["test_result"]
-    names = [e["event"] for e in events]
-    assert "mark_test_success" in names
-    assert "mark_review_ready" in names
+    assert events == []
 
 
 def test_a_passing_test_does_not_put_outputs_in_the_card():
@@ -734,9 +732,8 @@ def test_test_and_repair_fail_routes_to_await_repair_with_staged_repair():
     assert assistant.payload["cards"] == ["test_result"]
     assert "Output node requires 'metrics'" in assistant.payload["reply_text"]
     assert "Proposed fix" in assistant.payload["reply_text"]
-    # The canvas event carries the Dify run id so a client can open the
-    # failed run on the graph, not just colour the node red.
-    assert {"event": "mark_test_error", "dify_run_id": "build-run-1"} in events
+    assert test_result.payload["dify_run_id"] == result.run.dify_run_id
+    assert events == []
 
 
 def test_test_and_repair_fail_with_no_proposed_repair_still_routes_to_gate():
@@ -1067,7 +1064,7 @@ def test_review_keep_draft_completes_without_publish():
     keep_draft_turn = Turn(action=Action(kind="keep_draft", base_version=1), actor=_actor())
     res = handle_review(env, keep_draft_turn, *repo.get_session(s.id))
     assert res.next == PcState.BUILD_COMPLETE
-    assert {"event": "cancel_publish"} in events
+    assert events == []
     assistant = next(i for i in res.items if i.kind == "assistant_turn")
     assert "Kept as a draft" in assistant.payload["reply_text"]
 
@@ -2618,7 +2615,7 @@ def test_plan_approval_surfaces_a_draft_that_would_not_start_instead_of_crashing
     # The already-streamed add_node marker precedes the revert: the handler
     # tells the client to fall back to the checkpoint AFTER apply_repair's
     # own per-intent markers, same as production ordering.
-    assert [e["event"] for e in events] == ["create_checkpoint", "add_node", "revert_checkpoint"]
+    assert [e["event"] for e in events] == ["add_node", "revert_checkpoint"]
 
 
 def test_plan_approval_does_not_call_an_unapplicable_graph_a_workflow_that_cannot_start():
@@ -2654,7 +2651,7 @@ def test_plan_approval_does_not_call_an_unapplicable_graph_a_workflow_that_canno
     assert assistant.payload["execution"]["status"] == "error"
     assert "Couldn't apply the workflow" in assistant.payload["reply_text"]
     assert "node not found: x" in assistant.payload["reply_text"]
-    assert [e["event"] for e in events] == ["create_checkpoint", "add_node", "revert_checkpoint"]
+    assert [e["event"] for e in events] == ["add_node", "revert_checkpoint"]
 
 
 # The ESQ1-303 shape: start -> if-else -> (two arms) -> end. With both if-else
@@ -2719,7 +2716,8 @@ def test_a_succeeded_run_that_took_a_branch_and_reached_no_end_is_not_a_pass():
     assert "produced no terminal output" in test_result.payload["failure_reason"]
     assert res.run.culprit_node_id == "node2"  # the branch node that routed nowhere
     assert "All checks passed" not in next(i for i in res.items if i.kind == "assistant_turn").payload["reply_text"]
-    assert {"event": "mark_test_error", "dify_run_id": "run-303"} in events
+    assert test_result.payload["dify_run_id"] == "run-303"
+    assert events == []
 
 
 def test_a_succeeded_run_that_took_a_branch_and_reached_the_end_is_still_a_pass():

@@ -205,7 +205,6 @@ def test_plan_approval_approve_edits_graph_and_emits_canvas():
     assert llm["data"]["risk_threshold"] == "high"
     # Edit narrates its own canvas events (no per-intent apply_error_fix leak).
     names = [e["event"] for e in events]
-    assert "create_checkpoint" in names
     assert "highlight_edit_target" in names
     assert "apply_edit_plan" in names
     assert "apply_error_fix" not in names
@@ -236,7 +235,7 @@ def test_apply_changes_run_affected_tests_advances_to_test():
     turn = Turn(action=Action(kind="run_affected_tests", base_version=1), actor=_actor())
     res = handle_apply_changes(env, turn, *repo.get_session(s.id))
     assert res.next == PcState.EDIT_TEST_AFFECTED_PATHS
-    assert {"event": "start_test_run"} in events
+    assert events == []
 
 
 def test_apply_changes_revert_records_intent_only():
@@ -271,9 +270,7 @@ def test_edit_test_pass_goes_to_review_with_real_run():
     assert not any(i.kind == "summary" for i in result.items)
     assistant = next(i for i in result.items if i.kind == "assistant_turn")
     assert assistant.payload["cards"] == ["test_result"]
-    names = [e["event"] for e in events]
-    assert "mark_test_success" in names
-    assert "mark_review_ready" in names
+    assert events == []
 
 
 def test_edit_test_fail_routes_to_await_repair():
@@ -300,9 +297,8 @@ def test_edit_test_fail_routes_to_await_repair():
     assert assistant.payload["cards"] == ["test_result"]
     assert "Output node requires 'metrics'" in assistant.payload["reply_text"]
     assert "Proposed fix" in assistant.payload["reply_text"]
-    # The canvas event carries the Dify run id so a client can open the
-    # failed run on the graph, not just colour the node red.
-    assert {"event": "mark_test_error", "dify_run_id": "build-run-1"} in events
+    assert test_result.payload["dify_run_id"] == result.run.dify_run_id
+    assert events == []
 
 
 def test_edit_test_fail_with_no_proposed_repair_still_routes_to_gate():
@@ -515,7 +511,7 @@ def test_review_keep_draft_reaches_terminal_without_publish_card():
     assert not any(i.kind == "publish" for i in res.items)  # and no publish card
     assert not any(i.kind == "summary" for i in res.items)
     assert any(i.kind == "assistant_turn" and "kept as a draft" in i.payload["reply_text"] for i in res.items)
-    assert {"event": "cancel_publish"} in events
+    assert events == []
 
 
 def test_review_continue_adjusting_returns_to_impact_analysis():
@@ -1774,7 +1770,7 @@ def test_plan_approval_empty_proposal_refuses_before_apply_and_preserves_gate_ex
     assert "Applied" not in reply["reply_text"]
     assert reply["execution"]["status"] == "error"
     assert turn_activities(result) == {"edit-prepare": "failed"}
-    assert [e["event"] for e in events] == ["create_checkpoint"]
+    assert events == []
 
     followup = handle_plan_approval(env, Turn(actor=_actor(), action=Action(kind=next_action)), s, fc)
     assert followup.next == next_state
