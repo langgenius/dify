@@ -700,9 +700,14 @@ def test_console_member_invite_documents_bad_request_response(openapi_json: Open
     operation = payload["paths"]["/workspaces/current/members/invite-email"]["post"]
     response_schema = operation["responses"]["400"]["content"]["application/json"]["schema"]
 
-    # The declared invite body and the operation's documented business errors can both answer 400.
+    # The declared invite body and the operation's documented business errors can all answer 400.
     assert response_schema["anyOf"][0] == {"$ref": "#/components/schemas/MemberInviteErrorResponse"}
-    assert response_schema["anyOf"][1]["$ref"].endswith("Error400")
+    documented = {option["$ref"].rsplit("/", 1)[-1] for option in response_schema["anyOf"][1:]}
+    assert {"InvalidRoleError", "LimitExceededError"} <= documented
+    assert payload["components"]["schemas"]["InvalidRoleError"]["allOf"][1]["properties"]["code"] == {
+        "const": "invalid_role",
+        "type": "string",
+    }
     assert payload["components"]["schemas"]["MemberInviteErrorResponse"] == {
         "properties": {
             "code": {

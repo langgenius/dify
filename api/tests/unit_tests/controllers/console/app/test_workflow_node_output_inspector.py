@@ -378,9 +378,17 @@ def test_inspector_not_found_preserves_error_code():
     Inspector's specific error code rather than collapsing to a generic
     ``not_found``."""
     err = NodeOutputInspectorError("node_not_in_workflow_run", "boom")
-    wrapped = ctrl._InspectorNotFound(err)
+    wrapped = ctrl._inspector_not_found(err)
+    assert isinstance(wrapped, ctrl.NodeNotInWorkflowRunError)
     assert wrapped.error_code == "node_not_in_workflow_run"
     assert wrapped.code == 404
+    assert wrapped.description == "boom"
+
+
+def test_inspector_not_found_relays_codes_the_contract_does_not_know():
+    relayed = ctrl._inspector_not_found(NodeOutputInspectorError("inspector_offline", "later"))
+    assert relayed.code == 404
+    assert relayed.data == {"code": "inspector_offline", "message": "later", "status": 404}
 
 
 # ──────────────────────────────────────────────────────────────────────────────
