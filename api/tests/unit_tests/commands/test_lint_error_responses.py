@@ -1,4 +1,5 @@
 import ast
+import functools
 import inspect
 import sys
 import textwrap
@@ -265,3 +266,27 @@ def test_results_do_not_depend_on_scan_order(monkeypatch: pytest.MonkeyPatch) ->
     assert _MissingError not in analyzer.raises_of_function(_middle, None, 1)
     # ...then from a shallower call, which must follow it rather than reuse the cut-short result.
     assert _MissingError in analyzer.raises_of_function(_middle, None, 0)
+
+
+def _translating[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+    @functools.wraps(view)
+    def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
+        try:
+            return view(*args, **kwargs)
+        except _ServiceError:
+            raise _OtherGuardError()
+
+    return decorated
+
+
+class _HelperResource:
+    def get(self) -> None:
+        self._load()
+
+    @_translating
+    def _load(self) -> None:
+        _service()
+
+
+def test_follows_the_decorators_of_called_helpers(analyzer: lint.RaiseAnalyzer) -> None:
+    assert _OtherGuardError in analyzer.raises_of_function(_HelperResource.get, _HelperResource, 0)

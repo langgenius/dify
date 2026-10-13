@@ -370,7 +370,13 @@ class RaiseAnalyzer:
             base = self.resolve(node.func.value, env, owner)
             if isinstance(base, type):
                 call_owner = base
-        return found | self.raises_of_function(target, call_owner, depth + 1)
+        found |= self.raises_of_function(target, call_owner, depth + 1)
+        callee = self.parse_function(target)
+        if callee is not None:
+            # The callee's own decorators (e.g. an error-translating wrapper) raise on its behalf.
+            for decorator, bindings in self.decorators_of(callee, self.function_env(target), call_owner):
+                found |= self.raises_of_function(decorator, call_owner, depth + 1, bindings)
+        return found
 
     def decorators_of(
         self, node: FunctionNode, env: Mapping[str, object], owner: type | None
