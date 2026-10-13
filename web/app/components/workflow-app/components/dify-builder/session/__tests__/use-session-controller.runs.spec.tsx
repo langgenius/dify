@@ -106,16 +106,6 @@ describe('Builder workflow stream', () => {
           status: 400,
           message: 'bad input',
         }),
-        {
-          event: 'canvas',
-          data: {
-            session_id: 'session-1',
-            operation_id: 'op',
-            at_version: 2,
-            event: 'mark_test_error',
-            revision: 2,
-          },
-        },
         stateEvent(
           createSessionView({
             version: 2,
@@ -129,7 +119,7 @@ describe('Builder workflow stream', () => {
       expect(await result.current.startFix('app-1', 'failed-run')).toBe(true)
     })
     expect(runEvents.onWorkflowEvent).toHaveBeenCalledOnce()
-    expect(runEvents.onCanvasEvent).toHaveBeenCalledOnce()
+    expect(runEvents.onCanvasEvent).not.toHaveBeenCalled()
     expect(runEvents.finishCommand).toHaveBeenCalledOnce()
   })
 

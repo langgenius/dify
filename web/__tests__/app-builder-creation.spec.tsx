@@ -119,7 +119,6 @@ function CreationFlow() {
           userId="user-1"
           getCanvasSnapshot={() => ({ nodes: [], edgeCount: 0 })}
           onSyncDraft={mocks.syncDraft}
-          onFocusCanvas={() => {}}
           onRefreshCanvas={async () => true}
         >
           <h1>New app editor</h1>

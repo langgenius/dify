@@ -83,9 +83,9 @@ class CardKind(StrEnum):
 class CanvasEvent(StrEnum):
     """Granular canvas-mutation signals (spec §6).
 
-    Exactly 22 members, snake_cased from the mock's ``DifyBuilderCanvasEvent``
-    union. Presentation of committed backend state: replaying these from a
-    snapshot must reconstruct the same canvas.
+    Signals emitted by Builder handlers and committed mutations. Presentation
+    of committed backend state: replaying these from a snapshot must
+    reconstruct the same canvas.
     """
 
     RESET_BUILD_CANVAS = "reset_build_canvas"
@@ -93,22 +93,10 @@ class CanvasEvent(StrEnum):
     ADD_KNOWLEDGE_NODE = "add_knowledge_node"
     ADD_LLM_NODE = "add_llm_node"
     ADD_OUTPUT_NODE = "add_output_node"
-    FOCUS_WORKFLOW = "focus_workflow"
     HIGHLIGHT_EDIT_TARGET = "highlight_edit_target"
     APPLY_EDIT_PLAN = "apply_edit_plan"
-    START_TEST_RUN = "start_test_run"
-    MARK_TEST_ERROR = "mark_test_error"
-    FOCUS_ERROR_NODE = "focus_error_node"
-    FOCUS_CHECKLIST_NODE = "focus_checklist_node"
-    CREATE_CHECKPOINT = "create_checkpoint"
     APPLY_ERROR_FIX = "apply_error_fix"
-    MARK_REPAIR_APPLIED = "mark_repair_applied"
-    APPLY_PREFLIGHT_FIX = "apply_preflight_fix"
-    START_RETEST = "start_retest"
-    MARK_TEST_SUCCESS = "mark_test_success"
-    MARK_REVIEW_READY = "mark_review_ready"
     REVERT_CHECKPOINT = "revert_checkpoint"
-    CANCEL_PUBLISH = "cancel_publish"
     PUBLISH_WORKFLOW = "publish_workflow"
 
 
@@ -785,7 +773,6 @@ class CanvasEventData(_SseEventData):
     kind: Literal["canvas"] = "canvas"
     node_id: str | None = None
     edge: CanvasEdge | None = None
-    dify_run_id: str = ""
 
 
 @dataclass

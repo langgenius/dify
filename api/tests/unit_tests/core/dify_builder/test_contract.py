@@ -107,7 +107,7 @@ def test_enums_match_spec():
         "complete",
     ]
     assert set(ActionKind) == {ActionKind.PRIMARY, ActionKind.SECONDARY, ActionKind.DESTRUCTIVE, ActionKind.AUTOMATIC}
-    assert len(list(CanvasEvent)) == 22  # authoritative count = the mock's DifyBuilderCanvasEvent union (spec §6)
+    assert len(list(CanvasEvent)) == 10
     assert {EntryMode.BUILD, EntryMode.EDIT} <= set(EntryMode)
     assert PcState.BUILD_GOAL_ANALYSIS.value == "build.goal_analysis"
     assert PcState.EDIT_IMPACT_ANALYSIS.value == "edit.impact_analysis"
