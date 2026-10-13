@@ -188,13 +188,11 @@ describe('HTTP failure contract', () => {
       vi.spyOn(globalThis, 'fetch').mockResolvedValue(
         Response.json({ code: 'unauthorized' }, { status: 401 }),
       )
-      refresh.mockRejectedValue(new ORPCError('HTTP_ERROR', { status }))
+      const refreshError = new ORPCError('HTTP_ERROR', { status })
+      refresh.mockRejectedValue(refreshError)
       const initialUrl = window.location.href
 
-      await expect(get('/test-errors', {}, {})).rejects.toMatchObject({
-        code: 'unauthorized',
-        status: 401,
-      })
+      await expect(get('/test-errors')).rejects.toBe(refreshError)
       expect(refresh).toHaveBeenCalledOnce()
       expect(window.location.href).toBe(initialUrl)
     },
