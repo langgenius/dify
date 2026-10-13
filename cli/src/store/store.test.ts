@@ -3,7 +3,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test'
-import { BadYamlFormatError, ConcurrentAccessError } from './errors'
+import { BadYamlFormatError } from './errors'
 import { YamlStore } from './store'
 
 describe('YamlStore.doGet', () => {
@@ -159,7 +159,11 @@ describe('FileBasedStore.withLock concurrency', () => {
     await rm(dir, { recursive: true, force: true })
   })
 
-  it('second get throws while first holds the lock, succeeds after release', async () => {
+  const HOLD_MS = 200
+  const releaseLater = (store: YamlStore) =>
+    new Promise<void>((resolve) => setTimeout(() => void store.unlock().then(resolve), HOLD_MS))
+
+  it('second get waits while first holds the lock, then reads', async () => {
     const path = join(dir, 'config.yml')
     await writeFile(path, 'key: value\n')
 
@@ -167,15 +171,12 @@ describe('FileBasedStore.withLock concurrency', () => {
     const s2 = new YamlStore(path)
 
     await s1.lock()
+    const [value] = await Promise.all([s2.get({ key: 'key', default: '' }), releaseLater(s1)])
 
-    await expect(s2.get({ key: 'key', default: '' })).rejects.toThrow(ConcurrentAccessError)
-
-    await s1.unlock()
-
-    expect(await s2.get({ key: 'key', default: '' })).toBe('value')
+    expect(value).toBe('value')
   })
 
-  it('second set throws while first holds the lock, succeeds after release', async () => {
+  it('second set waits while first holds the lock, then writes', async () => {
     const path = join(dir, 'config.yml')
     await writeFile(path, 'key: original\n')
 
@@ -183,14 +184,8 @@ describe('FileBasedStore.withLock concurrency', () => {
     const s2 = new YamlStore(path)
 
     await s1.lock()
+    await Promise.all([s2.set({ key: 'key', default: '' }, 'written'), releaseLater(s1)])
 
-    await expect(s2.set({ key: 'key', default: '' }, 'blocked')).rejects.toThrow(
-      ConcurrentAccessError,
-    )
-
-    await s1.unlock()
-
-    await s2.set({ key: 'key', default: '' }, 'written')
     expect(await s2.get({ key: 'key', default: '' })).toBe('written')
   })
 })

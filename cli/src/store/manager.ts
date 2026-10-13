@@ -1,31 +1,18 @@
 import type { StorageMode } from './store'
-import type { TokenStore } from './token-store'
-import { join } from 'node:path'
+import type { TokensFile, TokenStore } from './token-store'
 import { getEnv, platform } from '@/sys'
-import { resolveConfigDir } from './dir'
-import { YamlStore } from './store'
 import { FileTokenStore, KeychainTokenStore } from './token-store'
-
-const TOKENS_FILE = 'tokens.yml'
-export const CONFIG_FILE_NAME = 'config.yml'
 
 const KEYRING_SERVICE = 'difyctl'
 const LINUX = 'linux'
 const DBUS_SESSION = 'DBUS_SESSION_BUS_ADDRESS'
-
-function getStore(filePath: string): YamlStore {
-  return new YamlStore(filePath)
-}
-
-export function getConfigurationStore(): YamlStore {
-  return getStore(join(resolveConfigDir(), CONFIG_FILE_NAME))
-}
 
 const PROBE_HOST = '__difyctl_probe__'
 const PROBE_EMAIL = '__difyctl_probe__'
 const PROBE_VALUE = 'probe-v1'
 
 export type GetTokenStoreOptions = {
+  readonly file: TokensFile
   readonly factory?: {
     readonly keyring?: () => TokenStore
     readonly file?: () => TokenStore
@@ -45,8 +32,7 @@ export function keyringDurable(): boolean {
 }
 
 const TOKEN_STORE_OPENERS: Record<StorageMode, (opts: GetTokenStoreOptions) => TokenStore> = {
-  file: (opts) =>
-    opts.factory?.file?.() ?? new FileTokenStore(join(resolveConfigDir(), TOKENS_FILE)),
+  file: (opts) => opts.factory?.file?.() ?? new FileTokenStore(opts.file),
   keychain: (opts) => opts.factory?.keyring?.() ?? new KeychainTokenStore(KEYRING_SERVICE),
 }
 
@@ -56,7 +42,7 @@ const TOKEN_STORE_OPENERS: Record<StorageMode, (opts: GetTokenStoreOptions) => T
  * only where a credential is about to be written anyway (login).
  */
 export async function detectTokenStore(
-  opts: DetectTokenStoreOptions = {},
+  opts: DetectTokenStoreOptions,
 ): Promise<{ store: TokenStore; mode: StorageMode }> {
   if (opts.skipKeyring === true || !keyringDurable())
     return { store: TOKEN_STORE_OPENERS.file(opts), mode: 'file' }
@@ -79,6 +65,6 @@ export async function detectTokenStore(
 /**
  * Construct the credential backend the registry already recorded at login.
  */
-export function getTokenStore(mode: StorageMode, opts: GetTokenStoreOptions = {}): TokenStore {
+export function getTokenStore(mode: StorageMode, opts: GetTokenStoreOptions): TokenStore {
   return TOKEN_STORE_OPENERS[mode](opts)
 }

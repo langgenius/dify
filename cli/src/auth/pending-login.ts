@@ -2,7 +2,8 @@ import type { CommandContext } from '@/plugins/base'
 import { join } from 'node:path'
 import { z } from 'zod'
 import { env } from '@/plugins/env'
-import { YamlStore } from '@/store/store'
+import { io } from '@/plugins/io'
+import { localFile } from '@/store/local-file'
 
 export const PENDING_FILE_NAME = 'login-pending.yml'
 
@@ -15,7 +16,7 @@ const PENDING_SCHEMA = z.object({
 export type Pending = z.infer<typeof PENDING_SCHEMA>
 
 export type PendingLoginStore = Readonly<{
-  read: () => Promise<Pending | undefined>
+  read: () => Promise<Pending | null>
   save: (pending: Pending) => Promise<void>
   clear: () => Promise<void>
 }>
@@ -23,10 +24,10 @@ export type PendingLoginStore = Readonly<{
 /** The device code a `login --no-wait` saved for `login --resume` to finish. */
 export async function pendingLoginStore(ctx: CommandContext): Promise<PendingLoginStore> {
   const { configDir } = await ctx.get(env)
-  const file = new YamlStore(join(configDir, PENDING_FILE_NAME))
-  return {
-    read: async () => PENDING_SCHEMA.safeParse(await file.getTyped<unknown>()).data,
-    save: (pending) => file.setTyped(pending),
-    clear: () => file.rm(),
-  }
+  const file = localFile(
+    join(configDir, PENDING_FILE_NAME),
+    PENDING_SCHEMA,
+    (await ctx.get(io)).notice,
+  )
+  return { read: file.read, save: file.write, clear: file.remove }
 }

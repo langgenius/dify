@@ -13,7 +13,7 @@ import { ErrorCode } from '@/errors/codes'
 import { Command } from '@/plugins/commands/command'
 import { io } from '@/plugins/io'
 import { session } from '@/plugins/session'
-import { token } from '@/plugins/token'
+import { token, TOKENS_FILE_NAME } from '@/plugins/token'
 import { decideOpen, OpenDecision, openUrl, realEnv } from '@/util/browser'
 import { resolveHost, validateVerificationURI } from '@/util/host'
 
@@ -31,7 +31,7 @@ const INPUT = z.object({
     .boolean()
     .default(false)
     .describe(
-      'Keep the token in tokens.yml under the config dir instead of the OS keyring. Use in a sandbox, with DIFY_CONFIG_DIR on persistent storage',
+      `Keep the token in ${TOKENS_FILE_NAME} under the config dir instead of the OS keyring. Use in a sandbox, with DIFY_CONFIG_DIR on persistent storage`,
     ),
   insecure: z
     .boolean()
@@ -103,7 +103,6 @@ export default class Login extends Command<typeof INPUT> {
 
     const server = resolveHost({ raw: input.server, insecure: input.insecure })
     const streams = await ctx.get(io)
-
     const current = await sessionService.current()
     if (current !== null) {
       await revokeAndClearSession(ctx, current)
@@ -160,7 +159,7 @@ async function assertTokenSaved(ctx: CommandContext): Promise<void> {
 async function resume(ctx: CommandContext, pendingLogin: PendingLoginStore) {
   const sessionService = await ctx.get(session)
   const pending = await pendingLogin.read()
-  if (pending === undefined) {
+  if (pending === null) {
     const current = await sessionService.require()
     await assertTokenSaved(ctx)
     return loginReport(current)
