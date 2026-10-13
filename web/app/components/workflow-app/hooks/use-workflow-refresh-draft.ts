@@ -11,6 +11,7 @@ type RefreshWorkflowDraftOptions = {
   syncToCollaboration?: boolean
   resolveConflict?: boolean
   builderRefresh?: boolean
+  preserveViewport?: boolean
 }
 
 export const useWorkflowRefreshDraft = () => {
@@ -80,6 +81,10 @@ export const useWorkflowRefreshDraft = () => {
             const applied = handleUpdateWorkflowCanvas(graph, {
               syncToCollaboration: syncToCollaboration && !useServerWriter,
               features: response.features,
+              preserveViewport:
+                options?.preserveViewport ??
+                (options?.builderRefresh &&
+                  workflowStore.getState().builderViewportManuallyChanged),
             })
             if (!applied) return false
             // The hash is a baseline for this graph, never for a metadata-only refresh.

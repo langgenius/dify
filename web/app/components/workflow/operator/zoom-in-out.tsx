@@ -16,6 +16,7 @@ import { useReactFlow, useViewport } from 'reactflow'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useNodesSyncDraft } from '../hooks/use-nodes-sync-draft'
 import { useWorkflowReadOnly } from '../hooks/use-workflow'
+import { useWorkflowViewport } from '../hooks/use-workflow-viewport'
 import { handleWorkflowMenuKeyDown } from '../shortcuts/handle-workflow-menu-key-down'
 import { ShortcutKbd } from '../shortcuts/shortcut-kbd'
 import TipPopup from './tip-popup'
@@ -59,6 +60,8 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
   const { zoom } = useViewport()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { workflowReadOnly, getWorkflowReadOnly } = useWorkflowReadOnly()
+  const { builderCanvasActive, handleViewportUserInteraction } = useWorkflowViewport()
+  const viewportReadOnly = workflowReadOnly && !builderCanvasActive
   const { data: isCollaborationEnabled } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: (s) => s.enable_collaboration_mode,
@@ -119,19 +122,7 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
   ]
 
   const handleZoom = (type: ZoomType) => {
-    if (workflowReadOnly) return
-
-    if (type === ZoomType.zoomToFit) fitView()
-
-    if (type === ZoomType.zoomTo25) zoomTo(0.25)
-
-    if (type === ZoomType.zoomTo50) zoomTo(0.5)
-
-    if (type === ZoomType.zoomTo75) zoomTo(0.75)
-
-    if (type === ZoomType.zoomTo100) zoomTo(1)
-
-    if (type === ZoomType.zoomTo200) zoomTo(2)
+    if (getWorkflowReadOnly() && !builderCanvasActive) return
 
     if (type === ZoomType.toggleUserComments) {
       if (!isCommentMode) onToggleUserComments?.()
@@ -149,6 +140,13 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
       return
     }
 
+    handleViewportUserInteraction()
+    if (type === ZoomType.zoomToFit) fitView()
+    if (type === ZoomType.zoomTo25) zoomTo(0.25)
+    if (type === ZoomType.zoomTo50) zoomTo(0.5)
+    if (type === ZoomType.zoomTo75) zoomTo(0.75)
+    if (type === ZoomType.zoomTo100) zoomTo(1)
+    if (type === ZoomType.zoomTo200) zoomTo(2)
     handleSyncWorkflowDraft()
   }
 
@@ -159,7 +157,7 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
 
   return (
     <div
-      className={`h-9 cursor-pointer rounded-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 text-[13px] shadow-lg backdrop-blur-[5px] hover:bg-state-base-hover ${workflowReadOnly && 'cursor-not-allowed! opacity-50'} `}
+      className={`h-9 cursor-pointer rounded-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 text-[13px] shadow-lg backdrop-blur-[5px] hover:bg-state-base-hover ${viewportReadOnly && 'cursor-not-allowed! opacity-50'} `}
     >
       <div className="flex h-8 w-24.5 items-center justify-between rounded-lg">
         <TipPopup
@@ -175,6 +173,7 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
               if (zoom <= 0.25) return
 
               e.stopPropagation()
+              handleViewportUserInteraction()
               zoomOut()
             }}
           >
@@ -186,7 +185,7 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
         </TipPopup>
         <DropdownMenu open={open} onOpenChange={setOpen}>
           <DropdownMenuTrigger
-            disabled={getWorkflowReadOnly()}
+            disabled={viewportReadOnly}
             className="flex h-8 w-8.5 items-center justify-center rounded-lg system-sm-medium text-text-tertiary hover:bg-black/5 hover:text-text-secondary data-popup-open:bg-black/5 data-popup-open:text-text-secondary"
           >
             {Number.parseFloat(`${zoom * 100}`).toFixed(0)}%
@@ -195,7 +194,7 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
             <DropdownMenuPositioner placement="top-start" sideOffset={4} alignOffset={-2}>
               <DropdownMenuPopup
                 onKeyDown={(event) => {
-                  if (workflowReadOnly) return
+                  if (viewportReadOnly) return
                   handleWorkflowMenuKeyDown(event, [
                     ['workflow.zoom-to-fit', () => selectZoom(ZoomType.zoomToFit)],
                     ['workflow.zoom-to-100', () => selectZoom(ZoomType.zoomTo100)],
@@ -281,6 +280,7 @@ const ZoomInOut: FC<ZoomInOutProps> = ({
               if (zoom >= 2) return
 
               e.stopPropagation()
+              handleViewportUserInteraction()
               zoomIn()
             }}
           >

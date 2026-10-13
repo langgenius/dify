@@ -1,6 +1,6 @@
 import { useAtomValue, useStore as useJotaiStore, useSetAtom } from 'jotai'
 import { useEffect, useLayoutEffect, useRef } from 'react'
-import { useStore } from '@/app/components/workflow/store'
+import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { selectWorkflowNode } from '@/app/components/workflow/utils/node-navigation'
 import { requestErrorMessage } from '../session/errors'
 import { difyBuilderSessionBusyAtom } from '../session/state'
@@ -41,6 +41,7 @@ export const DifyBuilderCanvasRefreshSync = ({
   onRefreshCanvas: (shouldApply: () => boolean) => Promise<boolean>
   onCanvasRefreshed: () => void
 }) => {
+  const workflowStore = useWorkflowStore()
   const sessionStore = useJotaiStore()
   const builderNeedsRefresh = useStore((state) => state.workflowDraftSyncPhase === 'builder')
   const busy = useAtomValue(difyBuilderSessionBusyAtom)
@@ -128,7 +129,9 @@ export const DifyBuilderCanvasRefreshSync = ({
         if (sessionStore.get(difyBuilderCanvasPendingRefreshAtom) === request)
           setPendingRefresh(null)
         const nodeId = request?.focusNodeId
-        if (nodeId) selectWorkflowNode(nodeId, true)
+        const shouldFocus = () =>
+          shouldApply() && !workflowStore.getState().builderViewportManuallyChanged
+        if (nodeId) selectWorkflowNode(nodeId, shouldFocus(), shouldFocus)
         onCanvasRefreshed()
       })
       .catch(async (error: unknown) => {
@@ -157,6 +160,7 @@ export const DifyBuilderCanvasRefreshSync = ({
     setLocalError,
     setPendingRefresh,
     version,
+    workflowStore,
   ])
 
   return null

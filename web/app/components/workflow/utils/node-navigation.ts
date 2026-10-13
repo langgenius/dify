@@ -1,3 +1,6 @@
+import type { ReactFlowInstance } from 'reactflow'
+import type { Node } from '../types'
+
 /**
  * Node navigation utilities for workflow
  * This module provides functions for node selection, focusing and scrolling in workflow
@@ -9,6 +12,7 @@
 type NodeSelectionDetail = {
   nodeId: string
   focus?: boolean
+  shouldFocus?: () => boolean
 }
 
 /**
@@ -16,12 +20,17 @@ type NodeSelectionDetail = {
  * @param nodeId - The ID of the node to select
  * @param focus - Whether to focus/scroll to the node
  */
-export function selectWorkflowNode(nodeId: string, focus = false): void {
+export function selectWorkflowNode(
+  nodeId: string,
+  focus = false,
+  shouldFocus?: () => boolean,
+): void {
   // Create and dispatch a custom event for node selection
   const event = new CustomEvent('workflow:select-node', {
     detail: {
       nodeId,
       focus,
+      ...(shouldFocus && { shouldFocus }),
     },
   })
   document.dispatchEvent(event)
@@ -47,7 +56,7 @@ export function scrollToWorkflowNode(nodeId: string): void {
 export function setupNodeSelectionListener(handleNodeSelect: (nodeId: string) => void): () => void {
   // Event handler for node selection
   const handleNodeSelection = (event: CustomEvent<NodeSelectionDetail>) => {
-    const { nodeId, focus } = event.detail
+    const { nodeId, focus, shouldFocus } = event.detail
     if (nodeId) {
       // Select the node
       handleNodeSelect(nodeId)
@@ -56,7 +65,7 @@ export function setupNodeSelectionListener(handleNodeSelect: (nodeId: string) =>
       if (focus) {
         // Use a small timeout to ensure node selection happens first
         setTimeout(() => {
-          scrollToWorkflowNode(nodeId)
+          if (!shouldFocus || shouldFocus()) scrollToWorkflowNode(nodeId)
         }, 100)
       }
     }
@@ -77,7 +86,10 @@ export function setupNodeSelectionListener(handleNodeSelect: (nodeId: string) =>
  * @param reactflow - The ReactFlow instance
  * @returns Cleanup function
  */
-export function setupScrollToNodeListener(nodes: any[], reactflow: any): () => void {
+export function setupScrollToNodeListener(
+  nodes: Pick<Node, 'id' | 'position'>[],
+  reactflow: Pick<ReactFlowInstance, 'setCenter'>,
+): () => void {
   // Event handler for scrolling to node
   const handleScrollToNode = (event: CustomEvent<NodeSelectionDetail>) => {
     const { nodeId } = event.detail

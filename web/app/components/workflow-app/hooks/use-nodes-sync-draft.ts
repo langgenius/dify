@@ -485,6 +485,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
       // while older saves drain. An accepted save still finishes on cancellation.
       const snapshot = shouldSave ? getPostParams() : null
       state.debouncedSyncWorkflowDraft.cancel?.()
+      state.setBuilderViewportManuallyChanged(false)
       state.setWorkflowDraftSyncPhase(shouldSave ? 'preparing' : 'builder')
       try {
         let saved: SyncDraftResult | null = null

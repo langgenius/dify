@@ -81,4 +81,20 @@ describe('useWorkflowUpdate', () => {
     })
     expect(result.current.handleUpdateWorkflowCanvas(graph)).toBe(true)
   })
+
+  it('updates the graph without emitting a replacement viewport when navigation is preserved', () => {
+    const { result } = renderWorkflowHook(() => useWorkflowUpdate())
+    const nodes = [createNode({ id: 'generated' })]
+
+    result.current.handleUpdateWorkflowCanvas(
+      { nodes, edges: [], viewport: { x: 10, y: 20, zoom: 0.5 } },
+      { preserveViewport: true },
+    )
+
+    expect(mockEventEmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        payload: expect.objectContaining({ nodes, edges: [], viewport: undefined }),
+      }),
+    )
+  })
 })

@@ -11,33 +11,44 @@ import {
 } from './test-helpers'
 
 describe('useWorkflowNodeStarted', () => {
-  it('pushes to tracing, sets node running, and adjusts viewport for root node', async () => {
-    const { result, store } = renderViewportHook(() => useWorkflowNodeStarted(), {
-      initialStoreState: { workflowRunningData: baseRunningData() },
-    })
+  it.each([
+    { builderActive: false, manuallyChanged: true, x: 200, y: 310 },
+    { builderActive: true, manuallyChanged: false, x: 200, y: 310 },
+    { builderActive: true, manuallyChanged: true, x: 0, y: 0 },
+  ])(
+    'pushes to tracing, sets node running, and adjusts viewport for root node: %j',
+    async ({ builderActive, manuallyChanged, x, y }) => {
+      const { result, store } = renderViewportHook(() => useWorkflowNodeStarted(), {
+        initialStoreState: {
+          workflowRunningData: baseRunningData(),
+          canvasReadOnly: builderActive,
+          builderViewportManuallyChanged: manuallyChanged,
+        },
+      })
 
-    act(() => {
-      result.current.handleWorkflowNodeStarted(createNodeStartedResponse(), containerParams)
-    })
+      act(() => {
+        result.current.handleWorkflowNodeStarted(createNodeStartedResponse(), containerParams)
+      })
 
-    const tracing = store.getState().workflowRunningData!.tracing!
-    expect(tracing).toHaveLength(1)
-    expect(tracing[0]!.status).toBe(NodeRunningStatus.Running)
+      const tracing = store.getState().workflowRunningData!.tracing!
+      expect(tracing).toHaveLength(1)
+      expect(tracing[0]!.status).toBe(NodeRunningStatus.Running)
 
-    await waitFor(() => {
-      const transform = result.current.reactFlowStore.getState().transform
-      expect(transform[0]).toBe(200)
-      expect(transform[1]).toBe(310)
-      expect(transform[2]).toBe(1)
+      await waitFor(() => {
+        const transform = result.current.reactFlowStore.getState().transform
+        expect(transform[0]).toBe(x)
+        expect(transform[1]).toBe(y)
+        expect(transform[2]).toBe(1)
 
-      const node = result.current.nodes.find((item) => item.id === 'n1')
-      expect(getNodeRuntimeState(node)._runningStatus).toBe(NodeRunningStatus.Running)
-      expect(getNodeRuntimeState(node)._waitingRun).toBe(false)
-      expect(getEdgeRuntimeState(result.current.edges[0])._targetRunningStatus).toBe(
-        NodeRunningStatus.Running,
-      )
-    })
-  })
+        const node = result.current.nodes.find((item) => item.id === 'n1')
+        expect(getNodeRuntimeState(node)._runningStatus).toBe(NodeRunningStatus.Running)
+        expect(getNodeRuntimeState(node)._waitingRun).toBe(false)
+        expect(getEdgeRuntimeState(result.current.edges[0])._targetRunningStatus).toBe(
+          NodeRunningStatus.Running,
+        )
+      })
+    },
+  )
 
   it('does not adjust viewport for child nodes', async () => {
     const { result } = renderViewportHook(() => useWorkflowNodeStarted(), {

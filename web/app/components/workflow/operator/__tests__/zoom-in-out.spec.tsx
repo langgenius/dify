@@ -3,6 +3,8 @@ import { act, fireEvent, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { WorkflowContext } from '../../context'
+import { createWorkflowStore } from '../../store'
 import ZoomInOut from '../zoom-in-out'
 
 const {
@@ -15,6 +17,7 @@ const {
   mockToggleMiniMap,
   mockToggleUserComments,
   mockToggleUserCursors,
+  mockInterrupt,
 } = vi.hoisted(() => ({
   mockZoomIn: vi.fn(),
   mockZoomOut: vi.fn(),
@@ -25,6 +28,7 @@ const {
   mockToggleMiniMap: vi.fn(),
   mockToggleUserComments: vi.fn(),
   mockToggleUserCursors: vi.fn(),
+  mockInterrupt: vi.fn(),
 }))
 
 let workflowReadOnly = false
@@ -38,6 +42,7 @@ vi.mock('reactflow', () => ({
     fitView: mockFitView,
   }),
   useViewport: () => mockViewport,
+  useStoreApi: () => ({ getState: () => ({ d3Selection: { interrupt: mockInterrupt } }) }),
 }))
 
 vi.mock('../../hooks/use-nodes-sync-draft', async (importOriginal) => {
@@ -67,10 +72,14 @@ vi.mock('../tip-popup', () => ({
   default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }))
 
-const renderZoomInOut = (ui: React.ReactElement = <ZoomInOut />) =>
-  renderWithConsoleQuery(ui, {
+const renderZoomInOut = (ui: React.ReactElement = <ZoomInOut />, builderActive = false) => {
+  const store = createWorkflowStore({})
+  if (builderActive) store.setState({ canvasReadOnly: true, workflowDraftSyncPhase: 'builder' })
+  const rendered = renderWithConsoleQuery(<WorkflowContext value={store}>{ui}</WorkflowContext>, {
     systemFeatures: { enable_collaboration_mode: collaborationEnabled },
   })
+  return { ...rendered, store }
+}
 
 const getZoomControls = () => {
   const label = Array.from(document.querySelectorAll('button')).find((element) => {
@@ -229,6 +238,23 @@ describe('workflow zoom controls', () => {
     fireEvent.click(getZoomControls().label)
 
     expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+  })
+
+  it('lets users zoom and fit the canvas while Builder owns its read-only graph', async () => {
+    workflowReadOnly = true
+    const user = userEvent.setup()
+    const { store } = renderZoomInOut(<ZoomInOut />, true)
+
+    await user.click(screen.getByRole('button', { name: '100%' }))
+    await user.click(screen.getByRole('menuitem', { name: /^50%/ }))
+    expect(mockZoomTo).toHaveBeenCalledWith(0.5)
+    expect(store.getState().builderViewportManuallyChanged).toBe(true)
+    expect(mockInterrupt).toHaveBeenCalledOnce()
+
+    await user.click(screen.getByRole('button', { name: '100%' }))
+    await user.click(screen.getByRole('menuitem', { name: /zoomToFit/ }))
+    expect(mockFitView).toHaveBeenCalledOnce()
+    expect(store.getState().canvasReadOnly).toBe(true)
   })
 
   it('blocks inline zooming out at the minimum viewport scale', () => {

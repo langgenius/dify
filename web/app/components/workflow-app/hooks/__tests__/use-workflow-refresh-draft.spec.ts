@@ -179,6 +179,30 @@ describe('useWorkflowRefreshDraft — notUpdateCanvas parameter', () => {
     expect(mockSetEnvironmentVariables).not.toHaveBeenCalled()
   })
 
+  it('preserves user navigation that happens while the Builder refresh is in flight', async () => {
+    let resolveResponse!: (value: typeof draftResponse) => void
+    mockFetchWorkflowDraft.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveResponse = resolve
+      }),
+    )
+    draftStore.getState().setWorkflowDraftSyncPhase('builder')
+    const { result } = renderHook(() => useWorkflowRefreshDraft())
+    const refresh = result.current.handleRefreshWorkflowDraft(false, { builderRefresh: true })
+
+    await waitFor(() => expect(mockFetchWorkflowDraft).toHaveBeenCalledOnce())
+    draftStore.setState({ builderViewportManuallyChanged: true })
+    resolveResponse(draftResponse)
+
+    expect(await refresh).toBe(true)
+    expect(mockHandleUpdateWorkflowCanvas).toHaveBeenCalledWith(
+      draftResponse.graph,
+      expect.objectContaining({ preserveViewport: true }),
+    )
+    expect(mockSetSyncWorkflowDraftHash).toHaveBeenCalledWith('server-hash')
+    expect(draftStore.getState().workflowDraftSyncPhase).toBe('idle')
+  })
+
   it('should NOT update canvas when notUpdateCanvas=true', async () => {
     const { result } = renderHook(() => useWorkflowRefreshDraft())
     await act(async () => {

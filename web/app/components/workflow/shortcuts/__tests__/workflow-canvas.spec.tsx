@@ -67,6 +67,7 @@ vi.mock('../../hooks/use-workflow-panel-interactions', () => ({
     handleModePointer: actions.pointer,
     handleModeComment: actions.comment,
     canUseCommentMode: true,
+    moveModeReadOnly: actions.nodesReadOnly,
   }),
 }))
 

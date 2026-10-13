@@ -15,6 +15,7 @@ import { useNodesSyncDraft } from '../hooks/use-nodes-sync-draft'
 import { useNodesReadOnly } from '../hooks/use-workflow'
 import { useWorkflowOrganize } from '../hooks/use-workflow-organize'
 import { useWorkflowMoveMode } from '../hooks/use-workflow-panel-interactions'
+import { useWorkflowViewport } from '../hooks/use-workflow-viewport'
 import { useStore } from '../store/workflow'
 import { WORKFLOW_CANVAS_SHORTCUTS } from './definitions'
 
@@ -83,10 +84,16 @@ export const useWorkflowHotkeys = (
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { handleEdgeDelete } = useEdgesInteractions()
   const showDebugAndPreviewPanel = useStore((s) => s.showDebugAndPreviewPanel)
-  const { handleModeHand, handleModePointer, handleModeComment, canUseCommentMode } =
-    useWorkflowMoveMode()
+  const {
+    handleModeHand,
+    handleModePointer,
+    handleModeComment,
+    canUseCommentMode,
+    moveModeReadOnly,
+  } = useWorkflowMoveMode()
   const { handleLayout } = useWorkflowOrganize()
   const { nodesReadOnly } = useNodesReadOnly()
+  const { handleViewportUserInteraction } = useWorkflowViewport()
 
   const { zoomTo, getZoom, fitView, getNodes } = useReactFlow()
   const isShiftHeld = useKeyHold(WORKFLOW_CANVAS_SHORTCUTS['workflow.dim-other-nodes'].holdKey)
@@ -94,12 +101,14 @@ export const useWorkflowHotkeys = (
   const undimAllNodesOnUnmount = useEffectEvent(undimAllNodes)
 
   function constrainedZoomOut() {
+    handleViewportUserInteraction()
     const currentZoom = getZoom()
     const newZoom = Math.max(currentZoom - 0.1, 0.25)
     zoomTo(newZoom)
   }
 
   function constrainedZoomIn() {
+    handleViewportUserInteraction()
     const currentZoom = getZoom()
     const newZoom = Math.min(currentZoom + 0.1, 2)
     zoomTo(newZoom)
@@ -180,14 +189,14 @@ export const useWorkflowHotkeys = (
       () => {
         handleModeHand()
       },
-      { enabled: !nodesReadOnly },
+      { enabled: !moveModeReadOnly },
     ),
     ...bind(
       'workflow.pointer-mode',
       () => {
         handleModePointer()
       },
-      { enabled: !nodesReadOnly },
+      { enabled: !moveModeReadOnly },
     ),
     ...bind(
       'workflow.comment-mode',
@@ -206,14 +215,17 @@ export const useWorkflowHotkeys = (
       { enabled: !nodesReadOnly },
     ),
     ...bind('workflow.zoom-to-fit', () => {
+      handleViewportUserInteraction()
       fitView()
       handleSyncWorkflowDraft()
     }),
     ...bind('workflow.zoom-to-100', () => {
+      handleViewportUserInteraction()
       zoomTo(1)
       handleSyncWorkflowDraft()
     }),
     ...bind('workflow.zoom-to-50', () => {
+      handleViewportUserInteraction()
       zoomTo(0.5)
       handleSyncWorkflowDraft()
     }),

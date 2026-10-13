@@ -205,6 +205,7 @@ vi.mock('../collaboration/core/collaboration-manager', () => ({
     canFlushGraphOnPageClose: collaborationBridge.canFlushGraphOnPageClose,
     canUseLocalDraftFallback: collaborationBridge.canUseLocalDraftFallback,
     isConnected: collaborationBridge.isConnected,
+    onCursorUpdate: () => vi.fn(),
     onGraphImport: (handler: (payload: { nodes: Node[]; edges: Edge[] }) => void) => {
       collaborationBridge.graphImportHandler = handler
       return vi.fn()

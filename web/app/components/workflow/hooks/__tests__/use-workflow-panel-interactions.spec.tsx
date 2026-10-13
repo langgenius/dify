@@ -107,6 +107,23 @@ describe('useWorkflowMoveMode', () => {
     expect(mockHandleSelectionCancel).not.toHaveBeenCalled()
   })
 
+  it('allows hand and pointer modes while Builder keeps nodes read-only', () => {
+    runtimeState.nodesReadOnly = true
+    const { result, store } = renderWorkflowHook(() => useWorkflowMoveMode(), {
+      initialStoreState: {
+        canvasReadOnly: true,
+        workflowDraftSyncPhase: 'builder',
+      },
+    })
+
+    act(() => result.current.handleModeHand())
+    expect(store.getState().controlMode).toBe(ControlMode.Hand)
+
+    act(() => result.current.handleModePointer())
+    expect(store.getState().controlMode).toBe(ControlMode.Pointer)
+    expect(mockHandleSelectionCancel).toHaveBeenCalledOnce()
+  })
+
   it('switches to comment mode when nodes are read-only', () => {
     runtimeState.nodesReadOnly = true
     const { result, store } = renderWorkflowHook(() => useWorkflowMoveMode(), {

@@ -12,36 +12,47 @@ import {
 } from './test-helpers'
 
 describe('useWorkflowNodeLoopStarted', () => {
-  it('pushes to tracing, sets viewport, and updates node with _loopLength', async () => {
-    const { result, store } = renderViewportHook(() => useWorkflowNodeLoopStarted(), {
-      nodes: createViewportNodes().slice(0, 2),
-      initialStoreState: { workflowRunningData: baseRunningData() },
-    })
+  it.each([
+    { builderActive: false, manuallyChanged: true, x: 200, y: 310 },
+    { builderActive: true, manuallyChanged: false, x: 200, y: 310 },
+    { builderActive: true, manuallyChanged: true, x: 0, y: 0 },
+  ])(
+    'pushes to tracing, sets viewport, and updates node with _loopLength: %j',
+    async ({ builderActive, manuallyChanged, x, y }) => {
+      const { result, store } = renderViewportHook(() => useWorkflowNodeLoopStarted(), {
+        nodes: createViewportNodes().slice(0, 2),
+        initialStoreState: {
+          workflowRunningData: baseRunningData(),
+          canvasReadOnly: builderActive,
+          builderViewportManuallyChanged: manuallyChanged,
+        },
+      })
 
-    act(() => {
-      result.current.handleWorkflowNodeLoopStarted(
-        { data: { node_id: 'n1', metadata: { loop_length: 5 } } } as LoopStartedResponse,
-        containerParams,
-      )
-    })
+      act(() => {
+        result.current.handleWorkflowNodeLoopStarted(
+          { data: { node_id: 'n1', metadata: { loop_length: 5 } } } as LoopStartedResponse,
+          containerParams,
+        )
+      })
 
-    expect(store.getState().workflowRunningData!.tracing![0]!.status).toBe(
-      NodeRunningStatus.Running,
-    )
-
-    await waitFor(() => {
-      const transform = result.current.reactFlowStore.getState().transform
-      expect(transform[0]).toBe(200)
-      expect(transform[1]).toBe(310)
-      expect(transform[2]).toBe(1)
-
-      const node = result.current.nodes.find((item) => item.id === 'n1')
-      expect(getNodeRuntimeState(node)._runningStatus).toBe(NodeRunningStatus.Running)
-      expect(getNodeRuntimeState(node)._loopLength).toBe(5)
-      expect(getNodeRuntimeState(node)._waitingRun).toBe(false)
-      expect(getEdgeRuntimeState(result.current.edges[0])._targetRunningStatus).toBe(
+      expect(store.getState().workflowRunningData!.tracing![0]!.status).toBe(
         NodeRunningStatus.Running,
       )
-    })
-  })
+
+      await waitFor(() => {
+        const transform = result.current.reactFlowStore.getState().transform
+        expect(transform[0]).toBe(x)
+        expect(transform[1]).toBe(y)
+        expect(transform[2]).toBe(1)
+
+        const node = result.current.nodes.find((item) => item.id === 'n1')
+        expect(getNodeRuntimeState(node)._runningStatus).toBe(NodeRunningStatus.Running)
+        expect(getNodeRuntimeState(node)._loopLength).toBe(5)
+        expect(getNodeRuntimeState(node)._waitingRun).toBe(false)
+        expect(getEdgeRuntimeState(result.current.edges[0])._targetRunningStatus).toBe(
+          NodeRunningStatus.Running,
+        )
+      })
+    },
+  )
 })

@@ -1040,6 +1040,7 @@ describe('WorkflowMain', () => {
     expect(hookFns.handleRefreshWorkflowDraft).toHaveBeenCalledWith(false, {
       shouldApply: expect.any(Function),
       syncToCollaboration: false,
+      preserveViewport: true,
     })
     expect(mockReplaceGraphFromReactFlow).toHaveBeenCalledWith(request)
   })

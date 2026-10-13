@@ -88,6 +88,31 @@ describe('setupNodeSelectionListener', () => {
     expect(handleNodeSelect).not.toHaveBeenCalled()
   })
 
+  it('cancels queued automatic scrolling when the user takes over before it starts', () => {
+    vi.useFakeTimers()
+    const select = vi.fn()
+    const reactflow = { setCenter: vi.fn() }
+    const cleanupSelection = setupNodeSelectionListener(select)
+    const cleanupScroll = setupScrollToNodeListener(
+      [{ id: 'node-1', position: { x: 100, y: 200 } }],
+      reactflow,
+    )
+    let shouldFocus = true
+
+    selectWorkflowNode('node-1', true, () => shouldFocus)
+    shouldFocus = false
+    vi.advanceTimersByTime(100)
+
+    expect(select).toHaveBeenCalledWith('node-1')
+    expect(reactflow.setCenter).not.toHaveBeenCalled()
+    scrollToWorkflowNode('node-1')
+    expect(reactflow.setCenter).toHaveBeenCalledOnce()
+
+    cleanupSelection()
+    cleanupScroll()
+    vi.useRealTimers()
+  })
+
   it('should ignore events with empty nodeId', () => {
     const handleNodeSelect = vi.fn()
     const cleanup = setupNodeSelectionListener(handleNodeSelect)

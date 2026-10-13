@@ -25,6 +25,7 @@ const mocks = vi.hoisted(() => ({
   stream: vi.fn(),
   refreshCanvas: vi.fn(async () => true),
   setCanvasReadOnly: vi.fn(),
+  setBuilderViewportManuallyChanged: vi.fn(),
   invalidateWorkflowDraftSync: vi.fn(),
   setShowPanel: vi.fn(),
   syncDraft: vi.fn(async (): Promise<void> => undefined),
@@ -77,6 +78,12 @@ vi.mock('@/features/agent-v2/agent-detail/configure/components/build-grid-textur
 }))
 
 vi.mock('@/app/components/workflow/store', () => ({
+  useWorkflowStore: () => ({
+    getState: () => ({
+      builderViewportManuallyChanged: false,
+      setBuilderViewportManuallyChanged: mocks.setBuilderViewportManuallyChanged,
+    }),
+  }),
   useStore: <T,>(
     selector: (state: {
       setCanvasReadOnly: typeof mocks.setCanvasReadOnly

@@ -927,11 +927,14 @@ describe('useNodesSyncDraft', () => {
       },
     })
     mockGetNodes.mockReturnValue([{ id: 'latest-edit', data: { type: BlockEnum.End } }])
+    draftStore.getState().setBuilderViewportManuallyChanged(true)
     const preparing = builder.result.current.prepareWorkflowDraftForBuilder(
       true,
       new AbortController().signal,
     )
     expect(draftStore.getState().workflowDraftSyncPhase).toBe('preparing')
+    expect(draftStore.getState().builderViewportManuallyChanged).toBe(false)
+    draftStore.getState().setBuilderViewportManuallyChanged(true)
     expect(cancel).toHaveBeenCalled()
     expect(workflowStoreState.workflowDraftGeneration).toBe(0)
     // Builder's busy projection may lock the canvas while preparation is waiting.
@@ -969,6 +972,7 @@ describe('useNodesSyncDraft', () => {
       }),
     )
     expect(draftStore.getState().workflowDraftSyncPhase).toBe('builder')
+    expect(draftStore.getState().builderViewportManuallyChanged).toBe(true)
     expect(workflowStoreState.workflowDraftGeneration).toBe(1)
     mockGetNodesReadOnly.mockReturnValue(false)
     expect(
