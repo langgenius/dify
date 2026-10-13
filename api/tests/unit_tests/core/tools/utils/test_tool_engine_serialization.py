@@ -3,10 +3,12 @@ from datetime import date, datetime
 from decimal import Decimal
 from uuid import uuid4
 
+# import pytz
+from zoneinfo import ZoneInfo
+
 import numpy as np
 import pytest
-#import pytz
-from zoneinfo import ZoneInfo
+
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.utils.message_transformer import ToolFileMessageTransformer, safe_json_dict, safe_json_value
 
@@ -220,7 +222,10 @@ class TestSafeJsonDict:
         """Test nested dictionary conversion"""
         test_dict = {
             "level1": {
-                "level2": {"datetime": datetime(2024, 1, 1, 12, 0, 0, tzinfo=ZoneInfo("UTC")), "decimal": Decimal("123.456")}
+                "level2": {
+                    "datetime": datetime(2024, 1, 1, 12, 0, 0, tzinfo=ZoneInfo("UTC")),
+                    "decimal": Decimal("123.456"),
+                }
             }
         }
         result = safe_json_dict(test_dict)
