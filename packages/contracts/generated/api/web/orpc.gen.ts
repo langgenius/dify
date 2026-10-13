@@ -281,6 +281,7 @@ export const post = oc
     unauthorized: { status: 401, data: zAudioToTextError401 },
     web_app_access_denied: { status: 401, data: zAudioToTextError401 },
     web_sso_auth_required: { status: 401, data: zAudioToTextError401 },
+    agent_version_not_found_error: { status: 404, data: zAudioToTextError404 },
     app_not_found: { status: 404, data: zAudioToTextError404 },
     not_found: { status: 404, data: zAudioToTextError404 },
     audio_too_large: { status: 413, data: zAudioToTextError413 },

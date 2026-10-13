@@ -24,22 +24,6 @@ import {
   zDeleteAgentBuildDraftApiError400,
   zDeleteAgentBuildDraftApiError401,
   zDeleteAgentBuildDraftApiError404,
-  zDeleteAgentConfigFileByAgentError400,
-  zDeleteAgentConfigFileByAgentError401,
-  zDeleteAgentConfigSkillByAgentError400,
-  zDeleteAgentConfigSkillByAgentError401,
-  zDownloadAgentAppSandboxFileError400,
-  zDownloadAgentAppSandboxFileError401,
-  zDownloadAgentAppSandboxFileError404,
-  zDownloadAgentAppSandboxFileError502,
-  zDownloadAgentAppSandboxFileError503,
-  zDownloadAgentConfigFileByAgentError400,
-  zDownloadAgentConfigFileByAgentError401,
-  zDownloadAgentConfigSkillByAgentError400,
-  zDownloadAgentConfigSkillByAgentError401,
-  zDownloadAgentConfigSkillFileByAgentError400,
-  zDownloadAgentConfigSkillFileByAgentError401,
-  zDownloadAgentConfigSkillFileByAgentError404,
   zFinalizeAgentBuildChatError400,
   zFinalizeAgentBuildChatError401,
   zFinalizeAgentBuildChatError404,
@@ -54,11 +38,6 @@ import {
   zGetAgentAppApiError404,
   zGetAgentAppListApiError400,
   zGetAgentAppListApiError401,
-  zGetAgentAppSandboxInfoError400,
-  zGetAgentAppSandboxInfoError401,
-  zGetAgentAppSandboxInfoError404,
-  zGetAgentAppSandboxInfoError502,
-  zGetAgentAppSandboxInfoError503,
   zGetAgentBuildDraftApiError400,
   zGetAgentBuildDraftApiError401,
   zGetAgentBuildDraftApiError404,
@@ -68,15 +47,6 @@ import {
   zGetAgentComposerCandidatesApiError400,
   zGetAgentComposerCandidatesApiError401,
   zGetAgentComposerCandidatesApiError404,
-  zGetAgentConfigFilesByAgentError400,
-  zGetAgentConfigFilesByAgentError401,
-  zGetAgentConfigManifestByAgentError400,
-  zGetAgentConfigManifestByAgentError401,
-  zGetAgentConfigSkillFileDownloadContentByAgentApiError400,
-  zGetAgentConfigSkillFileDownloadContentByAgentApiError401,
-  zGetAgentConfigSkillFileDownloadContentByAgentApiError404,
-  zGetAgentConfigSkillsByAgentError400,
-  zGetAgentConfigSkillsByAgentError401,
   zGetAgentInviteOptionsApiError400,
   zGetAgentInviteOptionsApiError401,
   zGetAgentLogMessagesApiError400,
@@ -103,16 +73,9 @@ import {
   zGetAgentTextToSpeechVoicesError404,
   zGetAgentTextToSpeechVoicesError413,
   zGetAgentTextToSpeechVoicesError415,
-  zInspectAgentConfigSkillByAgentError400,
-  zInspectAgentConfigSkillByAgentError401,
   zListAgentAppReferencingWorkflowsError400,
   zListAgentAppReferencingWorkflowsError401,
   zListAgentAppReferencingWorkflowsError404,
-  zListAgentAppSandboxFilesError400,
-  zListAgentAppSandboxFilesError401,
-  zListAgentAppSandboxFilesError404,
-  zListAgentAppSandboxFilesError502,
-  zListAgentAppSandboxFilesError503,
   zListAgentChatMessagesError400,
   zListAgentChatMessagesError401,
   zListAgentChatMessagesError404,
@@ -144,11 +107,6 @@ import {
   zPostAgentPublishApiError404,
   zPostAgentRosterVersionRestoreApiError400,
   zPostAgentRosterVersionRestoreApiError401,
-  zPreviewAgentConfigFileByAgentError400,
-  zPreviewAgentConfigFileByAgentError401,
-  zPreviewAgentConfigSkillFileByAgentError400,
-  zPreviewAgentConfigSkillFileByAgentError401,
-  zPreviewAgentConfigSkillFileByAgentError404,
   zPutAgentAppApiError400,
   zPutAgentAppApiError401,
   zPutAgentAppApiError404,
@@ -158,21 +116,12 @@ import {
   zPutAgentComposerApiError400,
   zPutAgentComposerApiError401,
   zPutAgentComposerApiError404,
-  zReadAgentAppSandboxFileError400,
-  zReadAgentAppSandboxFileError401,
-  zReadAgentAppSandboxFileError404,
-  zReadAgentAppSandboxFileError502,
-  zReadAgentAppSandboxFileError503,
   zStopAgentChatMessageError400,
   zStopAgentChatMessageError401,
   zStopAgentChatMessageError404,
   zUpdateAgentAppFeaturesError400,
   zUpdateAgentAppFeaturesError401,
   zUpdateAgentAppFeaturesError404,
-  zUploadAgentConfigFileByAgentError400,
-  zUploadAgentConfigFileByAgentError401,
-  zUploadAgentConfigSkillByAgentError400,
-  zUploadAgentConfigSkillByAgentError401,
 } from './zod.gen.ts'
 import {
   zDeleteAgentByAgentIdApiKeysByApiKeyIdPath,
@@ -584,9 +533,11 @@ export const post5 = oc
   .output(zPostAgentByAgentIdBuildDraftApplyResponse)
   .errors({
     account_not_initialized: { status: 400, data: zPostAgentBuildDraftApplyApiError400 },
+    agent_soul_locked_error: { status: 400, data: zPostAgentBuildDraftApplyApiError400 },
     bad_request: { status: 400, data: zPostAgentBuildDraftApplyApiError400 },
     invalid_composer_config_error: { status: 400, data: zPostAgentBuildDraftApplyApiError400 },
     invalid_param: { status: 400, data: zPostAgentBuildDraftApplyApiError400 },
+    plaintext_secret_not_allowed_error: { status: 400, data: zPostAgentBuildDraftApplyApiError400 },
     not_init_validated: { status: 401, data: zPostAgentBuildDraftApplyApiError401 },
     not_setup: { status: 401, data: zPostAgentBuildDraftApplyApiError401 },
     unauthorized: { status: 401, data: zPostAgentBuildDraftApplyApiError401 },
@@ -740,6 +691,10 @@ export const get5 = oc
     },
     forbidden: { status: 403, data: zGetAgentMessageSuggestedQuestionsError403 },
     agent_not_found_error: { status: 404, data: zGetAgentMessageSuggestedQuestionsError404 },
+    agent_version_not_found_error: {
+      status: 404,
+      data: zGetAgentMessageSuggestedQuestionsError404,
+    },
     not_found: { status: 404, data: zGetAgentMessageSuggestedQuestionsError404 },
   })
 
@@ -920,6 +875,7 @@ export const put2 = oc
     bad_request: { status: 400, data: zPutAgentComposerApiError400 },
     invalid_composer_config_error: { status: 400, data: zPutAgentComposerApiError400 },
     invalid_param: { status: 400, data: zPutAgentComposerApiError400 },
+    plaintext_secret_not_allowed_error: { status: 400, data: zPutAgentComposerApiError400 },
     not_init_validated: { status: 401, data: zPutAgentComposerApiError401 },
     not_setup: { status: 401, data: zPutAgentComposerApiError401 },
     unauthorized: { status: 401, data: zPutAgentComposerApiError401 },
@@ -950,14 +906,6 @@ export const get9 = oc
     }),
   )
   .output(zGetAgentByAgentIdConfigFilesByNameDownloadResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zDownloadAgentConfigFileByAgentError400 },
-    bad_request: { status: 400, data: zDownloadAgentConfigFileByAgentError400 },
-    invalid_param: { status: 400, data: zDownloadAgentConfigFileByAgentError400 },
-    not_init_validated: { status: 401, data: zDownloadAgentConfigFileByAgentError401 },
-    not_setup: { status: 401, data: zDownloadAgentConfigFileByAgentError401 },
-    unauthorized: { status: 401, data: zDownloadAgentConfigFileByAgentError401 },
-  })
 
 export const download = {
   get: get9,
@@ -978,14 +926,6 @@ export const get10 = oc
     }),
   )
   .output(zGetAgentByAgentIdConfigFilesByNamePreviewResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zPreviewAgentConfigFileByAgentError400 },
-    bad_request: { status: 400, data: zPreviewAgentConfigFileByAgentError400 },
-    invalid_param: { status: 400, data: zPreviewAgentConfigFileByAgentError400 },
-    not_init_validated: { status: 401, data: zPreviewAgentConfigFileByAgentError401 },
-    not_setup: { status: 401, data: zPreviewAgentConfigFileByAgentError401 },
-    unauthorized: { status: 401, data: zPreviewAgentConfigFileByAgentError401 },
-  })
 
 export const preview = {
   get: get10,
@@ -1006,14 +946,6 @@ export const delete3 = oc
     }),
   )
   .output(zDeleteAgentByAgentIdConfigFilesByNameResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zDeleteAgentConfigFileByAgentError400 },
-    bad_request: { status: 400, data: zDeleteAgentConfigFileByAgentError400 },
-    invalid_param: { status: 400, data: zDeleteAgentConfigFileByAgentError400 },
-    not_init_validated: { status: 401, data: zDeleteAgentConfigFileByAgentError401 },
-    not_setup: { status: 401, data: zDeleteAgentConfigFileByAgentError401 },
-    unauthorized: { status: 401, data: zDeleteAgentConfigFileByAgentError401 },
-  })
 
 export const byName = {
   delete: delete3,
@@ -1036,14 +968,6 @@ export const get11 = oc
     }),
   )
   .output(zGetAgentByAgentIdConfigFilesResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zGetAgentConfigFilesByAgentError400 },
-    bad_request: { status: 400, data: zGetAgentConfigFilesByAgentError400 },
-    invalid_param: { status: 400, data: zGetAgentConfigFilesByAgentError400 },
-    not_init_validated: { status: 401, data: zGetAgentConfigFilesByAgentError401 },
-    not_setup: { status: 401, data: zGetAgentConfigFilesByAgentError401 },
-    unauthorized: { status: 401, data: zGetAgentConfigFilesByAgentError401 },
-  })
 
 export const post9 = oc
   .route({
@@ -1062,14 +986,6 @@ export const post9 = oc
     }),
   )
   .output(zPostAgentByAgentIdConfigFilesResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zUploadAgentConfigFileByAgentError400 },
-    bad_request: { status: 400, data: zUploadAgentConfigFileByAgentError400 },
-    invalid_param: { status: 400, data: zUploadAgentConfigFileByAgentError400 },
-    not_init_validated: { status: 401, data: zUploadAgentConfigFileByAgentError401 },
-    not_setup: { status: 401, data: zUploadAgentConfigFileByAgentError401 },
-    unauthorized: { status: 401, data: zUploadAgentConfigFileByAgentError401 },
-  })
 
 export const files = {
   get: get11,
@@ -1092,14 +1008,6 @@ export const get12 = oc
     }),
   )
   .output(zGetAgentByAgentIdConfigManifestResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zGetAgentConfigManifestByAgentError400 },
-    bad_request: { status: 400, data: zGetAgentConfigManifestByAgentError400 },
-    invalid_param: { status: 400, data: zGetAgentConfigManifestByAgentError400 },
-    not_init_validated: { status: 401, data: zGetAgentConfigManifestByAgentError401 },
-    not_setup: { status: 401, data: zGetAgentConfigManifestByAgentError401 },
-    unauthorized: { status: 401, data: zGetAgentConfigManifestByAgentError401 },
-  })
 
 export const manifest = {
   get: get12,
@@ -1122,14 +1030,6 @@ export const post10 = oc
     }),
   )
   .output(zPostAgentByAgentIdConfigSkillsUploadResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zUploadAgentConfigSkillByAgentError400 },
-    bad_request: { status: 400, data: zUploadAgentConfigSkillByAgentError400 },
-    invalid_param: { status: 400, data: zUploadAgentConfigSkillByAgentError400 },
-    not_init_validated: { status: 401, data: zUploadAgentConfigSkillByAgentError401 },
-    not_setup: { status: 401, data: zUploadAgentConfigSkillByAgentError401 },
-    unauthorized: { status: 401, data: zUploadAgentConfigSkillByAgentError401 },
-  })
 
 export const upload = {
   post: post10,
@@ -1150,14 +1050,6 @@ export const get13 = oc
     }),
   )
   .output(zGetAgentByAgentIdConfigSkillsByNameDownloadResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zDownloadAgentConfigSkillByAgentError400 },
-    bad_request: { status: 400, data: zDownloadAgentConfigSkillByAgentError400 },
-    invalid_param: { status: 400, data: zDownloadAgentConfigSkillByAgentError400 },
-    not_init_validated: { status: 401, data: zDownloadAgentConfigSkillByAgentError401 },
-    not_setup: { status: 401, data: zDownloadAgentConfigSkillByAgentError401 },
-    unauthorized: { status: 401, data: zDownloadAgentConfigSkillByAgentError401 },
-  })
 
 export const download2 = {
   get: get13,
@@ -1173,25 +1065,6 @@ export const get14 = oc
   })
   .input(z.object({ params: zGetAgentByAgentIdConfigSkillsByNameFilesContentPath }))
   .output(zGetAgentByAgentIdConfigSkillsByNameFilesContentResponse)
-  .errors({
-    account_not_initialized: {
-      status: 400,
-      data: zGetAgentConfigSkillFileDownloadContentByAgentApiError400,
-    },
-    bad_request: { status: 400, data: zGetAgentConfigSkillFileDownloadContentByAgentApiError400 },
-    invalid_param: { status: 400, data: zGetAgentConfigSkillFileDownloadContentByAgentApiError400 },
-    not_init_validated: {
-      status: 401,
-      data: zGetAgentConfigSkillFileDownloadContentByAgentApiError401,
-    },
-    not_setup: { status: 401, data: zGetAgentConfigSkillFileDownloadContentByAgentApiError401 },
-    unauthorized: { status: 401, data: zGetAgentConfigSkillFileDownloadContentByAgentApiError401 },
-    agent_not_found_error: {
-      status: 404,
-      data: zGetAgentConfigSkillFileDownloadContentByAgentApiError404,
-    },
-    not_found: { status: 404, data: zGetAgentConfigSkillFileDownloadContentByAgentApiError404 },
-  })
 
 export const content = {
   get: get14,
@@ -1212,16 +1085,6 @@ export const get15 = oc
     }),
   )
   .output(zGetAgentByAgentIdConfigSkillsByNameFilesDownloadResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zDownloadAgentConfigSkillFileByAgentError400 },
-    bad_request: { status: 400, data: zDownloadAgentConfigSkillFileByAgentError400 },
-    invalid_param: { status: 400, data: zDownloadAgentConfigSkillFileByAgentError400 },
-    not_init_validated: { status: 401, data: zDownloadAgentConfigSkillFileByAgentError401 },
-    not_setup: { status: 401, data: zDownloadAgentConfigSkillFileByAgentError401 },
-    unauthorized: { status: 401, data: zDownloadAgentConfigSkillFileByAgentError401 },
-    agent_not_found_error: { status: 404, data: zDownloadAgentConfigSkillFileByAgentError404 },
-    not_found: { status: 404, data: zDownloadAgentConfigSkillFileByAgentError404 },
-  })
 
 export const download3 = {
   get: get15,
@@ -1242,16 +1105,6 @@ export const get16 = oc
     }),
   )
   .output(zGetAgentByAgentIdConfigSkillsByNameFilesPreviewResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zPreviewAgentConfigSkillFileByAgentError400 },
-    bad_request: { status: 400, data: zPreviewAgentConfigSkillFileByAgentError400 },
-    invalid_param: { status: 400, data: zPreviewAgentConfigSkillFileByAgentError400 },
-    not_init_validated: { status: 401, data: zPreviewAgentConfigSkillFileByAgentError401 },
-    not_setup: { status: 401, data: zPreviewAgentConfigSkillFileByAgentError401 },
-    unauthorized: { status: 401, data: zPreviewAgentConfigSkillFileByAgentError401 },
-    agent_not_found_error: { status: 404, data: zPreviewAgentConfigSkillFileByAgentError404 },
-    not_found: { status: 404, data: zPreviewAgentConfigSkillFileByAgentError404 },
-  })
 
 export const preview2 = {
   get: get16,
@@ -1278,14 +1131,6 @@ export const get17 = oc
     }),
   )
   .output(zGetAgentByAgentIdConfigSkillsByNameInspectResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zInspectAgentConfigSkillByAgentError400 },
-    bad_request: { status: 400, data: zInspectAgentConfigSkillByAgentError400 },
-    invalid_param: { status: 400, data: zInspectAgentConfigSkillByAgentError400 },
-    not_init_validated: { status: 401, data: zInspectAgentConfigSkillByAgentError401 },
-    not_setup: { status: 401, data: zInspectAgentConfigSkillByAgentError401 },
-    unauthorized: { status: 401, data: zInspectAgentConfigSkillByAgentError401 },
-  })
 
 export const inspect = {
   get: get17,
@@ -1306,14 +1151,6 @@ export const delete4 = oc
     }),
   )
   .output(zDeleteAgentByAgentIdConfigSkillsByNameResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zDeleteAgentConfigSkillByAgentError400 },
-    bad_request: { status: 400, data: zDeleteAgentConfigSkillByAgentError400 },
-    invalid_param: { status: 400, data: zDeleteAgentConfigSkillByAgentError400 },
-    not_init_validated: { status: 401, data: zDeleteAgentConfigSkillByAgentError401 },
-    not_setup: { status: 401, data: zDeleteAgentConfigSkillByAgentError401 },
-    unauthorized: { status: 401, data: zDeleteAgentConfigSkillByAgentError401 },
-  })
 
 export const byName2 = {
   delete: delete4,
@@ -1337,14 +1174,6 @@ export const get18 = oc
     }),
   )
   .output(zGetAgentByAgentIdConfigSkillsResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zGetAgentConfigSkillsByAgentError400 },
-    bad_request: { status: 400, data: zGetAgentConfigSkillsByAgentError400 },
-    invalid_param: { status: 400, data: zGetAgentConfigSkillsByAgentError400 },
-    not_init_validated: { status: 401, data: zGetAgentConfigSkillsByAgentError401 },
-    not_setup: { status: 401, data: zGetAgentConfigSkillsByAgentError401 },
-    unauthorized: { status: 401, data: zGetAgentConfigSkillsByAgentError401 },
-  })
 
 export const skills = {
   get: get18,
@@ -1604,6 +1433,7 @@ export const post15 = oc
     bad_request: { status: 400, data: zPostAgentPublishApiError400 },
     invalid_composer_config_error: { status: 400, data: zPostAgentPublishApiError400 },
     invalid_param: { status: 400, data: zPostAgentPublishApiError400 },
+    plaintext_secret_not_allowed_error: { status: 400, data: zPostAgentPublishApiError400 },
     not_init_validated: { status: 401, data: zPostAgentPublishApiError401 },
     not_setup: { status: 401, data: zPostAgentPublishApiError401 },
     unauthorized: { status: 401, data: zPostAgentPublishApiError401 },
@@ -1664,24 +1494,6 @@ export const post16 = oc
     }),
   )
   .output(zPostAgentByAgentIdSandboxFilesDownloadResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zDownloadAgentAppSandboxFileError400 },
-    bad_request: { status: 400, data: zDownloadAgentAppSandboxFileError400 },
-    invalid_param: { status: 400, data: zDownloadAgentAppSandboxFileError400 },
-    not_init_validated: { status: 401, data: zDownloadAgentAppSandboxFileError401 },
-    not_setup: { status: 401, data: zDownloadAgentAppSandboxFileError401 },
-    unauthorized: { status: 401, data: zDownloadAgentAppSandboxFileError401 },
-    agent_not_found_error: { status: 404, data: zDownloadAgentAppSandboxFileError404 },
-    app_not_found: { status: 404, data: zDownloadAgentAppSandboxFileError404 },
-    no_active_binding: { status: 404, data: zDownloadAgentAppSandboxFileError404 },
-    not_found: { status: 404, data: zDownloadAgentAppSandboxFileError404 },
-    agent_backend_unreachable: { status: 502, data: zDownloadAgentAppSandboxFileError502 },
-    bad_gateway: { status: 502, data: zDownloadAgentAppSandboxFileError502 },
-    binding_file_download_unavailable: { status: 502, data: zDownloadAgentAppSandboxFileError502 },
-    plugin_runtime_error: { status: 502, data: zDownloadAgentAppSandboxFileError502 },
-    inspector_unavailable: { status: 503, data: zDownloadAgentAppSandboxFileError503 },
-    service_unavailable: { status: 503, data: zDownloadAgentAppSandboxFileError503 },
-  })
 
 export const download4 = {
   post: post16,
@@ -1706,24 +1518,6 @@ export const get24 = oc
     }),
   )
   .output(zGetAgentByAgentIdSandboxFilesReadResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zReadAgentAppSandboxFileError400 },
-    bad_request: { status: 400, data: zReadAgentAppSandboxFileError400 },
-    invalid_param: { status: 400, data: zReadAgentAppSandboxFileError400 },
-    not_init_validated: { status: 401, data: zReadAgentAppSandboxFileError401 },
-    not_setup: { status: 401, data: zReadAgentAppSandboxFileError401 },
-    unauthorized: { status: 401, data: zReadAgentAppSandboxFileError401 },
-    agent_not_found_error: { status: 404, data: zReadAgentAppSandboxFileError404 },
-    app_not_found: { status: 404, data: zReadAgentAppSandboxFileError404 },
-    no_active_binding: { status: 404, data: zReadAgentAppSandboxFileError404 },
-    not_found: { status: 404, data: zReadAgentAppSandboxFileError404 },
-    agent_backend_unreachable: { status: 502, data: zReadAgentAppSandboxFileError502 },
-    bad_gateway: { status: 502, data: zReadAgentAppSandboxFileError502 },
-    binding_file_download_unavailable: { status: 502, data: zReadAgentAppSandboxFileError502 },
-    plugin_runtime_error: { status: 502, data: zReadAgentAppSandboxFileError502 },
-    inspector_unavailable: { status: 503, data: zReadAgentAppSandboxFileError503 },
-    service_unavailable: { status: 503, data: zReadAgentAppSandboxFileError503 },
-  })
 
 export const read = {
   get: get24,
@@ -1748,24 +1542,6 @@ export const get25 = oc
     }),
   )
   .output(zGetAgentByAgentIdSandboxFilesResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zListAgentAppSandboxFilesError400 },
-    bad_request: { status: 400, data: zListAgentAppSandboxFilesError400 },
-    invalid_param: { status: 400, data: zListAgentAppSandboxFilesError400 },
-    not_init_validated: { status: 401, data: zListAgentAppSandboxFilesError401 },
-    not_setup: { status: 401, data: zListAgentAppSandboxFilesError401 },
-    unauthorized: { status: 401, data: zListAgentAppSandboxFilesError401 },
-    agent_not_found_error: { status: 404, data: zListAgentAppSandboxFilesError404 },
-    app_not_found: { status: 404, data: zListAgentAppSandboxFilesError404 },
-    no_active_binding: { status: 404, data: zListAgentAppSandboxFilesError404 },
-    not_found: { status: 404, data: zListAgentAppSandboxFilesError404 },
-    agent_backend_unreachable: { status: 502, data: zListAgentAppSandboxFilesError502 },
-    bad_gateway: { status: 502, data: zListAgentAppSandboxFilesError502 },
-    binding_file_download_unavailable: { status: 502, data: zListAgentAppSandboxFilesError502 },
-    plugin_runtime_error: { status: 502, data: zListAgentAppSandboxFilesError502 },
-    inspector_unavailable: { status: 503, data: zListAgentAppSandboxFilesError503 },
-    service_unavailable: { status: 503, data: zListAgentAppSandboxFilesError503 },
-  })
 
 export const files3 = {
   get: get25,
@@ -1787,24 +1563,6 @@ export const get26 = oc
   })
   .input(z.object({ params: zGetAgentByAgentIdSandboxPath, query: zGetAgentByAgentIdSandboxQuery }))
   .output(zGetAgentByAgentIdSandboxResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zGetAgentAppSandboxInfoError400 },
-    bad_request: { status: 400, data: zGetAgentAppSandboxInfoError400 },
-    invalid_param: { status: 400, data: zGetAgentAppSandboxInfoError400 },
-    not_init_validated: { status: 401, data: zGetAgentAppSandboxInfoError401 },
-    not_setup: { status: 401, data: zGetAgentAppSandboxInfoError401 },
-    unauthorized: { status: 401, data: zGetAgentAppSandboxInfoError401 },
-    agent_not_found_error: { status: 404, data: zGetAgentAppSandboxInfoError404 },
-    app_not_found: { status: 404, data: zGetAgentAppSandboxInfoError404 },
-    no_active_binding: { status: 404, data: zGetAgentAppSandboxInfoError404 },
-    not_found: { status: 404, data: zGetAgentAppSandboxInfoError404 },
-    agent_backend_unreachable: { status: 502, data: zGetAgentAppSandboxInfoError502 },
-    bad_gateway: { status: 502, data: zGetAgentAppSandboxInfoError502 },
-    binding_file_download_unavailable: { status: 502, data: zGetAgentAppSandboxInfoError502 },
-    plugin_runtime_error: { status: 502, data: zGetAgentAppSandboxInfoError502 },
-    inspector_unavailable: { status: 503, data: zGetAgentAppSandboxInfoError503 },
-    service_unavailable: { status: 503, data: zGetAgentAppSandboxInfoError503 },
-  })
 
 export const sandbox = {
   get: get26,

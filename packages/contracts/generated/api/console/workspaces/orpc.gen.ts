@@ -45,10 +45,6 @@ import {
   zDeleteToolProviderMcpApiError401,
   zDeleteTriggerOAuthClientManageApiError400,
   zDeleteTriggerOAuthClientManageApiError401,
-  zDeleteWorkspaceSkillApiError400,
-  zDeleteWorkspaceSkillApiError401,
-  zDeleteWorkspaceSkillVersionApiError400,
-  zDeleteWorkspaceSkillVersionApiError401,
   zDisableEndpointError400,
   zDisableEndpointError401,
   zEnableEndpointError400,
@@ -256,22 +252,8 @@ import {
   zGetWorkspaceAgentSkillBindingsApiError401,
   zGetWorkspacePermissionApiError400,
   zGetWorkspacePermissionApiError401,
-  zGetWorkspaceSkillApiError400,
-  zGetWorkspaceSkillApiError401,
-  zGetWorkspaceSkillExportApiError400,
-  zGetWorkspaceSkillExportApiError401,
-  zGetWorkspaceSkillFileContentApiError400,
-  zGetWorkspaceSkillFileContentApiError401,
-  zGetWorkspaceSkillFilePreviewApiError400,
-  zGetWorkspaceSkillFilePreviewApiError401,
-  zGetWorkspaceSkillReferencesApiError400,
-  zGetWorkspaceSkillReferencesApiError401,
   zGetWorkspaceSkillTagsApiError400,
   zGetWorkspaceSkillTagsApiError401,
-  zGetWorkspaceSkillVersionApiError400,
-  zGetWorkspaceSkillVersionApiError401,
-  zGetWorkspaceSkillVersionsApiError400,
-  zGetWorkspaceSkillVersionsApiError401,
   zGetWorkspaceSkillsApiError400,
   zGetWorkspaceSkillsApiError401,
   zImportCustomizedSnippetError400,
@@ -290,12 +272,6 @@ import {
   zPatchModelProviderModelDisableApiError401,
   zPatchModelProviderModelEnableApiError400,
   zPatchModelProviderModelEnableApiError401,
-  zPatchWorkspaceSkillApiError400,
-  zPatchWorkspaceSkillApiError401,
-  zPatchWorkspaceSkillFilesApiError400,
-  zPatchWorkspaceSkillFilesApiError401,
-  zPatchWorkspaceSkillVersionApiError400,
-  zPatchWorkspaceSkillVersionApiError401,
   zPostCustomConfigWorkspaceApiError400,
   zPostCustomConfigWorkspaceApiError401,
   zPostDefaultModelApiError400,
@@ -431,22 +407,6 @@ import {
   zPostWebappLogoWorkspaceApiError415,
   zPostWorkspaceInfoApiError400,
   zPostWorkspaceInfoApiError401,
-  zPostWorkspaceSkillAssistMessageApiError400,
-  zPostWorkspaceSkillAssistMessageApiError401,
-  zPostWorkspaceSkillDuplicateApiError400,
-  zPostWorkspaceSkillDuplicateApiError401,
-  zPostWorkspaceSkillFileUploadApiError400,
-  zPostWorkspaceSkillFileUploadApiError401,
-  zPostWorkspaceSkillFilesCheckApiError400,
-  zPostWorkspaceSkillFilesCheckApiError401,
-  zPostWorkspaceSkillImportApiError400,
-  zPostWorkspaceSkillImportApiError401,
-  zPostWorkspaceSkillPublishApiError400,
-  zPostWorkspaceSkillPublishApiError401,
-  zPostWorkspaceSkillRestoreApiError400,
-  zPostWorkspaceSkillRestoreApiError401,
-  zPostWorkspaceSkillsApiError400,
-  zPostWorkspaceSkillsApiError401,
   zPutMemberUpdateRoleApiError400,
   zPutMemberUpdateRoleApiError401,
   zPutMemberUpdateRoleApiError403,
@@ -485,10 +445,6 @@ import {
   zPutRbacWorkspaceDatasetBindingsApiError401,
   zPutToolProviderMcpApiError400,
   zPutToolProviderMcpApiError401,
-  zPutWorkspaceAgentSkillBindingsApiError400,
-  zPutWorkspaceAgentSkillBindingsApiError401,
-  zPutWorkspaceSkillFilesApiError400,
-  zPutWorkspaceSkillFilesApiError401,
   zUpdateCustomizedSnippetError400,
   zUpdateCustomizedSnippetError401,
   zUpdateEndpointDeprecatedError400,
@@ -1112,14 +1068,6 @@ export const put = oc
     }),
   )
   .output(zPutWorkspacesCurrentAgentsByAgentIdSkillsResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zPutWorkspaceAgentSkillBindingsApiError400 },
-    bad_request: { status: 400, data: zPutWorkspaceAgentSkillBindingsApiError400 },
-    invalid_param: { status: 400, data: zPutWorkspaceAgentSkillBindingsApiError400 },
-    not_init_validated: { status: 401, data: zPutWorkspaceAgentSkillBindingsApiError401 },
-    not_setup: { status: 401, data: zPutWorkspaceAgentSkillBindingsApiError401 },
-    unauthorized: { status: 401, data: zPutWorkspaceAgentSkillBindingsApiError401 },
-  })
 
 export const skills = {
   get: get3,
@@ -5358,16 +5306,6 @@ export const post48 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentSkillsFilesUploadBody }))
   .output(zPostWorkspacesCurrentSkillsFilesUploadResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zPostWorkspaceSkillFileUploadApiError400 },
-    bad_request: { status: 400, data: zPostWorkspaceSkillFileUploadApiError400 },
-    filename_missing: { status: 400, data: zPostWorkspaceSkillFileUploadApiError400 },
-    invalid_param: { status: 400, data: zPostWorkspaceSkillFileUploadApiError400 },
-    no_file_uploaded: { status: 400, data: zPostWorkspaceSkillFileUploadApiError400 },
-    not_init_validated: { status: 401, data: zPostWorkspaceSkillFileUploadApiError401 },
-    not_setup: { status: 401, data: zPostWorkspaceSkillFileUploadApiError401 },
-    unauthorized: { status: 401, data: zPostWorkspaceSkillFileUploadApiError401 },
-  })
 
 export const upload2 = {
   post: post48,
@@ -5391,15 +5329,6 @@ export const post49 = oc
     tags: ['console'],
   })
   .output(zPostWorkspacesCurrentSkillsImportResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zPostWorkspaceSkillImportApiError400 },
-    bad_request: { status: 400, data: zPostWorkspaceSkillImportApiError400 },
-    invalid_param: { status: 400, data: zPostWorkspaceSkillImportApiError400 },
-    invalid_request: { status: 400, data: zPostWorkspaceSkillImportApiError400 },
-    not_init_validated: { status: 401, data: zPostWorkspaceSkillImportApiError401 },
-    not_setup: { status: 401, data: zPostWorkspaceSkillImportApiError401 },
-    unauthorized: { status: 401, data: zPostWorkspaceSkillImportApiError401 },
-  })
 
 export const import_ = {
   post: post49,
@@ -5442,14 +5371,6 @@ export const post50 = oc
     }),
   )
   .output(zPostWorkspacesCurrentSkillsBySkillIdAssistMessagesResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zPostWorkspaceSkillAssistMessageApiError400 },
-    bad_request: { status: 400, data: zPostWorkspaceSkillAssistMessageApiError400 },
-    invalid_param: { status: 400, data: zPostWorkspaceSkillAssistMessageApiError400 },
-    not_init_validated: { status: 401, data: zPostWorkspaceSkillAssistMessageApiError401 },
-    not_setup: { status: 401, data: zPostWorkspaceSkillAssistMessageApiError401 },
-    unauthorized: { status: 401, data: zPostWorkspaceSkillAssistMessageApiError401 },
-  })
 
 export const messages = {
   post: post50,
@@ -5470,14 +5391,6 @@ export const post51 = oc
   })
   .input(z.object({ params: zPostWorkspacesCurrentSkillsBySkillIdDuplicatePath }))
   .output(zPostWorkspacesCurrentSkillsBySkillIdDuplicateResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zPostWorkspaceSkillDuplicateApiError400 },
-    bad_request: { status: 400, data: zPostWorkspaceSkillDuplicateApiError400 },
-    invalid_param: { status: 400, data: zPostWorkspaceSkillDuplicateApiError400 },
-    not_init_validated: { status: 401, data: zPostWorkspaceSkillDuplicateApiError401 },
-    not_setup: { status: 401, data: zPostWorkspaceSkillDuplicateApiError401 },
-    unauthorized: { status: 401, data: zPostWorkspaceSkillDuplicateApiError401 },
-  })
 
 export const duplicate = {
   post: post51,
@@ -5493,14 +5406,6 @@ export const get76 = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentSkillsBySkillIdExportPath }))
   .output(zGetWorkspacesCurrentSkillsBySkillIdExportResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zGetWorkspaceSkillExportApiError400 },
-    bad_request: { status: 400, data: zGetWorkspaceSkillExportApiError400 },
-    invalid_param: { status: 400, data: zGetWorkspaceSkillExportApiError400 },
-    not_init_validated: { status: 401, data: zGetWorkspaceSkillExportApiError401 },
-    not_setup: { status: 401, data: zGetWorkspaceSkillExportApiError401 },
-    unauthorized: { status: 401, data: zGetWorkspaceSkillExportApiError401 },
-  })
 
 export const export2 = {
   get: get76,
@@ -5521,15 +5426,6 @@ export const post52 = oc
     }),
   )
   .output(zPostWorkspacesCurrentSkillsBySkillIdFilesCheckResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zPostWorkspaceSkillFilesCheckApiError400 },
-    bad_request: { status: 400, data: zPostWorkspaceSkillFilesCheckApiError400 },
-    invalid_param: { status: 400, data: zPostWorkspaceSkillFilesCheckApiError400 },
-    invalid_request: { status: 400, data: zPostWorkspaceSkillFilesCheckApiError400 },
-    not_init_validated: { status: 401, data: zPostWorkspaceSkillFilesCheckApiError401 },
-    not_setup: { status: 401, data: zPostWorkspaceSkillFilesCheckApiError401 },
-    unauthorized: { status: 401, data: zPostWorkspaceSkillFilesCheckApiError401 },
-  })
 
 export const check = {
   post: post52,
@@ -5550,15 +5446,6 @@ export const get77 = oc
     }),
   )
   .output(zGetWorkspacesCurrentSkillsBySkillIdFilesContentResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zGetWorkspaceSkillFileContentApiError400 },
-    bad_request: { status: 400, data: zGetWorkspaceSkillFileContentApiError400 },
-    invalid_param: { status: 400, data: zGetWorkspaceSkillFileContentApiError400 },
-    invalid_request: { status: 400, data: zGetWorkspaceSkillFileContentApiError400 },
-    not_init_validated: { status: 401, data: zGetWorkspaceSkillFileContentApiError401 },
-    not_setup: { status: 401, data: zGetWorkspaceSkillFileContentApiError401 },
-    unauthorized: { status: 401, data: zGetWorkspaceSkillFileContentApiError401 },
-  })
 
 export const content = {
   get: get77,
@@ -5579,15 +5466,6 @@ export const get78 = oc
     }),
   )
   .output(zGetWorkspacesCurrentSkillsBySkillIdFilesPreviewResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zGetWorkspaceSkillFilePreviewApiError400 },
-    bad_request: { status: 400, data: zGetWorkspaceSkillFilePreviewApiError400 },
-    invalid_param: { status: 400, data: zGetWorkspaceSkillFilePreviewApiError400 },
-    invalid_request: { status: 400, data: zGetWorkspaceSkillFilePreviewApiError400 },
-    not_init_validated: { status: 401, data: zGetWorkspaceSkillFilePreviewApiError401 },
-    not_setup: { status: 401, data: zGetWorkspaceSkillFilePreviewApiError401 },
-    unauthorized: { status: 401, data: zGetWorkspaceSkillFilePreviewApiError401 },
-  })
 
 export const preview = {
   get: get78,
@@ -5608,15 +5486,6 @@ export const patch5 = oc
     }),
   )
   .output(zPatchWorkspacesCurrentSkillsBySkillIdFilesResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zPatchWorkspaceSkillFilesApiError400 },
-    bad_request: { status: 400, data: zPatchWorkspaceSkillFilesApiError400 },
-    invalid_param: { status: 400, data: zPatchWorkspaceSkillFilesApiError400 },
-    invalid_request: { status: 400, data: zPatchWorkspaceSkillFilesApiError400 },
-    not_init_validated: { status: 401, data: zPatchWorkspaceSkillFilesApiError401 },
-    not_setup: { status: 401, data: zPatchWorkspaceSkillFilesApiError401 },
-    unauthorized: { status: 401, data: zPatchWorkspaceSkillFilesApiError401 },
-  })
 
 export const put19 = oc
   .route({
@@ -5633,15 +5502,6 @@ export const put19 = oc
     }),
   )
   .output(zPutWorkspacesCurrentSkillsBySkillIdFilesResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zPutWorkspaceSkillFilesApiError400 },
-    bad_request: { status: 400, data: zPutWorkspaceSkillFilesApiError400 },
-    invalid_param: { status: 400, data: zPutWorkspaceSkillFilesApiError400 },
-    invalid_request: { status: 400, data: zPutWorkspaceSkillFilesApiError400 },
-    not_init_validated: { status: 401, data: zPutWorkspaceSkillFilesApiError401 },
-    not_setup: { status: 401, data: zPutWorkspaceSkillFilesApiError401 },
-    unauthorized: { status: 401, data: zPutWorkspaceSkillFilesApiError401 },
-  })
 
 export const files2 = {
   patch: patch5,
@@ -5666,14 +5526,6 @@ export const post53 = oc
     }),
   )
   .output(zPostWorkspacesCurrentSkillsBySkillIdPublishResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zPostWorkspaceSkillPublishApiError400 },
-    bad_request: { status: 400, data: zPostWorkspaceSkillPublishApiError400 },
-    invalid_param: { status: 400, data: zPostWorkspaceSkillPublishApiError400 },
-    not_init_validated: { status: 401, data: zPostWorkspaceSkillPublishApiError401 },
-    not_setup: { status: 401, data: zPostWorkspaceSkillPublishApiError401 },
-    unauthorized: { status: 401, data: zPostWorkspaceSkillPublishApiError401 },
-  })
 
 export const publish = {
   post: post53,
@@ -5689,14 +5541,6 @@ export const get79 = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentSkillsBySkillIdReferencesPath }))
   .output(zGetWorkspacesCurrentSkillsBySkillIdReferencesResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zGetWorkspaceSkillReferencesApiError400 },
-    bad_request: { status: 400, data: zGetWorkspaceSkillReferencesApiError400 },
-    invalid_param: { status: 400, data: zGetWorkspaceSkillReferencesApiError400 },
-    not_init_validated: { status: 401, data: zGetWorkspaceSkillReferencesApiError401 },
-    not_setup: { status: 401, data: zGetWorkspaceSkillReferencesApiError401 },
-    unauthorized: { status: 401, data: zGetWorkspaceSkillReferencesApiError401 },
-  })
 
 export const references = {
   get: get79,
@@ -5717,14 +5561,6 @@ export const post54 = oc
     }),
   )
   .output(zPostWorkspacesCurrentSkillsBySkillIdRestoreResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zPostWorkspaceSkillRestoreApiError400 },
-    bad_request: { status: 400, data: zPostWorkspaceSkillRestoreApiError400 },
-    invalid_param: { status: 400, data: zPostWorkspaceSkillRestoreApiError400 },
-    not_init_validated: { status: 401, data: zPostWorkspaceSkillRestoreApiError401 },
-    not_setup: { status: 401, data: zPostWorkspaceSkillRestoreApiError401 },
-    unauthorized: { status: 401, data: zPostWorkspaceSkillRestoreApiError401 },
-  })
 
 export const restore = {
   post: post54,
@@ -5740,14 +5576,6 @@ export const delete14 = oc
   })
   .input(z.object({ params: zDeleteWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdPath }))
   .output(zDeleteWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zDeleteWorkspaceSkillVersionApiError400 },
-    bad_request: { status: 400, data: zDeleteWorkspaceSkillVersionApiError400 },
-    invalid_param: { status: 400, data: zDeleteWorkspaceSkillVersionApiError400 },
-    not_init_validated: { status: 401, data: zDeleteWorkspaceSkillVersionApiError401 },
-    not_setup: { status: 401, data: zDeleteWorkspaceSkillVersionApiError401 },
-    unauthorized: { status: 401, data: zDeleteWorkspaceSkillVersionApiError401 },
-  })
 
 export const get80 = oc
   .route({
@@ -5759,14 +5587,6 @@ export const get80 = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdPath }))
   .output(zGetWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zGetWorkspaceSkillVersionApiError400 },
-    bad_request: { status: 400, data: zGetWorkspaceSkillVersionApiError400 },
-    invalid_param: { status: 400, data: zGetWorkspaceSkillVersionApiError400 },
-    not_init_validated: { status: 401, data: zGetWorkspaceSkillVersionApiError401 },
-    not_setup: { status: 401, data: zGetWorkspaceSkillVersionApiError401 },
-    unauthorized: { status: 401, data: zGetWorkspaceSkillVersionApiError401 },
-  })
 
 export const patch6 = oc
   .route({
@@ -5783,14 +5603,6 @@ export const patch6 = oc
     }),
   )
   .output(zPatchWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zPatchWorkspaceSkillVersionApiError400 },
-    bad_request: { status: 400, data: zPatchWorkspaceSkillVersionApiError400 },
-    invalid_param: { status: 400, data: zPatchWorkspaceSkillVersionApiError400 },
-    not_init_validated: { status: 401, data: zPatchWorkspaceSkillVersionApiError401 },
-    not_setup: { status: 401, data: zPatchWorkspaceSkillVersionApiError401 },
-    unauthorized: { status: 401, data: zPatchWorkspaceSkillVersionApiError401 },
-  })
 
 export const byVersionId = {
   delete: delete14,
@@ -5808,14 +5620,6 @@ export const get81 = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentSkillsBySkillIdVersionsPath }))
   .output(zGetWorkspacesCurrentSkillsBySkillIdVersionsResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zGetWorkspaceSkillVersionsApiError400 },
-    bad_request: { status: 400, data: zGetWorkspaceSkillVersionsApiError400 },
-    invalid_param: { status: 400, data: zGetWorkspaceSkillVersionsApiError400 },
-    not_init_validated: { status: 401, data: zGetWorkspaceSkillVersionsApiError401 },
-    not_setup: { status: 401, data: zGetWorkspaceSkillVersionsApiError401 },
-    unauthorized: { status: 401, data: zGetWorkspaceSkillVersionsApiError401 },
-  })
 
 export const versions = {
   get: get81,
@@ -5837,14 +5641,6 @@ export const delete15 = oc
     }),
   )
   .output(zDeleteWorkspacesCurrentSkillsBySkillIdResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zDeleteWorkspaceSkillApiError400 },
-    bad_request: { status: 400, data: zDeleteWorkspaceSkillApiError400 },
-    invalid_param: { status: 400, data: zDeleteWorkspaceSkillApiError400 },
-    not_init_validated: { status: 401, data: zDeleteWorkspaceSkillApiError401 },
-    not_setup: { status: 401, data: zDeleteWorkspaceSkillApiError401 },
-    unauthorized: { status: 401, data: zDeleteWorkspaceSkillApiError401 },
-  })
 
 export const get82 = oc
   .route({
@@ -5856,14 +5652,6 @@ export const get82 = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentSkillsBySkillIdPath }))
   .output(zGetWorkspacesCurrentSkillsBySkillIdResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zGetWorkspaceSkillApiError400 },
-    bad_request: { status: 400, data: zGetWorkspaceSkillApiError400 },
-    invalid_param: { status: 400, data: zGetWorkspaceSkillApiError400 },
-    not_init_validated: { status: 401, data: zGetWorkspaceSkillApiError401 },
-    not_setup: { status: 401, data: zGetWorkspaceSkillApiError401 },
-    unauthorized: { status: 401, data: zGetWorkspaceSkillApiError401 },
-  })
 
 export const patch7 = oc
   .route({
@@ -5880,15 +5668,6 @@ export const patch7 = oc
     }),
   )
   .output(zPatchWorkspacesCurrentSkillsBySkillIdResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zPatchWorkspaceSkillApiError400 },
-    bad_request: { status: 400, data: zPatchWorkspaceSkillApiError400 },
-    invalid_param: { status: 400, data: zPatchWorkspaceSkillApiError400 },
-    invalid_request: { status: 400, data: zPatchWorkspaceSkillApiError400 },
-    not_init_validated: { status: 401, data: zPatchWorkspaceSkillApiError401 },
-    not_setup: { status: 401, data: zPatchWorkspaceSkillApiError401 },
-    unauthorized: { status: 401, data: zPatchWorkspaceSkillApiError401 },
-  })
 
 export const bySkillId = {
   delete: delete15,
@@ -5934,15 +5713,6 @@ export const post55 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentSkillsBody }))
   .output(zPostWorkspacesCurrentSkillsResponse)
-  .errors({
-    account_not_initialized: { status: 400, data: zPostWorkspaceSkillsApiError400 },
-    bad_request: { status: 400, data: zPostWorkspaceSkillsApiError400 },
-    invalid_param: { status: 400, data: zPostWorkspaceSkillsApiError400 },
-    invalid_request: { status: 400, data: zPostWorkspaceSkillsApiError400 },
-    not_init_validated: { status: 401, data: zPostWorkspaceSkillsApiError401 },
-    not_setup: { status: 401, data: zPostWorkspaceSkillsApiError401 },
-    unauthorized: { status: 401, data: zPostWorkspaceSkillsApiError401 },
-  })
 
 export const skills2 = {
   get: get83,

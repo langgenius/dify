@@ -659,6 +659,10 @@ export const post6 = oc
       data: zPostSnippetAgentComposerSaveToRosterApiError400,
     },
     invalid_param: { status: 400, data: zPostSnippetAgentComposerSaveToRosterApiError400 },
+    plaintext_secret_not_allowed_error: {
+      status: 400,
+      data: zPostSnippetAgentComposerSaveToRosterApiError400,
+    },
     not_init_validated: { status: 401, data: zPostSnippetAgentComposerSaveToRosterApiError401 },
     not_setup: { status: 401, data: zPostSnippetAgentComposerSaveToRosterApiError401 },
     unauthorized: { status: 401, data: zPostSnippetAgentComposerSaveToRosterApiError401 },
@@ -733,6 +737,7 @@ export const get9 = oc
     not_init_validated: { status: 401, data: zGetSnippetAgentComposerApiError401 },
     not_setup: { status: 401, data: zGetSnippetAgentComposerApiError401 },
     unauthorized: { status: 401, data: zGetSnippetAgentComposerApiError401 },
+    agent_not_found_error: { status: 404, data: zGetSnippetAgentComposerApiError404 },
     agent_version_not_found_error: { status: 404, data: zGetSnippetAgentComposerApiError404 },
     not_found: { status: 404, data: zGetSnippetAgentComposerApiError404 },
   })
@@ -758,6 +763,7 @@ export const put = oc
     bad_request: { status: 400, data: zPutSnippetAgentComposerApiError400 },
     invalid_composer_config_error: { status: 400, data: zPutSnippetAgentComposerApiError400 },
     invalid_param: { status: 400, data: zPutSnippetAgentComposerApiError400 },
+    plaintext_secret_not_allowed_error: { status: 400, data: zPutSnippetAgentComposerApiError400 },
     not_init_validated: { status: 401, data: zPutSnippetAgentComposerApiError401 },
     not_setup: { status: 401, data: zPutSnippetAgentComposerApiError401 },
     unauthorized: { status: 401, data: zPutSnippetAgentComposerApiError401 },

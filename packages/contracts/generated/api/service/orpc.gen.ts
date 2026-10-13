@@ -4,6 +4,7 @@ import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
   zAudioToTextError400,
+  zAudioToTextError404,
   zAudioToTextError413,
   zAudioToTextError415,
   zCreateChatMessageError400,
@@ -514,6 +515,8 @@ export const post3 = oc
     provider_not_support_speech_to_text: { status: 400, data: zAudioToTextError400 },
     provider_quota_exceeded: { status: 400, data: zAudioToTextError400 },
     speech_to_text_disabled: { status: 400, data: zAudioToTextError400 },
+    agent_version_not_found_error: { status: 404, data: zAudioToTextError404 },
+    not_found: { status: 404, data: zAudioToTextError404 },
     audio_too_large: { status: 413, data: zAudioToTextError413 },
     request_entity_too_large: { status: 413, data: zAudioToTextError413 },
     unsupported_audio_type: { status: 415, data: zAudioToTextError415 },
