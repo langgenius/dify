@@ -43,7 +43,7 @@ _RESERVED_NATIVE_OWNERS = frozenset(
 )
 _START_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]{0,63}\Z", re.ASCII)
 _PURE_MIXED = re.compile(r"\{\{#([A-Za-z0-9_]{1,50})\.([A-Za-z_][A-Za-z0-9_]{0,29})#\}\}\Z", re.ASCII)
-_PATH_PART = re.compile(r"\.([A-Za-z_][A-Za-z0-9_]*)|\.\*|\[([0-9]+|\*)\]", re.ASCII)
+_PATH_PART = re.compile(r"\.([A-Za-z_][A-Za-z0-9_]{0,63})|\[([0-9]{1,5}|\*)\]", re.ASCII)
 _UNSAFE_CONTENT = re.compile(r"\.|\{\{#|#\}\}|\\u(?:002e|0023|007b|007d)", re.IGNORECASE)
 _START_DATA = {"type", "version", "variables", "title", "desc", "selected"}
 _END_DATA = {"type", "version", "outputs", "title", "desc", "selected"}
@@ -158,7 +158,7 @@ def _validate_path(value: object) -> str:
         if count > 16:
             _refuse("unsupported_json_filter")
         part = match.group(0)
-        if part in (".*", "[*]"):
+        if part == "[*]":
             wildcards += 1
             if wildcards > 1:
                 _refuse("unsupported_json_filter")
@@ -177,7 +177,7 @@ def _validate_content(value: object, *, constant: bool) -> str:
 
 def _start_variables(data: Mapping[str, Any]) -> set[str]:
     variables = data.get("variables")
-    if not isinstance(variables, list) or not variables or len(variables) > 128:
+    if not isinstance(variables, list) or len(variables) > 128:
         _refuse("unsupported_start_input")
     names: set[str] = set()
     for item in variables:
