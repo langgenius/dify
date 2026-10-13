@@ -4,6 +4,11 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/openapi/v1` | (string & {})
 }
 
+export type AccountNotInitializedError = ErrorBody & {
+  code: 'account_not_initialized'
+  status: 400
+}
+
 export type AccountPayload = {
   email: string
   id: string
@@ -179,6 +184,20 @@ export type DeviceCodeResponse = {
   interval: number
   user_code: string
   verification_uri: string
+}
+
+export type DeviceFlowErrorResponse = {
+  error:
+    | 'access_denied'
+    | 'already_resolved'
+    | 'approval_outcome_unknown'
+    | 'approve_in_progress'
+    | 'authorization_pending'
+    | 'expired_or_unknown'
+    | 'expired_token'
+    | 'slow_down'
+    | 'state_lost'
+    | 'unsupported_client'
 }
 
 export type DeviceLookupQuery = {
@@ -374,6 +393,16 @@ export type MessageMetadata = {
     [key: string]: unknown
   }>
   usage?: UsageInfo | null
+}
+
+export type NotInitValidatedError = ErrorBody & {
+  code: 'not_init_validated'
+  status: 401
+}
+
+export type NotSetupError = ErrorBody & {
+  code: 'not_setup'
+  status: 401
 }
 
 export type OpenApiErrorCode =
@@ -572,6 +601,12 @@ export type GetCatalogData = {
   query?: never
   url: '/_catalog'
 }
+
+export type GetCatalogErrors = {
+  default: ErrorBody
+}
+
+export type GetCatalogError = GetCatalogErrors[keyof GetCatalogErrors]
 
 export type GetCatalogResponses = {
   200: {
@@ -886,10 +921,10 @@ export type PostAppsByAppIdFilesData = {
 }
 
 export type PostAppsByAppIdFilesErrors = {
-  400: unknown
-  401: unknown
-  413: unknown
-  415: unknown
+  400: ErrorBody
+  401: ErrorBody
+  413: ErrorBody
+  415: ErrorBody
   422: ErrorBody
   default: ErrorBody
 }
@@ -1035,6 +1070,18 @@ export type PostOauthDeviceApproveData = {
   url: '/oauth/device/approve'
 }
 
+export type PostOauthDeviceApproveErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: DeviceFlowErrorResponse | ErrorBody
+  409: DeviceFlowErrorResponse | ErrorBody
+  503: DeviceFlowErrorResponse | ErrorBody
+  default: ErrorBody
+}
+
+export type PostOauthDeviceApproveError =
+  PostOauthDeviceApproveErrors[keyof PostOauthDeviceApproveErrors]
+
 export type PostOauthDeviceApproveResponses = {
   200: DeviceMutateResponse
 }
@@ -1049,6 +1096,13 @@ export type PostOauthDeviceCodeData = {
   url: '/oauth/device/code'
 }
 
+export type PostOauthDeviceCodeErrors = {
+  400: DeviceFlowErrorResponse | ErrorBody
+  default: ErrorBody
+}
+
+export type PostOauthDeviceCodeError = PostOauthDeviceCodeErrors[keyof PostOauthDeviceCodeErrors]
+
 export type PostOauthDeviceCodeResponses = {
   200: DeviceCodeResponse
 }
@@ -1062,6 +1116,17 @@ export type PostOauthDeviceDenyData = {
   query?: never
   url: '/oauth/device/deny'
 }
+
+export type PostOauthDeviceDenyErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: DeviceFlowErrorResponse | ErrorBody
+  409: DeviceFlowErrorResponse | ErrorBody
+  503: DeviceFlowErrorResponse | ErrorBody
+  default: ErrorBody
+}
+
+export type PostOauthDeviceDenyError = PostOauthDeviceDenyErrors[keyof PostOauthDeviceDenyErrors]
 
 export type PostOauthDeviceDenyResponses = {
   200: DeviceMutateResponse
@@ -1079,6 +1144,12 @@ export type GetOauthDeviceLookupData = {
   url: '/oauth/device/lookup'
 }
 
+export type GetOauthDeviceLookupErrors = {
+  default: ErrorBody
+}
+
+export type GetOauthDeviceLookupError = GetOauthDeviceLookupErrors[keyof GetOauthDeviceLookupErrors]
+
 export type GetOauthDeviceLookupResponses = {
   200: DeviceLookupResponse
 }
@@ -1092,6 +1163,13 @@ export type PostOauthDeviceTokenData = {
   query?: never
   url: '/oauth/device/token'
 }
+
+export type PostOauthDeviceTokenErrors = {
+  400: DeviceFlowErrorResponse | ErrorBody
+  default: ErrorBody
+}
+
+export type PostOauthDeviceTokenError = PostOauthDeviceTokenErrors[keyof PostOauthDeviceTokenErrors]
 
 export type PostOauthDeviceTokenResponses = {
   200: DeviceTokenResponse
@@ -1209,7 +1287,7 @@ export type PostWorkspacesByWorkspaceIdAppsImportsData = {
 }
 
 export type PostWorkspacesByWorkspaceIdAppsImportsErrors = {
-  400: AppDslImportResponse
+  400: AppDslImportResponse | ErrorBody
   422: ErrorBody
   default: ErrorBody
 }
@@ -1236,7 +1314,7 @@ export type PostWorkspacesByWorkspaceIdAppsImportsByImportIdConfirmData = {
 }
 
 export type PostWorkspacesByWorkspaceIdAppsImportsByImportIdConfirmErrors = {
-  400: Import
+  400: Import | ErrorBody
   default: ErrorBody
 }
 

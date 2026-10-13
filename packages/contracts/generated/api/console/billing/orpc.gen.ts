@@ -3,6 +3,13 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
+  zAccountNotInitializedError,
+  zBillingOperationFailedError,
+  zBillingUnavailableError,
+  zNotInitValidatedError,
+  zNotSetupError,
+} from './zod.gen.ts'
+import {
   zGetBillingInvoicesResponse,
   zGetBillingSubscriptionQuery,
   zGetBillingSubscriptionResponse,
@@ -17,6 +24,13 @@ export const get = oc
     tags: ['console'],
   })
   .output(zGetBillingInvoicesResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    billing_operation_failed: { status: 502, data: zBillingOperationFailedError },
+    billing_unavailable: { status: 503, data: zBillingUnavailableError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const invoices = {
   get,
@@ -32,6 +46,13 @@ export const get2 = oc
   })
   .input(z.object({ query: zGetBillingSubscriptionQuery }))
   .output(zGetBillingSubscriptionResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    billing_operation_failed: { status: 502, data: zBillingOperationFailedError },
+    billing_unavailable: { status: 503, data: zBillingUnavailableError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const subscription = {
   get: get2,

@@ -8,15 +8,45 @@ export type ComplianceDownloadResponse = {
   url: string
 }
 
+export type AccountNotInitializedError = ErrorResponse & {
+  code: 'account_not_initialized'
+  status: 400
+}
+
+export type NotInitValidatedError = ErrorResponse & {
+  code: 'not_init_validated'
+  status: 401
+}
+
+export type NotSetupError = ErrorResponse & {
+  code: 'not_setup'
+  status: 401
+}
+
 export type BillingUnprocessableEntityErrorResponse = {
   code: 'unprocessable_entity'
   message: string
   status: 422
 }
 
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type ComplianceRateLimitErrorResponse = {
   code: 'compliance_rate_limit'
   message: string
+  status: 429
+}
+
+export type ComplianceRateLimitError = ErrorResponse & {
+  code: 'compliance_rate_limit'
   status: 429
 }
 
@@ -26,9 +56,19 @@ export type BillingOperationFailedErrorResponse = {
   status: 502
 }
 
+export type BillingOperationFailedError = ErrorResponse & {
+  code: 'billing_operation_failed'
+  status: 502
+}
+
 export type BillingUnavailableErrorResponse = {
   code: 'billing_unavailable'
   message: string
+  status: 503
+}
+
+export type BillingUnavailableError = ErrorResponse & {
+  code: 'billing_unavailable'
   status: 503
 }
 
@@ -42,10 +82,13 @@ export type GetComplianceDownloadData = {
 }
 
 export type GetComplianceDownloadErrors = {
-  422: BillingUnprocessableEntityErrorResponse
-  429: ComplianceRateLimitErrorResponse
-  502: BillingOperationFailedErrorResponse
-  503: BillingUnavailableErrorResponse
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  422: BillingUnprocessableEntityErrorResponse | ErrorResponse
+  429: ComplianceRateLimitErrorResponse | ComplianceRateLimitError
+  502: BillingOperationFailedErrorResponse | BillingOperationFailedError
+  503: BillingUnavailableErrorResponse | BillingUnavailableError
+  default: ErrorResponse
 }
 
 export type GetComplianceDownloadError =

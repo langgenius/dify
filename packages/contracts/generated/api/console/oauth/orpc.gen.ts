@@ -2,6 +2,7 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
+import { zAccountNotInitializedError, zNotInitValidatedError, zNotSetupError } from './zod.gen.ts'
 import {
   zGetOauthDataSourceBindingByProviderPath,
   zGetOauthDataSourceBindingByProviderQuery,
@@ -45,6 +46,11 @@ export const get = oc
     }),
   )
   .output(zGetOauthDataSourceBindingByProviderResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const byProvider = {
   get,
@@ -68,6 +74,11 @@ export const get2 = oc
   })
   .input(z.object({ params: zGetOauthDataSourceByProviderByBindingIdSyncPath }))
   .output(zGetOauthDataSourceByProviderByBindingIdSyncResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const sync = {
   get: get2,
@@ -91,6 +102,11 @@ export const get3 = oc
   })
   .input(z.object({ params: zGetOauthDataSourceByProviderPath }))
   .output(zGetOauthDataSourceByProviderResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const byProvider2 = {
   get: get3,
@@ -117,6 +133,11 @@ export const get4 = oc
     }),
   )
   .output(zGetOauthPluginByProviderIdDatasourceGetAuthorizationUrlResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const getAuthorizationUrl = {
   get: get4,
@@ -145,6 +166,11 @@ export const get5 = oc
     }),
   )
   .output(zGetOauthPluginByProviderToolAuthorizationUrlResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const authorizationUrl = {
   get: get5,
@@ -173,6 +199,10 @@ export const post = oc
   })
   .input(z.object({ body: zPostOauthProviderAccountBody }))
   .output(zPostOauthProviderAccountResponse)
+  .errors({
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const account = {
   post,
@@ -188,6 +218,11 @@ export const post2 = oc
   })
   .input(z.object({ body: zPostOauthProviderAuthorizeBody }))
   .output(zPostOauthProviderAuthorizeResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const authorize = {
   post: post2,
@@ -203,6 +238,10 @@ export const post3 = oc
   })
   .input(z.object({ body: zPostOauthProviderTokenBody }))
   .output(zPostOauthProviderTokenResponse)
+  .errors({
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const token = {
   post: post3,
@@ -218,6 +257,10 @@ export const post4 = oc
   })
   .input(z.object({ body: zPostOauthProviderBody }))
   .output(zPostOauthProviderResponse)
+  .errors({
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const provider = {
   post: post4,

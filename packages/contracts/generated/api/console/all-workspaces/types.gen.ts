@@ -12,6 +12,26 @@ export type WorkspacePaginationResponse = {
   total: number
 }
 
+export type NotInitValidatedError = ErrorResponse & {
+  code: 'not_init_validated'
+  status: 401
+}
+
+export type NotSetupError = ErrorResponse & {
+  code: 'not_setup'
+  status: 401
+}
+
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type WorkspaceListItemResponse = {
   created_at?: number | null
   id: string
@@ -28,6 +48,13 @@ export type GetAllWorkspacesData = {
   }
   url: '/all-workspaces'
 }
+
+export type GetAllWorkspacesErrors = {
+  401: NotInitValidatedError | NotSetupError
+  default: ErrorResponse
+}
+
+export type GetAllWorkspacesError = GetAllWorkspacesErrors[keyof GetAllWorkspacesErrors]
 
 export type GetAllWorkspacesResponses = {
   200: WorkspacePaginationResponse

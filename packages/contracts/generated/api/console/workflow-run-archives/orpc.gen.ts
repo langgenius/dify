@@ -2,6 +2,7 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
+import { zAccountNotInitializedError, zNotInitValidatedError, zNotSetupError } from './zod.gen.ts'
 import {
   zGetWorkflowRunArchivesDownloadsByDownloadIdPath,
   zGetWorkflowRunArchivesDownloadsByDownloadIdResponse,
@@ -24,6 +25,11 @@ export const get = oc
   })
   .input(z.object({ params: zGetWorkflowRunArchivesDownloadsByDownloadIdPath }))
   .output(zGetWorkflowRunArchivesDownloadsByDownloadIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const byDownloadId = {
   get,
@@ -44,6 +50,11 @@ export const post = oc
   })
   .input(z.object({ body: zPostWorkflowRunArchivesDownloadsBody }))
   .output(zPostWorkflowRunArchivesDownloadsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const downloads = {
   post,
@@ -63,6 +74,11 @@ export const get2 = oc
     tags: ['console'],
   })
   .output(zGetWorkflowRunArchivesResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const workflowRunArchives = {
   get: get2,

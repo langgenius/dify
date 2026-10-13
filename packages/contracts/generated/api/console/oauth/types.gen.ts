@@ -8,6 +8,35 @@ export type OAuthDataSourceBindingResponse = {
   result: string
 }
 
+export type ErrorMessageResponse = {
+  error: string
+}
+
+export type AccountNotInitializedError = ErrorResponse & {
+  code: 'account_not_initialized'
+  status: 400
+}
+
+export type NotInitValidatedError = ErrorResponse & {
+  code: 'not_init_validated'
+  status: 401
+}
+
+export type NotSetupError = ErrorResponse & {
+  code: 'not_setup'
+  status: 401
+}
+
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type OAuthDataSourceResponse = {
   data: string
 }
@@ -80,8 +109,13 @@ export type GetOauthDataSourceBindingByProviderData = {
 }
 
 export type GetOauthDataSourceBindingByProviderErrors = {
-  400: unknown
+  400: ErrorMessageResponse | AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  default: ErrorResponse
 }
+
+export type GetOauthDataSourceBindingByProviderError =
+  GetOauthDataSourceBindingByProviderErrors[keyof GetOauthDataSourceBindingByProviderErrors]
 
 export type GetOauthDataSourceBindingByProviderResponses = {
   200: OAuthDataSourceBindingResponse
@@ -100,9 +134,14 @@ export type GetOauthDataSourceByProviderData = {
 }
 
 export type GetOauthDataSourceByProviderErrors = {
-  400: unknown
-  403: unknown
+  400: ErrorMessageResponse | AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  403: ErrorResponse
+  default: ErrorResponse
 }
+
+export type GetOauthDataSourceByProviderError =
+  GetOauthDataSourceByProviderErrors[keyof GetOauthDataSourceByProviderErrors]
 
 export type GetOauthDataSourceByProviderResponses = {
   200: OAuthDataSourceResponse
@@ -122,8 +161,13 @@ export type GetOauthDataSourceByProviderByBindingIdSyncData = {
 }
 
 export type GetOauthDataSourceByProviderByBindingIdSyncErrors = {
-  400: unknown
+  400: ErrorMessageResponse | AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  default: ErrorResponse
 }
+
+export type GetOauthDataSourceByProviderByBindingIdSyncError =
+  GetOauthDataSourceByProviderByBindingIdSyncErrors[keyof GetOauthDataSourceByProviderByBindingIdSyncErrors]
 
 export type GetOauthDataSourceByProviderByBindingIdSyncResponses = {
   200: OAuthDataSourceSyncResponse
@@ -144,6 +188,15 @@ export type GetOauthPluginByProviderIdDatasourceGetAuthorizationUrlData = {
   url: '/oauth/plugin/{provider_id}/datasource/get-authorization-url'
 }
 
+export type GetOauthPluginByProviderIdDatasourceGetAuthorizationUrlErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  default: ErrorResponse
+}
+
+export type GetOauthPluginByProviderIdDatasourceGetAuthorizationUrlError =
+  GetOauthPluginByProviderIdDatasourceGetAuthorizationUrlErrors[keyof GetOauthPluginByProviderIdDatasourceGetAuthorizationUrlErrors]
+
 export type GetOauthPluginByProviderIdDatasourceGetAuthorizationUrlResponses = {
   200: PluginOAuthAuthorizationUrlResponse
 }
@@ -162,6 +215,15 @@ export type GetOauthPluginByProviderToolAuthorizationUrlData = {
   url: '/oauth/plugin/{provider}/tool/authorization-url'
 }
 
+export type GetOauthPluginByProviderToolAuthorizationUrlErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  default: ErrorResponse
+}
+
+export type GetOauthPluginByProviderToolAuthorizationUrlError =
+  GetOauthPluginByProviderToolAuthorizationUrlErrors[keyof GetOauthPluginByProviderToolAuthorizationUrlErrors]
+
 export type GetOauthPluginByProviderToolAuthorizationUrlResponses = {
   200: PluginOAuthAuthorizationUrlResponse
 }
@@ -176,6 +238,13 @@ export type PostOauthProviderData = {
   url: '/oauth/provider'
 }
 
+export type PostOauthProviderErrors = {
+  401: NotInitValidatedError | NotSetupError
+  default: ErrorResponse
+}
+
+export type PostOauthProviderError = PostOauthProviderErrors[keyof PostOauthProviderErrors]
+
 export type PostOauthProviderResponses = {
   200: OAuthProviderAppResponse
 }
@@ -188,6 +257,14 @@ export type PostOauthProviderAccountData = {
   query?: never
   url: '/oauth/provider/account'
 }
+
+export type PostOauthProviderAccountErrors = {
+  401: NotInitValidatedError | NotSetupError
+  default: ErrorResponse
+}
+
+export type PostOauthProviderAccountError =
+  PostOauthProviderAccountErrors[keyof PostOauthProviderAccountErrors]
 
 export type PostOauthProviderAccountResponses = {
   200: OAuthProviderAccountResponse
@@ -203,6 +280,15 @@ export type PostOauthProviderAuthorizeData = {
   url: '/oauth/provider/authorize'
 }
 
+export type PostOauthProviderAuthorizeErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  default: ErrorResponse
+}
+
+export type PostOauthProviderAuthorizeError =
+  PostOauthProviderAuthorizeErrors[keyof PostOauthProviderAuthorizeErrors]
+
 export type PostOauthProviderAuthorizeResponses = {
   200: OAuthProviderAuthorizeResponse
 }
@@ -216,6 +302,14 @@ export type PostOauthProviderTokenData = {
   query?: never
   url: '/oauth/provider/token'
 }
+
+export type PostOauthProviderTokenErrors = {
+  401: NotInitValidatedError | NotSetupError
+  default: ErrorResponse
+}
+
+export type PostOauthProviderTokenError =
+  PostOauthProviderTokenErrors[keyof PostOauthProviderTokenErrors]
 
 export type PostOauthProviderTokenResponses = {
   200: OAuthProviderTokenResponse

@@ -14,6 +14,31 @@ export type SimpleResultResponse = {
   result: string
 }
 
+export type AccountNotInitializedError = ErrorResponse & {
+  code: 'account_not_initialized'
+  status: 400
+}
+
+export type NotInitValidatedError = ErrorResponse & {
+  code: 'not_init_validated'
+  status: 401
+}
+
+export type NotSetupError = ErrorResponse & {
+  code: 'not_setup'
+  status: 401
+}
+
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type TagBindingRemovePayload = {
   tag_ids: Array<string>
   target_id: string
@@ -29,6 +54,14 @@ export type PostTagBindingsData = {
   url: '/tag-bindings'
 }
 
+export type PostTagBindingsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  default: ErrorResponse
+}
+
+export type PostTagBindingsError = PostTagBindingsErrors[keyof PostTagBindingsErrors]
+
 export type PostTagBindingsResponses = {
   200: SimpleResultResponse
 }
@@ -41,6 +74,15 @@ export type PostTagBindingsRemoveData = {
   query?: never
   url: '/tag-bindings/remove'
 }
+
+export type PostTagBindingsRemoveErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  default: ErrorResponse
+}
+
+export type PostTagBindingsRemoveError =
+  PostTagBindingsRemoveErrors[keyof PostTagBindingsRemoveErrors]
 
 export type PostTagBindingsRemoveResponses = {
   200: SimpleResultResponse

@@ -6,9 +6,44 @@ export type ClientOptions = {
 
 export type EventStreamResponse = string
 
+export type AccountNotInitializedError = ErrorResponse & {
+  code: 'account_not_initialized'
+  status: 400
+}
+
+export type InvalidParamError = ErrorResponse & {
+  code: 'invalid_param'
+  status: 400
+}
+
+export type NotFoundError = ErrorResponse & {
+  code: 'not_found'
+  status: 404
+}
+
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type WorkflowPauseDetailsResponse = {
   paused_at?: string | null
   paused_nodes: Array<PausedNodeResponse>
+}
+
+export type NotInitValidatedError = ErrorResponse & {
+  code: 'not_init_validated'
+  status: 401
+}
+
+export type NotSetupError = ErrorResponse & {
+  code: 'not_setup'
+  status: 401
 }
 
 export type PausedNodeResponse = {
@@ -32,6 +67,15 @@ export type GetWorkflowByWorkflowRunIdEventsData = {
   url: '/workflow/{workflow_run_id}/events'
 }
 
+export type GetWorkflowByWorkflowRunIdEventsErrors = {
+  400: AccountNotInitializedError | InvalidParamError
+  404: NotFoundError
+  default: ErrorResponse
+}
+
+export type GetWorkflowByWorkflowRunIdEventsError =
+  GetWorkflowByWorkflowRunIdEventsErrors[keyof GetWorkflowByWorkflowRunIdEventsErrors]
+
 export type GetWorkflowByWorkflowRunIdEventsResponses = {
   200: EventStreamResponse
 }
@@ -49,8 +93,14 @@ export type GetWorkflowByWorkflowRunIdPauseDetailsData = {
 }
 
 export type GetWorkflowByWorkflowRunIdPauseDetailsErrors = {
-  404: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: NotFoundError
+  default: ErrorResponse
 }
+
+export type GetWorkflowByWorkflowRunIdPauseDetailsError =
+  GetWorkflowByWorkflowRunIdPauseDetailsErrors[keyof GetWorkflowByWorkflowRunIdPauseDetailsErrors]
 
 export type GetWorkflowByWorkflowRunIdPauseDetailsResponses = {
   200: WorkflowPauseDetailsResponse

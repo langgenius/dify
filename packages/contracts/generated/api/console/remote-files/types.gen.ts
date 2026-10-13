@@ -19,9 +19,79 @@ export type FileWithSignedUrl = {
   url: string | null
 }
 
+export type FileExtensionBlockedError = ErrorResponse & {
+  code: 'file_extension_blocked'
+  status: 400
+}
+
+export type RemoteFileAccessDeniedError = ErrorResponse & {
+  code: 'remote_file_access_denied'
+  status: 400
+}
+
+export type RemoteFileInvalidUrlError = ErrorResponse & {
+  code: 'remote_file_invalid_url'
+  status: 400
+}
+
+export type RemoteFileUrlBlockedError = ErrorResponse & {
+  code: 'remote_file_url_blocked'
+  status: 400
+}
+
+export type RemoteFileNotFoundError = ErrorResponse & {
+  code: 'remote_file_not_found'
+  status: 404
+}
+
+export type FileTooLargeError = ErrorResponse & {
+  code: 'file_too_large'
+  status: 413
+}
+
+export type UnsupportedFileTypeError = ErrorResponse & {
+  code: 'unsupported_file_type'
+  status: 415
+}
+
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
+export type RemoteFileInvalidResponseError = ErrorResponse & {
+  code: 'remote_file_invalid_response'
+  status: 502
+}
+
+export type RemoteFileUnavailableError = ErrorResponse & {
+  code: 'remote_file_unavailable'
+  status: 502
+}
+
 export type RemoteFileInfo = {
   file_length: number
   file_type: string
+}
+
+export type AccountNotInitializedError = ErrorResponse & {
+  code: 'account_not_initialized'
+  status: 400
+}
+
+export type NotInitValidatedError = ErrorResponse & {
+  code: 'not_init_validated'
+  status: 401
+}
+
+export type NotSetupError = ErrorResponse & {
+  code: 'not_setup'
+  status: 401
 }
 
 export type PostRemoteFilesUploadData = {
@@ -32,14 +102,22 @@ export type PostRemoteFilesUploadData = {
 }
 
 export type PostRemoteFilesUploadErrors = {
-  400: unknown
-  404: unknown
-  413: unknown
-  415: unknown
-  422: unknown
-  500: unknown
-  502: unknown
+  400:
+    | FileExtensionBlockedError
+    | RemoteFileAccessDeniedError
+    | RemoteFileInvalidUrlError
+    | RemoteFileUrlBlockedError
+  404: RemoteFileNotFoundError
+  413: FileTooLargeError
+  415: UnsupportedFileTypeError
+  422: ErrorResponse
+  500: ErrorResponse
+  502: RemoteFileInvalidResponseError | RemoteFileUnavailableError
+  default: ErrorResponse
 }
+
+export type PostRemoteFilesUploadError =
+  PostRemoteFilesUploadErrors[keyof PostRemoteFilesUploadErrors]
 
 export type PostRemoteFilesUploadResponses = {
   201: FileWithSignedUrl
@@ -58,11 +136,19 @@ export type GetRemoteFilesByUrlData = {
 }
 
 export type GetRemoteFilesByUrlErrors = {
-  400: unknown
-  404: unknown
-  500: unknown
-  502: unknown
+  400:
+    | AccountNotInitializedError
+    | RemoteFileAccessDeniedError
+    | RemoteFileInvalidUrlError
+    | RemoteFileUrlBlockedError
+  401: NotInitValidatedError | NotSetupError
+  404: RemoteFileNotFoundError
+  500: ErrorResponse
+  502: RemoteFileInvalidResponseError | RemoteFileUnavailableError
+  default: ErrorResponse
 }
+
+export type GetRemoteFilesByUrlError = GetRemoteFilesByUrlErrors[keyof GetRemoteFilesByUrlErrors]
 
 export type GetRemoteFilesByUrlResponses = {
   200: RemoteFileInfo

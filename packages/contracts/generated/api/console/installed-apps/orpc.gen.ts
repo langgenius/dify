@@ -3,6 +3,44 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
+  zAccessDeniedError,
+  zAccountNotInitializedError,
+  zAgentVersionNotFoundError,
+  zAppMoreLikeThisDisabledError,
+  zAppSuggestedQuestionsAfterAnswerDisabledError,
+  zAppUnavailableError,
+  zAudioTooLargeError,
+  zCompletionRequestError,
+  zConversationCursorNotFoundError,
+  zConversationFirstMessageNotFoundError,
+  zConversationNameRequiredError,
+  zConversationNotFoundError,
+  zInstalledAppNotFoundError,
+  zInstalledAppUnavailableError,
+  zInternalServerError,
+  zInvalidCursorError,
+  zMessageCursorNotFoundError,
+  zMessageFeedbackRatingRequiredError,
+  zMessageNotFoundError,
+  zModelCurrentlyNotSupportError,
+  zNoAudioUploadedError,
+  zNotChatAppError,
+  zNotCompletionAppError,
+  zNotFoundError,
+  zNotInitValidatedError,
+  zNotSetupError,
+  zNotWorkflowAppError,
+  zProviderNotInitializeError,
+  zProviderNotSupportSpeechToTextError,
+  zProviderNotSupportTextToSpeechError,
+  zProviderQuotaExceededError,
+  zRateLimitError,
+  zSpeechToTextDisabledError,
+  zUnauthorizedError,
+  zUnsupportedAudioTypeError,
+  zWebAppAccessUnavailableError,
+} from './zod.gen.ts'
+import {
   zDeleteInstalledAppsByInstalledAppIdConversationsByCIdPath,
   zDeleteInstalledAppsByInstalledAppIdConversationsByCIdResponse,
   zDeleteInstalledAppsByInstalledAppIdSavedMessagesByMessageIdPath,
@@ -77,6 +115,33 @@ export const post = oc
   })
   .input(z.object({ params: zPostInstalledAppsByInstalledAppIdAudioToTextPath }))
   .output(zPostInstalledAppsByInstalledAppIdAudioToTextResponse)
+  .errors({
+    access_denied: { status: 403, data: zAccessDeniedError },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    audio_too_large: { status: 413, data: zAudioTooLargeError },
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
+    internal_server_error: { status: 500, data: zInternalServerError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    no_audio_uploaded: { status: 400, data: zNoAudioUploadedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_not_support_speech_to_text: {
+      status: 400,
+      data: zProviderNotSupportSpeechToTextError,
+    },
+    provider_not_support_text_to_speech: {
+      status: 400,
+      data: zProviderNotSupportTextToSpeechError,
+    },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+    speech_to_text_disabled: { status: 400, data: zSpeechToTextDisabledError },
+    unsupported_audio_type: { status: 415, data: zUnsupportedAudioTypeError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+  })
 
 export const audioToText = {
   post,
@@ -92,6 +157,15 @@ export const post2 = oc
   })
   .input(z.object({ params: zPostInstalledAppsByInstalledAppIdChatMessagesByTaskIdStopPath }))
   .output(zPostInstalledAppsByInstalledAppIdChatMessagesByTaskIdStopResponse)
+  .errors({
+    access_denied: { status: 403, data: zAccessDeniedError },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+  })
 
 export const stop = {
   post: post2,
@@ -116,6 +190,24 @@ export const post3 = oc
     }),
   )
   .output(zPostInstalledAppsByInstalledAppIdChatMessagesResponse)
+  .errors({
+    access_denied: { status: 403, data: zAccessDeniedError },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
+    internal_server_error: { status: 500, data: zInternalServerError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+    not_found: { status: 404, data: zNotFoundError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+    rate_limit_error: { status: 429, data: zRateLimitError },
+    unauthorized: { status: 401, data: zUnauthorizedError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+  })
 
 export const chatMessages = {
   post: post3,
@@ -132,6 +224,15 @@ export const post4 = oc
   })
   .input(z.object({ params: zPostInstalledAppsByInstalledAppIdCompletionMessagesByTaskIdStopPath }))
   .output(zPostInstalledAppsByInstalledAppIdCompletionMessagesByTaskIdStopResponse)
+  .errors({
+    access_denied: { status: 403, data: zAccessDeniedError },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
+    not_completion_app: { status: 400, data: zNotCompletionAppError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+  })
 
 export const stop2 = {
   post: post4,
@@ -156,6 +257,23 @@ export const post5 = oc
     }),
   )
   .output(zPostInstalledAppsByInstalledAppIdCompletionMessagesResponse)
+  .errors({
+    access_denied: { status: 403, data: zAccessDeniedError },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
+    internal_server_error: { status: 500, data: zInternalServerError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    not_completion_app: { status: 400, data: zNotCompletionAppError },
+    not_found: { status: 404, data: zNotFoundError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+    unauthorized: { status: 401, data: zUnauthorizedError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+  })
 
 export const completionMessages = {
   post: post5,
@@ -177,6 +295,22 @@ export const post6 = oc
     }),
   )
   .output(zPostInstalledAppsByInstalledAppIdConversationsByCIdNameResponse)
+  .errors({
+    access_denied: { status: 403, data: zAccessDeniedError },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    conversation_cursor_not_found: { status: 404, data: zConversationCursorNotFoundError },
+    conversation_first_message_not_found: {
+      status: 404,
+      data: zConversationFirstMessageNotFoundError,
+    },
+    conversation_name_required: { status: 400, data: zConversationNameRequiredError },
+    conversation_not_found: { status: 404, data: zConversationNotFoundError },
+    installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+  })
 
 export const name = {
   post: post6,
@@ -192,6 +326,22 @@ export const patch = oc
   })
   .input(z.object({ params: zPatchInstalledAppsByInstalledAppIdConversationsByCIdPinPath }))
   .output(zPatchInstalledAppsByInstalledAppIdConversationsByCIdPinResponse)
+  .errors({
+    access_denied: { status: 403, data: zAccessDeniedError },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    conversation_cursor_not_found: { status: 404, data: zConversationCursorNotFoundError },
+    conversation_first_message_not_found: {
+      status: 404,
+      data: zConversationFirstMessageNotFoundError,
+    },
+    conversation_name_required: { status: 400, data: zConversationNameRequiredError },
+    conversation_not_found: { status: 404, data: zConversationNotFoundError },
+    installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+  })
 
 export const pin = {
   patch,
@@ -207,6 +357,22 @@ export const patch2 = oc
   })
   .input(z.object({ params: zPatchInstalledAppsByInstalledAppIdConversationsByCIdUnpinPath }))
   .output(zPatchInstalledAppsByInstalledAppIdConversationsByCIdUnpinResponse)
+  .errors({
+    access_denied: { status: 403, data: zAccessDeniedError },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    conversation_cursor_not_found: { status: 404, data: zConversationCursorNotFoundError },
+    conversation_first_message_not_found: {
+      status: 404,
+      data: zConversationFirstMessageNotFoundError,
+    },
+    conversation_name_required: { status: 400, data: zConversationNameRequiredError },
+    conversation_not_found: { status: 404, data: zConversationNotFoundError },
+    installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+  })
 
 export const unpin = {
   patch: patch2,
@@ -223,6 +389,22 @@ export const delete_ = oc
   })
   .input(z.object({ params: zDeleteInstalledAppsByInstalledAppIdConversationsByCIdPath }))
   .output(zDeleteInstalledAppsByInstalledAppIdConversationsByCIdResponse)
+  .errors({
+    access_denied: { status: 403, data: zAccessDeniedError },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    conversation_cursor_not_found: { status: 404, data: zConversationCursorNotFoundError },
+    conversation_first_message_not_found: {
+      status: 404,
+      data: zConversationFirstMessageNotFoundError,
+    },
+    conversation_name_required: { status: 400, data: zConversationNameRequiredError },
+    conversation_not_found: { status: 404, data: zConversationNotFoundError },
+    installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+  })
 
 export const byCId = {
   delete: delete_,
@@ -246,6 +428,22 @@ export const get = oc
     }),
   )
   .output(zGetInstalledAppsByInstalledAppIdConversationsResponse)
+  .errors({
+    access_denied: { status: 403, data: zAccessDeniedError },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    conversation_cursor_not_found: { status: 404, data: zConversationCursorNotFoundError },
+    conversation_first_message_not_found: {
+      status: 404,
+      data: zConversationFirstMessageNotFoundError,
+    },
+    conversation_name_required: { status: 400, data: zConversationNameRequiredError },
+    conversation_not_found: { status: 404, data: zConversationNotFoundError },
+    installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+  })
 
 export const conversations = {
   get,
@@ -267,6 +465,32 @@ export const post7 = oc
     }),
   )
   .output(zPostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksResponse)
+  .errors({
+    access_denied: { status: 403, data: zAccessDeniedError },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    app_more_like_this_disabled: { status: 403, data: zAppMoreLikeThisDisabledError },
+    app_suggested_questions_after_answer_disabled: {
+      status: 403,
+      data: zAppSuggestedQuestionsAfterAnswerDisabledError,
+    },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    conversation_not_found: { status: 404, data: zConversationNotFoundError },
+    installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
+    internal_server_error: { status: 500, data: zInternalServerError },
+    message_cursor_not_found: { status: 404, data: zMessageCursorNotFoundError },
+    message_feedback_rating_required: { status: 400, data: zMessageFeedbackRatingRequiredError },
+    message_not_found: { status: 404, data: zMessageNotFoundError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+    not_completion_app: { status: 400, data: zNotCompletionAppError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+    unauthorized: { status: 401, data: zUnauthorizedError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+  })
 
 export const feedbacks = {
   post: post7,
@@ -287,6 +511,32 @@ export const get2 = oc
     }),
   )
   .output(zGetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisResponse)
+  .errors({
+    access_denied: { status: 403, data: zAccessDeniedError },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    app_more_like_this_disabled: { status: 403, data: zAppMoreLikeThisDisabledError },
+    app_suggested_questions_after_answer_disabled: {
+      status: 403,
+      data: zAppSuggestedQuestionsAfterAnswerDisabledError,
+    },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    conversation_not_found: { status: 404, data: zConversationNotFoundError },
+    installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
+    internal_server_error: { status: 500, data: zInternalServerError },
+    message_cursor_not_found: { status: 404, data: zMessageCursorNotFoundError },
+    message_feedback_rating_required: { status: 400, data: zMessageFeedbackRatingRequiredError },
+    message_not_found: { status: 404, data: zMessageNotFoundError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+    not_completion_app: { status: 400, data: zNotCompletionAppError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+    unauthorized: { status: 401, data: zUnauthorizedError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+  })
 
 export const moreLikeThis = {
   get: get2,
@@ -306,6 +556,32 @@ export const get3 = oc
     }),
   )
   .output(zGetInstalledAppsByInstalledAppIdMessagesByMessageIdSuggestedQuestionsResponse)
+  .errors({
+    access_denied: { status: 403, data: zAccessDeniedError },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    app_more_like_this_disabled: { status: 403, data: zAppMoreLikeThisDisabledError },
+    app_suggested_questions_after_answer_disabled: {
+      status: 403,
+      data: zAppSuggestedQuestionsAfterAnswerDisabledError,
+    },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    conversation_not_found: { status: 404, data: zConversationNotFoundError },
+    installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
+    internal_server_error: { status: 500, data: zInternalServerError },
+    message_cursor_not_found: { status: 404, data: zMessageCursorNotFoundError },
+    message_feedback_rating_required: { status: 400, data: zMessageFeedbackRatingRequiredError },
+    message_not_found: { status: 404, data: zMessageNotFoundError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+    not_completion_app: { status: 400, data: zNotCompletionAppError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+    unauthorized: { status: 401, data: zUnauthorizedError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+  })
 
 export const suggestedQuestions = {
   get: get3,
@@ -332,6 +608,32 @@ export const get4 = oc
     }),
   )
   .output(zGetInstalledAppsByInstalledAppIdMessagesResponse)
+  .errors({
+    access_denied: { status: 403, data: zAccessDeniedError },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    app_more_like_this_disabled: { status: 403, data: zAppMoreLikeThisDisabledError },
+    app_suggested_questions_after_answer_disabled: {
+      status: 403,
+      data: zAppSuggestedQuestionsAfterAnswerDisabledError,
+    },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    conversation_not_found: { status: 404, data: zConversationNotFoundError },
+    installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
+    internal_server_error: { status: 500, data: zInternalServerError },
+    message_cursor_not_found: { status: 404, data: zMessageCursorNotFoundError },
+    message_feedback_rating_required: { status: 400, data: zMessageFeedbackRatingRequiredError },
+    message_not_found: { status: 404, data: zMessageNotFoundError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+    not_completion_app: { status: 400, data: zNotCompletionAppError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+    unauthorized: { status: 401, data: zUnauthorizedError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+  })
 
 export const messages = {
   get: get4,
@@ -352,6 +654,15 @@ export const get5 = oc
   })
   .input(z.object({ params: zGetInstalledAppsByInstalledAppIdMetaPath }))
   .output(zGetInstalledAppsByInstalledAppIdMetaResponse)
+  .errors({
+    access_denied: { status: 403, data: zAccessDeniedError },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+  })
 
 export const meta = {
   get: get5,
@@ -371,6 +682,15 @@ export const get6 = oc
   })
   .input(z.object({ params: zGetInstalledAppsByInstalledAppIdParametersPath }))
   .output(zGetInstalledAppsByInstalledAppIdParametersResponse)
+  .errors({
+    access_denied: { status: 403, data: zAccessDeniedError },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+  })
 
 export const parameters = {
   get: get6,
@@ -387,6 +707,15 @@ export const delete2 = oc
   })
   .input(z.object({ params: zDeleteInstalledAppsByInstalledAppIdSavedMessagesByMessageIdPath }))
   .output(zDeleteInstalledAppsByInstalledAppIdSavedMessagesByMessageIdResponse)
+  .errors({
+    access_denied: { status: 403, data: zAccessDeniedError },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
+    not_completion_app: { status: 400, data: zNotCompletionAppError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+  })
 
 export const byMessageId2 = {
   delete: delete2,
@@ -407,6 +736,15 @@ export const get7 = oc
     }),
   )
   .output(zGetInstalledAppsByInstalledAppIdSavedMessagesResponse)
+  .errors({
+    access_denied: { status: 403, data: zAccessDeniedError },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
+    not_completion_app: { status: 400, data: zNotCompletionAppError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+  })
 
 export const post8 = oc
   .route({
@@ -423,6 +761,16 @@ export const post8 = oc
     }),
   )
   .output(zPostInstalledAppsByInstalledAppIdSavedMessagesResponse)
+  .errors({
+    access_denied: { status: 403, data: zAccessDeniedError },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
+    not_completion_app: { status: 400, data: zNotCompletionAppError },
+    not_found: { status: 404, data: zNotFoundError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+  })
 
 export const savedMessages = {
   get: get7,
@@ -445,6 +793,33 @@ export const post9 = oc
     }),
   )
   .output(zPostInstalledAppsByInstalledAppIdTextToAudioResponse)
+  .errors({
+    access_denied: { status: 403, data: zAccessDeniedError },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    audio_too_large: { status: 413, data: zAudioTooLargeError },
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
+    internal_server_error: { status: 500, data: zInternalServerError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    no_audio_uploaded: { status: 400, data: zNoAudioUploadedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_not_support_speech_to_text: {
+      status: 400,
+      data: zProviderNotSupportSpeechToTextError,
+    },
+    provider_not_support_text_to_speech: {
+      status: 400,
+      data: zProviderNotSupportTextToSpeechError,
+    },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+    speech_to_text_disabled: { status: 400, data: zSpeechToTextDisabledError },
+    unsupported_audio_type: { status: 415, data: zUnsupportedAudioTypeError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+  })
 
 export const textToAudio = {
   post: post9,
@@ -469,6 +844,22 @@ export const post10 = oc
     }),
   )
   .output(zPostInstalledAppsByInstalledAppIdWorkflowsRunResponse)
+  .errors({
+    access_denied: { status: 403, data: zAccessDeniedError },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
+    internal_server_error: { status: 500, data: zInternalServerError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    not_workflow_app: { status: 400, data: zNotWorkflowAppError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+    rate_limit_error: { status: 429, data: zRateLimitError },
+    unauthorized: { status: 401, data: zUnauthorizedError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+  })
 
 export const run = {
   post: post10,
@@ -488,6 +879,15 @@ export const post11 = oc
   })
   .input(z.object({ params: zPostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopPath }))
   .output(zPostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopResponse)
+  .errors({
+    access_denied: { status: 403, data: zAccessDeniedError },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    not_workflow_app: { status: 400, data: zNotWorkflowAppError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+  })
 
 export const stop3 = {
   post: post11,
@@ -516,6 +916,15 @@ export const get8 = oc
   })
   .input(z.object({ params: zGetInstalledAppsByInstalledAppIdPath }))
   .output(zGetInstalledAppsByInstalledAppIdResponse)
+  .errors({
+    access_denied: { status: 403, data: zAccessDeniedError },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
+    installed_app_unavailable: { status: 404, data: zInstalledAppUnavailableError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+  })
 
 export const patch3 = oc
   .route({
@@ -532,6 +941,14 @@ export const patch3 = oc
     }),
   )
   .output(zPatchInstalledAppsByInstalledAppIdResponse)
+  .errors({
+    access_denied: { status: 403, data: zAccessDeniedError },
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    installed_app_not_found: { status: 404, data: zInstalledAppNotFoundError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+  })
 
 export const byInstalledAppId = {
   get: get8,
@@ -558,6 +975,13 @@ export const get9 = oc
   })
   .input(z.object({ query: zGetInstalledAppsQuery.optional() }))
   .output(zGetInstalledAppsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    invalid_cursor: { status: 400, data: zInvalidCursorError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    web_app_access_unavailable: { status: 503, data: zWebAppAccessUnavailableError },
+  })
 
 export const installedApps = {
   get: get9,

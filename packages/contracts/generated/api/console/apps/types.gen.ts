@@ -12,6 +12,36 @@ export type AppPagination = {
   total: number
 }
 
+export type AccountNotInitializedError = ErrorResponse & {
+  code: 'account_not_initialized'
+  status: 400
+}
+
+export type NotInitValidatedError = ErrorResponse & {
+  code: 'not_init_validated'
+  status: 401
+}
+
+export type NotSetupError = ErrorResponse & {
+  code: 'not_setup'
+  status: 401
+}
+
+export type UnauthorizedAndForceLogoutError = ErrorResponse & {
+  code: 'unauthorized_and_force_logout'
+  status: 401
+}
+
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type CreateAppPayload = {
   description?: string | null
   icon?: string | null
@@ -79,8 +109,23 @@ export type Import = {
   warnings?: Array<DslImportWarning>
 }
 
+export type InvalidRosterAgentPackageError = ErrorResponse & {
+  code: 'invalid_roster_agent_package'
+  status: 400
+}
+
+export type RecommendedAppNotFoundError = ErrorResponse & {
+  code: 'recommended_app_not_found'
+  status: 404
+}
+
 export type CheckDependenciesResult = {
   leaked_dependencies?: Array<PluginDependency>
+}
+
+export type AppNotFoundError = ErrorResponse & {
+  code: 'app_not_found'
+  status: 404
 }
 
 export type RecentAppListResponse = {
@@ -185,10 +230,30 @@ export type AdvancedChatWorkflowRunPayload = {
   query?: string
 }
 
+export type RateLimitError = ErrorResponse & {
+  code: 'rate_limit_error'
+  status: 429
+}
+
 export type AgentConfigFileListResponse = {
   agent_id: string
   config_version: AgentConfigVersionResponse
   items?: Array<AgentConfigFileItemResponse>
+}
+
+export type AgentNotBoundError = ErrorResponse & {
+  code: 'agent_not_bound'
+  status: 400
+}
+
+export type AgentNotFoundError = ErrorResponse & {
+  code: 'agent_not_found_error'
+  status: 404
+}
+
+export type AgentVersionNotFoundError = ErrorResponse & {
+  code: 'agent_version_not_found_error'
+  status: 404
 }
 
 export type AgentConfigFileUploadPayload = {
@@ -328,6 +393,16 @@ export type AnnotationBatchImportResponse = {
   record_count?: number | null
 }
 
+export type NoFileUploadedError = ErrorResponse & {
+  code: 'no_file_uploaded'
+  status: 400
+}
+
+export type TooManyFilesError = ErrorResponse & {
+  code: 'too_many_files'
+  status: 400
+}
+
 export type AnnotationCountResponse = {
   count: number
 }
@@ -384,6 +459,56 @@ export type AudioTranscriptResponse = {
   text: string
 }
 
+export type AppUnavailableError = ErrorResponse & {
+  code: 'app_unavailable'
+  status: 400
+}
+
+export type CompletionRequestError = ErrorResponse & {
+  code: 'completion_request_error'
+  status: 400
+}
+
+export type ModelCurrentlyNotSupportError = ErrorResponse & {
+  code: 'model_currently_not_support'
+  status: 400
+}
+
+export type NoAudioUploadedError = ErrorResponse & {
+  code: 'no_audio_uploaded'
+  status: 400
+}
+
+export type ProviderNotInitializeError = ErrorResponse & {
+  code: 'provider_not_initialize'
+  status: 400
+}
+
+export type ProviderNotSupportSpeechToTextError = ErrorResponse & {
+  code: 'provider_not_support_speech_to_text'
+  status: 400
+}
+
+export type ProviderQuotaExceededError = ErrorResponse & {
+  code: 'provider_quota_exceeded'
+  status: 400
+}
+
+export type SpeechToTextDisabledError = ErrorResponse & {
+  code: 'speech_to_text_disabled'
+  status: 400
+}
+
+export type AudioTooLargeError = ErrorResponse & {
+  code: 'audio_too_large'
+  status: 413
+}
+
+export type UnsupportedAudioTypeError = ErrorResponse & {
+  code: 'unsupported_audio_type'
+  status: 415
+}
+
 export type ConversationWithSummaryPagination = {
   data: Array<ConversationWithSummary>
   has_more: boolean
@@ -416,6 +541,11 @@ export type MessageInfiniteScrollPaginationResponse = {
 
 export type SuggestedQuestionsResponse = {
   data: Array<string>
+}
+
+export type AppSuggestedQuestionsAfterAnswerDisabledError = ErrorResponse & {
+  code: 'app_suggested_questions_after_answer_disabled'
+  status: 403
 }
 
 export type SimpleResultResponse = {
@@ -694,6 +824,26 @@ export type AppTracePayload = {
   tracing_provider?: string | null
 }
 
+export type TracingProviderUnavailableError = ErrorResponse & {
+  code: 'tracing_provider_unavailable'
+  status: 400
+}
+
+export type UnsupportedTracingProviderError = ErrorResponse & {
+  code: 'unsupported_tracing_provider'
+  status: 400
+}
+
+export type TraceConfigNotFoundError = ErrorResponse & {
+  code: 'trace_config_not_found'
+  status: 404
+}
+
+export type TracingConfigProcessingFailedError = ErrorResponse & {
+  code: 'tracing_config_processing_failed'
+  status: 500
+}
+
 export type TraceAppConfigResponse = {
   app_id?: string | null
   created_at?: string | null
@@ -714,6 +864,21 @@ export type TraceConfigPayload = {
     [key: string]: unknown
   }
   tracing_provider: string
+}
+
+export type InvalidTracingConfigError = ErrorResponse & {
+  code: 'invalid_tracing_config'
+  status: 400
+}
+
+export type TracingConfigVerificationFailedError = ErrorResponse & {
+  code: 'tracing_config_verification_failed'
+  status: 400
+}
+
+export type TraceConfigAlreadyExistsError = ErrorResponse & {
+  code: 'trace_config_already_exists'
+  status: 409
 }
 
 export type ParserEnable = {
@@ -770,6 +935,11 @@ export type WorkflowRunDetailResponse = {
   version?: string | null
 }
 
+export type NotFoundError = ErrorResponse & {
+  code: 'not_found'
+  status: 404
+}
+
 export type WorkflowRunNodeExecutionListResponse = {
   data: Array<WorkflowRunNodeExecutionResponse>
 }
@@ -778,6 +948,26 @@ export type SandboxListResponse = {
   entries?: Array<SandboxFileEntryResponse>
   path: string
   truncated?: boolean
+}
+
+export type NoActiveBindingError = ErrorResponse & {
+  code: 'no_active_binding'
+  status: 404
+}
+
+export type AgentBackendUnreachableError = ErrorResponse & {
+  code: 'agent_backend_unreachable'
+  status: 502
+}
+
+export type BindingFileDownloadUnavailableError = ErrorResponse & {
+  code: 'binding_file_download_unavailable'
+  status: 502
+}
+
+export type InspectorUnavailableError = ErrorResponse & {
+  code: 'inspector_unavailable'
+  status: 503
 }
 
 export type WorkflowAgentSandboxDownloadPayload = {
@@ -799,6 +989,16 @@ export type SandboxReadResponse = {
 
 export type WorkflowCommentBasicList = {
   data: Array<WorkflowCommentBasic>
+}
+
+export type InvalidParamError = ErrorResponse & {
+  code: 'invalid_param'
+  status: 400
+}
+
+export type ForbiddenError = ErrorResponse & {
+  code: 'forbidden'
+  status: 403
 }
 
 export type WorkflowCommentCreatePayload = {
@@ -922,6 +1122,11 @@ export type WorkflowResponse = {
   version_number?: number | null
 }
 
+export type DraftWorkflowNotExistError = ErrorResponse & {
+  code: 'draft_workflow_not_exist'
+  status: 404
+}
+
 export type SyncDraftWorkflowPayload = {
   _is_collaborative?: boolean
   conversation_variables?: Array<{
@@ -942,6 +1147,11 @@ export type SyncDraftWorkflowResponse = {
   hash: string
   result: string
   updated_at: number
+}
+
+export type DraftWorkflowNotSyncError = ErrorResponse & {
+  code: 'draft_workflow_not_sync'
+  status: 409
 }
 
 export type WorkflowDraftVariableListResponse = {
@@ -1018,6 +1228,21 @@ export type ComposerSavePayload = {
   version_note?: string | null
 }
 
+export type AgentSoulLockedError = ErrorResponse & {
+  code: 'agent_soul_locked_error'
+  status: 400
+}
+
+export type InvalidComposerConfigError = ErrorResponse & {
+  code: 'invalid_composer_config_error'
+  status: 400
+}
+
+export type PlaintextSecretNotAllowedError = ErrorResponse & {
+  code: 'plaintext_secret_not_allowed_error'
+  status: 400
+}
+
 export type AgentComposerCandidatesResponse = {
   allowed_node_job_candidates?: AgentComposerNodeJobCandidatesResponse
   allowed_soul_candidates?: AgentComposerSoulCandidatesResponse
@@ -1030,6 +1255,11 @@ export type WorkflowComposerCopyFromRosterPayload = {
   idempotency_key?: string | null
   source_agent_id: string
   source_snapshot_id?: string | null
+}
+
+export type AgentVersionConflictError = ErrorResponse & {
+  code: 'agent_version_conflict_error'
+  status: 409
 }
 
 export type AgentComposerImpactResponse = {
@@ -1081,6 +1311,11 @@ export type DraftWorkflowNodeRunPayload = {
   query?: string
 }
 
+export type WorkflowTriggerRunErrorResponse = {
+  error?: string
+  status: 'error'
+}
+
 export type DraftWorkflowRunPayload = {
   datasource_info_list: Array<{
     [key: string]: unknown
@@ -1096,6 +1331,21 @@ export type WorkflowRunSnapshotView = {
   node_outputs?: Array<NodeOutputsView>
   workflow_run_id: string
   workflow_run_status: WorkflowExecutionStatus
+}
+
+export type NodeNotInWorkflowRunError = ErrorResponse & {
+  code: 'node_not_in_workflow_run'
+  status: 404
+}
+
+export type NodeOutputNotDeclaredError = ErrorResponse & {
+  code: 'node_output_not_declared'
+  status: 404
+}
+
+export type WorkflowRunNotFoundError = ErrorResponse & {
+  code: 'workflow_run_not_found'
+  status: 404
 }
 
 export type EventStreamResponse = string
@@ -1186,6 +1436,16 @@ export type WorkflowRestoreResponse = {
 
 export type ApiKeyList = {
   data: Array<ApiKeyItem>
+}
+
+export type MaxKeysExceededError = ErrorResponse & {
+  code: 'max_keys_exceeded'
+  status: 400
+}
+
+export type AgentNotPublishedError = ErrorResponse & {
+  code: 'agent_not_published'
+  status: 409
 }
 
 export type ApiKeyItem = {
@@ -4193,6 +4453,14 @@ export type GetAppsData = {
   url: '/apps'
 }
 
+export type GetAppsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError | UnauthorizedAndForceLogoutError
+  default: ErrorResponse
+}
+
+export type GetAppsError = GetAppsErrors[keyof GetAppsErrors]
+
 export type GetAppsResponses = {
   200: AppPagination
 }
@@ -4207,9 +4475,13 @@ export type PostAppsData = {
 }
 
 export type PostAppsErrors = {
-  400: unknown
-  403: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  403: ErrorResponse
+  default: ErrorResponse
 }
+
+export type PostAppsError = PostAppsErrors[keyof PostAppsErrors]
 
 export type PostAppsResponses = {
   201: AppDetailWithSite
@@ -4235,10 +4507,13 @@ export type PostAppsImportsData = {
 }
 
 export type PostAppsImportsErrors = {
-  400: Import
-  403: unknown
-  409: unknown
-  413: unknown
+  400: Import | AccountNotInitializedError | InvalidRosterAgentPackageError
+  401: NotInitValidatedError | NotSetupError
+  403: ErrorResponse
+  404: RecommendedAppNotFoundError
+  409: ErrorResponse
+  413: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostAppsImportsError = PostAppsImportsErrors[keyof PostAppsImportsErrors]
@@ -4259,6 +4534,16 @@ export type GetAppsImportsByAppIdCheckDependenciesData = {
   url: '/apps/imports/{app_id}/check-dependencies'
 }
 
+export type GetAppsImportsByAppIdCheckDependenciesErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AppNotFoundError
+  default: ErrorResponse
+}
+
+export type GetAppsImportsByAppIdCheckDependenciesError =
+  GetAppsImportsByAppIdCheckDependenciesErrors[keyof GetAppsImportsByAppIdCheckDependenciesErrors]
+
 export type GetAppsImportsByAppIdCheckDependenciesResponses = {
   200: CheckDependenciesResult
 }
@@ -4276,7 +4561,9 @@ export type PostAppsImportsByImportIdConfirmData = {
 }
 
 export type PostAppsImportsByImportIdConfirmErrors = {
-  400: Import
+  400: Import | AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  default: ErrorResponse
 }
 
 export type PostAppsImportsByImportIdConfirmError =
@@ -4297,6 +4584,14 @@ export type GetAppsRecentData = {
   }
   url: '/apps/recent'
 }
+
+export type GetAppsRecentErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError | UnauthorizedAndForceLogoutError
+  default: ErrorResponse
+}
+
+export type GetAppsRecentError = GetAppsRecentErrors[keyof GetAppsRecentErrors]
 
 export type GetAppsRecentResponses = {
   200: RecentAppListResponse
@@ -4329,6 +4624,14 @@ export type GetAppsStarredData = {
   url: '/apps/starred'
 }
 
+export type GetAppsStarredErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError | UnauthorizedAndForceLogoutError
+  default: ErrorResponse
+}
+
+export type GetAppsStarredError = GetAppsStarredErrors[keyof GetAppsStarredErrors]
+
 export type GetAppsStarredResponses = {
   200: AppPagination
 }
@@ -4341,6 +4644,15 @@ export type PostAppsWorkflowsOnlineUsersData = {
   query?: never
   url: '/apps/workflows/online-users'
 }
+
+export type PostAppsWorkflowsOnlineUsersErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  default: ErrorResponse
+}
+
+export type PostAppsWorkflowsOnlineUsersError =
+  PostAppsWorkflowsOnlineUsersErrors[keyof PostAppsWorkflowsOnlineUsersErrors]
 
 export type PostAppsWorkflowsOnlineUsersResponses = {
   200: WorkflowOnlineUsersResponse
@@ -4359,8 +4671,13 @@ export type DeleteAppsByAppIdData = {
 }
 
 export type DeleteAppsByAppIdErrors = {
-  403: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  403: ErrorResponse
+  default: ErrorResponse
 }
+
+export type DeleteAppsByAppIdError = DeleteAppsByAppIdErrors[keyof DeleteAppsByAppIdErrors]
 
 export type DeleteAppsByAppIdResponses = {
   204: void
@@ -4376,6 +4693,14 @@ export type GetAppsByAppIdData = {
   query?: never
   url: '/apps/{app_id}'
 }
+
+export type GetAppsByAppIdErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError | UnauthorizedAndForceLogoutError
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdError = GetAppsByAppIdErrors[keyof GetAppsByAppIdErrors]
 
 export type GetAppsByAppIdResponses = {
   200: AppDetailWithSite
@@ -4393,9 +4718,13 @@ export type PutAppsByAppIdData = {
 }
 
 export type PutAppsByAppIdErrors = {
-  400: unknown
-  403: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  403: ErrorResponse
+  default: ErrorResponse
 }
+
+export type PutAppsByAppIdError = PutAppsByAppIdErrors[keyof PutAppsByAppIdErrors]
 
 export type PutAppsByAppIdResponses = {
   200: AppDetailWithSite
@@ -4417,6 +4746,16 @@ export type GetAppsByAppIdAdvancedChatWorkflowRunsData = {
   url: '/apps/{app_id}/advanced-chat/workflow-runs'
 }
 
+export type GetAppsByAppIdAdvancedChatWorkflowRunsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AppNotFoundError
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdAdvancedChatWorkflowRunsError =
+  GetAppsByAppIdAdvancedChatWorkflowRunsErrors[keyof GetAppsByAppIdAdvancedChatWorkflowRunsErrors]
+
 export type GetAppsByAppIdAdvancedChatWorkflowRunsResponses = {
   200: AdvancedChatWorkflowRunPaginationResponse
 }
@@ -4437,6 +4776,16 @@ export type GetAppsByAppIdAdvancedChatWorkflowRunsCountData = {
   url: '/apps/{app_id}/advanced-chat/workflow-runs/count'
 }
 
+export type GetAppsByAppIdAdvancedChatWorkflowRunsCountErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AppNotFoundError
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdAdvancedChatWorkflowRunsCountError =
+  GetAppsByAppIdAdvancedChatWorkflowRunsCountErrors[keyof GetAppsByAppIdAdvancedChatWorkflowRunsCountErrors]
+
 export type GetAppsByAppIdAdvancedChatWorkflowRunsCountResponses = {
   200: WorkflowRunCountResponse
 }
@@ -4454,6 +4803,16 @@ export type PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdForm
   url: '/apps/{app_id}/advanced-chat/workflows/draft/human-input/nodes/{node_id}/form/preview'
 }
 
+export type PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormPreviewErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AppNotFoundError
+  default: ErrorResponse
+}
+
+export type PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormPreviewError =
+  PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormPreviewErrors[keyof PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormPreviewErrors]
+
 export type PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormPreviewResponses = {
   200: HumanInputFormPreviewResponse
 }
@@ -4470,6 +4829,16 @@ export type PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdForm
   query?: never
   url: '/apps/{app_id}/advanced-chat/workflows/draft/human-input/nodes/{node_id}/form/run'
 }
+
+export type PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormRunErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AppNotFoundError
+  default: ErrorResponse
+}
+
+export type PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormRunError =
+  PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormRunErrors[keyof PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormRunErrors]
 
 export type PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormRunResponses = {
   200: HumanInputFormSubmitResponse
@@ -4489,9 +4858,15 @@ export type PostAppsByAppIdAdvancedChatWorkflowsDraftIterationNodesByNodeIdRunDa
 }
 
 export type PostAppsByAppIdAdvancedChatWorkflowsDraftIterationNodesByNodeIdRunErrors = {
-  403: unknown
-  404: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  403: ErrorResponse
+  404: AppNotFoundError
+  default: ErrorResponse
 }
+
+export type PostAppsByAppIdAdvancedChatWorkflowsDraftIterationNodesByNodeIdRunError =
+  PostAppsByAppIdAdvancedChatWorkflowsDraftIterationNodesByNodeIdRunErrors[keyof PostAppsByAppIdAdvancedChatWorkflowsDraftIterationNodesByNodeIdRunErrors]
 
 export type PostAppsByAppIdAdvancedChatWorkflowsDraftIterationNodesByNodeIdRunResponses = {
   200: GeneratedAppResponse
@@ -4511,9 +4886,15 @@ export type PostAppsByAppIdAdvancedChatWorkflowsDraftLoopNodesByNodeIdRunData = 
 }
 
 export type PostAppsByAppIdAdvancedChatWorkflowsDraftLoopNodesByNodeIdRunErrors = {
-  403: unknown
-  404: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  403: ErrorResponse
+  404: AppNotFoundError
+  default: ErrorResponse
 }
+
+export type PostAppsByAppIdAdvancedChatWorkflowsDraftLoopNodesByNodeIdRunError =
+  PostAppsByAppIdAdvancedChatWorkflowsDraftLoopNodesByNodeIdRunErrors[keyof PostAppsByAppIdAdvancedChatWorkflowsDraftLoopNodesByNodeIdRunErrors]
 
 export type PostAppsByAppIdAdvancedChatWorkflowsDraftLoopNodesByNodeIdRunResponses = {
   200: GeneratedAppResponse
@@ -4532,9 +4913,16 @@ export type PostAppsByAppIdAdvancedChatWorkflowsDraftRunData = {
 }
 
 export type PostAppsByAppIdAdvancedChatWorkflowsDraftRunErrors = {
-  400: unknown
-  403: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  403: ErrorResponse
+  404: AppNotFoundError
+  429: RateLimitError
+  default: ErrorResponse
 }
+
+export type PostAppsByAppIdAdvancedChatWorkflowsDraftRunError =
+  PostAppsByAppIdAdvancedChatWorkflowsDraftRunErrors[keyof PostAppsByAppIdAdvancedChatWorkflowsDraftRunErrors]
 
 export type PostAppsByAppIdAdvancedChatWorkflowsDraftRunResponses = {
   200: GeneratedAppResponse
@@ -4556,6 +4944,16 @@ export type GetAppsByAppIdAgentConfigFilesData = {
   url: '/apps/{app_id}/agent/config/files'
 }
 
+export type GetAppsByAppIdAgentConfigFilesErrors = {
+  400: AccountNotInitializedError | AgentNotBoundError
+  401: NotInitValidatedError | NotSetupError
+  404: AgentNotFoundError | AgentVersionNotFoundError | AppNotFoundError
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdAgentConfigFilesError =
+  GetAppsByAppIdAgentConfigFilesErrors[keyof GetAppsByAppIdAgentConfigFilesErrors]
+
 export type GetAppsByAppIdAgentConfigFilesResponses = {
   200: AgentConfigFileListResponse
 }
@@ -4575,6 +4973,16 @@ export type PostAppsByAppIdAgentConfigFilesData = {
   }
   url: '/apps/{app_id}/agent/config/files'
 }
+
+export type PostAppsByAppIdAgentConfigFilesErrors = {
+  400: AccountNotInitializedError | AgentNotBoundError
+  401: NotInitValidatedError | NotSetupError
+  404: AgentNotFoundError | AgentVersionNotFoundError | AppNotFoundError
+  default: ErrorResponse
+}
+
+export type PostAppsByAppIdAgentConfigFilesError =
+  PostAppsByAppIdAgentConfigFilesErrors[keyof PostAppsByAppIdAgentConfigFilesErrors]
 
 export type PostAppsByAppIdAgentConfigFilesResponses = {
   201: AgentConfigFileUploadResponse
@@ -4597,6 +5005,16 @@ export type DeleteAppsByAppIdAgentConfigFilesByNameData = {
   url: '/apps/{app_id}/agent/config/files/{name}'
 }
 
+export type DeleteAppsByAppIdAgentConfigFilesByNameErrors = {
+  400: AccountNotInitializedError | AgentNotBoundError
+  401: NotInitValidatedError | NotSetupError
+  404: AgentNotFoundError | AgentVersionNotFoundError | AppNotFoundError
+  default: ErrorResponse
+}
+
+export type DeleteAppsByAppIdAgentConfigFilesByNameError =
+  DeleteAppsByAppIdAgentConfigFilesByNameErrors[keyof DeleteAppsByAppIdAgentConfigFilesByNameErrors]
+
 export type DeleteAppsByAppIdAgentConfigFilesByNameResponses = {
   200: AgentConfigDeleteResponse
 }
@@ -4617,6 +5035,16 @@ export type GetAppsByAppIdAgentConfigFilesByNameDownloadData = {
   }
   url: '/apps/{app_id}/agent/config/files/{name}/download'
 }
+
+export type GetAppsByAppIdAgentConfigFilesByNameDownloadErrors = {
+  400: AccountNotInitializedError | AgentNotBoundError
+  401: NotInitValidatedError | NotSetupError
+  404: AgentNotFoundError | AgentVersionNotFoundError | AppNotFoundError
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdAgentConfigFilesByNameDownloadError =
+  GetAppsByAppIdAgentConfigFilesByNameDownloadErrors[keyof GetAppsByAppIdAgentConfigFilesByNameDownloadErrors]
 
 export type GetAppsByAppIdAgentConfigFilesByNameDownloadResponses = {
   200: AgentConfigDownloadResponse
@@ -4639,6 +5067,16 @@ export type GetAppsByAppIdAgentConfigFilesByNamePreviewData = {
   url: '/apps/{app_id}/agent/config/files/{name}/preview'
 }
 
+export type GetAppsByAppIdAgentConfigFilesByNamePreviewErrors = {
+  400: AccountNotInitializedError | AgentNotBoundError
+  401: NotInitValidatedError | NotSetupError
+  404: AgentNotFoundError | AgentVersionNotFoundError | AppNotFoundError
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdAgentConfigFilesByNamePreviewError =
+  GetAppsByAppIdAgentConfigFilesByNamePreviewErrors[keyof GetAppsByAppIdAgentConfigFilesByNamePreviewErrors]
+
 export type GetAppsByAppIdAgentConfigFilesByNamePreviewResponses = {
   200: AgentConfigFilePreviewResponse
 }
@@ -4659,6 +5097,16 @@ export type GetAppsByAppIdAgentConfigManifestData = {
   url: '/apps/{app_id}/agent/config/manifest'
 }
 
+export type GetAppsByAppIdAgentConfigManifestErrors = {
+  400: AccountNotInitializedError | AgentNotBoundError
+  401: NotInitValidatedError | NotSetupError
+  404: AgentNotFoundError | AgentVersionNotFoundError | AppNotFoundError
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdAgentConfigManifestError =
+  GetAppsByAppIdAgentConfigManifestErrors[keyof GetAppsByAppIdAgentConfigManifestErrors]
+
 export type GetAppsByAppIdAgentConfigManifestResponses = {
   200: AgentConfigManifestResponse
 }
@@ -4678,6 +5126,16 @@ export type GetAppsByAppIdAgentConfigSkillsData = {
   }
   url: '/apps/{app_id}/agent/config/skills'
 }
+
+export type GetAppsByAppIdAgentConfigSkillsErrors = {
+  400: AccountNotInitializedError | AgentNotBoundError
+  401: NotInitValidatedError | NotSetupError
+  404: AgentNotFoundError | AgentVersionNotFoundError | AppNotFoundError
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdAgentConfigSkillsError =
+  GetAppsByAppIdAgentConfigSkillsErrors[keyof GetAppsByAppIdAgentConfigSkillsErrors]
 
 export type GetAppsByAppIdAgentConfigSkillsResponses = {
   200: AgentConfigSkillListResponse
@@ -4701,6 +5159,16 @@ export type PostAppsByAppIdAgentConfigSkillsUploadData = {
   url: '/apps/{app_id}/agent/config/skills/upload'
 }
 
+export type PostAppsByAppIdAgentConfigSkillsUploadErrors = {
+  400: AccountNotInitializedError | AgentNotBoundError
+  401: NotInitValidatedError | NotSetupError
+  404: AgentNotFoundError | AgentVersionNotFoundError | AppNotFoundError
+  default: ErrorResponse
+}
+
+export type PostAppsByAppIdAgentConfigSkillsUploadError =
+  PostAppsByAppIdAgentConfigSkillsUploadErrors[keyof PostAppsByAppIdAgentConfigSkillsUploadErrors]
+
 export type PostAppsByAppIdAgentConfigSkillsUploadResponses = {
   201: AgentConfigSkillUploadResponse
 }
@@ -4721,6 +5189,16 @@ export type DeleteAppsByAppIdAgentConfigSkillsByNameData = {
   }
   url: '/apps/{app_id}/agent/config/skills/{name}'
 }
+
+export type DeleteAppsByAppIdAgentConfigSkillsByNameErrors = {
+  400: AccountNotInitializedError | AgentNotBoundError
+  401: NotInitValidatedError | NotSetupError
+  404: AgentNotFoundError | AgentVersionNotFoundError | AppNotFoundError
+  default: ErrorResponse
+}
+
+export type DeleteAppsByAppIdAgentConfigSkillsByNameError =
+  DeleteAppsByAppIdAgentConfigSkillsByNameErrors[keyof DeleteAppsByAppIdAgentConfigSkillsByNameErrors]
 
 export type DeleteAppsByAppIdAgentConfigSkillsByNameResponses = {
   200: AgentConfigDeleteResponse
@@ -4743,6 +5221,16 @@ export type GetAppsByAppIdAgentConfigSkillsByNameDownloadData = {
   url: '/apps/{app_id}/agent/config/skills/{name}/download'
 }
 
+export type GetAppsByAppIdAgentConfigSkillsByNameDownloadErrors = {
+  400: AccountNotInitializedError | AgentNotBoundError
+  401: NotInitValidatedError | NotSetupError
+  404: AgentNotFoundError | AgentVersionNotFoundError | AppNotFoundError
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdAgentConfigSkillsByNameDownloadError =
+  GetAppsByAppIdAgentConfigSkillsByNameDownloadErrors[keyof GetAppsByAppIdAgentConfigSkillsByNameDownloadErrors]
+
 export type GetAppsByAppIdAgentConfigSkillsByNameDownloadResponses = {
   200: AgentConfigDownloadResponse
 }
@@ -4759,6 +5247,16 @@ export type GetAppsByAppIdAgentConfigSkillsByNameFilesContentData = {
   query?: never
   url: '/apps/{app_id}/agent/config/skills/{name}/files/content'
 }
+
+export type GetAppsByAppIdAgentConfigSkillsByNameFilesContentErrors = {
+  400: AccountNotInitializedError | AgentNotBoundError
+  401: NotInitValidatedError | NotSetupError
+  404: AgentNotFoundError | AgentVersionNotFoundError | AppNotFoundError
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdAgentConfigSkillsByNameFilesContentError =
+  GetAppsByAppIdAgentConfigSkillsByNameFilesContentErrors[keyof GetAppsByAppIdAgentConfigSkillsByNameFilesContentErrors]
 
 export type GetAppsByAppIdAgentConfigSkillsByNameFilesContentResponses = {
   200: {
@@ -4784,6 +5282,16 @@ export type GetAppsByAppIdAgentConfigSkillsByNameFilesDownloadData = {
   url: '/apps/{app_id}/agent/config/skills/{name}/files/download'
 }
 
+export type GetAppsByAppIdAgentConfigSkillsByNameFilesDownloadErrors = {
+  400: AccountNotInitializedError | AgentNotBoundError
+  401: NotInitValidatedError | NotSetupError
+  404: AgentNotFoundError | AgentVersionNotFoundError | AppNotFoundError
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdAgentConfigSkillsByNameFilesDownloadError =
+  GetAppsByAppIdAgentConfigSkillsByNameFilesDownloadErrors[keyof GetAppsByAppIdAgentConfigSkillsByNameFilesDownloadErrors]
+
 export type GetAppsByAppIdAgentConfigSkillsByNameFilesDownloadResponses = {
   200: AgentConfigDownloadResponse
 }
@@ -4806,6 +5314,16 @@ export type GetAppsByAppIdAgentConfigSkillsByNameFilesPreviewData = {
   url: '/apps/{app_id}/agent/config/skills/{name}/files/preview'
 }
 
+export type GetAppsByAppIdAgentConfigSkillsByNameFilesPreviewErrors = {
+  400: AccountNotInitializedError | AgentNotBoundError
+  401: NotInitValidatedError | NotSetupError
+  404: AgentNotFoundError | AgentVersionNotFoundError | AppNotFoundError
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdAgentConfigSkillsByNameFilesPreviewError =
+  GetAppsByAppIdAgentConfigSkillsByNameFilesPreviewErrors[keyof GetAppsByAppIdAgentConfigSkillsByNameFilesPreviewErrors]
+
 export type GetAppsByAppIdAgentConfigSkillsByNameFilesPreviewResponses = {
   200: AgentConfigSkillFilePreviewResponse
 }
@@ -4827,6 +5345,16 @@ export type GetAppsByAppIdAgentConfigSkillsByNameInspectData = {
   url: '/apps/{app_id}/agent/config/skills/{name}/inspect'
 }
 
+export type GetAppsByAppIdAgentConfigSkillsByNameInspectErrors = {
+  400: AccountNotInitializedError | AgentNotBoundError
+  401: NotInitValidatedError | NotSetupError
+  404: AgentNotFoundError | AgentVersionNotFoundError | AppNotFoundError
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdAgentConfigSkillsByNameInspectError =
+  GetAppsByAppIdAgentConfigSkillsByNameInspectErrors[keyof GetAppsByAppIdAgentConfigSkillsByNameInspectErrors]
+
 export type GetAppsByAppIdAgentConfigSkillsByNameInspectResponses = {
   200: AgentConfigSkillInspectResponse
 }
@@ -4847,8 +5375,14 @@ export type GetAppsByAppIdAgentLogsData = {
 }
 
 export type GetAppsByAppIdAgentLogsErrors = {
-  400: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AppNotFoundError
+  default: ErrorResponse
 }
+
+export type GetAppsByAppIdAgentLogsError =
+  GetAppsByAppIdAgentLogsErrors[keyof GetAppsByAppIdAgentLogsErrors]
 
 export type GetAppsByAppIdAgentLogsResponses = {
   200: AgentLogResponse
@@ -4868,8 +5402,14 @@ export type PostAppsByAppIdAnnotationReplyByActionData = {
 }
 
 export type PostAppsByAppIdAnnotationReplyByActionErrors = {
-  403: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  403: ErrorResponse
+  default: ErrorResponse
 }
+
+export type PostAppsByAppIdAnnotationReplyByActionError =
+  PostAppsByAppIdAnnotationReplyByActionErrors[keyof PostAppsByAppIdAnnotationReplyByActionErrors]
 
 export type PostAppsByAppIdAnnotationReplyByActionResponses = {
   200: AnnotationJobStatusResponse
@@ -4890,8 +5430,14 @@ export type GetAppsByAppIdAnnotationReplyByActionStatusByJobIdData = {
 }
 
 export type GetAppsByAppIdAnnotationReplyByActionStatusByJobIdErrors = {
-  403: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  403: ErrorResponse
+  default: ErrorResponse
 }
+
+export type GetAppsByAppIdAnnotationReplyByActionStatusByJobIdError =
+  GetAppsByAppIdAnnotationReplyByActionStatusByJobIdErrors[keyof GetAppsByAppIdAnnotationReplyByActionStatusByJobIdErrors]
 
 export type GetAppsByAppIdAnnotationReplyByActionStatusByJobIdResponses = {
   200: AnnotationJobStatusDetailResponse
@@ -4910,8 +5456,14 @@ export type GetAppsByAppIdAnnotationSettingData = {
 }
 
 export type GetAppsByAppIdAnnotationSettingErrors = {
-  403: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  403: ErrorResponse
+  default: ErrorResponse
 }
+
+export type GetAppsByAppIdAnnotationSettingError =
+  GetAppsByAppIdAnnotationSettingErrors[keyof GetAppsByAppIdAnnotationSettingErrors]
 
 export type GetAppsByAppIdAnnotationSettingResponses = {
   200: AnnotationSettingResponse
@@ -4931,8 +5483,14 @@ export type PostAppsByAppIdAnnotationSettingsByAnnotationSettingIdData = {
 }
 
 export type PostAppsByAppIdAnnotationSettingsByAnnotationSettingIdErrors = {
-  403: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  403: ErrorResponse
+  default: ErrorResponse
 }
+
+export type PostAppsByAppIdAnnotationSettingsByAnnotationSettingIdError =
+  PostAppsByAppIdAnnotationSettingsByAnnotationSettingIdErrors[keyof PostAppsByAppIdAnnotationSettingsByAnnotationSettingIdErrors]
 
 export type PostAppsByAppIdAnnotationSettingsByAnnotationSettingIdResponses = {
   200: AnnotationSettingResponse
@@ -4949,6 +5507,15 @@ export type DeleteAppsByAppIdAnnotationsData = {
   query?: never
   url: '/apps/{app_id}/annotations'
 }
+
+export type DeleteAppsByAppIdAnnotationsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  default: ErrorResponse
+}
+
+export type DeleteAppsByAppIdAnnotationsError =
+  DeleteAppsByAppIdAnnotationsErrors[keyof DeleteAppsByAppIdAnnotationsErrors]
 
 export type DeleteAppsByAppIdAnnotationsResponses = {
   204: void
@@ -4971,8 +5538,14 @@ export type GetAppsByAppIdAnnotationsData = {
 }
 
 export type GetAppsByAppIdAnnotationsErrors = {
-  403: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  403: ErrorResponse
+  default: ErrorResponse
 }
+
+export type GetAppsByAppIdAnnotationsError =
+  GetAppsByAppIdAnnotationsErrors[keyof GetAppsByAppIdAnnotationsErrors]
 
 export type GetAppsByAppIdAnnotationsResponses = {
   200: AnnotationList
@@ -4991,8 +5564,14 @@ export type PostAppsByAppIdAnnotationsData = {
 }
 
 export type PostAppsByAppIdAnnotationsErrors = {
-  403: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  403: ErrorResponse
+  default: ErrorResponse
 }
+
+export type PostAppsByAppIdAnnotationsError =
+  PostAppsByAppIdAnnotationsErrors[keyof PostAppsByAppIdAnnotationsErrors]
 
 export type PostAppsByAppIdAnnotationsResponses = {
   201: Annotation
@@ -5011,11 +5590,16 @@ export type PostAppsByAppIdAnnotationsBatchImportData = {
 }
 
 export type PostAppsByAppIdAnnotationsBatchImportErrors = {
-  400: unknown
-  403: unknown
-  413: unknown
-  429: unknown
+  400: AccountNotInitializedError | NoFileUploadedError | TooManyFilesError
+  401: NotInitValidatedError | NotSetupError
+  403: ErrorResponse
+  413: ErrorResponse
+  429: ErrorResponse
+  default: ErrorResponse
 }
+
+export type PostAppsByAppIdAnnotationsBatchImportError =
+  PostAppsByAppIdAnnotationsBatchImportErrors[keyof PostAppsByAppIdAnnotationsBatchImportErrors]
 
 export type PostAppsByAppIdAnnotationsBatchImportResponses = {
   200: AnnotationBatchImportResponse
@@ -5035,8 +5619,14 @@ export type GetAppsByAppIdAnnotationsBatchImportStatusByJobIdData = {
 }
 
 export type GetAppsByAppIdAnnotationsBatchImportStatusByJobIdErrors = {
-  403: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  403: ErrorResponse
+  default: ErrorResponse
 }
+
+export type GetAppsByAppIdAnnotationsBatchImportStatusByJobIdError =
+  GetAppsByAppIdAnnotationsBatchImportStatusByJobIdErrors[keyof GetAppsByAppIdAnnotationsBatchImportStatusByJobIdErrors]
 
 export type GetAppsByAppIdAnnotationsBatchImportStatusByJobIdResponses = {
   200: AnnotationJobStatusDetailResponse
@@ -5053,6 +5643,16 @@ export type GetAppsByAppIdAnnotationsCountData = {
   query?: never
   url: '/apps/{app_id}/annotations/count'
 }
+
+export type GetAppsByAppIdAnnotationsCountErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AppNotFoundError
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdAnnotationsCountError =
+  GetAppsByAppIdAnnotationsCountErrors[keyof GetAppsByAppIdAnnotationsCountErrors]
 
 export type GetAppsByAppIdAnnotationsCountResponses = {
   200: AnnotationCountResponse
@@ -5071,8 +5671,14 @@ export type GetAppsByAppIdAnnotationsExportData = {
 }
 
 export type GetAppsByAppIdAnnotationsExportErrors = {
-  403: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  403: ErrorResponse
+  default: ErrorResponse
 }
+
+export type GetAppsByAppIdAnnotationsExportError =
+  GetAppsByAppIdAnnotationsExportErrors[keyof GetAppsByAppIdAnnotationsExportErrors]
 
 export type GetAppsByAppIdAnnotationsExportResponses = {
   200: AnnotationExportList
@@ -5090,6 +5696,15 @@ export type DeleteAppsByAppIdAnnotationsByAnnotationIdData = {
   query?: never
   url: '/apps/{app_id}/annotations/{annotation_id}'
 }
+
+export type DeleteAppsByAppIdAnnotationsByAnnotationIdErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  default: ErrorResponse
+}
+
+export type DeleteAppsByAppIdAnnotationsByAnnotationIdError =
+  DeleteAppsByAppIdAnnotationsByAnnotationIdErrors[keyof DeleteAppsByAppIdAnnotationsByAnnotationIdErrors]
 
 export type DeleteAppsByAppIdAnnotationsByAnnotationIdResponses = {
   204: void
@@ -5109,8 +5724,14 @@ export type PostAppsByAppIdAnnotationsByAnnotationIdData = {
 }
 
 export type PostAppsByAppIdAnnotationsByAnnotationIdErrors = {
-  403: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  403: ErrorResponse
+  default: ErrorResponse
 }
+
+export type PostAppsByAppIdAnnotationsByAnnotationIdError =
+  PostAppsByAppIdAnnotationsByAnnotationIdErrors[keyof PostAppsByAppIdAnnotationsByAnnotationIdErrors]
 
 export type PostAppsByAppIdAnnotationsByAnnotationIdResponses = {
   200: Annotation
@@ -5134,8 +5755,14 @@ export type GetAppsByAppIdAnnotationsByAnnotationIdHitHistoriesData = {
 }
 
 export type GetAppsByAppIdAnnotationsByAnnotationIdHitHistoriesErrors = {
-  403: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  403: ErrorResponse
+  default: ErrorResponse
 }
+
+export type GetAppsByAppIdAnnotationsByAnnotationIdHitHistoriesError =
+  GetAppsByAppIdAnnotationsByAnnotationIdHitHistoriesErrors[keyof GetAppsByAppIdAnnotationsByAnnotationIdHitHistoriesErrors]
 
 export type GetAppsByAppIdAnnotationsByAnnotationIdHitHistoriesResponses = {
   200: AnnotationHitHistoryList
@@ -5154,8 +5781,14 @@ export type PostAppsByAppIdApiEnableData = {
 }
 
 export type PostAppsByAppIdApiEnableErrors = {
-  403: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  403: ErrorResponse
+  default: ErrorResponse
 }
+
+export type PostAppsByAppIdApiEnableError =
+  PostAppsByAppIdApiEnableErrors[keyof PostAppsByAppIdApiEnableErrors]
 
 export type PostAppsByAppIdApiEnableResponses = {
   200: AppDetail
@@ -5176,9 +5809,25 @@ export type PostAppsByAppIdAudioToTextData = {
 }
 
 export type PostAppsByAppIdAudioToTextErrors = {
-  400: unknown
-  413: unknown
+  400:
+    | AccountNotInitializedError
+    | AppUnavailableError
+    | CompletionRequestError
+    | ModelCurrentlyNotSupportError
+    | NoAudioUploadedError
+    | ProviderNotInitializeError
+    | ProviderNotSupportSpeechToTextError
+    | ProviderQuotaExceededError
+    | SpeechToTextDisabledError
+  401: NotInitValidatedError | NotSetupError
+  404: AgentVersionNotFoundError | AppNotFoundError
+  413: AudioTooLargeError
+  415: UnsupportedAudioTypeError
+  default: ErrorResponse
 }
+
+export type PostAppsByAppIdAudioToTextError =
+  PostAppsByAppIdAudioToTextErrors[keyof PostAppsByAppIdAudioToTextErrors]
 
 export type PostAppsByAppIdAudioToTextResponses = {
   200: AudioTranscriptResponse
@@ -5205,8 +5854,15 @@ export type GetAppsByAppIdChatConversationsData = {
 }
 
 export type GetAppsByAppIdChatConversationsErrors = {
-  403: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  403: ErrorResponse
+  404: AppNotFoundError
+  default: ErrorResponse
 }
+
+export type GetAppsByAppIdChatConversationsError =
+  GetAppsByAppIdChatConversationsErrors[keyof GetAppsByAppIdChatConversationsErrors]
 
 export type GetAppsByAppIdChatConversationsResponses = {
   200: ConversationWithSummaryPagination
@@ -5226,9 +5882,15 @@ export type DeleteAppsByAppIdChatConversationsByConversationIdData = {
 }
 
 export type DeleteAppsByAppIdChatConversationsByConversationIdErrors = {
-  403: unknown
-  404: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  403: ErrorResponse
+  404: AppNotFoundError
+  default: ErrorResponse
 }
+
+export type DeleteAppsByAppIdChatConversationsByConversationIdError =
+  DeleteAppsByAppIdChatConversationsByConversationIdErrors[keyof DeleteAppsByAppIdChatConversationsByConversationIdErrors]
 
 export type DeleteAppsByAppIdChatConversationsByConversationIdResponses = {
   204: void
@@ -5248,9 +5910,15 @@ export type GetAppsByAppIdChatConversationsByConversationIdData = {
 }
 
 export type GetAppsByAppIdChatConversationsByConversationIdErrors = {
-  403: unknown
-  404: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  403: ErrorResponse
+  404: AppNotFoundError
+  default: ErrorResponse
 }
+
+export type GetAppsByAppIdChatConversationsByConversationIdError =
+  GetAppsByAppIdChatConversationsByConversationIdErrors[keyof GetAppsByAppIdChatConversationsByConversationIdErrors]
 
 export type GetAppsByAppIdChatConversationsByConversationIdResponses = {
   200: ConversationDetail
@@ -5273,8 +5941,14 @@ export type GetAppsByAppIdChatMessagesData = {
 }
 
 export type GetAppsByAppIdChatMessagesErrors = {
-  404: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AppNotFoundError
+  default: ErrorResponse
 }
+
+export type GetAppsByAppIdChatMessagesError =
+  GetAppsByAppIdChatMessagesErrors[keyof GetAppsByAppIdChatMessagesErrors]
 
 export type GetAppsByAppIdChatMessagesResponses = {
   200: MessageInfiniteScrollPaginationResponse
@@ -5294,12 +5968,22 @@ export type GetAppsByAppIdChatMessagesByMessageIdSuggestedQuestionsData = {
 }
 
 export type GetAppsByAppIdChatMessagesByMessageIdSuggestedQuestionsErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
-  404: unknown
-  500: unknown
+  400:
+    | AccountNotInitializedError
+    | AppUnavailableError
+    | CompletionRequestError
+    | ModelCurrentlyNotSupportError
+    | ProviderNotInitializeError
+    | ProviderQuotaExceededError
+  401: NotInitValidatedError | NotSetupError
+  403: AppSuggestedQuestionsAfterAnswerDisabledError
+  404: AppNotFoundError
+  500: ErrorResponse
+  default: ErrorResponse
 }
+
+export type GetAppsByAppIdChatMessagesByMessageIdSuggestedQuestionsError =
+  GetAppsByAppIdChatMessagesByMessageIdSuggestedQuestionsErrors[keyof GetAppsByAppIdChatMessagesByMessageIdSuggestedQuestionsErrors]
 
 export type GetAppsByAppIdChatMessagesByMessageIdSuggestedQuestionsResponses = {
   200: SuggestedQuestionsResponse
@@ -5317,6 +6001,16 @@ export type PostAppsByAppIdChatMessagesByTaskIdStopData = {
   query?: never
   url: '/apps/{app_id}/chat-messages/{task_id}/stop'
 }
+
+export type PostAppsByAppIdChatMessagesByTaskIdStopErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AppNotFoundError
+  default: ErrorResponse
+}
+
+export type PostAppsByAppIdChatMessagesByTaskIdStopError =
+  PostAppsByAppIdChatMessagesByTaskIdStopErrors[keyof PostAppsByAppIdChatMessagesByTaskIdStopErrors]
 
 export type PostAppsByAppIdChatMessagesByTaskIdStopResponses = {
   200: SimpleResultResponse
@@ -5342,8 +6036,15 @@ export type GetAppsByAppIdCompletionConversationsData = {
 }
 
 export type GetAppsByAppIdCompletionConversationsErrors = {
-  403: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  403: ErrorResponse
+  404: AppNotFoundError
+  default: ErrorResponse
 }
+
+export type GetAppsByAppIdCompletionConversationsError =
+  GetAppsByAppIdCompletionConversationsErrors[keyof GetAppsByAppIdCompletionConversationsErrors]
 
 export type GetAppsByAppIdCompletionConversationsResponses = {
   200: ConversationPagination
@@ -5363,9 +6064,15 @@ export type DeleteAppsByAppIdCompletionConversationsByConversationIdData = {
 }
 
 export type DeleteAppsByAppIdCompletionConversationsByConversationIdErrors = {
-  403: unknown
-  404: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  403: ErrorResponse
+  404: AppNotFoundError
+  default: ErrorResponse
 }
+
+export type DeleteAppsByAppIdCompletionConversationsByConversationIdError =
+  DeleteAppsByAppIdCompletionConversationsByConversationIdErrors[keyof DeleteAppsByAppIdCompletionConversationsByConversationIdErrors]
 
 export type DeleteAppsByAppIdCompletionConversationsByConversationIdResponses = {
   204: void
@@ -5385,9 +6092,15 @@ export type GetAppsByAppIdCompletionConversationsByConversationIdData = {
 }
 
 export type GetAppsByAppIdCompletionConversationsByConversationIdErrors = {
-  403: unknown
-  404: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  403: ErrorResponse
+  404: AppNotFoundError
+  default: ErrorResponse
 }
+
+export type GetAppsByAppIdCompletionConversationsByConversationIdError =
+  GetAppsByAppIdCompletionConversationsByConversationIdErrors[keyof GetAppsByAppIdCompletionConversationsByConversationIdErrors]
 
 export type GetAppsByAppIdCompletionConversationsByConversationIdResponses = {
   200: ConversationMessageDetail
@@ -5406,9 +6119,20 @@ export type PostAppsByAppIdCompletionMessagesData = {
 }
 
 export type PostAppsByAppIdCompletionMessagesErrors = {
-  400: unknown
-  404: unknown
+  400:
+    | AccountNotInitializedError
+    | AppUnavailableError
+    | CompletionRequestError
+    | ModelCurrentlyNotSupportError
+    | ProviderNotInitializeError
+    | ProviderQuotaExceededError
+  401: NotInitValidatedError | NotSetupError
+  404: AppNotFoundError
+  default: ErrorResponse
 }
+
+export type PostAppsByAppIdCompletionMessagesError =
+  PostAppsByAppIdCompletionMessagesErrors[keyof PostAppsByAppIdCompletionMessagesErrors]
 
 export type PostAppsByAppIdCompletionMessagesResponses = {
   200: {
@@ -5429,6 +6153,16 @@ export type PostAppsByAppIdCompletionMessagesByTaskIdStopData = {
   url: '/apps/{app_id}/completion-messages/{task_id}/stop'
 }
 
+export type PostAppsByAppIdCompletionMessagesByTaskIdStopErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AppNotFoundError
+  default: ErrorResponse
+}
+
+export type PostAppsByAppIdCompletionMessagesByTaskIdStopError =
+  PostAppsByAppIdCompletionMessagesByTaskIdStopErrors[keyof PostAppsByAppIdCompletionMessagesByTaskIdStopErrors]
+
 export type PostAppsByAppIdCompletionMessagesByTaskIdStopResponses = {
   200: SimpleResultResponse
 }
@@ -5447,6 +6181,16 @@ export type GetAppsByAppIdConversationVariablesData = {
   url: '/apps/{app_id}/conversation-variables'
 }
 
+export type GetAppsByAppIdConversationVariablesErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AppNotFoundError
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdConversationVariablesError =
+  GetAppsByAppIdConversationVariablesErrors[keyof GetAppsByAppIdConversationVariablesErrors]
+
 export type GetAppsByAppIdConversationVariablesResponses = {
   200: PaginatedConversationVariableResponse
 }
@@ -5464,9 +6208,15 @@ export type PostAppsByAppIdConvertToWorkflowData = {
 }
 
 export type PostAppsByAppIdConvertToWorkflowErrors = {
-  400: unknown
-  403: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  403: ErrorResponse
+  404: AppNotFoundError
+  default: ErrorResponse
 }
+
+export type PostAppsByAppIdConvertToWorkflowError =
+  PostAppsByAppIdConvertToWorkflowErrors[keyof PostAppsByAppIdConvertToWorkflowErrors]
 
 export type PostAppsByAppIdConvertToWorkflowResponses = {
   200: NewAppResponse
@@ -5485,8 +6235,13 @@ export type PostAppsByAppIdCopyData = {
 }
 
 export type PostAppsByAppIdCopyErrors = {
-  403: unknown
+  400: AppImportResponse | AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  403: ErrorResponse
+  default: ErrorResponse
 }
+
+export type PostAppsByAppIdCopyError = PostAppsByAppIdCopyErrors[keyof PostAppsByAppIdCopyErrors]
 
 export type PostAppsByAppIdCopyResponses = {
   201: AppDetailWithSite
@@ -5511,8 +6266,13 @@ export type GetAppsByAppIdExportData = {
 }
 
 export type GetAppsByAppIdExportErrors = {
-  403: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  403: ErrorResponse
+  default: ErrorResponse
 }
+
+export type GetAppsByAppIdExportError = GetAppsByAppIdExportErrors[keyof GetAppsByAppIdExportErrors]
 
 export type GetAppsByAppIdExportResponses = {
   200: AppExportResponse | Blob | File
@@ -5531,9 +6291,14 @@ export type PostAppsByAppIdFeedbacksData = {
 }
 
 export type PostAppsByAppIdFeedbacksErrors = {
-  403: unknown
-  404: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AppNotFoundError
+  default: ErrorResponse
 }
+
+export type PostAppsByAppIdFeedbacksError =
+  PostAppsByAppIdFeedbacksErrors[keyof PostAppsByAppIdFeedbacksErrors]
 
 export type PostAppsByAppIdFeedbacksResponses = {
   200: SimpleResultResponse
@@ -5552,8 +6317,13 @@ export type PostAppsByAppIdIconData = {
 }
 
 export type PostAppsByAppIdIconErrors = {
-  403: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  403: ErrorResponse
+  default: ErrorResponse
 }
+
+export type PostAppsByAppIdIconError = PostAppsByAppIdIconErrors[keyof PostAppsByAppIdIconErrors]
 
 export type PostAppsByAppIdIconResponses = {
   200: AppDetail
@@ -5573,8 +6343,14 @@ export type GetAppsByAppIdMessagesByMessageIdData = {
 }
 
 export type GetAppsByAppIdMessagesByMessageIdErrors = {
-  404: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AppNotFoundError
+  default: ErrorResponse
 }
+
+export type GetAppsByAppIdMessagesByMessageIdError =
+  GetAppsByAppIdMessagesByMessageIdErrors[keyof GetAppsByAppIdMessagesByMessageIdErrors]
 
 export type GetAppsByAppIdMessagesByMessageIdResponses = {
   200: MessageDetailResponse
@@ -5593,9 +6369,14 @@ export type PostAppsByAppIdModelConfigData = {
 }
 
 export type PostAppsByAppIdModelConfigErrors = {
-  400: unknown
-  404: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AppNotFoundError
+  default: ErrorResponse
 }
+
+export type PostAppsByAppIdModelConfigError =
+  PostAppsByAppIdModelConfigErrors[keyof PostAppsByAppIdModelConfigErrors]
 
 export type PostAppsByAppIdModelConfigResponses = {
   200: SimpleResultResponse
@@ -5613,6 +6394,14 @@ export type PostAppsByAppIdNameData = {
   url: '/apps/{app_id}/name'
 }
 
+export type PostAppsByAppIdNameErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  default: ErrorResponse
+}
+
+export type PostAppsByAppIdNameError = PostAppsByAppIdNameErrors[keyof PostAppsByAppIdNameErrors]
+
 export type PostAppsByAppIdNameResponses = {
   200: AppDetail
 }
@@ -5629,6 +6418,15 @@ export type PostAppsByAppIdPublishToCreatorsPlatformData = {
   url: '/apps/{app_id}/publish-to-creators-platform'
 }
 
+export type PostAppsByAppIdPublishToCreatorsPlatformErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  default: ErrorResponse
+}
+
+export type PostAppsByAppIdPublishToCreatorsPlatformError =
+  PostAppsByAppIdPublishToCreatorsPlatformErrors[keyof PostAppsByAppIdPublishToCreatorsPlatformErrors]
+
 export type PostAppsByAppIdPublishToCreatorsPlatformResponses = {
   200: RedirectUrlResponse
 }
@@ -5644,6 +6442,15 @@ export type GetAppsByAppIdServerData = {
   query?: never
   url: '/apps/{app_id}/server'
 }
+
+export type GetAppsByAppIdServerErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AppNotFoundError
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdServerError = GetAppsByAppIdServerErrors[keyof GetAppsByAppIdServerErrors]
 
 export type GetAppsByAppIdServerResponses = {
   200: AppMcpServerResponse
@@ -5662,9 +6469,16 @@ export type PostAppsByAppIdServerData = {
 }
 
 export type PostAppsByAppIdServerErrors = {
-  403: unknown
-  409: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  403: ErrorResponse
+  404: AppNotFoundError
+  409: ErrorResponse
+  default: ErrorResponse
 }
+
+export type PostAppsByAppIdServerError =
+  PostAppsByAppIdServerErrors[keyof PostAppsByAppIdServerErrors]
 
 export type PostAppsByAppIdServerResponses = {
   201: AppMcpServerResponse
@@ -5683,9 +6497,14 @@ export type PutAppsByAppIdServerData = {
 }
 
 export type PutAppsByAppIdServerErrors = {
-  403: unknown
-  404: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  403: ErrorResponse
+  404: AppNotFoundError
+  default: ErrorResponse
 }
+
+export type PutAppsByAppIdServerError = PutAppsByAppIdServerErrors[keyof PutAppsByAppIdServerErrors]
 
 export type PutAppsByAppIdServerResponses = {
   200: AppMcpServerResponse
@@ -5704,9 +6523,15 @@ export type PostAppsByAppIdServerRefreshData = {
 }
 
 export type PostAppsByAppIdServerRefreshErrors = {
-  403: unknown
-  404: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  403: ErrorResponse
+  404: AppNotFoundError
+  default: ErrorResponse
 }
+
+export type PostAppsByAppIdServerRefreshError =
+  PostAppsByAppIdServerRefreshErrors[keyof PostAppsByAppIdServerRefreshErrors]
 
 export type PostAppsByAppIdServerRefreshResponses = {
   200: AppMcpServerResponse
@@ -5725,9 +6550,14 @@ export type PostAppsByAppIdSiteData = {
 }
 
 export type PostAppsByAppIdSiteErrors = {
-  403: unknown
-  404: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  403: ErrorResponse
+  404: AppNotFoundError
+  default: ErrorResponse
 }
+
+export type PostAppsByAppIdSiteError = PostAppsByAppIdSiteErrors[keyof PostAppsByAppIdSiteErrors]
 
 export type PostAppsByAppIdSiteResponses = {
   200: AppSiteResponse
@@ -5746,8 +6576,14 @@ export type PostAppsByAppIdSiteEnableData = {
 }
 
 export type PostAppsByAppIdSiteEnableErrors = {
-  403: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  403: ErrorResponse
+  default: ErrorResponse
 }
+
+export type PostAppsByAppIdSiteEnableError =
+  PostAppsByAppIdSiteEnableErrors[keyof PostAppsByAppIdSiteEnableErrors]
 
 export type PostAppsByAppIdSiteEnableResponses = {
   200: AppDetail
@@ -5766,9 +6602,15 @@ export type PostAppsByAppIdSiteAccessTokenResetData = {
 }
 
 export type PostAppsByAppIdSiteAccessTokenResetErrors = {
-  403: unknown
-  404: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  403: ErrorResponse
+  404: AppNotFoundError
+  default: ErrorResponse
 }
+
+export type PostAppsByAppIdSiteAccessTokenResetError =
+  PostAppsByAppIdSiteAccessTokenResetErrors[keyof PostAppsByAppIdSiteAccessTokenResetErrors]
 
 export type PostAppsByAppIdSiteAccessTokenResetResponses = {
   200: AppSiteResponse
@@ -5787,8 +6629,14 @@ export type DeleteAppsByAppIdStarData = {
 }
 
 export type DeleteAppsByAppIdStarErrors = {
-  404: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError | UnauthorizedAndForceLogoutError
+  404: ErrorResponse
+  default: ErrorResponse
 }
+
+export type DeleteAppsByAppIdStarError =
+  DeleteAppsByAppIdStarErrors[keyof DeleteAppsByAppIdStarErrors]
 
 export type DeleteAppsByAppIdStarResponses = {
   200: SimpleResultResponse
@@ -5807,8 +6655,13 @@ export type PostAppsByAppIdStarData = {
 }
 
 export type PostAppsByAppIdStarErrors = {
-  404: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError | UnauthorizedAndForceLogoutError
+  404: ErrorResponse
+  default: ErrorResponse
 }
+
+export type PostAppsByAppIdStarError = PostAppsByAppIdStarErrors[keyof PostAppsByAppIdStarErrors]
 
 export type PostAppsByAppIdStarResponses = {
   200: SimpleResultResponse
@@ -5829,6 +6682,16 @@ export type GetAppsByAppIdStatisticsAverageResponseTimeData = {
   url: '/apps/{app_id}/statistics/average-response-time'
 }
 
+export type GetAppsByAppIdStatisticsAverageResponseTimeErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AppNotFoundError
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdStatisticsAverageResponseTimeError =
+  GetAppsByAppIdStatisticsAverageResponseTimeErrors[keyof GetAppsByAppIdStatisticsAverageResponseTimeErrors]
+
 export type GetAppsByAppIdStatisticsAverageResponseTimeResponses = {
   200: AverageResponseTimeStatisticResponse
 }
@@ -5847,6 +6710,16 @@ export type GetAppsByAppIdStatisticsAverageSessionInteractionsData = {
   }
   url: '/apps/{app_id}/statistics/average-session-interactions'
 }
+
+export type GetAppsByAppIdStatisticsAverageSessionInteractionsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AppNotFoundError
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdStatisticsAverageSessionInteractionsError =
+  GetAppsByAppIdStatisticsAverageSessionInteractionsErrors[keyof GetAppsByAppIdStatisticsAverageSessionInteractionsErrors]
 
 export type GetAppsByAppIdStatisticsAverageSessionInteractionsResponses = {
   200: AverageSessionInteractionStatisticResponse
@@ -5867,6 +6740,16 @@ export type GetAppsByAppIdStatisticsDailyConversationsData = {
   url: '/apps/{app_id}/statistics/daily-conversations'
 }
 
+export type GetAppsByAppIdStatisticsDailyConversationsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AppNotFoundError
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdStatisticsDailyConversationsError =
+  GetAppsByAppIdStatisticsDailyConversationsErrors[keyof GetAppsByAppIdStatisticsDailyConversationsErrors]
+
 export type GetAppsByAppIdStatisticsDailyConversationsResponses = {
   200: DailyConversationStatisticResponse
 }
@@ -5885,6 +6768,16 @@ export type GetAppsByAppIdStatisticsDailyEndUsersData = {
   }
   url: '/apps/{app_id}/statistics/daily-end-users'
 }
+
+export type GetAppsByAppIdStatisticsDailyEndUsersErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AppNotFoundError
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdStatisticsDailyEndUsersError =
+  GetAppsByAppIdStatisticsDailyEndUsersErrors[keyof GetAppsByAppIdStatisticsDailyEndUsersErrors]
 
 export type GetAppsByAppIdStatisticsDailyEndUsersResponses = {
   200: DailyTerminalStatisticResponse
@@ -5905,6 +6798,16 @@ export type GetAppsByAppIdStatisticsDailyMessagesData = {
   url: '/apps/{app_id}/statistics/daily-messages'
 }
 
+export type GetAppsByAppIdStatisticsDailyMessagesErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AppNotFoundError
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdStatisticsDailyMessagesError =
+  GetAppsByAppIdStatisticsDailyMessagesErrors[keyof GetAppsByAppIdStatisticsDailyMessagesErrors]
+
 export type GetAppsByAppIdStatisticsDailyMessagesResponses = {
   200: DailyMessageStatisticResponse
 }
@@ -5923,6 +6826,16 @@ export type GetAppsByAppIdStatisticsTokenCostsData = {
   }
   url: '/apps/{app_id}/statistics/token-costs'
 }
+
+export type GetAppsByAppIdStatisticsTokenCostsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AppNotFoundError
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdStatisticsTokenCostsError =
+  GetAppsByAppIdStatisticsTokenCostsErrors[keyof GetAppsByAppIdStatisticsTokenCostsErrors]
 
 export type GetAppsByAppIdStatisticsTokenCostsResponses = {
   200: DailyTokenCostStatisticResponse
@@ -5943,6 +6856,16 @@ export type GetAppsByAppIdStatisticsTokensPerSecondData = {
   url: '/apps/{app_id}/statistics/tokens-per-second'
 }
 
+export type GetAppsByAppIdStatisticsTokensPerSecondErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AppNotFoundError
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdStatisticsTokensPerSecondError =
+  GetAppsByAppIdStatisticsTokensPerSecondErrors[keyof GetAppsByAppIdStatisticsTokensPerSecondErrors]
+
 export type GetAppsByAppIdStatisticsTokensPerSecondResponses = {
   200: TokensPerSecondStatisticResponse
 }
@@ -5962,6 +6885,16 @@ export type GetAppsByAppIdStatisticsUserSatisfactionRateData = {
   url: '/apps/{app_id}/statistics/user-satisfaction-rate'
 }
 
+export type GetAppsByAppIdStatisticsUserSatisfactionRateErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AppNotFoundError
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdStatisticsUserSatisfactionRateError =
+  GetAppsByAppIdStatisticsUserSatisfactionRateErrors[keyof GetAppsByAppIdStatisticsUserSatisfactionRateErrors]
+
 export type GetAppsByAppIdStatisticsUserSatisfactionRateResponses = {
   200: UserSatisfactionRateStatisticResponse
 }
@@ -5979,8 +6912,24 @@ export type PostAppsByAppIdTextToAudioData = {
 }
 
 export type PostAppsByAppIdTextToAudioErrors = {
-  400: unknown
+  400:
+    | AccountNotInitializedError
+    | AppUnavailableError
+    | CompletionRequestError
+    | ModelCurrentlyNotSupportError
+    | NoAudioUploadedError
+    | ProviderNotInitializeError
+    | ProviderNotSupportSpeechToTextError
+    | ProviderQuotaExceededError
+  401: NotInitValidatedError | NotSetupError
+  404: AppNotFoundError
+  413: AudioTooLargeError
+  415: UnsupportedAudioTypeError
+  default: ErrorResponse
 }
+
+export type PostAppsByAppIdTextToAudioError =
+  PostAppsByAppIdTextToAudioErrors[keyof PostAppsByAppIdTextToAudioErrors]
 
 export type PostAppsByAppIdTextToAudioResponses = {
   200: {
@@ -6003,8 +6952,23 @@ export type GetAppsByAppIdTextToAudioVoicesData = {
 }
 
 export type GetAppsByAppIdTextToAudioVoicesErrors = {
-  400: unknown
+  400:
+    | AccountNotInitializedError
+    | CompletionRequestError
+    | ModelCurrentlyNotSupportError
+    | NoAudioUploadedError
+    | ProviderNotInitializeError
+    | ProviderNotSupportSpeechToTextError
+    | ProviderQuotaExceededError
+  401: NotInitValidatedError | NotSetupError
+  404: AppNotFoundError
+  413: AudioTooLargeError
+  415: UnsupportedAudioTypeError
+  default: ErrorResponse
 }
+
+export type GetAppsByAppIdTextToAudioVoicesError =
+  GetAppsByAppIdTextToAudioVoicesErrors[keyof GetAppsByAppIdTextToAudioVoicesErrors]
 
 export type GetAppsByAppIdTextToAudioVoicesResponses = {
   200: TextToSpeechVoiceListResponse
@@ -6021,6 +6985,14 @@ export type GetAppsByAppIdTraceData = {
   query?: never
   url: '/apps/{app_id}/trace'
 }
+
+export type GetAppsByAppIdTraceErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdTraceError = GetAppsByAppIdTraceErrors[keyof GetAppsByAppIdTraceErrors]
 
 export type GetAppsByAppIdTraceResponses = {
   200: AppTraceResponse
@@ -6039,8 +7011,13 @@ export type PostAppsByAppIdTraceData = {
 }
 
 export type PostAppsByAppIdTraceErrors = {
-  403: unknown
+  400: AccountNotInitializedError | TracingProviderUnavailableError
+  401: NotInitValidatedError | NotSetupError
+  403: ErrorResponse
+  default: ErrorResponse
 }
+
+export type PostAppsByAppIdTraceError = PostAppsByAppIdTraceErrors[keyof PostAppsByAppIdTraceErrors]
 
 export type PostAppsByAppIdTraceResponses = {
   200: SimpleResultResponse
@@ -6061,11 +7038,16 @@ export type DeleteAppsByAppIdTraceConfigData = {
 }
 
 export type DeleteAppsByAppIdTraceConfigErrors = {
-  400: unknown
-  403: unknown
-  404: unknown
-  500: unknown
+  400: AccountNotInitializedError | UnsupportedTracingProviderError
+  401: NotInitValidatedError | NotSetupError
+  403: ErrorResponse
+  404: AppNotFoundError | TraceConfigNotFoundError
+  500: TracingConfigProcessingFailedError
+  default: ErrorResponse
 }
+
+export type DeleteAppsByAppIdTraceConfigError =
+  DeleteAppsByAppIdTraceConfigErrors[keyof DeleteAppsByAppIdTraceConfigErrors]
 
 export type DeleteAppsByAppIdTraceConfigResponses = {
   204: void
@@ -6086,10 +7068,18 @@ export type GetAppsByAppIdTraceConfigData = {
 }
 
 export type GetAppsByAppIdTraceConfigErrors = {
-  400: unknown
-  404: unknown
-  500: unknown
+  400:
+    | AccountNotInitializedError
+    | TracingProviderUnavailableError
+    | UnsupportedTracingProviderError
+  401: NotInitValidatedError | NotSetupError
+  404: AppNotFoundError
+  500: TracingConfigProcessingFailedError
+  default: ErrorResponse
 }
+
+export type GetAppsByAppIdTraceConfigError =
+  GetAppsByAppIdTraceConfigErrors[keyof GetAppsByAppIdTraceConfigErrors]
 
 export type GetAppsByAppIdTraceConfigResponses = {
   200: TraceAppConfigResponse
@@ -6108,11 +7098,21 @@ export type PatchAppsByAppIdTraceConfigData = {
 }
 
 export type PatchAppsByAppIdTraceConfigErrors = {
-  400: unknown
-  403: unknown
-  404: unknown
-  500: unknown
+  400:
+    | AccountNotInitializedError
+    | InvalidTracingConfigError
+    | TracingConfigVerificationFailedError
+    | TracingProviderUnavailableError
+    | UnsupportedTracingProviderError
+  401: NotInitValidatedError | NotSetupError
+  403: ErrorResponse
+  404: AppNotFoundError | TraceConfigNotFoundError
+  500: TracingConfigProcessingFailedError
+  default: ErrorResponse
 }
+
+export type PatchAppsByAppIdTraceConfigError =
+  PatchAppsByAppIdTraceConfigErrors[keyof PatchAppsByAppIdTraceConfigErrors]
 
 export type PatchAppsByAppIdTraceConfigResponses = {
   200: TraceAppConfigResponse
@@ -6131,12 +7131,22 @@ export type PostAppsByAppIdTraceConfigData = {
 }
 
 export type PostAppsByAppIdTraceConfigErrors = {
-  400: unknown
-  403: unknown
-  404: unknown
-  409: unknown
-  500: unknown
+  400:
+    | AccountNotInitializedError
+    | InvalidTracingConfigError
+    | TracingConfigVerificationFailedError
+    | TracingProviderUnavailableError
+    | UnsupportedTracingProviderError
+  401: NotInitValidatedError | NotSetupError
+  403: ErrorResponse
+  404: AppNotFoundError
+  409: TraceConfigAlreadyExistsError
+  500: TracingConfigProcessingFailedError
+  default: ErrorResponse
 }
+
+export type PostAppsByAppIdTraceConfigError =
+  PostAppsByAppIdTraceConfigErrors[keyof PostAppsByAppIdTraceConfigErrors]
 
 export type PostAppsByAppIdTraceConfigResponses = {
   201: TraceAppConfigResponse
@@ -6154,6 +7164,16 @@ export type PostAppsByAppIdTriggerEnableData = {
   url: '/apps/{app_id}/trigger-enable'
 }
 
+export type PostAppsByAppIdTriggerEnableErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AppNotFoundError
+  default: ErrorResponse
+}
+
+export type PostAppsByAppIdTriggerEnableError =
+  PostAppsByAppIdTriggerEnableErrors[keyof PostAppsByAppIdTriggerEnableErrors]
+
 export type PostAppsByAppIdTriggerEnableResponses = {
   200: WorkflowTriggerResponse
 }
@@ -6169,6 +7189,16 @@ export type GetAppsByAppIdTriggersData = {
   query?: never
   url: '/apps/{app_id}/triggers'
 }
+
+export type GetAppsByAppIdTriggersErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AppNotFoundError
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdTriggersError =
+  GetAppsByAppIdTriggersErrors[keyof GetAppsByAppIdTriggersErrors]
 
 export type GetAppsByAppIdTriggersResponses = {
   200: WorkflowTriggerListResponse
@@ -6203,6 +7233,16 @@ export type GetAppsByAppIdWorkflowAppLogsData = {
   url: '/apps/{app_id}/workflow-app-logs'
 }
 
+export type GetAppsByAppIdWorkflowAppLogsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AppNotFoundError
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdWorkflowAppLogsError =
+  GetAppsByAppIdWorkflowAppLogsErrors[keyof GetAppsByAppIdWorkflowAppLogsErrors]
+
 export type GetAppsByAppIdWorkflowAppLogsResponses = {
   200: WorkflowAppLogPaginationResponse
 }
@@ -6224,6 +7264,16 @@ export type GetAppsByAppIdWorkflowRunsData = {
   url: '/apps/{app_id}/workflow-runs'
 }
 
+export type GetAppsByAppIdWorkflowRunsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AppNotFoundError
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdWorkflowRunsError =
+  GetAppsByAppIdWorkflowRunsErrors[keyof GetAppsByAppIdWorkflowRunsErrors]
+
 export type GetAppsByAppIdWorkflowRunsResponses = {
   200: WorkflowRunPaginationResponse
 }
@@ -6244,6 +7294,16 @@ export type GetAppsByAppIdWorkflowRunsCountData = {
   url: '/apps/{app_id}/workflow-runs/count'
 }
 
+export type GetAppsByAppIdWorkflowRunsCountErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AppNotFoundError
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdWorkflowRunsCountError =
+  GetAppsByAppIdWorkflowRunsCountErrors[keyof GetAppsByAppIdWorkflowRunsCountErrors]
+
 export type GetAppsByAppIdWorkflowRunsCountResponses = {
   200: WorkflowRunCountResponse
 }
@@ -6262,9 +7322,15 @@ export type PostAppsByAppIdWorkflowRunsTasksByTaskIdStopData = {
 }
 
 export type PostAppsByAppIdWorkflowRunsTasksByTaskIdStopErrors = {
-  403: unknown
-  404: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  403: ErrorResponse
+  404: AppNotFoundError
+  default: ErrorResponse
 }
+
+export type PostAppsByAppIdWorkflowRunsTasksByTaskIdStopError =
+  PostAppsByAppIdWorkflowRunsTasksByTaskIdStopErrors[keyof PostAppsByAppIdWorkflowRunsTasksByTaskIdStopErrors]
 
 export type PostAppsByAppIdWorkflowRunsTasksByTaskIdStopResponses = {
   200: SimpleResultResponse
@@ -6284,8 +7350,14 @@ export type GetAppsByAppIdWorkflowRunsByRunIdData = {
 }
 
 export type GetAppsByAppIdWorkflowRunsByRunIdErrors = {
-  404: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AppNotFoundError | NotFoundError
+  default: ErrorResponse
 }
+
+export type GetAppsByAppIdWorkflowRunsByRunIdError =
+  GetAppsByAppIdWorkflowRunsByRunIdErrors[keyof GetAppsByAppIdWorkflowRunsByRunIdErrors]
 
 export type GetAppsByAppIdWorkflowRunsByRunIdResponses = {
   200: WorkflowRunDetailResponse
@@ -6305,8 +7377,14 @@ export type GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsData = {
 }
 
 export type GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsErrors = {
-  404: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AppNotFoundError
+  default: ErrorResponse
 }
+
+export type GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsError =
+  GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsErrors[keyof GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsErrors]
 
 export type GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsResponses = {
   200: WorkflowRunNodeExecutionListResponse
@@ -6329,6 +7407,18 @@ export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFi
   url: '/apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/sandbox/files'
 }
 
+export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AgentNotFoundError | AppNotFoundError | NoActiveBindingError
+  502: AgentBackendUnreachableError | BindingFileDownloadUnavailableError
+  503: InspectorUnavailableError
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesError =
+  GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesErrors[keyof GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesErrors]
+
 export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesResponses = {
   200: SandboxListResponse
 }
@@ -6346,6 +7436,19 @@ export type PostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxF
   query?: never
   url: '/apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/sandbox/files/download'
 }
+
+export type PostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesDownloadErrors =
+  {
+    400: AccountNotInitializedError
+    401: NotInitValidatedError | NotSetupError
+    404: AgentNotFoundError | AppNotFoundError | NoActiveBindingError
+    502: AgentBackendUnreachableError | BindingFileDownloadUnavailableError
+    503: InspectorUnavailableError
+    default: ErrorResponse
+  }
+
+export type PostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesDownloadError =
+  PostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesDownloadErrors[keyof PostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesDownloadErrors]
 
 export type PostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesDownloadResponses =
   {
@@ -6369,6 +7472,18 @@ export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFi
   url: '/apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/sandbox/files/read'
 }
 
+export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesReadErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AgentNotFoundError | AppNotFoundError | NoActiveBindingError
+  502: AgentBackendUnreachableError | BindingFileDownloadUnavailableError
+  503: InspectorUnavailableError
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesReadError =
+  GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesReadErrors[keyof GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesReadErrors]
+
 export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesReadResponses = {
   200: SandboxReadResponse
 }
@@ -6384,6 +7499,17 @@ export type GetAppsByAppIdWorkflowCommentsData = {
   query?: never
   url: '/apps/{app_id}/workflow/comments'
 }
+
+export type GetAppsByAppIdWorkflowCommentsErrors = {
+  400: AccountNotInitializedError | InvalidParamError
+  401: NotInitValidatedError | NotSetupError
+  403: ForbiddenError
+  404: AppNotFoundError | NotFoundError
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdWorkflowCommentsError =
+  GetAppsByAppIdWorkflowCommentsErrors[keyof GetAppsByAppIdWorkflowCommentsErrors]
 
 export type GetAppsByAppIdWorkflowCommentsResponses = {
   200: WorkflowCommentBasicList
@@ -6401,6 +7527,17 @@ export type PostAppsByAppIdWorkflowCommentsData = {
   url: '/apps/{app_id}/workflow/comments'
 }
 
+export type PostAppsByAppIdWorkflowCommentsErrors = {
+  400: AccountNotInitializedError | InvalidParamError
+  401: NotInitValidatedError | NotSetupError
+  403: ForbiddenError
+  404: AppNotFoundError | NotFoundError
+  default: ErrorResponse
+}
+
+export type PostAppsByAppIdWorkflowCommentsError =
+  PostAppsByAppIdWorkflowCommentsErrors[keyof PostAppsByAppIdWorkflowCommentsErrors]
+
 export type PostAppsByAppIdWorkflowCommentsResponses = {
   201: WorkflowCommentCreate
 }
@@ -6416,6 +7553,17 @@ export type GetAppsByAppIdWorkflowCommentsMentionUsersData = {
   query?: never
   url: '/apps/{app_id}/workflow/comments/mention-users'
 }
+
+export type GetAppsByAppIdWorkflowCommentsMentionUsersErrors = {
+  400: AccountNotInitializedError | InvalidParamError
+  401: NotInitValidatedError | NotSetupError
+  403: ForbiddenError
+  404: AppNotFoundError | NotFoundError
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdWorkflowCommentsMentionUsersError =
+  GetAppsByAppIdWorkflowCommentsMentionUsersErrors[keyof GetAppsByAppIdWorkflowCommentsMentionUsersErrors]
 
 export type GetAppsByAppIdWorkflowCommentsMentionUsersResponses = {
   200: WorkflowCommentMentionUsersPayload
@@ -6434,6 +7582,17 @@ export type DeleteAppsByAppIdWorkflowCommentsByCommentIdData = {
   url: '/apps/{app_id}/workflow/comments/{comment_id}'
 }
 
+export type DeleteAppsByAppIdWorkflowCommentsByCommentIdErrors = {
+  400: AccountNotInitializedError | InvalidParamError
+  401: NotInitValidatedError | NotSetupError
+  403: ForbiddenError
+  404: AppNotFoundError | NotFoundError
+  default: ErrorResponse
+}
+
+export type DeleteAppsByAppIdWorkflowCommentsByCommentIdError =
+  DeleteAppsByAppIdWorkflowCommentsByCommentIdErrors[keyof DeleteAppsByAppIdWorkflowCommentsByCommentIdErrors]
+
 export type DeleteAppsByAppIdWorkflowCommentsByCommentIdResponses = {
   204: void
 }
@@ -6450,6 +7609,17 @@ export type GetAppsByAppIdWorkflowCommentsByCommentIdData = {
   query?: never
   url: '/apps/{app_id}/workflow/comments/{comment_id}'
 }
+
+export type GetAppsByAppIdWorkflowCommentsByCommentIdErrors = {
+  400: AccountNotInitializedError | InvalidParamError
+  401: NotInitValidatedError | NotSetupError
+  403: ForbiddenError
+  404: AppNotFoundError | NotFoundError
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdWorkflowCommentsByCommentIdError =
+  GetAppsByAppIdWorkflowCommentsByCommentIdErrors[keyof GetAppsByAppIdWorkflowCommentsByCommentIdErrors]
 
 export type GetAppsByAppIdWorkflowCommentsByCommentIdResponses = {
   200: WorkflowCommentDetail
@@ -6468,6 +7638,17 @@ export type PutAppsByAppIdWorkflowCommentsByCommentIdData = {
   url: '/apps/{app_id}/workflow/comments/{comment_id}'
 }
 
+export type PutAppsByAppIdWorkflowCommentsByCommentIdErrors = {
+  400: AccountNotInitializedError | InvalidParamError
+  401: NotInitValidatedError | NotSetupError
+  403: ForbiddenError
+  404: AppNotFoundError | NotFoundError
+  default: ErrorResponse
+}
+
+export type PutAppsByAppIdWorkflowCommentsByCommentIdError =
+  PutAppsByAppIdWorkflowCommentsByCommentIdErrors[keyof PutAppsByAppIdWorkflowCommentsByCommentIdErrors]
+
 export type PutAppsByAppIdWorkflowCommentsByCommentIdResponses = {
   200: WorkflowCommentUpdate
 }
@@ -6484,6 +7665,17 @@ export type PostAppsByAppIdWorkflowCommentsByCommentIdRepliesData = {
   query?: never
   url: '/apps/{app_id}/workflow/comments/{comment_id}/replies'
 }
+
+export type PostAppsByAppIdWorkflowCommentsByCommentIdRepliesErrors = {
+  400: AccountNotInitializedError | InvalidParamError
+  401: NotInitValidatedError | NotSetupError
+  403: ForbiddenError
+  404: AppNotFoundError | NotFoundError
+  default: ErrorResponse
+}
+
+export type PostAppsByAppIdWorkflowCommentsByCommentIdRepliesError =
+  PostAppsByAppIdWorkflowCommentsByCommentIdRepliesErrors[keyof PostAppsByAppIdWorkflowCommentsByCommentIdRepliesErrors]
 
 export type PostAppsByAppIdWorkflowCommentsByCommentIdRepliesResponses = {
   201: WorkflowCommentReplyCreate
@@ -6503,6 +7695,17 @@ export type DeleteAppsByAppIdWorkflowCommentsByCommentIdRepliesByReplyIdData = {
   url: '/apps/{app_id}/workflow/comments/{comment_id}/replies/{reply_id}'
 }
 
+export type DeleteAppsByAppIdWorkflowCommentsByCommentIdRepliesByReplyIdErrors = {
+  400: AccountNotInitializedError | InvalidParamError
+  401: NotInitValidatedError | NotSetupError
+  403: ForbiddenError
+  404: AppNotFoundError | NotFoundError
+  default: ErrorResponse
+}
+
+export type DeleteAppsByAppIdWorkflowCommentsByCommentIdRepliesByReplyIdError =
+  DeleteAppsByAppIdWorkflowCommentsByCommentIdRepliesByReplyIdErrors[keyof DeleteAppsByAppIdWorkflowCommentsByCommentIdRepliesByReplyIdErrors]
+
 export type DeleteAppsByAppIdWorkflowCommentsByCommentIdRepliesByReplyIdResponses = {
   204: void
 }
@@ -6521,6 +7724,17 @@ export type PutAppsByAppIdWorkflowCommentsByCommentIdRepliesByReplyIdData = {
   url: '/apps/{app_id}/workflow/comments/{comment_id}/replies/{reply_id}'
 }
 
+export type PutAppsByAppIdWorkflowCommentsByCommentIdRepliesByReplyIdErrors = {
+  400: AccountNotInitializedError | InvalidParamError
+  401: NotInitValidatedError | NotSetupError
+  403: ForbiddenError
+  404: AppNotFoundError | NotFoundError
+  default: ErrorResponse
+}
+
+export type PutAppsByAppIdWorkflowCommentsByCommentIdRepliesByReplyIdError =
+  PutAppsByAppIdWorkflowCommentsByCommentIdRepliesByReplyIdErrors[keyof PutAppsByAppIdWorkflowCommentsByCommentIdRepliesByReplyIdErrors]
+
 export type PutAppsByAppIdWorkflowCommentsByCommentIdRepliesByReplyIdResponses = {
   200: WorkflowCommentReplyUpdate
 }
@@ -6537,6 +7751,17 @@ export type PostAppsByAppIdWorkflowCommentsByCommentIdResolveData = {
   query?: never
   url: '/apps/{app_id}/workflow/comments/{comment_id}/resolve'
 }
+
+export type PostAppsByAppIdWorkflowCommentsByCommentIdResolveErrors = {
+  400: AccountNotInitializedError | InvalidParamError
+  401: NotInitValidatedError | NotSetupError
+  403: ForbiddenError
+  404: AppNotFoundError | NotFoundError
+  default: ErrorResponse
+}
+
+export type PostAppsByAppIdWorkflowCommentsByCommentIdResolveError =
+  PostAppsByAppIdWorkflowCommentsByCommentIdResolveErrors[keyof PostAppsByAppIdWorkflowCommentsByCommentIdResolveErrors]
 
 export type PostAppsByAppIdWorkflowCommentsByCommentIdResolveResponses = {
   200: WorkflowCommentResolve
@@ -6557,6 +7782,16 @@ export type GetAppsByAppIdWorkflowStatisticsAverageAppInteractionsData = {
   url: '/apps/{app_id}/workflow/statistics/average-app-interactions'
 }
 
+export type GetAppsByAppIdWorkflowStatisticsAverageAppInteractionsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AppNotFoundError
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdWorkflowStatisticsAverageAppInteractionsError =
+  GetAppsByAppIdWorkflowStatisticsAverageAppInteractionsErrors[keyof GetAppsByAppIdWorkflowStatisticsAverageAppInteractionsErrors]
+
 export type GetAppsByAppIdWorkflowStatisticsAverageAppInteractionsResponses = {
   200: WorkflowAverageAppInteractionStatisticResponse
 }
@@ -6575,6 +7810,16 @@ export type GetAppsByAppIdWorkflowStatisticsDailyConversationsData = {
   }
   url: '/apps/{app_id}/workflow/statistics/daily-conversations'
 }
+
+export type GetAppsByAppIdWorkflowStatisticsDailyConversationsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AppNotFoundError
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdWorkflowStatisticsDailyConversationsError =
+  GetAppsByAppIdWorkflowStatisticsDailyConversationsErrors[keyof GetAppsByAppIdWorkflowStatisticsDailyConversationsErrors]
 
 export type GetAppsByAppIdWorkflowStatisticsDailyConversationsResponses = {
   200: WorkflowDailyRunsStatisticResponse
@@ -6595,6 +7840,16 @@ export type GetAppsByAppIdWorkflowStatisticsDailyTerminalsData = {
   url: '/apps/{app_id}/workflow/statistics/daily-terminals'
 }
 
+export type GetAppsByAppIdWorkflowStatisticsDailyTerminalsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AppNotFoundError
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdWorkflowStatisticsDailyTerminalsError =
+  GetAppsByAppIdWorkflowStatisticsDailyTerminalsErrors[keyof GetAppsByAppIdWorkflowStatisticsDailyTerminalsErrors]
+
 export type GetAppsByAppIdWorkflowStatisticsDailyTerminalsResponses = {
   200: WorkflowDailyTerminalsStatisticResponse
 }
@@ -6613,6 +7868,16 @@ export type GetAppsByAppIdWorkflowStatisticsTokenCostsData = {
   }
   url: '/apps/{app_id}/workflow/statistics/token-costs'
 }
+
+export type GetAppsByAppIdWorkflowStatisticsTokenCostsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AppNotFoundError
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdWorkflowStatisticsTokenCostsError =
+  GetAppsByAppIdWorkflowStatisticsTokenCostsErrors[keyof GetAppsByAppIdWorkflowStatisticsTokenCostsErrors]
 
 export type GetAppsByAppIdWorkflowStatisticsTokenCostsResponses = {
   200: WorkflowDailyTokenCostStatisticResponse
@@ -6635,6 +7900,16 @@ export type GetAppsByAppIdWorkflowsData = {
   url: '/apps/{app_id}/workflows'
 }
 
+export type GetAppsByAppIdWorkflowsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AppNotFoundError
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdWorkflowsError =
+  GetAppsByAppIdWorkflowsErrors[keyof GetAppsByAppIdWorkflowsErrors]
+
 export type GetAppsByAppIdWorkflowsResponses = {
   200: WorkflowPaginationResponse
 }
@@ -6650,6 +7925,16 @@ export type GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsData = {
   query?: never
   url: '/apps/{app_id}/workflows/default-workflow-block-configs'
 }
+
+export type GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AppNotFoundError
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsError =
+  GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsErrors[keyof GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsErrors]
 
 export type GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsResponses = {
   200: DefaultBlockConfigsResponse
@@ -6671,8 +7956,14 @@ export type GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeData = 
 }
 
 export type GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeErrors = {
-  404: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AppNotFoundError
+  default: ErrorResponse
 }
+
+export type GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeError =
+  GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeErrors[keyof GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeErrors]
 
 export type GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeResponses = {
   200: DefaultBlockConfigResponse
@@ -6691,8 +7982,14 @@ export type GetAppsByAppIdWorkflowsDraftData = {
 }
 
 export type GetAppsByAppIdWorkflowsDraftErrors = {
-  404: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AppNotFoundError | DraftWorkflowNotExistError
+  default: ErrorResponse
 }
+
+export type GetAppsByAppIdWorkflowsDraftError =
+  GetAppsByAppIdWorkflowsDraftErrors[keyof GetAppsByAppIdWorkflowsDraftErrors]
 
 export type GetAppsByAppIdWorkflowsDraftResponses = {
   200: WorkflowResponse
@@ -6711,9 +8008,16 @@ export type PostAppsByAppIdWorkflowsDraftData = {
 }
 
 export type PostAppsByAppIdWorkflowsDraftErrors = {
-  400: unknown
-  403: unknown
+  400: AccountNotInitializedError | InvalidParamError
+  401: NotInitValidatedError | NotSetupError
+  403: ErrorResponse
+  404: AppNotFoundError
+  409: DraftWorkflowNotSyncError
+  default: ErrorResponse
 }
+
+export type PostAppsByAppIdWorkflowsDraftError =
+  PostAppsByAppIdWorkflowsDraftErrors[keyof PostAppsByAppIdWorkflowsDraftErrors]
 
 export type PostAppsByAppIdWorkflowsDraftResponses = {
   200: SyncDraftWorkflowResponse
@@ -6732,8 +8036,14 @@ export type GetAppsByAppIdWorkflowsDraftConversationVariablesData = {
 }
 
 export type GetAppsByAppIdWorkflowsDraftConversationVariablesErrors = {
-  404: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AppNotFoundError | NotFoundError
+  default: ErrorResponse
 }
+
+export type GetAppsByAppIdWorkflowsDraftConversationVariablesError =
+  GetAppsByAppIdWorkflowsDraftConversationVariablesErrors[keyof GetAppsByAppIdWorkflowsDraftConversationVariablesErrors]
 
 export type GetAppsByAppIdWorkflowsDraftConversationVariablesResponses = {
   200: WorkflowDraftVariableListResponse
@@ -6750,6 +8060,16 @@ export type PostAppsByAppIdWorkflowsDraftConversationVariablesData = {
   query?: never
   url: '/apps/{app_id}/workflows/draft/conversation-variables'
 }
+
+export type PostAppsByAppIdWorkflowsDraftConversationVariablesErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AppNotFoundError
+  default: ErrorResponse
+}
+
+export type PostAppsByAppIdWorkflowsDraftConversationVariablesError =
+  PostAppsByAppIdWorkflowsDraftConversationVariablesErrors[keyof PostAppsByAppIdWorkflowsDraftConversationVariablesErrors]
 
 export type PostAppsByAppIdWorkflowsDraftConversationVariablesResponses = {
   200: SimpleResultResponse
@@ -6768,8 +8088,14 @@ export type GetAppsByAppIdWorkflowsDraftEnvironmentVariablesData = {
 }
 
 export type GetAppsByAppIdWorkflowsDraftEnvironmentVariablesErrors = {
-  404: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AppNotFoundError | DraftWorkflowNotExistError
+  default: ErrorResponse
 }
+
+export type GetAppsByAppIdWorkflowsDraftEnvironmentVariablesError =
+  GetAppsByAppIdWorkflowsDraftEnvironmentVariablesErrors[keyof GetAppsByAppIdWorkflowsDraftEnvironmentVariablesErrors]
 
 export type GetAppsByAppIdWorkflowsDraftEnvironmentVariablesResponses = {
   200: EnvironmentVariableListResponse
@@ -6787,6 +8113,16 @@ export type PostAppsByAppIdWorkflowsDraftEnvironmentVariablesData = {
   url: '/apps/{app_id}/workflows/draft/environment-variables'
 }
 
+export type PostAppsByAppIdWorkflowsDraftEnvironmentVariablesErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AppNotFoundError
+  default: ErrorResponse
+}
+
+export type PostAppsByAppIdWorkflowsDraftEnvironmentVariablesError =
+  PostAppsByAppIdWorkflowsDraftEnvironmentVariablesErrors[keyof PostAppsByAppIdWorkflowsDraftEnvironmentVariablesErrors]
+
 export type PostAppsByAppIdWorkflowsDraftEnvironmentVariablesResponses = {
   200: SimpleResultResponse
 }
@@ -6802,6 +8138,16 @@ export type PostAppsByAppIdWorkflowsDraftFeaturesData = {
   query?: never
   url: '/apps/{app_id}/workflows/draft/features'
 }
+
+export type PostAppsByAppIdWorkflowsDraftFeaturesErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AppNotFoundError
+  default: ErrorResponse
+}
+
+export type PostAppsByAppIdWorkflowsDraftFeaturesError =
+  PostAppsByAppIdWorkflowsDraftFeaturesErrors[keyof PostAppsByAppIdWorkflowsDraftFeaturesErrors]
 
 export type PostAppsByAppIdWorkflowsDraftFeaturesResponses = {
   200: SimpleResultResponse
@@ -6820,6 +8166,16 @@ export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdDeliveryTestData
   url: '/apps/{app_id}/workflows/draft/human-input/nodes/{node_id}/delivery-test'
 }
 
+export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdDeliveryTestErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AppNotFoundError
+  default: ErrorResponse
+}
+
+export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdDeliveryTestError =
+  PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdDeliveryTestErrors[keyof PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdDeliveryTestErrors]
+
 export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdDeliveryTestResponses = {
   200: EmptyObjectResponse
 }
@@ -6837,6 +8193,16 @@ export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormPreviewData 
   url: '/apps/{app_id}/workflows/draft/human-input/nodes/{node_id}/form/preview'
 }
 
+export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormPreviewErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AppNotFoundError
+  default: ErrorResponse
+}
+
+export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormPreviewError =
+  PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormPreviewErrors[keyof PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormPreviewErrors]
+
 export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormPreviewResponses = {
   200: HumanInputFormPreviewResponse
 }
@@ -6853,6 +8219,16 @@ export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormRunData = {
   query?: never
   url: '/apps/{app_id}/workflows/draft/human-input/nodes/{node_id}/form/run'
 }
+
+export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormRunErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AppNotFoundError
+  default: ErrorResponse
+}
+
+export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormRunError =
+  PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormRunErrors[keyof PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormRunErrors]
 
 export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormRunResponses = {
   200: HumanInputFormSubmitResponse
@@ -6872,9 +8248,15 @@ export type PostAppsByAppIdWorkflowsDraftIterationNodesByNodeIdRunData = {
 }
 
 export type PostAppsByAppIdWorkflowsDraftIterationNodesByNodeIdRunErrors = {
-  403: unknown
-  404: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  403: ErrorResponse
+  404: AppNotFoundError
+  default: ErrorResponse
 }
+
+export type PostAppsByAppIdWorkflowsDraftIterationNodesByNodeIdRunError =
+  PostAppsByAppIdWorkflowsDraftIterationNodesByNodeIdRunErrors[keyof PostAppsByAppIdWorkflowsDraftIterationNodesByNodeIdRunErrors]
 
 export type PostAppsByAppIdWorkflowsDraftIterationNodesByNodeIdRunResponses = {
   200: GeneratedAppResponse
@@ -6894,9 +8276,15 @@ export type PostAppsByAppIdWorkflowsDraftLoopNodesByNodeIdRunData = {
 }
 
 export type PostAppsByAppIdWorkflowsDraftLoopNodesByNodeIdRunErrors = {
-  403: unknown
-  404: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  403: ErrorResponse
+  404: AppNotFoundError
+  default: ErrorResponse
 }
+
+export type PostAppsByAppIdWorkflowsDraftLoopNodesByNodeIdRunError =
+  PostAppsByAppIdWorkflowsDraftLoopNodesByNodeIdRunErrors[keyof PostAppsByAppIdWorkflowsDraftLoopNodesByNodeIdRunErrors]
 
 export type PostAppsByAppIdWorkflowsDraftLoopNodesByNodeIdRunResponses = {
   200: GeneratedAppResponse
@@ -6917,6 +8305,16 @@ export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerData = {
   url: '/apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer'
 }
 
+export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AgentNotFoundError | AgentVersionNotFoundError | AppNotFoundError
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerError =
+  GetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerErrors[keyof GetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerErrors]
+
 export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerResponses = {
   200: WorkflowAgentComposerResponse
 }
@@ -6933,6 +8331,20 @@ export type PutAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerData = {
   query?: never
   url: '/apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer'
 }
+
+export type PutAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerErrors = {
+  400:
+    | AccountNotInitializedError
+    | AgentSoulLockedError
+    | InvalidComposerConfigError
+    | PlaintextSecretNotAllowedError
+  401: NotInitValidatedError | NotSetupError
+  404: AgentNotFoundError | AgentVersionNotFoundError | AppNotFoundError
+  default: ErrorResponse
+}
+
+export type PutAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerError =
+  PutAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerErrors[keyof PutAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerErrors]
 
 export type PutAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerResponses = {
   200: WorkflowAgentComposerResponse
@@ -6951,6 +8363,16 @@ export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesData
   url: '/apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/candidates'
 }
 
+export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AppNotFoundError
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesError =
+  GetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesErrors[keyof GetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesErrors]
+
 export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesResponses = {
   200: AgentComposerCandidatesResponse
 }
@@ -6967,6 +8389,17 @@ export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRoste
   query?: never
   url: '/apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/copy-from-roster'
 }
+
+export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRosterErrors = {
+  400: AccountNotInitializedError | InvalidComposerConfigError
+  401: NotInitValidatedError | NotSetupError
+  404: AgentNotFoundError | AgentVersionNotFoundError | AppNotFoundError
+  409: AgentVersionConflictError
+  default: ErrorResponse
+}
+
+export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRosterError =
+  PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRosterErrors[keyof PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRosterErrors]
 
 export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRosterResponses = {
   200: WorkflowAgentComposerResponse
@@ -6985,6 +8418,16 @@ export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerImpactData = 
   url: '/apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/impact'
 }
 
+export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerImpactErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AppNotFoundError
+  default: ErrorResponse
+}
+
+export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerImpactError =
+  PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerImpactErrors[keyof PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerImpactErrors]
+
 export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerImpactResponses = {
   200: AgentComposerImpactResponse
 }
@@ -7002,6 +8445,20 @@ export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRosterD
   url: '/apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/save-to-roster'
 }
 
+export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRosterErrors = {
+  400:
+    | AccountNotInitializedError
+    | AgentSoulLockedError
+    | InvalidComposerConfigError
+    | PlaintextSecretNotAllowedError
+  401: NotInitValidatedError | NotSetupError
+  404: AgentNotFoundError | AgentVersionNotFoundError | AppNotFoundError
+  default: ErrorResponse
+}
+
+export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRosterError =
+  PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRosterErrors[keyof PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRosterErrors]
+
 export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRosterResponses = {
   200: WorkflowAgentComposerResponse
 }
@@ -7018,6 +8475,20 @@ export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerValidateData 
   query?: never
   url: '/apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/validate'
 }
+
+export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerValidateErrors = {
+  400:
+    | AccountNotInitializedError
+    | AgentSoulLockedError
+    | InvalidComposerConfigError
+    | PlaintextSecretNotAllowedError
+  401: NotInitValidatedError | NotSetupError
+  404: AppNotFoundError
+  default: ErrorResponse
+}
+
+export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerValidateError =
+  PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerValidateErrors[keyof PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerValidateErrors]
 
 export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerValidateResponses = {
   200: AgentComposerValidateResponse
@@ -7037,9 +8508,15 @@ export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdLastRunData = {
 }
 
 export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdLastRunErrors = {
-  403: unknown
-  404: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  403: ErrorResponse
+  404: AppNotFoundError
+  default: ErrorResponse
 }
+
+export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdLastRunError =
+  GetAppsByAppIdWorkflowsDraftNodesByNodeIdLastRunErrors[keyof GetAppsByAppIdWorkflowsDraftNodesByNodeIdLastRunErrors]
 
 export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdLastRunResponses = {
   200: WorkflowRunNodeExecutionResponse
@@ -7059,9 +8536,15 @@ export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdRunData = {
 }
 
 export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdRunErrors = {
-  403: unknown
-  404: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  403: ErrorResponse
+  404: AppNotFoundError
+  default: ErrorResponse
 }
+
+export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdRunError =
+  PostAppsByAppIdWorkflowsDraftNodesByNodeIdRunErrors[keyof PostAppsByAppIdWorkflowsDraftNodesByNodeIdRunErrors]
 
 export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdRunResponses = {
   200: WorkflowRunNodeExecutionResponse
@@ -7081,9 +8564,16 @@ export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdTriggerRunData = {
 }
 
 export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdTriggerRunErrors = {
-  403: unknown
-  500: unknown
+  400: WorkflowTriggerRunErrorResponse | AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  403: ErrorResponse
+  404: AppNotFoundError
+  500: ErrorResponse
+  default: ErrorResponse
 }
+
+export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdTriggerRunError =
+  PostAppsByAppIdWorkflowsDraftNodesByNodeIdTriggerRunErrors[keyof PostAppsByAppIdWorkflowsDraftNodesByNodeIdTriggerRunErrors]
 
 export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdTriggerRunResponses = {
   200: GeneratedAppResponse
@@ -7102,6 +8592,16 @@ export type DeleteAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesData = {
   url: '/apps/{app_id}/workflows/draft/nodes/{node_id}/variables'
 }
 
+export type DeleteAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesErrors = {
+  400: AccountNotInitializedError | InvalidParamError
+  401: NotInitValidatedError | NotSetupError
+  404: AppNotFoundError
+  default: ErrorResponse
+}
+
+export type DeleteAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesError =
+  DeleteAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesErrors[keyof DeleteAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesErrors]
+
 export type DeleteAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesResponses = {
   204: void
 }
@@ -7118,6 +8618,16 @@ export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesData = {
   query?: never
   url: '/apps/{app_id}/workflows/draft/nodes/{node_id}/variables'
 }
+
+export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesErrors = {
+  400: AccountNotInitializedError | InvalidParamError
+  401: NotInitValidatedError | NotSetupError
+  404: AppNotFoundError
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesError =
+  GetAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesErrors[keyof GetAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesErrors]
 
 export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesResponses = {
   200: WorkflowDraftVariableListResponse
@@ -7136,8 +8646,16 @@ export type PostAppsByAppIdWorkflowsDraftRunData = {
 }
 
 export type PostAppsByAppIdWorkflowsDraftRunErrors = {
-  403: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  403: ErrorResponse
+  404: AppNotFoundError
+  429: RateLimitError
+  default: ErrorResponse
 }
+
+export type PostAppsByAppIdWorkflowsDraftRunError =
+  PostAppsByAppIdWorkflowsDraftRunErrors[keyof PostAppsByAppIdWorkflowsDraftRunErrors]
 
 export type PostAppsByAppIdWorkflowsDraftRunResponses = {
   200: GeneratedAppResponse
@@ -7157,8 +8675,18 @@ export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsData = {
 }
 
 export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsErrors = {
-  404: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404:
+    | AppNotFoundError
+    | NodeNotInWorkflowRunError
+    | NodeOutputNotDeclaredError
+    | WorkflowRunNotFoundError
+  default: ErrorResponse
 }
+
+export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsError =
+  GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsErrors[keyof GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsErrors]
 
 export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsResponses = {
   200: WorkflowRunSnapshotView
@@ -7178,8 +8706,18 @@ export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEventsData = {
 }
 
 export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEventsErrors = {
-  404: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404:
+    | AppNotFoundError
+    | NodeNotInWorkflowRunError
+    | NodeOutputNotDeclaredError
+    | WorkflowRunNotFoundError
+  default: ErrorResponse
 }
+
+export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEventsError =
+  GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEventsErrors[keyof GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEventsErrors]
 
 export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEventsResponses = {
   200: EventStreamResponse
@@ -7200,8 +8738,18 @@ export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdData = {
 }
 
 export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdErrors = {
-  404: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404:
+    | AppNotFoundError
+    | NodeNotInWorkflowRunError
+    | NodeOutputNotDeclaredError
+    | WorkflowRunNotFoundError
+  default: ErrorResponse
 }
+
+export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdError =
+  GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdErrors[keyof GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdErrors]
 
 export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdResponses = {
   200: NodeOutputsView
@@ -7223,8 +8771,18 @@ export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdByOutputNa
 }
 
 export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewErrors = {
-  404: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404:
+    | AppNotFoundError
+    | NodeNotInWorkflowRunError
+    | NodeOutputNotDeclaredError
+    | WorkflowRunNotFoundError
+  default: ErrorResponse
 }
+
+export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewError =
+  GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewErrors[keyof GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewErrors]
 
 export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewResponses =
   {
@@ -7243,6 +8801,16 @@ export type GetAppsByAppIdWorkflowsDraftSystemVariablesData = {
   url: '/apps/{app_id}/workflows/draft/system-variables'
 }
 
+export type GetAppsByAppIdWorkflowsDraftSystemVariablesErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AppNotFoundError
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdWorkflowsDraftSystemVariablesError =
+  GetAppsByAppIdWorkflowsDraftSystemVariablesErrors[keyof GetAppsByAppIdWorkflowsDraftSystemVariablesErrors]
+
 export type GetAppsByAppIdWorkflowsDraftSystemVariablesResponses = {
   200: WorkflowDraftVariableListResponse
 }
@@ -7260,9 +8828,17 @@ export type PostAppsByAppIdWorkflowsDraftTriggerRunData = {
 }
 
 export type PostAppsByAppIdWorkflowsDraftTriggerRunErrors = {
-  403: unknown
-  500: unknown
+  400: WorkflowTriggerRunErrorResponse | AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  403: ErrorResponse
+  404: AppNotFoundError
+  429: RateLimitError
+  500: ErrorResponse
+  default: ErrorResponse
 }
+
+export type PostAppsByAppIdWorkflowsDraftTriggerRunError =
+  PostAppsByAppIdWorkflowsDraftTriggerRunErrors[keyof PostAppsByAppIdWorkflowsDraftTriggerRunErrors]
 
 export type PostAppsByAppIdWorkflowsDraftTriggerRunResponses = {
   200: GeneratedAppResponse
@@ -7281,9 +8857,17 @@ export type PostAppsByAppIdWorkflowsDraftTriggerRunAllData = {
 }
 
 export type PostAppsByAppIdWorkflowsDraftTriggerRunAllErrors = {
-  403: unknown
-  500: unknown
+  400: WorkflowTriggerRunErrorResponse | AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  403: ErrorResponse
+  404: AppNotFoundError
+  429: RateLimitError
+  500: ErrorResponse
+  default: ErrorResponse
 }
+
+export type PostAppsByAppIdWorkflowsDraftTriggerRunAllError =
+  PostAppsByAppIdWorkflowsDraftTriggerRunAllErrors[keyof PostAppsByAppIdWorkflowsDraftTriggerRunAllErrors]
 
 export type PostAppsByAppIdWorkflowsDraftTriggerRunAllResponses = {
   200: GeneratedAppResponse
@@ -7300,6 +8884,16 @@ export type DeleteAppsByAppIdWorkflowsDraftVariablesData = {
   query?: never
   url: '/apps/{app_id}/workflows/draft/variables'
 }
+
+export type DeleteAppsByAppIdWorkflowsDraftVariablesErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AppNotFoundError
+  default: ErrorResponse
+}
+
+export type DeleteAppsByAppIdWorkflowsDraftVariablesError =
+  DeleteAppsByAppIdWorkflowsDraftVariablesErrors[keyof DeleteAppsByAppIdWorkflowsDraftVariablesErrors]
 
 export type DeleteAppsByAppIdWorkflowsDraftVariablesResponses = {
   204: void
@@ -7320,6 +8914,16 @@ export type GetAppsByAppIdWorkflowsDraftVariablesData = {
   url: '/apps/{app_id}/workflows/draft/variables'
 }
 
+export type GetAppsByAppIdWorkflowsDraftVariablesErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AppNotFoundError | DraftWorkflowNotExistError
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdWorkflowsDraftVariablesError =
+  GetAppsByAppIdWorkflowsDraftVariablesErrors[keyof GetAppsByAppIdWorkflowsDraftVariablesErrors]
+
 export type GetAppsByAppIdWorkflowsDraftVariablesResponses = {
   200: WorkflowDraftVariableListWithoutValueResponse
 }
@@ -7338,8 +8942,14 @@ export type DeleteAppsByAppIdWorkflowsDraftVariablesByVariableIdData = {
 }
 
 export type DeleteAppsByAppIdWorkflowsDraftVariablesByVariableIdErrors = {
-  404: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AppNotFoundError | NotFoundError
+  default: ErrorResponse
 }
+
+export type DeleteAppsByAppIdWorkflowsDraftVariablesByVariableIdError =
+  DeleteAppsByAppIdWorkflowsDraftVariablesByVariableIdErrors[keyof DeleteAppsByAppIdWorkflowsDraftVariablesByVariableIdErrors]
 
 export type DeleteAppsByAppIdWorkflowsDraftVariablesByVariableIdResponses = {
   204: void
@@ -7359,8 +8969,14 @@ export type GetAppsByAppIdWorkflowsDraftVariablesByVariableIdData = {
 }
 
 export type GetAppsByAppIdWorkflowsDraftVariablesByVariableIdErrors = {
-  404: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AppNotFoundError | NotFoundError
+  default: ErrorResponse
 }
+
+export type GetAppsByAppIdWorkflowsDraftVariablesByVariableIdError =
+  GetAppsByAppIdWorkflowsDraftVariablesByVariableIdErrors[keyof GetAppsByAppIdWorkflowsDraftVariablesByVariableIdErrors]
 
 export type GetAppsByAppIdWorkflowsDraftVariablesByVariableIdResponses = {
   200: WorkflowDraftVariableResponse
@@ -7380,8 +8996,14 @@ export type PatchAppsByAppIdWorkflowsDraftVariablesByVariableIdData = {
 }
 
 export type PatchAppsByAppIdWorkflowsDraftVariablesByVariableIdErrors = {
-  404: unknown
+  400: AccountNotInitializedError | InvalidParamError
+  401: NotInitValidatedError | NotSetupError
+  404: AppNotFoundError | NotFoundError
+  default: ErrorResponse
 }
+
+export type PatchAppsByAppIdWorkflowsDraftVariablesByVariableIdError =
+  PatchAppsByAppIdWorkflowsDraftVariablesByVariableIdErrors[keyof PatchAppsByAppIdWorkflowsDraftVariablesByVariableIdErrors]
 
 export type PatchAppsByAppIdWorkflowsDraftVariablesByVariableIdResponses = {
   200: WorkflowDraftVariableResponse
@@ -7401,8 +9023,14 @@ export type PutAppsByAppIdWorkflowsDraftVariablesByVariableIdResetData = {
 }
 
 export type PutAppsByAppIdWorkflowsDraftVariablesByVariableIdResetErrors = {
-  404: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AppNotFoundError | NotFoundError
+  default: ErrorResponse
 }
+
+export type PutAppsByAppIdWorkflowsDraftVariablesByVariableIdResetError =
+  PutAppsByAppIdWorkflowsDraftVariablesByVariableIdResetErrors[keyof PutAppsByAppIdWorkflowsDraftVariablesByVariableIdResetErrors]
 
 export type PutAppsByAppIdWorkflowsDraftVariablesByVariableIdResetResponses = {
   200: WorkflowDraftVariableResponse
@@ -7421,6 +9049,16 @@ export type GetAppsByAppIdWorkflowsPublishData = {
   url: '/apps/{app_id}/workflows/publish'
 }
 
+export type GetAppsByAppIdWorkflowsPublishErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AppNotFoundError
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdWorkflowsPublishError =
+  GetAppsByAppIdWorkflowsPublishErrors[keyof GetAppsByAppIdWorkflowsPublishErrors]
+
 export type GetAppsByAppIdWorkflowsPublishResponses = {
   200: WorkflowResponse
 }
@@ -7436,6 +9074,16 @@ export type PostAppsByAppIdWorkflowsPublishData = {
   query?: never
   url: '/apps/{app_id}/workflows/publish'
 }
+
+export type PostAppsByAppIdWorkflowsPublishErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AppNotFoundError
+  default: ErrorResponse
+}
+
+export type PostAppsByAppIdWorkflowsPublishError =
+  PostAppsByAppIdWorkflowsPublishErrors[keyof PostAppsByAppIdWorkflowsPublishErrors]
 
 export type PostAppsByAppIdWorkflowsPublishResponses = {
   200: WorkflowPublishResponse
@@ -7455,8 +9103,18 @@ export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsData = {
 }
 
 export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsErrors = {
-  404: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404:
+    | AppNotFoundError
+    | NodeNotInWorkflowRunError
+    | NodeOutputNotDeclaredError
+    | WorkflowRunNotFoundError
+  default: ErrorResponse
 }
+
+export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsError =
+  GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsErrors[keyof GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsErrors]
 
 export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsResponses = {
   200: WorkflowRunSnapshotView
@@ -7476,8 +9134,18 @@ export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEventsData = {
 }
 
 export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEventsErrors = {
-  404: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404:
+    | AppNotFoundError
+    | NodeNotInWorkflowRunError
+    | NodeOutputNotDeclaredError
+    | WorkflowRunNotFoundError
+  default: ErrorResponse
 }
+
+export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEventsError =
+  GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEventsErrors[keyof GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEventsErrors]
 
 export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEventsResponses = {
   200: EventStreamResponse
@@ -7498,8 +9166,18 @@ export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdData =
 }
 
 export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdErrors = {
-  404: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404:
+    | AppNotFoundError
+    | NodeNotInWorkflowRunError
+    | NodeOutputNotDeclaredError
+    | WorkflowRunNotFoundError
+  default: ErrorResponse
 }
+
+export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdError =
+  GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdErrors[keyof GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdErrors]
 
 export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdResponses = {
   200: NodeOutputsView
@@ -7523,8 +9201,18 @@ export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdByOutp
 
 export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewErrors =
   {
-    404: unknown
+    400: AccountNotInitializedError
+    401: NotInitValidatedError | NotSetupError
+    404:
+      | AppNotFoundError
+      | NodeNotInWorkflowRunError
+      | NodeOutputNotDeclaredError
+      | WorkflowRunNotFoundError
+    default: ErrorResponse
   }
+
+export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewError =
+  GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewErrors[keyof GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewErrors]
 
 export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewResponses =
   {
@@ -7545,6 +9233,16 @@ export type GetAppsByAppIdWorkflowsTriggersWebhookData = {
   url: '/apps/{app_id}/workflows/triggers/webhook'
 }
 
+export type GetAppsByAppIdWorkflowsTriggersWebhookErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AppNotFoundError
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdWorkflowsTriggersWebhookError =
+  GetAppsByAppIdWorkflowsTriggersWebhookErrors[keyof GetAppsByAppIdWorkflowsTriggersWebhookErrors]
+
 export type GetAppsByAppIdWorkflowsTriggersWebhookResponses = {
   200: WebhookTriggerResponse
 }
@@ -7561,6 +9259,16 @@ export type DeleteAppsByAppIdWorkflowsByWorkflowIdData = {
   query?: never
   url: '/apps/{app_id}/workflows/{workflow_id}'
 }
+
+export type DeleteAppsByAppIdWorkflowsByWorkflowIdErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AppNotFoundError
+  default: ErrorResponse
+}
+
+export type DeleteAppsByAppIdWorkflowsByWorkflowIdError =
+  DeleteAppsByAppIdWorkflowsByWorkflowIdErrors[keyof DeleteAppsByAppIdWorkflowsByWorkflowIdErrors]
 
 export type DeleteAppsByAppIdWorkflowsByWorkflowIdResponses = {
   204: void
@@ -7580,9 +9288,15 @@ export type PatchAppsByAppIdWorkflowsByWorkflowIdData = {
 }
 
 export type PatchAppsByAppIdWorkflowsByWorkflowIdErrors = {
-  403: unknown
-  404: unknown
+  400: AccountNotInitializedError | InvalidParamError
+  401: NotInitValidatedError | NotSetupError
+  403: ErrorResponse
+  404: AppNotFoundError
+  default: ErrorResponse
 }
+
+export type PatchAppsByAppIdWorkflowsByWorkflowIdError =
+  PatchAppsByAppIdWorkflowsByWorkflowIdErrors[keyof PatchAppsByAppIdWorkflowsByWorkflowIdErrors]
 
 export type PatchAppsByAppIdWorkflowsByWorkflowIdResponses = {
   200: WorkflowResponse
@@ -7602,9 +9316,14 @@ export type PostAppsByAppIdWorkflowsByWorkflowIdRestoreData = {
 }
 
 export type PostAppsByAppIdWorkflowsByWorkflowIdRestoreErrors = {
-  400: unknown
-  404: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AppNotFoundError
+  default: ErrorResponse
 }
+
+export type PostAppsByAppIdWorkflowsByWorkflowIdRestoreError =
+  PostAppsByAppIdWorkflowsByWorkflowIdRestoreErrors[keyof PostAppsByAppIdWorkflowsByWorkflowIdRestoreErrors]
 
 export type PostAppsByAppIdWorkflowsByWorkflowIdRestoreResponses = {
   200: WorkflowRestoreResponse
@@ -7621,6 +9340,16 @@ export type GetAppsByResourceIdApiKeysData = {
   query?: never
   url: '/apps/{resource_id}/api-keys'
 }
+
+export type GetAppsByResourceIdApiKeysErrors = {
+  400: AccountNotInitializedError | MaxKeysExceededError
+  401: NotInitValidatedError | NotSetupError
+  409: AgentNotPublishedError
+  default: ErrorResponse
+}
+
+export type GetAppsByResourceIdApiKeysError =
+  GetAppsByResourceIdApiKeysErrors[keyof GetAppsByResourceIdApiKeysErrors]
 
 export type GetAppsByResourceIdApiKeysResponses = {
   200: ApiKeyList
@@ -7639,8 +9368,14 @@ export type PostAppsByResourceIdApiKeysData = {
 }
 
 export type PostAppsByResourceIdApiKeysErrors = {
-  400: unknown
+  400: AccountNotInitializedError | MaxKeysExceededError
+  401: NotInitValidatedError | NotSetupError
+  409: AgentNotPublishedError
+  default: ErrorResponse
 }
+
+export type PostAppsByResourceIdApiKeysError =
+  PostAppsByResourceIdApiKeysErrors[keyof PostAppsByResourceIdApiKeysErrors]
 
 export type PostAppsByResourceIdApiKeysResponses = {
   201: ApiKeyItem
@@ -7658,6 +9393,16 @@ export type DeleteAppsByResourceIdApiKeysByApiKeyIdData = {
   query?: never
   url: '/apps/{resource_id}/api-keys/{api_key_id}'
 }
+
+export type DeleteAppsByResourceIdApiKeysByApiKeyIdErrors = {
+  400: AccountNotInitializedError | MaxKeysExceededError
+  401: NotInitValidatedError | NotSetupError
+  409: AgentNotPublishedError
+  default: ErrorResponse
+}
+
+export type DeleteAppsByResourceIdApiKeysByApiKeyIdError =
+  DeleteAppsByResourceIdApiKeysByApiKeyIdErrors[keyof DeleteAppsByResourceIdApiKeysByApiKeyIdErrors]
 
 export type DeleteAppsByResourceIdApiKeysByApiKeyIdResponses = {
   204: void

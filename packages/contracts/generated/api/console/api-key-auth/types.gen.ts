@@ -8,6 +8,31 @@ export type ApiKeyAuthDataSourceListResponse = {
   sources: Array<ApiKeyAuthDataSourceItem>
 }
 
+export type AccountNotInitializedError = ErrorResponse & {
+  code: 'account_not_initialized'
+  status: 400
+}
+
+export type NotInitValidatedError = ErrorResponse & {
+  code: 'not_init_validated'
+  status: 401
+}
+
+export type NotSetupError = ErrorResponse & {
+  code: 'not_setup'
+  status: 401
+}
+
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type ApiKeyAuthBindingPayload = {
   category: string
   credentials: ApiKeyAuthCredentialsPayload
@@ -16,6 +41,16 @@ export type ApiKeyAuthBindingPayload = {
 
 export type SimpleResultResponse = {
   result: string
+}
+
+export type UnsupportedDataSourceApiKeyAuthProviderError = ErrorResponse & {
+  code: 'unsupported_data_source_api_key_auth_provider'
+  status: 400
+}
+
+export type DataSourceApiKeyAuthProviderUnavailableError = ErrorResponse & {
+  code: 'data_source_api_key_auth_provider_unavailable'
+  status: 502
 }
 
 export type ApiKeyAuthDataSourceItem = {
@@ -44,6 +79,15 @@ export type GetApiKeyAuthDataSourceData = {
   url: '/api-key-auth/data-source'
 }
 
+export type GetApiKeyAuthDataSourceErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  default: ErrorResponse
+}
+
+export type GetApiKeyAuthDataSourceError =
+  GetApiKeyAuthDataSourceErrors[keyof GetApiKeyAuthDataSourceErrors]
+
 export type GetApiKeyAuthDataSourceResponses = {
   200: ApiKeyAuthDataSourceListResponse
 }
@@ -57,6 +101,16 @@ export type PostApiKeyAuthDataSourceBindingData = {
   query?: never
   url: '/api-key-auth/data-source/binding'
 }
+
+export type PostApiKeyAuthDataSourceBindingErrors = {
+  400: AccountNotInitializedError | UnsupportedDataSourceApiKeyAuthProviderError
+  401: NotInitValidatedError | NotSetupError
+  502: DataSourceApiKeyAuthProviderUnavailableError
+  default: ErrorResponse
+}
+
+export type PostApiKeyAuthDataSourceBindingError =
+  PostApiKeyAuthDataSourceBindingErrors[keyof PostApiKeyAuthDataSourceBindingErrors]
 
 export type PostApiKeyAuthDataSourceBindingResponses = {
   200: SimpleResultResponse
@@ -73,6 +127,15 @@ export type DeleteApiKeyAuthDataSourceByBindingIdData = {
   query?: never
   url: '/api-key-auth/data-source/{binding_id}'
 }
+
+export type DeleteApiKeyAuthDataSourceByBindingIdErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  default: ErrorResponse
+}
+
+export type DeleteApiKeyAuthDataSourceByBindingIdError =
+  DeleteApiKeyAuthDataSourceByBindingIdErrors[keyof DeleteApiKeyAuthDataSourceByBindingIdErrors]
 
 export type DeleteApiKeyAuthDataSourceByBindingIdResponses = {
   204: void

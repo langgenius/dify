@@ -3,6 +3,118 @@
 import * as z from 'zod'
 
 /**
+ * ErrorResponse
+ *
+ * Documented non-2xx body emitted by ``register_external_error_handlers``.
+ *
+ * ``params`` and ``details`` appear only on the errors that set them. The schema
+ * stays open because ``HTTPException.data`` may carry extra keys.
+ */
+export const zErrorResponse = z.object({
+  code: z.string(),
+  details: z.record(z.string(), z.unknown()).optional(),
+  message: z.string(),
+  params: z.string().optional(),
+  status: z.int(),
+})
+
+/**
+ * AccountNotInitializedError
+ *
+ * The account has not been initialized yet. Please proceed with the initialization process first.
+ */
+export const zAccountNotInitializedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('account_not_initialized'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * InvalidCursorError
+ *
+ * The app list cursor is invalid. Refresh the list and try again.
+ */
+export const zInvalidCursorError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_cursor'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * NotInitValidatedError
+ *
+ * Init validation has not been completed yet. Please proceed with the init validation process first.
+ */
+export const zNotInitValidatedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('not_init_validated'),
+    status: z.literal(401),
+  }),
+)
+
+/**
+ * NotSetupError
+ *
+ * Dify has not been initialized and installed yet. Please proceed with the initialization and installation process first.
+ */
+export const zNotSetupError = zErrorResponse.and(
+  z.object({
+    code: z.literal('not_setup'),
+    status: z.literal(401),
+  }),
+)
+
+/**
+ * WebAppAccessUnavailableError
+ *
+ * The app access service is unavailable. Try again later.
+ */
+export const zWebAppAccessUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('web_app_access_unavailable'),
+    status: z.literal(503),
+  }),
+)
+
+/**
+ * AccessDeniedError
+ *
+ * App access denied.
+ */
+export const zAccessDeniedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('access_denied'),
+    status: z.literal(403),
+  }),
+)
+
+/**
+ * InstalledAppNotFoundError
+ *
+ * The app was not found in this workspace.
+ */
+export const zInstalledAppNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('installed_app_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * InstalledAppUnavailableError
+ *
+ * The app is not available in this app library.
+ */
+export const zInstalledAppUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('installed_app_unavailable'),
+    status: z.literal(404),
+  }),
+)
+
+/**
  * InstalledAppUpdatePayload
  */
 export const zInstalledAppUpdatePayload = z.object({
@@ -25,6 +137,162 @@ export const zAudioTranscriptResponse = z.object({
 })
 
 /**
+ * AppUnavailableError
+ *
+ * App unavailable, please check your app configurations.
+ */
+export const zAppUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('app_unavailable'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * CompletionRequestError
+ *
+ * Completion request failed.
+ */
+export const zCompletionRequestError = zErrorResponse.and(
+  z.object({
+    code: z.literal('completion_request_error'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * ModelCurrentlyNotSupportError
+ *
+ * Dify Hosted OpenAI trial currently not support the GPT-4 model.
+ */
+export const zModelCurrentlyNotSupportError = zErrorResponse.and(
+  z.object({
+    code: z.literal('model_currently_not_support'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * NoAudioUploadedError
+ *
+ * Please upload your audio.
+ */
+export const zNoAudioUploadedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('no_audio_uploaded'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * ProviderNotInitializeError
+ *
+ * No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials.
+ */
+export const zProviderNotInitializeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('provider_not_initialize'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * ProviderNotSupportSpeechToTextError
+ *
+ * Provider not support speech to text.
+ */
+export const zProviderNotSupportSpeechToTextError = zErrorResponse.and(
+  z.object({
+    code: z.literal('provider_not_support_speech_to_text'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * ProviderNotSupportTextToSpeechError
+ *
+ * Provider does not support text to speech.
+ */
+export const zProviderNotSupportTextToSpeechError = zErrorResponse.and(
+  z.object({
+    code: z.literal('provider_not_support_text_to_speech'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * ProviderQuotaExceededError
+ *
+ * Your quota for Dify Hosted Model Provider has been exhausted. Please go to Settings -> Model Provider to complete your own provider credentials.
+ */
+export const zProviderQuotaExceededError = zErrorResponse.and(
+  z.object({
+    code: z.literal('provider_quota_exceeded'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * SpeechToTextDisabledError
+ *
+ * Speech to text is disabled.
+ */
+export const zSpeechToTextDisabledError = zErrorResponse.and(
+  z.object({
+    code: z.literal('speech_to_text_disabled'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * AgentVersionNotFoundError
+ *
+ * Agent config version not found.
+ */
+export const zAgentVersionNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('agent_version_not_found_error'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * AudioTooLargeError
+ *
+ * Audio size exceeded. {message}
+ */
+export const zAudioTooLargeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('audio_too_large'),
+    status: z.literal(413),
+  }),
+)
+
+/**
+ * UnsupportedAudioTypeError
+ *
+ * Audio type not allowed.
+ */
+export const zUnsupportedAudioTypeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('unsupported_audio_type'),
+    status: z.literal(415),
+  }),
+)
+
+/**
+ * InternalServerError
+ *
+ * The server encountered an internal error and was unable to complete your request. Either the server is overloaded or there is an error in the application.
+ */
+export const zInternalServerError = zErrorResponse.and(
+  z.object({
+    code: z.literal('internal_server_error'),
+    status: z.literal(500),
+  }),
+)
+
+/**
  * ChatMessagePayload
  */
 export const zChatMessagePayload = z.object({
@@ -38,6 +306,52 @@ export const zChatMessagePayload = z.object({
   response_mode: z.enum(['blocking', 'streaming']).optional().default('blocking'),
   retriever_from: z.string().optional().default('dev'),
 })
+
+/**
+ * NotChatAppError
+ *
+ * App mode is invalid.
+ */
+export const zNotChatAppError = zErrorResponse.and(
+  z.object({
+    code: z.literal('not_chat_app'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * UnauthorizedError
+ *
+ * Authentication is required.
+ */
+export const zUnauthorizedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('unauthorized'),
+    status: z.literal(401),
+  }),
+)
+
+/**
+ * NotFoundError
+ */
+export const zNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * RateLimitError
+ *
+ * Rate Limit Error
+ */
+export const zRateLimitError = zErrorResponse.and(
+  z.object({
+    code: z.literal('rate_limit_error'),
+    status: z.literal(429),
+  }),
+)
 
 /**
  * SimpleResultResponse
@@ -56,6 +370,66 @@ export const zCompletionMessageExplorePayload = z.object({
   response_mode: z.enum(['blocking', 'streaming']).nullish(),
   retriever_from: z.string().optional().default('explore_app'),
 })
+
+/**
+ * NotCompletionAppError
+ *
+ * Not Completion App
+ */
+export const zNotCompletionAppError = zErrorResponse.and(
+  z.object({
+    code: z.literal('not_completion_app'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * ConversationNameRequiredError
+ *
+ * A name is required when automatic naming is disabled.
+ */
+export const zConversationNameRequiredError = zErrorResponse.and(
+  z.object({
+    code: z.literal('conversation_name_required'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * ConversationCursorNotFoundError
+ *
+ * The conversation cursor is not in the current list. Refresh the list and try again.
+ */
+export const zConversationCursorNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('conversation_cursor_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * ConversationFirstMessageNotFoundError
+ *
+ * The conversation has no message from which to generate a name.
+ */
+export const zConversationFirstMessageNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('conversation_first_message_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * ConversationNotFoundError
+ *
+ * The conversation was not found for this account and app.
+ */
+export const zConversationNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('conversation_not_found'),
+    status: z.literal(404),
+  }),
+)
 
 export const zConversationRenamePayload = z.intersection(
   z.union([
@@ -80,6 +454,66 @@ export const zConversationRenamePayload = z.intersection(
 export const zResultResponse = z.object({
   result: z.string(),
 })
+
+/**
+ * MessageFeedbackRatingRequiredError
+ *
+ * A rating is required when there is no existing feedback to remove.
+ */
+export const zMessageFeedbackRatingRequiredError = zErrorResponse.and(
+  z.object({
+    code: z.literal('message_feedback_rating_required'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * AppMoreLikeThisDisabledError
+ *
+ * The 'More like this' feature is disabled. Please refresh your page.
+ */
+export const zAppMoreLikeThisDisabledError = zErrorResponse.and(
+  z.object({
+    code: z.literal('app_more_like_this_disabled'),
+    status: z.literal(403),
+  }),
+)
+
+/**
+ * AppSuggestedQuestionsAfterAnswerDisabledError
+ *
+ * Function Suggested questions after answer disabled.
+ */
+export const zAppSuggestedQuestionsAfterAnswerDisabledError = zErrorResponse.and(
+  z.object({
+    code: z.literal('app_suggested_questions_after_answer_disabled'),
+    status: z.literal(403),
+  }),
+)
+
+/**
+ * MessageCursorNotFoundError
+ *
+ * The message cursor is not in this conversation. Refresh the list and try again.
+ */
+export const zMessageCursorNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('message_cursor_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * MessageNotFoundError
+ *
+ * The message was not found for this account and app.
+ */
+export const zMessageNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('message_not_found'),
+    status: z.literal(404),
+  }),
+)
 
 /**
  * MessageFeedbackPayload
@@ -174,6 +608,18 @@ export const zWorkflowRunPayload = z.object({
     .nullish(),
   inputs: z.record(z.string(), z.unknown()),
 })
+
+/**
+ * NotWorkflowAppError
+ *
+ * Only support workflow app.
+ */
+export const zNotWorkflowAppError = zErrorResponse.and(
+  z.object({
+    code: z.literal('not_workflow_app'),
+    status: z.literal(400),
+  }),
+)
 
 export const zJsonValue = z
   .union([

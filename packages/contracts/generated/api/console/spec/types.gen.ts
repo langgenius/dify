@@ -6,6 +6,31 @@ export type ClientOptions = {
 
 export type SchemaDefinitionsResponse = Array<SchemaDefinitionItemResponse>
 
+export type AccountNotInitializedError = ErrorResponse & {
+  code: 'account_not_initialized'
+  status: 400
+}
+
+export type NotInitValidatedError = ErrorResponse & {
+  code: 'not_init_validated'
+  status: 401
+}
+
+export type NotSetupError = ErrorResponse & {
+  code: 'not_setup'
+  status: 401
+}
+
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type SchemaDefinitionItemResponse = {
   label: string
   name: string
@@ -20,6 +45,15 @@ export type GetSpecSchemaDefinitionsData = {
   query?: never
   url: '/spec/schema-definitions'
 }
+
+export type GetSpecSchemaDefinitionsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  default: ErrorResponse
+}
+
+export type GetSpecSchemaDefinitionsError =
+  GetSpecSchemaDefinitionsErrors[keyof GetSpecSchemaDefinitionsErrors]
 
 export type GetSpecSchemaDefinitionsResponses = {
   200: SchemaDefinitionsResponse

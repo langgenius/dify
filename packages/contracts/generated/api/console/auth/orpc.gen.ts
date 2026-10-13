@@ -2,6 +2,7 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
+import { zAccountNotInitializedError, zNotInitValidatedError, zNotSetupError } from './zod.gen.ts'
 import {
   zDeleteAuthPluginDatasourceByProviderIdCustomClientPath,
   zDeleteAuthPluginDatasourceByProviderIdCustomClientResponse,
@@ -38,6 +39,11 @@ export const get = oc
     tags: ['console'],
   })
   .output(zGetAuthPluginDatasourceDefaultListResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const defaultList = {
   get,
@@ -52,6 +58,11 @@ export const get2 = oc
     tags: ['console'],
   })
   .output(zGetAuthPluginDatasourceListResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const list = {
   get: get2,
@@ -67,6 +78,11 @@ export const delete_ = oc
   })
   .input(z.object({ params: zDeleteAuthPluginDatasourceByProviderIdCustomClientPath }))
   .output(zDeleteAuthPluginDatasourceByProviderIdCustomClientResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const post = oc
   .route({
@@ -83,6 +99,11 @@ export const post = oc
     }),
   )
   .output(zPostAuthPluginDatasourceByProviderIdCustomClientResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const customClient = {
   delete: delete_,
@@ -104,6 +125,11 @@ export const post2 = oc
     }),
   )
   .output(zPostAuthPluginDatasourceByProviderIdDefaultResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const default_ = {
   post: post2,
@@ -124,6 +150,11 @@ export const post3 = oc
     }),
   )
   .output(zPostAuthPluginDatasourceByProviderIdDeleteResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const delete2 = {
   post: post3,
@@ -145,6 +176,11 @@ export const post4 = oc
     }),
   )
   .output(zPostAuthPluginDatasourceByProviderIdUpdateResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const update = {
   post: post4,
@@ -165,6 +201,11 @@ export const post5 = oc
     }),
   )
   .output(zPostAuthPluginDatasourceByProviderIdUpdateNameResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const updateName = {
   post: post5,
@@ -180,6 +221,11 @@ export const get3 = oc
   })
   .input(z.object({ params: zGetAuthPluginDatasourceByProviderIdPath }))
   .output(zGetAuthPluginDatasourceByProviderIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const post6 = oc
   .route({
@@ -196,6 +242,11 @@ export const post6 = oc
     }),
   )
   .output(zPostAuthPluginDatasourceByProviderIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const byProviderId = {
   get: get3,

@@ -22,6 +22,56 @@ export type WorkflowGenerateResponse = {
   mode?: 'advanced-chat' | 'workflow' | null
 }
 
+export type WorkflowGenerateRejectedResponse = {
+  error: string
+  errors: Array<WorkflowGenerateErrorResponse>
+}
+
+export type AccountNotInitializedError = ErrorResponse & {
+  code: 'account_not_initialized'
+  status: 400
+}
+
+export type CompletionRequestError = ErrorResponse & {
+  code: 'completion_request_error'
+  status: 400
+}
+
+export type ModelCurrentlyNotSupportError = ErrorResponse & {
+  code: 'model_currently_not_support'
+  status: 400
+}
+
+export type ProviderNotInitializeError = ErrorResponse & {
+  code: 'provider_not_initialize'
+  status: 400
+}
+
+export type ProviderQuotaExceededError = ErrorResponse & {
+  code: 'provider_quota_exceeded'
+  status: 400
+}
+
+export type NotInitValidatedError = ErrorResponse & {
+  code: 'not_init_validated'
+  status: 401
+}
+
+export type NotSetupError = ErrorResponse & {
+  code: 'not_setup'
+  status: 401
+}
+
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type WorkflowGenerateStreamEventResponse =
   | WorkflowGeneratePlanEventResponse
   | WorkflowGenerateResultEventResponse
@@ -147,9 +197,18 @@ export type PostWorkflowGenerateData = {
 }
 
 export type PostWorkflowGenerateErrors = {
-  400: unknown
-  402: unknown
+  400:
+    | WorkflowGenerateRejectedResponse
+    | AccountNotInitializedError
+    | CompletionRequestError
+    | ModelCurrentlyNotSupportError
+    | ProviderNotInitializeError
+    | ProviderQuotaExceededError
+  401: NotInitValidatedError | NotSetupError
+  default: ErrorResponse
 }
+
+export type PostWorkflowGenerateError = PostWorkflowGenerateErrors[keyof PostWorkflowGenerateErrors]
 
 export type PostWorkflowGenerateResponses = {
   200: WorkflowGenerateResponse
@@ -166,8 +225,13 @@ export type PostWorkflowGenerateStreamData = {
 }
 
 export type PostWorkflowGenerateStreamErrors = {
-  400: unknown
+  400: WorkflowGenerateRejectedResponse | AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  default: ErrorResponse
 }
+
+export type PostWorkflowGenerateStreamError =
+  PostWorkflowGenerateStreamErrors[keyof PostWorkflowGenerateStreamErrors]
 
 export type PostWorkflowGenerateStreamResponses = {
   200: WorkflowGenerateStreamEventResponse
@@ -184,8 +248,13 @@ export type PostWorkflowGenerateSuggestionsData = {
 }
 
 export type PostWorkflowGenerateSuggestionsErrors = {
-  400: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  default: ErrorResponse
 }
+
+export type PostWorkflowGenerateSuggestionsError =
+  PostWorkflowGenerateSuggestionsErrors[keyof PostWorkflowGenerateSuggestionsErrors]
 
 export type PostWorkflowGenerateSuggestionsResponses = {
   200: WorkflowInstructionSuggestionsResponse

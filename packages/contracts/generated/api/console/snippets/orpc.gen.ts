@@ -3,6 +3,21 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
+  zAccountNotInitializedError,
+  zAgentNotFoundError,
+  zAgentSoulLockedError,
+  zAgentVersionConflictError,
+  zAgentVersionNotFoundError,
+  zDraftWorkflowNotExistError,
+  zDraftWorkflowNotSyncError,
+  zInvalidComposerConfigError,
+  zInvalidParamError,
+  zNotFoundError,
+  zNotInitValidatedError,
+  zNotSetupError,
+  zPlaintextSecretNotAllowedError,
+} from './zod.gen.ts'
+import {
   zDeleteSnippetsBySnippetIdWorkflowsByWorkflowIdPath,
   zDeleteSnippetsBySnippetIdWorkflowsByWorkflowIdResponse,
   zDeleteSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesPath,
@@ -115,6 +130,11 @@ export const post = oc
   })
   .input(z.object({ params: zPostSnippetsBySnippetIdWorkflowRunsTasksByTaskIdStopPath }))
   .output(zPostSnippetsBySnippetIdWorkflowRunsTasksByTaskIdStopResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const stop = {
   post,
@@ -142,6 +162,11 @@ export const get = oc
   })
   .input(z.object({ params: zGetSnippetsBySnippetIdWorkflowRunsByRunIdNodeExecutionsPath }))
   .output(zGetSnippetsBySnippetIdWorkflowRunsByRunIdNodeExecutionsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const nodeExecutions = {
   get,
@@ -161,6 +186,11 @@ export const get2 = oc
   })
   .input(z.object({ params: zGetSnippetsBySnippetIdWorkflowRunsByRunIdPath }))
   .output(zGetSnippetsBySnippetIdWorkflowRunsByRunIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const byRunId = {
   get: get2,
@@ -186,6 +216,11 @@ export const get3 = oc
     }),
   )
   .output(zGetSnippetsBySnippetIdWorkflowRunsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const workflowRuns = {
   get: get3,
@@ -207,6 +242,11 @@ export const get4 = oc
   })
   .input(z.object({ params: zGetSnippetsBySnippetIdWorkflowsDefaultWorkflowBlockConfigsPath }))
   .output(zGetSnippetsBySnippetIdWorkflowsDefaultWorkflowBlockConfigsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const defaultWorkflowBlockConfigs = {
   get: get4,
@@ -226,6 +266,11 @@ export const get5 = oc
   })
   .input(z.object({ params: zGetSnippetsBySnippetIdWorkflowsDraftConfigPath }))
   .output(zGetSnippetsBySnippetIdWorkflowsDraftConfigResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const config = {
   get: get5,
@@ -246,6 +291,11 @@ export const get6 = oc
   })
   .input(z.object({ params: zGetSnippetsBySnippetIdWorkflowsDraftConversationVariablesPath }))
   .output(zGetSnippetsBySnippetIdWorkflowsDraftConversationVariablesResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const conversationVariables = {
   get: get6,
@@ -265,6 +315,12 @@ export const get7 = oc
   })
   .input(z.object({ params: zGetSnippetsBySnippetIdWorkflowsDraftEnvironmentVariablesPath }))
   .output(zGetSnippetsBySnippetIdWorkflowsDraftEnvironmentVariablesResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    draft_workflow_not_exist: { status: 404, data: zDraftWorkflowNotExistError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const environmentVariables = {
   get: get7,
@@ -295,6 +351,11 @@ export const post2 = oc
     }),
   )
   .output(zPostSnippetsBySnippetIdWorkflowsDraftIterationNodesByNodeIdRunResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const run = {
   post: post2,
@@ -337,6 +398,11 @@ export const post3 = oc
     }),
   )
   .output(zPostSnippetsBySnippetIdWorkflowsDraftLoopNodesByNodeIdRunResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const run2 = {
   post: post3,
@@ -368,6 +434,11 @@ export const get8 = oc
     }),
   )
   .output(zGetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const candidates = {
   get: get8,
@@ -388,6 +459,15 @@ export const post4 = oc
     }),
   )
   .output(zPostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRosterResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+    agent_version_conflict_error: { status: 409, data: zAgentVersionConflictError },
+    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
+    invalid_composer_config_error: { status: 400, data: zInvalidComposerConfigError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const copyFromRoster = {
   post: post4,
@@ -408,6 +488,11 @@ export const post5 = oc
     }),
   )
   .output(zPostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerImpactResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const impact = {
   post: post5,
@@ -428,6 +513,16 @@ export const post6 = oc
     }),
   )
   .output(zPostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRosterResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+    agent_soul_locked_error: { status: 400, data: zAgentSoulLockedError },
+    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
+    invalid_composer_config_error: { status: 400, data: zInvalidComposerConfigError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    plaintext_secret_not_allowed_error: { status: 400, data: zPlaintextSecretNotAllowedError },
+  })
 
 export const saveToRoster = {
   post: post6,
@@ -448,6 +543,14 @@ export const post7 = oc
     }),
   )
   .output(zPostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerValidateResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    agent_soul_locked_error: { status: 400, data: zAgentSoulLockedError },
+    invalid_composer_config_error: { status: 400, data: zInvalidComposerConfigError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    plaintext_secret_not_allowed_error: { status: 400, data: zPlaintextSecretNotAllowedError },
+  })
 
 export const validate = {
   post: post7,
@@ -468,6 +571,13 @@ export const get9 = oc
     }),
   )
   .output(zGetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const put = oc
   .route({
@@ -484,6 +594,16 @@ export const put = oc
     }),
   )
   .output(zPutSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+    agent_soul_locked_error: { status: 400, data: zAgentSoulLockedError },
+    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
+    invalid_composer_config_error: { status: 400, data: zInvalidComposerConfigError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    plaintext_secret_not_allowed_error: { status: 400, data: zPlaintextSecretNotAllowedError },
+  })
 
 export const agentComposer = {
   get: get9,
@@ -515,6 +635,11 @@ export const get10 = oc
   })
   .input(z.object({ params: zGetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdLastRunPath }))
   .output(zGetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdLastRunResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const lastRun = {
   get: get10,
@@ -545,6 +670,11 @@ export const post8 = oc
     }),
   )
   .output(zPostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdRunResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const run3 = {
   post: post8,
@@ -565,6 +695,12 @@ export const delete_ = oc
   })
   .input(z.object({ params: zDeleteSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesPath }))
   .output(zDeleteSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    invalid_param: { status: 400, data: zInvalidParamError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 /**
  * Get variables for a specific node (snippet draft workflow)
@@ -580,6 +716,12 @@ export const get11 = oc
   })
   .input(z.object({ params: zGetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesPath }))
   .output(zGetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    invalid_param: { status: 400, data: zInvalidParamError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const variables = {
   delete: delete_,
@@ -621,6 +763,11 @@ export const post9 = oc
     }),
   )
   .output(zPostSnippetsBySnippetIdWorkflowsDraftRunResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const run4 = {
   post: post9,
@@ -641,6 +788,11 @@ export const get12 = oc
   })
   .input(z.object({ params: zGetSnippetsBySnippetIdWorkflowsDraftSystemVariablesPath }))
   .output(zGetSnippetsBySnippetIdWorkflowsDraftSystemVariablesResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const systemVariables = {
   get: get12,
@@ -660,6 +812,12 @@ export const put2 = oc
   })
   .input(z.object({ params: zPutSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResetPath }))
   .output(zPutSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResetResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_found: { status: 404, data: zNotFoundError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const reset = {
   put: put2,
@@ -680,6 +838,12 @@ export const delete2 = oc
   })
   .input(z.object({ params: zDeleteSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdPath }))
   .output(zDeleteSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_found: { status: 404, data: zNotFoundError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 /**
  * Get a specific draft workflow variable (snippet scope)
@@ -695,6 +859,12 @@ export const get13 = oc
   })
   .input(z.object({ params: zGetSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdPath }))
   .output(zGetSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_found: { status: 404, data: zNotFoundError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 /**
  * Update a draft workflow variable (snippet scope)
@@ -715,6 +885,13 @@ export const patch = oc
     }),
   )
   .output(zPatchSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    invalid_param: { status: 400, data: zInvalidParamError },
+    not_found: { status: 404, data: zNotFoundError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const byVariableId = {
   delete: delete2,
@@ -738,6 +915,11 @@ export const delete3 = oc
   })
   .input(z.object({ params: zDeleteSnippetsBySnippetIdWorkflowsDraftVariablesPath }))
   .output(zDeleteSnippetsBySnippetIdWorkflowsDraftVariablesResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 /**
  * List draft workflow variables without values (paginated, snippet scope)
@@ -758,6 +940,12 @@ export const get14 = oc
     }),
   )
   .output(zGetSnippetsBySnippetIdWorkflowsDraftVariablesResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    draft_workflow_not_exist: { status: 404, data: zDraftWorkflowNotExistError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const variables2 = {
   delete: delete3,
@@ -779,6 +967,12 @@ export const get15 = oc
   })
   .input(z.object({ params: zGetSnippetsBySnippetIdWorkflowsDraftPath }))
   .output(zGetSnippetsBySnippetIdWorkflowsDraftResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    draft_workflow_not_exist: { status: 404, data: zDraftWorkflowNotExistError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 /**
  * Sync draft workflow for snippet
@@ -799,6 +993,13 @@ export const post10 = oc
     }),
   )
   .output(zPostSnippetsBySnippetIdWorkflowsDraftResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    draft_workflow_not_sync: { status: 409, data: zDraftWorkflowNotSyncError },
+    invalid_param: { status: 400, data: zInvalidParamError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const draft = {
   get: get15,
@@ -828,6 +1029,11 @@ export const get16 = oc
   })
   .input(z.object({ params: zGetSnippetsBySnippetIdWorkflowsPublishPath }))
   .output(zGetSnippetsBySnippetIdWorkflowsPublishResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 /**
  * Publish snippet workflow
@@ -848,6 +1054,12 @@ export const post11 = oc
     }),
   )
   .output(zPostSnippetsBySnippetIdWorkflowsPublishResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    invalid_param: { status: 400, data: zInvalidParamError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const publish = {
   get: get16,
@@ -871,6 +1083,11 @@ export const post12 = oc
   })
   .input(z.object({ params: zPostSnippetsBySnippetIdWorkflowsByWorkflowIdRestorePath }))
   .output(zPostSnippetsBySnippetIdWorkflowsByWorkflowIdRestoreResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const restore = {
   post: post12,
@@ -894,6 +1111,11 @@ export const delete4 = oc
   })
   .input(z.object({ params: zDeleteSnippetsBySnippetIdWorkflowsByWorkflowIdPath }))
   .output(zDeleteSnippetsBySnippetIdWorkflowsByWorkflowIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 /**
  * Update a published snippet workflow version's display metadata
@@ -917,6 +1139,12 @@ export const patch2 = oc
     }),
   )
   .output(zPatchSnippetsBySnippetIdWorkflowsByWorkflowIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    invalid_param: { status: 400, data: zInvalidParamError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const byWorkflowId = {
   delete: delete4,
@@ -946,6 +1174,11 @@ export const get17 = oc
     }),
   )
   .output(zGetSnippetsBySnippetIdWorkflowsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const workflows = {
   get: get17,

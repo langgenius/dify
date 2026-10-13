@@ -3,6 +3,15 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
+  zAccountNotInitializedError,
+  zCompletionRequestError,
+  zModelCurrentlyNotSupportError,
+  zNotInitValidatedError,
+  zNotSetupError,
+  zProviderNotInitializeError,
+  zProviderQuotaExceededError,
+} from './zod.gen.ts'
+import {
   zPostWorkflowGenerateBody,
   zPostWorkflowGenerateResponse,
   zPostWorkflowGenerateStreamBody,
@@ -25,6 +34,11 @@ export const post = oc
   })
   .input(z.object({ body: zPostWorkflowGenerateStreamBody }))
   .output(zPostWorkflowGenerateStreamResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const stream = {
   post,
@@ -44,6 +58,11 @@ export const post2 = oc
   })
   .input(z.object({ body: zPostWorkflowGenerateSuggestionsBody }))
   .output(zPostWorkflowGenerateSuggestionsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const suggestions = {
   post: post2,
@@ -63,6 +82,15 @@ export const post3 = oc
   })
   .input(z.object({ body: zPostWorkflowGenerateBody }))
   .output(zPostWorkflowGenerateResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+  })
 
 export const workflowGenerate = {
   post: post3,

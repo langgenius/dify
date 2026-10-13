@@ -2,6 +2,7 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
+import { zAccountNotInitializedError, zNotInitValidatedError, zNotSetupError } from './zod.gen.ts'
 import {
   zDeleteResourceAccessTokensByTokenIdRelationsByRelationIdPath,
   zDeleteResourceAccessTokensByTokenIdRelationsByRelationIdResponse,
@@ -25,6 +26,11 @@ export const delete_ = oc
   })
   .input(z.object({ params: zDeleteResourceAccessTokensByTokenIdRelationsByRelationIdPath }))
   .output(zDeleteResourceAccessTokensByTokenIdRelationsByRelationIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const byRelationId = {
   delete: delete_,
@@ -49,6 +55,11 @@ export const patch = oc
     }),
   )
   .output(zPatchResourceAccessTokensByTokenIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const byTokenId = {
   patch,
@@ -65,6 +76,11 @@ export const get = oc
   })
   .input(z.object({ query: zGetResourceAccessTokensQuery.optional() }))
   .output(zGetResourceAccessTokensResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const post = oc
   .route({
@@ -77,6 +93,11 @@ export const post = oc
   })
   .input(z.object({ body: zPostResourceAccessTokensBody }))
   .output(zPostResourceAccessTokensResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const resourceAccessTokens = {
   get,

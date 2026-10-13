@@ -3,6 +3,13 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
+  zAccountNotInitializedError,
+  zDataSourceApiKeyAuthProviderUnavailableError,
+  zNotInitValidatedError,
+  zNotSetupError,
+  zUnsupportedDataSourceApiKeyAuthProviderError,
+} from './zod.gen.ts'
+import {
   zDeleteApiKeyAuthDataSourceByBindingIdPath,
   zDeleteApiKeyAuthDataSourceByBindingIdResponse,
   zGetApiKeyAuthDataSourceResponse,
@@ -20,6 +27,19 @@ export const post = oc
   })
   .input(z.object({ body: zPostApiKeyAuthDataSourceBindingBody }))
   .output(zPostApiKeyAuthDataSourceBindingResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    data_source_api_key_auth_provider_unavailable: {
+      status: 502,
+      data: zDataSourceApiKeyAuthProviderUnavailableError,
+    },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    unsupported_data_source_api_key_auth_provider: {
+      status: 400,
+      data: zUnsupportedDataSourceApiKeyAuthProviderError,
+    },
+  })
 
 export const binding = {
   post,
@@ -36,6 +56,11 @@ export const delete_ = oc
   })
   .input(z.object({ params: zDeleteApiKeyAuthDataSourceByBindingIdPath }))
   .output(zDeleteApiKeyAuthDataSourceByBindingIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const byBindingId = {
   delete: delete_,
@@ -50,6 +75,11 @@ export const get = oc
     tags: ['console'],
   })
   .output(zGetApiKeyAuthDataSourceResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const dataSource = {
   get,

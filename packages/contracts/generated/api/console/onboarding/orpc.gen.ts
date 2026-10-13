@@ -2,6 +2,7 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
+import { zAccountNotInitializedError, zNotInitValidatedError, zNotSetupError } from './zod.gen.ts'
 import {
   zGetOnboardingStepByStepTourStateResponse,
   zPatchOnboardingStepByStepTourStateBody,
@@ -21,6 +22,11 @@ export const get = oc
     tags: ['console'],
   })
   .output(zGetOnboardingStepByStepTourStateResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 /**
  * Update account-level Step-by-step Tour state
@@ -36,6 +42,11 @@ export const patch = oc
   })
   .input(z.object({ body: zPatchOnboardingStepByStepTourStateBody }))
   .output(zPatchOnboardingStepByStepTourStateResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const state = {
   get,

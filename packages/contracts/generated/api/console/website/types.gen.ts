@@ -16,6 +16,36 @@ export type WebsiteCrawlResponse = {
   [key: string]: unknown
 }
 
+export type AccountNotInitializedError = ErrorResponse & {
+  code: 'account_not_initialized'
+  status: 400
+}
+
+export type NotInitValidatedError = ErrorResponse & {
+  code: 'not_init_validated'
+  status: 401
+}
+
+export type NotSetupError = ErrorResponse & {
+  code: 'not_setup'
+  status: 401
+}
+
+export type CrawlFailedError = ErrorResponse & {
+  code: 'crawl_failed'
+  status: 500
+}
+
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type PostWebsiteCrawlData = {
   body: WebsiteCrawlPayload
   path?: never
@@ -24,8 +54,13 @@ export type PostWebsiteCrawlData = {
 }
 
 export type PostWebsiteCrawlErrors = {
-  400: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  500: CrawlFailedError
+  default: ErrorResponse
 }
+
+export type PostWebsiteCrawlError = PostWebsiteCrawlErrors[keyof PostWebsiteCrawlErrors]
 
 export type PostWebsiteCrawlResponses = {
   200: WebsiteCrawlResponse
@@ -45,9 +80,15 @@ export type GetWebsiteCrawlStatusByJobIdData = {
 }
 
 export type GetWebsiteCrawlStatusByJobIdErrors = {
-  400: unknown
-  404: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: ErrorResponse
+  500: CrawlFailedError
+  default: ErrorResponse
 }
+
+export type GetWebsiteCrawlStatusByJobIdError =
+  GetWebsiteCrawlStatusByJobIdErrors[keyof GetWebsiteCrawlStatusByJobIdErrors]
 
 export type GetWebsiteCrawlStatusByJobIdResponses = {
   200: WebsiteCrawlResponse

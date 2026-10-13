@@ -3,6 +3,17 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
+  zAccountNotInitializedError,
+  zFileExtensionBlockedError,
+  zFileTooLargeError,
+  zFilenameNotExistsError,
+  zNoFileUploadedError,
+  zNotInitValidatedError,
+  zNotSetupError,
+  zTooManyFilesError,
+  zUnsupportedFileTypeError,
+} from './zod.gen.ts'
+import {
   zGetFilesByFileIdPreviewPath,
   zGetFilesByFileIdPreviewResponse,
   zGetFilesSupportTypeResponse,
@@ -20,6 +31,11 @@ export const get = oc
     tags: ['console'],
   })
   .output(zGetFilesSupportTypeResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const supportType = {
   get,
@@ -34,6 +50,11 @@ export const get2 = oc
     tags: ['console'],
   })
   .output(zGetFilesUploadResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const post = oc
   .route({
@@ -46,6 +67,17 @@ export const post = oc
   })
   .input(z.object({ body: zPostFilesUploadBody }))
   .output(zPostFilesUploadResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    file_extension_blocked: { status: 400, data: zFileExtensionBlockedError },
+    file_too_large: { status: 413, data: zFileTooLargeError },
+    filename_not_exists_error: { status: 400, data: zFilenameNotExistsError },
+    no_file_uploaded: { status: 400, data: zNoFileUploadedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    too_many_files: { status: 400, data: zTooManyFilesError },
+    unsupported_file_type: { status: 415, data: zUnsupportedFileTypeError },
+  })
 
 export const upload = {
   get: get2,
@@ -62,6 +94,11 @@ export const get3 = oc
   })
   .input(z.object({ params: zGetFilesByFileIdPreviewPath }))
   .output(zGetFilesByFileIdPreviewResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const preview = {
   get: get3,

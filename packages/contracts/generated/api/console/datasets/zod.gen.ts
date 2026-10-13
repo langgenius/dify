@@ -3,11 +3,123 @@
 import * as z from 'zod'
 
 /**
+ * ErrorResponse
+ *
+ * Documented non-2xx body emitted by ``register_external_error_handlers``.
+ *
+ * ``params`` and ``details`` appear only on the errors that set them. The schema
+ * stays open because ``HTTPException.data`` may carry extra keys.
+ */
+export const zErrorResponse = z.object({
+  code: z.string(),
+  details: z.record(z.string(), z.unknown()).optional(),
+  message: z.string(),
+  params: z.string().optional(),
+  status: z.int(),
+})
+
+/**
+ * AccountNotInitializedError
+ *
+ * The account has not been initialized yet. Please proceed with the initialization process first.
+ */
+export const zAccountNotInitializedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('account_not_initialized'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * NotInitValidatedError
+ *
+ * Init validation has not been completed yet. Please proceed with the init validation process first.
+ */
+export const zNotInitValidatedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('not_init_validated'),
+    status: z.literal(401),
+  }),
+)
+
+/**
+ * NotSetupError
+ *
+ * Dify has not been initialized and installed yet. Please proceed with the initialization and installation process first.
+ */
+export const zNotSetupError = zErrorResponse.and(
+  z.object({
+    code: z.literal('not_setup'),
+    status: z.literal(401),
+  }),
+)
+
+/**
+ * UnauthorizedAndForceLogoutError
+ *
+ * Unauthorized and force logout.
+ */
+export const zUnauthorizedAndForceLogoutError = zErrorResponse.and(
+  z.object({
+    code: z.literal('unauthorized_and_force_logout'),
+    status: z.literal(401),
+  }),
+)
+
+/**
+ * DatasetInUseError
+ *
+ * The dataset is being used by some apps. Please remove the dataset from the apps before deleting it.
+ */
+export const zDatasetInUseError = zErrorResponse.and(
+  z.object({
+    code: z.literal('dataset_in_use'),
+    status: z.literal(409),
+  }),
+)
+
+/**
+ * DatasetNameDuplicateError
+ *
+ * The dataset name already exists. Please modify your dataset name.
+ */
+export const zDatasetNameDuplicateError = zErrorResponse.and(
+  z.object({
+    code: z.literal('dataset_name_duplicate'),
+    status: z.literal(409),
+  }),
+)
+
+/**
  * ApiBaseUrlResponse
  */
 export const zApiBaseUrlResponse = z.object({
   api_base_url: z.string(),
 })
+
+/**
+ * MaxKeysExceededError
+ *
+ * The API key limit has been reached.
+ */
+export const zMaxKeysExceededError = zErrorResponse.and(
+  z.object({
+    code: z.literal('max_keys_exceeded'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * AgentNotPublishedError
+ *
+ * Publish the Agent before enabling Web App or API access.
+ */
+export const zAgentNotPublishedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('agent_not_published'),
+    status: z.literal(409),
+  }),
+)
 
 /**
  * DatasetApiKeyCreatePayload
@@ -90,6 +202,122 @@ export const zIndexingEstimatePayload = z.object({
 })
 
 /**
+ * InvalidParamError
+ */
+export const zInvalidParamError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_param'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * ProviderNotInitializeError
+ *
+ * No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials.
+ */
+export const zProviderNotInitializeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('provider_not_initialize'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * DatasetAccessDeniedError
+ *
+ * Dataset access denied.
+ */
+export const zDatasetAccessDeniedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('dataset_access_denied'),
+    status: z.literal(403),
+  }),
+)
+
+/**
+ * NotFoundError
+ */
+export const zNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * IndexingEstimateError
+ *
+ * Knowledge indexing estimate failed: {message}
+ */
+export const zIndexingEstimateError = zErrorResponse.and(
+  z.object({
+    code: z.literal('indexing_estimate_error'),
+    status: z.literal(500),
+  }),
+)
+
+/**
+ * DocumentIndexingError
+ *
+ * The document is being processed and cannot be edited.
+ */
+export const zDocumentIndexingError = zErrorResponse.and(
+  z.object({
+    code: z.literal('document_indexing'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * InvalidActionError
+ *
+ * Invalid action.
+ */
+export const zInvalidActionError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_action'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * ModelCurrentlyNotSupportError
+ *
+ * Dify Hosted OpenAI trial currently not support the GPT-4 model.
+ */
+export const zModelCurrentlyNotSupportError = zErrorResponse.and(
+  z.object({
+    code: z.literal('model_currently_not_support'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * ProviderQuotaExceededError
+ *
+ * Your quota for Dify Hosted Model Provider has been exhausted. Please go to Settings -> Model Provider to complete your own provider credentials.
+ */
+export const zProviderQuotaExceededError = zErrorResponse.and(
+  z.object({
+    code: z.literal('provider_quota_exceeded'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * ArchivedDocumentImmutableError
+ *
+ * The archived document is not editable.
+ */
+export const zArchivedDocumentImmutableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('archived_document_immutable'),
+    status: z.literal(403),
+  }),
+)
+
+/**
  * RetrievalSettingResponse
  */
 export const zRetrievalSettingResponse = z.object({
@@ -112,6 +340,18 @@ export const zAutoDisableLogsResponse = z.object({
 })
 
 /**
+ * DocumentAlreadyFinishedError
+ *
+ * The document has been processed. Please refresh the page or go to the document details.
+ */
+export const zDocumentAlreadyFinishedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('document_already_finished'),
+    status: z.literal(400),
+  }),
+)
+
+/**
  * DocumentBatchDownloadZipPayload
  *
  * Request payload for bulk downloading documents as a zip archive.
@@ -126,6 +366,18 @@ export const zDocumentBatchDownloadZipPayload = z.object({
 export const zGenerateSummaryPayload = z.object({
   document_list: z.array(z.string()),
 })
+
+/**
+ * InvalidMetadataError
+ *
+ * The metadata content is incorrect. Please check and verify.
+ */
+export const zInvalidMetadataError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_metadata'),
+    status: z.literal(400),
+  }),
+)
 
 /**
  * UrlResponse
@@ -193,10 +445,43 @@ export const zSegmentCreatePayload = z.object({
 })
 
 /**
+ * ChildChunkDeleteIndexError
+ *
+ * Delete child chunk index failed: {message}
+ */
+export const zChildChunkDeleteIndexError = zErrorResponse.and(
+  z.object({
+    code: z.literal('child_chunk_delete_index_error'),
+    status: z.literal(500),
+  }),
+)
+
+/**
+ * ChildChunkIndexingError
+ *
+ * Create child chunk index failed: {message}
+ */
+export const zChildChunkIndexingError = zErrorResponse.and(
+  z.object({
+    code: z.literal('child_chunk_indexing_error'),
+    status: z.literal(500),
+  }),
+)
+
+/**
  * BatchImportPayload
  */
 export const zBatchImportPayload = z.object({
   upload_file_id: z.string(),
+})
+
+/**
+ * ErrorMessageResponse
+ *
+ * Legacy ``{"error": message}`` body a few endpoints return instead of the standard error body.
+ */
+export const zErrorMessageResponse = z.object({
+  error: z.string(),
 })
 
 /**
@@ -241,6 +526,18 @@ export const zExternalHitTestingPayload = z.object({
   metadata_filtering_conditions: z.record(z.string(), z.unknown()).nullish(),
   query: z.string(),
 })
+
+/**
+ * CompletionRequestError
+ *
+ * Completion request failed.
+ */
+export const zCompletionRequestError = zErrorResponse.and(
+  z.object({
+    code: z.literal('completion_request_error'),
+    status: z.literal(400),
+  }),
+)
 
 /**
  * MetadataArgs

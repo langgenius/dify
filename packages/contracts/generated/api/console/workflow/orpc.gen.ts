@@ -3,6 +3,13 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
+  zAccountNotInitializedError,
+  zInvalidParamError,
+  zNotFoundError,
+  zNotInitValidatedError,
+  zNotSetupError,
+} from './zod.gen.ts'
+import {
   zGetWorkflowByWorkflowRunIdEventsPath,
   zGetWorkflowByWorkflowRunIdEventsResponse,
   zGetWorkflowByWorkflowRunIdPauseDetailsPath,
@@ -29,6 +36,11 @@ export const get = oc
   })
   .input(z.object({ params: zGetWorkflowByWorkflowRunIdEventsPath }))
   .output(zGetWorkflowByWorkflowRunIdEventsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    invalid_param: { status: 400, data: zInvalidParamError },
+    not_found: { status: 404, data: zNotFoundError },
+  })
 
 export const events = {
   get,
@@ -55,6 +67,12 @@ export const get2 = oc
   })
   .input(z.object({ params: zGetWorkflowByWorkflowRunIdPauseDetailsPath }))
   .output(zGetWorkflowByWorkflowRunIdPauseDetailsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_found: { status: 404, data: zNotFoundError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const pauseDetails = {
   get: get2,

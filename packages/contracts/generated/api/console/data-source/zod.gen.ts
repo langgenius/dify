@@ -3,11 +3,95 @@
 import * as z from 'zod'
 
 /**
+ * ErrorResponse
+ *
+ * Documented non-2xx body emitted by ``register_external_error_handlers``.
+ *
+ * ``params`` and ``details`` appear only on the errors that set them. The schema
+ * stays open because ``HTTPException.data`` may carry extra keys.
+ */
+export const zErrorResponse = z.object({
+  code: z.string(),
+  details: z.record(z.string(), z.unknown()).optional(),
+  message: z.string(),
+  params: z.string().optional(),
+  status: z.int(),
+})
+
+/**
+ * AccountNotInitializedError
+ *
+ * The account has not been initialized yet. Please proceed with the initialization process first.
+ */
+export const zAccountNotInitializedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('account_not_initialized'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * NotInitValidatedError
+ *
+ * Init validation has not been completed yet. Please proceed with the init validation process first.
+ */
+export const zNotInitValidatedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('not_init_validated'),
+    status: z.literal(401),
+  }),
+)
+
+/**
+ * NotSetupError
+ *
+ * Dify has not been initialized and installed yet. Please proceed with the initialization and installation process first.
+ */
+export const zNotSetupError = zErrorResponse.and(
+  z.object({
+    code: z.literal('not_setup'),
+    status: z.literal(401),
+  }),
+)
+
+/**
  * SimpleResultResponse
  */
 export const zSimpleResultResponse = z.object({
   result: z.string(),
 })
+
+/**
+ * InvalidActionError
+ *
+ * Invalid action.
+ */
+export const zInvalidActionError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_action'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * InvalidParamError
+ */
+export const zInvalidParamError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_param'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * NotFoundError
+ */
+export const zNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('not_found'),
+    status: z.literal(404),
+  }),
+)
 
 /**
  * DataSourceIntegrateIconResponse

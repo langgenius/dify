@@ -6,6 +6,31 @@ export type ClientOptions = {
 
 export type TagListResponse = Array<TagResponse>
 
+export type AccountNotInitializedError = ErrorResponse & {
+  code: 'account_not_initialized'
+  status: 400
+}
+
+export type NotInitValidatedError = ErrorResponse & {
+  code: 'not_init_validated'
+  status: 401
+}
+
+export type NotSetupError = ErrorResponse & {
+  code: 'not_setup'
+  status: 401
+}
+
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type TagBasePayload = {
   name: string
   type: TagType
@@ -34,6 +59,14 @@ export type GetTagsData = {
   url: '/tags'
 }
 
+export type GetTagsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  default: ErrorResponse
+}
+
+export type GetTagsError = GetTagsErrors[keyof GetTagsErrors]
+
 export type GetTagsResponses = {
   200: TagListResponse
 }
@@ -46,6 +79,14 @@ export type PostTagsData = {
   query?: never
   url: '/tags'
 }
+
+export type PostTagsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  default: ErrorResponse
+}
+
+export type PostTagsError = PostTagsErrors[keyof PostTagsErrors]
 
 export type PostTagsResponses = {
   200: TagResponse
@@ -62,6 +103,14 @@ export type DeleteTagsByTagIdData = {
   url: '/tags/{tag_id}'
 }
 
+export type DeleteTagsByTagIdErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  default: ErrorResponse
+}
+
+export type DeleteTagsByTagIdError = DeleteTagsByTagIdErrors[keyof DeleteTagsByTagIdErrors]
+
 export type DeleteTagsByTagIdResponses = {
   204: void
 }
@@ -76,6 +125,14 @@ export type PatchTagsByTagIdData = {
   query?: never
   url: '/tags/{tag_id}'
 }
+
+export type PatchTagsByTagIdErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  default: ErrorResponse
+}
+
+export type PatchTagsByTagIdError = PatchTagsByTagIdErrors[keyof PatchTagsByTagIdErrors]
 
 export type PatchTagsByTagIdResponses = {
   200: TagResponse

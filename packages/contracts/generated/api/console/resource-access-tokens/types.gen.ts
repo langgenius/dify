@@ -12,6 +12,31 @@ export type ResourceAccessTokenListResponse = {
   total: number
 }
 
+export type AccountNotInitializedError = ErrorResponse & {
+  code: 'account_not_initialized'
+  status: 400
+}
+
+export type NotInitValidatedError = ErrorResponse & {
+  code: 'not_init_validated'
+  status: 401
+}
+
+export type NotSetupError = ErrorResponse & {
+  code: 'not_setup'
+  status: 401
+}
+
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type ResourceAccessTokenCreatePayload = {
   name: string
   resources: Array<ResourceAccessTokenResourcePayload>
@@ -59,6 +84,15 @@ export type GetResourceAccessTokensData = {
   url: '/resource-access-tokens'
 }
 
+export type GetResourceAccessTokensErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  default: ErrorResponse
+}
+
+export type GetResourceAccessTokensError =
+  GetResourceAccessTokensErrors[keyof GetResourceAccessTokensErrors]
+
 export type GetResourceAccessTokensResponses = {
   200: ResourceAccessTokenListResponse
 }
@@ -72,6 +106,15 @@ export type PostResourceAccessTokensData = {
   query?: never
   url: '/resource-access-tokens'
 }
+
+export type PostResourceAccessTokensErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  default: ErrorResponse
+}
+
+export type PostResourceAccessTokensError =
+  PostResourceAccessTokensErrors[keyof PostResourceAccessTokensErrors]
 
 export type PostResourceAccessTokensResponses = {
   201: ResourceAccessTokenCreateResponse
@@ -89,6 +132,15 @@ export type PatchResourceAccessTokensByTokenIdData = {
   url: '/resource-access-tokens/{token_id}'
 }
 
+export type PatchResourceAccessTokensByTokenIdErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  default: ErrorResponse
+}
+
+export type PatchResourceAccessTokensByTokenIdError =
+  PatchResourceAccessTokensByTokenIdErrors[keyof PatchResourceAccessTokensByTokenIdErrors]
+
 export type PatchResourceAccessTokensByTokenIdResponses = {
   200: ResourceAccessTokenListResponse
 }
@@ -105,6 +157,15 @@ export type DeleteResourceAccessTokensByTokenIdRelationsByRelationIdData = {
   query?: never
   url: '/resource-access-tokens/{token_id}/relations/{relation_id}'
 }
+
+export type DeleteResourceAccessTokensByTokenIdRelationsByRelationIdErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  default: ErrorResponse
+}
+
+export type DeleteResourceAccessTokensByTokenIdRelationsByRelationIdError =
+  DeleteResourceAccessTokensByTokenIdRelationsByRelationIdErrors[keyof DeleteResourceAccessTokensByTokenIdRelationsByRelationIdErrors]
 
 export type DeleteResourceAccessTokensByTokenIdRelationsByRelationIdResponses = {
   204: void

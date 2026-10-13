@@ -214,6 +214,27 @@ export const zDeviceCodeResponse = z.object({
 })
 
 /**
+ * DeviceFlowErrorResponse
+ *
+ * RFC 8628-style device-flow error. These routes keep the OAuth ``{"error": code}`` shape
+ * instead of ``ErrorBody`` because device clients parse it.
+ */
+export const zDeviceFlowErrorResponse = z.object({
+  error: z.enum([
+    'access_denied',
+    'already_resolved',
+    'approval_outcome_unknown',
+    'approve_in_progress',
+    'authorization_pending',
+    'expired_or_unknown',
+    'expired_token',
+    'slow_down',
+    'state_lost',
+    'unsupported_client',
+  ]),
+})
+
+/**
  * DeviceLookupQuery
  */
 export const zDeviceLookupQuery = z.object({
@@ -289,6 +310,18 @@ export const zErrorBody = z.object({
   message: z.string(),
   status: z.int(),
 })
+
+/**
+ * AccountNotInitializedError
+ *
+ * The account has not been initialized yet. Please proceed with the initialization process first.
+ */
+export const zAccountNotInitializedError = zErrorBody.and(
+  z.object({
+    code: z.literal('account_not_initialized'),
+    status: z.literal(400),
+  }),
+)
 
 /**
  * EventStreamResponse
@@ -501,6 +534,30 @@ export const zMemberListResponse = z.object({
 export const zMemberRoleUpdatePayload = z.object({
   role: z.enum(['admin', 'normal']),
 })
+
+/**
+ * NotInitValidatedError
+ *
+ * Init validation has not been completed yet. Please proceed with the init validation process first.
+ */
+export const zNotInitValidatedError = zErrorBody.and(
+  z.object({
+    code: z.literal('not_init_validated'),
+    status: z.literal(401),
+  }),
+)
+
+/**
+ * NotSetupError
+ *
+ * Dify has not been initialized and installed yet. Please proceed with the initialization and installation process first.
+ */
+export const zNotSetupError = zErrorBody.and(
+  z.object({
+    code: z.literal('not_setup'),
+    status: z.literal(401),
+  }),
+)
 
 /**
  * OpenApiErrorCode

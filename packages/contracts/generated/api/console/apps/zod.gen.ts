@@ -3,6 +3,70 @@
 import * as z from 'zod'
 
 /**
+ * ErrorResponse
+ *
+ * Documented non-2xx body emitted by ``register_external_error_handlers``.
+ *
+ * ``params`` and ``details`` appear only on the errors that set them. The schema
+ * stays open because ``HTTPException.data`` may carry extra keys.
+ */
+export const zErrorResponse = z.object({
+  code: z.string(),
+  details: z.record(z.string(), z.unknown()).optional(),
+  message: z.string(),
+  params: z.string().optional(),
+  status: z.int(),
+})
+
+/**
+ * AccountNotInitializedError
+ *
+ * The account has not been initialized yet. Please proceed with the initialization process first.
+ */
+export const zAccountNotInitializedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('account_not_initialized'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * NotInitValidatedError
+ *
+ * Init validation has not been completed yet. Please proceed with the init validation process first.
+ */
+export const zNotInitValidatedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('not_init_validated'),
+    status: z.literal(401),
+  }),
+)
+
+/**
+ * NotSetupError
+ *
+ * Dify has not been initialized and installed yet. Please proceed with the initialization and installation process first.
+ */
+export const zNotSetupError = zErrorResponse.and(
+  z.object({
+    code: z.literal('not_setup'),
+    status: z.literal(401),
+  }),
+)
+
+/**
+ * UnauthorizedAndForceLogoutError
+ *
+ * Unauthorized and force logout.
+ */
+export const zUnauthorizedAndForceLogoutError = zErrorResponse.and(
+  z.object({
+    code: z.literal('unauthorized_and_force_logout'),
+    status: z.literal(401),
+  }),
+)
+
+/**
  * AppImportPayload
  */
 export const zAppImportPayload = z.object({
@@ -19,6 +83,42 @@ export const zAppImportPayload = z.object({
   yaml_content: z.string().nullish(),
   yaml_url: z.string().nullish(),
 })
+
+/**
+ * InvalidRosterAgentPackageError
+ *
+ * The Roster Agent package is invalid.
+ */
+export const zInvalidRosterAgentPackageError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_roster_agent_package'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * RecommendedAppNotFoundError
+ *
+ * Recommended app not found.
+ */
+export const zRecommendedAppNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('recommended_app_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * AppNotFoundError
+ *
+ * App not found.
+ */
+export const zAppNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('app_not_found'),
+    status: z.literal(404),
+  }),
+)
 
 /**
  * WorkflowOnlineUsersPayload
@@ -100,6 +200,54 @@ export const zAdvancedChatWorkflowRunPayload = z.object({
   parent_message_id: z.string().nullish(),
   query: z.string().optional().default(''),
 })
+
+/**
+ * RateLimitError
+ *
+ * Rate Limit Error
+ */
+export const zRateLimitError = zErrorResponse.and(
+  z.object({
+    code: z.literal('rate_limit_error'),
+    status: z.literal(429),
+  }),
+)
+
+/**
+ * AgentNotBoundError
+ *
+ * no agent is bound for this app/node
+ */
+export const zAgentNotBoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('agent_not_bound'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * AgentNotFoundError
+ *
+ * Agent not found.
+ */
+export const zAgentNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('agent_not_found_error'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * AgentVersionNotFoundError
+ *
+ * Agent config version not found.
+ */
+export const zAgentVersionNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('agent_version_not_found_error'),
+    status: z.literal(404),
+  }),
+)
 
 /**
  * AgentConfigFileUploadPayload
@@ -222,6 +370,30 @@ export const zAnnotationBatchImportResponse = z.object({
 })
 
 /**
+ * NoFileUploadedError
+ *
+ * Please upload your file.
+ */
+export const zNoFileUploadedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('no_file_uploaded'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * TooManyFilesError
+ *
+ * Only one file is allowed.
+ */
+export const zTooManyFilesError = zErrorResponse.and(
+  z.object({
+    code: z.literal('too_many_files'),
+    status: z.literal(400),
+  }),
+)
+
+/**
  * AnnotationCountResponse
  */
 export const zAnnotationCountResponse = z.object({
@@ -260,11 +432,143 @@ export const zAudioTranscriptResponse = z.object({
 })
 
 /**
+ * AppUnavailableError
+ *
+ * App unavailable, please check your app configurations.
+ */
+export const zAppUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('app_unavailable'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * CompletionRequestError
+ *
+ * Completion request failed.
+ */
+export const zCompletionRequestError = zErrorResponse.and(
+  z.object({
+    code: z.literal('completion_request_error'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * ModelCurrentlyNotSupportError
+ *
+ * Dify Hosted OpenAI trial currently not support the GPT-4 model.
+ */
+export const zModelCurrentlyNotSupportError = zErrorResponse.and(
+  z.object({
+    code: z.literal('model_currently_not_support'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * NoAudioUploadedError
+ *
+ * Please upload your audio.
+ */
+export const zNoAudioUploadedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('no_audio_uploaded'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * ProviderNotInitializeError
+ *
+ * No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials.
+ */
+export const zProviderNotInitializeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('provider_not_initialize'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * ProviderNotSupportSpeechToTextError
+ *
+ * Provider not support speech to text.
+ */
+export const zProviderNotSupportSpeechToTextError = zErrorResponse.and(
+  z.object({
+    code: z.literal('provider_not_support_speech_to_text'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * ProviderQuotaExceededError
+ *
+ * Your quota for Dify Hosted Model Provider has been exhausted. Please go to Settings -> Model Provider to complete your own provider credentials.
+ */
+export const zProviderQuotaExceededError = zErrorResponse.and(
+  z.object({
+    code: z.literal('provider_quota_exceeded'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * SpeechToTextDisabledError
+ *
+ * Speech to text is disabled.
+ */
+export const zSpeechToTextDisabledError = zErrorResponse.and(
+  z.object({
+    code: z.literal('speech_to_text_disabled'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * AudioTooLargeError
+ *
+ * Audio size exceeded. {message}
+ */
+export const zAudioTooLargeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('audio_too_large'),
+    status: z.literal(413),
+  }),
+)
+
+/**
+ * UnsupportedAudioTypeError
+ *
+ * Audio type not allowed.
+ */
+export const zUnsupportedAudioTypeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('unsupported_audio_type'),
+    status: z.literal(415),
+  }),
+)
+
+/**
  * SuggestedQuestionsResponse
  */
 export const zSuggestedQuestionsResponse = z.object({
   data: z.array(z.string()),
 })
+
+/**
+ * AppSuggestedQuestionsAfterAnswerDisabledError
+ *
+ * Function Suggested questions after answer disabled.
+ */
+export const zAppSuggestedQuestionsAfterAnswerDisabledError = zErrorResponse.and(
+  z.object({
+    code: z.literal('app_suggested_questions_after_answer_disabled'),
+    status: z.literal(403),
+  }),
+)
 
 /**
  * SimpleResultResponse
@@ -420,6 +724,54 @@ export const zAppTracePayload = z.object({
 })
 
 /**
+ * TracingProviderUnavailableError
+ *
+ * The tracing provider is not available in this deployment.
+ */
+export const zTracingProviderUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('tracing_provider_unavailable'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * UnsupportedTracingProviderError
+ *
+ * The tracing provider is not supported.
+ */
+export const zUnsupportedTracingProviderError = zErrorResponse.and(
+  z.object({
+    code: z.literal('unsupported_tracing_provider'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * TraceConfigNotFoundError
+ *
+ * Tracing configuration not found.
+ */
+export const zTraceConfigNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('trace_config_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * TracingConfigProcessingFailedError
+ *
+ * The tracing configuration could not be processed.
+ */
+export const zTracingConfigProcessingFailedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('tracing_config_processing_failed'),
+    status: z.literal(500),
+  }),
+)
+
+/**
  * TraceAppConfigResponse
  */
 export const zTraceAppConfigResponse = z.object({
@@ -442,6 +794,42 @@ export const zTraceConfigPayload = z.object({
   tracing_config: z.record(z.string(), z.unknown()),
   tracing_provider: z.string(),
 })
+
+/**
+ * InvalidTracingConfigError
+ *
+ * The tracing configuration is invalid.
+ */
+export const zInvalidTracingConfigError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_tracing_config'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * TracingConfigVerificationFailedError
+ *
+ * The tracing configuration could not be verified.
+ */
+export const zTracingConfigVerificationFailedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('tracing_config_verification_failed'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * TraceConfigAlreadyExistsError
+ *
+ * A tracing configuration already exists for this provider.
+ */
+export const zTraceConfigAlreadyExistsError = zErrorResponse.and(
+  z.object({
+    code: z.literal('trace_config_already_exists'),
+    status: z.literal(409),
+  }),
+)
 
 /**
  * ParserEnable
@@ -474,6 +862,64 @@ export const zWorkflowTriggerListResponse = z.object({
 })
 
 /**
+ * NotFoundError
+ */
+export const zNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * NoActiveBindingError
+ *
+ * No active sandbox binding.
+ */
+export const zNoActiveBindingError = zErrorResponse.and(
+  z.object({
+    code: z.literal('no_active_binding'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * AgentBackendUnreachableError
+ *
+ * Agent backend is unreachable.
+ */
+export const zAgentBackendUnreachableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('agent_backend_unreachable'),
+    status: z.literal(502),
+  }),
+)
+
+/**
+ * BindingFileDownloadUnavailableError
+ *
+ * Sandbox file download is unavailable.
+ */
+export const zBindingFileDownloadUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('binding_file_download_unavailable'),
+    status: z.literal(502),
+  }),
+)
+
+/**
+ * InspectorUnavailableError
+ *
+ * Sandbox inspector is unavailable.
+ */
+export const zInspectorUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('inspector_unavailable'),
+    status: z.literal(503),
+  }),
+)
+
+/**
  * WorkflowAgentSandboxDownloadPayload
  */
 export const zWorkflowAgentSandboxDownloadPayload = z.object({
@@ -498,6 +944,28 @@ export const zSandboxReadResponse = z.object({
   text: z.string().nullish(),
   truncated: z.boolean(),
 })
+
+/**
+ * InvalidParamError
+ */
+export const zInvalidParamError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_param'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * ForbiddenError
+ *
+ * You don't have the permission to access the requested resource.
+ */
+export const zForbiddenError = zErrorResponse.and(
+  z.object({
+    code: z.literal('forbidden'),
+    status: z.literal(403),
+  }),
+)
 
 /**
  * WorkflowCommentCreatePayload
@@ -580,6 +1048,18 @@ export const zDefaultBlockConfigsResponse = z.array(z.record(z.string(), z.unkno
 export const zDefaultBlockConfigResponse = z.record(z.string(), z.unknown())
 
 /**
+ * DraftWorkflowNotExistError
+ *
+ * Draft workflow need to be initialized.
+ */
+export const zDraftWorkflowNotExistError = zErrorResponse.and(
+  z.object({
+    code: z.literal('draft_workflow_not_exist'),
+    status: z.literal(404),
+  }),
+)
+
+/**
  * SyncDraftWorkflowResponse
  */
 export const zSyncDraftWorkflowResponse = z.object({
@@ -587,6 +1067,18 @@ export const zSyncDraftWorkflowResponse = z.object({
   result: z.string(),
   updated_at: z.int(),
 })
+
+/**
+ * DraftWorkflowNotSyncError
+ *
+ * Workflow graph might have been modified, please refresh and resubmit.
+ */
+export const zDraftWorkflowNotSyncError = zErrorResponse.and(
+  z.object({
+    code: z.literal('draft_workflow_not_sync'),
+    status: z.literal(409),
+  }),
+)
 
 /**
  * HumanInputDeliveryTestPayload
@@ -602,6 +1094,42 @@ export const zHumanInputDeliveryTestPayload = z.object({
 export const zEmptyObjectResponse = z.record(z.string(), z.unknown())
 
 /**
+ * AgentSoulLockedError
+ *
+ * Agent Soul is locked for this workflow node.
+ */
+export const zAgentSoulLockedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('agent_soul_locked_error'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * InvalidComposerConfigError
+ *
+ * Invalid agent composer config.
+ */
+export const zInvalidComposerConfigError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_composer_config_error'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * PlaintextSecretNotAllowedError
+ *
+ * Plaintext secret values are not allowed in Agent config.
+ */
+export const zPlaintextSecretNotAllowedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('plaintext_secret_not_allowed_error'),
+    status: z.literal(400),
+  }),
+)
+
+/**
  * WorkflowComposerCopyFromRosterPayload
  */
 export const zWorkflowComposerCopyFromRosterPayload = z.object({
@@ -609,6 +1137,18 @@ export const zWorkflowComposerCopyFromRosterPayload = z.object({
   source_agent_id: z.string().min(1).max(255),
   source_snapshot_id: z.string().max(255).nullish(),
 })
+
+/**
+ * AgentVersionConflictError
+ *
+ * Agent config version changed. Please reload and try again.
+ */
+export const zAgentVersionConflictError = zErrorResponse.and(
+  z.object({
+    code: z.literal('agent_version_conflict_error'),
+    status: z.literal(409),
+  }),
+)
 
 /**
  * DraftWorkflowNodeRunPayload
@@ -620,6 +1160,16 @@ export const zDraftWorkflowNodeRunPayload = z.object({
 })
 
 /**
+ * WorkflowTriggerRunErrorResponse
+ *
+ * 400 body when a draft trigger run fails; ``error`` is omitted when there is nothing user-facing to say.
+ */
+export const zWorkflowTriggerRunErrorResponse = z.object({
+  error: z.string().optional(),
+  status: z.literal('error'),
+})
+
+/**
  * DraftWorkflowRunPayload
  */
 export const zDraftWorkflowRunPayload = z.object({
@@ -628,6 +1178,42 @@ export const zDraftWorkflowRunPayload = z.object({
   inputs: z.record(z.string(), z.unknown()),
   start_node_id: z.string(),
 })
+
+/**
+ * NodeNotInWorkflowRunError
+ *
+ * The node is not part of this workflow run.
+ */
+export const zNodeNotInWorkflowRunError = zErrorResponse.and(
+  z.object({
+    code: z.literal('node_not_in_workflow_run'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * NodeOutputNotDeclaredError
+ *
+ * The node does not declare this output.
+ */
+export const zNodeOutputNotDeclaredError = zErrorResponse.and(
+  z.object({
+    code: z.literal('node_output_not_declared'),
+    status: z.literal(404),
+  }),
+)
+
+/**
+ * WorkflowRunNotFoundError
+ *
+ * Workflow run not found.
+ */
+export const zWorkflowRunNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('workflow_run_not_found'),
+    status: z.literal(404),
+  }),
+)
 
 /**
  * EventStreamResponse
@@ -704,6 +1290,30 @@ export const zWorkflowRestoreResponse = z.object({
   result: z.string(),
   updated_at: z.int(),
 })
+
+/**
+ * MaxKeysExceededError
+ *
+ * The API key limit has been reached.
+ */
+export const zMaxKeysExceededError = zErrorResponse.and(
+  z.object({
+    code: z.literal('max_keys_exceeded'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * AgentNotPublishedError
+ *
+ * Publish the Agent before enabling Web App or API access.
+ */
+export const zAgentNotPublishedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('agent_not_published'),
+    status: z.literal(409),
+  }),
+)
 
 /**
  * ApiKeyItem

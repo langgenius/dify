@@ -3,6 +3,12 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
+  zAccountNotInitializedError,
+  zCrawlFailedError,
+  zNotInitValidatedError,
+  zNotSetupError,
+} from './zod.gen.ts'
+import {
   zGetWebsiteCrawlStatusByJobIdPath,
   zGetWebsiteCrawlStatusByJobIdQuery,
   zGetWebsiteCrawlStatusByJobIdResponse,
@@ -29,6 +35,12 @@ export const get = oc
     }),
   )
   .output(zGetWebsiteCrawlStatusByJobIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    crawl_failed: { status: 500, data: zCrawlFailedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const byJobId = {
   get,
@@ -52,6 +64,12 @@ export const post = oc
   })
   .input(z.object({ body: zPostWebsiteCrawlBody }))
   .output(zPostWebsiteCrawlResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    crawl_failed: { status: 500, data: zCrawlFailedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const crawl = {
   post,

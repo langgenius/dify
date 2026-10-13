@@ -23,6 +23,31 @@ export type FeatureModel = {
   workspace_members: LicenseLimitationModel
 }
 
+export type AccountNotInitializedError = ErrorResponse & {
+  code: 'account_not_initialized'
+  status: 400
+}
+
+export type NotInitValidatedError = ErrorResponse & {
+  code: 'not_init_validated'
+  status: 401
+}
+
+export type NotSetupError = ErrorResponse & {
+  code: 'not_setup'
+  status: 401
+}
+
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type VectorSpaceLimitationModel = {
   limit: number
   size: number
@@ -73,6 +98,14 @@ export type GetFeaturesData = {
   url: '/features'
 }
 
+export type GetFeaturesErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  default: ErrorResponse
+}
+
+export type GetFeaturesError = GetFeaturesErrors[keyof GetFeaturesErrors]
+
 export type GetFeaturesResponses = {
   200: FeatureModel
 }
@@ -85,6 +118,15 @@ export type GetFeaturesVectorSpaceData = {
   query?: never
   url: '/features/vector-space'
 }
+
+export type GetFeaturesVectorSpaceErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  default: ErrorResponse
+}
+
+export type GetFeaturesVectorSpaceError =
+  GetFeaturesVectorSpaceErrors[keyof GetFeaturesVectorSpaceErrors]
 
 export type GetFeaturesVectorSpaceResponses = {
   200: VectorSpaceLimitationModel

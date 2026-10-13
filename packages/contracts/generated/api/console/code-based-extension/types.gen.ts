@@ -9,6 +9,31 @@ export type CodeBasedExtensionResponse = {
   module: string
 }
 
+export type AccountNotInitializedError = ErrorResponse & {
+  code: 'account_not_initialized'
+  status: 400
+}
+
+export type NotInitValidatedError = ErrorResponse & {
+  code: 'not_init_validated'
+  status: 401
+}
+
+export type NotSetupError = ErrorResponse & {
+  code: 'not_setup'
+  status: 401
+}
+
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type GetCodeBasedExtensionData = {
   body?: never
   path?: never
@@ -17,6 +42,15 @@ export type GetCodeBasedExtensionData = {
   }
   url: '/code-based-extension'
 }
+
+export type GetCodeBasedExtensionErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  default: ErrorResponse
+}
+
+export type GetCodeBasedExtensionError =
+  GetCodeBasedExtensionErrors[keyof GetCodeBasedExtensionErrors]
 
 export type GetCodeBasedExtensionResponses = {
   200: CodeBasedExtensionResponse

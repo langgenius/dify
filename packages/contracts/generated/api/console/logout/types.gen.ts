@@ -8,12 +8,39 @@ export type SimpleResultResponse = {
   result: string
 }
 
+export type NotInitValidatedError = ErrorResponse & {
+  code: 'not_init_validated'
+  status: 401
+}
+
+export type NotSetupError = ErrorResponse & {
+  code: 'not_setup'
+  status: 401
+}
+
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type PostLogoutData = {
   body?: never
   path?: never
   query?: never
   url: '/logout'
 }
+
+export type PostLogoutErrors = {
+  401: NotInitValidatedError | NotSetupError
+  default: ErrorResponse
+}
+
+export type PostLogoutError = PostLogoutErrors[keyof PostLogoutErrors]
 
 export type PostLogoutResponses = {
   200: SimpleResultResponse

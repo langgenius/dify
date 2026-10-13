@@ -2,6 +2,7 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
+import { zAccountNotInitializedError, zNotInitValidatedError, zNotSetupError } from './zod.gen.ts'
 import {
   zPostTagBindingsBody,
   zPostTagBindingsRemoveBody,
@@ -23,6 +24,11 @@ export const post = oc
   })
   .input(z.object({ body: zPostTagBindingsRemoveBody }))
   .output(zPostTagBindingsRemoveResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const remove = {
   post,
@@ -38,6 +44,11 @@ export const post2 = oc
   })
   .input(z.object({ body: zPostTagBindingsBody }))
   .output(zPostTagBindingsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const tagBindings = {
   post: post2,

@@ -19,6 +19,58 @@ export const zBillingUnprocessableEntityErrorResponse = z.object({
 })
 
 /**
+ * ErrorResponse
+ *
+ * Documented non-2xx body emitted by ``register_external_error_handlers``.
+ *
+ * ``params`` and ``details`` appear only on the errors that set them. The schema
+ * stays open because ``HTTPException.data`` may carry extra keys.
+ */
+export const zErrorResponse = z.object({
+  code: z.string(),
+  details: z.record(z.string(), z.unknown()).optional(),
+  message: z.string(),
+  params: z.string().optional(),
+  status: z.int(),
+})
+
+/**
+ * AccountNotInitializedError
+ *
+ * The account has not been initialized yet. Please proceed with the initialization process first.
+ */
+export const zAccountNotInitializedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('account_not_initialized'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * NotInitValidatedError
+ *
+ * Init validation has not been completed yet. Please proceed with the init validation process first.
+ */
+export const zNotInitValidatedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('not_init_validated'),
+    status: z.literal(401),
+  }),
+)
+
+/**
+ * NotSetupError
+ *
+ * Dify has not been initialized and installed yet. Please proceed with the initialization and installation process first.
+ */
+export const zNotSetupError = zErrorResponse.and(
+  z.object({
+    code: z.literal('not_setup'),
+    status: z.literal(401),
+  }),
+)
+
+/**
  * ComplianceRateLimitErrorResponse
  */
 export const zComplianceRateLimitErrorResponse = z.object({
@@ -26,6 +78,18 @@ export const zComplianceRateLimitErrorResponse = z.object({
   message: z.string(),
   status: z.literal(429),
 })
+
+/**
+ * ComplianceRateLimitError
+ *
+ * Rate limit exceeded for downloading compliance report.
+ */
+export const zComplianceRateLimitError = zErrorResponse.and(
+  z.object({
+    code: z.literal('compliance_rate_limit'),
+    status: z.literal(429),
+  }),
+)
 
 /**
  * BillingOperationFailedErrorResponse
@@ -37,6 +101,18 @@ export const zBillingOperationFailedErrorResponse = z.object({
 })
 
 /**
+ * BillingOperationFailedError
+ *
+ * We couldn't complete this request. Please try again. If the problem persists, contact support.
+ */
+export const zBillingOperationFailedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('billing_operation_failed'),
+    status: z.literal(502),
+  }),
+)
+
+/**
  * BillingUnavailableErrorResponse
  */
 export const zBillingUnavailableErrorResponse = z.object({
@@ -44,6 +120,18 @@ export const zBillingUnavailableErrorResponse = z.object({
   message: z.string(),
   status: z.literal(503),
 })
+
+/**
+ * BillingUnavailableError
+ *
+ * This operation is temporarily unavailable. Please try again later.
+ */
+export const zBillingUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('billing_unavailable'),
+    status: z.literal(503),
+  }),
+)
 
 export const zGetComplianceDownloadQuery = z.object({
   doc_name: z.string(),

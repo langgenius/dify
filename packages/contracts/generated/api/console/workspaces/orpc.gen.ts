@@ -3,6 +3,40 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
+  zAccountNotInitializedError,
+  zAccountNotLinkTenantError,
+  zCannotOperateSelfError,
+  zCannotTransferOwnerToSelfError,
+  zCurrentWorkspaceArchivedError,
+  zEmailCodeError,
+  zEmailSendIpLimitError,
+  zFileTooLargeError,
+  zFilenameMissingError,
+  zFilenameNotExistsError,
+  zForbiddenError,
+  zInvalidEmailError,
+  zInvalidOrExpiredTokenError,
+  zInvalidParamError,
+  zInvalidRequestError,
+  zInvalidRoleError,
+  zLimitExceededError,
+  zMemberNotFoundError,
+  zMemberNotInTenantError,
+  zNoFileUploadedError,
+  zNotFoundError,
+  zNotInitValidatedError,
+  zNotOwnerError,
+  zNotSetupError,
+  zOwnerTransferLimitError,
+  zOwnerTransferRateLimitExceededError,
+  zPluginError,
+  zRoleAlreadyAssignedError,
+  zTooManyFilesError,
+  zUnauthorizedAndForceLogoutError,
+  zUnsupportedFileTypeError,
+  zWorkflowToolHumanInputNotSupportedError,
+} from './zod.gen.ts'
+import {
   zDeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdPath,
   zDeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdResponse,
   zDeleteWorkspacesCurrentEndpointsByIdPath,
@@ -541,6 +575,11 @@ export const get = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentAgentProviderByProviderNamePath }))
   .output(zGetWorkspacesCurrentAgentProviderByProviderNameResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const byProviderName = {
   get,
@@ -563,6 +602,11 @@ export const get2 = oc
     tags: ['console'],
   })
   .output(zGetWorkspacesCurrentAgentProvidersResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const agentProviders = {
   get: get2,
@@ -578,6 +622,11 @@ export const get3 = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentAgentsByAgentIdSkillsPath }))
   .output(zGetWorkspacesCurrentAgentsByAgentIdSkillsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const put = oc
   .route({
@@ -594,6 +643,11 @@ export const put = oc
     }),
   )
   .output(zPutWorkspacesCurrentAgentsByAgentIdSkillsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const skills = {
   get: get3,
@@ -625,6 +679,11 @@ export const post = oc
   })
   .input(z.object({ params: zPostWorkspacesCurrentCustomizedSnippetsImportsByImportIdConfirmPath }))
   .output(zPostWorkspacesCurrentCustomizedSnippetsImportsByImportIdConfirmResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const confirm = {
   post,
@@ -651,6 +710,11 @@ export const post2 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentCustomizedSnippetsImportsBody }))
   .output(zPostWorkspacesCurrentCustomizedSnippetsImportsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const imports = {
   post: post2,
@@ -676,6 +740,11 @@ export const get4 = oc
     z.object({ params: zGetWorkspacesCurrentCustomizedSnippetsBySnippetIdCheckDependenciesPath }),
   )
   .output(zGetWorkspacesCurrentCustomizedSnippetsBySnippetIdCheckDependenciesResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const checkDependencies = {
   get: get4,
@@ -703,6 +772,11 @@ export const get5 = oc
     }),
   )
   .output(zGetWorkspacesCurrentCustomizedSnippetsBySnippetIdExportResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const export_ = {
   get: get5,
@@ -727,6 +801,11 @@ export const post3 = oc
     z.object({ params: zPostWorkspacesCurrentCustomizedSnippetsBySnippetIdUseCountIncrementPath }),
   )
   .output(zPostWorkspacesCurrentCustomizedSnippetsBySnippetIdUseCountIncrementResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const increment = {
   post: post3,
@@ -751,6 +830,11 @@ export const delete_ = oc
   })
   .input(z.object({ params: zDeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdPath }))
   .output(zDeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 /**
  * Get customized snippet details
@@ -766,6 +850,11 @@ export const get6 = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentCustomizedSnippetsBySnippetIdPath }))
   .output(zGetWorkspacesCurrentCustomizedSnippetsBySnippetIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 /**
  * Update customized snippet
@@ -786,6 +875,12 @@ export const patch = oc
     }),
   )
   .output(zPatchWorkspacesCurrentCustomizedSnippetsBySnippetIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    invalid_param: { status: 400, data: zInvalidParamError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const bySnippetId = {
   delete: delete_,
@@ -810,6 +905,11 @@ export const get7 = oc
   })
   .input(z.object({ query: zGetWorkspacesCurrentCustomizedSnippetsQuery.optional() }))
   .output(zGetWorkspacesCurrentCustomizedSnippetsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 /**
  * Create a new customized snippet
@@ -826,6 +926,12 @@ export const post4 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentCustomizedSnippetsBody }))
   .output(zPostWorkspacesCurrentCustomizedSnippetsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    invalid_param: { status: 400, data: zInvalidParamError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const customizedSnippets = {
   get: get7,
@@ -843,6 +949,11 @@ export const get8 = oc
     tags: ['console'],
   })
   .output(zGetWorkspacesCurrentDatasetOperatorsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const datasetOperators = {
   get: get8,
@@ -858,6 +969,11 @@ export const get9 = oc
   })
   .input(z.object({ query: zGetWorkspacesCurrentDefaultModelQuery }))
   .output(zGetWorkspacesCurrentDefaultModelResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const post5 = oc
   .route({
@@ -869,6 +985,11 @@ export const post5 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentDefaultModelBody }))
   .output(zPostWorkspacesCurrentDefaultModelResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const defaultModel = {
   get: get9,
@@ -893,6 +1014,11 @@ export const post6 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentEndpointsCreateBody }))
   .output(zPostWorkspacesCurrentEndpointsCreateResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const create = {
   post: post6,
@@ -916,6 +1042,11 @@ export const post7 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentEndpointsDeleteBody }))
   .output(zPostWorkspacesCurrentEndpointsDeleteResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const delete2 = {
   post: post7,
@@ -935,6 +1066,11 @@ export const post8 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentEndpointsDisableBody }))
   .output(zPostWorkspacesCurrentEndpointsDisableResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const disable = {
   post: post8,
@@ -954,6 +1090,11 @@ export const post9 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentEndpointsEnableBody }))
   .output(zPostWorkspacesCurrentEndpointsEnableResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const enable = {
   post: post9,
@@ -973,6 +1114,11 @@ export const get10 = oc
   })
   .input(z.object({ query: zGetWorkspacesCurrentEndpointsListPluginQuery }))
   .output(zGetWorkspacesCurrentEndpointsListPluginResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const plugin = {
   get: get10,
@@ -992,6 +1138,11 @@ export const get11 = oc
   })
   .input(z.object({ query: zGetWorkspacesCurrentEndpointsListQuery }))
   .output(zGetWorkspacesCurrentEndpointsListResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const list = {
   get: get11,
@@ -1016,6 +1167,11 @@ export const post10 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentEndpointsUpdateBody }))
   .output(zPostWorkspacesCurrentEndpointsUpdateResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const update = {
   post: post10,
@@ -1035,6 +1191,11 @@ export const delete3 = oc
   })
   .input(z.object({ params: zDeleteWorkspacesCurrentEndpointsByIdPath }))
   .output(zDeleteWorkspacesCurrentEndpointsByIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 /**
  * Update a plugin endpoint
@@ -1055,6 +1216,11 @@ export const patch2 = oc
     }),
   )
   .output(zPatchWorkspacesCurrentEndpointsByIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const byId = {
   delete: delete3,
@@ -1075,6 +1241,11 @@ export const post11 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentEndpointsBody }))
   .output(zPostWorkspacesCurrentEndpointsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const endpoints = {
   post: post11,
@@ -1098,6 +1269,13 @@ export const post12 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentMembersInviteEmailBody }))
   .output(zPostWorkspacesCurrentMembersInviteEmailResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    invalid_role: { status: 400, data: zInvalidRoleError },
+    limit_exceeded: { status: 400, data: zLimitExceededError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const inviteEmail = {
   post: post12,
@@ -1113,6 +1291,20 @@ export const post13 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentMembersOwnerTransferCheckBody }))
   .output(zPostWorkspacesCurrentMembersOwnerTransferCheckResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    cannot_transfer_owner_to_self: { status: 400, data: zCannotTransferOwnerToSelfError },
+    email_code_error: { status: 400, data: zEmailCodeError },
+    email_send_ip_limit: { status: 429, data: zEmailSendIpLimitError },
+    invalid_email: { status: 400, data: zInvalidEmailError },
+    invalid_or_expired_token: { status: 400, data: zInvalidOrExpiredTokenError },
+    member_not_in_tenant: { status: 400, data: zMemberNotInTenantError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_owner: { status: 400, data: zNotOwnerError },
+    not_setup: { status: 401, data: zNotSetupError },
+    owner_transfer_limit: { status: 429, data: zOwnerTransferLimitError },
+    owner_transfer_rate_limit_exceeded: { status: 429, data: zOwnerTransferRateLimitExceededError },
+  })
 
 export const ownerTransferCheck = {
   post: post13,
@@ -1128,6 +1320,20 @@ export const post14 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentMembersSendOwnerTransferConfirmEmailBody }))
   .output(zPostWorkspacesCurrentMembersSendOwnerTransferConfirmEmailResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    cannot_transfer_owner_to_self: { status: 400, data: zCannotTransferOwnerToSelfError },
+    email_code_error: { status: 400, data: zEmailCodeError },
+    email_send_ip_limit: { status: 429, data: zEmailSendIpLimitError },
+    invalid_email: { status: 400, data: zInvalidEmailError },
+    invalid_or_expired_token: { status: 400, data: zInvalidOrExpiredTokenError },
+    member_not_in_tenant: { status: 400, data: zMemberNotInTenantError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_owner: { status: 400, data: zNotOwnerError },
+    not_setup: { status: 401, data: zNotSetupError },
+    owner_transfer_limit: { status: 429, data: zOwnerTransferLimitError },
+    owner_transfer_rate_limit_exceeded: { status: 429, data: zOwnerTransferRateLimitExceededError },
+  })
 
 export const sendOwnerTransferConfirmEmail = {
   post: post14,
@@ -1148,6 +1354,20 @@ export const post15 = oc
     }),
   )
   .output(zPostWorkspacesCurrentMembersByMemberIdOwnerTransferResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    cannot_transfer_owner_to_self: { status: 400, data: zCannotTransferOwnerToSelfError },
+    email_code_error: { status: 400, data: zEmailCodeError },
+    email_send_ip_limit: { status: 429, data: zEmailSendIpLimitError },
+    invalid_email: { status: 400, data: zInvalidEmailError },
+    invalid_or_expired_token: { status: 400, data: zInvalidOrExpiredTokenError },
+    member_not_in_tenant: { status: 400, data: zMemberNotInTenantError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_owner: { status: 400, data: zNotOwnerError },
+    not_setup: { status: 401, data: zNotSetupError },
+    owner_transfer_limit: { status: 429, data: zOwnerTransferLimitError },
+    owner_transfer_rate_limit_exceeded: { status: 429, data: zOwnerTransferRateLimitExceededError },
+  })
 
 export const ownerTransfer = {
   post: post15,
@@ -1168,6 +1388,16 @@ export const put2 = oc
     }),
   )
   .output(zPutWorkspacesCurrentMembersByMemberIdUpdateRoleResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    cannot_operate_self: { status: 400, data: zCannotOperateSelfError },
+    forbidden: { status: 403, data: zForbiddenError },
+    invalid_role: { status: 400, data: zInvalidRoleError },
+    member_not_found: { status: 404, data: zMemberNotFoundError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    role_already_assigned: { status: 400, data: zRoleAlreadyAssignedError },
+  })
 
 export const updateRole = {
   put: put2,
@@ -1183,6 +1413,16 @@ export const delete4 = oc
   })
   .input(z.object({ params: zDeleteWorkspacesCurrentMembersByMemberIdPath }))
   .output(zDeleteWorkspacesCurrentMembersByMemberIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    cannot_operate_self: { status: 400, data: zCannotOperateSelfError },
+    forbidden: { status: 403, data: zForbiddenError },
+    invalid_role: { status: 400, data: zInvalidRoleError },
+    member_not_found: { status: 404, data: zMemberNotFoundError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    role_already_assigned: { status: 400, data: zRoleAlreadyAssignedError },
+  })
 
 export const byMemberId = {
   delete: delete4,
@@ -1199,6 +1439,11 @@ export const get12 = oc
     tags: ['console'],
   })
   .output(zGetWorkspacesCurrentMembersResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const members = {
   get: get12,
@@ -1217,6 +1462,11 @@ export const get13 = oc
     tags: ['console'],
   })
   .output(zGetWorkspacesCurrentModelProvidersCreditsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const credits = {
   get: get13,
@@ -1231,6 +1481,11 @@ export const get14 = oc
     tags: ['console'],
   })
   .output(zGetWorkspacesCurrentModelProvidersSummaryResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const summary = {
   get: get14,
@@ -1250,6 +1505,11 @@ export const get15 = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentModelProvidersByProviderCheckoutUrlPath }))
   .output(zGetWorkspacesCurrentModelProvidersByProviderCheckoutUrlResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const checkoutUrl = {
   get: get15,
@@ -1270,6 +1530,11 @@ export const post16 = oc
     }),
   )
   .output(zPostWorkspacesCurrentModelProvidersByProviderCredentialsSwitchResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const switch_ = {
   post: post16,
@@ -1290,6 +1555,11 @@ export const post17 = oc
     }),
   )
   .output(zPostWorkspacesCurrentModelProvidersByProviderCredentialsValidateResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const validate = {
   post: post17,
@@ -1311,6 +1581,11 @@ export const delete5 = oc
     }),
   )
   .output(zDeleteWorkspacesCurrentModelProvidersByProviderCredentialsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const get16 = oc
   .route({
@@ -1327,6 +1602,11 @@ export const get16 = oc
     }),
   )
   .output(zGetWorkspacesCurrentModelProvidersByProviderCredentialsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const post18 = oc
   .route({
@@ -1344,6 +1624,11 @@ export const post18 = oc
     }),
   )
   .output(zPostWorkspacesCurrentModelProvidersByProviderCredentialsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const put3 = oc
   .route({
@@ -1360,6 +1645,11 @@ export const put3 = oc
     }),
   )
   .output(zPutWorkspacesCurrentModelProvidersByProviderCredentialsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const credentials = {
   delete: delete5,
@@ -1385,6 +1675,11 @@ export const post19 = oc
     }),
   )
   .output(zPostWorkspacesCurrentModelProvidersByProviderModelsCredentialsSwitchResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const switch2 = {
   post: post19,
@@ -1405,6 +1700,11 @@ export const post20 = oc
     }),
   )
   .output(zPostWorkspacesCurrentModelProvidersByProviderModelsCredentialsValidateResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const validate2 = {
   post: post20,
@@ -1426,6 +1726,11 @@ export const delete6 = oc
     }),
   )
   .output(zDeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const get17 = oc
   .route({
@@ -1442,6 +1747,11 @@ export const get17 = oc
     }),
   )
   .output(zGetWorkspacesCurrentModelProvidersByProviderModelsCredentialsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const post21 = oc
   .route({
@@ -1459,6 +1769,11 @@ export const post21 = oc
     }),
   )
   .output(zPostWorkspacesCurrentModelProvidersByProviderModelsCredentialsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const put4 = oc
   .route({
@@ -1475,6 +1790,11 @@ export const put4 = oc
     }),
   )
   .output(zPutWorkspacesCurrentModelProvidersByProviderModelsCredentialsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const credentials2 = {
   delete: delete6,
@@ -1500,6 +1820,11 @@ export const patch3 = oc
     }),
   )
   .output(zPatchWorkspacesCurrentModelProvidersByProviderModelsDisableResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const disable2 = {
   patch: patch3,
@@ -1520,6 +1845,11 @@ export const patch4 = oc
     }),
   )
   .output(zPatchWorkspacesCurrentModelProvidersByProviderModelsEnableResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const enable2 = {
   patch: patch4,
@@ -1544,6 +1874,11 @@ export const post22 = oc
   .output(
     zPostWorkspacesCurrentModelProvidersByProviderModelsLoadBalancingConfigsCredentialsValidateResponse,
   )
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const credentialsValidate = {
   post: post22,
@@ -1568,6 +1903,11 @@ export const post23 = oc
   .output(
     zPostWorkspacesCurrentModelProvidersByProviderModelsLoadBalancingConfigsByConfigIdCredentialsValidateResponse,
   )
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const credentialsValidate2 = {
   post: post23,
@@ -1597,6 +1937,11 @@ export const get18 = oc
     }),
   )
   .output(zGetWorkspacesCurrentModelProvidersByProviderModelsParameterRulesResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const parameterRules = {
   get: get18,
@@ -1618,6 +1963,11 @@ export const delete7 = oc
     }),
   )
   .output(zDeleteWorkspacesCurrentModelProvidersByProviderModelsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const get19 = oc
   .route({
@@ -1629,6 +1979,11 @@ export const get19 = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentModelProvidersByProviderModelsPath }))
   .output(zGetWorkspacesCurrentModelProvidersByProviderModelsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const post24 = oc
   .route({
@@ -1645,6 +2000,11 @@ export const post24 = oc
     }),
   )
   .output(zPostWorkspacesCurrentModelProvidersByProviderModelsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const models = {
   delete: delete7,
@@ -1672,6 +2032,11 @@ export const post25 = oc
     }),
   )
   .output(zPostWorkspacesCurrentModelProvidersByProviderPreferredProviderTypeResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const preferredProviderType = {
   post: post25,
@@ -1694,6 +2059,11 @@ export const get20 = oc
   })
   .input(z.object({ query: zGetWorkspacesCurrentModelProvidersQuery.optional() }))
   .output(zGetWorkspacesCurrentModelProvidersResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const modelProviders = {
   get: get20,
@@ -1712,6 +2082,11 @@ export const get21 = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentModelsModelTypesByModelTypePath }))
   .output(zGetWorkspacesCurrentModelsModelTypesByModelTypeResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const byModelType = {
   get: get21,
@@ -1734,6 +2109,11 @@ export const get22 = oc
     tags: ['console'],
   })
   .output(zGetWorkspacesCurrentPermissionResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const permission = {
   get: get22,
@@ -1749,6 +2129,12 @@ export const get23 = oc
   })
   .input(z.object({ query: zGetWorkspacesCurrentPluginAssetQuery }))
   .output(zGetWorkspacesCurrentPluginAssetResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    plugin_error: { status: 400, data: zPluginError },
+  })
 
 export const asset = {
   get: get23,
@@ -1764,6 +2150,11 @@ export const post26 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentPluginAutoUpgradeChangeBody }))
   .output(zPostWorkspacesCurrentPluginAutoUpgradeChangeResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const change = {
   post: post26,
@@ -1779,6 +2170,11 @@ export const post27 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentPluginAutoUpgradeExcludeBody }))
   .output(zPostWorkspacesCurrentPluginAutoUpgradeExcludeResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const exclude = {
   post: post27,
@@ -1794,6 +2190,11 @@ export const get24 = oc
   })
   .input(z.object({ query: zGetWorkspacesCurrentPluginAutoUpgradeFetchQuery }))
   .output(zGetWorkspacesCurrentPluginAutoUpgradeFetchResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const fetch_ = {
   get: get24,
@@ -1814,6 +2215,12 @@ export const get25 = oc
     tags: ['console'],
   })
   .output(zGetWorkspacesCurrentPluginDebuggingKeyResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    plugin_error: { status: 400, data: zPluginError },
+  })
 
 export const debuggingKey = {
   get: get25,
@@ -1829,6 +2236,12 @@ export const get26 = oc
   })
   .input(z.object({ query: zGetWorkspacesCurrentPluginFetchManifestQuery }))
   .output(zGetWorkspacesCurrentPluginFetchManifestResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    plugin_error: { status: 400, data: zPluginError },
+  })
 
 export const fetchManifest = {
   get: get26,
@@ -1844,6 +2257,11 @@ export const get27 = oc
   })
   .input(z.object({ query: zGetWorkspacesCurrentPluginIconQuery }))
   .output(zGetWorkspacesCurrentPluginIconResponse)
+  .errors({
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    plugin_error: { status: 400, data: zPluginError },
+  })
 
 export const icon = {
   get: get27,
@@ -1859,6 +2277,12 @@ export const post28 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentPluginInstallGithubBody }))
   .output(zPostWorkspacesCurrentPluginInstallGithubResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    plugin_error: { status: 400, data: zPluginError },
+  })
 
 export const github = {
   post: post28,
@@ -1874,6 +2298,12 @@ export const post29 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentPluginInstallMarketplaceBody }))
   .output(zPostWorkspacesCurrentPluginInstallMarketplaceResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    plugin_error: { status: 400, data: zPluginError },
+  })
 
 export const marketplace = {
   post: post29,
@@ -1889,6 +2319,12 @@ export const post30 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentPluginInstallPkgBody }))
   .output(zPostWorkspacesCurrentPluginInstallPkgResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    plugin_error: { status: 400, data: zPluginError },
+  })
 
 export const pkg = {
   post: post30,
@@ -1910,6 +2346,12 @@ export const get28 = oc
   })
   .input(z.object({ query: zGetWorkspacesCurrentPluginInstalledIdsQuery }))
   .output(zGetWorkspacesCurrentPluginInstalledIdsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    plugin_error: { status: 400, data: zPluginError },
+  })
 
 export const installedIds = {
   get: get28,
@@ -1925,6 +2367,12 @@ export const post31 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentPluginListInstallationsIdsBody }))
   .output(zPostWorkspacesCurrentPluginListInstallationsIdsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    plugin_error: { status: 400, data: zPluginError },
+  })
 
 export const ids = {
   post: post31,
@@ -1944,6 +2392,12 @@ export const post32 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentPluginListLatestVersionsBody }))
   .output(zPostWorkspacesCurrentPluginListLatestVersionsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    plugin_error: { status: 400, data: zPluginError },
+  })
 
 export const latestVersions = {
   post: post32,
@@ -1959,6 +2413,12 @@ export const get29 = oc
   })
   .input(z.object({ query: zGetWorkspacesCurrentPluginListQuery.optional() }))
   .output(zGetWorkspacesCurrentPluginListResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    plugin_error: { status: 400, data: zPluginError },
+  })
 
 export const list2 = {
   get: get29,
@@ -1976,6 +2436,12 @@ export const get30 = oc
   })
   .input(z.object({ query: zGetWorkspacesCurrentPluginMarketplacePkgQuery }))
   .output(zGetWorkspacesCurrentPluginMarketplacePkgResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    plugin_error: { status: 400, data: zPluginError },
+  })
 
 export const pkg2 = {
   get: get30,
@@ -1995,6 +2461,12 @@ export const get31 = oc
   })
   .input(z.object({ query: zGetWorkspacesCurrentPluginParametersDynamicOptionsQuery }))
   .output(zGetWorkspacesCurrentPluginParametersDynamicOptionsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    plugin_error: { status: 400, data: zPluginError },
+  })
 
 export const dynamicOptions = {
   get: get31,
@@ -2016,6 +2488,12 @@ export const post33 = oc
     z.object({ body: zPostWorkspacesCurrentPluginParametersDynamicOptionsWithCredentialsBody }),
   )
   .output(zPostWorkspacesCurrentPluginParametersDynamicOptionsWithCredentialsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    plugin_error: { status: 400, data: zPluginError },
+  })
 
 export const dynamicOptionsWithCredentials = {
   post: post33,
@@ -2036,6 +2514,11 @@ export const post34 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentPluginPermissionChangeBody }))
   .output(zPostWorkspacesCurrentPluginPermissionChangeResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const change2 = {
   post: post34,
@@ -2050,6 +2533,11 @@ export const get32 = oc
     tags: ['console'],
   })
   .output(zGetWorkspacesCurrentPluginPermissionFetchResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const fetch2 = {
   get: get32,
@@ -2070,6 +2558,11 @@ export const get33 = oc
   })
   .input(z.object({ query: zGetWorkspacesCurrentPluginReadmeQuery }))
   .output(zGetWorkspacesCurrentPluginReadmeResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const readme = {
   get: get33,
@@ -2084,6 +2577,12 @@ export const post35 = oc
     tags: ['console'],
   })
   .output(zPostWorkspacesCurrentPluginTasksDeleteAllResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    plugin_error: { status: 400, data: zPluginError },
+  })
 
 export const deleteAll = {
   post: post35,
@@ -2099,6 +2598,12 @@ export const post36 = oc
   })
   .input(z.object({ params: zPostWorkspacesCurrentPluginTasksByTaskIdDeleteByIdentifierPath }))
   .output(zPostWorkspacesCurrentPluginTasksByTaskIdDeleteByIdentifierResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    plugin_error: { status: 400, data: zPluginError },
+  })
 
 export const byIdentifier = {
   post: post36,
@@ -2114,6 +2619,12 @@ export const post37 = oc
   })
   .input(z.object({ params: zPostWorkspacesCurrentPluginTasksByTaskIdDeletePath }))
   .output(zPostWorkspacesCurrentPluginTasksByTaskIdDeleteResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    plugin_error: { status: 400, data: zPluginError },
+  })
 
 export const delete8 = {
   post: post37,
@@ -2130,6 +2641,12 @@ export const get34 = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentPluginTasksByTaskIdPath }))
   .output(zGetWorkspacesCurrentPluginTasksByTaskIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    plugin_error: { status: 400, data: zPluginError },
+  })
 
 export const byTaskId = {
   get: get34,
@@ -2146,6 +2663,12 @@ export const get35 = oc
   })
   .input(z.object({ query: zGetWorkspacesCurrentPluginTasksQuery.optional() }))
   .output(zGetWorkspacesCurrentPluginTasksResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    plugin_error: { status: 400, data: zPluginError },
+  })
 
 export const tasks = {
   get: get35,
@@ -2163,6 +2686,12 @@ export const post38 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentPluginUninstallBody }))
   .output(zPostWorkspacesCurrentPluginUninstallResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    plugin_error: { status: 400, data: zPluginError },
+  })
 
 export const uninstall = {
   post: post38,
@@ -2178,6 +2707,12 @@ export const post39 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentPluginUpgradeGithubBody }))
   .output(zPostWorkspacesCurrentPluginUpgradeGithubResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    plugin_error: { status: 400, data: zPluginError },
+  })
 
 export const github2 = {
   post: post39,
@@ -2193,6 +2728,12 @@ export const post40 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentPluginUpgradeMarketplaceBody }))
   .output(zPostWorkspacesCurrentPluginUpgradeMarketplaceResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    plugin_error: { status: 400, data: zPluginError },
+  })
 
 export const marketplace3 = {
   post: post40,
@@ -2212,6 +2753,11 @@ export const post41 = oc
     tags: ['console'],
   })
   .output(zPostWorkspacesCurrentPluginUploadBundleResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const bundle = {
   post: post41,
@@ -2227,6 +2773,12 @@ export const post42 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentPluginUploadGithubBody }))
   .output(zPostWorkspacesCurrentPluginUploadGithubResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    plugin_error: { status: 400, data: zPluginError },
+  })
 
 export const github3 = {
   post: post42,
@@ -2242,6 +2794,12 @@ export const post43 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentPluginUploadPkgBody }))
   .output(zPostWorkspacesCurrentPluginUploadPkgResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    plugin_error: { status: 400, data: zPluginError },
+  })
 
 export const pkg3 = {
   post: post43,
@@ -2268,6 +2826,13 @@ export const get36 = oc
     }),
   )
   .output(zGetWorkspacesCurrentPluginByCategoryListResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    invalid_param: { status: 400, data: zInvalidParamError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    plugin_error: { status: 400, data: zPluginError },
+  })
 
 export const list3 = {
   get: get36,
@@ -2308,6 +2873,11 @@ export const post44 = oc
   })
   .input(z.object({ params: zPostWorkspacesCurrentRbacAccessPoliciesByPolicyIdCopyPath }))
   .output(zPostWorkspacesCurrentRbacAccessPoliciesByPolicyIdCopyResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const copy = {
   post: post44,
@@ -2323,6 +2893,11 @@ export const delete9 = oc
   })
   .input(z.object({ params: zDeleteWorkspacesCurrentRbacAccessPoliciesByPolicyIdPath }))
   .output(zDeleteWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const get37 = oc
   .route({
@@ -2334,6 +2909,11 @@ export const get37 = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentRbacAccessPoliciesByPolicyIdPath }))
   .output(zGetWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const put5 = oc
   .route({
@@ -2350,6 +2930,11 @@ export const put5 = oc
     }),
   )
   .output(zPutWorkspacesCurrentRbacAccessPoliciesByPolicyIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const byPolicyId = {
   delete: delete9,
@@ -2367,6 +2952,11 @@ export const get38 = oc
     tags: ['console'],
   })
   .output(zGetWorkspacesCurrentRbacAccessPoliciesResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const post45 = oc
   .route({
@@ -2379,6 +2969,11 @@ export const post45 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentRbacAccessPoliciesBody }))
   .output(zPostWorkspacesCurrentRbacAccessPoliciesResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const accessPolicies = {
   get: get38,
@@ -2396,6 +2991,11 @@ export const put6 = oc
   })
   .input(z.object({ params: zPutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdLockPath }))
   .output(zPutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdLockResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const lock = {
   put: put6,
@@ -2411,6 +3011,11 @@ export const put7 = oc
   })
   .input(z.object({ params: zPutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdUnlockPath }))
   .output(zPutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdUnlockResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const unlock = {
   put: put7,
@@ -2440,6 +3045,11 @@ export const delete10 = oc
     }),
   )
   .output(zDeleteWorkspacesCurrentRbacAgentsByAgentIdAccessPoliciesByPolicyIdMemberBindingsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const get39 = oc
   .route({
@@ -2455,6 +3065,11 @@ export const get39 = oc
     }),
   )
   .output(zGetWorkspacesCurrentRbacAgentsByAgentIdAccessPoliciesByPolicyIdMemberBindingsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const memberBindings = {
   delete: delete10,
@@ -2475,6 +3090,11 @@ export const get40 = oc
     }),
   )
   .output(zGetWorkspacesCurrentRbacAgentsByAgentIdAccessPoliciesByPolicyIdRoleBindingsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const roleBindings = {
   get: get40,
@@ -2504,6 +3124,11 @@ export const get41 = oc
     }),
   )
   .output(zGetWorkspacesCurrentRbacAgentsByAgentIdAccessPolicyResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const accessPolicy = {
   get: get41,
@@ -2524,6 +3149,11 @@ export const get42 = oc
     }),
   )
   .output(zGetWorkspacesCurrentRbacAgentsByAgentIdUserAccessPoliciesResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const userAccessPolicies = {
   get: get42,
@@ -2544,6 +3174,11 @@ export const put8 = oc
     }),
   )
   .output(zPutWorkspacesCurrentRbacAgentsByAgentIdUsersByTargetAccountIdAccessPoliciesResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const accessPolicies3 = {
   put: put8,
@@ -2567,6 +3202,11 @@ export const get43 = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentRbacAgentsByAgentIdWhitelistPath }))
   .output(zGetWorkspacesCurrentRbacAgentsByAgentIdWhitelistResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const put9 = oc
   .route({
@@ -2583,6 +3223,11 @@ export const put9 = oc
     }),
   )
   .output(zPutWorkspacesCurrentRbacAgentsByAgentIdWhitelistResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const whitelist = {
   get: get43,
@@ -2599,6 +3244,11 @@ export const get44 = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentRbacAgentsByAgentIdWhitelistConfigPath }))
   .output(zGetWorkspacesCurrentRbacAgentsByAgentIdWhitelistConfigResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const whitelistConfig = {
   get: get44,
@@ -2632,6 +3282,11 @@ export const delete11 = oc
     }),
   )
   .output(zDeleteWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberBindingsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const get45 = oc
   .route({
@@ -2647,6 +3302,11 @@ export const get45 = oc
     }),
   )
   .output(zGetWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberBindingsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const memberBindings2 = {
   delete: delete11,
@@ -2667,6 +3327,11 @@ export const get46 = oc
     }),
   )
   .output(zGetWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdRoleBindingsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const roleBindings2 = {
   get: get46,
@@ -2696,6 +3361,11 @@ export const get47 = oc
     }),
   )
   .output(zGetWorkspacesCurrentRbacAppsByAppIdAccessPolicyResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const accessPolicy2 = {
   get: get47,
@@ -2716,6 +3386,11 @@ export const get48 = oc
     }),
   )
   .output(zGetWorkspacesCurrentRbacAppsByAppIdUserAccessPoliciesResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const userAccessPolicies2 = {
   get: get48,
@@ -2736,6 +3411,11 @@ export const put10 = oc
     }),
   )
   .output(zPutWorkspacesCurrentRbacAppsByAppIdUsersByTargetAccountIdAccessPoliciesResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const accessPolicies5 = {
   put: put10,
@@ -2759,6 +3439,11 @@ export const get49 = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentRbacAppsByAppIdWhitelistPath }))
   .output(zGetWorkspacesCurrentRbacAppsByAppIdWhitelistResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const put11 = oc
   .route({
@@ -2775,6 +3460,11 @@ export const put11 = oc
     }),
   )
   .output(zPutWorkspacesCurrentRbacAppsByAppIdWhitelistResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const whitelist2 = {
   get: get49,
@@ -2791,6 +3481,11 @@ export const get50 = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentRbacAppsByAppIdWhitelistConfigPath }))
   .output(zGetWorkspacesCurrentRbacAppsByAppIdWhitelistConfigResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const whitelistConfig2 = {
   get: get50,
@@ -2828,6 +3523,11 @@ export const delete12 = oc
   .output(
     zDeleteWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdMemberBindingsResponse,
   )
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const get51 = oc
   .route({
@@ -2847,6 +3547,11 @@ export const get51 = oc
   .output(
     zGetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdMemberBindingsResponse,
   )
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const memberBindings3 = {
   delete: delete12,
@@ -2867,6 +3572,11 @@ export const get52 = oc
     }),
   )
   .output(zGetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdRoleBindingsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const roleBindings3 = {
   get: get52,
@@ -2896,6 +3606,11 @@ export const get53 = oc
     }),
   )
   .output(zGetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPolicyResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const accessPolicy3 = {
   get: get53,
@@ -2916,6 +3631,11 @@ export const get54 = oc
     }),
   )
   .output(zGetWorkspacesCurrentRbacDatasetsByDatasetIdUserAccessPoliciesResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const userAccessPolicies3 = {
   get: get54,
@@ -2936,6 +3656,11 @@ export const put12 = oc
     }),
   )
   .output(zPutWorkspacesCurrentRbacDatasetsByDatasetIdUsersByTargetAccountIdAccessPoliciesResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const accessPolicies7 = {
   put: put12,
@@ -2959,6 +3684,11 @@ export const get55 = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistPath }))
   .output(zGetWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const put13 = oc
   .route({
@@ -2975,6 +3705,11 @@ export const put13 = oc
     }),
   )
   .output(zPutWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const whitelist3 = {
   get: get55,
@@ -2991,6 +3726,11 @@ export const get56 = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistConfigPath }))
   .output(zGetWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistConfigResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const whitelistConfig3 = {
   get: get56,
@@ -3019,6 +3759,11 @@ export const get57 = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentRbacMembersByMemberIdRbacRolesPath }))
   .output(zGetWorkspacesCurrentRbacMembersByMemberIdRbacRolesResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const put14 = oc
   .route({
@@ -3035,6 +3780,12 @@ export const put14 = oc
     }),
   )
   .output(zPutWorkspacesCurrentRbacMembersByMemberIdRbacRolesResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    invalid_param: { status: 400, data: zInvalidParamError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const rbacRoles = {
   get: get57,
@@ -3058,6 +3809,11 @@ export const get58 = oc
     tags: ['console'],
   })
   .output(zGetWorkspacesCurrentRbacMyPermissionsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const myPermissions = {
   get: get58,
@@ -3072,6 +3828,11 @@ export const get59 = oc
     tags: ['console'],
   })
   .output(zGetWorkspacesCurrentRbacRolePermissionsCatalogAgentResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const agent = {
   get: get59,
@@ -3086,6 +3847,11 @@ export const get60 = oc
     tags: ['console'],
   })
   .output(zGetWorkspacesCurrentRbacRolePermissionsCatalogAppResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const app = {
   get: get60,
@@ -3100,6 +3866,11 @@ export const get61 = oc
     tags: ['console'],
   })
   .output(zGetWorkspacesCurrentRbacRolePermissionsCatalogDatasetResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const dataset = {
   get: get61,
@@ -3114,6 +3885,11 @@ export const get62 = oc
     tags: ['console'],
   })
   .output(zGetWorkspacesCurrentRbacRolePermissionsCatalogResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const catalog = {
   get: get62,
@@ -3137,6 +3913,11 @@ export const post46 = oc
   })
   .input(z.object({ params: zPostWorkspacesCurrentRbacRolesByRoleIdCopyPath }))
   .output(zPostWorkspacesCurrentRbacRolesByRoleIdCopyResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const copy2 = {
   post: post46,
@@ -3152,6 +3933,11 @@ export const get63 = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentRbacRolesByRoleIdMembersPath }))
   .output(zGetWorkspacesCurrentRbacRolesByRoleIdMembersResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const members3 = {
   get: get63,
@@ -3167,6 +3953,11 @@ export const delete13 = oc
   })
   .input(z.object({ params: zDeleteWorkspacesCurrentRbacRolesByRoleIdPath }))
   .output(zDeleteWorkspacesCurrentRbacRolesByRoleIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const get64 = oc
   .route({
@@ -3178,6 +3969,11 @@ export const get64 = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentRbacRolesByRoleIdPath }))
   .output(zGetWorkspacesCurrentRbacRolesByRoleIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const put15 = oc
   .route({
@@ -3189,6 +3985,11 @@ export const put15 = oc
   })
   .input(z.object({ params: zPutWorkspacesCurrentRbacRolesByRoleIdPath }))
   .output(zPutWorkspacesCurrentRbacRolesByRoleIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const byRoleId = {
   delete: delete13,
@@ -3207,6 +4008,11 @@ export const get65 = oc
     tags: ['console'],
   })
   .output(zGetWorkspacesCurrentRbacRolesResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const post47 = oc
   .route({
@@ -3218,6 +4024,11 @@ export const post47 = oc
     tags: ['console'],
   })
   .output(zPostWorkspacesCurrentRbacRolesResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const roles = {
   get: get65,
@@ -3240,6 +4051,11 @@ export const put16 = oc
     }),
   )
   .output(zPutWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdBindingsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const bindings = {
   put: put16,
@@ -3259,6 +4075,11 @@ export const get66 = oc
     }),
   )
   .output(zGetWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdMemberBindingsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const memberBindings4 = {
   get: get66,
@@ -3278,6 +4099,11 @@ export const get67 = oc
     }),
   )
   .output(zGetWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdRoleBindingsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const roleBindings4 = {
   get: get67,
@@ -3302,6 +4128,11 @@ export const get68 = oc
     tags: ['console'],
   })
   .output(zGetWorkspacesCurrentRbacWorkspaceAgentsAccessPolicyResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const accessPolicy4 = {
   get: get68,
@@ -3327,6 +4158,11 @@ export const put17 = oc
     }),
   )
   .output(zPutWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdBindingsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const bindings2 = {
   put: put17,
@@ -3346,6 +4182,11 @@ export const get69 = oc
     }),
   )
   .output(zGetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdMemberBindingsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const memberBindings5 = {
   get: get69,
@@ -3365,6 +4206,11 @@ export const get70 = oc
     }),
   )
   .output(zGetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdRoleBindingsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const roleBindings5 = {
   get: get70,
@@ -3389,6 +4235,11 @@ export const get71 = oc
     tags: ['console'],
   })
   .output(zGetWorkspacesCurrentRbacWorkspaceAppsAccessPolicyResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const accessPolicy5 = {
   get: get71,
@@ -3414,6 +4265,11 @@ export const put18 = oc
     }),
   )
   .output(zPutWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdBindingsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const bindings3 = {
   put: put18,
@@ -3433,6 +4289,11 @@ export const get72 = oc
     }),
   )
   .output(zGetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdMemberBindingsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const memberBindings6 = {
   get: get72,
@@ -3452,6 +4313,11 @@ export const get73 = oc
     }),
   )
   .output(zGetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdRoleBindingsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const roleBindings6 = {
   get: get73,
@@ -3476,6 +4342,11 @@ export const get74 = oc
     tags: ['console'],
   })
   .output(zGetWorkspacesCurrentRbacWorkspaceDatasetsAccessPolicyResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const accessPolicy6 = {
   get: get74,
@@ -3516,6 +4387,13 @@ export const post48 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentSkillsFilesUploadBody }))
   .output(zPostWorkspacesCurrentSkillsFilesUploadResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    filename_missing: { status: 400, data: zFilenameMissingError },
+    no_file_uploaded: { status: 400, data: zNoFileUploadedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const upload2 = {
   post: post48,
@@ -3539,6 +4417,12 @@ export const post49 = oc
     tags: ['console'],
   })
   .output(zPostWorkspacesCurrentSkillsImportResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    invalid_request: { status: 400, data: zInvalidRequestError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const import_ = {
   post: post49,
@@ -3553,6 +4437,11 @@ export const get75 = oc
     tags: ['console'],
   })
   .output(zGetWorkspacesCurrentSkillsTagsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const tags = {
   get: get75,
@@ -3573,6 +4462,11 @@ export const post50 = oc
     }),
   )
   .output(zPostWorkspacesCurrentSkillsBySkillIdAssistMessagesResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const messages = {
   post: post50,
@@ -3593,6 +4487,11 @@ export const post51 = oc
   })
   .input(z.object({ params: zPostWorkspacesCurrentSkillsBySkillIdDuplicatePath }))
   .output(zPostWorkspacesCurrentSkillsBySkillIdDuplicateResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const duplicate = {
   post: post51,
@@ -3608,6 +4507,11 @@ export const get76 = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentSkillsBySkillIdExportPath }))
   .output(zGetWorkspacesCurrentSkillsBySkillIdExportResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const export2 = {
   get: get76,
@@ -3628,6 +4532,12 @@ export const post52 = oc
     }),
   )
   .output(zPostWorkspacesCurrentSkillsBySkillIdFilesCheckResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    invalid_request: { status: 400, data: zInvalidRequestError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const check = {
   post: post52,
@@ -3648,6 +4558,12 @@ export const get77 = oc
     }),
   )
   .output(zGetWorkspacesCurrentSkillsBySkillIdFilesContentResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    invalid_request: { status: 400, data: zInvalidRequestError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const content = {
   get: get77,
@@ -3668,6 +4584,12 @@ export const get78 = oc
     }),
   )
   .output(zGetWorkspacesCurrentSkillsBySkillIdFilesPreviewResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    invalid_request: { status: 400, data: zInvalidRequestError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const preview = {
   get: get78,
@@ -3688,6 +4610,12 @@ export const patch5 = oc
     }),
   )
   .output(zPatchWorkspacesCurrentSkillsBySkillIdFilesResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    invalid_request: { status: 400, data: zInvalidRequestError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const put19 = oc
   .route({
@@ -3704,6 +4632,12 @@ export const put19 = oc
     }),
   )
   .output(zPutWorkspacesCurrentSkillsBySkillIdFilesResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    invalid_request: { status: 400, data: zInvalidRequestError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const files2 = {
   patch: patch5,
@@ -3728,6 +4662,11 @@ export const post53 = oc
     }),
   )
   .output(zPostWorkspacesCurrentSkillsBySkillIdPublishResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const publish = {
   post: post53,
@@ -3743,6 +4682,11 @@ export const get79 = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentSkillsBySkillIdReferencesPath }))
   .output(zGetWorkspacesCurrentSkillsBySkillIdReferencesResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const references = {
   get: get79,
@@ -3763,6 +4707,11 @@ export const post54 = oc
     }),
   )
   .output(zPostWorkspacesCurrentSkillsBySkillIdRestoreResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const restore = {
   post: post54,
@@ -3778,6 +4727,11 @@ export const delete14 = oc
   })
   .input(z.object({ params: zDeleteWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdPath }))
   .output(zDeleteWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const get80 = oc
   .route({
@@ -3789,6 +4743,11 @@ export const get80 = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdPath }))
   .output(zGetWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const patch6 = oc
   .route({
@@ -3805,6 +4764,11 @@ export const patch6 = oc
     }),
   )
   .output(zPatchWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const byVersionId = {
   delete: delete14,
@@ -3822,6 +4786,11 @@ export const get81 = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentSkillsBySkillIdVersionsPath }))
   .output(zGetWorkspacesCurrentSkillsBySkillIdVersionsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const versions = {
   get: get81,
@@ -3843,6 +4812,11 @@ export const delete15 = oc
     }),
   )
   .output(zDeleteWorkspacesCurrentSkillsBySkillIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const get82 = oc
   .route({
@@ -3854,6 +4828,11 @@ export const get82 = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentSkillsBySkillIdPath }))
   .output(zGetWorkspacesCurrentSkillsBySkillIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const patch7 = oc
   .route({
@@ -3870,6 +4849,12 @@ export const patch7 = oc
     }),
   )
   .output(zPatchWorkspacesCurrentSkillsBySkillIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    invalid_request: { status: 400, data: zInvalidRequestError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const bySkillId = {
   delete: delete15,
@@ -3895,6 +4880,11 @@ export const get83 = oc
   })
   .input(z.object({ query: zGetWorkspacesCurrentSkillsQuery.optional() }))
   .output(zGetWorkspacesCurrentSkillsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const post55 = oc
   .route({
@@ -3907,6 +4897,12 @@ export const post55 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentSkillsBody }))
   .output(zPostWorkspacesCurrentSkillsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    invalid_request: { status: 400, data: zInvalidRequestError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const skills2 = {
   get: get83,
@@ -3926,6 +4922,12 @@ export const get84 = oc
     tags: ['console'],
   })
   .output(zGetWorkspacesCurrentSummaryResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    current_workspace_archived: { status: 409, data: zCurrentWorkspaceArchivedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const summary2 = {
   get: get84,
@@ -3940,6 +4942,12 @@ export const get85 = oc
     tags: ['console'],
   })
   .output(zGetWorkspacesCurrentToolLabelsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    unauthorized_and_force_logout: { status: 401, data: zUnauthorizedAndForceLogoutError },
+  })
 
 export const toolLabels = {
   get: get85,
@@ -3955,6 +4963,11 @@ export const post56 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentToolProviderApiAddBody }))
   .output(zPostWorkspacesCurrentToolProviderApiAddResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const add = {
   post: post56,
@@ -3970,6 +4983,11 @@ export const post57 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentToolProviderApiDeleteBody }))
   .output(zPostWorkspacesCurrentToolProviderApiDeleteResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const delete16 = {
   post: post57,
@@ -3985,6 +5003,11 @@ export const get86 = oc
   })
   .input(z.object({ query: zGetWorkspacesCurrentToolProviderApiGetQuery }))
   .output(zGetWorkspacesCurrentToolProviderApiGetResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const get87 = {
   get: get86,
@@ -4000,6 +5023,11 @@ export const get88 = oc
   })
   .input(z.object({ query: zGetWorkspacesCurrentToolProviderApiRemoteQuery }))
   .output(zGetWorkspacesCurrentToolProviderApiRemoteResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const remote = {
   get: get88,
@@ -4015,6 +5043,11 @@ export const post58 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentToolProviderApiSchemaBody }))
   .output(zPostWorkspacesCurrentToolProviderApiSchemaResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const schema = {
   post: post58,
@@ -4030,6 +5063,11 @@ export const post59 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentToolProviderApiTestPreBody }))
   .output(zPostWorkspacesCurrentToolProviderApiTestPreResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const pre = {
   post: post59,
@@ -4049,6 +5087,11 @@ export const get89 = oc
   })
   .input(z.object({ query: zGetWorkspacesCurrentToolProviderApiToolsQuery }))
   .output(zGetWorkspacesCurrentToolProviderApiToolsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const tools = {
   get: get89,
@@ -4064,6 +5107,11 @@ export const post60 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentToolProviderApiUpdateBody }))
   .output(zPostWorkspacesCurrentToolProviderApiUpdateResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const update2 = {
   post: post60,
@@ -4095,6 +5143,11 @@ export const post61 = oc
     }),
   )
   .output(zPostWorkspacesCurrentToolProviderBuiltinByProviderAddResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const add2 = {
   post: post61,
@@ -4115,6 +5168,11 @@ export const get90 = oc
     }),
   )
   .output(zGetWorkspacesCurrentToolProviderBuiltinByProviderCredentialInfoResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const info = {
   get: get90,
@@ -4138,6 +5196,11 @@ export const get91 = oc
   .output(
     zGetWorkspacesCurrentToolProviderBuiltinByProviderCredentialSchemaByCredentialTypeResponse,
   )
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const byCredentialType = {
   get: get91,
@@ -4167,6 +5230,11 @@ export const get92 = oc
     }),
   )
   .output(zGetWorkspacesCurrentToolProviderBuiltinByProviderCredentialsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const credentials3 = {
   get: get92,
@@ -4187,6 +5255,11 @@ export const post62 = oc
     }),
   )
   .output(zPostWorkspacesCurrentToolProviderBuiltinByProviderDefaultCredentialResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const defaultCredential = {
   post: post62,
@@ -4207,6 +5280,11 @@ export const post63 = oc
     }),
   )
   .output(zPostWorkspacesCurrentToolProviderBuiltinByProviderDeleteResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const delete17 = {
   post: post63,
@@ -4222,6 +5300,10 @@ export const get93 = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentToolProviderBuiltinByProviderIconPath }))
   .output(zGetWorkspacesCurrentToolProviderBuiltinByProviderIconResponse)
+  .errors({
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const icon2 = {
   get: get93,
@@ -4237,6 +5319,11 @@ export const get94 = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentToolProviderBuiltinByProviderInfoPath }))
   .output(zGetWorkspacesCurrentToolProviderBuiltinByProviderInfoResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const info2 = {
   get: get94,
@@ -4254,6 +5341,11 @@ export const get95 = oc
     z.object({ params: zGetWorkspacesCurrentToolProviderBuiltinByProviderOauthClientSchemaPath }),
   )
   .output(zGetWorkspacesCurrentToolProviderBuiltinByProviderOauthClientSchemaResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const clientSchema = {
   get: get95,
@@ -4273,6 +5365,11 @@ export const delete18 = oc
     }),
   )
   .output(zDeleteWorkspacesCurrentToolProviderBuiltinByProviderOauthCustomClientResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const get96 = oc
   .route({
@@ -4286,6 +5383,11 @@ export const get96 = oc
     z.object({ params: zGetWorkspacesCurrentToolProviderBuiltinByProviderOauthCustomClientPath }),
   )
   .output(zGetWorkspacesCurrentToolProviderBuiltinByProviderOauthCustomClientResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const post64 = oc
   .route({
@@ -4302,6 +5404,11 @@ export const post64 = oc
     }),
   )
   .output(zPostWorkspacesCurrentToolProviderBuiltinByProviderOauthCustomClientResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const customClient = {
   delete: delete18,
@@ -4324,6 +5431,11 @@ export const get97 = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentToolProviderBuiltinByProviderToolsPath }))
   .output(zGetWorkspacesCurrentToolProviderBuiltinByProviderToolsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const tools2 = {
   get: get97,
@@ -4344,6 +5456,11 @@ export const post65 = oc
     }),
   )
   .output(zPostWorkspacesCurrentToolProviderBuiltinByProviderUpdateResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const update3 = {
   post: post65,
@@ -4376,6 +5493,11 @@ export const post66 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentToolProviderMcpAuthBody }))
   .output(zPostWorkspacesCurrentToolProviderMcpAuthResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const auth = {
   post: post66,
@@ -4391,6 +5513,11 @@ export const get98 = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentToolProviderMcpToolsByProviderIdPath }))
   .output(zGetWorkspacesCurrentToolProviderMcpToolsByProviderIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const byProviderId = {
   get: get98,
@@ -4410,6 +5537,11 @@ export const get99 = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentToolProviderMcpUpdateByProviderIdPath }))
   .output(zGetWorkspacesCurrentToolProviderMcpUpdateByProviderIdResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const byProviderId2 = {
   get: get99,
@@ -4429,6 +5561,11 @@ export const delete19 = oc
   })
   .input(z.object({ body: zDeleteWorkspacesCurrentToolProviderMcpBody }))
   .output(zDeleteWorkspacesCurrentToolProviderMcpResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const post67 = oc
   .route({
@@ -4440,6 +5577,11 @@ export const post67 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentToolProviderMcpBody }))
   .output(zPostWorkspacesCurrentToolProviderMcpResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const put20 = oc
   .route({
@@ -4451,6 +5593,11 @@ export const put20 = oc
   })
   .input(z.object({ body: zPutWorkspacesCurrentToolProviderMcpBody }))
   .output(zPutWorkspacesCurrentToolProviderMcpResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const mcp = {
   delete: delete19,
@@ -4471,6 +5618,15 @@ export const post68 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentToolProviderWorkflowCreateBody }))
   .output(zPostWorkspacesCurrentToolProviderWorkflowCreateResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    workflow_tool_human_input_not_supported: {
+      status: 400,
+      data: zWorkflowToolHumanInputNotSupportedError,
+    },
+  })
 
 export const create2 = {
   post: post68,
@@ -4486,6 +5642,11 @@ export const post69 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentToolProviderWorkflowDeleteBody }))
   .output(zPostWorkspacesCurrentToolProviderWorkflowDeleteResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const delete20 = {
   post: post69,
@@ -4501,6 +5662,11 @@ export const get100 = oc
   })
   .input(z.object({ query: zGetWorkspacesCurrentToolProviderWorkflowGetQuery.optional() }))
   .output(zGetWorkspacesCurrentToolProviderWorkflowGetResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const get101 = {
   get: get100,
@@ -4516,6 +5682,11 @@ export const get102 = oc
   })
   .input(z.object({ query: zGetWorkspacesCurrentToolProviderWorkflowToolsQuery }))
   .output(zGetWorkspacesCurrentToolProviderWorkflowToolsResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const tools4 = {
   get: get102,
@@ -4531,6 +5702,15 @@ export const post70 = oc
   })
   .input(z.object({ body: zPostWorkspacesCurrentToolProviderWorkflowUpdateBody }))
   .output(zPostWorkspacesCurrentToolProviderWorkflowUpdateResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    workflow_tool_human_input_not_supported: {
+      status: 400,
+      data: zWorkflowToolHumanInputNotSupportedError,
+    },
+  })
 
 export const update5 = {
   post: post70,
@@ -4561,6 +5741,11 @@ export const get103 = oc
   })
   .input(z.object({ query: zGetWorkspacesCurrentToolProvidersQuery.optional() }))
   .output(zGetWorkspacesCurrentToolProvidersResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const toolProviders = {
   get: get103,
@@ -4575,6 +5760,11 @@ export const get104 = oc
     tags: ['console'],
   })
   .output(zGetWorkspacesCurrentToolsApiResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const api2 = {
   get: get104,
@@ -4589,6 +5779,11 @@ export const get105 = oc
     tags: ['console'],
   })
   .output(zGetWorkspacesCurrentToolsBuiltinResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const builtin2 = {
   get: get105,
@@ -4603,6 +5798,11 @@ export const get106 = oc
     tags: ['console'],
   })
   .output(zGetWorkspacesCurrentToolsMcpResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const mcp2 = {
   get: get106,
@@ -4617,6 +5817,11 @@ export const get107 = oc
     tags: ['console'],
   })
   .output(zGetWorkspacesCurrentToolsWorkflowResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const workflow2 = {
   get: get107,
@@ -4639,6 +5844,11 @@ export const get108 = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentTriggerProviderByProviderIconPath }))
   .output(zGetWorkspacesCurrentTriggerProviderByProviderIconResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const icon3 = {
   get: get108,
@@ -4658,6 +5868,11 @@ export const get109 = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentTriggerProviderByProviderInfoPath }))
   .output(zGetWorkspacesCurrentTriggerProviderByProviderInfoResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const info3 = {
   get: get109,
@@ -4677,6 +5892,11 @@ export const delete21 = oc
   })
   .input(z.object({ params: zDeleteWorkspacesCurrentTriggerProviderByProviderOauthClientPath }))
   .output(zDeleteWorkspacesCurrentTriggerProviderByProviderOauthClientResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 /**
  * Get OAuth client configuration for a provider
@@ -4692,6 +5912,11 @@ export const get110 = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentTriggerProviderByProviderOauthClientPath }))
   .output(zGetWorkspacesCurrentTriggerProviderByProviderOauthClientResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 /**
  * Configure custom OAuth client for a provider
@@ -4712,6 +5937,11 @@ export const post71 = oc
     }),
   )
   .output(zPostWorkspacesCurrentTriggerProviderByProviderOauthClientResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const client = {
   delete: delete21,
@@ -4746,6 +5976,11 @@ export const post72 = oc
   .output(
     zPostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderBuildBySubscriptionBuilderIdResponse,
   )
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const bySubscriptionBuilderId = {
   post: post72,
@@ -4774,6 +6009,11 @@ export const post73 = oc
     }),
   )
   .output(zPostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderCreateResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const create3 = {
   post: post73,
@@ -4801,6 +6041,11 @@ export const get111 = oc
   .output(
     zGetWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderLogsBySubscriptionBuilderIdResponse,
   )
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const bySubscriptionBuilderId2 = {
   get: get111,
@@ -4833,6 +6078,11 @@ export const post74 = oc
   .output(
     zPostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderUpdateBySubscriptionBuilderIdResponse,
   )
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const bySubscriptionBuilderId3 = {
   post: post74,
@@ -4865,6 +6115,11 @@ export const post75 = oc
   .output(
     zPostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderVerifyAndUpdateBySubscriptionBuilderIdResponse,
   )
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const bySubscriptionBuilderId4 = {
   post: post75,
@@ -4896,6 +6151,11 @@ export const get112 = oc
   .output(
     zGetWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderBySubscriptionBuilderIdResponse,
   )
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const bySubscriptionBuilderId5 = {
   get: get112,
@@ -4924,6 +6184,11 @@ export const get113 = oc
   })
   .input(z.object({ params: zGetWorkspacesCurrentTriggerProviderByProviderSubscriptionsListPath }))
   .output(zGetWorkspacesCurrentTriggerProviderByProviderSubscriptionsListResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const list4 = {
   get: get113,
@@ -4947,6 +6212,12 @@ export const get114 = oc
     }),
   )
   .output(zGetWorkspacesCurrentTriggerProviderByProviderSubscriptionsOauthAuthorizeResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_found: { status: 404, data: zNotFoundError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const authorize = {
   get: get114,
@@ -4979,6 +6250,11 @@ export const post76 = oc
   .output(
     zPostWorkspacesCurrentTriggerProviderByProviderSubscriptionsVerifyBySubscriptionIdResponse,
   )
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const bySubscriptionId = {
   post: post76,
@@ -5020,6 +6296,11 @@ export const post77 = oc
     }),
   )
   .output(zPostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsDeleteResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const delete22 = {
   post: post77,
@@ -5044,6 +6325,12 @@ export const post78 = oc
     }),
   )
   .output(zPostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsUpdateResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_found: { status: 404, data: zNotFoundError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const update7 = {
   post: post78,
@@ -5076,6 +6363,11 @@ export const get115 = oc
     tags: ['console'],
   })
   .output(zGetWorkspacesCurrentTriggersResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const triggers = {
   get: get115,
@@ -5116,6 +6408,16 @@ export const post79 = oc
   })
   .input(z.object({ body: zPostWorkspacesCustomConfigWebappLogoUploadBody }))
   .output(zPostWorkspacesCustomConfigWebappLogoUploadResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    file_too_large: { status: 413, data: zFileTooLargeError },
+    filename_not_exists_error: { status: 400, data: zFilenameNotExistsError },
+    no_file_uploaded: { status: 400, data: zNoFileUploadedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+    too_many_files: { status: 400, data: zTooManyFilesError },
+    unsupported_file_type: { status: 415, data: zUnsupportedFileTypeError },
+  })
 
 export const upload3 = {
   post: post79,
@@ -5134,6 +6436,11 @@ export const get116 = oc
     tags: ['console'],
   })
   .output(zGetWorkspacesCustomConfigResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const post80 = oc
   .route({
@@ -5145,6 +6452,11 @@ export const post80 = oc
   })
   .input(z.object({ body: zPostWorkspacesCustomConfigBody }))
   .output(zPostWorkspacesCustomConfigResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const customConfig = {
   get: get116,
@@ -5162,6 +6474,11 @@ export const post81 = oc
   })
   .input(z.object({ body: zPostWorkspacesInfoBody }))
   .output(zPostWorkspacesInfoResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const info4 = {
   post: post81,
@@ -5177,6 +6494,12 @@ export const post82 = oc
   })
   .input(z.object({ body: zPostWorkspacesSwitchBody }))
   .output(zPostWorkspacesSwitchResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    account_not_link_tenant: { status: 403, data: zAccountNotLinkTenantError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const switch3 = {
   post: post82,
@@ -5222,6 +6545,11 @@ export const get118 = oc
     tags: ['console'],
   })
   .output(zGetWorkspacesResponse)
+  .errors({
+    account_not_initialized: { status: 400, data: zAccountNotInitializedError },
+    not_init_validated: { status: 401, data: zNotInitValidatedError },
+    not_setup: { status: 401, data: zNotSetupError },
+  })
 
 export const workspaces = {
   get: get118,

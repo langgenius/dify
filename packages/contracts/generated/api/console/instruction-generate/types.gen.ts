@@ -16,6 +16,55 @@ export type InstructionGeneratePayload = {
 
 export type GeneratorResponse = unknown
 
+export type ErrorMessageResponse = {
+  error: string
+}
+
+export type AccountNotInitializedError = ErrorResponse & {
+  code: 'account_not_initialized'
+  status: 400
+}
+
+export type CompletionRequestError = ErrorResponse & {
+  code: 'completion_request_error'
+  status: 400
+}
+
+export type ModelCurrentlyNotSupportError = ErrorResponse & {
+  code: 'model_currently_not_support'
+  status: 400
+}
+
+export type ProviderNotInitializeError = ErrorResponse & {
+  code: 'provider_not_initialize'
+  status: 400
+}
+
+export type ProviderQuotaExceededError = ErrorResponse & {
+  code: 'provider_quota_exceeded'
+  status: 400
+}
+
+export type NotInitValidatedError = ErrorResponse & {
+  code: 'not_init_validated'
+  status: 401
+}
+
+export type NotSetupError = ErrorResponse & {
+  code: 'not_setup'
+  status: 401
+}
+
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type InstructionTemplatePayload = {
   type: string
 }
@@ -43,9 +92,19 @@ export type PostInstructionGenerateData = {
 }
 
 export type PostInstructionGenerateErrors = {
-  400: unknown
-  402: unknown
+  400:
+    | ErrorMessageResponse
+    | AccountNotInitializedError
+    | CompletionRequestError
+    | ModelCurrentlyNotSupportError
+    | ProviderNotInitializeError
+    | ProviderQuotaExceededError
+  401: NotInitValidatedError | NotSetupError
+  default: ErrorResponse
 }
+
+export type PostInstructionGenerateError =
+  PostInstructionGenerateErrors[keyof PostInstructionGenerateErrors]
 
 export type PostInstructionGenerateResponses = {
   200: GeneratorResponse
@@ -62,8 +121,13 @@ export type PostInstructionGenerateTemplateData = {
 }
 
 export type PostInstructionGenerateTemplateErrors = {
-  400: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  default: ErrorResponse
 }
+
+export type PostInstructionGenerateTemplateError =
+  PostInstructionGenerateTemplateErrors[keyof PostInstructionGenerateTemplateErrors]
 
 export type PostInstructionGenerateTemplateResponses = {
   200: SimpleDataResponse

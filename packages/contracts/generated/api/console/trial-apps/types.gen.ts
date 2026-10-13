@@ -31,6 +31,51 @@ export type TrialAppDetailResponse = {
   workflow?: TrialWorkflowPartialResponse | null
 }
 
+export type AccountNotInitializedError = ErrorResponse & {
+  code: 'account_not_initialized'
+  status: 400
+}
+
+export type AppUnavailableError = ErrorResponse & {
+  code: 'app_unavailable'
+  status: 400
+}
+
+export type NotInitValidatedError = ErrorResponse & {
+  code: 'not_init_validated'
+  status: 401
+}
+
+export type NotSetupError = ErrorResponse & {
+  code: 'not_setup'
+  status: 401
+}
+
+export type UnauthorizedError = ErrorResponse & {
+  code: 'unauthorized'
+  status: 401
+}
+
+export type AppSiteUnavailableError = ErrorResponse & {
+  code: 'app_site_unavailable'
+  status: 403
+}
+
+export type AppNotFoundError = ErrorResponse & {
+  code: 'app_not_found'
+  status: 404
+}
+
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type AgentAppComposerResponse = {
   active_config_is_published: boolean
   active_config_snapshot?: AgentConfigSnapshotSummaryResponse | null
@@ -98,6 +143,76 @@ export type AudioTranscriptResponse = {
   text: string
 }
 
+export type CompletionRequestError = ErrorResponse & {
+  code: 'completion_request_error'
+  status: 400
+}
+
+export type ModelCurrentlyNotSupportError = ErrorResponse & {
+  code: 'model_currently_not_support'
+  status: 400
+}
+
+export type NoAudioUploadedError = ErrorResponse & {
+  code: 'no_audio_uploaded'
+  status: 400
+}
+
+export type ProviderNotInitializeError = ErrorResponse & {
+  code: 'provider_not_initialize'
+  status: 400
+}
+
+export type ProviderNotSupportSpeechToTextError = ErrorResponse & {
+  code: 'provider_not_support_speech_to_text'
+  status: 400
+}
+
+export type ProviderQuotaExceededError = ErrorResponse & {
+  code: 'provider_quota_exceeded'
+  status: 400
+}
+
+export type SpeechToTextDisabledError = ErrorResponse & {
+  code: 'speech_to_text_disabled'
+  status: 400
+}
+
+export type TrialAppFeatureDisabledError = ErrorResponse & {
+  code: 'trial_app_feature_disabled'
+  status: 403
+}
+
+export type TrialAppLimitExceededError = ErrorResponse & {
+  code: 'trial_app_limit_exceeded'
+  status: 403
+}
+
+export type TrialAppNotAllowedError = ErrorResponse & {
+  code: 'trial_app_not_allowed'
+  status: 403
+}
+
+export type AgentVersionNotFoundError = ErrorResponse & {
+  code: 'agent_version_not_found_error'
+  status: 404
+}
+
+export type AudioTooLargeError = ErrorResponse & {
+  code: 'audio_too_large'
+  status: 413
+}
+
+export type UnsupportedAudioTypeError = ErrorResponse & {
+  code: 'unsupported_audio_type'
+  status: 415
+}
+
+export type InternalServerError = ErrorResponse & {
+  code: 'internal_server_error'
+  status: 500
+}
+
 export type ChatRequest = {
   conversation_id?: string | null
   files?: Array<unknown> | null
@@ -107,6 +222,21 @@ export type ChatRequest = {
   parent_message_id?: string | null
   query: string
   retriever_from?: string
+}
+
+export type NotChatAppError = ErrorResponse & {
+  code: 'not_chat_app'
+  status: 400
+}
+
+export type NotFoundError = ErrorResponse & {
+  code: 'not_found'
+  status: 404
+}
+
+export type RateLimitError = ErrorResponse & {
+  code: 'rate_limit_error'
+  status: 429
 }
 
 export type SimpleResultResponse = {
@@ -123,6 +253,11 @@ export type CompletionRequest = {
   retriever_from?: string
 }
 
+export type NotCompletionAppError = ErrorResponse & {
+  code: 'not_completion_app'
+  status: 400
+}
+
 export type TrialDatasetListResponse = {
   data: Array<TrialDatasetResponse>
   has_more: boolean
@@ -131,8 +266,18 @@ export type TrialDatasetListResponse = {
   total: number
 }
 
+export type NeedAddIdsError = ErrorResponse & {
+  code: 'need_add_ids'
+  status: 400
+}
+
 export type AppExportResponse = {
   data: string
+}
+
+export type RecommendedAppNotFoundError = ErrorResponse & {
+  code: 'recommended_app_not_found'
+  status: 404
 }
 
 export type FileResponse = {
@@ -153,8 +298,43 @@ export type FileResponse = {
   user_id?: string | null
 }
 
+export type FileExtensionBlockedError = ErrorResponse & {
+  code: 'file_extension_blocked'
+  status: 400
+}
+
+export type FilenameNotExistsError = ErrorResponse & {
+  code: 'filename_not_exists_error'
+  status: 400
+}
+
+export type NoFileUploadedError = ErrorResponse & {
+  code: 'no_file_uploaded'
+  status: 400
+}
+
+export type TooManyFilesError = ErrorResponse & {
+  code: 'too_many_files'
+  status: 400
+}
+
+export type FileTooLargeError = ErrorResponse & {
+  code: 'file_too_large'
+  status: 413
+}
+
+export type UnsupportedFileTypeError = ErrorResponse & {
+  code: 'unsupported_file_type'
+  status: 415
+}
+
 export type SuggestedQuestionsResponse = {
   data: Array<string>
+}
+
+export type AppSuggestedQuestionsAfterAnswerDisabledError = ErrorResponse & {
+  code: 'app_suggested_questions_after_answer_disabled'
+  status: 403
 }
 
 export type Parameters = {
@@ -496,6 +676,36 @@ export type FileWithSignedUrl = {
   url: string | null
 }
 
+export type RemoteFileAccessDeniedError = ErrorResponse & {
+  code: 'remote_file_access_denied'
+  status: 400
+}
+
+export type RemoteFileInvalidUrlError = ErrorResponse & {
+  code: 'remote_file_invalid_url'
+  status: 400
+}
+
+export type RemoteFileUrlBlockedError = ErrorResponse & {
+  code: 'remote_file_url_blocked'
+  status: 400
+}
+
+export type RemoteFileNotFoundError = ErrorResponse & {
+  code: 'remote_file_not_found'
+  status: 404
+}
+
+export type RemoteFileInvalidResponseError = ErrorResponse & {
+  code: 'remote_file_invalid_response'
+  status: 502
+}
+
+export type RemoteFileUnavailableError = ErrorResponse & {
+  code: 'remote_file_unavailable'
+  status: 502
+}
+
 export type Site = {
   chat_color_theme?: string | null
   chat_color_theme_inverted: boolean
@@ -512,6 +722,11 @@ export type Site = {
   show_workflow_steps: boolean
   title: string
   use_icon_as_answer_icon: boolean
+}
+
+export type AppOwnerUnavailableError = ErrorResponse & {
+  code: 'app_owner_unavailable'
+  status: 403
 }
 
 export type TextToSpeechRequest = {
@@ -546,6 +761,11 @@ export type WorkflowRunRequest = {
   inputs: {
     [key: string]: unknown
   }
+}
+
+export type NotWorkflowAppError = ErrorResponse & {
+  code: 'not_workflow_app'
+  status: 400
 }
 
 export type TrialDeletedToolResponse = {
@@ -1292,6 +1512,16 @@ export type GetTrialAppsByAppIdData = {
   url: '/trial-apps/{app_id}'
 }
 
+export type GetTrialAppsByAppIdErrors = {
+  400: AccountNotInitializedError | AppUnavailableError
+  401: NotInitValidatedError | NotSetupError | UnauthorizedError
+  403: AppSiteUnavailableError
+  404: AppNotFoundError
+  default: ErrorResponse
+}
+
+export type GetTrialAppsByAppIdError = GetTrialAppsByAppIdErrors[keyof GetTrialAppsByAppIdErrors]
+
 export type GetTrialAppsByAppIdResponses = {
   200: TrialAppDetailResponse
 }
@@ -1307,6 +1537,15 @@ export type GetTrialAppsByAppIdAgentComposerData = {
   query?: never
   url: '/trial-apps/{app_id}/agent-composer'
 }
+
+export type GetTrialAppsByAppIdAgentComposerErrors = {
+  400: AppUnavailableError
+  404: AppNotFoundError
+  default: ErrorResponse
+}
+
+export type GetTrialAppsByAppIdAgentComposerError =
+  GetTrialAppsByAppIdAgentComposerErrors[keyof GetTrialAppsByAppIdAgentComposerErrors]
 
 export type GetTrialAppsByAppIdAgentComposerResponses = {
   200: AgentAppComposerResponse
@@ -1325,6 +1564,15 @@ export type GetTrialAppsByAppIdAgentConfigFilesData = {
   }
   url: '/trial-apps/{app_id}/agent/config/files'
 }
+
+export type GetTrialAppsByAppIdAgentConfigFilesErrors = {
+  400: AppUnavailableError
+  404: AppNotFoundError
+  default: ErrorResponse
+}
+
+export type GetTrialAppsByAppIdAgentConfigFilesError =
+  GetTrialAppsByAppIdAgentConfigFilesErrors[keyof GetTrialAppsByAppIdAgentConfigFilesErrors]
 
 export type GetTrialAppsByAppIdAgentConfigFilesResponses = {
   200: AgentConfigFileListResponse
@@ -1345,6 +1593,15 @@ export type GetTrialAppsByAppIdAgentConfigFilesByNameDownloadData = {
   url: '/trial-apps/{app_id}/agent/config/files/{name}/download'
 }
 
+export type GetTrialAppsByAppIdAgentConfigFilesByNameDownloadErrors = {
+  400: AppUnavailableError
+  404: AppNotFoundError
+  default: ErrorResponse
+}
+
+export type GetTrialAppsByAppIdAgentConfigFilesByNameDownloadError =
+  GetTrialAppsByAppIdAgentConfigFilesByNameDownloadErrors[keyof GetTrialAppsByAppIdAgentConfigFilesByNameDownloadErrors]
+
 export type GetTrialAppsByAppIdAgentConfigFilesByNameDownloadResponses = {
   200: AgentConfigDownloadResponse
 }
@@ -1364,6 +1621,15 @@ export type GetTrialAppsByAppIdAgentConfigFilesByNamePreviewData = {
   url: '/trial-apps/{app_id}/agent/config/files/{name}/preview'
 }
 
+export type GetTrialAppsByAppIdAgentConfigFilesByNamePreviewErrors = {
+  400: AppUnavailableError
+  404: AppNotFoundError
+  default: ErrorResponse
+}
+
+export type GetTrialAppsByAppIdAgentConfigFilesByNamePreviewError =
+  GetTrialAppsByAppIdAgentConfigFilesByNamePreviewErrors[keyof GetTrialAppsByAppIdAgentConfigFilesByNamePreviewErrors]
+
 export type GetTrialAppsByAppIdAgentConfigFilesByNamePreviewResponses = {
   200: AgentConfigFilePreviewResponse
 }
@@ -1381,6 +1647,15 @@ export type GetTrialAppsByAppIdAgentConfigSkillsData = {
   }
   url: '/trial-apps/{app_id}/agent/config/skills'
 }
+
+export type GetTrialAppsByAppIdAgentConfigSkillsErrors = {
+  400: AppUnavailableError
+  404: AppNotFoundError
+  default: ErrorResponse
+}
+
+export type GetTrialAppsByAppIdAgentConfigSkillsError =
+  GetTrialAppsByAppIdAgentConfigSkillsErrors[keyof GetTrialAppsByAppIdAgentConfigSkillsErrors]
 
 export type GetTrialAppsByAppIdAgentConfigSkillsResponses = {
   200: AgentConfigSkillListResponse
@@ -1400,6 +1675,15 @@ export type GetTrialAppsByAppIdAgentConfigSkillsByNameDownloadData = {
   }
   url: '/trial-apps/{app_id}/agent/config/skills/{name}/download'
 }
+
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameDownloadErrors = {
+  400: AppUnavailableError
+  404: AppNotFoundError
+  default: ErrorResponse
+}
+
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameDownloadError =
+  GetTrialAppsByAppIdAgentConfigSkillsByNameDownloadErrors[keyof GetTrialAppsByAppIdAgentConfigSkillsByNameDownloadErrors]
 
 export type GetTrialAppsByAppIdAgentConfigSkillsByNameDownloadResponses = {
   200: AgentConfigDownloadResponse
@@ -1421,6 +1705,15 @@ export type GetTrialAppsByAppIdAgentConfigSkillsByNameFilesContentData = {
   url: '/trial-apps/{app_id}/agent/config/skills/{name}/files/content'
 }
 
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameFilesContentErrors = {
+  400: AppUnavailableError
+  404: AppNotFoundError
+  default: ErrorResponse
+}
+
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameFilesContentError =
+  GetTrialAppsByAppIdAgentConfigSkillsByNameFilesContentErrors[keyof GetTrialAppsByAppIdAgentConfigSkillsByNameFilesContentErrors]
+
 export type GetTrialAppsByAppIdAgentConfigSkillsByNameFilesContentResponses = {
   200: Blob | File
 }
@@ -1440,6 +1733,15 @@ export type GetTrialAppsByAppIdAgentConfigSkillsByNameFilesDownloadData = {
   }
   url: '/trial-apps/{app_id}/agent/config/skills/{name}/files/download'
 }
+
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameFilesDownloadErrors = {
+  400: AppUnavailableError
+  404: AppNotFoundError
+  default: ErrorResponse
+}
+
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameFilesDownloadError =
+  GetTrialAppsByAppIdAgentConfigSkillsByNameFilesDownloadErrors[keyof GetTrialAppsByAppIdAgentConfigSkillsByNameFilesDownloadErrors]
 
 export type GetTrialAppsByAppIdAgentConfigSkillsByNameFilesDownloadResponses = {
   200: AgentConfigDownloadResponse
@@ -1461,6 +1763,15 @@ export type GetTrialAppsByAppIdAgentConfigSkillsByNameFilesPreviewData = {
   url: '/trial-apps/{app_id}/agent/config/skills/{name}/files/preview'
 }
 
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameFilesPreviewErrors = {
+  400: AppUnavailableError
+  404: AppNotFoundError
+  default: ErrorResponse
+}
+
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameFilesPreviewError =
+  GetTrialAppsByAppIdAgentConfigSkillsByNameFilesPreviewErrors[keyof GetTrialAppsByAppIdAgentConfigSkillsByNameFilesPreviewErrors]
+
 export type GetTrialAppsByAppIdAgentConfigSkillsByNameFilesPreviewResponses = {
   200: AgentConfigSkillFilePreviewResponse
 }
@@ -1480,6 +1791,15 @@ export type GetTrialAppsByAppIdAgentConfigSkillsByNameInspectData = {
   url: '/trial-apps/{app_id}/agent/config/skills/{name}/inspect'
 }
 
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameInspectErrors = {
+  400: AppUnavailableError
+  404: AppNotFoundError
+  default: ErrorResponse
+}
+
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameInspectError =
+  GetTrialAppsByAppIdAgentConfigSkillsByNameInspectErrors[keyof GetTrialAppsByAppIdAgentConfigSkillsByNameInspectErrors]
+
 export type GetTrialAppsByAppIdAgentConfigSkillsByNameInspectResponses = {
   200: AgentConfigSkillInspectResponse
 }
@@ -1496,6 +1816,29 @@ export type PostTrialAppsByAppIdAudioToTextData = {
   url: '/trial-apps/{app_id}/audio-to-text'
 }
 
+export type PostTrialAppsByAppIdAudioToTextErrors = {
+  400:
+    | AccountNotInitializedError
+    | AppUnavailableError
+    | CompletionRequestError
+    | ModelCurrentlyNotSupportError
+    | NoAudioUploadedError
+    | ProviderNotInitializeError
+    | ProviderNotSupportSpeechToTextError
+    | ProviderQuotaExceededError
+    | SpeechToTextDisabledError
+  401: NotInitValidatedError | NotSetupError
+  403: TrialAppFeatureDisabledError | TrialAppLimitExceededError | TrialAppNotAllowedError
+  404: AgentVersionNotFoundError
+  413: AudioTooLargeError
+  415: UnsupportedAudioTypeError
+  500: InternalServerError
+  default: ErrorResponse
+}
+
+export type PostTrialAppsByAppIdAudioToTextError =
+  PostTrialAppsByAppIdAudioToTextErrors[keyof PostTrialAppsByAppIdAudioToTextErrors]
+
 export type PostTrialAppsByAppIdAudioToTextResponses = {
   200: AudioTranscriptResponse
 }
@@ -1511,6 +1854,26 @@ export type PostTrialAppsByAppIdChatMessagesData = {
   query?: never
   url: '/trial-apps/{app_id}/chat-messages'
 }
+
+export type PostTrialAppsByAppIdChatMessagesErrors = {
+  400:
+    | AccountNotInitializedError
+    | AppUnavailableError
+    | CompletionRequestError
+    | ModelCurrentlyNotSupportError
+    | NotChatAppError
+    | ProviderNotInitializeError
+    | ProviderQuotaExceededError
+  401: NotInitValidatedError | NotSetupError | UnauthorizedError
+  403: TrialAppFeatureDisabledError | TrialAppLimitExceededError | TrialAppNotAllowedError
+  404: NotFoundError
+  429: RateLimitError
+  500: InternalServerError
+  default: ErrorResponse
+}
+
+export type PostTrialAppsByAppIdChatMessagesError =
+  PostTrialAppsByAppIdChatMessagesErrors[keyof PostTrialAppsByAppIdChatMessagesErrors]
 
 export type PostTrialAppsByAppIdChatMessagesResponses = {
   200: {
@@ -1531,6 +1894,16 @@ export type PostTrialAppsByAppIdChatMessagesByTaskIdStopData = {
   url: '/trial-apps/{app_id}/chat-messages/{task_id}/stop'
 }
 
+export type PostTrialAppsByAppIdChatMessagesByTaskIdStopErrors = {
+  400: AccountNotInitializedError | NotChatAppError
+  401: NotInitValidatedError | NotSetupError
+  403: TrialAppFeatureDisabledError | TrialAppLimitExceededError | TrialAppNotAllowedError
+  default: ErrorResponse
+}
+
+export type PostTrialAppsByAppIdChatMessagesByTaskIdStopError =
+  PostTrialAppsByAppIdChatMessagesByTaskIdStopErrors[keyof PostTrialAppsByAppIdChatMessagesByTaskIdStopErrors]
+
 export type PostTrialAppsByAppIdChatMessagesByTaskIdStopResponses = {
   200: SimpleResultResponse
 }
@@ -1546,6 +1919,26 @@ export type PostTrialAppsByAppIdCompletionMessagesData = {
   query?: never
   url: '/trial-apps/{app_id}/completion-messages'
 }
+
+export type PostTrialAppsByAppIdCompletionMessagesErrors = {
+  400:
+    | AccountNotInitializedError
+    | AppUnavailableError
+    | CompletionRequestError
+    | ModelCurrentlyNotSupportError
+    | NotCompletionAppError
+    | ProviderNotInitializeError
+    | ProviderQuotaExceededError
+  401: NotInitValidatedError | NotSetupError | UnauthorizedError
+  403: TrialAppFeatureDisabledError | TrialAppLimitExceededError | TrialAppNotAllowedError
+  404: NotFoundError
+  429: RateLimitError
+  500: InternalServerError
+  default: ErrorResponse
+}
+
+export type PostTrialAppsByAppIdCompletionMessagesError =
+  PostTrialAppsByAppIdCompletionMessagesErrors[keyof PostTrialAppsByAppIdCompletionMessagesErrors]
 
 export type PostTrialAppsByAppIdCompletionMessagesResponses = {
   200: {
@@ -1569,6 +1962,15 @@ export type GetTrialAppsByAppIdDatasetsData = {
   url: '/trial-apps/{app_id}/datasets'
 }
 
+export type GetTrialAppsByAppIdDatasetsErrors = {
+  400: NeedAddIdsError
+  404: AppNotFoundError
+  default: ErrorResponse
+}
+
+export type GetTrialAppsByAppIdDatasetsError =
+  GetTrialAppsByAppIdDatasetsErrors[keyof GetTrialAppsByAppIdDatasetsErrors]
+
 export type GetTrialAppsByAppIdDatasetsResponses = {
   200: TrialDatasetListResponse
 }
@@ -1589,8 +1991,12 @@ export type GetTrialAppsByAppIdExportData = {
 }
 
 export type GetTrialAppsByAppIdExportErrors = {
-  404: unknown
+  404: RecommendedAppNotFoundError
+  default: ErrorResponse
 }
+
+export type GetTrialAppsByAppIdExportError =
+  GetTrialAppsByAppIdExportErrors[keyof GetTrialAppsByAppIdExportErrors]
 
 export type GetTrialAppsByAppIdExportResponses = {
   200: AppExportResponse | Blob | File
@@ -1611,6 +2017,23 @@ export type PostTrialAppsByAppIdFilesUploadData = {
   url: '/trial-apps/{app_id}/files/upload'
 }
 
+export type PostTrialAppsByAppIdFilesUploadErrors = {
+  400:
+    | AccountNotInitializedError
+    | FileExtensionBlockedError
+    | FilenameNotExistsError
+    | NoFileUploadedError
+    | TooManyFilesError
+  401: NotInitValidatedError | NotSetupError
+  403: TrialAppFeatureDisabledError | TrialAppLimitExceededError | TrialAppNotAllowedError
+  413: FileTooLargeError
+  415: UnsupportedFileTypeError
+  default: ErrorResponse
+}
+
+export type PostTrialAppsByAppIdFilesUploadError =
+  PostTrialAppsByAppIdFilesUploadErrors[keyof PostTrialAppsByAppIdFilesUploadErrors]
+
 export type PostTrialAppsByAppIdFilesUploadResponses = {
   201: FileResponse
 }
@@ -1628,6 +2051,29 @@ export type GetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsData = {
   url: '/trial-apps/{app_id}/messages/{message_id}/suggested-questions'
 }
 
+export type GetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsErrors = {
+  400:
+    | AccountNotInitializedError
+    | AppUnavailableError
+    | CompletionRequestError
+    | ModelCurrentlyNotSupportError
+    | NotChatAppError
+    | ProviderNotInitializeError
+    | ProviderQuotaExceededError
+  401: NotInitValidatedError | NotSetupError | UnauthorizedError
+  403:
+    | AppSuggestedQuestionsAfterAnswerDisabledError
+    | TrialAppFeatureDisabledError
+    | TrialAppLimitExceededError
+    | TrialAppNotAllowedError
+  404: NotFoundError
+  500: InternalServerError
+  default: ErrorResponse
+}
+
+export type GetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsError =
+  GetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsErrors[keyof GetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsErrors]
+
 export type GetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsResponses = {
   200: SuggestedQuestionsResponse
 }
@@ -1643,6 +2089,15 @@ export type GetTrialAppsByAppIdParametersData = {
   query?: never
   url: '/trial-apps/{app_id}/parameters'
 }
+
+export type GetTrialAppsByAppIdParametersErrors = {
+  400: AppUnavailableError
+  404: AppNotFoundError
+  default: ErrorResponse
+}
+
+export type GetTrialAppsByAppIdParametersError =
+  GetTrialAppsByAppIdParametersErrors[keyof GetTrialAppsByAppIdParametersErrors]
 
 export type GetTrialAppsByAppIdParametersResponses = {
   200: Parameters
@@ -1660,6 +2115,25 @@ export type PostTrialAppsByAppIdRemoteFilesUploadData = {
   url: '/trial-apps/{app_id}/remote-files/upload'
 }
 
+export type PostTrialAppsByAppIdRemoteFilesUploadErrors = {
+  400:
+    | AccountNotInitializedError
+    | FileExtensionBlockedError
+    | RemoteFileAccessDeniedError
+    | RemoteFileInvalidUrlError
+    | RemoteFileUrlBlockedError
+  401: NotInitValidatedError | NotSetupError
+  403: TrialAppFeatureDisabledError | TrialAppLimitExceededError | TrialAppNotAllowedError
+  404: RemoteFileNotFoundError
+  413: FileTooLargeError
+  415: UnsupportedFileTypeError
+  502: RemoteFileInvalidResponseError | RemoteFileUnavailableError
+  default: ErrorResponse
+}
+
+export type PostTrialAppsByAppIdRemoteFilesUploadError =
+  PostTrialAppsByAppIdRemoteFilesUploadErrors[keyof PostTrialAppsByAppIdRemoteFilesUploadErrors]
+
 export type PostTrialAppsByAppIdRemoteFilesUploadResponses = {
   201: FileWithSignedUrl
 }
@@ -1675,6 +2149,15 @@ export type GetTrialAppsByAppIdSiteData = {
   query?: never
   url: '/trial-apps/{app_id}/site'
 }
+
+export type GetTrialAppsByAppIdSiteErrors = {
+  403: AppOwnerUnavailableError | AppSiteUnavailableError
+  404: AppNotFoundError
+  default: ErrorResponse
+}
+
+export type GetTrialAppsByAppIdSiteError =
+  GetTrialAppsByAppIdSiteErrors[keyof GetTrialAppsByAppIdSiteErrors]
 
 export type GetTrialAppsByAppIdSiteResponses = {
   200: Site
@@ -1692,6 +2175,29 @@ export type PostTrialAppsByAppIdTextToAudioData = {
   url: '/trial-apps/{app_id}/text-to-audio'
 }
 
+export type PostTrialAppsByAppIdTextToAudioErrors = {
+  400:
+    | AccountNotInitializedError
+    | AppUnavailableError
+    | CompletionRequestError
+    | ModelCurrentlyNotSupportError
+    | NoAudioUploadedError
+    | ProviderNotInitializeError
+    | ProviderNotSupportSpeechToTextError
+    | ProviderQuotaExceededError
+    | SpeechToTextDisabledError
+  401: NotInitValidatedError | NotSetupError
+  403: TrialAppFeatureDisabledError | TrialAppLimitExceededError | TrialAppNotAllowedError
+  404: AgentVersionNotFoundError
+  413: AudioTooLargeError
+  415: UnsupportedAudioTypeError
+  500: InternalServerError
+  default: ErrorResponse
+}
+
+export type PostTrialAppsByAppIdTextToAudioError =
+  PostTrialAppsByAppIdTextToAudioErrors[keyof PostTrialAppsByAppIdTextToAudioErrors]
+
 export type PostTrialAppsByAppIdTextToAudioResponses = {
   200: AudioBinaryResponse
 }
@@ -1708,6 +2214,15 @@ export type GetTrialAppsByAppIdWorkflowsData = {
   url: '/trial-apps/{app_id}/workflows'
 }
 
+export type GetTrialAppsByAppIdWorkflowsErrors = {
+  400: AppUnavailableError
+  404: AppNotFoundError
+  default: ErrorResponse
+}
+
+export type GetTrialAppsByAppIdWorkflowsError =
+  GetTrialAppsByAppIdWorkflowsErrors[keyof GetTrialAppsByAppIdWorkflowsErrors]
+
 export type GetTrialAppsByAppIdWorkflowsResponses = {
   200: TrialWorkflowResponse
 }
@@ -1723,6 +2238,25 @@ export type PostTrialAppsByAppIdWorkflowsRunData = {
   query?: never
   url: '/trial-apps/{app_id}/workflows/run'
 }
+
+export type PostTrialAppsByAppIdWorkflowsRunErrors = {
+  400:
+    | AccountNotInitializedError
+    | AppUnavailableError
+    | CompletionRequestError
+    | ModelCurrentlyNotSupportError
+    | NotWorkflowAppError
+    | ProviderNotInitializeError
+    | ProviderQuotaExceededError
+  401: NotInitValidatedError | NotSetupError | UnauthorizedError
+  403: TrialAppFeatureDisabledError | TrialAppLimitExceededError | TrialAppNotAllowedError
+  429: RateLimitError
+  500: InternalServerError
+  default: ErrorResponse
+}
+
+export type PostTrialAppsByAppIdWorkflowsRunError =
+  PostTrialAppsByAppIdWorkflowsRunErrors[keyof PostTrialAppsByAppIdWorkflowsRunErrors]
 
 export type PostTrialAppsByAppIdWorkflowsRunResponses = {
   200: {
@@ -1742,6 +2276,16 @@ export type PostTrialAppsByAppIdWorkflowsTasksByTaskIdStopData = {
   query?: never
   url: '/trial-apps/{app_id}/workflows/tasks/{task_id}/stop'
 }
+
+export type PostTrialAppsByAppIdWorkflowsTasksByTaskIdStopErrors = {
+  400: AccountNotInitializedError | NotWorkflowAppError
+  401: NotInitValidatedError | NotSetupError
+  403: TrialAppFeatureDisabledError | TrialAppLimitExceededError | TrialAppNotAllowedError
+  default: ErrorResponse
+}
+
+export type PostTrialAppsByAppIdWorkflowsTasksByTaskIdStopError =
+  PostTrialAppsByAppIdWorkflowsTasksByTaskIdStopErrors[keyof PostTrialAppsByAppIdWorkflowsTasksByTaskIdStopErrors]
 
 export type PostTrialAppsByAppIdWorkflowsTasksByTaskIdStopResponses = {
   200: SimpleResultResponse

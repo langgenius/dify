@@ -13,6 +13,31 @@ export type AgentAppPagination = {
   total: number
 }
 
+export type AccountNotInitializedError = ErrorResponse & {
+  code: 'account_not_initialized'
+  status: 400
+}
+
+export type NotInitValidatedError = ErrorResponse & {
+  code: 'not_init_validated'
+  status: 401
+}
+
+export type NotSetupError = ErrorResponse & {
+  code: 'not_setup'
+  status: 401
+}
+
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type AgentAppCreatePayload = {
   description?: string | null
   icon?: string | null
@@ -60,12 +85,22 @@ export type AgentAppDetailWithSite = {
   workflow: WorkflowPartial | null
 }
 
+export type AgentNotFoundError = ErrorResponse & {
+  code: 'agent_not_found_error'
+  status: 404
+}
+
 export type AgentInviteOptionsResponse = {
   data: Array<AgentInviteOptionResponse>
   has_more: boolean
   limit: number
   page: number
   total: number
+}
+
+export type UnauthorizedAndForceLogoutError = ErrorResponse & {
+  code: 'unauthorized_and_force_logout'
+  status: 401
 }
 
 export type AgentAppUpdatePayload = {
@@ -101,8 +136,18 @@ export type AgentApiStatusPayload = {
   enable_api: boolean
 }
 
+export type AgentNotPublishedError = ErrorResponse & {
+  code: 'agent_not_published'
+  status: 409
+}
+
 export type ApiKeyList = {
   data: Array<ApiKeyItem>
+}
+
+export type MaxKeysExceededError = ErrorResponse & {
+  code: 'max_keys_exceeded'
+  status: 400
 }
 
 export type ApiKeyItem = {
@@ -118,12 +163,77 @@ export type AudioTranscriptResponse = {
   text: string
 }
 
+export type AppUnavailableError = ErrorResponse & {
+  code: 'app_unavailable'
+  status: 400
+}
+
+export type CompletionRequestError = ErrorResponse & {
+  code: 'completion_request_error'
+  status: 400
+}
+
+export type ModelCurrentlyNotSupportError = ErrorResponse & {
+  code: 'model_currently_not_support'
+  status: 400
+}
+
+export type NoAudioUploadedError = ErrorResponse & {
+  code: 'no_audio_uploaded'
+  status: 400
+}
+
+export type ProviderNotInitializeError = ErrorResponse & {
+  code: 'provider_not_initialize'
+  status: 400
+}
+
+export type ProviderNotSupportSpeechToTextError = ErrorResponse & {
+  code: 'provider_not_support_speech_to_text'
+  status: 400
+}
+
+export type ProviderQuotaExceededError = ErrorResponse & {
+  code: 'provider_quota_exceeded'
+  status: 400
+}
+
+export type SpeechToTextDisabledError = ErrorResponse & {
+  code: 'speech_to_text_disabled'
+  status: 400
+}
+
+export type AgentVersionNotFoundError = ErrorResponse & {
+  code: 'agent_version_not_found_error'
+  status: 404
+}
+
+export type AudioTooLargeError = ErrorResponse & {
+  code: 'audio_too_large'
+  status: 413
+}
+
+export type UnsupportedAudioTypeError = ErrorResponse & {
+  code: 'unsupported_audio_type'
+  status: 415
+}
+
 export type SimpleResultResponse = {
   result: string
 }
 
+export type RateLimitError = ErrorResponse & {
+  code: 'rate_limit_error'
+  status: 429
+}
+
 export type AgentSimpleResultResponse = {
   result: string
+}
+
+export type AgentBuildSandboxNotFoundError = ErrorResponse & {
+  code: 'agent_build_sandbox_not_found'
+  status: 404
 }
 
 export type AgentBuildDraftResponse = {
@@ -150,11 +260,26 @@ export type ComposerSavePayload = {
   version_note?: string | null
 }
 
+export type AgentSoulLockedError = ErrorResponse & {
+  code: 'agent_soul_locked_error'
+  status: 400
+}
+
 export type AgentBuildDraftApplyResponse = {
   draft: {
     [key: string]: unknown
   }
   result: string
+}
+
+export type InvalidComposerConfigError = ErrorResponse & {
+  code: 'invalid_composer_config_error'
+  status: 400
+}
+
+export type PlaintextSecretNotAllowedError = ErrorResponse & {
+  code: 'plaintext_secret_not_allowed_error'
+  status: 400
 }
 
 export type AgentBuildDraftCheckoutPayload = {
@@ -169,6 +294,11 @@ export type MessageInfiniteScrollPaginationResponse = {
 
 export type SuggestedQuestionsResponse = {
   data: Array<string>
+}
+
+export type AppSuggestedQuestionsAfterAnswerDisabledError = ErrorResponse & {
+  code: 'app_suggested_questions_after_answer_disabled'
+  status: 403
 }
 
 export type AgentAppComposerResponse = {
@@ -370,12 +500,42 @@ export type AgentPublishResponse = {
   result: string
 }
 
+export type AgentModelNotConfiguredError = ErrorResponse & {
+  code: 'agent_model_not_configured'
+  status: 400
+}
+
 export type AgentReferencingWorkflowsResponse = {
   data?: Array<AgentReferencingWorkflowResponse>
 }
 
 export type SandboxInfoResponse = {
   workspace_cwd: string
+}
+
+export type AppNotFoundError = ErrorResponse & {
+  code: 'app_not_found'
+  status: 404
+}
+
+export type NoActiveBindingError = ErrorResponse & {
+  code: 'no_active_binding'
+  status: 404
+}
+
+export type AgentBackendUnreachableError = ErrorResponse & {
+  code: 'agent_backend_unreachable'
+  status: 502
+}
+
+export type BindingFileDownloadUnavailableError = ErrorResponse & {
+  code: 'binding_file_download_unavailable'
+  status: 502
+}
+
+export type InspectorUnavailableError = ErrorResponse & {
+  code: 'inspector_unavailable'
+  status: 503
 }
 
 export type SandboxListResponse = {
@@ -2290,6 +2450,14 @@ export type GetAgentData = {
   url: '/agent'
 }
 
+export type GetAgentErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  default: ErrorResponse
+}
+
+export type GetAgentError = GetAgentErrors[keyof GetAgentErrors]
+
 export type GetAgentResponses = {
   200: AgentAppPagination
 }
@@ -2304,10 +2472,15 @@ export type PostAgentData = {
 }
 
 export type PostAgentErrors = {
-  400: unknown
-  403: unknown
-  409: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  403: ErrorResponse
+  404: AgentNotFoundError
+  409: ErrorResponse
+  default: ErrorResponse
 }
+
+export type PostAgentError = PostAgentErrors[keyof PostAgentErrors]
 
 export type PostAgentResponses = {
   201: AgentAppDetailWithSite
@@ -2327,6 +2500,15 @@ export type GetAgentInviteOptionsData = {
   url: '/agent/invite-options'
 }
 
+export type GetAgentInviteOptionsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  default: ErrorResponse
+}
+
+export type GetAgentInviteOptionsError =
+  GetAgentInviteOptionsErrors[keyof GetAgentInviteOptionsErrors]
+
 export type GetAgentInviteOptionsResponses = {
   200: AgentInviteOptionsResponse
 }
@@ -2344,8 +2526,13 @@ export type DeleteAgentByAgentIdData = {
 }
 
 export type DeleteAgentByAgentIdErrors = {
-  403: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  403: ErrorResponse
+  default: ErrorResponse
 }
+
+export type DeleteAgentByAgentIdError = DeleteAgentByAgentIdErrors[keyof DeleteAgentByAgentIdErrors]
 
 export type DeleteAgentByAgentIdResponses = {
   204: void
@@ -2363,6 +2550,15 @@ export type GetAgentByAgentIdData = {
   url: '/agent/{agent_id}'
 }
 
+export type GetAgentByAgentIdErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError | UnauthorizedAndForceLogoutError
+  404: AgentNotFoundError
+  default: ErrorResponse
+}
+
+export type GetAgentByAgentIdError = GetAgentByAgentIdErrors[keyof GetAgentByAgentIdErrors]
+
 export type GetAgentByAgentIdResponses = {
   200: AgentAppDetailWithSite
 }
@@ -2379,9 +2575,14 @@ export type PutAgentByAgentIdData = {
 }
 
 export type PutAgentByAgentIdErrors = {
-  400: unknown
-  403: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  403: ErrorResponse
+  404: AgentNotFoundError
+  default: ErrorResponse
 }
+
+export type PutAgentByAgentIdError = PutAgentByAgentIdErrors[keyof PutAgentByAgentIdErrors]
 
 export type PutAgentByAgentIdResponses = {
   200: AgentAppDetailWithSite
@@ -2397,6 +2598,15 @@ export type GetAgentByAgentIdApiAccessData = {
   query?: never
   url: '/agent/{agent_id}/api-access'
 }
+
+export type GetAgentByAgentIdApiAccessErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  default: ErrorResponse
+}
+
+export type GetAgentByAgentIdApiAccessError =
+  GetAgentByAgentIdApiAccessErrors[keyof GetAgentByAgentIdApiAccessErrors]
 
 export type GetAgentByAgentIdApiAccessResponses = {
   200: AgentApiAccessResponse
@@ -2415,8 +2625,15 @@ export type PostAgentByAgentIdApiEnableData = {
 }
 
 export type PostAgentByAgentIdApiEnableErrors = {
-  403: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  403: ErrorResponse
+  409: AgentNotPublishedError
+  default: ErrorResponse
 }
+
+export type PostAgentByAgentIdApiEnableError =
+  PostAgentByAgentIdApiEnableErrors[keyof PostAgentByAgentIdApiEnableErrors]
 
 export type PostAgentByAgentIdApiEnableResponses = {
   200: AgentApiAccessResponse
@@ -2433,6 +2650,16 @@ export type GetAgentByAgentIdApiKeysData = {
   query?: never
   url: '/agent/{agent_id}/api-keys'
 }
+
+export type GetAgentByAgentIdApiKeysErrors = {
+  400: AccountNotInitializedError | MaxKeysExceededError
+  401: NotInitValidatedError | NotSetupError
+  409: AgentNotPublishedError
+  default: ErrorResponse
+}
+
+export type GetAgentByAgentIdApiKeysError =
+  GetAgentByAgentIdApiKeysErrors[keyof GetAgentByAgentIdApiKeysErrors]
 
 export type GetAgentByAgentIdApiKeysResponses = {
   200: ApiKeyList
@@ -2451,8 +2678,14 @@ export type PostAgentByAgentIdApiKeysData = {
 }
 
 export type PostAgentByAgentIdApiKeysErrors = {
-  400: unknown
+  400: AccountNotInitializedError | MaxKeysExceededError
+  401: NotInitValidatedError | NotSetupError
+  409: AgentNotPublishedError
+  default: ErrorResponse
 }
+
+export type PostAgentByAgentIdApiKeysError =
+  PostAgentByAgentIdApiKeysErrors[keyof PostAgentByAgentIdApiKeysErrors]
 
 export type PostAgentByAgentIdApiKeysResponses = {
   201: ApiKeyItem
@@ -2470,6 +2703,16 @@ export type DeleteAgentByAgentIdApiKeysByApiKeyIdData = {
   query?: never
   url: '/agent/{agent_id}/api-keys/{api_key_id}'
 }
+
+export type DeleteAgentByAgentIdApiKeysByApiKeyIdErrors = {
+  400: AccountNotInitializedError | MaxKeysExceededError
+  401: NotInitValidatedError | NotSetupError
+  409: AgentNotPublishedError
+  default: ErrorResponse
+}
+
+export type DeleteAgentByAgentIdApiKeysByApiKeyIdError =
+  DeleteAgentByAgentIdApiKeysByApiKeyIdErrors[keyof DeleteAgentByAgentIdApiKeysByApiKeyIdErrors]
 
 export type DeleteAgentByAgentIdApiKeysByApiKeyIdResponses = {
   204: void
@@ -2491,10 +2734,25 @@ export type PostAgentByAgentIdAudioToTextData = {
 }
 
 export type PostAgentByAgentIdAudioToTextErrors = {
-  400: unknown
-  404: unknown
-  413: unknown
+  400:
+    | AccountNotInitializedError
+    | AppUnavailableError
+    | CompletionRequestError
+    | ModelCurrentlyNotSupportError
+    | NoAudioUploadedError
+    | ProviderNotInitializeError
+    | ProviderNotSupportSpeechToTextError
+    | ProviderQuotaExceededError
+    | SpeechToTextDisabledError
+  401: NotInitValidatedError | NotSetupError
+  404: AgentNotFoundError | AgentVersionNotFoundError
+  413: AudioTooLargeError
+  415: UnsupportedAudioTypeError
+  default: ErrorResponse
 }
+
+export type PostAgentByAgentIdAudioToTextError =
+  PostAgentByAgentIdAudioToTextErrors[keyof PostAgentByAgentIdAudioToTextErrors]
 
 export type PostAgentByAgentIdAudioToTextResponses = {
   200: AudioTranscriptResponse
@@ -2513,9 +2771,21 @@ export type PostAgentByAgentIdBuildChatFinalizeData = {
 }
 
 export type PostAgentByAgentIdBuildChatFinalizeErrors = {
-  400: unknown
-  404: unknown
+  400:
+    | AccountNotInitializedError
+    | AppUnavailableError
+    | CompletionRequestError
+    | ModelCurrentlyNotSupportError
+    | ProviderNotInitializeError
+    | ProviderQuotaExceededError
+  401: NotInitValidatedError | NotSetupError
+  404: AgentNotFoundError
+  429: RateLimitError
+  default: ErrorResponse
 }
+
+export type PostAgentByAgentIdBuildChatFinalizeError =
+  PostAgentByAgentIdBuildChatFinalizeErrors[keyof PostAgentByAgentIdBuildChatFinalizeErrors]
 
 export type PostAgentByAgentIdBuildChatFinalizeResponses = {
   200: SimpleResultResponse
@@ -2532,6 +2802,16 @@ export type DeleteAgentByAgentIdBuildDraftData = {
   query?: never
   url: '/agent/{agent_id}/build-draft'
 }
+
+export type DeleteAgentByAgentIdBuildDraftErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AgentBuildSandboxNotFoundError | AgentNotFoundError
+  default: ErrorResponse
+}
+
+export type DeleteAgentByAgentIdBuildDraftError =
+  DeleteAgentByAgentIdBuildDraftErrors[keyof DeleteAgentByAgentIdBuildDraftErrors]
 
 export type DeleteAgentByAgentIdBuildDraftResponses = {
   200: AgentSimpleResultResponse
@@ -2550,8 +2830,14 @@ export type GetAgentByAgentIdBuildDraftData = {
 }
 
 export type GetAgentByAgentIdBuildDraftErrors = {
-  404: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AgentVersionNotFoundError
+  default: ErrorResponse
 }
+
+export type GetAgentByAgentIdBuildDraftError =
+  GetAgentByAgentIdBuildDraftErrors[keyof GetAgentByAgentIdBuildDraftErrors]
 
 export type GetAgentByAgentIdBuildDraftResponses = {
   200: AgentBuildDraftResponse
@@ -2569,6 +2855,16 @@ export type PutAgentByAgentIdBuildDraftData = {
   url: '/agent/{agent_id}/build-draft'
 }
 
+export type PutAgentByAgentIdBuildDraftErrors = {
+  400: AccountNotInitializedError | AgentSoulLockedError
+  401: NotInitValidatedError | NotSetupError
+  404: AgentNotFoundError | AgentVersionNotFoundError
+  default: ErrorResponse
+}
+
+export type PutAgentByAgentIdBuildDraftError =
+  PutAgentByAgentIdBuildDraftErrors[keyof PutAgentByAgentIdBuildDraftErrors]
+
 export type PutAgentByAgentIdBuildDraftResponses = {
   200: AgentBuildDraftResponse
 }
@@ -2585,6 +2881,20 @@ export type PostAgentByAgentIdBuildDraftApplyData = {
   url: '/agent/{agent_id}/build-draft/apply'
 }
 
+export type PostAgentByAgentIdBuildDraftApplyErrors = {
+  400:
+    | AccountNotInitializedError
+    | AgentSoulLockedError
+    | InvalidComposerConfigError
+    | PlaintextSecretNotAllowedError
+  401: NotInitValidatedError | NotSetupError
+  404: AgentBuildSandboxNotFoundError | AgentNotFoundError | AgentVersionNotFoundError
+  default: ErrorResponse
+}
+
+export type PostAgentByAgentIdBuildDraftApplyError =
+  PostAgentByAgentIdBuildDraftApplyErrors[keyof PostAgentByAgentIdBuildDraftApplyErrors]
+
 export type PostAgentByAgentIdBuildDraftApplyResponses = {
   200: AgentBuildDraftApplyResponse
 }
@@ -2600,6 +2910,16 @@ export type PostAgentByAgentIdBuildDraftCheckoutData = {
   query?: never
   url: '/agent/{agent_id}/build-draft/checkout'
 }
+
+export type PostAgentByAgentIdBuildDraftCheckoutErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AgentBuildSandboxNotFoundError | AgentNotFoundError | AgentVersionNotFoundError
+  default: ErrorResponse
+}
+
+export type PostAgentByAgentIdBuildDraftCheckoutError =
+  PostAgentByAgentIdBuildDraftCheckoutErrors[keyof PostAgentByAgentIdBuildDraftCheckoutErrors]
 
 export type PostAgentByAgentIdBuildDraftCheckoutResponses = {
   200: AgentBuildDraftResponse
@@ -2622,8 +2942,14 @@ export type GetAgentByAgentIdChatMessagesData = {
 }
 
 export type GetAgentByAgentIdChatMessagesErrors = {
-  404: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AgentNotFoundError
+  default: ErrorResponse
 }
+
+export type GetAgentByAgentIdChatMessagesError =
+  GetAgentByAgentIdChatMessagesErrors[keyof GetAgentByAgentIdChatMessagesErrors]
 
 export type GetAgentByAgentIdChatMessagesResponses = {
   200: MessageInfiniteScrollPaginationResponse
@@ -2643,12 +2969,22 @@ export type GetAgentByAgentIdChatMessagesByMessageIdSuggestedQuestionsData = {
 }
 
 export type GetAgentByAgentIdChatMessagesByMessageIdSuggestedQuestionsErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
-  404: unknown
-  500: unknown
+  400:
+    | AccountNotInitializedError
+    | AppUnavailableError
+    | CompletionRequestError
+    | ModelCurrentlyNotSupportError
+    | ProviderNotInitializeError
+    | ProviderQuotaExceededError
+  401: NotInitValidatedError | NotSetupError
+  403: AppSuggestedQuestionsAfterAnswerDisabledError
+  404: AgentNotFoundError | AgentVersionNotFoundError
+  500: ErrorResponse
+  default: ErrorResponse
 }
+
+export type GetAgentByAgentIdChatMessagesByMessageIdSuggestedQuestionsError =
+  GetAgentByAgentIdChatMessagesByMessageIdSuggestedQuestionsErrors[keyof GetAgentByAgentIdChatMessagesByMessageIdSuggestedQuestionsErrors]
 
 export type GetAgentByAgentIdChatMessagesByMessageIdSuggestedQuestionsResponses = {
   200: SuggestedQuestionsResponse
@@ -2667,6 +3003,16 @@ export type PostAgentByAgentIdChatMessagesByTaskIdStopData = {
   url: '/agent/{agent_id}/chat-messages/{task_id}/stop'
 }
 
+export type PostAgentByAgentIdChatMessagesByTaskIdStopErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AgentNotFoundError
+  default: ErrorResponse
+}
+
+export type PostAgentByAgentIdChatMessagesByTaskIdStopError =
+  PostAgentByAgentIdChatMessagesByTaskIdStopErrors[keyof PostAgentByAgentIdChatMessagesByTaskIdStopErrors]
+
 export type PostAgentByAgentIdChatMessagesByTaskIdStopResponses = {
   200: SimpleResultResponse
 }
@@ -2682,6 +3028,16 @@ export type GetAgentByAgentIdComposerData = {
   query?: never
   url: '/agent/{agent_id}/composer'
 }
+
+export type GetAgentByAgentIdComposerErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AgentNotFoundError | AgentVersionNotFoundError
+  default: ErrorResponse
+}
+
+export type GetAgentByAgentIdComposerError =
+  GetAgentByAgentIdComposerErrors[keyof GetAgentByAgentIdComposerErrors]
 
 export type GetAgentByAgentIdComposerResponses = {
   200: AgentAppComposerResponse
@@ -2699,6 +3055,20 @@ export type PutAgentByAgentIdComposerData = {
   url: '/agent/{agent_id}/composer'
 }
 
+export type PutAgentByAgentIdComposerErrors = {
+  400:
+    | AccountNotInitializedError
+    | AgentSoulLockedError
+    | InvalidComposerConfigError
+    | PlaintextSecretNotAllowedError
+  401: NotInitValidatedError | NotSetupError
+  404: AgentNotFoundError | AgentVersionNotFoundError
+  default: ErrorResponse
+}
+
+export type PutAgentByAgentIdComposerError =
+  PutAgentByAgentIdComposerErrors[keyof PutAgentByAgentIdComposerErrors]
+
 export type PutAgentByAgentIdComposerResponses = {
   200: AgentAppComposerResponse
 }
@@ -2715,6 +3085,16 @@ export type GetAgentByAgentIdComposerCandidatesData = {
   url: '/agent/{agent_id}/composer/candidates'
 }
 
+export type GetAgentByAgentIdComposerCandidatesErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AgentVersionNotFoundError
+  default: ErrorResponse
+}
+
+export type GetAgentByAgentIdComposerCandidatesError =
+  GetAgentByAgentIdComposerCandidatesErrors[keyof GetAgentByAgentIdComposerCandidatesErrors]
+
 export type GetAgentByAgentIdComposerCandidatesResponses = {
   200: AgentComposerCandidatesResponse
 }
@@ -2730,6 +3110,20 @@ export type PostAgentByAgentIdComposerValidateData = {
   query?: never
   url: '/agent/{agent_id}/composer/validate'
 }
+
+export type PostAgentByAgentIdComposerValidateErrors = {
+  400:
+    | AccountNotInitializedError
+    | AgentSoulLockedError
+    | InvalidComposerConfigError
+    | PlaintextSecretNotAllowedError
+  401: NotInitValidatedError | NotSetupError
+  404: AgentNotFoundError | AgentVersionNotFoundError
+  default: ErrorResponse
+}
+
+export type PostAgentByAgentIdComposerValidateError =
+  PostAgentByAgentIdComposerValidateErrors[keyof PostAgentByAgentIdComposerValidateErrors]
 
 export type PostAgentByAgentIdComposerValidateResponses = {
   200: AgentComposerValidateResponse
@@ -2750,6 +3144,16 @@ export type GetAgentByAgentIdConfigFilesData = {
   url: '/agent/{agent_id}/config/files'
 }
 
+export type GetAgentByAgentIdConfigFilesErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AgentNotFoundError | AgentVersionNotFoundError
+  default: ErrorResponse
+}
+
+export type GetAgentByAgentIdConfigFilesError =
+  GetAgentByAgentIdConfigFilesErrors[keyof GetAgentByAgentIdConfigFilesErrors]
+
 export type GetAgentByAgentIdConfigFilesResponses = {
   200: AgentConfigFileListResponse
 }
@@ -2768,6 +3172,16 @@ export type PostAgentByAgentIdConfigFilesData = {
   }
   url: '/agent/{agent_id}/config/files'
 }
+
+export type PostAgentByAgentIdConfigFilesErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AgentNotFoundError | AgentVersionNotFoundError
+  default: ErrorResponse
+}
+
+export type PostAgentByAgentIdConfigFilesError =
+  PostAgentByAgentIdConfigFilesErrors[keyof PostAgentByAgentIdConfigFilesErrors]
 
 export type PostAgentByAgentIdConfigFilesResponses = {
   201: AgentConfigFileUploadResponse
@@ -2789,6 +3203,16 @@ export type DeleteAgentByAgentIdConfigFilesByNameData = {
   url: '/agent/{agent_id}/config/files/{name}'
 }
 
+export type DeleteAgentByAgentIdConfigFilesByNameErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AgentNotFoundError | AgentVersionNotFoundError
+  default: ErrorResponse
+}
+
+export type DeleteAgentByAgentIdConfigFilesByNameError =
+  DeleteAgentByAgentIdConfigFilesByNameErrors[keyof DeleteAgentByAgentIdConfigFilesByNameErrors]
+
 export type DeleteAgentByAgentIdConfigFilesByNameResponses = {
   200: AgentConfigDeleteResponse
 }
@@ -2808,6 +3232,16 @@ export type GetAgentByAgentIdConfigFilesByNameDownloadData = {
   }
   url: '/agent/{agent_id}/config/files/{name}/download'
 }
+
+export type GetAgentByAgentIdConfigFilesByNameDownloadErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AgentNotFoundError | AgentVersionNotFoundError
+  default: ErrorResponse
+}
+
+export type GetAgentByAgentIdConfigFilesByNameDownloadError =
+  GetAgentByAgentIdConfigFilesByNameDownloadErrors[keyof GetAgentByAgentIdConfigFilesByNameDownloadErrors]
 
 export type GetAgentByAgentIdConfigFilesByNameDownloadResponses = {
   200: AgentConfigDownloadResponse
@@ -2829,6 +3263,16 @@ export type GetAgentByAgentIdConfigFilesByNamePreviewData = {
   url: '/agent/{agent_id}/config/files/{name}/preview'
 }
 
+export type GetAgentByAgentIdConfigFilesByNamePreviewErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AgentNotFoundError | AgentVersionNotFoundError
+  default: ErrorResponse
+}
+
+export type GetAgentByAgentIdConfigFilesByNamePreviewError =
+  GetAgentByAgentIdConfigFilesByNamePreviewErrors[keyof GetAgentByAgentIdConfigFilesByNamePreviewErrors]
+
 export type GetAgentByAgentIdConfigFilesByNamePreviewResponses = {
   200: AgentConfigFilePreviewResponse
 }
@@ -2848,6 +3292,16 @@ export type GetAgentByAgentIdConfigManifestData = {
   url: '/agent/{agent_id}/config/manifest'
 }
 
+export type GetAgentByAgentIdConfigManifestErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AgentNotFoundError | AgentVersionNotFoundError
+  default: ErrorResponse
+}
+
+export type GetAgentByAgentIdConfigManifestError =
+  GetAgentByAgentIdConfigManifestErrors[keyof GetAgentByAgentIdConfigManifestErrors]
+
 export type GetAgentByAgentIdConfigManifestResponses = {
   200: AgentConfigManifestResponse
 }
@@ -2866,6 +3320,16 @@ export type GetAgentByAgentIdConfigSkillsData = {
   }
   url: '/agent/{agent_id}/config/skills'
 }
+
+export type GetAgentByAgentIdConfigSkillsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AgentNotFoundError | AgentVersionNotFoundError
+  default: ErrorResponse
+}
+
+export type GetAgentByAgentIdConfigSkillsError =
+  GetAgentByAgentIdConfigSkillsErrors[keyof GetAgentByAgentIdConfigSkillsErrors]
 
 export type GetAgentByAgentIdConfigSkillsResponses = {
   200: AgentConfigSkillListResponse
@@ -2888,6 +3352,16 @@ export type PostAgentByAgentIdConfigSkillsUploadData = {
   url: '/agent/{agent_id}/config/skills/upload'
 }
 
+export type PostAgentByAgentIdConfigSkillsUploadErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AgentNotFoundError | AgentVersionNotFoundError
+  default: ErrorResponse
+}
+
+export type PostAgentByAgentIdConfigSkillsUploadError =
+  PostAgentByAgentIdConfigSkillsUploadErrors[keyof PostAgentByAgentIdConfigSkillsUploadErrors]
+
 export type PostAgentByAgentIdConfigSkillsUploadResponses = {
   201: AgentConfigSkillUploadResponse
 }
@@ -2907,6 +3381,16 @@ export type DeleteAgentByAgentIdConfigSkillsByNameData = {
   }
   url: '/agent/{agent_id}/config/skills/{name}'
 }
+
+export type DeleteAgentByAgentIdConfigSkillsByNameErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AgentNotFoundError | AgentVersionNotFoundError
+  default: ErrorResponse
+}
+
+export type DeleteAgentByAgentIdConfigSkillsByNameError =
+  DeleteAgentByAgentIdConfigSkillsByNameErrors[keyof DeleteAgentByAgentIdConfigSkillsByNameErrors]
 
 export type DeleteAgentByAgentIdConfigSkillsByNameResponses = {
   200: AgentConfigDeleteResponse
@@ -2928,6 +3412,16 @@ export type GetAgentByAgentIdConfigSkillsByNameDownloadData = {
   url: '/agent/{agent_id}/config/skills/{name}/download'
 }
 
+export type GetAgentByAgentIdConfigSkillsByNameDownloadErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AgentNotFoundError | AgentVersionNotFoundError
+  default: ErrorResponse
+}
+
+export type GetAgentByAgentIdConfigSkillsByNameDownloadError =
+  GetAgentByAgentIdConfigSkillsByNameDownloadErrors[keyof GetAgentByAgentIdConfigSkillsByNameDownloadErrors]
+
 export type GetAgentByAgentIdConfigSkillsByNameDownloadResponses = {
   200: AgentConfigDownloadResponse
 }
@@ -2944,6 +3438,16 @@ export type GetAgentByAgentIdConfigSkillsByNameFilesContentData = {
   query?: never
   url: '/agent/{agent_id}/config/skills/{name}/files/content'
 }
+
+export type GetAgentByAgentIdConfigSkillsByNameFilesContentErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AgentNotFoundError | AgentVersionNotFoundError
+  default: ErrorResponse
+}
+
+export type GetAgentByAgentIdConfigSkillsByNameFilesContentError =
+  GetAgentByAgentIdConfigSkillsByNameFilesContentErrors[keyof GetAgentByAgentIdConfigSkillsByNameFilesContentErrors]
 
 export type GetAgentByAgentIdConfigSkillsByNameFilesContentResponses = {
   200: {
@@ -2968,6 +3472,16 @@ export type GetAgentByAgentIdConfigSkillsByNameFilesDownloadData = {
   url: '/agent/{agent_id}/config/skills/{name}/files/download'
 }
 
+export type GetAgentByAgentIdConfigSkillsByNameFilesDownloadErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AgentNotFoundError | AgentVersionNotFoundError
+  default: ErrorResponse
+}
+
+export type GetAgentByAgentIdConfigSkillsByNameFilesDownloadError =
+  GetAgentByAgentIdConfigSkillsByNameFilesDownloadErrors[keyof GetAgentByAgentIdConfigSkillsByNameFilesDownloadErrors]
+
 export type GetAgentByAgentIdConfigSkillsByNameFilesDownloadResponses = {
   200: AgentConfigDownloadResponse
 }
@@ -2989,6 +3503,16 @@ export type GetAgentByAgentIdConfigSkillsByNameFilesPreviewData = {
   url: '/agent/{agent_id}/config/skills/{name}/files/preview'
 }
 
+export type GetAgentByAgentIdConfigSkillsByNameFilesPreviewErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AgentNotFoundError | AgentVersionNotFoundError
+  default: ErrorResponse
+}
+
+export type GetAgentByAgentIdConfigSkillsByNameFilesPreviewError =
+  GetAgentByAgentIdConfigSkillsByNameFilesPreviewErrors[keyof GetAgentByAgentIdConfigSkillsByNameFilesPreviewErrors]
+
 export type GetAgentByAgentIdConfigSkillsByNameFilesPreviewResponses = {
   200: AgentConfigSkillFilePreviewResponse
 }
@@ -3009,6 +3533,16 @@ export type GetAgentByAgentIdConfigSkillsByNameInspectData = {
   url: '/agent/{agent_id}/config/skills/{name}/inspect'
 }
 
+export type GetAgentByAgentIdConfigSkillsByNameInspectErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AgentNotFoundError | AgentVersionNotFoundError
+  default: ErrorResponse
+}
+
+export type GetAgentByAgentIdConfigSkillsByNameInspectError =
+  GetAgentByAgentIdConfigSkillsByNameInspectErrors[keyof GetAgentByAgentIdConfigSkillsByNameInspectErrors]
+
 export type GetAgentByAgentIdConfigSkillsByNameInspectResponses = {
   200: AgentConfigSkillInspectResponse
 }
@@ -3026,9 +3560,15 @@ export type PostAgentByAgentIdCopyData = {
 }
 
 export type PostAgentByAgentIdCopyErrors = {
-  400: unknown
-  403: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  403: ErrorResponse
+  404: AgentNotFoundError
+  default: ErrorResponse
 }
+
+export type PostAgentByAgentIdCopyError =
+  PostAgentByAgentIdCopyErrors[keyof PostAgentByAgentIdCopyErrors]
 
 export type PostAgentByAgentIdCopyResponses = {
   201: AgentAppDetailWithSite
@@ -3047,8 +3587,14 @@ export type PostAgentByAgentIdDebugConversationRefreshData = {
 }
 
 export type PostAgentByAgentIdDebugConversationRefreshErrors = {
-  403: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  403: ErrorResponse
+  default: ErrorResponse
 }
+
+export type PostAgentByAgentIdDebugConversationRefreshError =
+  PostAgentByAgentIdDebugConversationRefreshErrors[keyof PostAgentByAgentIdDebugConversationRefreshErrors]
 
 export type PostAgentByAgentIdDebugConversationRefreshResponses = {
   200: AgentDebugConversationRefreshResponse
@@ -3067,9 +3613,14 @@ export type PostAgentByAgentIdFeaturesData = {
 }
 
 export type PostAgentByAgentIdFeaturesErrors = {
-  400: unknown
-  404: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AgentNotFoundError
+  default: ErrorResponse
 }
+
+export type PostAgentByAgentIdFeaturesError =
+  PostAgentByAgentIdFeaturesErrors[keyof PostAgentByAgentIdFeaturesErrors]
 
 export type PostAgentByAgentIdFeaturesResponses = {
   200: SimpleResultResponse
@@ -3088,8 +3639,14 @@ export type PostAgentByAgentIdFeedbacksData = {
 }
 
 export type PostAgentByAgentIdFeedbacksErrors = {
-  404: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AgentNotFoundError
+  default: ErrorResponse
 }
+
+export type PostAgentByAgentIdFeedbacksError =
+  PostAgentByAgentIdFeedbacksErrors[keyof PostAgentByAgentIdFeedbacksErrors]
 
 export type PostAgentByAgentIdFeedbacksResponses = {
   200: SimpleResultResponse
@@ -3106,6 +3663,15 @@ export type GetAgentByAgentIdLogSourcesData = {
   query?: never
   url: '/agent/{agent_id}/log-sources'
 }
+
+export type GetAgentByAgentIdLogSourcesErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  default: ErrorResponse
+}
+
+export type GetAgentByAgentIdLogSourcesError =
+  GetAgentByAgentIdLogSourcesErrors[keyof GetAgentByAgentIdLogSourcesErrors]
 
 export type GetAgentByAgentIdLogSourcesResponses = {
   200: AgentLogSourceListResponse
@@ -3134,6 +3700,15 @@ export type GetAgentByAgentIdLogsData = {
   }
   url: '/agent/{agent_id}/logs'
 }
+
+export type GetAgentByAgentIdLogsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  default: ErrorResponse
+}
+
+export type GetAgentByAgentIdLogsError =
+  GetAgentByAgentIdLogsErrors[keyof GetAgentByAgentIdLogsErrors]
 
 export type GetAgentByAgentIdLogsResponses = {
   200: AgentLogListResponse
@@ -3164,6 +3739,15 @@ export type GetAgentByAgentIdLogsByConversationIdMessagesData = {
   url: '/agent/{agent_id}/logs/{conversation_id}/messages'
 }
 
+export type GetAgentByAgentIdLogsByConversationIdMessagesErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  default: ErrorResponse
+}
+
+export type GetAgentByAgentIdLogsByConversationIdMessagesError =
+  GetAgentByAgentIdLogsByConversationIdMessagesErrors[keyof GetAgentByAgentIdLogsByConversationIdMessagesErrors]
+
 export type GetAgentByAgentIdLogsByConversationIdMessagesResponses = {
   200: AgentLogMessageListResponse
 }
@@ -3182,8 +3766,14 @@ export type GetAgentByAgentIdMessagesByMessageIdData = {
 }
 
 export type GetAgentByAgentIdMessagesByMessageIdErrors = {
-  404: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AgentNotFoundError
+  default: ErrorResponse
 }
+
+export type GetAgentByAgentIdMessagesByMessageIdError =
+  GetAgentByAgentIdMessagesByMessageIdErrors[keyof GetAgentByAgentIdMessagesByMessageIdErrors]
 
 export type GetAgentByAgentIdMessagesByMessageIdResponses = {
   200: MessageDetailResponse
@@ -3202,8 +3792,20 @@ export type PostAgentByAgentIdPublishData = {
 }
 
 export type PostAgentByAgentIdPublishErrors = {
-  403: unknown
+  400:
+    | AccountNotInitializedError
+    | AgentModelNotConfiguredError
+    | AgentSoulLockedError
+    | InvalidComposerConfigError
+    | PlaintextSecretNotAllowedError
+  401: NotInitValidatedError | NotSetupError
+  403: ErrorResponse
+  404: AgentNotFoundError | AgentVersionNotFoundError
+  default: ErrorResponse
 }
+
+export type PostAgentByAgentIdPublishError =
+  PostAgentByAgentIdPublishErrors[keyof PostAgentByAgentIdPublishErrors]
 
 export type PostAgentByAgentIdPublishResponses = {
   200: AgentPublishResponse
@@ -3222,8 +3824,14 @@ export type GetAgentByAgentIdReferencingWorkflowsData = {
 }
 
 export type GetAgentByAgentIdReferencingWorkflowsErrors = {
-  404: unknown
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AgentNotFoundError
+  default: ErrorResponse
 }
+
+export type GetAgentByAgentIdReferencingWorkflowsError =
+  GetAgentByAgentIdReferencingWorkflowsErrors[keyof GetAgentByAgentIdReferencingWorkflowsErrors]
 
 export type GetAgentByAgentIdReferencingWorkflowsResponses = {
   200: AgentReferencingWorkflowsResponse
@@ -3243,6 +3851,18 @@ export type GetAgentByAgentIdSandboxData = {
   }
   url: '/agent/{agent_id}/sandbox'
 }
+
+export type GetAgentByAgentIdSandboxErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AgentNotFoundError | AppNotFoundError | NoActiveBindingError
+  502: AgentBackendUnreachableError | BindingFileDownloadUnavailableError
+  503: InspectorUnavailableError
+  default: ErrorResponse
+}
+
+export type GetAgentByAgentIdSandboxError =
+  GetAgentByAgentIdSandboxErrors[keyof GetAgentByAgentIdSandboxErrors]
 
 export type GetAgentByAgentIdSandboxResponses = {
   200: SandboxInfoResponse
@@ -3264,6 +3884,18 @@ export type GetAgentByAgentIdSandboxFilesData = {
   url: '/agent/{agent_id}/sandbox/files'
 }
 
+export type GetAgentByAgentIdSandboxFilesErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AgentNotFoundError | AppNotFoundError | NoActiveBindingError
+  502: AgentBackendUnreachableError | BindingFileDownloadUnavailableError
+  503: InspectorUnavailableError
+  default: ErrorResponse
+}
+
+export type GetAgentByAgentIdSandboxFilesError =
+  GetAgentByAgentIdSandboxFilesErrors[keyof GetAgentByAgentIdSandboxFilesErrors]
+
 export type GetAgentByAgentIdSandboxFilesResponses = {
   200: SandboxListResponse
 }
@@ -3279,6 +3911,18 @@ export type PostAgentByAgentIdSandboxFilesDownloadData = {
   query?: never
   url: '/agent/{agent_id}/sandbox/files/download'
 }
+
+export type PostAgentByAgentIdSandboxFilesDownloadErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AgentNotFoundError | AppNotFoundError | NoActiveBindingError
+  502: AgentBackendUnreachableError | BindingFileDownloadUnavailableError
+  503: InspectorUnavailableError
+  default: ErrorResponse
+}
+
+export type PostAgentByAgentIdSandboxFilesDownloadError =
+  PostAgentByAgentIdSandboxFilesDownloadErrors[keyof PostAgentByAgentIdSandboxFilesDownloadErrors]
 
 export type PostAgentByAgentIdSandboxFilesDownloadResponses = {
   200: SandboxDownloadResponse
@@ -3300,6 +3944,18 @@ export type GetAgentByAgentIdSandboxFilesReadData = {
   url: '/agent/{agent_id}/sandbox/files/read'
 }
 
+export type GetAgentByAgentIdSandboxFilesReadErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AgentNotFoundError | AppNotFoundError | NoActiveBindingError
+  502: AgentBackendUnreachableError | BindingFileDownloadUnavailableError
+  503: InspectorUnavailableError
+  default: ErrorResponse
+}
+
+export type GetAgentByAgentIdSandboxFilesReadError =
+  GetAgentByAgentIdSandboxFilesReadErrors[keyof GetAgentByAgentIdSandboxFilesReadErrors]
+
 export type GetAgentByAgentIdSandboxFilesReadResponses = {
   200: SandboxReadResponse
 }
@@ -3320,6 +3976,15 @@ export type GetAgentByAgentIdStatisticsSummaryData = {
   url: '/agent/{agent_id}/statistics/summary'
 }
 
+export type GetAgentByAgentIdStatisticsSummaryErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  default: ErrorResponse
+}
+
+export type GetAgentByAgentIdStatisticsSummaryError =
+  GetAgentByAgentIdStatisticsSummaryErrors[keyof GetAgentByAgentIdStatisticsSummaryErrors]
+
 export type GetAgentByAgentIdStatisticsSummaryResponses = {
   200: AgentStatisticSummaryEnvelopeResponse
 }
@@ -3337,10 +4002,25 @@ export type PostAgentByAgentIdTextToAudioData = {
 }
 
 export type PostAgentByAgentIdTextToAudioErrors = {
-  400: unknown
-  403: unknown
-  404: unknown
+  400:
+    | AccountNotInitializedError
+    | AppUnavailableError
+    | CompletionRequestError
+    | ModelCurrentlyNotSupportError
+    | NoAudioUploadedError
+    | ProviderNotInitializeError
+    | ProviderNotSupportSpeechToTextError
+    | ProviderQuotaExceededError
+  401: NotInitValidatedError | NotSetupError
+  403: ErrorResponse
+  404: AgentNotFoundError
+  413: AudioTooLargeError
+  415: UnsupportedAudioTypeError
+  default: ErrorResponse
 }
+
+export type PostAgentByAgentIdTextToAudioError =
+  PostAgentByAgentIdTextToAudioErrors[keyof PostAgentByAgentIdTextToAudioErrors]
 
 export type PostAgentByAgentIdTextToAudioResponses = {
   200: Blob | File
@@ -3361,9 +4041,23 @@ export type GetAgentByAgentIdTextToAudioVoicesData = {
 }
 
 export type GetAgentByAgentIdTextToAudioVoicesErrors = {
-  400: unknown
-  404: unknown
+  400:
+    | AccountNotInitializedError
+    | CompletionRequestError
+    | ModelCurrentlyNotSupportError
+    | NoAudioUploadedError
+    | ProviderNotInitializeError
+    | ProviderNotSupportSpeechToTextError
+    | ProviderQuotaExceededError
+  401: NotInitValidatedError | NotSetupError
+  404: AgentNotFoundError
+  413: AudioTooLargeError
+  415: UnsupportedAudioTypeError
+  default: ErrorResponse
 }
+
+export type GetAgentByAgentIdTextToAudioVoicesError =
+  GetAgentByAgentIdTextToAudioVoicesErrors[keyof GetAgentByAgentIdTextToAudioVoicesErrors]
 
 export type GetAgentByAgentIdTextToAudioVoicesResponses = {
   200: TextToSpeechVoiceListResponse
@@ -3380,6 +4074,15 @@ export type GetAgentByAgentIdVersionsData = {
   query?: never
   url: '/agent/{agent_id}/versions'
 }
+
+export type GetAgentByAgentIdVersionsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  default: ErrorResponse
+}
+
+export type GetAgentByAgentIdVersionsError =
+  GetAgentByAgentIdVersionsErrors[keyof GetAgentByAgentIdVersionsErrors]
 
 export type GetAgentByAgentIdVersionsResponses = {
   200: AgentConfigSnapshotListResponse
@@ -3398,6 +4101,15 @@ export type GetAgentByAgentIdVersionsByVersionIdData = {
   url: '/agent/{agent_id}/versions/{version_id}'
 }
 
+export type GetAgentByAgentIdVersionsByVersionIdErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  default: ErrorResponse
+}
+
+export type GetAgentByAgentIdVersionsByVersionIdError =
+  GetAgentByAgentIdVersionsByVersionIdErrors[keyof GetAgentByAgentIdVersionsByVersionIdErrors]
+
 export type GetAgentByAgentIdVersionsByVersionIdResponses = {
   200: AgentConfigSnapshotDetailResponse
 }
@@ -3414,6 +4126,15 @@ export type PostAgentByAgentIdVersionsByVersionIdRestoreData = {
   query?: never
   url: '/agent/{agent_id}/versions/{version_id}/restore'
 }
+
+export type PostAgentByAgentIdVersionsByVersionIdRestoreErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  default: ErrorResponse
+}
+
+export type PostAgentByAgentIdVersionsByVersionIdRestoreError =
+  PostAgentByAgentIdVersionsByVersionIdRestoreErrors[keyof PostAgentByAgentIdVersionsByVersionIdRestoreErrors]
 
 export type PostAgentByAgentIdVersionsByVersionIdRestoreResponses = {
   200: AgentConfigSnapshotRestoreResponse
