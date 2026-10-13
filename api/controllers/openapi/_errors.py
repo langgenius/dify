@@ -1,8 +1,10 @@
 """Canonical error contract for the /openapi/v1 surface.
 
-``ErrorBody`` is the only wire shape an /openapi/v1 endpoint may emit for a
-non-2xx response (RFC 8628 device-flow responses excepted — that shape is
-mandated by the OAuth spec)::
+``ErrorBody`` is the wire shape an /openapi/v1 endpoint emits for a non-2xx
+response, with two exceptions: RFC 8628 device-flow responses (that shape is
+mandated by the OAuth spec), and a failed DSL import or import confirm, which
+answers 400 with the ``Import`` body (``status: failed`` and ``error``), as the
+console does::
 
     code     str                 semantic error code (OpenApiErrorCode member)
     message  str                 human-readable summary

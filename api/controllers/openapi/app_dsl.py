@@ -11,7 +11,7 @@ from constants.oauth_bearer import Scope
 from controllers.common.rbac import RBACPermission
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Example, Kind, endpoint, op_of
-from controllers.openapi._errors import DraftChanged, DslInvalid, ErrorDetail
+from controllers.openapi._errors import DraftChanged, DraftNotFound, DslInvalid, ErrorDetail, VersionNotFound
 from controllers.openapi._models import (
     AppDslExportQuery,
     AppDslExportResponse,
@@ -32,7 +32,7 @@ from machinery.context import RequestContext
 from services.app.console_service import ConsoleAppNotFoundError
 from services.app_dsl_service import AppDslService
 from services.entities.dsl_entities import AppImportParams, Import, ImportMode, ImportStatus
-from services.errors.app import WorkflowNotFoundError
+from services.errors.app import IsDraftWorkflowError, WorkflowNotFoundError
 from services.errors.base import NoPermissionError
 from services.workflow.dsl_import import (
     DraftChangedError,
@@ -261,7 +261,9 @@ class AppDslExportApi(Resource):
                 workflow_id=query.workflow_id,
             )
         except WorkflowNotFoundError as exc:
-            return str(exc), 404
+            raise (VersionNotFound() if query.workflow_id else DraftNotFound()) from exc
+        except IsDraftWorkflowError as exc:
+            raise VersionNotFound() from exc
         return AppDslExportResponse(data=data, draft_hash=draft_token(draft) if draft else None), 200
 
 

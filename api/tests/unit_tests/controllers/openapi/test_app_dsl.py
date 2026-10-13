@@ -11,7 +11,7 @@ from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 from controllers.openapi import app_dsl
 from controllers.openapi._contract import op_of
-from controllers.openapi._errors import DslInvalid
+from controllers.openapi._errors import DraftNotFound, DslInvalid, OpenApiError, VersionNotFound
 from controllers.openapi._models import (
     AppDslExportQuery,
     AppDslExportResponse,
@@ -30,6 +30,7 @@ from models.model import App, AppMode
 from services.app.console_service import ConsoleAppNotFoundError
 from services.app_dsl_service import AppDslService
 from services.entities.dsl_entities import Import, ImportStatus
+from services.errors.app import IsDraftWorkflowError, WorkflowNotFoundError
 from services.errors.base import NoPermissionError
 from services.workflow import dsl_import, graph_check
 from services.workflow.graph_check import IssueCode, IssueSeverity
@@ -284,3 +285,32 @@ def test_check_answers_404_for_an_app_outside_the_workspace(app: Flask, monkeypa
 def test_check_refuses_dsls_it_cannot_read(app: Flask, yaml_content: str) -> None:
     with pytest.raises(BadRequest):
         _check(app, DslCheckPayload(yaml_content=yaml_content))
+
+
+@pytest.mark.parametrize(
+    ("workflow_id", "raised", "expected"),
+    [
+        ("6f1c2a52-0d43-4f7e-9a3b-1c2d3e4f5a6b", WorkflowNotFoundError("gone"), VersionNotFound),
+        ("6f1c2a52-0d43-4f7e-9a3b-1c2d3e4f5a6b", IsDraftWorkflowError("draft"), VersionNotFound),
+        (None, WorkflowNotFoundError("no draft"), DraftNotFound),
+    ],
+)
+def test_export_answers_a_missing_workflow_with_the_openapi_error(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    workflow_id: str | None,
+    raised: Exception,
+    expected: type[OpenApiError],
+) -> None:
+    def fake_export_dsl(**_kwargs: object) -> str:
+        raise raised
+
+    monkeypatch.setattr(AppDslService, "export_dsl", fake_export_dsl)
+    monkeypatch.setattr(app_dsl, "WorkflowService", lambda: Mock(get_draft_workflow=Mock(return_value=None)))
+
+    ctx = Context(cast(Subject, SimpleNamespace()), Mock(), {"app_id": "app-1"})
+    ctx._app = App(id="app-1", tenant_id="tenant-1", name="a", mode=AppMode.WORKFLOW, enable_site=True, enable_api=True)
+
+    api = AppDslExportApi()
+    with app.test_request_context("/openapi/v1/apps/app-1/dsl"), pytest.raises(expected):
+        cast(_ExportView, api.get).__handler__(api, ctx, "app-1", query=AppDslExportQuery(workflow_id=workflow_id))
