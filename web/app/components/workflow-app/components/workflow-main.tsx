@@ -450,6 +450,7 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
       const refreshed = await handleRefreshWorkflowDraft(false, {
         shouldApply: isCurrent,
         syncToCollaboration: false,
+        preserveViewport: true,
       })
       if (!isCurrent()) return
 

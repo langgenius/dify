@@ -78,6 +78,7 @@ import { useNodesReadOnly, useWorkflow, useWorkflowReadOnly } from './hooks/use-
 import { useWorkflowControlScale } from './hooks/use-workflow-control-scale'
 import { useWorkflowRefreshDraft } from './hooks/use-workflow-refresh-draft'
 import { useWorkflowSearch } from './hooks/use-workflow-search'
+import { useWorkflowViewport } from './hooks/use-workflow-viewport'
 import CustomNode from './nodes'
 import useMatchSchemaType from './nodes/_base/components/variable/use-match-schema-type'
 import CustomDataSourceEmptyNode from './nodes/data-source-empty'
@@ -271,6 +272,7 @@ export const Workflow: FC<WorkflowProps> = memo(
     const { handleSyncWorkflowDraft, syncWorkflowDraftWhenPageClose } = useNodesSyncDraft()
     const { workflowReadOnly } = useWorkflowReadOnly()
     const { nodesReadOnly } = useNodesReadOnly()
+    const { builderCanvasActive, handleViewportUserInteraction } = useWorkflowViewport()
     const { eventEmitter } = useEventEmitterContextContext()
     const pendingComment = useStore((s) => s.pendingComment)
     const showUserCursors = useStore((s) => s.showUserCursors)
@@ -369,7 +371,8 @@ export const Workflow: FC<WorkflowProps> = memo(
           collaborationManager.refreshGraphSynchronously()
           setTimeout(() => handleRefreshWorkflowDraft(true), 500)
         } else {
-          setTimeout(() => handleRefreshWorkflowDraft(), 500)
+          // Background graph updates must keep the user's current view.
+          setTimeout(() => handleRefreshWorkflowDraft(false, { preserveViewport: true }), 500)
         }
       }
     }, [syncWorkflowDraftWhenPageClose, handleRefreshWorkflowDraft, workflowStore])
@@ -554,7 +557,7 @@ export const Workflow: FC<WorkflowProps> = memo(
         id="workflow-container"
         className={cn(
           'relative isolate h-full w-full min-w-240 overflow-hidden',
-          workflowReadOnly && 'workflow-panel-animation',
+          workflowReadOnly && !builderCanvasActive && 'workflow-panel-animation',
           nodeAnimation && 'workflow-node-animation',
           className,
         )}
@@ -606,6 +609,9 @@ export const Workflow: FC<WorkflowProps> = memo(
             nodes={nodes}
             edges={edges}
             onKeyDownCapture={handleNodeKeyDown}
+            onMoveStart={(event) => {
+              if (event) handleViewportUserInteraction()
+            }}
             onMoveEnd={(event) => {
               // Loading a draft or focusing a Builder node is not a user edit.
               if (event) handleSyncWorkflowDraft()

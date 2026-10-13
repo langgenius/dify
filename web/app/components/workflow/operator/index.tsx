@@ -2,6 +2,7 @@ import type { Node } from 'reactflow'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { MiniMap } from 'reactflow'
 import UndoRedo from '../header/undo-redo'
+import { useWorkflowViewport } from '../hooks/use-workflow-viewport'
 import { useStore } from '../store'
 import { ControlMode } from '../types'
 import VariableInspectPanel from '../variable-inspect'
@@ -24,6 +25,7 @@ const Operator = ({ handleUndo, handleRedo }: OperatorProps) => {
   const setShowUserComments = useStore((s) => s.setShowUserComments)
   const controlMode = useStore((s) => s.controlMode)
   const isCommentMode = controlMode === ControlMode.Comment
+  const { handleViewportUserInteraction } = useWorkflowViewport()
 
   const handleToggleMiniMap = useCallback(() => {
     setShowMiniMap((prev) => !prev)
@@ -109,6 +111,8 @@ const Operator = ({ handleUndo, handleRedo }: OperatorProps) => {
             <MiniMap
               pannable
               zoomable
+              onPointerDownCapture={handleViewportUserInteraction}
+              onWheelCapture={handleViewportUserInteraction}
               style={{
                 width: 102,
                 height: 72,
