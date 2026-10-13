@@ -33,6 +33,7 @@ import { datasetDetailQueryKeyPrefix, useInvalidDatasetList } from '@/service/kn
 import { useInvalid } from '@/service/use-base'
 import { useExportPipelineDSL } from '@/service/use-pipeline'
 import { downloadBlob } from '@/utils/download'
+import { getErrorMessage } from '@/utils/error-message'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import RenameDatasetModal from '../../datasets/rename-modal'
 
@@ -40,9 +41,6 @@ type DropDownProps = {
   expand: boolean
   triggerClassName?: string
 }
-
-const getErrorMessage = (error: unknown) =>
-  error instanceof Error ? error.message : 'Unknown error'
 
 const DropDown = ({ expand, triggerClassName }: DropDownProps) => {
   const { t } = useTranslation(['app', 'common', 'dataset', 'datasetPipeline', 'navigation'])
@@ -125,7 +123,7 @@ const DropDown = ({ expand, triggerClassName }: DropDownProps) => {
       )
       setShowConfirmDelete(true)
     } catch (e: unknown) {
-      toast.error(getErrorMessage(e))
+      toast.error(getErrorMessage(e) ?? 'Unknown error')
     }
   }, [dataset.id, t])
 
