@@ -81,7 +81,7 @@ from controllers.common.rbac import AgentBehindApp, PlainApp, RBACCheck, RBACPer
 from controllers.openapi import bp as openapi_bp
 from controllers.openapi._app_settings import REGULAR_MODES
 from controllers.openapi._catalog import CATALOG_HEADER, catalog_for
-from controllers.openapi._errors import WebAppAccessRequiresEE
+from controllers.openapi._errors import ServiceApiDisabled, WebAppAccessRequiresEE
 from controllers.openapi.auth import subjects
 from controllers.openapi.auth.requirements import (
     CheckAppAccess,
@@ -218,7 +218,7 @@ DENY_SSO_NEEDS_EE = Expect(403, "external_sso_requires_ee")
 DENY_SCOPE = Expect(403, "insufficient_scope")
 DENY_NON_MEMBER = Expect(404, "workspace not found")
 DENY_ROLE = Expect(403, "insufficient workspace role")
-DENY_API_DISABLED = Expect(403, "service_api_disabled")
+DENY_API_DISABLED = Expect(403, ServiceApiDisabled.description)
 DENY_UNKNOWN_APP = Expect(404, "app not found")
 DENY_ACCESS_MODE = Expect(403, "subject_not_allowed_for_access_mode")
 DENY_MODE_UNRESOLVED = Expect(403, "app or access mode not loaded")

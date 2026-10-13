@@ -9,10 +9,10 @@ from flask import Flask
 from sqlalchemy import event
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import Forbidden, Unauthorized
+from werkzeug.exceptions import HTTPException, Unauthorized
 
 from controllers.openapi._catalog import CATALOG_HEADER, catalog_for
-from controllers.openapi._errors import CatalogStale
+from controllers.openapi._errors import CatalogStale, ServiceApiDisabled
 from controllers.openapi.auth import loaders
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.pipelines import (
@@ -225,7 +225,7 @@ def test_the_requirements_that_share_a_datum_fetch_it_once(
     ("requirements", "enable_api", "webapp_auth", "message"),
     [
         ((CheckSubject(allowed=[AccountSubject]),), True, False, "unsupported_token_type"),
-        ((CheckAppApiEnabled(),), False, False, "service_api_disabled"),
+        ((CheckAppApiEnabled(),), False, False, ServiceApiDisabled.description),
         ((CheckAppAccess(),), True, True, "subject_not_allowed_for_access_mode"),
     ],
     ids=["wrong subject (FIRST)", "api disabled (EARLY)", "webapp acl (NORMAL)"],
@@ -254,7 +254,7 @@ def test_a_refused_sso_request_never_creates_an_end_user(
     with app.test_request_context(f"/openapi/v1/apps/{APP_ID}:run", headers=_current_catalog(app)):
         with patch(FEATURES, return_value=system_features(webapp_auth=webapp_auth)):
             with patch(ACCESS_MODE, return_value=webapp_settings(WebAppAccessMode.PRIVATE_ALL.value)):
-                with pytest.raises(Forbidden, match=message):
+                with pytest.raises(HTTPException, match=message):
                     _run(ExternalSsoPipeline(), subject, ctx, sqlite_session, requirements=requirements)
 
     assert ctx._caller is None

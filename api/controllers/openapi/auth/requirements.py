@@ -26,8 +26,10 @@ from controllers.openapi._errors import (
     MemberLicenseExceeded,
     MemberLimitExceeded,
     PluginInstallForbidden,
+    ServiceApiDisabled,
     WebAppAccessRequiresEE,
 )
+from controllers.openapi._models import Hint
 from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.loaders import load_app, load_caller, load_workspace, load_workspace_role
 from controllers.openapi.auth.subjects import AccountSubject, ResourceAccessSubject, Subject
@@ -89,13 +91,21 @@ def assert_license_valid() -> None:
         raise Forbidden("license_invalid")
 
 
+# The routes live in `app_info`, which imports this module, so the op ids are spelled out; a test pins them.
+SET_SERVICE_API_OP: Final = "set.service_api"
+SET_AGENT_SERVICE_API_OP: Final = "set.service_api.agent"
+
+
 class CheckAppApiEnabled(Requirement):
     rank = Rank.EARLY
 
     @override
     def run(self, subject: Subject, ctx: Context, session: Session) -> None:
-        if not load_app(ctx).enable_api:
-            raise Forbidden("service_api_disabled")
+        app = load_app(ctx)
+        if not app.enable_api:
+            op = SET_AGENT_SERVICE_API_OP if app.mode == AppMode.AGENT else SET_SERVICE_API_OP
+            hint = Hint(summary="Turn the Service API on", op=op, input={"app_id": app.id, "enabled": True})
+            raise ServiceApiDisabled(hints=[hint])
 
 
 class CheckWorkspaceMember(Requirement):

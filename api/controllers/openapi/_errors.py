@@ -97,6 +97,7 @@ class OpenApiErrorCode(StrEnum):
     DSL_INVALID = "dsl_invalid"
     DRAFT_CHANGED = "draft_changed"
     APP_MODE_MISMATCH = "app_mode_mismatch"
+    SERVICE_API_DISABLED = "service_api_disabled"
 
 
 class ErrorDetail(BaseModel):
@@ -465,3 +466,10 @@ class AppModeMismatch(OpenApiError):  # noqa: N818
     error_code = OpenApiErrorCode.APP_MODE_MISMATCH
     description = "This op does not serve apps of this mode."
     hint = "describe.console_app shows the app's mode."
+
+
+class ServiceApiDisabled(OpenApiError):  # noqa: N818
+    code = 403
+    error_code = OpenApiErrorCode.SERVICE_API_DISABLED
+    description = "This app's Service API is turned off."
+    hint = "A workspace admin can turn it on; hints holds the op."
