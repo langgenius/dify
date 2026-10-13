@@ -35,9 +35,7 @@ def _assert_signed_tool_file_text(text: str, tool_file_id: str, extension: str) 
     assert text.startswith(f"File: /files/tools/{tool_file_id}{extension}?")
     assert text.endswith("\n")
     query = parse_qs(urlsplit(text.removeprefix("File: ").removesuffix("\n")).query)
-    assert verify_tool_file_signature(
-        tool_file_id, query["timestamp"][0], query["nonce"][0], query["sign"][0]
-    )
+    assert verify_tool_file_signature(tool_file_id, query["timestamp"][0], query["nonce"][0], query["sign"][0])
 
 
 class _StubToolRuntime:
