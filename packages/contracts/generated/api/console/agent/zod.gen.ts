@@ -546,9 +546,11 @@ export const zPostAgentBuildDraftApplyApiError400 = zErrorResponse.and(
   z.object({
     code: z.enum([
       'account_not_initialized',
+      'agent_soul_locked_error',
       'bad_request',
       'invalid_composer_config_error',
       'invalid_param',
+      'plaintext_secret_not_allowed_error',
     ]),
   }),
 )
@@ -741,6 +743,7 @@ export const zPutAgentComposerApiError400 = zErrorResponse.and(
       'bad_request',
       'invalid_composer_config_error',
       'invalid_param',
+      'plaintext_secret_not_allowed_error',
     ]),
   }),
 )
@@ -843,6 +846,15 @@ export const zGetAgentConfigFilesByAgentError401 = zErrorResponse.and(
 )
 
 /**
+ * GetAgentConfigFilesByAgentError404
+ */
+export const zGetAgentConfigFilesByAgentError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['agent_not_found_error', 'agent_version_not_found_error', 'not_found']),
+  }),
+)
+
+/**
  * AgentConfigFileUploadPayload
  */
 export const zAgentConfigFileUploadPayload = z.object({
@@ -864,6 +876,15 @@ export const zUploadAgentConfigFileByAgentError400 = zErrorResponse.and(
 export const zUploadAgentConfigFileByAgentError401 = zErrorResponse.and(
   z.object({
     code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * UploadAgentConfigFileByAgentError404
+ */
+export const zUploadAgentConfigFileByAgentError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['agent_not_found_error', 'agent_version_not_found_error', 'not_found']),
   }),
 )
 
@@ -894,6 +915,15 @@ export const zDeleteAgentConfigFileByAgentError401 = zErrorResponse.and(
 )
 
 /**
+ * DeleteAgentConfigFileByAgentError404
+ */
+export const zDeleteAgentConfigFileByAgentError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['agent_not_found_error', 'agent_version_not_found_error', 'not_found']),
+  }),
+)
+
+/**
  * AgentConfigDownloadResponse
  */
 export const zAgentConfigDownloadResponse = z.object({
@@ -915,6 +945,15 @@ export const zDownloadAgentConfigFileByAgentError400 = zErrorResponse.and(
 export const zDownloadAgentConfigFileByAgentError401 = zErrorResponse.and(
   z.object({
     code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * DownloadAgentConfigFileByAgentError404
+ */
+export const zDownloadAgentConfigFileByAgentError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['agent_not_found_error', 'agent_version_not_found_error', 'not_found']),
   }),
 )
 
@@ -948,6 +987,15 @@ export const zPreviewAgentConfigFileByAgentError401 = zErrorResponse.and(
 )
 
 /**
+ * PreviewAgentConfigFileByAgentError404
+ */
+export const zPreviewAgentConfigFileByAgentError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['agent_not_found_error', 'agent_version_not_found_error', 'not_found']),
+  }),
+)
+
+/**
  * GetAgentConfigManifestByAgentError400
  */
 export const zGetAgentConfigManifestByAgentError400 = zErrorResponse.and(
@@ -962,6 +1010,15 @@ export const zGetAgentConfigManifestByAgentError400 = zErrorResponse.and(
 export const zGetAgentConfigManifestByAgentError401 = zErrorResponse.and(
   z.object({
     code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetAgentConfigManifestByAgentError404
+ */
+export const zGetAgentConfigManifestByAgentError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['agent_not_found_error', 'agent_version_not_found_error', 'not_found']),
   }),
 )
 
@@ -984,6 +1041,15 @@ export const zGetAgentConfigSkillsByAgentError401 = zErrorResponse.and(
 )
 
 /**
+ * GetAgentConfigSkillsByAgentError404
+ */
+export const zGetAgentConfigSkillsByAgentError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['agent_not_found_error', 'agent_version_not_found_error', 'not_found']),
+  }),
+)
+
+/**
  * UploadAgentConfigSkillByAgentError400
  */
 export const zUploadAgentConfigSkillByAgentError400 = zErrorResponse.and(
@@ -998,6 +1064,15 @@ export const zUploadAgentConfigSkillByAgentError400 = zErrorResponse.and(
 export const zUploadAgentConfigSkillByAgentError401 = zErrorResponse.and(
   z.object({
     code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * UploadAgentConfigSkillByAgentError404
+ */
+export const zUploadAgentConfigSkillByAgentError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['agent_not_found_error', 'agent_version_not_found_error', 'not_found']),
   }),
 )
 
@@ -1020,6 +1095,15 @@ export const zDeleteAgentConfigSkillByAgentError401 = zErrorResponse.and(
 )
 
 /**
+ * DeleteAgentConfigSkillByAgentError404
+ */
+export const zDeleteAgentConfigSkillByAgentError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['agent_not_found_error', 'agent_version_not_found_error', 'not_found']),
+  }),
+)
+
+/**
  * DownloadAgentConfigSkillByAgentError400
  */
 export const zDownloadAgentConfigSkillByAgentError400 = zErrorResponse.and(
@@ -1034,6 +1118,15 @@ export const zDownloadAgentConfigSkillByAgentError400 = zErrorResponse.and(
 export const zDownloadAgentConfigSkillByAgentError401 = zErrorResponse.and(
   z.object({
     code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * DownloadAgentConfigSkillByAgentError404
+ */
+export const zDownloadAgentConfigSkillByAgentError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['agent_not_found_error', 'agent_version_not_found_error', 'not_found']),
   }),
 )
 
@@ -1056,6 +1149,15 @@ export const zGetAgentConfigSkillFileDownloadContentByAgentApiError401 = zErrorR
 )
 
 /**
+ * GetAgentConfigSkillFileDownloadContentByAgentApiError404
+ */
+export const zGetAgentConfigSkillFileDownloadContentByAgentApiError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['agent_not_found_error', 'agent_version_not_found_error', 'not_found']),
+  }),
+)
+
+/**
  * DownloadAgentConfigSkillFileByAgentError400
  */
 export const zDownloadAgentConfigSkillFileByAgentError400 = zErrorResponse.and(
@@ -1070,6 +1172,15 @@ export const zDownloadAgentConfigSkillFileByAgentError400 = zErrorResponse.and(
 export const zDownloadAgentConfigSkillFileByAgentError401 = zErrorResponse.and(
   z.object({
     code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * DownloadAgentConfigSkillFileByAgentError404
+ */
+export const zDownloadAgentConfigSkillFileByAgentError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['agent_not_found_error', 'agent_version_not_found_error', 'not_found']),
   }),
 )
 
@@ -1103,6 +1214,15 @@ export const zPreviewAgentConfigSkillFileByAgentError401 = zErrorResponse.and(
 )
 
 /**
+ * PreviewAgentConfigSkillFileByAgentError404
+ */
+export const zPreviewAgentConfigSkillFileByAgentError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['agent_not_found_error', 'agent_version_not_found_error', 'not_found']),
+  }),
+)
+
+/**
  * InspectAgentConfigSkillByAgentError400
  */
 export const zInspectAgentConfigSkillByAgentError400 = zErrorResponse.and(
@@ -1117,6 +1237,15 @@ export const zInspectAgentConfigSkillByAgentError400 = zErrorResponse.and(
 export const zInspectAgentConfigSkillByAgentError401 = zErrorResponse.and(
   z.object({
     code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * InspectAgentConfigSkillByAgentError404
+ */
+export const zInspectAgentConfigSkillByAgentError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['agent_not_found_error', 'agent_version_not_found_error', 'not_found']),
   }),
 )
 
@@ -1319,6 +1448,7 @@ export const zPostAgentPublishApiError400 = zErrorResponse.and(
       'bad_request',
       'invalid_composer_config_error',
       'invalid_param',
+      'plaintext_secret_not_allowed_error',
     ]),
   }),
 )
@@ -1376,106 +1506,6 @@ export const zSandboxInfoResponse = z.object({
 })
 
 /**
- * GetAgentAppSandboxInfoError400
- */
-export const zGetAgentAppSandboxInfoError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
-  }),
-)
-
-/**
- * GetAgentAppSandboxInfoError401
- */
-export const zGetAgentAppSandboxInfoError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * GetAgentAppSandboxInfoError404
- */
-export const zGetAgentAppSandboxInfoError404 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['agent_not_found_error', 'app_not_found', 'no_active_binding', 'not_found']),
-  }),
-)
-
-/**
- * GetAgentAppSandboxInfoError502
- */
-export const zGetAgentAppSandboxInfoError502 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'agent_backend_unreachable',
-      'bad_gateway',
-      'binding_file_download_unavailable',
-      'plugin_runtime_error',
-    ]),
-  }),
-)
-
-/**
- * GetAgentAppSandboxInfoError503
- */
-export const zGetAgentAppSandboxInfoError503 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['inspector_unavailable', 'service_unavailable']),
-  }),
-)
-
-/**
- * ListAgentAppSandboxFilesError400
- */
-export const zListAgentAppSandboxFilesError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
-  }),
-)
-
-/**
- * ListAgentAppSandboxFilesError401
- */
-export const zListAgentAppSandboxFilesError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * ListAgentAppSandboxFilesError404
- */
-export const zListAgentAppSandboxFilesError404 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['agent_not_found_error', 'app_not_found', 'no_active_binding', 'not_found']),
-  }),
-)
-
-/**
- * ListAgentAppSandboxFilesError502
- */
-export const zListAgentAppSandboxFilesError502 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'agent_backend_unreachable',
-      'bad_gateway',
-      'binding_file_download_unavailable',
-      'plugin_runtime_error',
-    ]),
-  }),
-)
-
-/**
- * ListAgentAppSandboxFilesError503
- */
-export const zListAgentAppSandboxFilesError503 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['inspector_unavailable', 'service_unavailable']),
-  }),
-)
-
-/**
  * AgentSandboxDownloadPayload
  */
 export const zAgentSandboxDownloadPayload = z.object({
@@ -1492,56 +1522,6 @@ export const zSandboxDownloadResponse = z.object({
 })
 
 /**
- * DownloadAgentAppSandboxFileError400
- */
-export const zDownloadAgentAppSandboxFileError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
-  }),
-)
-
-/**
- * DownloadAgentAppSandboxFileError401
- */
-export const zDownloadAgentAppSandboxFileError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * DownloadAgentAppSandboxFileError404
- */
-export const zDownloadAgentAppSandboxFileError404 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['agent_not_found_error', 'app_not_found', 'no_active_binding', 'not_found']),
-  }),
-)
-
-/**
- * DownloadAgentAppSandboxFileError502
- */
-export const zDownloadAgentAppSandboxFileError502 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'agent_backend_unreachable',
-      'bad_gateway',
-      'binding_file_download_unavailable',
-      'plugin_runtime_error',
-    ]),
-  }),
-)
-
-/**
- * DownloadAgentAppSandboxFileError503
- */
-export const zDownloadAgentAppSandboxFileError503 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['inspector_unavailable', 'service_unavailable']),
-  }),
-)
-
-/**
  * SandboxReadResponse
  */
 export const zSandboxReadResponse = z.object({
@@ -1551,56 +1531,6 @@ export const zSandboxReadResponse = z.object({
   text: z.string().nullish(),
   truncated: z.boolean(),
 })
-
-/**
- * ReadAgentAppSandboxFileError400
- */
-export const zReadAgentAppSandboxFileError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
-  }),
-)
-
-/**
- * ReadAgentAppSandboxFileError401
- */
-export const zReadAgentAppSandboxFileError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * ReadAgentAppSandboxFileError404
- */
-export const zReadAgentAppSandboxFileError404 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['agent_not_found_error', 'app_not_found', 'no_active_binding', 'not_found']),
-  }),
-)
-
-/**
- * ReadAgentAppSandboxFileError502
- */
-export const zReadAgentAppSandboxFileError502 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'agent_backend_unreachable',
-      'bad_gateway',
-      'binding_file_download_unavailable',
-      'plugin_runtime_error',
-    ]),
-  }),
-)
-
-/**
- * ReadAgentAppSandboxFileError503
- */
-export const zReadAgentAppSandboxFileError503 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['inspector_unavailable', 'service_unavailable']),
-  }),
-)
 
 /**
  * GetAgentStatisticsSummaryApiError400
