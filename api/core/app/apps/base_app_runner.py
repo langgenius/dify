@@ -22,7 +22,7 @@ from core.app.entities.queue_entities import (
     QueueMessageEndEvent,
     QueueMessageFileEvent,
 )
-from core.app.features.annotation_reply.annotation_reply import AnnotationReplyFeature
+from core.app.features.annotation_reply.annotation_reply import AnnotationReplyFeature, AnnotationReplyRecord
 from core.app.features.hosting_moderation.hosting_moderation import HostingModerationFeature
 from core.db.session_factory import session_factory
 from core.external_data_tool.external_data_fetch import ExternalDataFetch
@@ -44,7 +44,7 @@ from graphon.model_runtime.entities.message_entities import (
 from graphon.model_runtime.entities.model_entities import ModelPropertyKey
 from graphon.model_runtime.errors.invoke import InvokeBadRequestError
 from models.enums import CreatorUserRole, MessageFileBelongsTo
-from models.model import App, AppMode, Message, MessageAnnotation, MessageFile
+from models.model import App, AppMode, Message, MessageFile
 
 if TYPE_CHECKING:
     from graphon.file import File
@@ -540,8 +540,8 @@ class AppRunner:
         )
 
     def query_app_annotations_to_reply(
-        self, app_record: App, message: Message, query: str, user_id: str, invoke_from: InvokeFrom, session: Session
-    ) -> MessageAnnotation | None:
+        self, app_record: App, message: Message, query: str, user_id: str, invoke_from: InvokeFrom
+    ) -> AnnotationReplyRecord | None:
         """
         Query app annotations to reply
         :param app_record: app record
@@ -558,5 +558,4 @@ class AppRunner:
             query=query,
             user_id=user_id,
             invoke_from=invoke_from,
-            session=session,
         )

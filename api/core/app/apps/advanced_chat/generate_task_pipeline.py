@@ -851,8 +851,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         self, event: QueueAnnotationReplyEvent, **kwargs
     ) -> Generator[StreamResponse, None, None]:
         """Handle annotation reply events."""
-        with self._database_session() as session:
-            self._message_cycle_manager.handle_annotation_reply(event, session)
+        self._message_cycle_manager.handle_annotation_reply(event)
         yield from ()
 
     def _handle_message_replace_event(

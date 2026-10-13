@@ -52,7 +52,7 @@ class ChatAppRunner(AppRunner):
         """
         app_config = application_generate_entity.app_config
         app_config = cast(ChatAppConfig, app_config)
-        stmt = select(App).where(App.id == app_config.app_id)
+        stmt = select(App).where(App.id == app_config.app_id, App.tenant_id == app_config.tenant_id)
         with create_session() as read_session:
             app_record = read_session.scalar(stmt)
             if app_record:
@@ -120,6 +120,9 @@ class ChatAppRunner(AppRunner):
             return
 
         if query:
+            # Release the caller transaction before vector search and the owned hit transaction.
+            session.commit()
+            session.close()
             # annotation reply
             annotation_reply = self.query_app_annotations_to_reply(
                 app_record=app_record,
@@ -127,10 +130,7 @@ class ChatAppRunner(AppRunner):
                 query=query,
                 user_id=application_generate_entity.user_id,
                 invoke_from=application_generate_entity.invoke_from,
-                session=session,
             )
-            session.commit()
-            session.close()
 
             if annotation_reply:
                 queue_manager.publish(

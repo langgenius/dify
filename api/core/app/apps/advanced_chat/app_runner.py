@@ -27,7 +27,7 @@ from core.app.entities.queue_entities import (
     QueueStopEvent,
     QueueTextChunkEvent,
 )
-from core.app.features.annotation_reply.annotation_reply import AnnotationReplyFeature
+from core.app.features.annotation_reply.annotation_reply import AnnotationReplyFeature, AnnotationReplyRecord
 from core.app.layers.conversation_variable_persist_layer import ConversationVariablePersistenceLayer
 from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from core.db.session_factory import create_session, session_factory
@@ -54,7 +54,7 @@ from graphon.runtime import GraphRuntimeState, VariablePool
 from graphon.variable_loader import VariableLoader
 from graphon.variables.variables import Variable
 from models import Workflow
-from models.model import App, Conversation, Message, MessageAnnotation
+from models.model import App, Conversation, Message
 from models.workflow import ConversationVariable
 from services.conversation_variable_updater import ConversationVariableUpdater
 
@@ -119,7 +119,9 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         )
 
         with create_session() as session:
-            app_record = session.scalar(select(App).where(App.id == app_config.app_id))
+            app_record = session.scalar(
+                select(App).where(App.id == app_config.app_id, App.tenant_id == app_config.tenant_id)
+            )
 
         if not app_record:
             raise ValueError("App not found")
@@ -178,15 +180,12 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             )
 
             # annotation reply
-            with create_session() as session:
-                annotation_reply = self.handle_annotation_reply(
-                    app_record=self._app,
-                    message=self.message,
-                    query=new_query,
-                    app_generate_entity=self.application_generate_entity,
-                    session=session,
-                )
-                session.commit()
+            annotation_reply = self.handle_annotation_reply(
+                app_record=self._app,
+                message=self.message,
+                query=new_query,
+                app_generate_entity=self.application_generate_entity,
+            )
             if annotation_reply:
                 self._publish_event(QueueAnnotationReplyEvent(message_annotation_id=annotation_reply.id))
                 self._complete_with_stream_output(
@@ -330,15 +329,13 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         message: Message,
         query: str,
         app_generate_entity: AdvancedChatAppGenerateEntity,
-        session: Session,
-    ) -> MessageAnnotation | None:
+    ) -> AnnotationReplyRecord | None:
         return self.query_app_annotations_to_reply(
             app_record=app_record,
             message=message,
             query=query,
             user_id=app_generate_entity.user_id,
             invoke_from=app_generate_entity.invoke_from,
-            session=session,
         )
 
     def _complete_with_stream_output(self, text: str, stopped_by: QueueStopEvent.StopBy):
@@ -356,8 +353,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         query: str,
         user_id: str,
         invoke_from: InvokeFrom,
-        session: Session,
-    ) -> MessageAnnotation | None:
+    ) -> AnnotationReplyRecord | None:
         """
         Query app annotations to reply
         :param app_record: app record
@@ -374,7 +370,6 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             query=query,
             user_id=user_id,
             invoke_from=invoke_from,
-            session=session,
         )
 
     def moderation_for_inputs(

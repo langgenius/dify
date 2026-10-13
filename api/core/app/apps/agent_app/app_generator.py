@@ -48,12 +48,13 @@ from core.app.entities.app_invoke_entities import (
     InvokeFrom,
     UserFrom,
 )
+from core.app.features.annotation_reply.annotation_reply import AnnotationReplyRecord
 from core.credit_usage import CreditUsageAppType
 from core.db.session_factory import session_factory
 from core.ops.ops_trace_manager import TraceQueueManager
 from extensions.ext_database import db
 from factories import file_factory
-from models import Account, App, AppModelConfig, Conversation, EndUser, Message, MessageAnnotation
+from models import Account, App, AppModelConfig, Conversation, EndUser, Message
 from models.agent import (
     APP_BACKED_AGENT_SOURCES,
     Agent,
@@ -415,17 +416,19 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                     # Apply app-level input guards (content moderation + annotation
                     # reply) before reaching the Agent backend, mirroring the EasyUI
                     # chat / agent-chat runners. These can short-circuit the turn.
-                    with session_factory.get_session_maker().begin() as session:
-                        app_model = session.get(App, app_config.app_id)
+                    with session_factory.create_session() as session:
+                        app_model = session.scalar(
+                            select(App).where(App.id == app_config.app_id, App.tenant_id == app_config.tenant_id)
+                        )
                         if app_model is None:
                             raise AgentAppGeneratorError("App not found")
-                        handled, query, annotation_reply = self._run_input_guards(
-                            session=session,
-                            application_generate_entity=application_generate_entity,
-                            app_model=app_model,
-                            message=message,
-                            queue_manager=queue_manager,
-                        )
+                        session.expunge(app_model)
+                    handled, query, annotation_reply = self._run_input_guards(
+                        application_generate_entity=application_generate_entity,
+                        app_model=app_model,
+                        message=message,
+                        queue_manager=queue_manager,
+                    )
                     if annotation_reply:
                         from core.app.apps.agent_app.app_runner import publish_text_answer
                         from core.app.entities.queue_entities import QueueAnnotationReplyEvent
@@ -533,16 +536,15 @@ class AgentAppGenerator(MessageBasedAppGenerator):
     def _run_input_guards(
         self,
         *,
-        session: Session,
         application_generate_entity: AgentAppGenerateEntity,
         app_model: App,
         message: Message,
         queue_manager: AppQueueManager,
-    ) -> tuple[bool, str, MessageAnnotation | None]:
+    ) -> tuple[bool, str, AnnotationReplyRecord | None]:
         """Apply input moderation + annotation reply before the backend call.
 
         Returns ``(handled, query, annotation_reply)``. Annotation output is
-        published by the caller only after this transaction commits.
+        published by the caller after the annotation service commits its hit.
         """
         from core.app.apps.agent_app.app_runner import publish_text_answer
         from core.app.features.annotation_reply.annotation_reply import AnnotationReplyFeature
@@ -577,7 +579,6 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                 query=query,
                 user_id=application_generate_entity.user_id,
                 invoke_from=application_generate_entity.invoke_from,
-                session=session,
             )
             if annotation_reply:
                 return True, query, annotation_reply

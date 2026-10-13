@@ -29,14 +29,14 @@ from core.app.entities.task_entities import (
     StreamEvent,
     WorkflowTaskState,
 )
+from core.app.features.annotation_reply.annotation_reply import AnnotationReplyFeature, AnnotationReplyRecord
 from core.db.session_factory import session_factory
 from core.llm_generator.llm_generator import LLMGenerator
 from core.tools.signature import sign_tool_file
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.enums import MessageFileBelongsTo
-from models.model import App, AppMode, Conversation, MessageAnnotation, MessageFile
-from services.annotation_service import AppAnnotationService
+from models.model import App, AppMode, Conversation, MessageFile
 
 logger = logging.getLogger(__name__)
 
@@ -159,20 +159,24 @@ class MessageCycleManager:
                     conversation.name = name
                     session.commit()
 
-    def handle_annotation_reply(self, event: QueueAnnotationReplyEvent, session: Session) -> MessageAnnotation | None:
+    def handle_annotation_reply(self, event: QueueAnnotationReplyEvent) -> AnnotationReplyRecord | None:
         """
         Handle annotation reply.
         :param event: event
         :return:
         """
-        reply = AppAnnotationService.get_annotation_reply_by_id(event.message_annotation_id, session)
-        if reply:
-            annotation, account_name = reply
+        app_config = self._application_generate_entity.app_config
+        annotation = AnnotationReplyFeature().get_reply(
+            tenant_id=app_config.tenant_id,
+            app_id=app_config.app_id,
+            annotation_id=event.message_annotation_id,
+        )
+        if annotation:
             self._task_state.metadata.annotation_reply = AnnotationReply(
                 id=annotation.id,
                 account=AnnotationReplyAccount(
                     id=annotation.account_id,
-                    name=account_name if account_name is not None else "Dify user",
+                    name=annotation.account_name if annotation.account_name is not None else "Dify user",
                 ),
             )
 

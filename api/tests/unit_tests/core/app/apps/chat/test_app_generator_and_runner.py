@@ -391,7 +391,8 @@ class TestChatAppRunner:
             runner.run(app_generate_entity, queue_manager, conversation, message, sqlite_session)
 
         assert any(isinstance(item[0], QueueAnnotationReplyEvent) for item in queue_manager.published)
-        assert annotation_query.call_args.kwargs["session"] is sqlite_session
+        assert "session" not in annotation_query.call_args.kwargs
+        assert not sqlite_session.in_transaction()
         mock_direct.assert_called_once()
 
     def test_run_returns_when_hosting_moderation_blocks(self, sqlite_session: Session):

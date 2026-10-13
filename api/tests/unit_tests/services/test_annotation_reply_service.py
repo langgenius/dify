@@ -13,9 +13,10 @@ from sqlalchemy.orm import ORMExecuteState, Session, SessionTransaction, session
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from extensions.ext_redis import RedisClientWrapper
+from models.account import Account
 from models.dataset import DatasetCollectionBinding, Whitelist
 from models.enums import CollectionBindingType
-from models.model import App, AppAnnotationSetting, MessageAnnotation
+from models.model import App, AppAnnotationHitHistory, AppAnnotationSetting, MessageAnnotation
 from repositories.annotation_reply_job_repository import RedisAnnotationReplyJobRepository
 from repositories.annotation_repository import AnnotationRepository
 from services.annotation_command_service import AnnotationSettingNotFoundError
@@ -380,3 +381,133 @@ def test_vector_whitelist_remains_scoped_to_tenant_and_category(
             "type": VectorType.QDRANT,
             "vector_store": {"class_prefix": binding.collection_name},
         }
+
+
+# Runtime reads and failure handling use the same injected service as reply jobs.
+# Vector search success remains a provider-backed integration concern.
+def test_matching_without_settings_does_not_initialize_vector_backend(harness: _Harness) -> None:
+    assert (
+        harness.service.match(
+            tenant_id=harness.app.tenant_id,
+            app_id=harness.app.id,
+            message_id="message-1",
+            user_id=harness.account_id,
+            query="User question",
+            source="api",
+        )
+        is None
+    )
+
+
+@pytest.mark.parametrize("binding_state", ["missing", "dataset"])
+def test_matching_skips_missing_or_non_annotation_binding(
+    harness: _Harness,
+    binding: DatasetCollectionBinding,
+    setting: AppAnnotationSetting,
+    binding_state: Literal["missing", "dataset"],
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    with harness.factory.begin() as session:
+        row = session.get_one(DatasetCollectionBinding, binding.id)
+        if binding_state == "missing":
+            session.delete(row)
+        else:
+            row.type = CollectionBindingType.DATASET
+
+    assert (
+        harness.service.match(
+            tenant_id=harness.app.tenant_id,
+            app_id=harness.app.id,
+            message_id="message-1",
+            user_id=harness.account_id,
+            query="User question",
+            source="api",
+        )
+        is None
+    )
+    assert "not supported" not in caplog.text
+    with harness.factory() as session:
+        assert session.get_one(AppAnnotationSetting, setting.id).collection_binding_id == binding.id
+        assert session.scalar(select(AppAnnotationHitHistory)) is None
+
+
+def test_matching_logs_backend_failure_after_releasing_read_sessions(
+    harness: _Harness,
+    setting: AppAnnotationSetting,
+    annotation: MessageAnnotation,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    sessions: list[Session] = []
+    closed_at_selection: list[bool] = []
+
+    def track_session(session: Session, _transaction: SessionTransaction, _connection: Connection) -> None:
+        sessions.append(session)
+
+    def observe_whitelist_query(state: ORMExecuteState) -> None:
+        if any(mapper.class_ is Whitelist for mapper in state.all_mappers):
+            closed_at_selection.append(
+                bool(sessions)
+                and all(not session.in_transaction() and not session.identity_map for session in sessions)
+            )
+
+    event.listen(harness.factory, "after_begin", track_session)
+    event.listen(harness.factory, "do_orm_execute", observe_whitelist_query)
+    try:
+        with config_overrides_context(VECTOR_STORE_WHITELIST_ENABLE=True):
+            result = harness.service.match(
+                tenant_id=harness.app.tenant_id,
+                app_id=harness.app.id,
+                message_id="message-1",
+                user_id=harness.account_id,
+                query="User question",
+                source="console",
+            )
+        assert result is None
+        assert closed_at_selection == [True]
+        assert all(not session.in_transaction() and not session.identity_map for session in sessions)
+    finally:
+        event.remove(harness.factory, "after_begin", track_session)
+        event.remove(harness.factory, "do_orm_execute", observe_whitelist_query)
+    assert "Query annotation failed" in caplog.text
+    assert harness.app.id in caplog.text
+    assert harness.app.tenant_id in caplog.text
+    assert "not supported" in caplog.text
+    with harness.factory() as session:
+        assert session.get_one(MessageAnnotation, annotation.id).hit_count == 0
+        assert session.get_one(AppAnnotationSetting, setting.id).score_threshold == 0.4
+        assert session.scalar(select(AppAnnotationHitHistory)) is None
+
+
+@pytest.mark.parametrize("author_name", ["Annotation author", "", None])
+def test_runtime_reply_read_preserves_existing_empty_and_deleted_authors(
+    harness: _Harness, annotation: MessageAnnotation, author_name: str | None
+) -> None:
+    if author_name is not None:
+        author = Account(name=author_name, email="annotation-author@example.com")
+        author.id = annotation.account_id
+        with harness.factory.begin() as session:
+            session.add(author)
+
+    reply = harness.service.get_reply(
+        tenant_id=harness.app.tenant_id, app_id=harness.app.id, annotation_id=annotation.id
+    )
+
+    assert reply is not None
+    assert (reply.id, reply.content, reply.account_id, reply.account_name) == (
+        annotation.id,
+        "An answer",
+        annotation.account_id,
+        author_name,
+    )
+    assert (
+        harness.service.get_reply(
+            tenant_id=harness.foreign_app.tenant_id, app_id=harness.app.id, annotation_id=annotation.id
+        )
+        is None
+    )
+    assert (
+        harness.service.get_reply(
+            tenant_id=harness.app.tenant_id, app_id=harness.app.id, annotation_id="missing-annotation"
+        )
+        is None
+    )

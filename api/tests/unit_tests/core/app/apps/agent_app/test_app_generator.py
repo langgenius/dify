@@ -17,6 +17,7 @@ from types import SimpleNamespace
 import pytest
 from pytest_mock import MockerFixture
 from sqlalchemy import event
+from sqlalchemy import inspect as inspect_orm
 from sqlalchemy.orm import Session
 
 import core.app.apps.agent_app.app_generator as module
@@ -450,7 +451,7 @@ class TestGenerateWorker:
         self._call(generator, mocker, queue_manager)
         runner.run.assert_not_called()
 
-    def test_annotation_reply_publishes_after_guard_transaction_commits(self, generator, mocker: MockerFixture):
+    def test_annotation_reply_publishes_after_app_read_closes(self, generator, mocker: MockerFixture):
         runner, _ = self._wire(generator, mocker, handled=True)
         annotation_reply = MessageAnnotation(
             app_id="app1",
@@ -462,8 +463,8 @@ class TestGenerateWorker:
         events: list[str] = []
         queue_manager = mocker.MagicMock()
 
-        def record_commit(_session: Session) -> None:
-            events.append("commit")
+        def record_checkin(_dbapi_connection, _connection_record) -> None:
+            events.append("checkin")
 
         def publish(event, *_args):
             if isinstance(event, QueueAnnotationReplyEvent):
@@ -471,13 +472,16 @@ class TestGenerateWorker:
 
         queue_manager.publish.side_effect = publish
 
-        event.listen(type(_session()), "after_commit", record_commit)
+        engine = _session().get_bind()
+        event.listen(engine, "checkin", record_checkin)
         try:
             self._call(generator, mocker, queue_manager)
         finally:
-            event.remove(type(_session()), "after_commit", record_commit)
+            event.remove(engine, "checkin", record_checkin)
 
-        assert events == ["commit", "publish"]
+        assert events == ["checkin", "publish"]
+        assert "session" not in generator._run_input_guards.call_args.kwargs
+        assert inspect_orm(generator._run_input_guards.call_args.kwargs["app_model"]).detached
         runner.run.assert_not_called()
 
     def test_resume_skips_input_guards_and_consumes_reply(self, generator, mocker: MockerFixture):

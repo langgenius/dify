@@ -594,7 +594,7 @@ class TestAdvancedChatGenerateTaskPipeline:
         def _hit_retriever(event):
             calls["retriever"] += 1
 
-        def _hit_annotation(_manager, event, session):
+        def _hit_annotation(_manager, event):
             calls["annotation"] += 1
 
         pipeline._message_cycle_manager.handle_retriever_resources = _hit_retriever

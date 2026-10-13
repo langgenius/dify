@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import event
+from sqlalchemy import event, update
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -112,6 +112,17 @@ def _patch_common_run_deps(runner: AdvancedChatAppRunner):
     )
 
 
+def test_run_rejects_app_transferred_after_config_load(
+    build_runner: AdvancedChatAppRunner, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    runner = build_runner
+    with sqlite_session_factory.begin() as session:
+        session.execute(update(App).where(App.id == runner._app.id).values(tenant_id=str(uuid4())))
+
+    with pytest.raises(ValueError, match="App not found"):
+        runner.run()
+
+
 def test_handle_input_moderation_stops_on_moderation_error(build_runner):
     runner = build_runner
 
@@ -193,15 +204,16 @@ def test_run_returns_early_when_direct_output_via_handle_input_moderation(build_
         mock_init_graph.assert_not_called()
 
 
-def test_run_publishes_annotation_after_commit(build_runner, sqlite_engine: Engine):
+def test_run_publishes_annotation_after_app_read_closes(
+    build_runner: AdvancedChatAppRunner, sqlite_engine: Engine
+) -> None:
     runner = build_runner
     events: list[str] = []
 
-    def record_commit(session: Session) -> None:
-        if session.get_bind() is sqlite_engine:
-            events.append("commit")
+    def record_checkin(_dbapi_connection, _connection_record) -> None:
+        events.append("checkin")
 
-    event.listen(Session, "after_commit", record_commit)
+    event.listen(sqlite_engine, "checkin", record_checkin)
     annotation_reply = MessageAnnotation(
         app_id=runner._app.id,
         question="question",
@@ -225,9 +237,9 @@ def test_run_publishes_annotation_after_commit(build_runner, sqlite_engine: Engi
         patch.object(runner, "_complete_with_stream_output"),
     ):
         runner.run()
-    event.remove(Session, "after_commit", record_commit)
+    event.remove(sqlite_engine, "checkin", record_checkin)
 
-    assert events == ["commit", "publish"]
+    assert events == ["checkin", "publish"]
 
 
 def test_run_closes_scoped_session_before_workflow_run(build_runner, sqlite_session_factory: sessionmaker[Session]):
