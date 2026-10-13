@@ -7,9 +7,9 @@
  * Output: "Bad credentials"
  *
  * @param error - Error object (an Error or object with a message property)
- * @returns Promise<string> or string - Parsed error message
+ * @returns Parsed error message
  */
-export const parsePluginErrorMessage = async (error: any): Promise<string> => {
+export const parsePluginErrorMessage = (error: any): string => {
   const rawMessage = error?.message || error?.toString() || 'Unknown error'
 
   // Try to extract nested JSON from PluginInvokeError
