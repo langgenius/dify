@@ -436,3 +436,33 @@ class TestCeleryWorkflowNodeExecutionRepository:
         assert len(result) == 2
         assert result[0].index == 2
         assert result[1].index == 1
+
+    @patch("core.repositories.celery_workflow_node_execution_repository.save_workflow_node_execution_task")
+    def test_save_execution_data_delegates_and_refreshes_cache(
+        self, mock_task, sqlite_session_factory, account, sample_workflow_node_execution
+    ):
+        """`save_execution_data` is part of the repository protocol and must exist.
+
+        The workflow persistence layer calls it on every node completion, so the
+        Celery backend cannot omit it.
+        """
+        repo = CeleryWorkflowNodeExecutionRepository(
+            session_factory=sqlite_session_factory,
+            tenant_id=RESOURCE_TENANT_ID,
+            user=account,
+            app_id="test-app",
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+        )
+        repo.save(sample_workflow_node_execution)
+
+        with patch.object(repo._sql_repository, "save_execution_data") as save_execution_data:
+            repo.save_execution_data(sample_workflow_node_execution)
+
+        save_execution_data.assert_called_once_with(sample_workflow_node_execution)
+        # The SQL repository mutates the domain model in place, so the cache must
+        # still expose the very same instance afterwards.
+        assert repo._execution_cache[sample_workflow_node_execution.id] is sample_workflow_node_execution
+        assert (
+            sample_workflow_node_execution.id
+            in repo._workflow_execution_mapping[sample_workflow_node_execution.workflow_execution_id]
+        )
