@@ -4,7 +4,7 @@ import { IS_DEV } from '@/config'
 // oxlint-disable-next-line no-restricted-imports
 import { get } from '@/service/base'
 import { consoleQuery } from '@/service/console'
-import { getHttpErrorStatus } from '@/service/http-error'
+import { isUnauthorizedError } from '@/service/http-error'
 
 export type UserProfileWithMeta = {
   profile: GetAccountProfileResponse
@@ -13,8 +13,6 @@ export type UserProfileWithMeta = {
     currentEnv: string | null
   }
 }
-
-export const isLegacyBase401 = (err: unknown): boolean => getHttpErrorStatus(err) === 401
 
 export const userProfileQueryOptions = () =>
   queryOptions<UserProfileWithMeta>({
@@ -36,5 +34,5 @@ export const userProfileQueryOptions = () =>
         },
       }
     },
-    retry: (failureCount, error) => !isLegacyBase401(error) && failureCount < 3,
+    retry: (failureCount, error) => !isUnauthorizedError(error) && failureCount < 3,
   })
