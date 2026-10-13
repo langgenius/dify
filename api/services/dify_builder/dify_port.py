@@ -67,6 +67,7 @@ from core.dify_builder.execution_policy import (
     ExecutionEvidenceSummary,
     HttpFixtureSetV1,
     HttpResponseFixtureV1,
+    JsonToolExecutionContext,
     TrustedExecutionCompletion,
     admitted_node_bindings,
     scalar_inputs_digest,
@@ -98,10 +99,12 @@ from services.dify_builder import graph_ops
 from services.dify_builder.errors import HashMismatchError, PreflightError, WorkflowNotInitializedError
 from services.dify_builder.execution_policy_service import (
     BuilderExecutionPolicyService,
+    _is_json_parse_candidate,
     admit_execution_workflow,
     restricted_admission_snapshot,
 )
 from services.dify_builder.identity import load_app, resolve_account
+from services.dify_builder.json_tool_execution import admit_json_workflow
 from services.dify_builder.node_policy import proposal_policy_rejections
 from services.dify_builder.output_evidence import collect_output_findings
 from services.dify_builder.preflight import new_preflight_problems
@@ -265,7 +268,7 @@ class _BuilderExecutionLaunch:
     """
 
     service: BuilderExecutionPolicyService
-    context: BuilderExecutionContext | ConfirmedToolExecutionContext
+    context: BuilderExecutionContext | ConfirmedToolExecutionContext | JsonToolExecutionContext
     consent: BuilderRealCallConsentService | None = None
     recorder: BuilderExecutionRecorder | None = None
     refusal: BuilderExecutionPolicyError | None = None
@@ -283,7 +286,7 @@ class _BuilderExecutionLaunch:
     def on_worker_finished(
         self,
         *,
-        context: BuilderExecutionContext | ConfirmedToolExecutionContext,
+        context: BuilderExecutionContext | ConfirmedToolExecutionContext | JsonToolExecutionContext,
         native_run_id: str,
         task_id: str,
         recorder: BuilderExecutionRecorder | None,
@@ -675,7 +678,10 @@ class WorkflowServiceDifyPort:
                 tenant_id = app.tenant_id
                 draft = _load_draft_workflow_or_raise(app, session=session)
                 snapshot = restricted_admission_snapshot(draft, app)
-                admitted_node_bindings(snapshot)
+                if _is_json_parse_candidate(snapshot):
+                    admit_json_workflow(snapshot)
+                else:
+                    admitted_node_bindings(snapshot)
                 scalar_inputs_digest(inputs)
                 try:
                     effective_inputs = dict(
@@ -687,18 +693,20 @@ class WorkflowServiceDifyPort:
                     )
                 except ValueError:
                     raise BuilderExecutionPolicyError("unsupported_input_value") from None
-                policy = BuilderExecutionPolicyService(_session_factory())
-                context = policy.prepare(
-                    session_id=session_id,
-                    test_input_id=test_input_id,
-                    app_id=app_id,
-                    actor=actor,
-                    workflow=draft,
-                    submitted_inputs=inputs,
-                    effective_inputs=effective_inputs,
-                )
-                launch = _BuilderExecutionLaunch(policy, context)
-                set_login_user(account)
+            policy = BuilderExecutionPolicyService(_session_factory())
+            context = policy.prepare(
+                session_id=session_id,
+                test_input_id=test_input_id,
+                app_id=app_id,
+                actor=actor,
+                workflow=draft,
+                submitted_inputs=inputs,
+                effective_inputs=effective_inputs,
+            )
+            launch = _BuilderExecutionLaunch(policy, context)
+            set_login_user(account)
+            # The caller's read session has closed before qualified daemon metadata.
+            with _session_factory()() as session:
                 response = AppGenerateService.generate(
                     app_model=app,
                     user=account,
@@ -934,6 +942,15 @@ class WorkflowServiceDifyPort:
                         safety_outcome="execution_evidence_unknown",
                         sandbox_profile=context.sandbox_profile,
                         fixture_digest=context.fixture_digest,
+                    )
+                case JsonToolExecutionContext():
+                    summary = ExecutionEvidenceSummary(
+                        request_id=context.request_id,
+                        policy_version=context.policy_version,
+                        mode=context.mode,
+                        sealed=False,
+                        safety_outcome="execution_evidence_unknown",
+                        sandbox_profile=context.sandbox_profile,
                     )
         # After the seal, so completion is read from this Run's own sealed proof.
         self._settle_owned_launch(launch, completion)
