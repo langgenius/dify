@@ -7,7 +7,7 @@ import { cache } from 'react'
 import { API_PREFIX, CSRF_COOKIE_NAME, CSRF_HEADER_NAME } from '@/config'
 import { SERVER_CONSOLE_API_PREFIX } from '@/config/server'
 import { cookies, headers } from '@/next/headers'
-import { httpErrorFromResponse } from '@/service/http-error'
+import { httpErrorFromResponse, isHttpErrorStatus } from '@/service/http-error'
 import { createConsoleContractLink } from './contract-loader'
 import { normalizeConsoleOpenAPIURL } from './openapi-url'
 import 'server-only'
@@ -77,7 +77,7 @@ function createServerConsoleOpenAPILink(
         ...init,
         cache: 'no-store',
       })
-      if (!response.ok) throw await httpErrorFromResponse(response)
+      if (isHttpErrorStatus(response.status)) throw await httpErrorFromResponse(response)
       return response
     },
     interceptors: [
