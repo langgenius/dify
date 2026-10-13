@@ -42,7 +42,7 @@ from collections import defaultdict
 from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
-from types import ModuleType
+from types import FunctionType, ModuleType
 from typing import Any
 
 from flask import abort as flask_abort
@@ -69,8 +69,8 @@ def _is_exception_class(obj: object) -> bool:
     return isinstance(obj, type) and issubclass(obj, BaseException)
 
 
-def _qualname(obj: object) -> str:
-    return f"{getattr(obj, '__module__', '?')}.{getattr(obj, '__qualname__', obj)}"
+def _qualname(obj: FunctionType | type) -> str:
+    return f"{obj.__module__}.{obj.__qualname__}"
 
 
 def _handler_types(handler: ast.ExceptHandler) -> list[ast.expr]:
@@ -96,12 +96,12 @@ def resolve(expr: ast.AST, env: Mapping[str, object], owner: type | None) -> obj
         return env.get(expr.id)
     if isinstance(expr, ast.Attribute):
         if isinstance(expr.value, ast.Name) and expr.value.id in {"self", "cls"} and owner is not None:
-            return getattr(owner, expr.attr, None)
+            return getattr(owner, expr.attr, None)  # guard-ignore: no-new-getattr -- resolves source attribute names
         base = resolve(expr.value, env, owner)
         if base is None:
             return None
         try:
-            return getattr(base, expr.attr, None)
+            return getattr(base, expr.attr, None)  # guard-ignore: no-new-getattr -- resolves source attribute names
         except Exception:
             return None
     return None
@@ -189,8 +189,8 @@ class RaiseAnalyzer:
         return {**vars(builtins), **vars(module)}
 
     @staticmethod
-    def function_env(fn: Callable[..., object]) -> dict[str, object]:
-        env: dict[str, object] = {**vars(builtins), **getattr(fn, "__globals__", {})}
+    def function_env(fn: FunctionType) -> dict[str, object]:
+        env: dict[str, object] = {**vars(builtins), **fn.__globals__}
         try:
             env.update(inspect.getclosurevars(fn).nonlocals)
         except (TypeError, ValueError):
@@ -201,7 +201,7 @@ class RaiseAnalyzer:
         return resolve(expr, env, owner)
 
     @staticmethod
-    def backend_function(obj: object) -> Callable[..., object] | None:
+    def backend_function(obj: object) -> FunctionType | None:
         if isinstance(obj, (staticmethod, classmethod)):
             obj = obj.__func__
         if inspect.ismethod(obj):
@@ -246,8 +246,8 @@ class RaiseAnalyzer:
                 return False
         return True
 
-    def parse_function(self, fn: Callable[..., object]) -> FunctionNode | None:
-        key = getattr(fn, "__code__", fn)
+    def parse_function(self, fn: FunctionType) -> FunctionNode | None:
+        key = fn.__code__
         if key not in self._trees:
             node: FunctionNode | None = None
             try:
@@ -262,7 +262,7 @@ class RaiseAnalyzer:
 
     def raises_of_function(
         self,
-        fn: Callable[..., object],
+        fn: FunctionType,
         owner: type | None,
         depth: int,
         bindings: Mapping[str, object] | None = None,
@@ -272,7 +272,7 @@ class RaiseAnalyzer:
         if node is None:
             return set()
         bindings = dict(bindings or {})
-        key = (getattr(fn, "__code__", fn), owner, frozenset(bindings.items()))
+        key = (fn.__code__, owner, frozenset(bindings.items()))
         return self._raises_in(node, self.function_env(fn), owner, depth, bindings, key)
 
     def raises_of_node(self, node: FunctionNode, env: Mapping[str, object], owner: type | None) -> set[type]:
@@ -366,7 +366,7 @@ class RaiseAnalyzer:
 
     def decorators_of(
         self, node: FunctionNode, env: Mapping[str, object], owner: type | None
-    ) -> Iterator[tuple[Callable[..., object], dict[str, object]]]:
+    ) -> Iterator[tuple[FunctionType, dict[str, object]]]:
         """Backend view decorators applied to ``node``, with their constant factory arguments."""
         for decorator in node.decorator_list:
             call = decorator if isinstance(decorator, ast.Call) else None
@@ -425,10 +425,17 @@ def operation_doc(resource: type, method: str) -> dict[str, Any]:
     """The merged class and method Flask-RESTX doc for one operation."""
     from flask_restx.utils import merge
 
-    method_impl = getattr(resource, method)
-    method_impl = getattr(method_impl, "__func__", method_impl)
-    class_doc = (getattr(resource, "__apidoc__", None) or {}).get(method, {})
-    return merge(class_doc if isinstance(class_doc, dict) else {}, getattr(method_impl, "__apidoc__", None) or {})
+    def inherited(name: str) -> object:
+        return next((klass.__dict__[name] for klass in resource.__mro__ if name in klass.__dict__), None)
+
+    method_impl = inherited(method)
+    method_doc = vars(method_impl).get("__apidoc__") if isinstance(method_impl, FunctionType) else None
+    class_docs = inherited("__apidoc__")
+    class_doc = class_docs.get(method) if isinstance(class_docs, dict) else None
+    return merge(
+        class_doc if isinstance(class_doc, dict) else {},
+        method_doc if isinstance(method_doc, dict) else {},
+    )
 
 
 def documented_at_runtime(resource: type, method: str) -> set[type]:
@@ -650,7 +657,7 @@ def lint(apis: Mapping[str, Any], analyzer: RaiseAnalyzer) -> LintResult:
                     report.inferred |= inferred
                     report.missing |= inferred - documented - report.declaration.unreachable
 
-                    guards: list[tuple[str, Callable[..., object], set[type]]] = []
+                    guards: list[tuple[str, FunctionType, set[type]]] = []
                     for decorator, bindings in analyzer.decorators_of(node, env, resource):
                         raised = analyzer.raises_of_function(decorator, resource, 1, bindings)
                         guards.append((_qualname(decorator), decorator, raised))
@@ -833,7 +840,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     modules = [
         module
         for module in list(sys.modules.values())
-        if (file := getattr(module, "__file__", None))
+        if isinstance(file := vars(module).get("__file__"), str)
         and Path(file).is_relative_to(API_ROOT)
         and not Path(file).is_relative_to(API_ROOT / "tests")
         and not Path(file).is_relative_to(API_ROOT / ".venv")
