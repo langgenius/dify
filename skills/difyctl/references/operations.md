@@ -8,7 +8,7 @@ Run an app with the op for its mode: `run console_app workflow`, `run console_ap
 
 ## difyctl-only flags
 
-`--stream` prints each event of a streaming op as one JSON line instead of folding them. `--only <event>` filters streamed events (repeatable). `--output <path>` saves a file-kind response; the default is the current directory under the server's filename, or `<op-id>.<ext>`. `--verbose` adds the raw server response to errors. A flag the operation's kind does not support exits 2.
+`--stream` prints each event of a streaming op as one JSON line instead of folding them. `--only <event>` filters streamed events (repeatable). `--output <path>` saves a file-kind response; the default is the current directory under the server's filename, or `<op-id>.<ext>`. The default never replaces an existing file: it exits 2, and you pass `--output` to choose the path (an `--output` path is replaced). `--verbose` adds the raw server response to errors. A flag the operation's kind does not support exits 2.
 
 ## Reading results
 
