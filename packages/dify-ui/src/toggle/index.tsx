@@ -1,12 +1,13 @@
 'use client'
 
-import type { Toggle as BaseToggleNS } from '@base-ui/react/toggle'
 import { Toggle as BaseToggle } from '@base-ui/react/toggle'
 
-type ToggleProps<Value extends string = string> = BaseToggleNS.Props<Value>
+type ToggleProps<Value extends string = string> = BaseToggle.Props<Value>
+type ToggleChangeEventReason = BaseToggle.ChangeEventReason
+type ToggleChangeEventDetails = BaseToggle.ChangeEventDetails
 
 const Toggle = BaseToggle
 
 export { Toggle }
 
-export type { ToggleProps }
+export type { ToggleChangeEventDetails, ToggleChangeEventReason, ToggleProps }

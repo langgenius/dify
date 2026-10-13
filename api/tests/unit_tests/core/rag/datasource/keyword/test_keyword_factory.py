@@ -12,24 +12,24 @@ from models.dataset import Dataset
 from tests.unit_tests.config_override import apply_config_overrides
 
 
-def test_get_keyword_factory_returns_jieba_factory(monkeypatch: pytest.MonkeyPatch):
+def test_get_keyword_factory_returns_jieba_factory(monkeypatch: pytest.MonkeyPatch) -> None:
     fake_module = types.ModuleType("core.rag.datasource.keyword.jieba.jieba")
 
     class FakeJieba:
         pass
 
-    fake_module.Jieba = FakeJieba
+    vars(fake_module)["Jieba"] = FakeJieba
     monkeypatch.setitem(sys.modules, "core.rag.datasource.keyword.jieba.jieba", fake_module)
 
     assert Keyword.get_keyword_factory(KeyWordType.JIEBA) is FakeJieba
 
 
-def test_get_keyword_factory_raises_for_unsupported_type():
+def test_get_keyword_factory_raises_for_unsupported_type() -> None:
     with pytest.raises(ValueError, match="Keyword store unsupported is not supported"):
         Keyword.get_keyword_factory("unsupported")
 
 
-def test_keyword_initialization_uses_configured_factory(monkeypatch: pytest.MonkeyPatch):
+def test_keyword_initialization_uses_configured_factory(monkeypatch: pytest.MonkeyPatch) -> None:
     dataset = Dataset(
         id="dataset-1",
         tenant_id="tenant-1",
@@ -47,7 +47,7 @@ def test_keyword_initialization_uses_configured_factory(monkeypatch: pytest.Monk
     assert keyword._keyword_processor is fake_processor
 
 
-def test_keyword_methods_forward_to_processor(unbound_session: Session):
+def test_keyword_methods_forward_to_processor(unbound_session: Session) -> None:
     processor = MagicMock()
     processor.text_exists.return_value = True
     processor.search.return_value = [Document(page_content="matched", metadata={"doc_id": "doc-1"})]
@@ -72,22 +72,22 @@ def test_keyword_methods_forward_to_processor(unbound_session: Session):
     processor.search.assert_called_once_with("query", session=session, top_k=1)
 
 
-def test_keyword_getattr_returns_callable_and_raises_for_invalid_attributes():
+def test_keyword_getattr_returns_callable_and_raises_for_invalid_attributes() -> None:
     class Processor:
         value = 1
 
         @staticmethod
-        def custom():
+        def custom() -> str:
             return "ok"
 
     keyword = Keyword.__new__(Keyword)
-    keyword._keyword_processor = Processor()
+    keyword._keyword_processor = Processor()  # pyrefly: ignore[bad-assignment]
 
     assert keyword.custom() == "ok"
 
     with pytest.raises(AttributeError):
         _ = keyword.value
 
-    keyword._keyword_processor = None
+    keyword._keyword_processor = None  # pyrefly: ignore[bad-assignment]
     with pytest.raises(AttributeError):
         _ = keyword.missing_method

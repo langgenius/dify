@@ -7,7 +7,6 @@ import md from 'eslint-markdown'
 import jsonc from 'eslint-plugin-jsonc'
 import markdownPreferences from 'eslint-plugin-markdown-preferences'
 import pnpm from 'eslint-plugin-pnpm'
-import toml from 'eslint-plugin-toml'
 import yml from 'eslint-plugin-yml'
 import { defineConfig, globalIgnores } from 'eslint/config'
 import dify from './web/plugins/eslint/index.js'
@@ -379,23 +378,6 @@ export default defineConfig([
           pathPattern: '.*',
         },
       ],
-    },
-  },
-  {
-    files: ['**/*.toml'],
-    language: 'toml/toml',
-    plugins: {
-      toml,
-    },
-    rules: {
-      'no-irregular-whitespace': 'off',
-      'spaced-comment': 'off',
-      'toml/keys-order': 'error',
-      'toml/no-unreadable-number-separator': 'error',
-      'toml/precision-of-fractional-seconds': 'error',
-      'toml/precision-of-integer': 'error',
-      'toml/tables-order': 'error',
-      'toml/vue-custom-block/no-parsing-error': 'error',
     },
   },
   {

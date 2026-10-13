@@ -1,7 +1,6 @@
 """Bounded, tenant-scoped annotation persistence returning detached records."""
 
 from collections.abc import Sequence
-from itertools import batched
 from typing import override
 
 from sqlalchemy import delete, func, or_, select
@@ -234,7 +233,9 @@ class AnnotationRepository(AnnotationQuery, AnnotationWriteStore, AnnotationAppQ
         with self._session_factory.begin() as session:
             self._require_app(session, tenant_id=tenant_id, app_id=app_id)
             matching_ids: list[str] = []
-            for batch in batched(dict.fromkeys(annotation_ids), 500):
+            unique_ids = tuple(dict.fromkeys(annotation_ids))
+            for offset in range(0, len(unique_ids), 500):
+                batch = unique_ids[offset : offset + 500]
                 matching_ids.extend(
                     session.scalars(
                         select(MessageAnnotation.id).where(
@@ -294,7 +295,8 @@ class AnnotationRepository(AnnotationQuery, AnnotationWriteStore, AnnotationAppQ
     @staticmethod
     def _delete_annotations(session: Session, *, app_id: str, annotation_ids: Sequence[str]) -> None:
         # Bound SQL parameters without splitting the annotation/history transaction.
-        for batch in batched(annotation_ids, 500):
+        for offset in range(0, len(annotation_ids), 500):
+            batch = annotation_ids[offset : offset + 500]
             session.execute(
                 delete(AppAnnotationHitHistory).where(
                     AppAnnotationHitHistory.app_id == app_id, AppAnnotationHitHistory.annotation_id.in_(batch)

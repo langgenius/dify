@@ -137,8 +137,6 @@ describe('SnippetCreateButton', () => {
     await waitFor(() => {
       expect(mockPush).toHaveBeenCalledWith('/snippets/snippet-123/orchestrate')
     })
-
-    expect(mockToastSuccess).toHaveBeenCalledWith('workflow.snippet.createSuccess')
   })
 
   it('should import a snippet from a DSL URL', async () => {
@@ -168,7 +166,6 @@ describe('SnippetCreateButton', () => {
         yamlUrl: 'https://example.com/snippet.yml',
       })
     })
-    expect(mockToastSuccess).toHaveBeenCalledWith('snippet.importSuccess')
     expect(mockPush).toHaveBeenCalledWith('/snippets/snippet-imported/orchestrate')
   })
 })

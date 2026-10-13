@@ -1,5 +1,6 @@
 import logging
 import time
+from contextlib import ExitStack
 
 import click
 from celery import shared_task
@@ -11,7 +12,10 @@ from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset
 from models.model import App, AppAnnotationSetting, MessageAnnotation
-from repositories.annotation_reply_job_repository import annotation_reply_job_owner_key
+from repositories.annotation_reply_job_repository import (
+    RedisAnnotationReplyJobRepository,
+    annotation_reply_job_owner_key,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -23,8 +27,11 @@ def disable_annotation_reply_task(job_id: str, app_id: str, tenant_id: str):
     """
     logger.info(click.style(f"Start delete app annotations index: {app_id}", fg="green"))
     start_at = time.perf_counter()
+    jobs = RedisAnnotationReplyJobRepository(redis=redis_client)
     # get app info
-    with session_factory.create_session() as session:
+    with ExitStack() as cleanup:
+        cleanup.callback(jobs.release_processing, app_id=app_id, action="disable", job_id=job_id)
+        session = cleanup.enter_context(session_factory.create_session())
         app = session.scalar(
             select(App).where(App.id == app_id, App.tenant_id == tenant_id, App.status == "normal").limit(1)
         )
@@ -41,7 +48,6 @@ def disable_annotation_reply_task(job_id: str, app_id: str, tenant_id: str):
             logger.info(click.style(f"App annotation setting not found: {app_id}", fg="red"))
             return
 
-        disable_app_annotation_key = f"disable_app_annotation_{app_id}"
         disable_app_annotation_job_key = f"disable_app_annotation_job_{job_id}"
 
         try:
@@ -78,5 +84,3 @@ def disable_annotation_reply_task(job_id: str, app_id: str, tenant_id: str):
             redis_client.expire(annotation_reply_job_owner_key(action="disable", job_id=job_id), 600)
             disable_app_annotation_error_key = f"disable_app_annotation_error_{job_id}"
             redis_client.setex(disable_app_annotation_error_key, 600, str(e))
-        finally:
-            redis_client.delete(disable_app_annotation_key)

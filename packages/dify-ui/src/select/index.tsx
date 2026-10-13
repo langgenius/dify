@@ -3,21 +3,26 @@
 import type { ComponentRenderFn, HTMLProps } from '@base-ui/react/types'
 import type { VariantProps } from 'class-variance-authority'
 import type * as React from 'react'
-import type { Placement } from '../placement'
+import type { Placement } from '../internal/placement'
 import { Select as BaseSelect } from '@base-ui/react/select'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
-import { formLabelClassName } from '../form-control-shared'
-import { resolveClassName } from '../internals/resolve-class-name'
+import { focusRingClassName } from '../internal/focus'
+import { formLabelClassName } from '../internal/form-control'
 import {
   floatingGroupLabelClassName,
   floatingItemIndicatorClassName,
   floatingPopupAnimationClassName,
   floatingSeparatorClassName,
-} from '../overlay-shared'
-import { parsePlacement } from '../placement'
+  positionerClassName,
+} from '../internal/overlay'
+import { parsePlacement } from '../internal/placement'
+import { resolveClassName } from '../internal/resolve-class-name'
 
 type SelectActions = BaseSelect.Root.Actions
+type SelectChangeEventReason = BaseSelect.Root.ChangeEventReason
+type SelectChangeEventDetails = BaseSelect.Root.ChangeEventDetails
+type SelectOpenChangeEventDetails = BaseSelect.Root.OpenChangeEventDetails
 
 type SelectProps<Value, Multiple extends boolean | undefined = false> = BaseSelect.Root.Props<
   Value,
@@ -65,20 +70,23 @@ type SelectGroupProps = BaseSelect.Group.Props
 
 const selectTriggerVariants = cva(
   [
-    'group/select-trigger flex w-full items-center border-0 bg-components-input-bg-normal text-start text-components-input-text-filled outline-hidden',
+    'group/select-trigger flex w-full items-center border-0 bg-components-input-bg-normal text-start text-components-input-text-filled',
     'hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt',
-    'focus-visible:ring-2 focus-visible:ring-state-accent-solid',
+    focusRingClassName,
+    'data-invalid:not-data-disabled:bg-components-input-bg-destructive data-invalid:not-data-disabled:inset-ring-1 data-invalid:not-data-disabled:inset-ring-components-input-border-destructive',
     'data-placeholder:text-components-input-text-placeholder',
-    'data-readonly:cursor-default data-readonly:bg-components-input-bg-normal data-readonly:hover:bg-components-input-bg-normal',
+    'data-readonly:not-data-disabled:cursor-default data-readonly:not-data-disabled:not-data-invalid:bg-components-input-bg-normal data-readonly:not-data-disabled:not-data-invalid:hover:bg-components-input-bg-normal',
     'data-disabled:cursor-not-allowed data-disabled:bg-components-input-bg-disabled data-disabled:text-components-input-text-filled-disabled data-disabled:hover:bg-components-input-bg-disabled',
     'data-disabled:data-placeholder:text-components-input-text-disabled',
   ],
   {
     variants: {
       size: {
-        small: 'h-6 gap-px rounded-md px-2 py-1 system-xs-regular',
-        medium: 'h-8 gap-0.5 rounded-lg px-3 py-2 system-sm-regular',
-        large: 'h-9 gap-0.5 rounded-[10px] px-4 py-2 system-md-regular',
+        // The text sits 4px further in than the icon: 8px around the control, 4px more for text.
+        // Physical padding, so callers' `px-*`/`pl-*`/`pr-*` overrides keep replacing it.
+        small: 'h-6 gap-px rounded-md py-1 pr-1 pl-2 system-xs-regular',
+        medium: 'h-8 gap-0.5 rounded-lg py-2 pr-2 pl-3 system-sm-regular',
+        large: 'h-9 gap-0.5 rounded-[10px] py-2 pr-3 pl-4 system-md-regular',
       },
     },
     defaultVariants: {
@@ -121,10 +129,14 @@ function SelectLabel({ className, ...props }: SelectLabelProps) {
 
 type SelectGroupLabelProps = BaseSelect.GroupLabel.Props
 
+// The list's own padding supplies the rest of the inset, so the label text lines up with the
+// item text.
 function SelectGroupLabel({ className, ...props }: SelectGroupLabelProps) {
   return (
     <BaseSelect.GroupLabel
-      className={(state) => cn(floatingGroupLabelClassName, resolveClassName(className, state))}
+      className={(state) =>
+        cn(floatingGroupLabelClassName, 'px-2', resolveClassName(className, state))
+      }
       {...props}
     />
   )
@@ -165,7 +177,7 @@ function SelectPositioner({
       sideOffset={sideOffset}
       alignOffset={alignOffset}
       alignItemWithTrigger={alignItemWithTrigger}
-      className={(state) => cn('z-50 outline-hidden', resolveClassName(className, state))}
+      className={(state) => cn(positionerClassName, resolveClassName(className, state))}
       {...props}
     />
   )
@@ -249,9 +261,7 @@ type SelectItemTextProps = BaseSelect.ItemText.Props
 function SelectItemText({ className, ...props }: SelectItemTextProps) {
   return (
     <BaseSelect.ItemText
-      className={(state) =>
-        cn('me-1 min-w-0 grow truncate px-1', resolveClassName(className, state))
-      }
+      className={(state) => cn('me-1 min-w-0 grow truncate', resolveClassName(className, state))}
       {...props}
     />
   )
@@ -290,6 +300,8 @@ export {
 
 export type {
   SelectActions,
+  SelectChangeEventDetails,
+  SelectChangeEventReason,
   SelectContentProps,
   SelectGroupLabelProps,
   SelectGroupProps,
@@ -298,6 +310,7 @@ export type {
   SelectItemTextProps,
   SelectLabelProps,
   SelectListProps,
+  SelectOpenChangeEventDetails,
   SelectPopupProps,
   SelectPortalProps,
   SelectPositionerProps,

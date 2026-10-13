@@ -158,14 +158,6 @@
       "count": 1
     }
   },
-  "web/app/components/app/annotation/edit-annotation-modal/index.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/app/annotation/header-opts/__tests__/index.spec.tsx": {
     "typescript/no-explicit-any": {
       "count": 1
@@ -181,7 +173,7 @@
       "count": 1
     },
     "typescript/no-explicit-any": {
-      "count": 5
+      "count": 2
     }
   },
   "web/app/components/app/annotation/view-annotation-modal/index.tsx": {
@@ -879,11 +871,6 @@
       "count": 3
     }
   },
-  "web/app/components/base/features/new-feature-panel/annotation-reply/use-annotation-config.ts": {
-    "typescript/no-explicit-any": {
-      "count": 2
-    }
-  },
   "web/app/components/base/features/new-feature-panel/conversation-opener/modal.tsx": {
     "dify/require-disable-directive-description": {
       "count": 1
@@ -1360,24 +1347,6 @@
       "count": 1
     }
   },
-  "web/app/components/base/search-input/__tests__/index.spec.tsx": {
-    "dify/require-disable-directive-description": {
-      "count": 1
-    }
-  },
-  "web/app/components/base/search-input/index.stories.tsx": {
-    "jsx-a11y/label-has-associated-control": {
-      "count": 3
-    },
-    "no-console": {
-      "count": 3
-    }
-  },
-  "web/app/components/base/search-input/index.tsx": {
-    "dify/require-disable-directive-description": {
-      "count": 1
-    }
-  },
   "web/app/components/base/tag-input/index.stories.tsx": {
     "jsx-a11y/label-has-associated-control": {
       "count": 12
@@ -1847,20 +1816,12 @@
       "count": 1
     }
   },
-  "web/app/components/datasets/hit-testing/components/result-item-external.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/datasets/hit-testing/components/result-item.tsx": {
     "jsx-a11y/click-events-have-key-events": {
-      "count": 2
+      "count": 1
     },
     "jsx-a11y/no-static-element-interactions": {
-      "count": 2
+      "count": 1
     }
   },
   "web/app/components/datasets/list/dataset-card/components/operations-dropdown.tsx": {
@@ -2113,16 +2074,6 @@
   },
   "web/app/components/plugins/marketplace/query.ts": {
     "@tanstack/query/prefer-query-options": {
-      "count": 1
-    }
-  },
-  "web/app/components/plugins/marketplace/search-box/index.tsx": {
-    "dify/require-disable-directive-description": {
-      "count": 1
-    }
-  },
-  "web/app/components/plugins/plugin-auth/authorized/index.tsx": {
-    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -2587,11 +2538,6 @@
   "web/app/components/workflow/block-selector/constants.tsx": {
     "react/only-export-components": {
       "count": 3
-    }
-  },
-  "web/app/components/workflow/block-selector/tool-picker.tsx": {
-    "dify/require-disable-directive-description": {
-      "count": 1
     }
   },
   "web/app/components/workflow/comment/comment-input.tsx": {
@@ -4369,7 +4315,7 @@
       "count": 1
     },
     "typescript/no-explicit-any": {
-      "count": 4
+      "count": 3
     }
   },
   "web/service/apps.ts": {

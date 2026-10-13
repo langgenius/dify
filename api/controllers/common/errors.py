@@ -101,7 +101,7 @@ class UnauthorizedError(BaseHTTPException):
 class ForbiddenError(BaseHTTPException):
     error_code = "forbidden"
     code = HTTPStatus.FORBIDDEN
-    description = "Access to this resource is forbidden."
+    description = "You don't have the permission to access the requested resource."
 
 
 class InternalServerError(BaseHTTPException):

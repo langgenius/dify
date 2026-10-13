@@ -64,7 +64,6 @@ const getErrorMessage = async (error: unknown) => {
 const DropDown = ({ expand, triggerClassName }: DropDownProps) => {
   const { t } = useTranslation(['app', 'common', 'dataset', 'datasetPipeline', 'navigation'])
   const { push, replace } = useRouter()
-  const [open, setOpen] = useState(false)
   const [showRenameModal, setShowRenameModal] = useState(false)
   const [confirmMessage, setConfirmMessage] = useState<string>('')
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
@@ -108,7 +107,6 @@ const DropDown = ({ expand, triggerClassName }: DropDownProps) => {
   }, [invalidDatasetDetail, invalidDatasetList])
 
   const openRenameModal = useCallback(() => {
-    setOpen(false)
     queueMicrotask(() => {
       setShowRenameModal(true)
     })
@@ -120,7 +118,6 @@ const DropDown = ({ expand, triggerClassName }: DropDownProps) => {
     async (include = false) => {
       const { pipeline_id, name } = dataset
       if (!pipeline_id) return
-      setOpen(false)
       try {
         const { data } = await exportPipelineConfig({
           pipelineId: pipeline_id,
@@ -136,7 +133,6 @@ const DropDown = ({ expand, triggerClassName }: DropDownProps) => {
   )
 
   const detectIsUsedByApp = useCallback(async () => {
-    setOpen(false)
     try {
       const { is_using: isUsedByApp } = await checkIsUsedInApp(dataset.id)
       setConfirmMessage(
@@ -151,7 +147,6 @@ const DropDown = ({ expand, triggerClassName }: DropDownProps) => {
   }, [dataset.id, t])
 
   const openAccessConfig = useCallback(() => {
-    setOpen(false)
     push(`/datasets/${dataset.id}/access-config`)
   }, [dataset.id, push])
 
@@ -172,7 +167,7 @@ const DropDown = ({ expand, triggerClassName }: DropDownProps) => {
   if (!canShowOperations) return null
 
   return (
-    <DropdownMenu open={open} onOpenChange={setOpen}>
+    <DropdownMenu>
       <DropdownMenuTrigger
         render={
           <IconButton

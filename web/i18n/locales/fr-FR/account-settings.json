@@ -74,7 +74,6 @@
   "resourceAccessToken.createdTokenDescription": "Conservez ce jeton d’accès en lieu sûr : vous ne pourrez plus l’afficher. Toute personne qui le possède peut utiliser Difyctl pour découvrir les ressources autorisées et y accéder. Si vous le perdez, créez un nouveau jeton et révoquez l’ancien.",
   "resourceAccessToken.deleteDescription": "Le jeton d’accès sera immédiatement désactivé. Les appels qui l’utilisent seront refusés, ce qui peut interrompre ou faire échouer les tâches en cours. Après sa suppression, vous ne pourrez plus le consulter ni le modifier.",
   "resourceAccessToken.deleteTitle": "Supprimer le jeton d’accès ?",
-  "resourceAccessToken.deleted": "Jeton d’accès supprimé",
   "resourceAccessToken.done": "Terminé",
   "resourceAccessToken.editTitle": "Modifier le jeton d’accès",
   "resourceAccessToken.empty": "Aucun jeton d’accès pour le moment",

@@ -323,7 +323,7 @@ def test_status_preserves_worker_error_and_handles_expired_error_key(
     assert response.get_json() == {"job_id": job_id, "job_status": status, "error_msg": expected}
 
 
-def test_publish_failure_returns_500_and_releases_active_job(harness: _Harness) -> None:
+def test_publish_failure_returns_500_and_removes_pending_job(harness: _Harness) -> None:
     harness.task.serializer = "not-installed"
 
     response = harness.request()
@@ -332,7 +332,5 @@ def test_publish_failure_returns_500_and_releases_active_job(harness: _Harness) 
     assert response.get_json()["code"] == "internal_server_error"
     assert "error_msg" not in response.get_json()
     assert harness.redis.zcard(f"annotation_import_active:{harness.target.tenant_id}") == 0
-    [owner_key] = list(harness.redis.scan_iter(match="app_annotation_batch_import_owner_*"))
-    job_id = owner_key.decode().rsplit("_", 1)[1]
-    assert harness.request(job_id=job_id).get_json() == {"job_id": job_id, "job_status": "waiting", "error_msg": ""}
+    assert list(harness.redis.scan_iter(match="app_annotation_batch_import_*")) == []
     _assert_no_task(harness)

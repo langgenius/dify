@@ -13,7 +13,6 @@
   "versionHistory.action.copyIdSuccess": "ID copiato negli appunti",
   "versionHistory.action.deleteDeployedVersionError": "Questa versione del workflow è distribuita, o in fase di distribuzione, in uno o più ambienti. Annulla la distribuzione da tutti gli ambienti prima di eliminare la versione.",
   "versionHistory.action.deleteFailure": "Impossibile eliminare la versione",
-  "versionHistory.action.deleteSuccess": "Versione eliminata",
   "versionHistory.action.restoreFailure": "Impossibile ripristinare la versione",
   "versionHistory.action.restoreInProgress": "{{userName}} sta ripristinando alla versione {{versionName}}...",
   "versionHistory.action.restoreSuccess": "Versione ripristinata",

@@ -1,4 +1,8 @@
 import type {
+  AnnotationJobStatusDetailResponse,
+  AnnotationJobStatusResponse,
+} from '@dify/contracts/api/console/apps/types.gen'
+import type {
   AnnotationCreateResponse,
   AnnotationEnableStatus,
   AnnotationItemBasic,
@@ -26,7 +30,7 @@ export const updateAnnotationStatus = (
     }
   }
 
-  return post(`apps/${appId}/annotation-reply/${action}`, {
+  return post<AnnotationJobStatusResponse>(`apps/${appId}/annotation-reply/${action}`, {
     body,
   })
 }
@@ -42,7 +46,9 @@ export const queryAnnotationJobStatus = (
   action: AnnotationEnableStatus,
   jobId: string,
 ) => {
-  return get(`apps/${appId}/annotation-reply/${action}/status/${jobId}`)
+  return get<AnnotationJobStatusDetailResponse>(
+    `apps/${appId}/annotation-reply/${action}/status/${jobId}`,
+  )
 }
 
 export const fetchAnnotationList = (appId: string, params: Record<string, any>) => {
@@ -102,8 +108,4 @@ export const fetchHitHistoryList = (
   params: Record<string, any>,
 ) => {
   return get(`apps/${appId}/annotations/${annotationId}/hit-histories`, { params })
-}
-
-export const clearAllAnnotations = (appId: string): Promise<any> => {
-  return del(`apps/${appId}/annotations`)
 }

@@ -74,7 +74,6 @@
   "resourceAccessToken.createdTokenDescription": "Hãy lưu mã truy cập này ở nơi an toàn vì bạn sẽ không thể xem lại. Bất kỳ ai có mã đều có thể dùng Difyctl để tìm và truy cập các tài nguyên được cấp quyền. Nếu làm mất, hãy tạo mã mới và thu hồi mã cũ.",
   "resourceAccessToken.deleteDescription": "Mã truy cập sẽ bị vô hiệu hóa ngay lập tức. Các yêu cầu sử dụng mã này sẽ bị từ chối, có thể làm gián đoạn hoặc khiến tác vụ đang chạy thất bại. Sau khi xóa, bạn sẽ không thể xem hoặc sửa mã này.",
   "resourceAccessToken.deleteTitle": "Xóa mã truy cập?",
-  "resourceAccessToken.deleted": "Đã xóa mã truy cập",
   "resourceAccessToken.done": "Hoàn tất",
   "resourceAccessToken.editTitle": "Sửa mã truy cập",
   "resourceAccessToken.empty": "Chưa có mã truy cập",

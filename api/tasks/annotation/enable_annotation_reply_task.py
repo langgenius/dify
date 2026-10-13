@@ -1,5 +1,6 @@
 import logging
 import time
+from contextlib import ExitStack
 
 import click
 from celery import shared_task
@@ -14,7 +15,10 @@ from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset
 from models.enums import CollectionBindingType
 from models.model import App, AppAnnotationSetting, MessageAnnotation
-from repositories.annotation_reply_job_repository import annotation_reply_job_owner_key
+from repositories.annotation_reply_job_repository import (
+    RedisAnnotationReplyJobRepository,
+    annotation_reply_job_owner_key,
+)
 from services.knowledge.dataset_service import DatasetCollectionBindingService
 
 logger = logging.getLogger(__name__)
@@ -35,8 +39,11 @@ def enable_annotation_reply_task(
     """
     logger.info(click.style(f"Start add app annotation to index: {app_id}", fg="green"))
     start_at = time.perf_counter()
+    jobs = RedisAnnotationReplyJobRepository(redis=redis_client)
     # get app info
-    with session_factory.create_session() as session:
+    with ExitStack() as cleanup:
+        cleanup.callback(jobs.release_processing, app_id=app_id, action="enable", job_id=job_id)
+        session = cleanup.enter_context(session_factory.create_session())
         app = session.scalar(
             select(App).where(App.id == app_id, App.tenant_id == tenant_id, App.status == "normal").limit(1)
         )
@@ -46,7 +53,6 @@ def enable_annotation_reply_task(
             return
 
         annotations = session.scalars(select(MessageAnnotation).where(MessageAnnotation.app_id == app_id)).all()
-        enable_app_annotation_key = f"enable_app_annotation_{app_id}"
         enable_app_annotation_job_key = f"enable_app_annotation_job_{job_id}"
 
         try:
@@ -137,5 +143,3 @@ def enable_annotation_reply_task(
             enable_app_annotation_error_key = f"enable_app_annotation_error_{job_id}"
             redis_client.setex(enable_app_annotation_error_key, 600, str(e))
             session.rollback()
-        finally:
-            redis_client.delete(enable_app_annotation_key)

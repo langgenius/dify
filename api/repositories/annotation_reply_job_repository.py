@@ -1,7 +1,22 @@
-"""Retain annotation worker keys while scoping job reads to their owner."""
+"""Reserve reply jobs atomically while retaining the worker's legacy Redis keys."""
 
 from extensions.ext_redis import RedisClientWrapper
 from services.annotation_reply_service import AnnotationReplyAction, AnnotationReplyJob, AnnotationReplyJobStore
+
+_PENDING_JOB_TTL_SECONDS = 24 * 60 * 60
+_FAILED_JOB_TTL_SECONDS = 600
+_RESERVE_PROCESSING = """
+local existing = redis.call('GET', KEYS[1])
+if existing then return existing end
+redis.call('SET', KEYS[1], ARGV[1], 'NX', 'EX', ARGV[2])
+return ARGV[1]
+"""
+_RELEASE_PROCESSING = """
+if redis.call('GET', KEYS[1]) == ARGV[1] then
+    return redis.call('DEL', KEYS[1])
+end
+return 0
+"""
 
 
 def annotation_reply_job_owner_key(*, action: AnnotationReplyAction, job_id: str) -> str:
@@ -16,20 +31,51 @@ class RedisAnnotationReplyJobRepository(AnnotationReplyJobStore):
     def __init__(self, *, redis: RedisClientWrapper) -> None:
         self._redis = redis
 
-    def get_processing(self, *, tenant_id: str, app_id: str, action: AnnotationReplyAction) -> str | None:
-        job_id = _decode(self._redis.get(f"{action}_app_annotation_{app_id}"))
-        if job_id is None or not self._is_owner(tenant_id=tenant_id, app_id=app_id, action=action, job_id=job_id):
-            return None
-        return job_id
-
-    def create(self, *, tenant_id: str, app_id: str, action: AnnotationReplyAction, job_id: str) -> None:
-        # Publish ownership before the legacy status key; pending jobs retain both keys until worker completion.
-        owner_created = self._redis.setnx(
-            annotation_reply_job_owner_key(action=action, job_id=job_id), f"{tenant_id}:{app_id}"
+    def reserve(self, *, tenant_id: str, app_id: str, action: AnnotationReplyAction, job_id: str) -> str:
+        # Initialize bounded metadata before exposing the job to concurrent callers.
+        owner_created = self._redis.set(
+            annotation_reply_job_owner_key(action=action, job_id=job_id),
+            f"{tenant_id}:{app_id}",
+            nx=True,
+            ex=_PENDING_JOB_TTL_SECONDS,
         )
         if not owner_created and not self._is_owner(tenant_id=tenant_id, app_id=app_id, action=action, job_id=job_id):
             raise RuntimeError(f"Annotation reply job {job_id} already belongs to another app or tenant")
-        self._redis.setnx(f"{action}_app_annotation_job_{job_id}", "waiting")
+        self._redis.set(f"{action}_app_annotation_job_{job_id}", "waiting", nx=True, ex=_PENDING_JOB_TTL_SECONDS)
+        # A single-key script also works with the existing keys on Redis Cluster.
+        reserve = self._redis.register_script(_RESERVE_PROCESSING)
+        pending = _decode(reserve(keys=[f"{action}_app_annotation_{app_id}"], args=[job_id, _PENDING_JOB_TTL_SECONDS]))
+        if pending is None:
+            raise RuntimeError(f"Annotation reply reservation is unavailable for app {app_id}")
+        if pending != job_id:
+            self.cancel(tenant_id=tenant_id, app_id=app_id, action=action, job_id=job_id)
+            if not self._is_owner(tenant_id=tenant_id, app_id=app_id, action=action, job_id=pending):
+                raise RuntimeError(f"Annotation reply reservation is unavailable for app {app_id}")
+        return pending
+
+    def cancel(self, *, tenant_id: str, app_id: str, action: AnnotationReplyAction, job_id: str) -> None:
+        """Discard an unused candidate that was not exposed as the processing job."""
+        if not self._is_owner(tenant_id=tenant_id, app_id=app_id, action=action, job_id=job_id):
+            return
+        self.release_processing(app_id=app_id, action=action, job_id=job_id)
+        # Separate deletes retain compatibility with legacy keys in different cluster slots.
+        self._redis.delete(f"{action}_app_annotation_job_{job_id}")
+        self._redis.delete(f"{action}_app_annotation_error_{job_id}")
+        self._redis.delete(annotation_reply_job_owner_key(action=action, job_id=job_id))
+
+    def fail(self, *, tenant_id: str, app_id: str, action: AnnotationReplyAction, job_id: str, error_msg: str) -> None:
+        if not self._is_owner(tenant_id=tenant_id, app_id=app_id, action=action, job_id=job_id):
+            return
+        # Concurrent callers may already be polling this ID; retain its result before allowing a retry.
+        self._redis.setex(f"{action}_app_annotation_error_{job_id}", _FAILED_JOB_TTL_SECONDS, error_msg)
+        self._redis.setex(f"{action}_app_annotation_job_{job_id}", _FAILED_JOB_TTL_SECONDS, "error")
+        self._redis.expire(annotation_reply_job_owner_key(action=action, job_id=job_id), _FAILED_JOB_TTL_SECONDS)
+        self.release_processing(app_id=app_id, action=action, job_id=job_id)
+
+    def release_processing(self, *, app_id: str, action: AnnotationReplyAction, job_id: str) -> None:
+        """An older worker must never release a newer job's reservation."""
+        release = self._redis.register_script(_RELEASE_PROCESSING)
+        release(keys=[f"{action}_app_annotation_{app_id}"], args=[job_id])
 
     def get(
         self, *, tenant_id: str, app_id: str, action: AnnotationReplyAction, job_id: str

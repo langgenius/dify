@@ -14,7 +14,7 @@ from services.auth.resource_access_token_contracts import (
 
 
 @contextmanager
-def resource_access_token_errors() -> Generator[None, None, None]:
+def resource_access_token_errors() -> Generator[None]:
     try:
         yield
     except ResourceAccessTokenInputError as error:

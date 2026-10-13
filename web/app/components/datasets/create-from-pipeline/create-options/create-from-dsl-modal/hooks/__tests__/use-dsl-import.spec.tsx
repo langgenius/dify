@@ -706,11 +706,6 @@ describe('useDSLImport', () => {
         expect(mockImportDSLConfirm).toHaveBeenCalledWith('import-123')
         expect(onSuccess).toHaveBeenCalled()
         expect(result.current.showConfirmModal).toBe(false)
-        expect(toastMocks.record).toHaveBeenCalledWith(
-          expect.objectContaining({
-            type: 'success',
-          }),
-        )
       })
 
       vi.useRealTimers()
