@@ -26,7 +26,7 @@ from models.workflow import WorkflowNodeExecutionOffload, WorkflowPause, Workflo
 from services import app_storage_cleanup_service as cleanup
 
 
-def _offload(session: Session, app_id: str, key: str, tenant_id: str = "tenant-1"):
+def _offload(session: Session, app_id: str, key: str, tenant_id: str = "tenant-1") -> tuple[str, str]:
     file = UploadFile(
         tenant_id=tenant_id,
         storage_type=StorageType.LOCAL,
@@ -55,14 +55,14 @@ def _offload(session: Session, app_id: str, key: str, tenant_id: str = "tenant-1
 
 
 @pytest.fixture
-def storage(monkeypatch: pytest.MonkeyPatch):
+def storage(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     mock = MagicMock()
-    mock.scan.return_value = []
+    mock.scan.return_value = list[str]()
     monkeypatch.setattr(cleanup, "storage", mock)
     return mock
 
 
-def test_cleanup_removes_owned_offloads_and_preserves_other_owners(sqlite_session: Session, storage):
+def test_cleanup_removes_owned_offloads_and_preserves_other_owners(sqlite_session: Session, storage: MagicMock) -> None:
     owned = _offload(sqlite_session, "app-1", "owned.json")
     other_app = _offload(sqlite_session, "app-2", "other-app.json")
     other_tenant = _offload(sqlite_session, "app-1", "other-tenant.json", "tenant-2")
@@ -79,7 +79,7 @@ def test_cleanup_removes_owned_offloads_and_preserves_other_owners(sqlite_sessio
         assert sqlite_session.get(WorkflowNodeExecutionOffload, offload_id) is not None
 
 
-def test_storage_failure_retains_references_for_retry(sqlite_session: Session, storage):
+def test_storage_failure_retains_references_for_retry(sqlite_session: Session, storage: MagicMock) -> None:
     file_id, offload_id = _offload(sqlite_session, "app-1", "owned.json")
     storage.delete.side_effect = RuntimeError("storage unavailable")
     storage.exists.return_value = True
@@ -97,7 +97,7 @@ def test_storage_failure_retains_references_for_retry(sqlite_session: Session, s
     assert sqlite_session.get(UploadFile, file_id) is None
 
 
-def test_missing_object_allows_redelivery(sqlite_session: Session, storage):
+def test_missing_object_allows_redelivery(sqlite_session: Session, storage: MagicMock) -> None:
     file_id, _ = _offload(sqlite_session, "app-1", "owned.json")
     storage.delete.side_effect = FileNotFoundError()
     storage.exists.return_value = False
@@ -108,7 +108,9 @@ def test_missing_object_allows_redelivery(sqlite_session: Session, storage):
     assert sqlite_session.get(UploadFile, file_id) is None
 
 
-def test_access_denied_retains_references_even_if_exists_returns_false(sqlite_session: Session, storage):
+def test_access_denied_retains_references_even_if_exists_returns_false(
+    sqlite_session: Session, storage: MagicMock
+) -> None:
     file_id, offload_id = _offload(sqlite_session, "app-1", "owned.json")
     storage.delete.side_effect = ClientError({"Error": {"Code": "AccessDenied"}}, "DeleteObject")
     storage.exists.return_value = False
@@ -120,7 +122,9 @@ def test_access_denied_retains_references_even_if_exists_returns_false(sqlite_se
     storage.exists.assert_not_called()
 
 
-def test_obs_delete_failure_preserves_retry_references(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch):
+def test_obs_delete_failure_preserves_retry_references(
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
     file_id, offload_id = _offload(sqlite_session, "app-1", "owned.json")
     backend = HuaweiObsStorage.__new__(HuaweiObsStorage)
     backend.bucket_name = "bucket"
@@ -137,7 +141,7 @@ def test_obs_delete_failure_preserves_retry_references(sqlite_session: Session, 
 def test_clickzetta_failed_existence_check_preserves_retry_references(
     sqlite_session: Session,
     monkeypatch: pytest.MonkeyPatch,
-):
+) -> None:
     file_id, offload_id = _offload(sqlite_session, "app-1", "owned.json")
     backend = ClickZettaVolumeStorage.__new__(ClickZettaVolumeStorage)
     monkeypatch.setattr(backend, "_config", SimpleNamespace(volume_type="user", dify_prefix="dify"), raising=False)
@@ -150,7 +154,7 @@ def test_clickzetta_failed_existence_check_preserves_retry_references(
     assert sqlite_session.get(WorkflowNodeExecutionOffload, offload_id) is not None
 
 
-def test_shared_offload_file_is_retained(sqlite_session: Session, storage):
+def test_shared_offload_file_is_retained(sqlite_session: Session, storage: MagicMock) -> None:
     file_id, offload_id = _offload(sqlite_session, "app-1", "shared.json")
     shared = WorkflowNodeExecutionOffload(
         tenant_id="tenant-1",
@@ -171,7 +175,7 @@ def test_shared_offload_file_is_retained(sqlite_session: Session, storage):
     assert sqlite_session.get(WorkflowNodeExecutionOffload, shared.id) is not None
 
 
-def test_trace_cleanup_stays_within_app_prefix(sqlite_session: Session, storage):
+def test_trace_cleanup_stays_within_app_prefix(sqlite_session: Session, storage: MagicMock) -> None:
     _end_user(sqlite_session)
     storage.scan.return_value = ["ops_trace/app-1/trace.json"]
     cleanup.cleanup_app_storage("tenant-1", "app-1")
@@ -191,14 +195,16 @@ def _end_user(session: Session) -> EndUser:
     return user
 
 
-def test_wrong_tenant_does_not_scan_traces(sqlite_session: Session, storage):
+def test_wrong_tenant_does_not_scan_traces(sqlite_session: Session, storage: MagicMock) -> None:
     _end_user(sqlite_session)
     cleanup.cleanup_app_storage("tenant-2", "app-1")
     storage.scan.assert_not_called()
 
 
 @pytest.mark.parametrize("fails", [False, True])
-def test_pause_files_and_reasons_are_removed_only_after_storage_success(sqlite_session: Session, storage, fails: bool):
+def test_pause_files_and_reasons_are_removed_only_after_storage_success(
+    sqlite_session: Session, storage: MagicMock, fails: bool
+) -> None:
     run = WorkflowRun(
         tenant_id="tenant-1",
         app_id="app-1",
@@ -233,7 +239,9 @@ def test_pause_files_and_reasons_are_removed_only_after_storage_success(sqlite_s
 
 
 @pytest.mark.parametrize("fails", [False, True])
-def test_end_user_files_are_cleaned_before_owner_records(sqlite_session: Session, storage, fails: bool):
+def test_end_user_files_are_cleaned_before_owner_records(
+    sqlite_session: Session, storage: MagicMock, fails: bool
+) -> None:
     user = _end_user(sqlite_session)
     tool = ToolFile(
         tenant_id="tenant-1",
@@ -266,7 +274,7 @@ def test_end_user_files_are_cleaned_before_owner_records(sqlite_session: Session
     assert sqlite_session.get(EndUser, user.id) is not None
 
 
-def test_shared_message_files_are_retained(sqlite_session: Session, storage):
+def test_shared_message_files_are_retained(sqlite_session: Session, storage: MagicMock) -> None:
     user = _end_user(sqlite_session)
     tool = ToolFile(
         tenant_id="tenant-1",
@@ -319,7 +327,7 @@ def test_shared_message_files_are_retained(sqlite_session: Session, storage):
     assert sqlite_session.get(UploadFile, file_id) is not None
 
 
-def test_partial_batch_failure_can_retry_already_deleted_objects(sqlite_session: Session, storage):
+def test_partial_batch_failure_can_retry_already_deleted_objects(sqlite_session: Session, storage: MagicMock) -> None:
     first = _offload(sqlite_session, "app-1", "first.json")
     second = _offload(sqlite_session, "app-1", "second.json")
     storage.delete.side_effect = [None, RuntimeError("unavailable")]
@@ -339,7 +347,9 @@ def test_partial_batch_failure_can_retry_already_deleted_objects(sqlite_session:
         assert sqlite_session.get(WorkflowNodeExecutionOffload, offload_id) is None
 
 
-def test_conversation_owned_tools_are_cleaned_and_account_assets_retained(sqlite_session: Session, storage):
+def test_conversation_owned_tools_are_cleaned_and_account_assets_retained(
+    sqlite_session: Session, storage: MagicMock
+) -> None:
     conversation = Conversation(
         app_id="app-1", mode=AppMode.CHAT, name="owned", inputs={}, from_source=ConversationFromSource.CONSOLE
     )
@@ -377,7 +387,7 @@ def test_conversation_owned_tools_are_cleaned_and_account_assets_retained(sqlite
     assert sqlite_session.get(ToolFile, foreign_id) is not None
 
 
-def test_tool_with_conflicting_conversation_owner_is_retained(sqlite_session: Session, storage):
+def test_tool_with_conflicting_conversation_owner_is_retained(sqlite_session: Session, storage: MagicMock) -> None:
     user = _end_user(sqlite_session)
     tool = ToolFile(
         tenant_id="tenant-1",

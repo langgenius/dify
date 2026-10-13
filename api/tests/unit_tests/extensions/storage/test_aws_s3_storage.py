@@ -10,7 +10,7 @@ def test_scan_reads_all_pages_and_filters_directory_markers() -> None:
     storage.client.get_paginator.return_value.paginate.return_value = [
         {"Contents": [{"Key": "ops_trace/app/"}, {"Key": "ops_trace/app/one.json"}]},
         {"Contents": [{"Key": "ops_trace/app/two.json"}]},
-        {},
+        dict[str, str](),
     ]
     assert storage.scan("ops_trace/app/") == ["ops_trace/app/one.json", "ops_trace/app/two.json"]
     storage.client.get_paginator.assert_called_once_with("list_objects_v2")
