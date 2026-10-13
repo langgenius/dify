@@ -32,7 +32,7 @@ from graphon.enums import (
     WorkflowNodeExecutionStatus,
 )
 from graphon.graph_events import NodeRunPauseRequestedEvent
-from graphon.node_events import NodeEventBase, NodeRunResult, StreamCompletedEvent
+from graphon.node_events import NodeEventBase, NodeRunResult, StreamChunkEvent, StreamCompletedEvent
 from graphon.nodes.base.node import Node
 from graphon.nodes.base.variable_template_parser import VariableTemplateParser
 from models.agent_config_entities import WorkflowNodeJobConfig, WorkflowOutputRoutes
@@ -64,7 +64,8 @@ logger = logging.getLogger(__name__)
 
 
 # Stage 4 §5+§7: the terminal events that `_consume_event_stream` may return.
-# Stream + started events are filtered out before we yield; transport errors
+# Stream + started events are filtered out (plain-run text deltas are yielded
+# as stream chunks instead); transport errors
 # are surfaced as a separate StreamCompletedEvent in the second tuple slot.
 type _TerminalAgentBackendEvent = (
     AgentBackendRunSucceededInternalEvent | AgentBackendRunFailedInternalEvent | AgentBackendRunCancelledInternalEvent
@@ -302,11 +303,12 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 "status": create_response.status,
             }
 
-            terminal_event, exhausted = self._consume_event_stream(
+            terminal_event, exhausted = yield from self._consume_event_stream(
                 create_response.run_id,
                 inputs=inputs,
                 process_data=process_data,
                 metadata=metadata,
+                stream_text=not custom_outputs and not node_job.output_routes.enabled,
             )
             # None means no post-exit snapshot was produced; leave the previously stored session snapshot untouched.
             if (
@@ -436,11 +438,20 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         inputs: dict[str, Any],
         process_data: dict[str, Any],
         metadata: dict[str, Any],
-    ) -> tuple[
-        _TerminalAgentBackendEvent | None,
-        StreamCompletedEvent | None,
+        stream_text: bool,
+    ) -> Generator[
+        StreamChunkEvent,
+        None,
+        tuple[_TerminalAgentBackendEvent | None, StreamCompletedEvent | None],
     ]:
         """Consume the SSE stream for one Agent backend run.
+
+        When ``stream_text`` is set (plain runs whose final string becomes the
+        ``text`` output), agent-message deltas are yielded as ``text`` stream
+        chunks so Answer nodes can stream them. The stream is closed only after
+        at least one chunk was sent; otherwise the response coordinator falls
+        back to the final ``text`` variable. Structured runs keep deltas as
+        metadata because their ``text`` comes from the structured output.
 
         Returns a 2-tuple ``(terminal_event, transport_failure)``:
         - ``terminal_event``: the first non-stream/non-started internal event,
@@ -450,6 +461,30 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
           terminal may accompany it so the caller can persist the final session
           snapshot while preserving the original transport failure.
         """
+        result = yield from self._read_event_stream(
+            run_id,
+            inputs=inputs,
+            process_data=process_data,
+            metadata=metadata,
+            stream_text=stream_text,
+        )
+        if stream_text and (metadata.get("agent_backend") or {}).get("agent_message_delta_count"):
+            yield StreamChunkEvent(selector=[self._node_id, "text"], chunk="", is_final=True)
+        return result
+
+    def _read_event_stream(
+        self,
+        run_id: str,
+        *,
+        inputs: dict[str, Any],
+        process_data: dict[str, Any],
+        metadata: dict[str, Any],
+        stream_text: bool,
+    ) -> Generator[
+        StreamChunkEvent,
+        None,
+        tuple[_TerminalAgentBackendEvent | None, StreamCompletedEvent | None],
+    ]:
         stream_event_count = 0
         last_event_id: str | None = None
         try:
@@ -470,6 +505,12 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                     if internal_event.type == AgentBackendInternalEventType.AGENT_MESSAGE_DELTA:
                         if isinstance(internal_event, AgentBackendAgentMessageDeltaInternalEvent):
                             self._record_agent_message_delta_metadata(metadata, internal_event)
+                            if stream_text:
+                                yield StreamChunkEvent(
+                                    selector=[self._node_id, "text"],
+                                    chunk=internal_event.delta,
+                                    is_final=False,
+                                )
                         continue
                     metadata["agent_backend"] = {
                         **dict(metadata.get("agent_backend") or {}),

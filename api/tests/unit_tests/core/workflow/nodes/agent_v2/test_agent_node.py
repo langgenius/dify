@@ -56,7 +56,7 @@ from graphon.enums import (
     WorkflowNodeExecutionStatus,
 )
 from graphon.file import File, FileTransferMethod, FileType
-from graphon.node_events import StreamCompletedEvent
+from graphon.node_events import StreamChunkEvent, StreamCompletedEvent
 from graphon.runtime import GraphRuntimeState
 from graphon.variables.segments import ArrayFileSegment, FileSegment, StringSegment
 from models.agent import Agent, AgentConfigSnapshot, WorkflowAgentNodeBinding
@@ -393,6 +393,21 @@ class CancelFailingStreamBackendClient(FailingStreamBackendClient):
         raise RuntimeError(f"failed to cancel {run_id}")
 
 
+def _drain_event_stream(node: DifyAgentNode):
+    stream = node._consume_event_stream(
+        "run-1",
+        inputs={},
+        process_data={"workflow_agent_binding_id": "binding-1"},
+        metadata={"agent_backend": {}},
+        stream_text=False,
+    )
+    while True:
+        try:
+            next(stream)
+        except StopIteration as stop:
+            return stop.value
+
+
 def _node(
     *,
     scenario: FakeAgentBackendScenario = FakeAgentBackendScenario.SUCCESS,
@@ -626,17 +641,35 @@ def test_agent_node_passes_execution_id_to_session_store_and_runtime_request_bui
     assert context.node_execution_id == execution_id
 
 
-def test_agent_node_run_ignores_agent_message_delta_until_terminal_result():
+def test_agent_node_run_streams_agent_message_delta_as_text_chunks():
     events = list(_node(agent_backend_client=AgentMessageDeltaBackendClient())._run())
 
-    assert len(events) == 1
-    result = cast(StreamCompletedEvent, events[0]).node_run_result
+    assert events[:2] == [
+        StreamChunkEvent(selector=["agent-node", "text"], chunk="hello ", is_final=False),
+        StreamChunkEvent(selector=["agent-node", "text"], chunk="", is_final=True),
+    ]
+    assert len(events) == 3
+    result = cast(StreamCompletedEvent, events[2]).node_run_result
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
     assert result.outputs == {"text": "hello agent"}
     agent_backend = result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]["agent_backend"]
     assert agent_backend["status"] == "succeeded"
     assert agent_backend["agent_message_delta_count"] == 1
     assert agent_backend["agent_message_delta_length"] == len("hello ")
+
+
+def test_agent_node_structured_run_keeps_agent_message_delta_out_of_text_stream():
+    events = list(
+        _node(
+            declared_outputs=[{"name": "summary", "type": DeclaredOutputType.STRING}],
+            agent_backend_client=AgentMessageDeltaBackendClient(),
+        )._run()
+    )
+
+    assert len(events) == 1
+    result = cast(StreamCompletedEvent, events[0]).node_run_result
+    agent_backend = result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]["agent_backend"]
+    assert agent_backend["agent_message_delta_count"] == 1
 
 
 def test_agent_node_run_normalizes_declared_file_output_with_canonical_mapping():
@@ -855,12 +888,7 @@ def test_agent_node_cancels_backend_run_when_stream_fails():
     client = FailingStreamBackendClient()
     node = _node(agent_backend_client=client)
 
-    terminal, failure = node._consume_event_stream(
-        "run-1",
-        inputs={},
-        process_data={"workflow_agent_binding_id": "binding-1"},
-        metadata={"agent_backend": {}},
-    )
+    terminal, failure = _drain_event_stream(node)
 
     assert isinstance(terminal, AgentBackendRunCancelledInternalEvent)
     assert failure is not None
@@ -874,12 +902,7 @@ def test_agent_node_forwards_last_stream_cursor_when_cancelling_after_failure() 
     client = FailingAfterStartedStreamBackendClient()
     node = _node(agent_backend_client=client)
 
-    terminal, failure = node._consume_event_stream(
-        "run-1",
-        inputs={},
-        process_data={"workflow_agent_binding_id": "binding-1"},
-        metadata={"agent_backend": {}},
-    )
+    terminal, failure = _drain_event_stream(node)
 
     assert isinstance(terminal, AgentBackendRunCancelledInternalEvent)
     assert failure is not None
@@ -891,12 +914,7 @@ def test_agent_node_cancels_backend_run_when_stream_ends_without_terminal_event(
     client = EmptyStreamBackendClient()
     node = _node(agent_backend_client=client)
 
-    terminal, failure = node._consume_event_stream(
-        "run-1",
-        inputs={},
-        process_data={"workflow_agent_binding_id": "binding-1"},
-        metadata={"agent_backend": {}},
-    )
+    terminal, failure = _drain_event_stream(node)
 
     assert isinstance(terminal, AgentBackendRunCancelledInternalEvent)
     assert failure is None
@@ -908,12 +926,7 @@ def test_agent_node_cancels_backend_run_when_stream_raises_unexpected_error():
     client = GenericFailingStreamBackendClient()
     node = _node(agent_backend_client=client)
 
-    terminal, failure = node._consume_event_stream(
-        "run-1",
-        inputs={},
-        process_data={"workflow_agent_binding_id": "binding-1"},
-        metadata={"agent_backend": {}},
-    )
+    terminal, failure = _drain_event_stream(node)
 
     assert isinstance(terminal, AgentBackendRunCancelledInternalEvent)
     assert failure is not None
@@ -928,12 +941,7 @@ def test_agent_node_uses_graph_abort_reason_when_cancel_request_fails(caplog):
     node = _node(agent_backend_client=client)
     node.graph_runtime_state.graph_execution = SimpleNamespace(aborted=True)
 
-    terminal, failure = node._consume_event_stream(
-        "run-1",
-        inputs={},
-        process_data={"workflow_agent_binding_id": "binding-1"},
-        metadata={"agent_backend": {}},
-    )
+    terminal, failure = _drain_event_stream(node)
 
     assert terminal is None
     assert failure is not None
@@ -954,12 +962,7 @@ def test_agent_node_cancels_backend_run_for_unexpected_internal_event():
         return_value=[SimpleNamespace(type=AgentBackendInternalEventType.RUN_FAILED)]
     )
 
-    terminal, failure = node._consume_event_stream(
-        "run-1",
-        inputs={},
-        process_data={"workflow_agent_binding_id": "binding-1"},
-        metadata={"agent_backend": {}},
-    )
+    terminal, failure = _drain_event_stream(node)
 
     assert terminal is None
     assert failure is not None
