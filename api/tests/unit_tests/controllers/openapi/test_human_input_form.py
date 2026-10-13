@@ -238,7 +238,12 @@ class TestSubmitFollowRunHint:
 
         [hint] = result.hints
         assert hint.op == op_of(OpenApiWorkflowEventsApi.get) == "get.run.event"
-        assert hint.input == {"app_id": "app-1", "task_id": "run-9", "continue_on_pause": False}
+        assert hint.input == {
+            "app_id": "app-1",
+            "task_id": "run-9",
+            "include_state_snapshot": True,
+            "continue_on_pause": False,
+        }
 
     def test_hint_input_passes_the_events_op_input_schema(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         [hint] = self._submit(app, monkeypatch, workflow_run_id="run-9").hints

@@ -205,7 +205,12 @@ class OpenApiWorkflowHumanInputFormSubmitApi(Resource):
         follow = Hint(
             summary="Follow the resumed run",
             op=op_of(OpenApiWorkflowEventsApi.get),
-            input={"app_id": ctx.app.id, "task_id": form.workflow_run_id, "continue_on_pause": False},
+            input={
+                "app_id": ctx.app.id,
+                "task_id": form.workflow_run_id,
+                "include_state_snapshot": True,
+                "continue_on_pause": False,
+            },
         )
         return FormSubmitResponse(hints=[follow])
 
