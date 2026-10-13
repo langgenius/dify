@@ -8,7 +8,6 @@ import type {
 } from '@/app/components/workflow/types'
 import type { FlowType } from '@/types/common'
 import type { NodeRunResult, NodeTracing } from '@/types/workflow'
-import { ORPCError } from '@orpc/client'
 import { unionBy } from 'es-toolkit/compat'
 import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
@@ -102,11 +101,6 @@ const checkValidFns: Partial<Record<BlockEnum, Function>> = {
   [BlockEnum.DocExtractor]: checkDocumentExtractorValid,
   [BlockEnum.Loop]: checkLoopValid,
   [BlockEnum.HumanInput]: checkHumanInputValid,
-}
-
-type RequestError = {
-  message: string
-  status: string
 }
 
 export type Params<T> = {
@@ -582,16 +576,13 @@ const useOneStepRun = <T>({
       const controller = new AbortController()
       pluginSingleRunAbortRef.current = controller
 
-      let requestError: RequestError | undefined
+      let requestError: unknown
       const response: any = await post(urlPath, {
         body: JSON.stringify({}),
         signal: controller.signal,
       })
         .catch((error: unknown) => {
-          requestError = {
-            message: error instanceof Error ? error.message : 'Unknown error',
-            status: error instanceof ORPCError ? String(error.status) : '0',
-          }
+          requestError = error
           return null
         })
         .finally(() => {
@@ -604,7 +595,7 @@ const useOneStepRun = <T>({
       if (requestError) {
         if (controller.signal.aborted) return null
 
-        toast.error(requestError.message)
+        toast.error(requestError instanceof Error ? requestError.message : 'Unknown error')
         cancelPluginSingleRun()
         throw requestError
       }

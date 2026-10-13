@@ -1,3 +1,4 @@
+import { ORPCError } from '@orpc/client'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { trackEvent } from '@/app/components/base/amplitude'
 import {
@@ -350,4 +351,24 @@ describe('useOneStepRun', () => {
       expect(toast.error).not.toHaveBeenCalled()
     },
   )
+
+  it('preserves the plugin request error and metadata when reporting a failed run', async () => {
+    const error = new ORPCError('forbidden', {
+      status: 403,
+      message: 'Plugin access denied',
+      data: { reason: 'PLUGIN_ACCESS_DENIED' },
+      cause: { headers: new Headers({ 'X-Request-Id': 'plugin-run-1' }) },
+    })
+    vi.mocked(post).mockRejectedValueOnce(error)
+    const reportError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { result } = renderUseOneStepRun(BlockEnum.TriggerPlugin)
+
+    await act(async () => {
+      expect(await result.current.handleRun({})).toBe(false)
+    })
+
+    expect(toast.error).toHaveBeenCalledWith('Plugin access denied')
+    expect(reportError).toHaveBeenCalledWith(error)
+    expect(reportError.mock.calls[0]?.[0]).toBe(error)
+  })
 })
