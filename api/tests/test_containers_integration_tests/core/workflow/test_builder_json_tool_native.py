@@ -197,8 +197,10 @@ def test_json_optional_graph_plugin_identifier_seals_without_saved_graph_rewrite
 ):
     factory, actor, app, workflow, session_id, test_input_id = native_owner
     inputs = _configure(native_owner, ensure_ascii=False, wrapped=True)
-    graph = json.loads(FIXTURE.read_text())
+    with factory() as db:
+        graph = json.loads(db.get(Workflow, workflow.id).graph)
     tool = graph["nodes"][1]["data"]
+    assert tool["tool_configurations"]["ensure_ascii"] == {"type": "constant", "value": False}
     if ui_identifier == "missing":
         del tool["plugin_unique_identifier"]
     else:
