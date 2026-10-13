@@ -104,7 +104,7 @@ describe('http plugin', () => {
   it('a 401 says to log in again', async () => {
     const h = await new Context().get(http)
     mock.setScenario('auth-expired')
-    await expect(h.request(account)).rejects.toMatchObject({ hint: 'run difyctl login' })
+    await expect(h.request(account)).rejects.toMatchObject({ hint: 'run difyctl help login' })
   })
 
   it("a 403 keeps the server's hint and never says to log in", async () => {
