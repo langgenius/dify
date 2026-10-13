@@ -195,7 +195,7 @@ class TestMemberCancelInviteApiWithContainers:
                 method(api, RequestContext("request", None, current_user.id, tenant.id), member.id)
 
         assert exc_info.value.code == 403
-        assert exc_info.value.data == {"code": "forbidden", "message": exc_info.value.description, "status": 403}  # type: ignore[attr-defined]
+        assert exc_info.value.data == {"code": "forbidden", "message": exc_info.value.description, "status": 403}
 
     def test_cancel_member_not_in_tenant(
         self, flask_app_with_containers: Flask, db_session_with_containers: Session
@@ -218,7 +218,7 @@ class TestMemberCancelInviteApiWithContainers:
                 method(api, RequestContext("request", None, current_user.id, tenant.id), member.id)
 
         assert exc_info.value.code == 404
-        assert exc_info.value.data == {"code": "member-not-found", "message": exc_info.value.description, "status": 404}  # type: ignore[attr-defined]
+        assert exc_info.value.data == {"code": "member-not-found", "message": exc_info.value.description, "status": 404}
 
 
 class TestMemberUpdateRoleApiWithContainers:
