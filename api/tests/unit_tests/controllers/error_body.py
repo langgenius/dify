@@ -13,7 +13,7 @@ def raised_error(call: Callable[[], object]) -> tuple[dict[str, object], int]:
     try:
         call()
     except HTTPException as error:
-        body = getattr(error, "data", None)
+        body = vars(error).get("data")
         if not isinstance(body, dict):
             raise AssertionError(f"{error!r} carries no error body") from error
         status = error.code
