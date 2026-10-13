@@ -73,6 +73,7 @@ const initialView: SessionView = {
   interrupted: false,
   phase: 'understand',
   run_status: 'processing',
+  reply_language: '',
   session_id: 'session-1',
   version: 1,
 }

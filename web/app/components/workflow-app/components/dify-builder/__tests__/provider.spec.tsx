@@ -146,6 +146,7 @@ const Probe = () => {
             interrupted: false,
             phase: 'understand',
             run_status: 'processing',
+            reply_language: '',
             session_id: 'session-1',
             version: 1,
           })
@@ -165,6 +166,7 @@ const Probe = () => {
             interrupted: false,
             phase: 'test',
             run_status: 'waiting_input',
+            reply_language: '',
             session_id: 'session-1',
             version: 2,
           })
