@@ -6293,7 +6293,6 @@ export type PostAppsByAppIdFeedbacksData = {
 export type PostAppsByAppIdFeedbacksErrors = {
   400: AccountNotInitializedError
   401: NotInitValidatedError | NotSetupError
-  403: ErrorResponse
   404: AppNotFoundError
   default: ErrorResponse
 }

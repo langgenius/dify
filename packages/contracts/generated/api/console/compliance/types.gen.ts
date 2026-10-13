@@ -45,16 +45,31 @@ export type ComplianceRateLimitErrorResponse = {
   status: 429
 }
 
+export type ComplianceRateLimitError = ErrorResponse & {
+  code: 'compliance_rate_limit'
+  status?: 429
+}
+
 export type BillingOperationFailedErrorResponse = {
   code: 'billing_operation_failed'
   message: string
   status: 502
 }
 
+export type BillingOperationFailedError = ErrorResponse & {
+  code: 'billing_operation_failed'
+  status?: 502
+}
+
 export type BillingUnavailableErrorResponse = {
   code: 'billing_unavailable'
   message: string
   status: 503
+}
+
+export type BillingUnavailableError = ErrorResponse & {
+  code: 'billing_unavailable'
+  status?: 503
 }
 
 export type GetComplianceDownloadData = {
@@ -70,9 +85,9 @@ export type GetComplianceDownloadErrors = {
   400: AccountNotInitializedError
   401: NotInitValidatedError | NotSetupError
   422: BillingUnprocessableEntityErrorResponse | ErrorResponse
-  429: ComplianceRateLimitErrorResponse | ErrorResponse
-  502: BillingOperationFailedErrorResponse | ErrorResponse
-  503: BillingUnavailableErrorResponse | ErrorResponse
+  429: ComplianceRateLimitErrorResponse | ComplianceRateLimitError
+  502: BillingOperationFailedErrorResponse | BillingOperationFailedError
+  503: BillingUnavailableErrorResponse | BillingUnavailableError
   default: ErrorResponse
 }
 

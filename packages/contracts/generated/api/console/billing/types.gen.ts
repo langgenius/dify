@@ -39,10 +39,20 @@ export type BillingOperationFailedErrorResponse = {
   status: 502
 }
 
+export type BillingOperationFailedError = ErrorResponse & {
+  code: 'billing_operation_failed'
+  status?: 502
+}
+
 export type BillingUnavailableErrorResponse = {
   code: 'billing_unavailable'
   message: string
   status: 503
+}
+
+export type BillingUnavailableError = ErrorResponse & {
+  code: 'billing_unavailable'
+  status?: 503
 }
 
 export type BillingSubscriptionResponse = {
@@ -66,8 +76,8 @@ export type GetBillingInvoicesErrors = {
   400: AccountNotInitializedError
   401: NotInitValidatedError | NotSetupError
   403: ErrorResponse
-  502: BillingOperationFailedErrorResponse | ErrorResponse
-  503: BillingUnavailableErrorResponse | ErrorResponse
+  502: BillingOperationFailedErrorResponse | BillingOperationFailedError
+  503: BillingUnavailableErrorResponse | BillingUnavailableError
   default: ErrorResponse
 }
 
@@ -95,8 +105,8 @@ export type GetBillingSubscriptionErrors = {
   401: NotInitValidatedError | NotSetupError
   403: ErrorResponse
   422: BillingUnprocessableEntityErrorResponse | ErrorResponse
-  502: BillingOperationFailedErrorResponse | ErrorResponse
-  503: BillingUnavailableErrorResponse | ErrorResponse
+  502: BillingOperationFailedErrorResponse | BillingOperationFailedError
+  503: BillingUnavailableErrorResponse | BillingUnavailableError
   default: ErrorResponse
 }
 

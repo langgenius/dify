@@ -71,6 +71,18 @@ export const zBillingOperationFailedErrorResponse = z.object({
 })
 
 /**
+ * BillingOperationFailedError
+ *
+ * We couldn't complete this request. Please try again. If the problem persists, contact support.
+ */
+export const zBillingOperationFailedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('billing_operation_failed'),
+    status: z.literal(502).optional(),
+  }),
+)
+
+/**
  * BillingUnavailableErrorResponse
  */
 export const zBillingUnavailableErrorResponse = z.object({
@@ -78,6 +90,18 @@ export const zBillingUnavailableErrorResponse = z.object({
   message: z.string(),
   status: z.literal(503),
 })
+
+/**
+ * BillingUnavailableError
+ *
+ * This operation is temporarily unavailable. Please try again later.
+ */
+export const zBillingUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('billing_unavailable'),
+    status: z.literal(503).optional(),
+  }),
+)
 
 /**
  * BillingSubscriptionResponse

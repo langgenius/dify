@@ -3273,7 +3273,6 @@ Create or update message feedback (like/dislike)
 | 200 | Feedback updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 | 400 | Bad Request | **application/json**: [AccountNotInitializedError](#accountnotinitializederror)<br> |
 | 401 | Unauthorized | **application/json**: <br> |
-| 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Message not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -8581,7 +8580,6 @@ Generate instruction for workflow nodes or general use
 | 200 | Instruction generated successfully | **application/json**: [GeneratorResponse](#generatorresponse)<br> |
 | 400 | Invalid request parameters or flow/workflow not found | **application/json**: <br> |
 | 401 | Unauthorized | **application/json**: <br> |
-| 402 | Provider quota exceeded | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /instruction-generate/template
@@ -10235,7 +10233,6 @@ Generate code rules using LLM
 | 200 | Code rules generated successfully | **application/json**: [GeneratorResponse](#generatorresponse)<br> |
 | 400 | Invalid request parameters | **application/json**: <br> |
 | 401 | Unauthorized | **application/json**: <br> |
-| 402 | Provider quota exceeded | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /rule-generate
@@ -10254,7 +10251,6 @@ Generate rule configuration using LLM
 | 200 | Rule configuration generated successfully | **application/json**: [GeneratorResponse](#generatorresponse)<br> |
 | 400 | Invalid request parameters | **application/json**: <br> |
 | 401 | Unauthorized | **application/json**: <br> |
-| 402 | Provider quota exceeded | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /rule-structured-output-generate
@@ -10273,7 +10269,6 @@ Generate structured output rules using LLM
 | 200 | Structured output generated successfully | **application/json**: [GeneratorResponse](#generatorresponse)<br> |
 | 400 | Invalid request parameters | **application/json**: <br> |
 | 401 | Unauthorized | **application/json**: <br> |
-| 402 | Provider quota exceeded | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /snippets/{snippet_id}/workflow-runs
@@ -11838,7 +11833,6 @@ Generate a Dify workflow graph from natural language
 | 200 | Workflow graph generated successfully | **application/json**: [WorkflowGenerateResponse](#workflowgenerateresponse)<br> |
 | 400 | Invalid request parameters | **application/json**: <br> |
 | 401 | Unauthorized | **application/json**: <br> |
-| 402 | Provider quota exceeded | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workflow-generate/stream
@@ -20230,6 +20224,14 @@ ExporleBanner status
 | ---- | ---- | ----------- | -------- |
 | subscription | [SubscriptionModel](#subscriptionmodel) |  | Yes |
 
+#### BillingOperationFailedError
+
+We couldn't complete this request. Please try again. If the problem persists, contact support.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| BillingOperationFailedError |  | We couldn't complete this request. Please try again. If the problem persists, contact support. |  |
+
 #### BillingOperationFailedErrorResponse
 
 | Name | Type | Description | Required |
@@ -20243,6 +20245,14 @@ ExporleBanner status
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | url | string |  | Yes |
+
+#### BillingUnavailableError
+
+This operation is temporarily unavailable. Please try again later.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| BillingUnavailableError |  | This operation is temporarily unavailable. Please try again later. |  |
 
 #### BillingUnavailableErrorResponse
 
@@ -20613,6 +20623,14 @@ Completion request failed.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | url | string |  | Yes |
+
+#### ComplianceRateLimitError
+
+Rate limit exceeded for downloading compliance report.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ComplianceRateLimitError |  | Rate limit exceeded for downloading compliance report. |  |
 
 #### ComplianceRateLimitErrorResponse
 

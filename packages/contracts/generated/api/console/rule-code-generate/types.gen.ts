@@ -84,7 +84,6 @@ export type PostRuleCodeGenerateErrors = {
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
   401: NotInitValidatedError | NotSetupError
-  402: ErrorResponse
   default: ErrorResponse
 }
 

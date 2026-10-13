@@ -24,7 +24,6 @@ Convert audio file to text using speech-to-text service.
 | 200 | Success | **application/json**: [AudioToTextResponse](#audiototextresponse)<br> |
 | 400 | Bad Request | **application/json**: <br> |
 | 401 | Unauthorized | **application/json**: <br> |
-| 403 | Forbidden | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
 | 413 | Audio file too large | **application/json**: [AudioTooLargeError](#audiotoolargeerror)<br> |
 | 415 | Unsupported audio type | **application/json**: [UnsupportedAudioTypeError](#unsupportedaudiotypeerror)<br> |
@@ -48,7 +47,6 @@ Create a chat message for conversational applications.
 | 200 | Success | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
 | 400 | Bad Request | **application/json**: <br> |
 | 401 | Unauthorized | **application/json**: <br> |
-| 403 | Forbidden | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | App Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
 | 429 | Too Many Requests | **application/json**: [RateLimitError](#ratelimiterror)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -71,7 +69,6 @@ Stop a running chat message task.
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 | 400 | Bad Request | **application/json**: [NotChatAppError](#notchatapperror)<br> |
 | 401 | Unauthorized | **application/json**: <br> |
-| 403 | Forbidden | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Task Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br> |
@@ -93,7 +90,6 @@ Create a completion message for text generation applications.
 | 200 | Success | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
 | 400 | Bad Request | **application/json**: <br> |
 | 401 | Unauthorized | **application/json**: <br> |
-| 403 | Forbidden | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | App Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br> |
@@ -115,7 +111,6 @@ Stop a running completion message task.
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 | 400 | Bad Request | **application/json**: [NotCompletionAppError](#notcompletionapperror)<br> |
 | 401 | Unauthorized | **application/json**: <br> |
-| 403 | Forbidden | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Task Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br> |
@@ -140,7 +135,6 @@ Retrieve paginated list of conversations for a chat application.
 | 200 | Success | **application/json**: [ConversationInfiniteScrollPagination](#conversationinfinitescrollpagination)<br> |
 | 400 | Bad Request | **application/json**: [NotChatAppError](#notchatapperror)<br> |
 | 401 | Unauthorized | **application/json**: <br> |
-| 403 | Forbidden | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | App Not Found or Not a Chat App | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br> |
@@ -162,7 +156,6 @@ Delete a specific conversation.
 | 204 | Conversation deleted successfully |  |
 | 400 | Bad Request | **application/json**: [NotChatAppError](#notchatapperror)<br> |
 | 401 | Unauthorized | **application/json**: <br> |
-| 403 | Forbidden | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Conversation Not Found or Not a Chat App | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br> |
@@ -192,7 +185,6 @@ Rename a specific conversation with a custom name or auto-generate one.
 | 200 | Conversation renamed successfully | **application/json**: [SimpleConversation](#simpleconversation)<br> |
 | 400 | Bad Request | **application/json**: [NotChatAppError](#notchatapperror)<br> |
 | 401 | Unauthorized | **application/json**: <br> |
-| 403 | Forbidden | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Conversation Not Found or Not a Chat App | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br> |
@@ -214,7 +206,6 @@ Pin a specific conversation to keep it at the top of the list.
 | 200 | Conversation pinned successfully | **application/json**: [ResultResponse](#resultresponse)<br> |
 | 400 | Bad Request | **application/json**: [NotChatAppError](#notchatapperror)<br> |
 | 401 | Unauthorized | **application/json**: <br> |
-| 403 | Forbidden | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Conversation Not Found or Not a Chat App | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br> |
@@ -236,7 +227,6 @@ Unpin a specific conversation to remove it from the top of the list.
 | 200 | Conversation unpinned successfully | **application/json**: [ResultResponse](#resultresponse)<br> |
 | 400 | Bad Request | **application/json**: [NotChatAppError](#notchatapperror)<br> |
 | 401 | Unauthorized | **application/json**: <br> |
-| 403 | Forbidden | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Conversation Not Found or Not a Chat App | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br> |
@@ -495,7 +485,6 @@ Authenticate user for web application access
 | 200 | Authentication successful | **application/json**: [AccessTokenResultResponse](#accesstokenresultresponse)<br> |
 | 400 | Bad request - invalid email or password format | **application/json**: [AccountBannedError](#accountbannederror)<br> |
 | 401 | Authentication failed - email or password mismatch | **application/json**: <br> |
-| 403 | Account banned or login disabled | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Account not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -548,7 +537,6 @@ Retrieve paginated list of messages from a conversation in a chat application.
 | 200 | Success | **application/json**: [WebMessageInfiniteScrollPagination](#webmessageinfinitescrollpagination)<br> |
 | 400 | Bad Request | **application/json**: [NotChatAppError](#notchatapperror)<br> |
 | 401 | Unauthorized | **application/json**: <br> |
-| 403 | Forbidden | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Conversation Not Found or Not a Chat App | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br> |
@@ -578,7 +566,6 @@ Submit feedback (like/dislike) for a specific message.
 | 200 | Feedback submitted successfully | **application/json**: [ResultResponse](#resultresponse)<br> |
 | 400 | Bad Request | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized | **application/json**: <br> |
-| 403 | Forbidden | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Message Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br> |
@@ -641,7 +628,6 @@ Retrieve the metadata for a specific app.
 | 200 | Success | **application/json**: [AppMetaResponse](#appmetaresponse)<br> |
 | 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br> |
 | 401 | Unauthorized | **application/json**: <br> |
-| 403 | Forbidden | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | App Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br> |
@@ -659,7 +645,6 @@ Retrieve the parameters for a specific app.
 | 200 | Success | **application/json**: [Parameters](#parameters)<br> |
 | 400 | Bad Request | **application/json**: <br> |
 | 401 | Unauthorized | **application/json**: <br> |
-| 403 | Forbidden | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | App Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br> |
@@ -787,7 +772,6 @@ Retrieve paginated list of saved messages for a completion application.
 | 200 | Success | **application/json**: [SavedMessageInfiniteScrollPagination](#savedmessageinfinitescrollpagination)<br> |
 | 400 | Bad Request - Not a completion app | **application/json**: [NotCompletionAppError](#notcompletionapperror)<br> |
 | 401 | Unauthorized | **application/json**: <br> |
-| 403 | Forbidden | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | App Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br> |
@@ -815,7 +799,6 @@ Save a specific message for later reference.
 | 200 | Message saved successfully | **application/json**: [ResultResponse](#resultresponse)<br> |
 | 400 | Bad Request - Not a completion app | **application/json**: [NotCompletionAppError](#notcompletionapperror)<br> |
 | 401 | Unauthorized | **application/json**: <br> |
-| 403 | Forbidden | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Message Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br> |
@@ -837,7 +820,6 @@ Remove a message from saved messages.
 | 204 | Message removed successfully |  |
 | 400 | Bad Request - Not a completion app | **application/json**: [NotCompletionAppError](#notcompletionapperror)<br> |
 | 401 | Unauthorized | **application/json**: <br> |
-| 403 | Forbidden | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Message Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br> |
@@ -896,7 +878,6 @@ Convert text to audio using text-to-speech service.
 | 200 | Success |  |
 | 400 | Bad Request | **application/json**: <br> |
 | 401 | Unauthorized | **application/json**: <br> |
-| 403 | Forbidden | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
 | 413 | Request Entity Too Large | **application/json**: [AudioTooLargeError](#audiotoolargeerror)<br> |
 | 415 | Unsupported Media Type | **application/json**: [UnsupportedAudioTypeError](#unsupportedaudiotypeerror)<br> |
@@ -988,7 +969,6 @@ Stop a running workflow task.
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 | 400 | Bad Request | **application/json**: [NotWorkflowAppError](#notworkflowapperror)<br> |
 | 401 | Unauthorized | **application/json**: <br> |
-| 403 | Forbidden | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Task Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br> |
