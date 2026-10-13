@@ -2856,6 +2856,7 @@ Create a copy of an existing application
 | ---- | ----------- | ------ |
 | 201 | App copied successfully | **application/json**: [AppDetailWithSite](#appdetailwithsite)<br> |
 | 202 | App copy requires confirmation | **application/json**: [AppImportResponse](#appimportresponse)<br> |
+| 400 | App copy failed | **application/json**: <br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -4530,6 +4531,7 @@ Get last run result for draft workflow node
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Trigger event received and node executed successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| 400 | Trigger run failed | **application/json**: <br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Internal server error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -4702,6 +4704,7 @@ Get system variables for workflow
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Trigger event received and workflow executed successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| 400 | Trigger run failed | **application/json**: <br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Internal server error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -4726,6 +4729,7 @@ Get system variables for workflow
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow executed successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| 400 | Trigger run failed | **application/json**: <br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Internal server error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -6242,6 +6246,7 @@ Update document processing status (pause/resume)
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Batch import started | **application/json**: [SegmentBatchImportStatusResponse](#segmentbatchimportstatusresponse)<br> |
+| 500 | Batch import failed | **application/json**: <br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}
@@ -7472,7 +7477,7 @@ Generate instruction for workflow nodes or general use
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Instruction generated successfully | **application/json**: [GeneratorResponse](#generatorresponse)<br> |
-| 400 | Invalid request parameters or flow/workflow not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | Invalid request parameters or flow/workflow not found | **application/json**: <br> |
 | 402 | Provider quota exceeded | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -7631,7 +7636,7 @@ Bind OAuth data source with authorization code
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Data source binding success | **application/json**: [OAuthDataSourceBindingResponse](#oauthdatasourcebindingresponse)<br> |
-| 400 | Invalid provider or code | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | Invalid provider or code | **application/json**: <br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /oauth/data-source/callback/{provider}
@@ -7650,7 +7655,7 @@ Handle OAuth callback from data source provider
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 302 | Redirect to console with result | **application/json**: [RedirectResponse](#redirectresponse)<br> |
-| 400 | Invalid provider | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | Invalid provider | **application/json**: <br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /oauth/data-source/{provider}
@@ -7667,7 +7672,7 @@ Get OAuth authorization URL for data source provider
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Authorization URL or internal setup success | **application/json**: [OAuthDataSourceResponse](#oauthdatasourceresponse)<br> |
-| 400 | Invalid provider | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | Invalid provider | **application/json**: <br> |
 | 403 | Admin privileges required | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -7686,7 +7691,7 @@ Sync data from OAuth data source
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Data source sync success | **application/json**: [OAuthDataSourceSyncResponse](#oauthdatasourcesyncresponse)<br> |
-| 400 | Invalid provider or sync failed | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | Invalid provider or sync failed | **application/json**: <br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /oauth/login/{provider}
@@ -10347,7 +10352,7 @@ Generate a Dify workflow graph from natural language
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow graph generated successfully | **application/json**: [WorkflowGenerateResponse](#workflowgenerateresponse)<br> |
-| 400 | Invalid request parameters | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | Invalid request parameters | **application/json**: <br> |
 | 402 | Provider quota exceeded | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -10365,7 +10370,7 @@ Stream a Dify workflow graph (plan then result) via SSE
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Server-Sent Events stream; each data frame matches this plan/result event schema | **application/json**: [WorkflowGenerateStreamEventResponse](#workflowgeneratestreameventresponse)<br> |
-| 400 | Invalid request parameters | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | Invalid request parameters | **application/json**: <br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workflow-generate/suggestions
@@ -10607,7 +10612,7 @@ Get list of available agent providers
 | ---- | ----------- | ------ |
 | 200 | Snippet imported successfully | **application/json**: [SnippetImportResponse](#snippetimportresponse)<br> |
 | 202 | Import pending confirmation | **application/json**: [SnippetImportResponse](#snippetimportresponse)<br> |
-| 400 | Import failed | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | Import failed | **application/json**: <br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/customized-snippets/imports/{import_id}/confirm
@@ -10624,7 +10629,7 @@ Get list of available agent providers
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Import confirmed successfully | **application/json**: [SnippetImportResponse](#snippetimportresponse)<br> |
-| 400 | Import failed | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | Import failed | **application/json**: <br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /workspaces/current/customized-snippets/{snippet_id}
@@ -20214,6 +20219,14 @@ declaration of an endpoint group
 | data | [ [DocumentStatusResponse](#documentstatusresponse) ] |  | Yes |
 | total | integer |  | Yes |
 
+#### ErrorMessageResponse
+
+Legacy ``{"error": message}`` body a few endpoints return instead of the standard error body.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| error | string |  | Yes |
+
 #### ErrorResponse
 
 Documented non-2xx body emitted by ``register_external_error_handlers``.
@@ -26548,6 +26561,15 @@ can reuse its existing handler.
 | start_inputs | [ [WorkflowPlanStartInputResponse](#workflowplanstartinputresponse) ] |  | No |
 | title | string |  | No |
 
+#### WorkflowGenerateRejectedResponse
+
+400 body when the boundary guard rejects the instruction before generating.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| error | string |  | Yes |
+| errors | [ [WorkflowGenerateErrorResponse](#workflowgenerateerrorresponse) ] |  | Yes |
+
 #### WorkflowGenerateResponse
 
 | Name | Type | Description | Required |
@@ -27164,6 +27186,15 @@ Workflow tool configuration
 | title | string |  | Yes |
 | trigger_type | string |  | Yes |
 | updated_at | string |  | No |
+
+#### WorkflowTriggerRunErrorResponse
+
+400 body when a draft trigger run fails; ``error`` is omitted when there is nothing user-facing to say.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| error | string |  | No |
+| status | string |  | Yes |
 
 #### WorkflowUpdatePayload
 

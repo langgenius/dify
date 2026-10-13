@@ -1091,6 +1091,11 @@ export type DraftWorkflowNodeRunPayload = {
   query?: string
 }
 
+export type WorkflowTriggerRunErrorResponse = {
+  error?: string
+  status: 'error'
+}
+
 export type DraftWorkflowRunPayload = {
   datasource_info_list: Array<{
     [key: string]: unknown
@@ -5820,6 +5825,7 @@ export type PostAppsByAppIdCopyData = {
 }
 
 export type PostAppsByAppIdCopyErrors = {
+  400: AppImportResponse | ErrorResponse
   403: ErrorResponse
   default: ErrorResponse
 }
@@ -7882,6 +7888,7 @@ export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdTriggerRunData = {
 }
 
 export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdTriggerRunErrors = {
+  400: WorkflowTriggerRunErrorResponse | ErrorResponse
   403: ErrorResponse
   500: ErrorResponse
   default: ErrorResponse
@@ -8106,6 +8113,7 @@ export type PostAppsByAppIdWorkflowsDraftTriggerRunData = {
 }
 
 export type PostAppsByAppIdWorkflowsDraftTriggerRunErrors = {
+  400: WorkflowTriggerRunErrorResponse | ErrorResponse
   403: ErrorResponse
   500: ErrorResponse
   default: ErrorResponse
@@ -8131,6 +8139,7 @@ export type PostAppsByAppIdWorkflowsDraftTriggerRunAllData = {
 }
 
 export type PostAppsByAppIdWorkflowsDraftTriggerRunAllErrors = {
+  400: WorkflowTriggerRunErrorResponse | ErrorResponse
   403: ErrorResponse
   500: ErrorResponse
   default: ErrorResponse

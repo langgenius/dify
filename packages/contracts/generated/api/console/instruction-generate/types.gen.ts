@@ -16,6 +16,10 @@ export type InstructionGeneratePayload = {
 
 export type GeneratorResponse = unknown
 
+export type ErrorMessageResponse = {
+  error: string
+}
+
 export type ErrorResponse = {
   code: string
   details?: {
@@ -53,7 +57,7 @@ export type PostInstructionGenerateData = {
 }
 
 export type PostInstructionGenerateErrors = {
-  400: ErrorResponse
+  400: ErrorMessageResponse | ErrorResponse
   402: ErrorResponse
   default: ErrorResponse
 }

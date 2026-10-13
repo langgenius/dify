@@ -8,6 +8,10 @@ export type OAuthDataSourceBindingResponse = {
   result: string
 }
 
+export type ErrorMessageResponse = {
+  error: string
+}
+
 export type ErrorResponse = {
   code: string
   details?: {
@@ -90,7 +94,7 @@ export type GetOauthDataSourceBindingByProviderData = {
 }
 
 export type GetOauthDataSourceBindingByProviderErrors = {
-  400: ErrorResponse
+  400: ErrorMessageResponse | ErrorResponse
   default: ErrorResponse
 }
 
@@ -114,7 +118,7 @@ export type GetOauthDataSourceByProviderData = {
 }
 
 export type GetOauthDataSourceByProviderErrors = {
-  400: ErrorResponse
+  400: ErrorMessageResponse | ErrorResponse
   403: ErrorResponse
   default: ErrorResponse
 }
@@ -140,7 +144,7 @@ export type GetOauthDataSourceByProviderByBindingIdSyncData = {
 }
 
 export type GetOauthDataSourceByProviderByBindingIdSyncErrors = {
-  400: ErrorResponse
+  400: ErrorMessageResponse | ErrorResponse
   default: ErrorResponse
 }
 

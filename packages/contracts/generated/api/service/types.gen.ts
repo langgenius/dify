@@ -1013,6 +1013,10 @@ export type EndUserDetail = {
   updated_at: string
 }
 
+export type ErrorMessageResponse = {
+  error: string
+}
+
 export type ErrorResponse = {
   code: string
   details?: {
@@ -3625,7 +3629,7 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsData = {
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsErrors = {
-  400: ErrorResponse
+  400: ErrorMessageResponse | ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse

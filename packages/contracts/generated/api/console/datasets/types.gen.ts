@@ -451,6 +451,10 @@ export type BatchImportPayload = {
   upload_file_id: string
 }
 
+export type ErrorMessageResponse = {
+  error: string
+}
+
 export type SegmentUpdatePayload = {
   answer?: string | null
   attachment_ids?: Array<string> | null
@@ -2346,6 +2350,7 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportData 
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportErrors = {
+  500: ErrorMessageResponse | ErrorResponse
   default: ErrorResponse
 }
 

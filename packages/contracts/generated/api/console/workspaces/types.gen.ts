@@ -3079,7 +3079,7 @@ export type PostWorkspacesCurrentCustomizedSnippetsImportsData = {
 }
 
 export type PostWorkspacesCurrentCustomizedSnippetsImportsErrors = {
-  400: ErrorResponse
+  400: SnippetImportResponse | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3104,7 +3104,7 @@ export type PostWorkspacesCurrentCustomizedSnippetsImportsByImportIdConfirmData 
 }
 
 export type PostWorkspacesCurrentCustomizedSnippetsImportsByImportIdConfirmErrors = {
-  400: ErrorResponse
+  400: SnippetImportResponse | ErrorResponse
   default: ErrorResponse
 }
 

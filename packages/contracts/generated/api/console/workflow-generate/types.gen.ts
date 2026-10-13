@@ -22,6 +22,11 @@ export type WorkflowGenerateResponse = {
   mode?: 'advanced-chat' | 'workflow' | null
 }
 
+export type WorkflowGenerateRejectedResponse = {
+  error: string
+  errors: Array<WorkflowGenerateErrorResponse>
+}
+
 export type ErrorResponse = {
   code: string
   details?: {
@@ -157,7 +162,7 @@ export type PostWorkflowGenerateData = {
 }
 
 export type PostWorkflowGenerateErrors = {
-  400: ErrorResponse
+  400: WorkflowGenerateRejectedResponse | ErrorResponse
   402: ErrorResponse
   default: ErrorResponse
 }
@@ -179,7 +184,7 @@ export type PostWorkflowGenerateStreamData = {
 }
 
 export type PostWorkflowGenerateStreamErrors = {
-  400: ErrorResponse
+  400: WorkflowGenerateRejectedResponse | ErrorResponse
   default: ErrorResponse
 }
 

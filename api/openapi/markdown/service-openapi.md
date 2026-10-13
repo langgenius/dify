@@ -1832,7 +1832,7 @@ Create one or more chunks within a document. Each chunk can include optional key
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Chunks created successfully. | **application/json**: [SegmentCreateListResponse](#segmentcreatelistresponse)<br> |
-| 400 | Bad request - segments data is missing | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | Bad request - segments data is missing | **application/json**: <br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | `not_found` : Document is not completed or is disabled. | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -3385,6 +3385,14 @@ Full end-user detail returned by the Service API.
 | tenant_id | string (uuid) |  | Yes |
 | type | string |  | Yes |
 | updated_at | dateTime |  | Yes |
+
+#### ErrorMessageResponse
+
+Legacy ``{"error": message}`` body a few endpoints return instead of the standard error body.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| error | string |  | Yes |
 
 #### ErrorResponse
 
