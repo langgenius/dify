@@ -11,7 +11,6 @@ import type {
   AgentFileNode,
   AgentSoulConfigFormState,
 } from '@/features/agent-v2/agent-composer/form-state'
-import { ORPCError } from '@orpc/client'
 import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import isEqual from 'fast-deep-equal'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -19,9 +18,9 @@ import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { agentSoulConfigToFormState } from '@/features/agent-v2/agent-composer/conversions'
 import { consoleQuery } from '@/service/console'
+import { isNotFoundError } from '@/service/http-error'
 import { usePrepareAgentBuildDraftBeforeRun } from './use-agent-build-draft-run'
 
-const isNotFoundResponse = (error: unknown) => error instanceof ORPCError && error.status === 404
 const BUILD_NOTE_FILE_ID = '__agent_config_build_note__'
 const BUILD_NOTE_FILE_NAME = 'build_note.md'
 
@@ -180,7 +179,7 @@ export function useAgentConfigureBuildDraftData({
         try {
           return await buildDraftQueryOptions.queryFn(context)
         } catch (error) {
-          if (isNotFoundResponse(error)) setSoulSourceOverride('draft')
+          if (isNotFoundError(error)) setSoulSourceOverride('draft')
           else toast.error(t(($) => $['api.actionFailed']))
           throw error
         }
@@ -198,7 +197,7 @@ export function useAgentConfigureBuildDraftData({
     isPending: isBuildDraftPending,
     refetch: refetchBuildDraft,
   } = buildDraftQuery
-  const buildDraftNotFound = isNotFoundResponse(buildDraftError)
+  const buildDraftNotFound = isNotFoundError(buildDraftError)
   const resolvedSoulSource: AgentConfigureSoulSource = isViewingVersion
     ? 'view-version'
     : (soulSourceOverride ??

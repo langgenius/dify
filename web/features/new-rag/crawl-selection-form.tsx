@@ -10,12 +10,12 @@ import type {
 import type { FormEvent } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
-import { ORPCError } from '@orpc/client'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/console'
+import { getHttpErrorStatus } from '@/service/http-error'
 import { createRequestId } from './request-id'
 import { newKnowledgeDetailPath } from './routes'
 
@@ -45,12 +45,8 @@ const TERMINAL_IMPORT_STATES = new Set([
 
 type PageSkipReason = 'failed' | 'off-domain'
 
-function requestStatus(error: unknown) {
-  return error instanceof ORPCError ? error.status : undefined
-}
-
 function isDefinitiveRequestFailure(error: unknown) {
-  const status = requestStatus(error)
+  const status = getHttpErrorStatus(error)
   return status !== undefined && [400, 401, 403, 404, 409, 422, 429].includes(status)
 }
 
@@ -607,7 +603,7 @@ export function CrawlSelectionForm({
   )
   const policy =
     policyQuery.data ??
-    (requestStatus(policyQuery.error) === 404 ? initialSyncPolicy(source) : undefined)
+    (getHttpErrorStatus(policyQuery.error) === 404 ? initialSyncPolicy(source) : undefined)
 
   if (policyQuery.isPending) {
     return (

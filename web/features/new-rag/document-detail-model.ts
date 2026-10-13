@@ -3,7 +3,6 @@ import type {
   LogicalDocument,
   LogicalDocumentRevision,
 } from '@dify/contracts/knowledge-fs/types.gen'
-import { ORPCError } from '@orpc/client'
 
 export type DocumentChunkTreeNode = {
   children: DocumentChunkTreeNode[]
@@ -13,10 +12,6 @@ export type DocumentChunkTreeNode = {
 export type DocumentChunkTree = {
   byId: Map<string, DocumentChunkTreeNode>
   roots: DocumentChunkTreeNode[]
-}
-
-export function responseStatus(error: unknown): number | undefined {
-  return error instanceof ORPCError ? error.status : undefined
 }
 
 function compareChunks(left: DocumentRevisionChunk, right: DocumentRevisionChunk) {

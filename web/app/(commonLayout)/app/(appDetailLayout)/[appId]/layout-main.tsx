@@ -3,7 +3,6 @@
 import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
-import { ORPCError } from '@orpc/client'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
@@ -22,6 +21,7 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { usePathname, useRouter } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/console'
+import { isNotFoundError } from '@/service/http-error'
 import { AppModeEnum } from '@/types/app'
 import { getRedirectionPath } from '@/utils/app-redirection'
 import { getAppACLCapabilities } from '@/utils/permission'
@@ -30,8 +30,6 @@ type IAppDetailLayoutProps = {
   children: React.ReactNode
   appId: string
 }
-
-const isNotFoundError = (error: unknown) => error instanceof ORPCError && error.status === 404
 
 const appDetailPageTitle = (pathname: string, t: ReturnType<typeof useTranslation>['t']) => {
   if (pathname.endsWith('/workflow') || pathname.endsWith('/configuration'))
