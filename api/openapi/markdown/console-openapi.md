@@ -2425,7 +2425,7 @@ Transcript audio to text for chat messages
 | 413 | Audio file too large |  |
 
 ### [GET] /apps/{app_id}/chat-conversations
-Get chat conversations with pagination, filtering and summary
+Get chat conversations with pagination and filtering
 
 #### Parameters
 
@@ -2445,7 +2445,11 @@ Get chat conversations with pagination, filtering and summary
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ConversationWithSummaryPagination](#conversationwithsummarypagination)<br> |
+| 400 | Invalid date range |  |
+| 401 | Authentication required |  |
 | 403 | Insufficient permissions |  |
+| 404 | App not found |  |
+| 422 | Invalid query parameters |  |
 
 ### [DELETE] /apps/{app_id}/chat-conversations/{conversation_id}
 Delete a chat conversation
@@ -2559,7 +2563,11 @@ Get completion conversations with pagination and filtering
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ConversationPagination](#conversationpagination)<br> |
+| 400 | Invalid date range |  |
+| 401 | Authentication required |  |
 | 403 | Insufficient permissions |  |
+| 404 | App not found |  |
+| 422 | Invalid query parameters |  |
 
 ### [DELETE] /apps/{app_id}/completion-conversations/{conversation_id}
 Delete a completion conversation

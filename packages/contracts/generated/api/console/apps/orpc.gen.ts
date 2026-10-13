@@ -1520,11 +1520,11 @@ export const byConversationId = {
 }
 
 /**
- * Get chat conversations with pagination, filtering and summary
+ * Get chat conversations with pagination and filtering
  */
 export const get25 = oc
   .route({
-    description: 'Get chat conversations with pagination, filtering and summary',
+    description: 'Get chat conversations with pagination and filtering',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAppsByAppIdChatConversations',

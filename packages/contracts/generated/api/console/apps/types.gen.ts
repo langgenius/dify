@@ -5209,7 +5209,11 @@ export type GetAppsByAppIdChatConversationsData = {
 }
 
 export type GetAppsByAppIdChatConversationsErrors = {
+  400: unknown
+  401: unknown
   403: unknown
+  404: unknown
+  422: unknown
 }
 
 export type GetAppsByAppIdChatConversationsResponses = {
@@ -5346,7 +5350,11 @@ export type GetAppsByAppIdCompletionConversationsData = {
 }
 
 export type GetAppsByAppIdCompletionConversationsErrors = {
+  400: unknown
+  401: unknown
   403: unknown
+  404: unknown
+  422: unknown
 }
 
 export type GetAppsByAppIdCompletionConversationsResponses = {

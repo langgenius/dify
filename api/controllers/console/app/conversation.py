@@ -1,29 +1,32 @@
+from http import HTTPStatus
 from typing import Literal
 from uuid import UUID
 
 import sqlalchemy as sa
-from flask import abort
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy import func, or_
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
+from controllers.common.errors import InvalidArgumentError, UnauthorizedError
 from controllers.common.rbac import PlainApp, RBACCheck
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.common.session import with_session
 from controllers.console import console_ns
+from controllers.console.app.error import AppNotFoundError
 from controllers.console.app.wraps import get_app_model
+from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import (
     RBACPermission,
     account_initialization_required,
     edit_permission_required,
-    model_validate,
     rbac_permission_required,
     setup_required,
+    validate_request,
     with_current_user,
 )
-from core.app.entities.app_invoke_entities import InvokeFrom
+from enums.account import TenantAccountRole
+from extensions.ext_application_services import application_services
 from fields.conversation_fields import (
     Conversation as ConversationResponse,
 )
@@ -43,11 +46,14 @@ from fields.conversation_fields import (
 from libs.datetime_utils import naive_utc_now, parse_time_range
 from libs.helper import dump_response
 from libs.login import login_required
-from libs.pagination import paginate_query
-from models import Conversation, EndUser, Message, MessageAnnotation
+from machinery.context import RequestContext
+from models import Conversation
 from models.account import Account
 from models.model import App, AppMode
+from services.app.console_service import ConsoleAppNotFoundError
 from services.conversation_service import ConversationService
+from services.entities.conversation_entities import ConsoleConversationFilters
+from services.errors.base import NoPermissionError
 from services.errors.conversation import ConversationNotExistsError
 
 
@@ -99,79 +105,45 @@ class CompletionConversationApi(Resource):
     @console_ns.doc("list_completion_conversations")
     @console_ns.doc(description="Get completion conversations with pagination and filtering")
     @console_ns.doc(params={"app_id": "Application ID", **query_params_from_model(CompletionConversationQuery)})
-    @console_ns.response(200, "Success", console_ns.models[ConversationPaginationResponse.__name__])
-    @console_ns.response(403, "Insufficient permissions")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @with_current_user
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
-    @with_session(write=False)
-    @get_app_model(mode=AppMode.COMPLETION)
-    @model_validate(CompletionConversationQuery)
-    def get(self, req_data: CompletionConversationQuery, session: Session, current_user: Account, app_model: App):
-
-        query = sa.select(Conversation).where(
-            Conversation.app_id == app_model.id, Conversation.mode == "completion", Conversation.is_deleted.is_(False)
-        )
-
-        if req_data.keyword:
-            from libs.helper import escape_like_pattern
-
-            escaped_keyword = escape_like_pattern(req_data.keyword)
-            query = query.join(Message, Message.conversation_id == Conversation.id).where(
-                or_(
-                    Message.query.ilike(f"%{escaped_keyword}%", escape="\\"),
-                    Message.answer.ilike(f"%{escaped_keyword}%", escape="\\"),
-                )
-            )
-
-        account = current_user
-        assert account.timezone is not None
-
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[ConversationPaginationResponse.__name__])
+    @console_ns.response(HTTPStatus.BAD_REQUEST, "Invalid date range")
+    @console_ns.response(HTTPStatus.UNAUTHORIZED, "Authentication required")
+    @console_ns.response(HTTPStatus.FORBIDDEN, "Insufficient permissions")
+    @console_ns.response(HTTPStatus.NOT_FOUND, "App not found")
+    @console_ns.response(HTTPStatus.UNPROCESSABLE_ENTITY, "Invalid query parameters")
+    @console_account_admission(
+        allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR}),
+        rbac_checks=(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()),),
+    )
+    def get(self, request_context: RequestContext, app_id: UUID) -> dict[str, object]:
+        queries = application_services().conversation_queries
         try:
-            start_datetime_utc, end_datetime_utc = parse_time_range(req_data.start, req_data.end, account.timezone)
-        except ValueError as e:
-            abort(400, description=str(e))
-
-        if start_datetime_utc:
-            query = query.where(Conversation.created_at >= start_datetime_utc)
-
-        if end_datetime_utc:
-            end_datetime_utc = end_datetime_utc.replace(second=59)
-            query = query.where(Conversation.created_at <= end_datetime_utc)
-
-        # FIXME, the type ignore in this file
-        if req_data.annotation_status == "annotated":
-            query = (
-                query.options(selectinload(Conversation.message_annotations))  # type: ignore[arg-type]
-                .join(  # type: ignore
-                    MessageAnnotation, MessageAnnotation.conversation_id == Conversation.id
-                )
-                .group_by(Conversation.id)
+            scope = queries.get_console_scope(request_context, str(app_id), kind="completion")
+        except ConsoleAppNotFoundError as exc:
+            raise AppNotFoundError(str(exc)) from exc
+        except NoPermissionError as exc:
+            raise UnauthorizedError(str(exc)) from exc
+        req_data = validate_request(CompletionConversationQuery)
+        try:
+            start, end = parse_time_range(req_data.start, req_data.end, scope.timezone)
+        except ValueError as exc:
+            raise InvalidArgumentError(str(exc)) from exc
+        try:
+            page = queries.get_console_page(
+                scope=scope,
+                filters=ConsoleConversationFilters(
+                    keyword=req_data.keyword,
+                    start=start,
+                    end=end.replace(second=59) if end else None,
+                    annotation_status=req_data.annotation_status,
+                    sort_by="-created_at",
+                    page=req_data.page,
+                    limit=req_data.limit,
+                ),
             )
-        elif req_data.annotation_status == "not_annotated":
-            query = (
-                query.outerjoin(MessageAnnotation, MessageAnnotation.conversation_id == Conversation.id)
-                .group_by(Conversation.id)
-                .having(func.count(MessageAnnotation.id) == 0)
-            )
-
-        query = query.order_by(Conversation.created_at.desc())
-
-        conversations = paginate_query(query, session=session, page=req_data.page, per_page=req_data.limit)
-
-        return dump_response(
-            ConversationPaginationResponse,
-            {
-                "page": conversations.page,
-                "per_page": conversations.per_page,
-                "total": conversations.total,
-                "has_next": conversations.has_next,
-                "items": [ConversationResponseSource(item, session=session) for item in conversations.items],
-            },
-        )
+        except ConsoleAppNotFoundError as exc:
+            raise AppNotFoundError(str(exc)) from exc
+        return dump_response(ConversationPaginationResponse, page)
 
 
 @console_ns.route("/apps/<uuid:app_id>/completion-conversations/<uuid:conversation_id>")
@@ -227,120 +199,49 @@ class CompletionConversationDetailApi(Resource):
 @console_ns.route("/apps/<uuid:app_id>/chat-conversations")
 class ChatConversationApi(Resource):
     @console_ns.doc("list_chat_conversations")
-    @console_ns.doc(description="Get chat conversations with pagination, filtering and summary")
+    @console_ns.doc(description="Get chat conversations with pagination and filtering")
     @console_ns.doc(params={"app_id": "Application ID", **query_params_from_model(ChatConversationQuery)})
-    @console_ns.response(200, "Success", console_ns.models[ConversationWithSummaryPaginationResponse.__name__])
-    @console_ns.response(403, "Insufficient permissions")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @with_current_user
-    @rbac_permission_required(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()))
-    @with_session(write=False)
-    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
-    @model_validate(ChatConversationQuery)
-    def get(self, req_data: ChatConversationQuery, session: Session, current_user: Account, app_model: App):
-
-        subquery = (
-            sa.select(Conversation.id.label("conversation_id"), EndUser.session_id.label("from_end_user_session_id"))
-            .outerjoin(EndUser, Conversation.from_end_user_id == EndUser.id)
-            .subquery()
-        )
-
-        query = sa.select(Conversation).where(Conversation.app_id == app_model.id, Conversation.is_deleted.is_(False))
-
-        if req_data.keyword:
-            from libs.helper import escape_like_pattern
-
-            escaped_keyword = escape_like_pattern(req_data.keyword)
-            keyword_filter = f"%{escaped_keyword}%"
-            query = (
-                query.join(
-                    Message,
-                    Message.conversation_id == Conversation.id,
-                )
-                .join(subquery, subquery.c.conversation_id == Conversation.id)
-                .where(
-                    or_(
-                        Message.query.ilike(keyword_filter, escape="\\"),
-                        Message.answer.ilike(keyword_filter, escape="\\"),
-                        Conversation.name.ilike(keyword_filter, escape="\\"),
-                        Conversation.introduction.ilike(keyword_filter, escape="\\"),
-                        subquery.c.from_end_user_session_id.ilike(keyword_filter, escape="\\"),
-                    ),
-                )
-                .group_by(Conversation.id)
-            )
-
-        account = current_user
-        assert account.timezone is not None
-
+    @console_ns.response(
+        HTTPStatus.OK, "Success", console_ns.models[ConversationWithSummaryPaginationResponse.__name__]
+    )
+    @console_ns.response(HTTPStatus.BAD_REQUEST, "Invalid date range")
+    @console_ns.response(HTTPStatus.UNAUTHORIZED, "Authentication required")
+    @console_ns.response(HTTPStatus.FORBIDDEN, "Insufficient permissions")
+    @console_ns.response(HTTPStatus.NOT_FOUND, "App not found")
+    @console_ns.response(HTTPStatus.UNPROCESSABLE_ENTITY, "Invalid query parameters")
+    @console_account_admission(
+        allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR}),
+        rbac_checks=(RBACCheck(RBACPermission.APP_VIEW_LAYOUT, PlainApp()),),
+    )
+    def get(self, request_context: RequestContext, app_id: UUID) -> dict[str, object]:
+        queries = application_services().conversation_queries
         try:
-            start_datetime_utc, end_datetime_utc = parse_time_range(req_data.start, req_data.end, account.timezone)
-        except ValueError as e:
-            abort(400, description=str(e))
-
-        if start_datetime_utc:
-            match req_data.sort_by:
-                case "updated_at" | "-updated_at":
-                    query = query.where(Conversation.updated_at >= start_datetime_utc)
-                case "created_at" | "-created_at" | _:
-                    query = query.where(Conversation.created_at >= start_datetime_utc)
-
-        if end_datetime_utc:
-            end_datetime_utc = end_datetime_utc.replace(second=59)
-            match req_data.sort_by:
-                case "updated_at" | "-updated_at":
-                    query = query.where(Conversation.updated_at <= end_datetime_utc)
-                case "created_at" | "-created_at" | _:
-                    query = query.where(Conversation.created_at <= end_datetime_utc)
-
-        match req_data.annotation_status:
-            case "annotated":
-                query = (
-                    query.options(selectinload(Conversation.message_annotations))  # type: ignore[arg-type]
-                    .join(  # type: ignore
-                        MessageAnnotation, MessageAnnotation.conversation_id == Conversation.id
-                    )
-                    .group_by(Conversation.id)
-                )
-            case "not_annotated":
-                query = (
-                    query.outerjoin(MessageAnnotation, MessageAnnotation.conversation_id == Conversation.id)
-                    .group_by(Conversation.id)
-                    .having(func.count(MessageAnnotation.id) == 0)
-                )
-            case "all":
-                pass
-
-        if app_model.mode == AppMode.ADVANCED_CHAT:
-            query = query.where(Conversation.invoke_from != InvokeFrom.DEBUGGER)
-
-        match req_data.sort_by:
-            case "created_at":
-                query = query.order_by(Conversation.created_at.asc())
-            case "-created_at":
-                query = query.order_by(Conversation.created_at.desc())
-            case "updated_at":
-                query = query.order_by(Conversation.updated_at.asc())
-            case "-updated_at":
-                query = query.order_by(Conversation.updated_at.desc())
-            case _:
-                query = query.order_by(Conversation.created_at.desc())
-
-        conversations = paginate_query(query, session=session, page=req_data.page, per_page=req_data.limit)
-
-        return dump_response(
-            ConversationWithSummaryPaginationResponse,
-            {
-                "page": conversations.page,
-                "per_page": conversations.per_page,
-                "total": conversations.total,
-                "has_next": conversations.has_next,
-                "items": [ConversationResponseSource(item, session=session) for item in conversations.items],
-            },
-        )
+            scope = queries.get_console_scope(request_context, str(app_id), kind="chat")
+        except ConsoleAppNotFoundError as exc:
+            raise AppNotFoundError(str(exc)) from exc
+        except NoPermissionError as exc:
+            raise UnauthorizedError(str(exc)) from exc
+        req_data = validate_request(ChatConversationQuery)
+        try:
+            start, end = parse_time_range(req_data.start, req_data.end, scope.timezone)
+        except ValueError as exc:
+            raise InvalidArgumentError(str(exc)) from exc
+        try:
+            page = queries.get_console_page(
+                scope=scope,
+                filters=ConsoleConversationFilters(
+                    keyword=req_data.keyword,
+                    start=start,
+                    end=end.replace(second=59) if end else None,
+                    annotation_status=req_data.annotation_status,
+                    sort_by=req_data.sort_by,
+                    page=req_data.page,
+                    limit=req_data.limit,
+                ),
+            )
+        except ConsoleAppNotFoundError as exc:
+            raise AppNotFoundError(str(exc)) from exc
+        return dump_response(ConversationWithSummaryPaginationResponse, page)
 
 
 @console_ns.route("/apps/<uuid:app_id>/chat-conversations/<uuid:conversation_id>")
