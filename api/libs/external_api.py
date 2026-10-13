@@ -16,7 +16,7 @@ from configs import dify_config
 from core.errors.error import AppInvokeQuotaExceededError
 from core.plugin.impl.exc import PluginRuntimeError
 from extensions.ext_logging import get_request_id
-from libs.exception import BaseHTTPException
+from libs.exception import BaseHTTPException, RelayedHTTPError
 from libs.flask_restx_compat import install_swagger_compatibility
 from libs.token import build_force_logout_cookie_headers
 
@@ -149,6 +149,7 @@ def _documented_names(exceptions: Iterable[type[Exception]]) -> list[str]:
         exception.__name__
         for exception in exceptions
         if issubclass(exception, BaseHTTPException)
+        and not issubclass(exception, RelayedHTTPError)
         and _class_attribute(exception, "error_code") == _UNDECLARED_ERROR_CODE
     ]
     if undeclared:
@@ -288,7 +289,8 @@ def attach_error_response_schema(
     class's ``details_model`` when it declares one. The response of its status references
     it; several codes on one status are an ``anyOf``, and a status that also declares its
     own body schema keeps that schema beside them. A code maps to exactly one status in a
-    document, and two classes may share a code only when they agree on it.
+    document, and two classes may share a code only when they agree on it. A documented
+    ``RelayedHTTPError`` adds nothing: its status and code are only known at runtime.
     """
 
     paths = document.get("paths")
@@ -313,6 +315,10 @@ def attach_error_response_schema(
             components_by_status: dict[str, set[str]] = {}
             for exception_name in exception_names:
                 exception = pkgutil.resolve_name(exception_name)
+                if issubclass(exception, RelayedHTTPError):
+                    # Its status and code come from a downstream service at runtime; the open
+                    # ``default`` error already documents it.
+                    continue
                 status, code = resolve_error(exception)
                 name = error_component_name(code)
                 component = _ErrorComponent(code, status, exception, _details_model(exception), where)

@@ -258,7 +258,8 @@ Signal errors by raising, not by returning `(body, status)`:
 - Raise a `BaseHTTPException` subclass so the body carries `code`, `message` and `status` and the code can be
   documented. Do not call `flask_restx.abort` with a message or extra fields; it replaces the standard body.
 - Raise `libs.exception.RelayedHTTPError` for a code and status relayed from a downstream service at runtime. It emits
-  the standard body but is never narrowed, since its codes are not known per class.
+  the standard body; the operation's open `default` error already documents it, since its codes are not known per
+  class, so listing it in `error_responses` adds nothing to the document.
 - An endpoint that must keep a legacy error body (for example `{"error": message}`) declares it with
   `@ns.response(status, ..., Model)` so the contract describes what the client receives.
 

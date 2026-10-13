@@ -599,3 +599,28 @@ def test_relayed_http_error_emits_the_standard_body_with_runtime_code_and_status
 
     assert error.code == 409
     assert error.data == {"code": "downstream_conflict", "message": "busy", "status": 409, "details": {"retry": 3}}
+
+
+def test_documenting_relayed_errors_adds_nothing_beyond_the_default_error():
+    from libs.exception import RelayedHTTPError
+
+    error_responses(RelayedHTTPError)  # accepted although its class keeps the placeholder code
+    document: dict[str, object] = {
+        "paths": {
+            "/items": {
+                "post": {
+                    "responses": {"400": {"description": "Bad"}},
+                    "x-dify-error-codes": _documented_names_for(_ConflictError, RelayedHTTPError),
+                }
+            }
+        }
+    }
+
+    attach_error_response_schema(document, ErrorResponse, _resolve_by_class)
+
+    responses = document["paths"]["/items"]["post"]["responses"]  # type: ignore[index]
+    assert responses["400"]["content"] == {"application/json": {"schema": _ERROR_BODY_REF}}
+    assert responses["default"]["content"] == {"application/json": {"schema": _ERROR_BODY_REF}}
+    assert responses["409"]["content"]["application/json"]["schema"] == {
+        "$ref": "#/components/schemas/DocumentedConflictError"
+    }
