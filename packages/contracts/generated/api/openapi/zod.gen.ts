@@ -1170,6 +1170,7 @@ export const zOpenApiErrorCode = z.enum([
   'run_not_found',
   'secret_mask_not_secret',
   'secret_mask_unknown_id',
+  'service_api_disabled',
   'too_many_files',
   'too_many_requests',
   'trigger_workflow_service_mode_unavailable',
