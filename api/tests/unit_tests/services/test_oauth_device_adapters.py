@@ -4,6 +4,7 @@ from typing import override
 
 import pytest
 
+from configs import dify_config
 from extensions.ext_redis import RedisClientWrapper
 from libs import jws
 from libs.rate_limit import LIMIT_APPROVE_EXT_PER_EMAIL
@@ -172,18 +173,7 @@ def test_approval_nonce_release_only_removes_matching_reservation(config_overrid
     assert gateway.reserve_approval_nonce("nonce-1", "reservation-2") is True
 
 
-@pytest.mark.parametrize(
-    ("configured", "expected"),
-    [(None, 14), ("invalid", 14), ("0", 1), ("500", 365), ("30", 30)],
-)
-def test_token_ttl_policy_owns_environment_parsing(
-    monkeypatch: pytest.MonkeyPatch,
-    configured: str | None,
-    expected: int,
-) -> None:
-    if configured is None:
-        monkeypatch.delenv("OAUTH_TTL_DAYS", raising=False)
-    else:
-        monkeypatch.setenv("OAUTH_TTL_DAYS", configured)
+def test_token_ttl_policy_reads_the_configured_days(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(dify_config, "OAUTH_TTL_DAYS", 30)
 
-    assert EnvironmentOAuthDeviceTokenTTLPolicy().ttl_days("workspace-1") == expected
+    assert EnvironmentOAuthDeviceTokenTTLPolicy().ttl_days("workspace-1") == 30

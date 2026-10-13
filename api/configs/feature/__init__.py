@@ -1,6 +1,7 @@
+import logging
 from datetime import datetime, timedelta
 from enum import StrEnum
-from typing import Literal
+from typing import Final, Literal
 
 from pydantic import (
     AliasChoices,
@@ -17,6 +18,12 @@ from pydantic import (
 from pydantic_settings import BaseSettings
 
 from .hosted_service import HostedServiceConfig
+
+logger = logging.getLogger(__name__)
+
+DEFAULT_OAUTH_TTL_DAYS: Final = 14
+MIN_OAUTH_TTL_DAYS: Final = 1
+MAX_OAUTH_TTL_DAYS: Final = 365
 
 
 class SecurityConfig(BaseSettings):
@@ -1089,6 +1096,35 @@ class AuthConfig(BaseSettings):
         description="Enable OAuth bearer authentication (device-flow + Service API /v1/* bearer middleware).",
         default=True,
     )
+
+    OAUTH_TTL_DAYS: int = Field(
+        description="Lifetime in days of the OAuth bearer tokens the device flow issues (difyctl login). "
+        f"Values outside {MIN_OAUTH_TTL_DAYS}-{MAX_OAUTH_TTL_DAYS} are clamped; a non-integer falls back "
+        "to the default.",
+        ge=MIN_OAUTH_TTL_DAYS,
+        le=MAX_OAUTH_TTL_DAYS,
+        default=DEFAULT_OAUTH_TTL_DAYS,
+    )
+
+    @field_validator("OAUTH_TTL_DAYS", mode="before")
+    @classmethod
+    def _clamp_oauth_ttl_days(cls, v: object) -> int:
+        # Clamp and warn instead of failing startup, so deployments with a bad value keep booting.
+        try:
+            value = int(str(v))
+        except ValueError:
+            logger.warning("OAUTH_TTL_DAYS=%r is not an int; falling back to %d", v, DEFAULT_OAUTH_TTL_DAYS)
+            return DEFAULT_OAUTH_TTL_DAYS
+        clamped = min(max(value, MIN_OAUTH_TTL_DAYS), MAX_OAUTH_TTL_DAYS)
+        if clamped != value:
+            logger.warning(
+                "OAUTH_TTL_DAYS=%d outside %d-%d; clamping to %d",
+                value,
+                MIN_OAUTH_TTL_DAYS,
+                MAX_OAUTH_TTL_DAYS,
+                clamped,
+            )
+        return clamped
 
     OPENAPI_RATE_LIMIT_PER_TOKEN: NonNegativeInt = Field(
         description="Per-token rate limit on /openapi/v1/* (requests per minute). "
