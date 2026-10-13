@@ -110,6 +110,11 @@ jobs:
                   "test_composed_template_normal_workflow_citation_defaults_are_preserved": 1,
                   "test_composed_citation_display_change_invalidates_reserved_template_context": 2,
               },
+              "test_workflow_empty_draft": {
+                  "test_postgres_empty_save_state_transition": 20,
+                  "test_postgres_empty_draft_confirmation_is_scoped_to_full_owner_chain": 4,
+                  "test_postgres_trusted_internal_empty_sync_remains_supported": 2,
+              },
               "test_builder_execution_policy_persistence": {
                   "test_postgres_duplicate_claim_has_one_winner": 1,
                   "test_postgres_append_race_preserves_both_receipts": 1,
@@ -238,6 +243,7 @@ jobs:
                   "api/tests/test_containers_integration_tests/core/workflow/test_builder_restricted_native.py",
                   "api/tests/test_containers_integration_tests/core/workflow/test_builder_execution_policy_persistence.py",
                   "api/tests/test_containers_integration_tests/core/workflow/test_builder_real_call_consent_persistence.py",
+                  "api/tests/test_containers_integration_tests/services/test_workflow_empty_draft.py",
                   "api/tests/test_containers_integration_tests/core/workflow/test_builder_confirmed_tool_native.py",
                   f"--junitxml={JUNIT}",
               ],
@@ -308,13 +314,18 @@ jobs:
               "api/tests/unit_tests/services/dify_builder/test_localize.py",
               "api/tests/unit_tests/services/dify_builder/test_template_execution.py",
               "api/tests/unit_tests/services/dify_builder/test_template_presentation.py",
+              "api/tests/unit_tests/controllers/console/app/test_workflow_empty_draft.py",
+          ]
+          SELECTED_GUARDS = [
+              "api/tests/unit_tests/controllers/console/app/test_workflow.py::test_sync_draft_workflow_rejects_empty_graph_without_confirmation",
           ]
           code = pytest.main([
-              *FILES, "-p", "no:benchmark", "--no-cov", "-vv", "-rA", "--tb=long",
+              *FILES, *SELECTED_GUARDS, "-p", "no:benchmark", "--no-cov", "-vv", "-rA", "--tb=long",
               f"--junitxml={JUNIT}",
           ])
           # Full module identity avoids silently merging same-basename owners.
-          modules = {Path(path).with_suffix("").as_posix().removeprefix("api/").replace("/", "."): 0 for path in FILES}
+          module_paths = [*FILES, *(selection.split("::", 1)[0] for selection in SELECTED_GUARDS)]
+          modules = {Path(path).with_suffix("").as_posix().removeprefix("api/").replace("/", "."): 0 for path in module_paths}
           identities = set()
           problems = []
           if not Path(JUNIT).is_file():
