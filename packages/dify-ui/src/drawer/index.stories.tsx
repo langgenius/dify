@@ -837,6 +837,7 @@ function SwipeToOpenDemo() {
       className="relative h-90 w-140 overflow-hidden rounded-2xl border-[0.5px] border-divider-subtle bg-background-body"
     >
       <Drawer swipeDirection="right" modal={false}>
+        {/* oxlint-disable-next-line better-tailwindcss/enforce-logical-properties -- the swipe area sits on the physical right edge that `swipeDirection="right"` opens from */}
         <DrawerSwipeArea className="absolute inset-y-0 right-0 z-10 flex w-10 touch-none items-center justify-center bg-state-accent-hover text-text-accent">
           <span className="rotate-90 text-xs font-medium">Swipe</span>
         </DrawerSwipeArea>
@@ -857,6 +858,7 @@ function SwipeToOpenDemo() {
           <DrawerBackdrop className="absolute" />
           <DrawerViewport className="absolute">
             <DrawerPopup className="absolute touch-auto data-ending-style:duration-[calc(var(--drawer-swipe-strength)*400ms)] data-[swipe-direction=right]:-right-12 data-[swipe-direction=right]:h-full data-[swipe-direction=right]:w-102 data-[swipe-direction=right]:max-w-[calc(100%+3rem)] data-[swipe-direction=right]:transform-[translateX(var(--drawer-swipe-movement-x,0px))] data-ending-style:data-[swipe-direction=right]:transform-[translateX(calc(100%-3rem+2px))] data-starting-style:data-[swipe-direction=right]:transform-[translateX(calc(100%-3rem+2px))]">
+              {/* oxlint-disable-next-line better-tailwindcss/enforce-logical-properties -- reserves the physical right strip that the popup leaves off-screen with `-right-12` */}
               <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pr-12 pb-0">
                 <div className="flex shrink-0 items-start justify-between gap-4 px-6 pt-6 pb-4">
                   <div className="min-w-0">
@@ -923,7 +925,7 @@ function ActionSheetDemo() {
                   <li key={label}>
                     <DrawerClose
                       type="button"
-                      className="flex w-full flex-col items-start gap-0.5 bg-transparent px-4 py-3 text-left outline-hidden hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                      className="flex w-full flex-col items-start gap-0.5 bg-transparent px-4 py-3 text-start outline-hidden hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
                     >
                       <span className="text-sm font-medium text-text-secondary">{label}</span>
                       <span className="text-xs text-text-tertiary">{description}</span>

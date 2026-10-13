@@ -53,7 +53,7 @@ const releaseNoteItems = Array.from({ length: 24 }, (_, index) => ({
 
 function ReleaseNoteHeader({ title, description }: { title: string; description: string }) {
   return (
-    <div className="flex shrink-0 flex-col gap-2 p-6 pr-12 pb-4">
+    <div className="flex shrink-0 flex-col gap-2 p-6 pe-12 pb-4">
       <DialogTitle className="text-lg leading-7 font-semibold text-text-primary">
         {title}
       </DialogTitle>
@@ -97,7 +97,7 @@ export const Default: Story = {
             </IconButton>
           }
         />
-        <div className="flex flex-col gap-2 pr-8">
+        <div className="flex flex-col gap-2 pe-8">
           <DialogTitle className="text-lg leading-7 font-semibold text-text-primary">
             Invite collaborators
           </DialogTitle>
@@ -178,7 +178,7 @@ function ControlledDemo() {
               </IconButton>
             }
           />
-          <div className="flex flex-col gap-2 pr-8">
+          <div className="flex flex-col gap-2 pe-8">
             <DialogTitle className="text-lg leading-7 font-semibold text-text-primary">
               Rename workspace
             </DialogTitle>
@@ -247,7 +247,7 @@ function DetachedTriggersDemo() {
                 </IconButton>
               }
             />
-            <div className="grid gap-2 pr-8">
+            <div className="grid gap-2 pe-8">
               <DialogTitle className="text-lg leading-7 font-semibold text-text-primary">
                 {payload ? `Edit ${payload.name}` : 'Edit workspace'}
               </DialogTitle>
@@ -294,7 +294,7 @@ function FormDialogDemo() {
               </IconButton>
             }
           />
-          <div className="grid gap-2 pr-8">
+          <div className="grid gap-2 pe-8">
             <DialogTitle className="text-lg leading-7 font-semibold text-text-primary">
               Configure API extension
             </DialogTitle>
@@ -438,7 +438,7 @@ export const OutsidePopupElements: Story = {
                 <IconButton
                   aria-label="Close"
                   size="lg"
-                  className="pointer-events-auto absolute -top-10 right-0 z-10 flex items-center justify-center border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg text-text-tertiary shadow-xs outline-hidden hover:bg-components-button-secondary-bg-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid xl:top-0"
+                  className="pointer-events-auto absolute inset-e-0 -top-10 z-10 flex items-center justify-center border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg text-text-tertiary shadow-xs outline-hidden hover:bg-components-button-secondary-bg-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid xl:top-0"
                 >
                   <span aria-hidden className="i-ri-close-line size-4" />
                 </IconButton>

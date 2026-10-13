@@ -150,6 +150,7 @@ function ToastCard({ toast: toastItem, children }: ToastCardProps) {
       toast={toastItem}
       swipeDirection={['up', 'right']}
       className={cn(
+        // oxlint-disable-next-line better-tailwindcss/enforce-logical-properties -- the toast stack is anchored to the physical right: its swipe direction and exit transform are physical
         focusRingClassName,
         'group/toast pointer-events-auto absolute top-0 right-0 w-full origin-top cursor-default rounded-xl select-none',
         '[--toast-current-height:var(--toast-frontmost-height,var(--toast-height))] [--toast-expanded-offset-y:calc(var(--toast-offset-y)+var(--toast-swipe-movement-y)+(var(--toast-index)*var(--toast-gap)))] [--toast-gap:8px] [--toast-peek:5px] [--toast-scale:calc(1-(var(--toast-index)*0.0225))] [--toast-shrink:calc(1-var(--toast-scale))]',
@@ -161,6 +162,7 @@ function ToastCard({ toast: toastItem, children }: ToastCardProps) {
         'data-ending-style:data-[swipe-direction=up]:transform-[translateY(calc(var(--toast-swipe-movement-y)-150%))]',
         'data-ending-style:data-[swipe-direction=right]:transform-[translateX(calc(var(--toast-swipe-movement-x)+150%))_translateY(var(--toast-expanded-offset-y))]',
         'data-limited:opacity-0 data-starting-style:transform-[translateY(-150%)] data-starting-style:opacity-0',
+        // oxlint-disable-next-line better-tailwindcss/enforce-logical-properties -- physical with the rest of the toast stack
         "after:pointer-events-auto after:absolute after:bottom-full after:left-0 after:h-[calc(var(--toast-gap)+1px)] after:w-full after:content-['']",
       )}
     >
@@ -240,7 +242,10 @@ function Toaster({
     <BaseToast.Provider toastManager={toastManager} timeout={timeout} limit={limit}>
       <BaseToast.Portal>
         <BaseToast.Viewport
-          className="pointer-events-none fixed top-4 right-4 z-60 w-90 max-w-[calc(100vw-2rem)] overflow-visible sm:right-8"
+          className={
+            // oxlint-disable-next-line better-tailwindcss/enforce-logical-properties -- the toast stack is anchored to the physical right: its swipe direction and exit transform are physical
+            'pointer-events-none fixed top-4 right-4 z-60 w-90 max-w-[calc(100vw-2rem)] overflow-visible sm:right-8'
+          }
           style={offset}
         >
           {children}

@@ -422,7 +422,7 @@ function VirtualizedModelList({
               return (
                 <div
                   key={virtualItem.key}
-                  className="absolute top-0 left-0 w-full"
+                  className="absolute inset-s-0 top-0 w-full"
                   style={{
                     height: virtualItem.size,
                     transform: `translateY(${virtualItem.start}px)`,
@@ -696,7 +696,7 @@ export const TriggerWithPopupInput: Story = {
     <div className={fieldWidth}>
       <Combobox items={dataSourceOptions} defaultValue={defaultPopupDataSource}>
         <ComboboxLabel>Data source</ComboboxLabel>
-        <ComboboxTrigger className="group/trigger flex h-8 w-full min-w-0 items-center gap-0.5 rounded-lg bg-components-input-bg-normal py-2 pr-2 pl-3 text-start system-sm-regular text-components-input-text-filled transition-colors hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-placeholder:text-components-input-text-placeholder data-popup-open:bg-state-base-hover-alt motion-reduce:transition-none">
+        <ComboboxTrigger className="group/trigger flex h-8 w-full min-w-0 items-center gap-0.5 rounded-lg bg-components-input-bg-normal py-2 ps-3 pe-2 text-start system-sm-regular text-components-input-text-filled transition-colors hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-placeholder:text-components-input-text-placeholder data-popup-open:bg-state-base-hover-alt motion-reduce:transition-none">
           <span className="min-w-0 grow truncate">
             <ComboboxValue placeholder="Choose source" />
           </span>
