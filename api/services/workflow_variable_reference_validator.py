@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+import logging
 import re
 from collections import defaultdict, deque
 from collections.abc import Callable, Iterator, Mapping, Sequence
@@ -28,6 +30,8 @@ _TEMPLATE_REFERENCE_PATTERN = re.compile(
     r"\{\{#([a-zA-Z0-9_]{1,50})\.[a-zA-Z_][a-zA-Z0-9_]{0,29}(?:\.[a-zA-Z_][a-zA-Z0-9_]{0,29}){0,9}#\}\}"
 )
 _MAX_REPORTED_ISSUES = 10
+
+logger = logging.getLogger(__name__)
 
 
 def _ids(items: object, key: str) -> frozenset[str]:
@@ -204,6 +208,21 @@ def format_variable_reference_errors(issues: Sequence[VariableReferenceIssue]) -
         f"{count} variable reference{'s' if count != 1 else ''} may read a skipped branch "
         f"output. Use a Variable Aggregator or a default value — {pairs}."
     )
+
+
+def advisory_variable_reference_warning(graph_text: str | None) -> str | None:
+    """Return a non-blocking publish warning. A checker failure must not fail publish."""
+    if not graph_text:
+        return None
+    try:
+        graph = json.loads(graph_text)
+        if not isinstance(graph, dict):
+            return None
+        issues = validate_variable_references(graph)
+        return format_variable_reference_errors(issues) if issues else None
+    except Exception:
+        logger.warning("Skipped advisory variable reference check", exc_info=True)
+        return None
 
 
 def _reachable_from(starts: Sequence[str], successors: Mapping[str, list[str]]) -> set[str]:

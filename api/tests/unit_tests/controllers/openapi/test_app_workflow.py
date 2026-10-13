@@ -1,4 +1,6 @@
+import json
 from collections.abc import Callable
+from datetime import datetime
 from types import SimpleNamespace
 from typing import Protocol, cast
 from unittest.mock import Mock
@@ -6,6 +8,7 @@ from unittest.mock import Mock
 import pytest
 from flask import Flask
 from pydantic import ValidationError
+from werkzeug.exceptions import BadRequest
 
 from controllers.openapi import app_workflow
 from controllers.openapi._errors import (
@@ -21,6 +24,8 @@ from controllers.openapi._models import (
     AdvancedChatNodeRunPayload,
     EnvVariableSetPayload,
     NodeRunPayload,
+    PublishPayload,
+    PublishResponse,
     RestoreResponse,
     RunListQuery,
     VersionListQuery,
@@ -28,6 +33,7 @@ from controllers.openapi._models import (
 from controllers.openapi._upload import file_fields
 from controllers.openapi.app_workflow import (
     AppEnvItemApi,
+    AppPublishApi,
     AppRunNodeListApi,
     AppVersionListApi,
     AppVersionRestoreApi,
@@ -293,3 +299,73 @@ def test_run_draft_node_ends_the_read_transaction_before_uploading(
 
     names = [call[0] for call in calls.mock_calls]
     assert names == (["end", "merge"] if ends_transaction else ["merge"])
+
+
+def _branch_skipping_graph() -> str:
+    return json.dumps(
+        {
+            "nodes": [
+                {"id": "start", "data": {"type": "start"}},
+                {"id": "branch", "data": {"type": "if-else"}},
+                {"id": "producer", "data": {"type": "code", "title": "Producer"}},
+                {"id": "consumer", "data": {"type": "answer", "title": "Consumer", "answer": "{{#producer.text#}}"}},
+            ],
+            "edges": [
+                {"source": "start", "target": "branch"},
+                {"source": "branch", "target": "producer", "sourceHandle": "true"},
+                {"source": "branch", "target": "consumer", "sourceHandle": "false"},
+            ],
+        }
+    )
+
+
+@pytest.mark.parametrize("graph", ["{}", "{", None], ids=["clean", "invalid-json", "empty"])
+def test_publish_points_the_app_at_the_new_version(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, graph: str | None
+) -> None:
+    service = _fake_workflow_service(monkeypatch)
+    service.publish_workflow.return_value = SimpleNamespace(
+        id="version-1", created_at=datetime(2026, 10, 1, 12, 0, 0), graph=graph
+    )
+    ctx = _app_context()
+    stored_app = SimpleNamespace(workflow_id=None, updated_by=None, updated_at=None)
+    cast(Mock, ctx.session).get.return_value = stored_app
+
+    api = AppPublishApi()
+    with app.test_request_context("/openapi/v1/apps/app-1:publish", method="POST"):
+        response = cast(_EndpointView, api.post).__handler__(api, ctx, "app-1", body=PublishPayload(marked_name="v2"))
+
+    assert service.publish_workflow.call_args.kwargs["marked_name"] == "v2"
+    assert (stored_app.workflow_id, stored_app.updated_by) == ("version-1", "account-1")
+    assert stored_app.updated_at is not None
+    assert cast(PublishResponse, response).version_id == "version-1"
+    assert cast(PublishResponse, response).warning is None
+
+
+def test_publish_warns_about_references_to_a_skipped_branch(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    service = _fake_workflow_service(monkeypatch)
+    service.publish_workflow.return_value = SimpleNamespace(
+        id="version-1", created_at=datetime(2026, 10, 1, 12, 0, 0), graph=_branch_skipping_graph()
+    )
+
+    api = AppPublishApi()
+    with app.test_request_context("/openapi/v1/apps/app-1:publish", method="POST"):
+        response = cast(_EndpointView, api.post).__handler__(api, _app_context(), "app-1", body=PublishPayload())
+
+    warning = cast(PublishResponse, response).warning
+    assert warning is not None
+    assert "Consumer" in warning
+    assert "Producer" in warning
+
+
+def test_publish_refusal_is_a_bad_request(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    service = _fake_workflow_service(monkeypatch)
+    service.publish_workflow.side_effect = ValueError("Node l (llm): Missing provider or model configuration")
+    ctx = _app_context()
+
+    api = AppPublishApi()
+    with app.test_request_context("/openapi/v1/apps/app-1:publish", method="POST"):
+        with pytest.raises(BadRequest, match="Missing provider"):
+            cast(_EndpointView, api.post).__handler__(api, ctx, "app-1", body=PublishPayload())
+
+    cast(Mock, ctx.session).get.assert_not_called()

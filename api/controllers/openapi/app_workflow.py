@@ -63,16 +63,17 @@ from fields.workflow_run_fields import (
 )
 from graphon.variables import SecretVariable, VariableBase
 from graphon.variables.exc import VariableError
+from libs.datetime_utils import naive_utc_now
 from libs.helper import to_timestamp
-from models import AppMode
+from models import App, AppMode
 from models.workflow import Workflow, WorkflowDataError, WorkflowRun
 from services.errors.app import IsDraftWorkflowError, WorkflowNotFoundError
-from services.workflow.app_publish import publish_app_workflow, variable_reference_warning
 from services.workflow.dsl_import import stored_secret_ids
 from services.workflow.graph_check import CONTAINER_NODE_TYPES, GRAPH_MODES
 from services.workflow.graph_diff import draft_token
 from services.workflow_run_service import WorkflowRunListArgs
 from services.workflow_service import WorkflowService
+from services.workflow_variable_reference_validator import advisory_variable_reference_warning
 
 _RUN_READ_GUARDS: Final = account_app_guards(
     RBACPermission.APP_CREATE_AND_MANAGEMENT, scope=Scope.APPS_READ, roles=None, modes=GRAPH_MODES
@@ -200,7 +201,7 @@ class AppPublishApi(Resource):
     )
     def post(self, ctx: Context, app_id: str, *, body: PublishPayload):
         try:
-            workflow = publish_app_workflow(
+            workflow = WorkflowService().publish_workflow(
                 session=ctx.session,
                 app_model=ctx.app,
                 account=ctx.account,
@@ -209,10 +210,15 @@ class AppPublishApi(Resource):
             )
         except ValueError as exc:
             raise BadRequest(str(exc)) from exc
+        app_in_session = ctx.session.get(App, ctx.app.id)
+        if app_in_session:
+            app_in_session.workflow_id = workflow.id
+            app_in_session.updated_by = ctx.account.id
+            app_in_session.updated_at = naive_utc_now()
         return PublishResponse(
             version_id=workflow.id,
             created_at=to_timestamp(workflow.created_at),
-            warning=variable_reference_warning(workflow.graph),
+            warning=advisory_variable_reference_warning(workflow.graph),
         )
 
 
