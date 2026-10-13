@@ -146,3 +146,32 @@ describe('install-r2 version/commit pin', () => {
     expect(r.stdout).toBe('deadbeef\tdifyctl-v0.1.0-edge.ce4af868-linux-x64')
   })
 })
+
+describe('install-r2.sh install location', () => {
+  const where = (env: Record<string, string>) =>
+    lib('bin_dir_for', { DIFYCTL_PREFIX: '', DIFYCTL_INSTALL_DIR: '', HOME: '/home/u', ...env })
+      .stdout
+
+  it('defaults to ~/.local/bin', () => {
+    expect(where({})).toBe('/home/u/.local/bin')
+  })
+
+  it('accepts DIFYCTL_PREFIX like the GitHub installer', () => {
+    expect(where({ DIFYCTL_PREFIX: '/opt/dify' })).toBe('/opt/dify/bin')
+  })
+
+  it('keeps DIFYCTL_INSTALL_DIR as the bin folder itself, over DIFYCTL_PREFIX', () => {
+    expect(where({ DIFYCTL_PREFIX: '/opt/dify', DIFYCTL_INSTALL_DIR: '/usr/local/bin' })).toBe(
+      '/usr/local/bin',
+    )
+  })
+})
+
+it.skipIf(process.platform === 'win32')(
+  'install-r2.sh points Windows users at install-r2.ps1',
+  () => {
+    const r = lib('uname() { printf MINGW64_NT; }; detect_target')
+    expect(r.code).not.toBe(0)
+    expect(r.stderr).toMatch(/use install-r2\.ps1 on Windows/)
+  },
+)

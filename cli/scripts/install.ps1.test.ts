@@ -1,4 +1,5 @@
 import { spawnSync } from 'node:child_process'
+import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vite-plus/test'
 
@@ -293,5 +294,37 @@ describe.skipIf(!PWSH)('install.ps1 rate limit', () => {
     expect(r.code).not.toBe(0)
     expect(r.stderr).toContain('rate limit exceeded')
     expect(r.stderr).not.toContain('not found')
+  })
+})
+
+describe.skipIf(!PWSH)('install.ps1 install location and PATH hint', () => {
+  const where = (env: Record<string, string>) =>
+    runPwsh('Write-Output (Resolve-BinDir)', {
+      DIFYCTL_PREFIX: '',
+      DIFYCTL_INSTALL_DIR: '',
+      LOCALAPPDATA: '/lad',
+      ...env,
+    }).stdout
+
+  it('defaults to %LOCALAPPDATA%\\difyctl\\bin', () => {
+    expect(where({})).toBe(join('/lad', 'difyctl', 'bin'))
+  })
+
+  it('puts the binary under <DIFYCTL_PREFIX>\\bin', () => {
+    expect(where({ DIFYCTL_PREFIX: '/opt/dify' })).toBe(join('/opt/dify', 'bin'))
+  })
+
+  it('takes DIFYCTL_INSTALL_DIR as the bin folder itself, over DIFYCTL_PREFIX', () => {
+    expect(where({ DIFYCTL_PREFIX: '/opt/dify', DIFYCTL_INSTALL_DIR: '/custom/bin' })).toBe(
+      '/custom/bin',
+    )
+  })
+
+  it('the PATH command adds to the user PATH, not the whole session PATH', () => {
+    const hint = runPwsh(`Write-Output (Get-PathHint 'C:\\dify\\bin')`).stdout
+    expect(hint).toContain(
+      `"C:\\dify\\bin;" + [Environment]::GetEnvironmentVariable('PATH', 'User')`,
+    )
+    expect(hint).not.toContain('$env:PATH')
   })
 })

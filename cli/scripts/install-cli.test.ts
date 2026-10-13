@@ -400,3 +400,53 @@ describe('install-cli fetch_json (real, fake curl on PATH)', () => {
     ).not.toContain('Authorization')
   })
 })
+
+describe('install-cli.sh install location', () => {
+  const where = (env: Record<string, string>) =>
+    runLib('bin_dir_for', { DIFYCTL_PREFIX: '', DIFYCTL_INSTALL_DIR: '', HOME: '/home/u', ...env })
+      .stdout
+
+  it('defaults to ~/.local/bin', () => {
+    expect(where({})).toBe('/home/u/.local/bin')
+  })
+
+  it('puts the binary under <DIFYCTL_PREFIX>/bin', () => {
+    expect(where({ DIFYCTL_PREFIX: '/opt/dify' })).toBe('/opt/dify/bin')
+  })
+
+  it('takes DIFYCTL_INSTALL_DIR as the bin folder itself, over DIFYCTL_PREFIX', () => {
+    expect(where({ DIFYCTL_PREFIX: '/opt/dify', DIFYCTL_INSTALL_DIR: '/usr/local/bin' })).toBe(
+      '/usr/local/bin',
+    )
+  })
+})
+
+describe('install-cli.sh install_binary', () => {
+  it('replaces the binary through a rename, leaving no staged file behind', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'difyctl-install-'))
+    try {
+      const src = join(dir, 'new')
+      const dest = join(dir, 'bin-difyctl')
+      writeFileSync(src, 'new build')
+      writeFileSync(dest, 'old build')
+      const r = runLib(`install_binary "${src}" "${dest}"`)
+      expect(r.code).toBe(0)
+      expect(readFileSync(dest, 'utf8')).toBe('new build')
+      expect(execFileSync('ls', ['-A', dir], { encoding: 'utf8' }).trim().split('\n')).toEqual([
+        'bin-difyctl',
+        'new',
+      ])
+      expect(
+        execFileSync('sh', ['-c', `test -x "${dest}" && echo yes`], { encoding: 'utf8' }),
+      ).toBe('yes\n')
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('dies without touching the old binary when the folder is not writable', () => {
+    const r = runLib('install_binary /nonexistent/src /nonexistent-dir/difyctl')
+    expect(r.code).not.toBe(0)
+    expect(r.stderr).toMatch(/cannot write \/nonexistent-dir\/difyctl/)
+  })
+})
