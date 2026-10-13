@@ -6,6 +6,7 @@ export type Scenario =
   | 'denied'
   | 'expired'
   | 'auth-expired'
+  | 'forbidden'
   | 'rate-limited'
   | 'server-5xx'
   | 'slow-down'

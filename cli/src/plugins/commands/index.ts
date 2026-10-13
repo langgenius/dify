@@ -42,7 +42,7 @@ const FULL_FLAG = '--full'
 const ALL_FLAG = '--all'
 const FLAG_PREFIX = '-'
 const NO_SERVER_NOTICE = notLoggedInMessage(helpHint('login'))
-const NO_SERVER_HINT = 'log in to use server operations'
+const MAYBE_AN_OP = 'may be a server operation; log in to load them'
 const OPS_UNAVAILABLE_PREFIX = 'could not list server operations: '
 const NO_MATCH_NOTICE = `nothing matched; ${helpHint()} for the map`
 const NO_REST: readonly string[] = []
@@ -96,14 +96,46 @@ async function fromOps<T>(
   }
 }
 
-function unknownCommand(tree: CommandTree, words: readonly string[], fallback: string): BaseError {
+function suggestionHint(tree: CommandTree, words: readonly string[]): string | undefined {
   const suggestions = findSuggestions(tree, [...words])
+  return suggestions.length > 0 ? `did you mean: ${suggestions.join(', ')}` : undefined
+}
+
+function unknownCommand(words: readonly string[], hint: string): BaseError {
   return new BaseError({
     code: ErrorCode.UsageInvalidFlag,
     message: `unknown command: ${words.join(COMMAND_SEPARATOR)}`,
-    hint: suggestions.length > 0 ? `did you mean: ${suggestions.join(', ')}` : fallback,
+    hint,
   })
 }
+
+/** The error for words no command claimed, given the widest tree resolution got. */
+type Miss = (tree: CommandTree, words: readonly string[]) => BaseError
+
+const unresolved: Miss = (tree, words) =>
+  unknownCommand(words, suggestionHint(tree, words) ?? helpHint())
+
+// A near miss of a static command is a typo (exit 2) whether or not ops could load.
+function unlessStaticTypo(statics: CommandTree, miss: Miss): Miss {
+  return (tree, words) => {
+    const typo = suggestionHint(statics, words)
+    return typo === undefined ? miss(tree, words) : unknownCommand(words, typo)
+  }
+}
+
+const loggedOut: Miss = (_tree, words) =>
+  new BaseError({
+    code: ErrorCode.NotLoggedIn,
+    message: notLoggedInMessage(`${words.join(COMMAND_SEPARATOR)} ${MAYBE_AN_OP}`),
+    hint: helpHint('login'),
+  })
+
+const unknownOp: Miss = (tree, words) =>
+  new BaseError({
+    code: ErrorCode.UnknownOp,
+    message: `no command or server operation named ${words.join(COMMAND_SEPARATOR)}`,
+    hint: suggestionHint(tree, words) ?? helpHint(),
+  })
 
 type Discovery = Readonly<{
   tree: CommandTree
@@ -111,7 +143,7 @@ type Discovery = Readonly<{
   full: boolean
   listing: CollectOptions
   wantsHelp: boolean
-  missHint?: string
+  miss: Miss
   ctx: CommandContext
   streams: IOService
 }>
@@ -140,7 +172,7 @@ async function discover(args: Discovery): Promise<number> {
     await streams.document(listingView(under))
     return ExitCode.Success
   }
-  if (!args.wantsHelp) throw unknownCommand(tree, path, args.missHint ?? helpHint())
+  if (!args.wantsHelp) throw args.miss(tree, path)
 
   const found = helpSearch(path, tree, listing)
   if (found.total === 0) streams.notice(NO_MATCH_NOTICE)
@@ -151,8 +183,8 @@ async function discover(args: Discovery): Promise<number> {
 type Resolution = {
   readonly resolved: ResolvedCommand | undefined
   readonly tree: CommandTree
-  /** Set only when a miss has a better explanation than the generic help hint. */
-  readonly missHint?: string
+  /** Set only when a miss has a better explanation than an unknown command. */
+  readonly miss?: Miss
 }
 
 type Walk = Readonly<{
@@ -181,9 +213,9 @@ async function resolveWithOps(walk: Walk): Promise<Resolution> {
   const direct = resolveCommand(tree, path)
   if (direct !== undefined) return { resolved: direct, tree }
 
-  // A help view explains a missing catalog on stderr; a plain miss gets the hint instead.
+  // A help view explains a missing catalog on stderr; a plain miss says to log in.
   if (!walk.wantsHelp && (await (await ctx.get(session)).current()) === null)
-    return { resolved: undefined, tree, missHint: NO_SERVER_HINT }
+    return { resolved: undefined, tree, miss: unlessStaticTypo(tree, loggedOut) }
 
   const known = await fromOps(ctx, streams, (service) => service.commands(EVERY_OP))
   if (known === undefined) return { resolved: undefined, tree }
@@ -195,7 +227,11 @@ async function resolveWithOps(walk: Walk): Promise<Resolution> {
   const refetched = await fromOps(ctx, streams, (service) => service.commands(EVERY_OP_FRESH))
   if (refetched === undefined) return { resolved: undefined, tree: cached }
   const fresh = mergeTrees(tree, refetched).tree
-  return { resolved: resolveCommand(fresh, path), tree: fresh }
+  return {
+    resolved: resolveCommand(fresh, path),
+    tree: fresh,
+    miss: unlessStaticTypo(tree, unknownOp),
+  }
 }
 
 export async function runPipeline(tree: CommandTree, ctx: CommandContext): Promise<number> {
@@ -225,7 +261,7 @@ export async function runPipeline(tree: CommandTree, ctx: CommandContext): Promi
       full: argv.includes(FULL_FLAG),
       listing: { includeHidden: argv.includes(ALL_FLAG) },
       wantsHelp,
-      missHint: walked.missHint,
+      miss: walked.miss ?? unresolved,
       ctx,
       streams,
     })

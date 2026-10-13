@@ -9,6 +9,7 @@ export type FoldResult = {
   total_tokens?: number
   message_id?: string
   conversation_id?: string
+  run_id?: string
   error?: { message: string; code?: string }
   hints: Hint[]
 }
@@ -106,6 +107,12 @@ function markError(result: FoldResult, event: Record<string, unknown>): void {
   const code = asString(event.code)
   result.error = code !== undefined ? { message, code } : { message }
   raise(result, FOLD_STATUS.Failed)
+}
+
+/** Runs for every event before its own handler: any workflow event names its run. */
+export const foldAnyEvent: EventHandler = (result, event) => {
+  const runId = asString(event.workflow_run_id)
+  if (runId !== undefined) result.run_id = runId
 }
 
 export const FOLD_TABLE: Readonly<Record<string, EventHandler>> = Object.freeze({

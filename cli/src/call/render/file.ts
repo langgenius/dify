@@ -1,6 +1,6 @@
 import type { Renderer } from './index'
 import { writeFile } from 'node:fs/promises'
-import { join } from 'node:path'
+import { join, posix } from 'node:path'
 import { unknownError } from '@/errors/base'
 import { renderJson } from './object'
 
@@ -21,10 +21,18 @@ const EXTENSIONS: Readonly<Record<string, string>> = {
 
 const QUOTED_FILENAME = /filename="([^"]+)"/
 const BARE_FILENAME = /filename=([^;]+)/
+const NOT_A_FILE_NAME: readonly string[] = ['', '.', '..']
+
+// Only the last part of the server's name is used, so the file stays in the folder.
+function baseName(raw: string | undefined): string | undefined {
+  if (raw === undefined) return undefined
+  const name = posix.basename(raw.replaceAll('\\', '/'))
+  return NOT_A_FILE_NAME.includes(name) ? undefined : name
+}
 
 function filenameFromContentDisposition(value: string | null): string | undefined {
   if (value === null) return undefined
-  return QUOTED_FILENAME.exec(value)?.[1] ?? BARE_FILENAME.exec(value)?.[1]?.trim()
+  return baseName(QUOTED_FILENAME.exec(value)?.[1] ?? BARE_FILENAME.exec(value)?.[1]?.trim())
 }
 
 function extensionOf(contentType: string | null): string {
