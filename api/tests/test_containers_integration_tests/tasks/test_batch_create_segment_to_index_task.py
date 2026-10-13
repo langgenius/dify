@@ -320,7 +320,7 @@ class TestBatchCreateSegmentToIndexTask:
         # Check Redis cache was set
         from extensions.ext_redis import redis_client
 
-        cache_key = f"segment_batch_import_{job_id}"
+        cache_key = f"segment_batch_import_{tenant.id}_{dataset.id}_{job_id}"
         cache_value = redis_client.get(cache_key)
         assert cache_value == b"completed"
 
@@ -364,7 +364,7 @@ class TestBatchCreateSegmentToIndexTask:
 
         from extensions.ext_redis import redis_client
 
-        cache_key = f"segment_batch_import_{job_id}"
+        cache_key = f"segment_batch_import_{tenant.id}_{dataset.id}_{job_id}"
         assert redis_client.get(cache_key) == b"completed"
 
     def test_batch_create_segment_to_index_task_dataset_not_found(
@@ -402,7 +402,7 @@ class TestBatchCreateSegmentToIndexTask:
         # Check Redis cache was set to error status
         from extensions.ext_redis import redis_client
 
-        cache_key = f"segment_batch_import_{job_id}"
+        cache_key = f"segment_batch_import_{tenant.id}_{non_existent_dataset_id}_{job_id}"
         cache_value = redis_client.get(cache_key)
         assert cache_value == b"error"
 
@@ -450,7 +450,7 @@ class TestBatchCreateSegmentToIndexTask:
         # Check Redis cache was set to error status
         from extensions.ext_redis import redis_client
 
-        cache_key = f"segment_batch_import_{job_id}"
+        cache_key = f"segment_batch_import_{tenant.id}_{dataset.id}_{job_id}"
         cache_value = redis_client.get(cache_key)
         assert cache_value == b"error"
 
@@ -554,7 +554,7 @@ class TestBatchCreateSegmentToIndexTask:
             # Verify error handling for each case
             from extensions.ext_redis import redis_client
 
-            cache_key = f"segment_batch_import_{job_id}"
+            cache_key = f"segment_batch_import_{tenant.id}_{dataset.id}_{job_id}"
             cache_value = redis_client.get(cache_key)
             assert cache_value == b"error"
 
@@ -599,7 +599,7 @@ class TestBatchCreateSegmentToIndexTask:
         # Check Redis cache was set to error status
         from extensions.ext_redis import redis_client
 
-        cache_key = f"segment_batch_import_{job_id}"
+        cache_key = f"segment_batch_import_{tenant.id}_{dataset.id}_{job_id}"
         cache_value = redis_client.get(cache_key)
         assert cache_value == b"error"
 
@@ -756,6 +756,6 @@ class TestBatchCreateSegmentToIndexTask:
         # Check Redis cache was set
         from extensions.ext_redis import redis_client
 
-        cache_key = f"segment_batch_import_{job_id}"
+        cache_key = f"segment_batch_import_{tenant.id}_{dataset.id}_{job_id}"
         cache_value = redis_client.get(cache_key)
         assert cache_value == b"completed"

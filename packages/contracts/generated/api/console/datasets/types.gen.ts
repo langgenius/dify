@@ -84,11 +84,6 @@ export type ApiKeyItem = {
   type: string
 }
 
-export type SegmentBatchImportStatusResponse = {
-  job_id: string
-  job_status: string
-}
-
 export type ExternalDatasetCreatePayload = {
   description?: string | null
   external_knowledge_api_id: string
@@ -290,6 +285,11 @@ export type AutoDisableLogsResponse = {
 
 export type DocumentStatusListResponse = {
   data: Array<DocumentStatusResponse>
+}
+
+export type SegmentBatchImportStatusResponse = {
+  job_id: string
+  job_status: 'completed' | 'error' | 'processing' | 'waiting'
 }
 
 export type DocumentWithSegmentsListResponse = {
@@ -1206,22 +1206,6 @@ export type DeleteDatasetsApiKeysByApiKeyIdResponses = {
 export type DeleteDatasetsApiKeysByApiKeyIdResponse =
   DeleteDatasetsApiKeysByApiKeyIdResponses[keyof DeleteDatasetsApiKeysByApiKeyIdResponses]
 
-export type GetDatasetsBatchImportStatusByJobIdData = {
-  body?: never
-  path: {
-    job_id: string
-  }
-  query?: never
-  url: '/datasets/batch_import_status/{job_id}'
-}
-
-export type GetDatasetsBatchImportStatusByJobIdResponses = {
-  200: SegmentBatchImportStatusResponse
-}
-
-export type GetDatasetsBatchImportStatusByJobIdResponse =
-  GetDatasetsBatchImportStatusByJobIdResponses[keyof GetDatasetsBatchImportStatusByJobIdResponses]
-
 export type PostDatasetsExternalData = {
   body: ExternalDatasetCreatePayload
   path?: never
@@ -1582,6 +1566,23 @@ export type GetDatasetsByDatasetIdBatchByBatchIndexingStatusResponses = {
 
 export type GetDatasetsByDatasetIdBatchByBatchIndexingStatusResponse =
   GetDatasetsByDatasetIdBatchByBatchIndexingStatusResponses[keyof GetDatasetsByDatasetIdBatchByBatchIndexingStatusResponses]
+
+export type GetDatasetsByDatasetIdBatchImportStatusByJobIdData = {
+  body?: never
+  path: {
+    dataset_id: string
+    job_id: string
+  }
+  query?: never
+  url: '/datasets/{dataset_id}/batch_import_status/{job_id}'
+}
+
+export type GetDatasetsByDatasetIdBatchImportStatusByJobIdResponses = {
+  200: SegmentBatchImportStatusResponse
+}
+
+export type GetDatasetsByDatasetIdBatchImportStatusByJobIdResponse =
+  GetDatasetsByDatasetIdBatchImportStatusByJobIdResponses[keyof GetDatasetsByDatasetIdBatchImportStatusByJobIdResponses]
 
 export type DeleteDatasetsByDatasetIdDocumentsData = {
   body?: never

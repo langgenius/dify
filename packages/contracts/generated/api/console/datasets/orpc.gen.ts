@@ -26,14 +26,14 @@ import {
   zDeleteDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponse,
   zGetDatasetsApiBaseInfoResponse,
   zGetDatasetsApiKeysResponse,
-  zGetDatasetsBatchImportStatusByJobIdPath,
-  zGetDatasetsBatchImportStatusByJobIdResponse,
   zGetDatasetsByDatasetIdAutoDisableLogsPath,
   zGetDatasetsByDatasetIdAutoDisableLogsResponse,
   zGetDatasetsByDatasetIdBatchByBatchIndexingEstimatePath,
   zGetDatasetsByDatasetIdBatchByBatchIndexingEstimateResponse,
   zGetDatasetsByDatasetIdBatchByBatchIndexingStatusPath,
   zGetDatasetsByDatasetIdBatchByBatchIndexingStatusResponse,
+  zGetDatasetsByDatasetIdBatchImportStatusByJobIdPath,
+  zGetDatasetsByDatasetIdBatchImportStatusByJobIdResponse,
   zGetDatasetsByDatasetIdDocumentsByDocumentIdDownloadPath,
   zGetDatasetsByDatasetIdDocumentsByDocumentIdDownloadResponse,
   zGetDatasetsByDatasetIdDocumentsByDocumentIdIndexingEstimatePath,
@@ -253,25 +253,6 @@ export const apiKeys = {
   byApiKeyId,
 }
 
-export const get3 = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'GET',
-    operationId: 'getDatasetsBatchImportStatusByJobId',
-    path: '/datasets/batch_import_status/{job_id}',
-    tags: ['console'],
-  })
-  .input(z.object({ params: zGetDatasetsBatchImportStatusByJobIdPath }))
-  .output(zGetDatasetsBatchImportStatusByJobIdResponse)
-
-export const byJobId = {
-  get: get3,
-}
-
-export const batchImportStatus = {
-  byJobId,
-}
-
 /**
  * Create external knowledge dataset
  */
@@ -295,7 +276,7 @@ export const external = {
 /**
  * Check if external knowledge API is being used
  */
-export const get4 = oc
+export const get3 = oc
   .route({
     description: 'Check if external knowledge API is being used',
     inputStructure: 'detailed',
@@ -308,7 +289,7 @@ export const get4 = oc
   .output(zGetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdUseCheckResponse)
 
 export const useCheck = {
-  get: get4,
+  get: get3,
 }
 
 export const delete2 = oc
@@ -326,7 +307,7 @@ export const delete2 = oc
 /**
  * Get external knowledge API template details
  */
-export const get5 = oc
+export const get4 = oc
   .route({
     description: 'Get external knowledge API template details',
     inputStructure: 'detailed',
@@ -360,7 +341,7 @@ export const patch = oc
 
 export const byExternalKnowledgeApiId = {
   delete: delete2,
-  get: get5,
+  get: get4,
   patch,
   useCheck,
 }
@@ -368,7 +349,7 @@ export const byExternalKnowledgeApiId = {
 /**
  * Get external knowledge API templates
  */
-export const get6 = oc
+export const get5 = oc
   .route({
     description: 'Get external knowledge API templates',
     inputStructure: 'detailed',
@@ -397,7 +378,7 @@ export const post3 = oc
   .output(zPostDatasetsExternalKnowledgeApiResponse)
 
 export const externalKnowledgeApi = {
-  get: get6,
+  get: get5,
   post: post3,
   byExternalKnowledgeApiId,
 }
@@ -440,7 +421,7 @@ export const init = {
   post: post5,
 }
 
-export const get7 = oc
+export const get6 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -451,7 +432,7 @@ export const get7 = oc
   .output(zGetDatasetsMetadataBuiltInResponse)
 
 export const builtIn = {
-  get: get7,
+  get: get6,
 }
 
 export const metadata = {
@@ -476,7 +457,7 @@ export const notionIndexingEstimate = {
 /**
  * Get dataset document processing rules
  */
-export const get8 = oc
+export const get7 = oc
   .route({
     description: 'Get dataset document processing rules',
     inputStructure: 'detailed',
@@ -489,13 +470,13 @@ export const get8 = oc
   .output(zGetDatasetsProcessRuleResponse)
 
 export const processRule = {
-  get: get8,
+  get: get7,
 }
 
 /**
  * Get mock dataset retrieval settings by vector type
  */
-export const get9 = oc
+export const get8 = oc
   .route({
     description: 'Get mock dataset retrieval settings by vector type',
     inputStructure: 'detailed',
@@ -508,13 +489,13 @@ export const get9 = oc
   .output(zGetDatasetsRetrievalSettingByVectorTypeResponse)
 
 export const byVectorType = {
-  get: get9,
+  get: get8,
 }
 
 /**
  * Get dataset retrieval settings
  */
-export const get10 = oc
+export const get9 = oc
   .route({
     description: 'Get dataset retrieval settings',
     inputStructure: 'detailed',
@@ -526,7 +507,7 @@ export const get10 = oc
   .output(zGetDatasetsRetrievalSettingResponse)
 
 export const retrievalSetting = {
-  get: get10,
+  get: get9,
   byVectorType,
 }
 
@@ -552,7 +533,7 @@ export const apiKeys2 = {
 /**
  * Get dataset auto disable logs
  */
-export const get11 = oc
+export const get10 = oc
   .route({
     description: 'Get dataset auto disable logs',
     inputStructure: 'detailed',
@@ -565,10 +546,10 @@ export const get11 = oc
   .output(zGetDatasetsByDatasetIdAutoDisableLogsResponse)
 
 export const autoDisableLogs = {
-  get: get11,
+  get: get10,
 }
 
-export const get12 = oc
+export const get11 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -580,10 +561,10 @@ export const get12 = oc
   .output(zGetDatasetsByDatasetIdBatchByBatchIndexingEstimateResponse)
 
 export const indexingEstimate2 = {
-  get: get12,
+  get: get11,
 }
 
-export const get13 = oc
+export const get12 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -595,7 +576,7 @@ export const get13 = oc
   .output(zGetDatasetsByDatasetIdBatchByBatchIndexingStatusResponse)
 
 export const indexingStatus = {
-  get: get13,
+  get: get12,
 }
 
 export const byBatch = {
@@ -605,6 +586,25 @@ export const byBatch = {
 
 export const batch = {
   byBatch,
+}
+
+export const get13 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getDatasetsByDatasetIdBatchImportStatusByJobId',
+    path: '/datasets/{dataset_id}/batch_import_status/{job_id}',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetDatasetsByDatasetIdBatchImportStatusByJobIdPath }))
+  .output(zGetDatasetsByDatasetIdBatchImportStatusByJobIdResponse)
+
+export const byJobId = {
+  get: get13,
+}
+
+export const batchImportStatus = {
+  byJobId,
 }
 
 /**
@@ -1649,6 +1649,7 @@ export const byDatasetId = {
   apiKeys: apiKeys2,
   autoDisableLogs,
   batch,
+  batchImportStatus,
   documents,
   errorDocs,
   externalHitTesting,
@@ -1760,7 +1761,6 @@ export const datasets = {
   post: post22,
   apiBaseInfo,
   apiKeys,
-  batchImportStatus,
   external,
   externalKnowledgeApi,
   indexingEstimate,
