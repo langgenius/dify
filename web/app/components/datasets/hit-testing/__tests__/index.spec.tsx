@@ -219,7 +219,7 @@ let _mockImageUploaderOnChange:
 vi.mock(
   '@/app/components/datasets/common/image-uploader/image-uploader-in-retrieval-testing',
   () => ({
-    default: ({
+    ImageUploaderInRetrievalTesting: ({
       textArea,
       actionButton,
       onChange,

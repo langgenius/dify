@@ -1,130 +1,127 @@
 import type { FileEntity } from '../../types'
-import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vite-plus/test'
-import ImageUploaderInChunkWrapper from '../index'
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { ImageUploaderInChunk } from '../index'
 
 vi.mock('@/service/use-common', () => ({
-  useFileUploadConfig: vi.fn(() => ({
+  useFileUploadConfig: () => ({
     data: {
       image_file_batch_limit: 10,
       single_chunk_attachment_limit: 20,
       attachment_image_file_size_limit: 15,
     },
-  })),
+  }),
 }))
 
-vi.mock('@/app/components/datasets/common/image-previewer', () => ({
-  default: ({ onClose }: { onClose: () => void }) => (
-    <div data-testid="image-previewer">
-      <button data-testid="close-preview" onClick={onClose}>
-        Close
-      </button>
-    </div>
-  ),
-}))
+const fetchImage = vi.fn<typeof fetch>()
 
-describe('ImageUploaderInChunk', () => {
-  describe('Rendering', () => {
-    it('should render ImageInput when not disabled', () => {
-      const onChange = vi.fn()
-      render(<ImageUploaderInChunkWrapper value={[]} onChange={onChange} />)
-      // ImageInput renders an input element
-      expect(document.querySelector('input[type="file"]')).toBeInTheDocument()
-    })
-
-    it('should not render ImageInput when disabled', () => {
-      const onChange = vi.fn()
-      render(<ImageUploaderInChunkWrapper value={[]} onChange={onChange} disabled />)
-      // ImageInput should not be present
-      expect(document.querySelector('input[type="file"]')).not.toBeInTheDocument()
-    })
-  })
-
-  describe('Props', () => {
-    it('should render files when value is provided', () => {
-      const onChange = vi.fn()
-      const files: FileEntity[] = [
-        {
-          id: 'file1',
-          name: 'test1.png',
-          extension: 'png',
-          mimeType: 'image/png',
-          progress: 100,
-          base64Url: 'data:image/png;base64,test1',
-          size: 1024,
-        },
-        {
-          id: 'file2',
-          name: 'test2.png',
-          extension: 'png',
-          mimeType: 'image/png',
-          progress: 100,
-          base64Url: 'data:image/png;base64,test2',
-          size: 2048,
-        },
-      ]
-
-      render(<ImageUploaderInChunkWrapper value={files} onChange={onChange} />)
-      // Each file renders an ImageItem
-      const fileItems = document.querySelectorAll('.group\\/file-image')
-      expect(fileItems.length).toBeGreaterThanOrEqual(2)
-    })
-  })
-
-  describe('User Interactions', () => {
-    it('should show preview when image is clicked', () => {
-      const onChange = vi.fn()
-      const files: FileEntity[] = [
-        {
-          id: 'file1',
-          name: 'test.png',
-          extension: 'png',
-          mimeType: 'image/png',
-          progress: 100,
-          uploadedId: 'uploaded-1',
-          base64Url: 'data:image/png;base64,test',
-          size: 1024,
-        },
-      ]
-
-      render(<ImageUploaderInChunkWrapper value={files} onChange={onChange} />)
-
-      // Find and click the file item
-      const fileItem = document.querySelector('.group\\/file-image')
-      if (fileItem) {
-        fireEvent.click(fileItem)
-        expect(screen.getByTestId('image-previewer')).toBeInTheDocument()
+beforeEach(() => {
+  fetchImage.mockImplementation(
+    async () => new Response(new Blob(['image'], { type: 'image/png' })),
+  )
+  vi.stubGlobal('fetch', fetchImage)
+  vi.stubGlobal(
+    'Image',
+    class {
+      constructor() {
+        const image = document.createElement('img')
+        Object.defineProperties(image, {
+          naturalWidth: { value: 80 },
+          naturalHeight: { value: 60 },
+        })
+        queueMicrotask(() => image.dispatchEvent(new Event('load')))
+        return image
       }
-    })
+    },
+  )
+  let resourceId = 0
+  vi.spyOn(URL, 'createObjectURL').mockImplementation(() => `blob:preview-${++resourceId}`)
+  vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
+})
 
-    it('should close preview when close button is clicked', () => {
-      const onChange = vi.fn()
-      const files: FileEntity[] = [
-        {
-          id: 'file1',
-          name: 'test.png',
-          extension: 'png',
-          mimeType: 'image/png',
-          progress: 100,
-          uploadedId: 'uploaded-1',
-          base64Url: 'data:image/png;base64,test',
-          size: 1024,
-        },
-      ]
+afterEach(() => {
+  cleanup()
+  vi.unstubAllGlobals()
+  vi.restoreAllMocks()
+})
 
-      render(<ImageUploaderInChunkWrapper value={files} onChange={onChange} />)
+const files: FileEntity[] = [
+  {
+    id: 'pending',
+    name: 'Pending',
+    progress: 0,
+    size: 10,
+    extension: 'png',
+    mimeType: 'image/png',
+  },
+  {
+    id: 'one',
+    name: 'Local.png',
+    progress: 50,
+    base64Url: 'data:image/png;base64,local',
+    sourceUrl: 'https://example.com/remote.png',
+    size: 10,
+    extension: 'png',
+    mimeType: 'image/png',
+  },
+  {
+    id: 'two',
+    name: 'Remote.png',
+    progress: 100,
+    uploadedId: 'uploaded',
+    sourceUrl: 'https://example.com/two.png',
+    size: 20,
+    extension: 'png',
+    mimeType: 'image/png',
+  },
+]
 
-      // Open preview
-      const fileItem = document.querySelector('.group\\/file-image')
-      if (fileItem) {
-        fireEvent.click(fileItem)
+it('previews the clicked ready file and navigates only files with a source without writing upload state', async () => {
+  const user = userEvent.setup()
+  const onChange = vi.fn()
+  render(<ImageUploaderInChunk value={files} onChange={onChange} />)
+  expect(screen.getByRole('button', { name: 'Pending' })).toBeDisabled()
+  await user.click(screen.getByRole('button', { name: 'Remote.png' }))
+  const remote = screen.getByRole('dialog', { name: 'Remote.png' })
+  expect(await within(remote).findByRole('img', { name: 'Remote.png' })).toHaveAttribute(
+    'src',
+    expect.stringMatching(/^blob:/),
+  )
+  expect(fetchImage).toHaveBeenCalledWith(files[2]!.sourceUrl)
+  await user.click(within(remote).getByRole('button', { name: 'common.pagination.previous' }))
+  const local = screen.getByRole('dialog', { name: 'Local.png' })
+  expect(await within(local).findByRole('img', { name: 'Local.png' })).toHaveAttribute(
+    'src',
+    expect.stringMatching(/^blob:/),
+  )
+  expect(fetchImage).toHaveBeenCalledWith(files[1]!.base64Url)
+  expect(fetchImage).not.toHaveBeenCalledWith(files[1]!.sourceUrl)
+  expect(within(local).getByRole('button', { name: 'common.pagination.previous' })).toBeDisabled()
+  await user.keyboard('{Escape}')
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  expect(onChange).not.toHaveBeenCalled()
+})
 
-        // Close preview
-        const closeButton = screen.getByTestId('close-preview')
-        fireEvent.click(closeButton)
+it('removes files through the existing upload owner without opening a preview', async () => {
+  const user = userEvent.setup()
+  const onChange = vi.fn()
+  render(<ImageUploaderInChunk value={[files[2]!]} onChange={onChange} />)
+  await user.click(screen.getByRole('button', { name: 'common.operation.remove' }))
+  expect(onChange).toHaveBeenCalledWith([])
+  expect(screen.queryByRole('button', { name: 'Remote.png' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+})
 
-        expect(screen.queryByTestId('image-previewer')).not.toBeInTheDocument()
-      }
-    })
-  })
+it('keeps disabled chunks inspectable without upload, remove or retry mutations', async () => {
+  const user = userEvent.setup()
+  const onChange = vi.fn()
+  render(
+    <ImageUploaderInChunk disabled value={[{ ...files[1]!, progress: -1 }]} onChange={onChange} />,
+  )
+  expect(screen.queryByRole('button', { name: 'common.operation.remove' })).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'common.operation.retry' })).toBeDisabled()
+  await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+  await user.click(screen.getByRole('button', { name: 'Local.png' }))
+  expect(screen.getByRole('dialog', { name: 'Local.png' })).toBeInTheDocument()
+  expect(onChange).not.toHaveBeenCalled()
 })

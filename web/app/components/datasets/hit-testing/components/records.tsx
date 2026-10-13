@@ -5,7 +5,7 @@ import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import useTimestamp from '@/hooks/use-timestamp'
-import ImageList from '../../common/image-list'
+import { ImageList } from '../../common/image-list'
 
 type RecordsProps = {
   records: HitTestingRecord[]

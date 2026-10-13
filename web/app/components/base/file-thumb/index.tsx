@@ -1,9 +1,9 @@
 import type { VariantProps } from 'class-variance-authority'
+import type { ComponentProps } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { cva } from 'class-variance-authority'
 import * as React from 'react'
-import { useCallback } from 'react'
 import { FileTypeIcon } from '../file-uploader'
 import { getFileAppearanceType } from '../file-uploader/utils'
 import ImageRender from './image-render'
@@ -20,7 +20,7 @@ const FileThumbVariants = cva('flex cursor-pointer items-center justify-center',
   },
 })
 
-export type FileEntity = {
+type FileEntity = {
   name: string
   size: number
   extension: string
@@ -30,22 +30,12 @@ export type FileEntity = {
 
 type FileThumbProps = {
   file: FileEntity
-  className?: string
-  onClick?: (file: FileEntity) => void
-} & VariantProps<typeof FileThumbVariants>
+} & Omit<ComponentProps<'button'>, 'children'> &
+  VariantProps<typeof FileThumbVariants>
 
-const FileThumb = ({ file, size, className, onClick }: FileThumbProps) => {
+export const FileThumb = React.memo(({ file, size, className, ...buttonProps }: FileThumbProps) => {
   const { name, mimeType, sourceUrl } = file
   const isImage = mimeType.startsWith('image/')
-
-  const handleClick = useCallback(
-    (e: React.MouseEvent<HTMLButtonElement>) => {
-      e.stopPropagation()
-      e.preventDefault()
-      onClick?.(file)
-    },
-    [onClick, file],
-  )
 
   return (
     <Tooltip>
@@ -54,14 +44,14 @@ const FileThumb = ({ file, size, className, onClick }: FileThumbProps) => {
           <button
             type="button"
             aria-label={name}
+            {...buttonProps}
             className={cn(
               FileThumbVariants({ size, className }),
-              'border-0 bg-transparent p-0',
+              'border-0 bg-transparent p-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-state-accent-solid disabled:cursor-default',
               isImage
                 ? 'p-px'
                 : 'rounded-md border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg shadow-xs hover:bg-components-panel-on-panel-item-bg-alt',
             )}
-            onClick={handleClick}
           >
             {isImage ? (
               <ImageRender sourceUrl={sourceUrl} name={name} />
@@ -74,6 +64,4 @@ const FileThumb = ({ file, size, className, onClick }: FileThumbProps) => {
       <TooltipContent placement="top">{name}</TooltipContent>
     </Tooltip>
   )
-}
-
-export default React.memo(FileThumb)
+})

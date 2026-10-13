@@ -7,9 +7,9 @@ type ImageRenderProps = {
 
 const ImageRender = ({ sourceUrl, name }: ImageRenderProps) => {
   return (
-    <div className="size-full border-2 border-effects-image-frame shadow-xs">
-      <img className="size-full object-cover" src={sourceUrl} alt={name} />
-    </div>
+    <span className="block size-full border-2 border-effects-image-frame shadow-xs">
+      <img className="size-full object-cover" src={sourceUrl || undefined} alt={name} />
+    </span>
   )
 }
 

@@ -11,7 +11,7 @@ vi.mock('@/hooks/use-timestamp', () => ({
 }))
 
 vi.mock('../../../common/image-list', () => ({
-  default: () => <div data-testid="image-list" />,
+  ImageList: () => <div data-testid="image-list" />,
 }))
 
 const makeRecord = (id: string, source: string, created_at: number, content = 'query text') =>
