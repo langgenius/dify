@@ -23,6 +23,7 @@ from core.dify_builder.execution_policy import (
     BuilderExecutionPolicyError,
     BuilderExecutionRecorder,
     ConfirmedToolExecutionContext,
+    JsonToolExecutionContext,
     scalar_inputs_digest,
 )
 from core.workflow.node_factory import get_default_root_node_id
@@ -89,7 +90,9 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         if context is not None:
             # Both Builder variants share the owner/input/transport checks below; the
             # factory then admits each variant's exact node set and collaborators.
-            if not isinstance(context, (BuilderExecutionContext, ConfirmedToolExecutionContext)):
+            if not isinstance(
+                context, (BuilderExecutionContext, ConfirmedToolExecutionContext, JsonToolExecutionContext)
+            ):
                 raise BuilderExecutionPolicyError("unsupported_execution_policy")
             if self._execution_recorder is None or not self._execution_recorder.healthy:
                 raise BuilderExecutionPolicyError("missing_execution_recorder")
