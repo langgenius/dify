@@ -54,6 +54,7 @@ def _installation(**changes: object) -> PluginInstallation:
                 "created_at": now,
                 "resource": {"memory": 1},
                 "plugins": {},
+                "meta": {},
             },
             **changes,
         }
