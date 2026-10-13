@@ -64,7 +64,7 @@ const publishedWorkflow: WorkflowResponse = {
   version: '2026-10-09.1',
 }
 
-const canvasEvent = (event: 'publish_workflow' | 'mark_review_ready') => ({
+const canvasEvent = (event: 'publish_workflow' | 'apply_edit_plan') => ({
   at_version: 2,
   event,
   operation_id: 'operation-1',
@@ -83,7 +83,6 @@ const setup = (appId = 'app-1') => {
         appId={appId}
         canEdit
         getCanvasSnapshot={() => ({ nodes: [], edgeCount: 0 })}
-        onFocusCanvas={() => undefined}
         onRefreshCanvas={async () => true}
         onSyncDraft={async () => undefined}
       >
@@ -141,7 +140,7 @@ describe('Builder publication badge', () => {
   it('leaves the published query and badge alone for unrelated canvas events', async () => {
     const { queryClient, workflowStore, publishedQuery } = setup()
 
-    await act(async () => mocks.sessionEvents!.onCanvasEvent(canvasEvent('mark_review_ready')))
+    await act(async () => mocks.sessionEvents!.onCanvasEvent(canvasEvent('apply_edit_plan')))
 
     expect(mocks.fetchPublished).not.toHaveBeenCalled()
     expect(queryClient.getQueryData(publishedQuery.queryKey)).toBeNull()
