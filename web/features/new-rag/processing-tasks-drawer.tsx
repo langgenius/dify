@@ -25,6 +25,7 @@ import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { consoleQuery } from '@/service/console'
+import { getHttpErrorStatus } from '@/service/http-error'
 import { taskCanRetry, taskIsActive, taskVersionIsAfter } from './document-model'
 
 type TaskAction = 'cancel' | 'retry'
@@ -38,17 +39,6 @@ function taskTime(task: DocumentProcessingTask) {
 
 function taskLifecycle(task: DocumentProcessingTask) {
   return `${task.updatedAt}:${task.state}`
-}
-
-function responseStatus(error: unknown): number | undefined {
-  if (error instanceof Response) return error.status
-  if (error && typeof error === 'object' && 'status' in error)
-    return typeof error.status === 'number' ? error.status : undefined
-  if (error && typeof error === 'object' && 'data' in error) {
-    const data = error.data
-    if (data && typeof data === 'object' && 'status' in data)
-      return typeof data.status === 'number' ? data.status : undefined
-  }
 }
 
 function compareTaskRecency(left: DocumentProcessingTask, right: DocumentProcessingTask) {
@@ -352,7 +342,7 @@ export function ProcessingTasksDrawer({
       )
         drawerCloseButtonRef.current?.focus()
     } catch (error) {
-      const permissionDenied = responseStatus(error) === 403
+      const permissionDenied = getHttpErrorStatus(error) === 403
       if (permissionDenied) onWritePermissionDenied()
       if (
         !permissionDenied &&

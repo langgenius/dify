@@ -7,6 +7,7 @@ import type {
 } from '@dify/contracts/knowledge-fs/types.gen'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { createHttpError } from '@/service/http-error'
 import { renderWithNuqs as render } from '@/test/nuqs-testing'
 import { DocumentDetailPage } from '../document-detail-page'
 
@@ -840,7 +841,7 @@ describe('DocumentDetailPage', () => {
   it('distinguishes missing, restricted, and retryable document failures', async () => {
     const user = userEvent.setup()
     documentQuery.data = undefined
-    documentQuery.error = { status: 404 }
+    documentQuery.error = createHttpError(new Response(null, { status: 404 }))
     const rendered = render(
       <DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />,
     )
@@ -940,7 +941,7 @@ describe('DocumentDetailPage', () => {
   })
 
   it('does not render cached document data after a refetch returns 403 or 404', () => {
-    documentQuery.error = { status: 404 }
+    documentQuery.error = createHttpError(new Response(null, { status: 404 }))
     const rendered = render(
       <DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />,
     )
@@ -950,7 +951,7 @@ describe('DocumentDetailPage', () => {
     ).toBeInTheDocument()
     expect(screen.queryByText('sso-enterprise.pdf')).toBeNull()
 
-    documentQuery.error = { status: 403 }
+    documentQuery.error = createHttpError(new Response(null, { status: 403 }))
     rendered.rerender(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
     expect(screen.queryByText('sso-enterprise.pdf')).toBeNull()
 
@@ -959,8 +960,8 @@ describe('DocumentDetailPage', () => {
         retry: (failureCount: number, error: unknown) => boolean
       }
     ).retry
-    expect(retry(0, { status: 403 })).toBe(false)
-    expect(retry(0, { status: 404 })).toBe(false)
+    expect(retry(0, createHttpError(new Response(null, { status: 403 })))).toBe(false)
+    expect(retry(0, createHttpError(new Response(null, { status: 404 })))).toBe(false)
     expect(retry(0, new Error('temporary'))).toBe(true)
   })
 
@@ -1054,11 +1055,15 @@ describe('DocumentDetailPage', () => {
     ).toBe(false)
     expect(
       discoveryOptions.refetchInterval({
-        state: { data: { items: [] }, error: { status: 403 } },
+        state: { data: { items: [] }, error: createHttpError(new Response(null, { status: 403 })) },
       }),
     ).toBe(false)
-    expect(discoveryOptions.retry(0, { status: 403 })).toBe(false)
-    expect(discoveryOptions.retry(0, { status: 404 })).toBe(false)
+    expect(discoveryOptions.retry(0, createHttpError(new Response(null, { status: 403 })))).toBe(
+      false,
+    )
+    expect(discoveryOptions.retry(0, createHttpError(new Response(null, { status: 404 })))).toBe(
+      false,
+    )
   })
 
   it('keeps submission protection while a delayed status recheck is unresolved', async () => {
@@ -1226,7 +1231,7 @@ describe('DocumentDetailPage', () => {
 
   it('stops snapshot polling and distrusts stale active task data after 403 or 404', async () => {
     tasksQuery.data = { pages: [{ items: [task({ state: 'running' })] }] }
-    taskSnapshotQuery.error = { status: 404 }
+    taskSnapshotQuery.error = createHttpError(new Response(null, { status: 404 }))
     const rendered = render(
       <DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />,
     )
@@ -1237,11 +1242,15 @@ describe('DocumentDetailPage', () => {
         state: { data?: DocumentProcessingTask; error?: unknown }
       }) => number | false
     }
-    expect(snapshotOptions.refetchInterval({ state: { error: { status: 404 } } })).toBe(false)
+    expect(
+      snapshotOptions.refetchInterval({
+        state: { error: createHttpError(new Response(null, { status: 404 })) },
+      }),
+    ).toBe(false)
     await waitFor(() => expect(queryClient.invalidateQueries).toHaveBeenCalled())
 
     queryClient.invalidateQueries.mockClear()
-    taskSnapshotQuery.error = { status: 403 }
+    taskSnapshotQuery.error = createHttpError(new Response(null, { status: 403 }))
     rendered.rerender(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
     expect(screen.getByRole('alert')).toHaveTextContent(
       'dataset.newKnowledge.tasksErrorDescription',
@@ -1253,7 +1262,7 @@ describe('DocumentDetailPage', () => {
 
   it('clears both task caches when a submission-discovered task snapshot returns 404', async () => {
     submissionTasksQuery.data = { items: [task({ state: 'running' })] }
-    taskSnapshotQuery.error = { status: 404 }
+    taskSnapshotQuery.error = createHttpError(new Response(null, { status: 404 }))
 
     const rendered = render(
       <DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />,
@@ -1303,7 +1312,9 @@ describe('DocumentDetailPage', () => {
         finishPermissionRefresh = resolve
       }),
     )
-    reindexMutation.mutateAsync.mockRejectedValueOnce({ status: 403 })
+    reindexMutation.mutateAsync.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 403 })),
+    )
 
     render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
     const button = screen.getByRole('button', { name: 'dataset.newKnowledge.reindexDocument' })
@@ -1324,7 +1335,9 @@ describe('DocumentDetailPage', () => {
       data: { dataset: { default_permission_keys: ['dataset.acl.edit'] } },
       error: new Error('permission refresh failed'),
     })
-    reindexMutation.mutateAsync.mockRejectedValueOnce({ status: 403 })
+    reindexMutation.mutateAsync.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 403 })),
+    )
 
     render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
     const button = screen.getByRole('button', { name: 'dataset.newKnowledge.reindexDocument' })

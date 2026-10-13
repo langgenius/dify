@@ -244,19 +244,19 @@ const EducationApplyPage = ({ plan, token }: EducationApplyPageProps) => {
               </FieldDescription>
               <div className="py-2 system-md-regular text-text-primary">
                 <FieldItem>
-                  <FieldLabel className="mb-2 flex items-start gap-2 py-0">
+                  <FieldLabel className="mb-2 flex cursor-pointer items-start gap-2 py-0">
                     <Checkbox value="age" />
                     {t(($) => $['form.terms.option.age'], { ns: 'education' })}
                   </FieldLabel>
                 </FieldItem>
                 <FieldItem>
-                  <FieldLabel className="mb-2 flex items-start gap-2 py-0">
+                  <FieldLabel className="mb-2 flex cursor-pointer items-start gap-2 py-0">
                     <Checkbox value="inSchool" />
                     {t(($) => $['form.terms.option.inSchool'], { ns: 'education' })}
                   </FieldLabel>
                 </FieldItem>
                 <FieldItem>
-                  <FieldLabel className="flex items-start gap-2 py-0">
+                  <FieldLabel className="flex cursor-pointer items-start gap-2 py-0">
                     <Checkbox value="personalUse" />
                     {t(($) => $['form.terms.option.personalUse'], { ns: 'education' })}
                   </FieldLabel>

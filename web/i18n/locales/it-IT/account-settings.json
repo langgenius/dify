@@ -55,6 +55,8 @@
   "account.sendVerificationButton": "Invia codice di verifica",
   "account.setPassword": "Imposta una password",
   "account.showAppLength": "Mostra {{length}} app",
+  "account.timezoneNoResults": "Nessun fuso orario corrispondente trovato",
+  "account.timezoneSearchPlaceholder": "Cerca città o fusi orari...",
   "account.verificationLabel": "Codice di verifica",
   "account.verificationPlaceholder": "Incolla il codice a 6 cifre",
   "account.workspaceName": "Nome del Workspace",

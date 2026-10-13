@@ -1,8 +1,20 @@
 'use client'
+import type { AlertDialogActions } from '@langgenius/dify-ui/alert-dialog'
 import type { FC } from 'react'
 import type { GenRes } from '@/service/debug'
+import {
+  AlertDialog,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import * as React from 'react'
+import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/components/app/configuration/toast'
 import { CopyFeedback } from '@/app/components/base/copy-feedback'
@@ -35,6 +47,7 @@ const Result: FC<Props> = ({
   generatorType,
 }) => {
   const { t } = useTranslation(['common', 'appGeneration'])
+  const actionsRef = useRef<AlertDialogActions>(null)
   const isGeneratorPrompt = generatorType === GeneratorType.prompt
 
   return (
@@ -59,9 +72,38 @@ const Result: FC<Props> = ({
               toast.error(t(($) => $['operation.copyErrorFailed'], { ns: 'common' }))
             }}
           />
-          <Button variant="primary" onClick={onApply}>
-            {t(($) => $['generate.apply'], { ns: 'appGeneration' })}
-          </Button>
+          <AlertDialog actionsRef={actionsRef}>
+            <AlertDialogTrigger render={<Button variant="primary" />}>
+              {t(($) => $['generate.apply'], { ns: 'appGeneration' })}
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+                <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+                  {isGeneratorPrompt
+                    ? t(($) => $['generate.overwriteTitle'], { ns: 'appGeneration' })
+                    : t(($) => $['codegen.overwriteConfirmTitle'], { ns: 'appGeneration' })}
+                </AlertDialogTitle>
+                <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+                  {isGeneratorPrompt
+                    ? t(($) => $['generate.overwriteMessage'], { ns: 'appGeneration' })
+                    : t(($) => $['codegen.overwriteConfirmMessage'], { ns: 'appGeneration' })}
+                </AlertDialogDescription>
+              </div>
+              <AlertDialogFooter>
+                <AlertDialogCancelButton>
+                  {t(($) => $['operation.cancel'], { ns: 'common' })}
+                </AlertDialogCancelButton>
+                <AlertDialogConfirmButton
+                  onClick={() => {
+                    actionsRef.current?.close()
+                    onApply()
+                  }}
+                >
+                  {t(($) => $['operation.confirm'], { ns: 'common' })}
+                </AlertDialogConfirmButton>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </div>
       <div className="flex grow flex-col overflow-y-auto">
