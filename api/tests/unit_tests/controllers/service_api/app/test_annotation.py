@@ -49,7 +49,11 @@ from tests.unit_tests.model_factories import make_account, make_app
 type _Operation = Literal["list", "create", "update", "delete", "reply", "status"]
 _OPERATIONS: tuple[_Operation, ...] = ("list", "create", "update", "delete", "reply", "status")
 _TIME = datetime(2026, 1, 2, 3, 4, 5)
-_REPLY_PAYLOAD = {"score_threshold": 0.5, "embedding_provider_name": "openai", "embedding_model_name": "embedding"}
+_REPLY_PAYLOAD: dict[str, object] = {
+    "score_threshold": 0.5,
+    "embedding_provider_name": "openai",
+    "embedding_model_name": "embedding",
+}
 
 
 @dataclass(frozen=True)

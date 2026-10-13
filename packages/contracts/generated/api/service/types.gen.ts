@@ -2526,8 +2526,11 @@ export type GetAppsAnnotationsData = {
 }
 
 export type GetAppsAnnotationsErrors = {
+  400: unknown
   401: unknown
   403: unknown
+  404: unknown
+  422: unknown
 }
 
 export type GetAppsAnnotationsResponses = {
@@ -2545,8 +2548,11 @@ export type PostAppsAnnotationsData = {
 }
 
 export type PostAppsAnnotationsErrors = {
+  400: unknown
   401: unknown
   403: unknown
+  404: unknown
+  422: unknown
 }
 
 export type PostAppsAnnotationsResponses = {
@@ -2566,6 +2572,7 @@ export type DeleteAppsAnnotationsByAnnotationIdData = {
 }
 
 export type DeleteAppsAnnotationsByAnnotationIdErrors = {
+  400: unknown
   401: unknown
   403: unknown
   404: unknown
@@ -2588,9 +2595,11 @@ export type PutAppsAnnotationsByAnnotationIdData = {
 }
 
 export type PutAppsAnnotationsByAnnotationIdErrors = {
+  400: unknown
   401: unknown
   403: unknown
   404: unknown
+  422: unknown
 }
 
 export type PutAppsAnnotationsByAnnotationIdResponses = {

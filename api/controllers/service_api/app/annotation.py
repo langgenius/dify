@@ -79,7 +79,7 @@ class AnnotationReplyActionApi(Resource):
         ),
         tags=["Annotations"],
         responses={
-            200: "Annotation reply settings task initiated.",
+            HTTPStatus.OK: "Annotation reply settings task initiated.",
         },
     )
     @service_api_ns.expect(service_api_ns.models[AnnotationReplyActionPayload.__name__])
@@ -88,15 +88,15 @@ class AnnotationReplyActionApi(Resource):
     @service_api_ns.doc(params={"action": ANNOTATION_REPLY_ACTION_PARAM})
     @service_api_ns.doc(
         responses={
-            200: "Action completed successfully",
-            400: "`invalid_param` : Invalid action.",
-            401: "Unauthorized - invalid API token",
-            404: "`not_found` : App no longer exists.",
-            422: "`unprocessable_entity` : Invalid annotation reply payload.",
+            HTTPStatus.OK: "Action completed successfully",
+            HTTPStatus.BAD_REQUEST: "`invalid_param` : Invalid action, app selection, or missing workspace.",
+            HTTPStatus.UNAUTHORIZED: "`unauthorized` : Invalid API credential or workspace owner unavailable.",
+            HTTPStatus.NOT_FOUND: "`not_found` : App no longer exists.",
+            HTTPStatus.UNPROCESSABLE_ENTITY: "`unprocessable_entity` : Invalid annotation reply payload.",
         }
     )
     @service_api_ns.response(
-        200,
+        HTTPStatus.OK,
         "Action completed successfully",
         service_api_ns.models[AnnotationJobStatusResponse.__name__],
     )
@@ -135,9 +135,9 @@ class AnnotationReplyActionStatusApi(Resource):
         ),
         tags=["Annotations"],
         responses={
-            200: "Successfully retrieved task status.",
-            400: "`invalid_param` : Invalid action.",
-            404: "`not_found` : The specified job does not belong to this app or no longer exists.",
+            HTTPStatus.OK: "Successfully retrieved task status.",
+            HTTPStatus.BAD_REQUEST: "`invalid_param` : Invalid action, app selection, or missing workspace.",
+            HTTPStatus.NOT_FOUND: "`not_found` : The specified job does not belong to this app or no longer exists.",
         },
     )
     @service_api_ns.doc("get_annotation_reply_action_status")
@@ -153,12 +153,12 @@ class AnnotationReplyActionStatusApi(Resource):
     )
     @service_api_ns.doc(
         responses={
-            200: "Job status retrieved successfully",
-            401: "Unauthorized - invalid API token",
+            HTTPStatus.OK: "Job status retrieved successfully",
+            HTTPStatus.UNAUTHORIZED: "`unauthorized` : Invalid API credential or workspace owner unavailable.",
         }
     )
     @service_api_ns.response(
-        200,
+        HTTPStatus.OK,
         "Job status retrieved successfully",
         service_api_ns.models[AnnotationJobStatusDetailResponse.__name__],
     )
@@ -186,7 +186,7 @@ class AnnotationListApi(Resource):
         description="Retrieves a paginated list of annotations for the application. Supports keyword search filtering.",
         tags=["Annotations"],
         responses={
-            200: "Successfully retrieved annotation list.",
+            HTTPStatus.OK: "Successfully retrieved annotation list.",
         },
     )
     @service_api_ns.doc("list_annotations")
@@ -194,12 +194,15 @@ class AnnotationListApi(Resource):
     @service_api_ns.doc(params=query_params_from_model(AnnotationListQuery))
     @service_api_ns.doc(
         responses={
-            200: "Annotations retrieved successfully",
-            401: "Unauthorized - invalid API token",
+            HTTPStatus.OK: "Annotations retrieved successfully",
+            HTTPStatus.BAD_REQUEST: "`invalid_param` : Invalid app selection or missing workspace.",
+            HTTPStatus.UNAUTHORIZED: "`unauthorized` : Invalid API credential or workspace owner unavailable.",
+            HTTPStatus.NOT_FOUND: "`not_found` : App no longer exists.",
+            HTTPStatus.UNPROCESSABLE_ENTITY: "`unprocessable_entity` : Invalid pagination query.",
         }
     )
     @service_api_ns.response(
-        200,
+        HTTPStatus.OK,
         "Annotations retrieved successfully",
         service_api_ns.models[AnnotationList.__name__],
     )
@@ -227,7 +230,7 @@ class AnnotationListApi(Resource):
         ),
         tags=["Annotations"],
         responses={
-            201: "Annotation created successfully.",
+            HTTPStatus.CREATED: "Annotation created successfully.",
         },
     )
     @service_api_ns.expect(service_api_ns.models[AnnotationCreatePayload.__name__])
@@ -235,8 +238,11 @@ class AnnotationListApi(Resource):
     @service_api_ns.doc(description="Create a new annotation")
     @service_api_ns.doc(
         responses={
-            201: "Annotation created successfully",
-            401: "Unauthorized - invalid API token",
+            HTTPStatus.CREATED: "Annotation created successfully",
+            HTTPStatus.BAD_REQUEST: "`invalid_param` : Invalid app selection or missing workspace.",
+            HTTPStatus.UNAUTHORIZED: "`unauthorized` : Invalid API credential or workspace owner unavailable.",
+            HTTPStatus.NOT_FOUND: "`not_found` : App no longer exists.",
+            HTTPStatus.UNPROCESSABLE_ENTITY: "`unprocessable_entity` : Invalid annotation payload.",
         }
     )
     @service_api_ns.response(
@@ -270,9 +276,9 @@ class AnnotationUpdateDeleteApi(Resource):
         description="Updates the question and answer of an existing annotation.",
         tags=["Annotations"],
         responses={
-            200: "Annotation updated successfully.",
-            403: "`forbidden` : Insufficient permissions to edit annotations.",
-            404: "`not_found` : Annotation does not exist.",
+            HTTPStatus.OK: "Annotation updated successfully.",
+            HTTPStatus.FORBIDDEN: "`forbidden` : API credential scope, app, or workspace access denied.",
+            HTTPStatus.NOT_FOUND: "`not_found` : App or annotation no longer exists.",
         },
     )
     @service_api_ns.expect(service_api_ns.models[AnnotationCreatePayload.__name__])
@@ -281,14 +287,16 @@ class AnnotationUpdateDeleteApi(Resource):
     @service_api_ns.doc(params={"annotation_id": "The unique identifier of the annotation to update."})
     @service_api_ns.doc(
         responses={
-            200: "Annotation updated successfully",
-            401: "Unauthorized - invalid API token",
-            403: "Forbidden - insufficient permissions",
-            404: "Annotation not found",
+            HTTPStatus.OK: "Annotation updated successfully",
+            HTTPStatus.BAD_REQUEST: "`invalid_param` : Invalid app selection or missing workspace.",
+            HTTPStatus.UNAUTHORIZED: "`unauthorized` : Invalid API credential or workspace owner unavailable.",
+            HTTPStatus.FORBIDDEN: "`forbidden` : API credential scope, app, or workspace access denied.",
+            HTTPStatus.NOT_FOUND: "Annotation not found",
+            HTTPStatus.UNPROCESSABLE_ENTITY: "`unprocessable_entity` : Invalid annotation payload.",
         }
     )
     @service_api_ns.response(
-        200,
+        HTTPStatus.OK,
         "Annotation updated successfully",
         service_api_ns.models[Annotation.__name__],
     )
@@ -317,9 +325,9 @@ class AnnotationUpdateDeleteApi(Resource):
         description="Deletes an annotation and its associated hit history.",
         tags=["Annotations"],
         responses={
-            204: "Annotation deleted successfully.",
-            403: "`forbidden` : Insufficient permissions to edit annotations.",
-            404: "`not_found` : Annotation does not exist.",
+            HTTPStatus.NO_CONTENT: "Annotation deleted successfully.",
+            HTTPStatus.FORBIDDEN: "`forbidden` : API credential scope, app, or workspace access denied.",
+            HTTPStatus.NOT_FOUND: "`not_found` : App or annotation no longer exists.",
         },
     )
     @service_api_ns.doc("delete_annotation")
@@ -327,10 +335,11 @@ class AnnotationUpdateDeleteApi(Resource):
     @service_api_ns.doc(params={"annotation_id": "The unique identifier of the annotation to delete."})
     @service_api_ns.doc(
         responses={
-            204: "Annotation deleted successfully",
-            401: "Unauthorized - invalid API token",
-            403: "Forbidden - insufficient permissions",
-            404: "Annotation not found",
+            HTTPStatus.NO_CONTENT: "Annotation deleted successfully",
+            HTTPStatus.BAD_REQUEST: "`invalid_param` : Invalid app selection or missing workspace.",
+            HTTPStatus.UNAUTHORIZED: "`unauthorized` : Invalid API credential or workspace owner unavailable.",
+            HTTPStatus.FORBIDDEN: "`forbidden` : API credential scope, app, or workspace access denied.",
+            HTTPStatus.NOT_FOUND: "Annotation not found",
         }
     )
     @service_api_account_admission
