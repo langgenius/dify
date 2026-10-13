@@ -92,6 +92,18 @@ class NotFoundError(BaseHTTPException):
     code = 404
 
 
+class ConversationNotFoundHTTPError(BaseHTTPException):
+    error_code = "conversation_not_found"
+    description = "The conversation was not found for this user and app."
+    code = HTTPStatus.NOT_FOUND
+
+
+class ConversationFirstMessageNotFoundHTTPError(BaseHTTPException):
+    error_code = "conversation_first_message_not_found"
+    description = "The conversation has no message from which to generate a name."
+    code = HTTPStatus.NOT_FOUND
+
+
 class UnauthorizedError(BaseHTTPException):
     error_code = "unauthorized"
     code = HTTPStatus.UNAUTHORIZED

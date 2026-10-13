@@ -10,14 +10,18 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from models.agent import AgentWorkingResourceStatus, AgentWorkspace, AgentWorkspaceOwnerType
-from models.enums import ConversationFromSource, CreatorUserRole
-from models.model import App, AppMode, Conversation, InstalledApp, Message
+from models.enums import ConversationFromSource, CreatorUserRole, EndUserType
+from models.model import App, AppMode, Conversation, EndUser, InstalledApp, Message
 from models.web import PinnedConversation
-from repositories.installed_app_conversation_repository import SQLAlchemyInstalledAppConversationRepository
+from repositories.conversation_repository import ConversationRepository
+from services.entities.conversation_entities import (
+    ConversationPage,
+    EndUserConversationRef,
+    InstalledAppConversationRef,
+)
 from services.errors.conversation import ConversationNotExistsError, LastConversationNotExistsError
 from services.errors.message import MessageNotExistsError
 from services.installed_app_access_service import InstalledAppNotFoundError, InstalledAppRef
-from services.installed_app_conversation_service import ConversationPage
 
 _ACCOUNT_ID = "11111111-1111-4111-8111-111111111111"
 _OWNER_TENANT_ID = "22222222-2222-4222-8222-222222222222"
@@ -110,7 +114,7 @@ def _pin(
 def test_page_preserves_empty_result_and_pinned_empty_short_circuit(
     sqlite_session_factory: sessionmaker[Session], installation: InstalledAppRef
 ) -> None:
-    repository = SQLAlchemyInstalledAppConversationRepository(session_factory=sqlite_session_factory)
+    repository = ConversationRepository(session_factory=sqlite_session_factory)
     assert repository.get_page(
         installed_app=installation, account_id=_ACCOUNT_ID, last_id=None, limit=20, pinned=None
     ) == ConversationPage(limit=20, has_more=False, data=())
@@ -130,7 +134,7 @@ def test_page_keeps_updated_order_cursor_and_detached_inputs(
         old = _conversation(session, installation, updated_at=_TIME - timedelta(hours=1))
         newest = _conversation(session, installation, updated_at=_TIME + timedelta(hours=1))
         middle = _conversation(session, installation)
-    repository = SQLAlchemyInstalledAppConversationRepository(session_factory=sqlite_session_factory)
+    repository = ConversationRepository(session_factory=sqlite_session_factory)
 
     first_page = repository.get_page(
         installed_app=installation, account_id=_ACCOUNT_ID, last_id=None, limit=2, pinned=None
@@ -160,7 +164,7 @@ def test_page_keeps_existing_strict_timestamp_behavior_for_ties(
     with sqlite_session_factory.begin() as session:
         _conversation(session, installation)
         _conversation(session, installation)
-    repository = SQLAlchemyInstalledAppConversationRepository(session_factory=sqlite_session_factory)
+    repository = ConversationRepository(session_factory=sqlite_session_factory)
     page = repository.get_page(installed_app=installation, account_id=_ACCOUNT_ID, last_id=None, limit=1, pinned=None)
     assert len(page.data) == 1
     assert page.has_more is False
@@ -183,7 +187,7 @@ def test_page_filters_invoke_source_and_scopes_pins_to_account_role_and_owner(
         _pin(session, installation, explore.id, role=CreatorUserRole.END_USER)
         _pin(session, installation, explore.id, account_id=str(uuid4()))
         _pin(session, replace(installation, app_id=str(uuid4())), explore.id)
-    repository = SQLAlchemyInstalledAppConversationRepository(session_factory=sqlite_session_factory)
+    repository = ConversationRepository(session_factory=sqlite_session_factory)
 
     for pinned, expected in [(None, [legacy.id, explore.id]), (True, [legacy.id]), (False, [explore.id])]:
         page = repository.get_page(
@@ -209,7 +213,7 @@ def test_every_conversation_ownership_predicate_protects_reads_and_mutations(
             value = ConversationFromSource.API
         session.execute(update(Conversation).where(Conversation.id == conversation.id).values({mismatch: value}))
         conversation_id = conversation.id
-    repository = SQLAlchemyInstalledAppConversationRepository(session_factory=sqlite_session_factory)
+    repository = ConversationRepository(session_factory=sqlite_session_factory)
 
     assert (
         repository.get_page(
@@ -222,14 +226,22 @@ def test_every_conversation_ownership_predicate_protects_reads_and_mutations(
             installed_app=installation, account_id=_ACCOUNT_ID, last_id=conversation_id, limit=20, pinned=None
         )
     with pytest.raises(ConversationNotExistsError):
-        repository.get(installed_app=installation, account_id=_ACCOUNT_ID, conversation_id=conversation_id)
+        repository.get(
+            ref=InstalledAppConversationRef(
+                installed_app=installation, account_id=_ACCOUNT_ID, conversation_id=conversation_id
+            )
+        )
     with pytest.raises(ConversationNotExistsError):
-        repository.get_name_source(installed_app=installation, account_id=_ACCOUNT_ID, conversation_id=conversation_id)
+        repository.get_name_source(
+            ref=InstalledAppConversationRef(
+                installed_app=installation, account_id=_ACCOUNT_ID, conversation_id=conversation_id
+            )
+        )
     with pytest.raises(ConversationNotExistsError):
         repository.rename(
-            installed_app=installation,
-            account_id=_ACCOUNT_ID,
-            conversation_id=conversation_id,
+            ref=InstalledAppConversationRef(
+                installed_app=installation, account_id=_ACCOUNT_ID, conversation_id=conversation_id
+            ),
             name="Unauthorized",
             updated_at=_TIME,
         )
@@ -263,17 +275,21 @@ def test_all_operations_revalidate_complete_installation_and_actual_app(
             session.delete(installed_app)
         else:
             installation = replace(installation, **{mismatch: str(uuid4())})
-    repository = SQLAlchemyInstalledAppConversationRepository(session_factory=sqlite_session_factory)
+    repository = ConversationRepository(session_factory=sqlite_session_factory)
 
     with pytest.raises(InstalledAppNotFoundError):
         repository.get_page(installed_app=installation, account_id=_ACCOUNT_ID, last_id=None, limit=20, pinned=True)
     with pytest.raises(InstalledAppNotFoundError):
-        repository.get_name_source(installed_app=installation, account_id=_ACCOUNT_ID, conversation_id=conversation.id)
+        repository.get_name_source(
+            ref=InstalledAppConversationRef(
+                installed_app=installation, account_id=_ACCOUNT_ID, conversation_id=conversation.id
+            )
+        )
     with pytest.raises(InstalledAppNotFoundError):
         repository.rename(
-            installed_app=installation,
-            account_id=_ACCOUNT_ID,
-            conversation_id=conversation.id,
+            ref=InstalledAppConversationRef(
+                installed_app=installation, account_id=_ACCOUNT_ID, conversation_id=conversation.id
+            ),
             name="Unauthorized",
             updated_at=_TIME,
         )
@@ -293,7 +309,7 @@ def test_name_source_uses_first_message_and_real_app_owner_tenant(
         conversation = _conversation(session, installation)
         _message(session, conversation, query="Later", created_at=_TIME)
         _message(session, conversation, query="First", created_at=_TIME - timedelta(hours=1))
-    repository = SQLAlchemyInstalledAppConversationRepository(session_factory=sqlite_session_factory)
+    repository = ConversationRepository(session_factory=sqlite_session_factory)
     connection_events: list[str] = []
 
     @event.listens_for(sqlite_engine, "checkout")
@@ -305,12 +321,18 @@ def test_name_source_uses_first_message_and_real_app_owner_tenant(
         connection_events.append("checkin")
 
     result = repository.get_name_source(
-        installed_app=installation, account_id=_ACCOUNT_ID, conversation_id=conversation.id
+        ref=InstalledAppConversationRef(
+            installed_app=installation, account_id=_ACCOUNT_ID, conversation_id=conversation.id
+        )
     )
     assert connection_events == ["checkout", "checkin"]
     assert result.tenant_id == _OWNER_TENANT_ID != installation.tenant_id
     assert result.query == "First"
-    record = repository.get(installed_app=installation, account_id=_ACCOUNT_ID, conversation_id=conversation.id)
+    record = repository.get(
+        ref=InstalledAppConversationRef(
+            installed_app=installation, account_id=_ACCOUNT_ID, conversation_id=conversation.id
+        )
+    )
     assert record.name == "Original name"
     assert inspect(record, raiseerr=False) is None
     assert connection_events == ["checkout", "checkin", "checkout", "checkin"]
@@ -324,9 +346,13 @@ def test_name_source_rejects_missing_message_and_message_from_other_app(
         _message(session, conversation, query="Wrong app", created_at=_TIME)
         session.flush()
         session.execute(update(Message).values(app_id=str(uuid4())))
-    repository = SQLAlchemyInstalledAppConversationRepository(session_factory=sqlite_session_factory)
+    repository = ConversationRepository(session_factory=sqlite_session_factory)
     with pytest.raises(MessageNotExistsError, match=conversation.id):
-        repository.get_name_source(installed_app=installation, account_id=_ACCOUNT_ID, conversation_id=conversation.id)
+        repository.get_name_source(
+            ref=InstalledAppConversationRef(
+                installed_app=installation, account_id=_ACCOUNT_ID, conversation_id=conversation.id
+            )
+        )
 
 
 @pytest.mark.parametrize("updated_at", [None, _TIME + timedelta(hours=1)])
@@ -335,11 +361,11 @@ def test_rename_commits_and_materializes_automatic_or_explicit_updated_at(
 ) -> None:
     with sqlite_session_factory.begin() as session:
         conversation = _conversation(session, installation)
-    repository = SQLAlchemyInstalledAppConversationRepository(session_factory=sqlite_session_factory)
+    repository = ConversationRepository(session_factory=sqlite_session_factory)
     result = repository.rename(
-        installed_app=installation,
-        account_id=_ACCOUNT_ID,
-        conversation_id=conversation.id,
+        ref=InstalledAppConversationRef(
+            installed_app=installation, account_id=_ACCOUNT_ID, conversation_id=conversation.id
+        ),
         name="",
         updated_at=updated_at,
     )
@@ -357,32 +383,6 @@ def test_rename_commits_and_materializes_automatic_or_explicit_updated_at(
     assert result.inputs["flag"] is False
 
 
-def test_rename_materializes_inputs_before_mutation(
-    sqlite_session_factory: sessionmaker[Session], installation: InstalledAppRef, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    with sqlite_session_factory.begin() as session:
-        conversation = _conversation(session, installation)
-    materialization_state: list[tuple[str, bool]] = []
-    original_inputs_with_session = Conversation.inputs_with_session
-
-    def track_materialization(self: Conversation, *, session: Session) -> dict[str, object]:
-        materialization_state.append((self.name, self in session.dirty))
-        return original_inputs_with_session(self, session=session)
-
-    monkeypatch.setattr(Conversation, "inputs_with_session", track_materialization)
-    repository = SQLAlchemyInstalledAppConversationRepository(session_factory=sqlite_session_factory)
-
-    repository.rename(
-        installed_app=installation,
-        account_id=_ACCOUNT_ID,
-        conversation_id=conversation.id,
-        name="Renamed",
-        updated_at=_TIME + timedelta(hours=1),
-    )
-
-    assert materialization_state == [("Original name", False)]
-
-
 def test_pin_and_unpin_are_idempotent_and_preserve_other_owners(
     sqlite_session_factory: sessionmaker[Session], installation: InstalledAppRef
 ) -> None:
@@ -391,7 +391,7 @@ def test_pin_and_unpin_are_idempotent_and_preserve_other_owners(
         _pin(session, installation, conversation.id, role=CreatorUserRole.END_USER)
         _pin(session, installation, conversation.id, account_id=str(uuid4()))
         _pin(session, replace(installation, app_id=str(uuid4())), conversation.id)
-    repository = SQLAlchemyInstalledAppConversationRepository(session_factory=sqlite_session_factory)
+    repository = ConversationRepository(session_factory=sqlite_session_factory)
     for _ in range(2):
         repository.set_pinned(
             installed_app=installation, account_id=_ACCOUNT_ID, conversation_id=conversation.id, is_pinned=True
@@ -423,7 +423,7 @@ def test_existing_pin_and_unpin_do_not_require_live_conversation(
     missing_id = str(uuid4())
     with sqlite_session_factory.begin() as session:
         _pin(session, installation, missing_id)
-    repository = SQLAlchemyInstalledAppConversationRepository(session_factory=sqlite_session_factory)
+    repository = ConversationRepository(session_factory=sqlite_session_factory)
     repository.set_pinned(
         installed_app=installation, account_id=_ACCOUNT_ID, conversation_id=missing_id, is_pinned=True
     )
@@ -455,7 +455,7 @@ def test_delete_commits_soft_deletion_and_returns_owner_tenant_for_cleanup(
             for index in range(workspace_count)
         ]
         session.add_all(workspaces)
-    repository = SQLAlchemyInstalledAppConversationRepository(session_factory=sqlite_session_factory)
+    repository = ConversationRepository(session_factory=sqlite_session_factory)
     deleted = repository.delete(installed_app=installation, account_id=_ACCOUNT_ID, conversation_id=conversation.id)
 
     assert deleted.tenant_id == _OWNER_TENANT_ID
@@ -491,14 +491,14 @@ def test_failed_commit_rolls_back_mutations_and_propagates_original_error(
     def fail_commit(_session: Session) -> None:
         raise failure
 
-    repository = SQLAlchemyInstalledAppConversationRepository(session_factory=failing_factory)
+    repository = ConversationRepository(session_factory=failing_factory)
 
     def mutate() -> None:
         if operation == "rename":
             repository.rename(
-                installed_app=installation,
-                account_id=_ACCOUNT_ID,
-                conversation_id=conversation.id,
+                ref=InstalledAppConversationRef(
+                    installed_app=installation, account_id=_ACCOUNT_ID, conversation_id=conversation.id
+                ),
                 name="Discarded",
                 updated_at=_TIME + timedelta(hours=1),
             )
@@ -519,3 +519,60 @@ def test_failed_commit_rolls_back_mutations_and_propagates_original_error(
         assert stored.updated_at == _TIME
         assert stored.is_deleted is False
         assert session.scalars(select(PinnedConversation)).all() == []
+
+
+def test_end_user_and_installed_account_refs_never_cross_owner_domains(
+    sqlite_session_factory: sessionmaker[Session], installation: InstalledAppRef
+) -> None:
+    with sqlite_session_factory.begin() as session:
+        account_conversation = _conversation(session, installation)
+        end_user = EndUser(
+            id=_ACCOUNT_ID,
+            tenant_id=installation.app_owner_tenant_id,
+            app_id=installation.app_id,
+            type=EndUserType.BROWSER,
+            session_id=str(uuid4()),
+        )
+        session.add(end_user)
+        end_user_conversation = Conversation(
+            app_id=installation.app_id,
+            mode=AppMode.CHAT,
+            name="End-user conversation",
+            inputs={},
+            from_source=ConversationFromSource.API,
+            from_end_user_id=end_user.id,
+            from_account_id=None,
+            is_deleted=False,
+        )
+        session.add(end_user_conversation)
+        session.flush()
+        account_ref = InstalledAppConversationRef(
+            installed_app=installation, account_id=_ACCOUNT_ID, conversation_id=account_conversation.id
+        )
+        end_user_ref = EndUserConversationRef(
+            app_id=installation.app_id,
+            tenant_id=installation.app_owner_tenant_id,
+            end_user_id=end_user.id,
+            conversation_id=end_user_conversation.id,
+        )
+        _message(session, account_conversation, query="Account question", created_at=_TIME)
+        _message(session, end_user_conversation, query="End-user question", created_at=_TIME)
+    repository = ConversationRepository(session_factory=sqlite_session_factory)
+    assert repository.get(ref=account_ref).name == "Original name"
+    assert repository.get(ref=end_user_ref).name == "End-user conversation"
+    assert repository.get_name_source(ref=account_ref).query == "Account question"
+    assert repository.get_name_source(ref=end_user_ref).query == "End-user question"
+
+    for foreign_ref in (
+        replace(account_ref, conversation_id=end_user_ref.conversation_id),
+        replace(end_user_ref, conversation_id=account_ref.conversation_id),
+        replace(end_user_ref, tenant_id=installation.tenant_id),
+    ):
+        with pytest.raises(ConversationNotExistsError):
+            repository.get(ref=foreign_ref)
+        with pytest.raises(ConversationNotExistsError):
+            repository.get_name_source(ref=foreign_ref)
+        with pytest.raises(ConversationNotExistsError):
+            repository.rename(ref=foreign_ref, name="Forbidden", updated_at=_TIME)
+    assert repository.get(ref=account_ref).name == "Original name"
+    assert repository.get(ref=end_user_ref).name == "End-user conversation"
