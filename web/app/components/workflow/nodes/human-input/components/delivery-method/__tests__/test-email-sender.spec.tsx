@@ -19,7 +19,7 @@ import { toast } from '@/app/notifications'
 import { seedAccountProfileQuery } from '@/test/console/account-profile'
 import { render } from '@/test/console/render'
 import { createAppDetailFixture } from '@/test/fixtures/app'
-import EmailSenderModal from '../test-email-sender'
+import { EmailSenderDialog } from '../test-email-sender'
 
 vi.mock('@/app/notifications', async (importOriginal) => ({
   ...(await importOriginal()),
@@ -75,7 +75,7 @@ const renderWithProviders = (ui: ReactNode) => {
   )
 }
 
-const setupFetch = () => {
+const setupFetch = (deliveryResponse?: () => Promise<Response>) => {
   const requests: RecordedRequest[] = []
   const fetchSpy = vi
     .spyOn(globalThis, 'fetch')
@@ -113,6 +113,8 @@ const setupFetch = () => {
         )
       }
 
+      if (request.url.endsWith('/delivery-test') && deliveryResponse) return deliveryResponse()
+
       return new Response(JSON.stringify({ result: 'success' }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
@@ -144,7 +146,7 @@ const TestEmailSenderHarness = () => {
       <button type="button" onClick={() => setOpen(true)}>
         Open test email sender
       </button>
-      <EmailSenderModal
+      <EmailSenderDialog
         nodeId="human-node"
         deliveryId="delivery-1"
         open={open}
@@ -195,7 +197,7 @@ describe('human-input/delivery-method/test-email-sender', () => {
     const handleOpenChange = vi.fn()
 
     renderWithProviders(
-      <EmailSenderModal
+      <EmailSenderDialog
         nodeId="human-node"
         deliveryId="delivery-1"
         open
@@ -319,7 +321,7 @@ describe('human-input/delivery-method/test-email-sender', () => {
     const handleOpenChange = vi.fn()
 
     renderWithProviders(
-      <EmailSenderModal
+      <EmailSenderDialog
         nodeId="human-node"
         deliveryId="delivery-1"
         open
@@ -335,12 +337,79 @@ describe('human-input/delivery-method/test-email-sender', () => {
     expect(handleOpenChange).not.toHaveBeenCalled()
   })
 
+  it('keeps the sender open during the request and allows retrying the same draft after failure', async () => {
+    const user = userEvent.setup()
+    let resolveRequest!: (response: Response) => void
+    const firstResponse = new Promise<Response>((resolve) => {
+      resolveRequest = resolve
+    })
+    const deliveryResponse = vi
+      .fn()
+      .mockReturnValueOnce(firstResponse)
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ result: 'success' }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      )
+    const { requests } = setupFetch(deliveryResponse)
+    const onOpenChange = vi.fn()
+    renderWithProviders(
+      <EmailSenderDialog
+        nodeId="human-node"
+        deliveryId="delivery-1"
+        open
+        onOpenChange={onOpenChange}
+        jumpToEmailConfigModal={vi.fn()}
+        config={createConfig({ body: '{{#start.message#}}' })}
+      />,
+    )
+    const message = screen.getByPlaceholderText('message')
+    await user.type(message, 'Keep this draft{Enter}')
+    await waitFor(() => expect(deliveryResponse).toHaveBeenCalledTimes(1))
+    const cancel = screen.getByRole('button', { name: 'common.operation.cancel' })
+    const close = screen.getByRole('button', { name: 'common.operation.close' })
+    expect(cancel).toBeDisabled()
+    expect(close).toBeDisabled()
+    await user.click(cancel)
+    await user.click(close)
+    await user.keyboard('{Escape}{Enter}')
+    expect(onOpenChange).not.toHaveBeenCalled()
+    expect(deliveryResponse).toHaveBeenCalledTimes(1)
+
+    resolveRequest(
+      new Response(JSON.stringify({ message: 'Delivery failed' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+    await waitFor(() => expect(cancel).not.toBeDisabled())
+    expect(message).toHaveValue('Keep this draft')
+    expect(onOpenChange).not.toHaveBeenCalled()
+    expect(
+      screen.queryByText('workflowHumanInput.nodes.humanInput.deliveryMethod.emailSender.done'),
+    ).not.toBeInTheDocument()
+
+    await user.click(message)
+    await user.keyboard('{Enter}')
+    expect(
+      await screen.findByText(
+        'workflowHumanInput.nodes.humanInput.deliveryMethod.emailSender.done',
+      ),
+    ).toBeInTheDocument()
+    const sends = requests.filter((request) => request.url.endsWith('/delivery-test'))
+    expect(sends).toHaveLength(2)
+    expect(sends[1]?.body).toEqual(sends[0]?.body)
+    await user.click(screen.getByRole('button', { name: 'common.operation.ok' }))
+    expect(onOpenChange).toHaveBeenCalledWith(false)
+  })
+
   it('should submit variables referenced by dynamic select option sources', async () => {
     const user = userEvent.setup()
     const { requests } = setupFetch()
 
     renderWithProviders(
-      <EmailSenderModal
+      <EmailSenderDialog
         nodeId="human-node"
         deliveryId="delivery-1"
         open
@@ -422,7 +491,7 @@ describe('human-input/delivery-method/test-email-sender', () => {
     const handleOpenChange = vi.fn()
 
     renderWithProviders(
-      <EmailSenderModal
+      <EmailSenderDialog
         nodeId="human-node"
         deliveryId="delivery-1"
         open
@@ -453,7 +522,7 @@ describe('human-input/delivery-method/test-email-sender', () => {
     setupFetch()
 
     renderWithProviders(
-      <EmailSenderModal
+      <EmailSenderDialog
         nodeId="human-node"
         deliveryId="delivery-1"
         open
@@ -480,7 +549,7 @@ describe('human-input/delivery-method/test-email-sender', () => {
     const { requests } = setupFetch()
 
     renderWithProviders(
-      <EmailSenderModal
+      <EmailSenderDialog
         nodeId="human-node"
         deliveryId="delivery-1"
         open
@@ -548,7 +617,7 @@ describe('human-input/delivery-method/test-email-sender', () => {
     setupFetch()
 
     renderWithProviders(
-      <EmailSenderModal
+      <EmailSenderDialog
         nodeId="human-node"
         deliveryId="delivery-1"
         open
@@ -587,7 +656,7 @@ describe('human-input/delivery-method/test-email-sender', () => {
     setupFetch()
 
     renderWithProviders(
-      <EmailSenderModal
+      <EmailSenderDialog
         nodeId="human-node"
         deliveryId="delivery-1"
         open

@@ -9,7 +9,7 @@ import { RiArrowRightSFill } from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { noop, unionBy } from 'es-toolkit/compat'
 import { useAtomValue } from 'jotai'
-import { memo, useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { getInputVars as doGetInputVars } from '@/app/components/base/prompt-editor/constants'
@@ -32,7 +32,7 @@ import EmailInput from './recipient/email-input'
 
 const i18nPrefix = 'nodes.humanInput'
 
-type EmailSenderModalProps = {
+type EmailSenderDialogProps = {
   nodeId: string
   deliveryId: string
   open: boolean
@@ -45,7 +45,10 @@ type EmailSenderModalProps = {
   availableNodes?: Node[]
 }
 
-type EmailSenderContentProps = Omit<EmailSenderModalProps, 'open'>
+type EmailSenderContentProps = Omit<EmailSenderDialogProps, 'open' | 'onOpenChange'> & {
+  testEmailSender: ReturnType<typeof useTestEmailSender>['mutateAsync']
+  isPending: boolean
+}
 
 const getOriginVar = (valueSelector: string[], list: NodeOutPutVar[]) => {
   const targetVar = list.find((item) => item.nodeId === valueSelector[0])
@@ -121,7 +124,8 @@ const formatEmailSenderInputs = (
 const EmailSenderContent = ({
   nodeId,
   deliveryId,
-  onOpenChange,
+  testEmailSender,
+  isPending,
   jumpToEmailConfigModal,
   config,
   formContent,
@@ -136,7 +140,6 @@ const EmailSenderContent = ({
   })
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
   const appDetail = useAppStore((state) => state.appDetail)
-  const { mutateAsync: testEmailSender } = useTestEmailSender()
 
   const debugEnabled = !!config?.debug_mode
   const onlyWholeTeam =
@@ -199,7 +202,6 @@ const EmailSenderContent = ({
 
   const [inputs, setInputs] = useState<Record<string, unknown>>({})
   const [collapsed, setCollapsed] = useState(!(generatedInputs.length > 0))
-  const [sendingEmail, setSendingEmail] = useState(false)
   const [done, setDone] = useState(false)
 
   const handleValueChange = (variable: string, v: string) => {
@@ -222,7 +224,7 @@ const EmailSenderContent = ({
   }, [generatedInputs, inputs])
 
   const handleConfirm = useCallback(async () => {
-    if (!confirmChecked) return
+    if (!confirmChecked || isPending) return
     const { formattedValues, parseErrorJsonField } = formatEmailSenderInputs(
       generatedInputs,
       inputs,
@@ -233,7 +235,6 @@ const EmailSenderContent = ({
       )
       return
     }
-    setSendingEmail(true)
     try {
       await testEmailSender({
         appID: appDetail?.id || '',
@@ -242,11 +243,12 @@ const EmailSenderContent = ({
         inputs: formattedValues,
       })
       setDone(true)
-    } finally {
-      setSendingEmail(false)
+    } catch {
+      // The request boundary reports the error; keep this session available for retry.
     }
   }, [
     confirmChecked,
+    isPending,
     generatedInputs,
     inputs,
     testEmailSender,
@@ -323,17 +325,24 @@ const EmailSenderContent = ({
           </div>
         )}
         <div className="mt-6 flex flex-row-reverse gap-2">
-          <Button variant="primary" className="w-18" onClick={() => onOpenChange(false)}>
+          <DialogClose render={<Button variant="primary" className="w-18" />}>
             {t(($) => $['operation.ok'], { ns: 'common' })}
-          </Button>
+          </DialogClose>
         </div>
       </>
     )
   }
 
   return (
-    <>
+    <form
+      onSubmit={(event) => {
+        if (event.target !== event.currentTarget) return
+        event.preventDefault()
+        void handleConfirm()
+      }}
+    >
       <DialogClose
+        disabled={isPending}
         render={
           <IconButton
             aria-label={t(($) => $['operation.close'], { ns: 'common' })}
@@ -422,6 +431,7 @@ const EmailSenderContent = ({
                 strong: (
                   <button
                     type="button"
+                    disabled={isPending}
                     onClick={jumpToEmailConfigModal}
                     className="inline cursor-pointer border-none bg-transparent p-0 text-left system-xs-regular text-text-accent"
                   />
@@ -480,32 +490,37 @@ const EmailSenderContent = ({
         </>
       )}
       <div className="mt-6 flex flex-row-reverse gap-2">
-        <Button
-          disabled={!confirmChecked}
-          loading={sendingEmail}
-          variant="primary"
-          onClick={handleConfirm}
-        >
+        <Button disabled={!confirmChecked} loading={isPending} type="submit" variant="primary">
           {t(($) => $[`${i18nPrefix}.deliveryMethod.emailSender.send`], {
             ns: 'workflowHumanInput',
           })}
         </Button>
-        <Button className="w-18" onClick={() => onOpenChange(false)}>
+        <DialogClose disabled={isPending} render={<Button className="w-18" />}>
           {t(($) => $['operation.cancel'], { ns: 'common' })}
-        </Button>
+        </DialogClose>
       </div>
-    </>
+    </form>
   )
 }
 
-const EmailSenderModal = ({ open, onOpenChange, ...props }: EmailSenderModalProps) => {
+export function EmailSenderDialog({ open, onOpenChange, ...props }: EmailSenderDialogProps) {
+  const { mutateAsync: testEmailSender, isPending } = useTestEmailSender()
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange} disablePointerDismissal>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen, details) => {
+        if (!nextOpen && isPending) {
+          details.cancel()
+          return
+        }
+        onOpenChange(nextOpen)
+      }}
+      disablePointerDismissal
+    >
       <DialogContent>
-        <EmailSenderContent {...props} onOpenChange={onOpenChange} />
+        <EmailSenderContent {...props} testEmailSender={testEmailSender} isPending={isPending} />
       </DialogContent>
     </Dialog>
   )
 }
-
-export default memo(EmailSenderModal)

@@ -3,7 +3,7 @@ import type { EmailConfig } from '../../../types'
 import { fireEvent, screen } from '@testing-library/react'
 import { createAccountProfileQueryWrapper } from '@/test/console/account-profile'
 import { render as renderWithConsoleState } from '@/test/console/render'
-import EmailConfigureModal from '../email-configure-modal'
+import { EmailConfigureDialog } from '../email-configure-modal'
 
 const mockToastError = vi.hoisted(() => vi.fn())
 const mockConsoleState = vi.hoisted(() => ({
@@ -102,7 +102,7 @@ describe('human-input/delivery-method/email-configure-modal', () => {
     const handleConfirm = vi.fn()
 
     render(
-      <EmailConfigureModal
+      <EmailConfigureDialog
         open
         config={createEmailConfig()}
         onOpenChange={vi.fn()}
@@ -147,7 +147,7 @@ describe('human-input/delivery-method/email-configure-modal', () => {
   it('should validate subject, body, request url placeholder, and recipients before saving', () => {
     const handleConfirm = vi.fn()
 
-    render(<EmailConfigureModal open onOpenChange={vi.fn()} onConfirm={handleConfirm} />)
+    render(<EmailConfigureDialog open onOpenChange={vi.fn()} onConfirm={handleConfirm} />)
 
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
     expect(mockToastError).toHaveBeenCalledWith(
@@ -195,7 +195,7 @@ describe('human-input/delivery-method/email-configure-modal', () => {
   it('should close from both the icon trigger and the cancel button', () => {
     const handleOpenChange = vi.fn()
     render(
-      <EmailConfigureModal
+      <EmailConfigureDialog
         open
         config={createEmailConfig()}
         onOpenChange={handleOpenChange}
@@ -203,10 +203,10 @@ describe('human-input/delivery-method/email-configure-modal', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('dialog').querySelector('.absolute') as HTMLDivElement)
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
     expect(handleOpenChange).toHaveBeenCalledTimes(2)
-    expect(handleOpenChange).toHaveBeenCalledWith(false)
+    expect(handleOpenChange).toHaveBeenCalledWith(false, expect.any(Object))
   })
 })

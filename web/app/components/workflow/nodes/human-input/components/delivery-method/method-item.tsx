@@ -8,13 +8,13 @@ import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge/index'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { DeliveryMethodType } from '../../types'
-import EmailConfigureModal from './email-configure-modal'
-import TestEmailSender from './test-email-sender'
+import { EmailConfigureDialog } from './email-configure-modal'
+import { EmailSenderDialog } from './test-email-sender'
 
 const i18nPrefix = 'nodes.humanInput'
 
@@ -46,6 +46,8 @@ const DeliveryMethodItem: FC<DeliveryMethodItemProps> = ({
     ...userProfileQueryOptions(),
     select: (data) => data.profile.email,
   })
+  const emailDialogOpenerRef = useRef<HTMLButtonElement>(null)
+  const configureButtonRef = useRef<HTMLButtonElement>(null)
   const [isHovering, setIsHovering] = useState(false)
   const [showEmailModal, setShowEmailModal] = useState(false)
   const [showTestEmailModal, setShowTestEmailModal] = useState(false)
@@ -122,7 +124,7 @@ const DeliveryMethodItem: FC<DeliveryMethodItemProps> = ({
         </div>
         <div className="flex items-center gap-1">
           {!readonly && (
-            <div className="hidden items-end gap-1 group-hover:flex">
+            <div className="flex items-end gap-1 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100">
               {method.type === DeliveryMethodType.Email && method.config && (
                 <>
                   <Tooltip>
@@ -130,7 +132,10 @@ const DeliveryMethodItem: FC<DeliveryMethodItemProps> = ({
                       render={
                         <IconButton
                           aria-label={emailSenderTooltipContent}
-                          onClick={() => setShowTestEmailModal(true)}
+                          onClick={(event) => {
+                            emailDialogOpenerRef.current = event.currentTarget
+                            setShowTestEmailModal(true)
+                          }}
                         >
                           <span aria-hidden className="i-ri-send-plane-2-line size-4" />
                         </IconButton>
@@ -142,8 +147,12 @@ const DeliveryMethodItem: FC<DeliveryMethodItemProps> = ({
                     <TooltipTrigger
                       render={
                         <IconButton
+                          ref={configureButtonRef}
                           aria-label={configureLabel}
-                          onClick={() => setShowEmailModal(true)}
+                          onClick={(event) => {
+                            emailDialogOpenerRef.current = event.currentTarget
+                            setShowEmailModal(true)
+                          }}
                         >
                           <span aria-hidden className="i-ri-equalizer-2-line size-4" />
                         </IconButton>
@@ -182,7 +191,10 @@ const DeliveryMethodItem: FC<DeliveryMethodItemProps> = ({
             <Button
               className="-mr-1"
               size="small"
-              onClick={() => setShowEmailModal(true)}
+              onClick={(event) => {
+                emailDialogOpenerRef.current = event.currentTarget
+                setShowEmailModal(true)
+              }}
               disabled={readonly}
             >
               {t(($) => $[`${i18nPrefix}.deliveryMethod.notConfigured`], {
@@ -193,8 +205,13 @@ const DeliveryMethodItem: FC<DeliveryMethodItemProps> = ({
           )}
         </div>
       </div>
-      <EmailConfigureModal
+      <EmailConfigureDialog
         open={showEmailModal}
+        finalFocus={() =>
+          emailDialogOpenerRef.current?.isConnected
+            ? emailDialogOpenerRef.current
+            : configureButtonRef.current
+        }
         config={method.config as EmailConfig}
         nodesOutputVars={nodesOutputVars}
         availableNodes={availableNodes}
@@ -204,7 +221,7 @@ const DeliveryMethodItem: FC<DeliveryMethodItemProps> = ({
           setShowEmailModal(false)
         }}
       />
-      <TestEmailSender
+      <EmailSenderDialog
         nodeId={nodeId}
         deliveryId={method.id}
         open={showTestEmailModal}

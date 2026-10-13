@@ -35,7 +35,7 @@ const render = (ui: ReactElement) =>
   })
 
 vi.mock('../email-configure-modal', () => ({
-  default: (props: EmailConfigureModalProps) => {
+  EmailConfigureDialog: (props: EmailConfigureModalProps) => {
     mockEmailConfigureModal(props)
     return props.open ? (
       <div data-testid="email-configure-modal">
@@ -61,7 +61,7 @@ vi.mock('../email-configure-modal', () => ({
 }))
 
 vi.mock('../test-email-sender', () => ({
-  default: (props: TestEmailSenderProps) => {
+  EmailSenderDialog: (props: TestEmailSenderProps) => {
     mockTestEmailSender(props)
     return props.open ? (
       <div data-testid="test-email-sender">
