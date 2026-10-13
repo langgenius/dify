@@ -1,7 +1,17 @@
 import type { TestResultCard as TestResultPayload } from '@dify/contracts/api/console/dify-builder/types.gen'
-import { useId } from 'react'
+import {
+  ScrollArea,
+  ScrollAreaContent,
+  ScrollAreaScrollbar,
+  ScrollAreaThumb,
+  ScrollAreaViewport,
+} from '@langgenius/dify-ui/scroll-area'
+import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { DifyBuilderCard } from '../cards/card-shell'
+import { difyBuilderAppIdAtom } from '../store'
+import { TestResultNativeOutputs, TestResultRunDetails } from './test-result-native-run'
+import { TestResultOutputs } from './test-result-outputs'
 
 export const TestResultCard = ({
   payload,
@@ -11,89 +21,83 @@ export const TestResultCard = ({
   invalidated: boolean
 }) => {
   const { t } = useTranslation(['workflow'])
-  const summaryId = useId()
-  const outputsSummaryId = `${summaryId}-outputs`
-  const nodesSummaryId = `${summaryId}-nodes`
+  const appId = useAtomValue(difyBuilderAppIdAtom)
   const outcome =
     payload.outcome ??
     (payload.status === 'succeeded' ? 'execution_succeeded_needs_review' : 'execution_failed')
-  const needsReview = outcome === 'execution_succeeded_needs_review'
-  const headline = t(
-    ($) => {
-      switch (outcome) {
-        case 'execution_succeeded_needs_review':
-          return $['difyBuilder.testResult.executionSucceeded']
-        case 'required_output_unresolved':
-          return $['difyBuilder.testResult.requiredOutputUnresolved']
-        case 'execution_failed':
-          return $['difyBuilder.testResult.executionFailed']
-        case 'execution_unknown':
-          return $['difyBuilder.testResult.executionUnknown']
-      }
-    },
-    { ns: 'workflow' },
-  )
+  const succeeded = outcome === 'execution_succeeded_needs_review'
+  const headline =
+    outcome === 'required_output_unresolved'
+      ? t(($) => $['difyBuilder.testResult.requiredOutputUnresolved'], { ns: 'workflow' })
+      : outcome === 'execution_unknown'
+        ? t(($) => $['difyBuilder.testResult.executionUnknown'], { ns: 'workflow' })
+        : undefined
   const outputsLabel = t(($) => $['difyBuilder.testResult.terminalOutputs'], { ns: 'workflow' })
-  const nodesLabel = t(($) => $['difyBuilder.testResult.observedNodes'], { ns: 'workflow' })
 
   return (
     <DifyBuilderCard
       category={t(($) => $['difyBuilder.cardCategory.test'], { ns: 'workflow' })}
       headline={headline}
       invalidated={invalidated}
-      status={
-        needsReview
-          ? undefined
-          : {
-              state:
-                outcome === 'execution_failed'
-                  ? 'failed'
-                  : outcome === 'required_output_unresolved'
-                    ? 'blocked'
-                    : 'waiting',
-            }
-      }
-      subheadline={payload.failure_reason}
+      status={{
+        state: succeeded ? 'done' : 'failed',
+        label: t(
+          ($) =>
+            succeeded
+              ? $['difyBuilder.testResult.statusPassed']
+              : $['difyBuilder.testResult.statusFailed'],
+          { ns: 'workflow' },
+        ),
+        className: succeeded ? 'text-util-colors-green-green-700' : undefined,
+        icon: (
+          <span aria-hidden className="flex size-4 shrink-0 items-center justify-center">
+            <span
+              className={
+                succeeded ? 'i-ri-checkbox-circle-line size-3.5' : 'i-ri-close-circle-line size-3.5'
+              }
+            />
+          </span>
+        ),
+      }}
     >
       <div className="flex min-w-0 flex-col gap-2 system-xs-regular text-text-secondary">
-        {needsReview && (
-          <p>{t(($) => $['difyBuilder.testResult.reviewRequired'], { ns: 'workflow' })}</p>
+        {payload.failure_reason && (
+          <p className="wrap-anywhere whitespace-pre-wrap">{payload.failure_reason}</p>
         )}
-        {payload.review_note && (
-          <p className="wrap-break-word whitespace-pre-wrap">{payload.review_note}</p>
-        )}
-        <p>{t(($) => $['difyBuilder.testResult.scopeLimit'], { ns: 'workflow' })}</p>
-        {payload.terminal_outputs == null ? (
-          <p>{t(($) => $['difyBuilder.testResult.outputsUnavailable'], { ns: 'workflow' })}</p>
-        ) : (
-          <details aria-labelledby={outputsSummaryId} className="min-w-0">
-            <summary
-              id={outputsSummaryId}
-              className="cursor-pointer rounded-sm text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-text-accent"
-            >
-              {outputsLabel}
-            </summary>
-            <pre className="mt-2 max-h-80 overflow-auto rounded-md bg-background-section p-2 font-mono wrap-anywhere whitespace-pre-wrap">
-              {JSON.stringify(payload.terminal_outputs, null, 2)}
-            </pre>
-          </details>
-        )}
-        <details aria-labelledby={nodesSummaryId} className="min-w-0">
-          <summary
-            id={nodesSummaryId}
-            className="cursor-pointer rounded-sm text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-text-accent"
+        <ScrollArea className="max-h-80 min-w-0 rounded-sm">
+          <ScrollAreaViewport
+            role="region"
+            aria-label={outputsLabel}
+            style={{ overflowX: 'hidden' }}
+            className="max-h-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-text-accent"
           >
-            {nodesLabel}
-          </summary>
-          <pre className="mt-2 max-h-80 overflow-auto rounded-md bg-background-section p-2 font-mono wrap-anywhere whitespace-pre-wrap">
-            {JSON.stringify(payload.executed_node_ids ?? [], null, 2)}
-          </pre>
-        </details>
-        {payload.dify_run_id && (
-          <dl>
-            <dt>{t(($) => $['difyBuilder.testResult.runId'], { ns: 'workflow' })}</dt>
-            <dd className="font-mono wrap-anywhere">{payload.dify_run_id}</dd>
-          </dl>
+            <ScrollAreaContent style={{ minWidth: 0 }} className="pr-3 pb-1">
+              {payload.terminal_outputs != null ? (
+                <TestResultOutputs outputs={payload.terminal_outputs} />
+              ) : appId && payload.dify_run_id ? (
+                <TestResultNativeOutputs
+                  key={`${appId}:${payload.dify_run_id}`}
+                  appId={appId}
+                  runId={payload.dify_run_id}
+                  failureReason={payload.failure_reason}
+                />
+              ) : (
+                <p>
+                  {outcome === 'execution_failed' && !payload.dify_run_id
+                    ? t(($) => $['difyBuilder.testResult.noOutputs'], { ns: 'workflow' })
+                    : t(($) => $['difyBuilder.testResult.outputsUnavailable'], {
+                        ns: 'workflow',
+                      })}
+                </p>
+              )}
+            </ScrollAreaContent>
+          </ScrollAreaViewport>
+          <ScrollAreaScrollbar>
+            <ScrollAreaThumb />
+          </ScrollAreaScrollbar>
+        </ScrollArea>
+        {appId && payload.dify_run_id && (
+          <TestResultRunDetails appId={appId} runId={payload.dify_run_id} />
         )}
       </div>
     </DifyBuilderCard>

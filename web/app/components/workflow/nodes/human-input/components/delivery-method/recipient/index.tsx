@@ -102,7 +102,7 @@ const Recipient = ({ data, onChange }: Props) => {
         </div>
         <label
           htmlFor={wholeWorkspaceId}
-          className={cn('grow system-sm-medium text-text-secondary')}
+          className={cn('grow cursor-pointer system-sm-medium text-text-secondary')}
         >
           {t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.allMembers`], {
             workspaceName: currentWorkspace.name.replace(/'/g, '’'),
