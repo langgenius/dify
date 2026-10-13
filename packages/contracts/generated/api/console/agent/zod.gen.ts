@@ -227,7 +227,7 @@ export const zPostAgentApiStatusApiError401 = zErrorResponse.and(
  */
 export const zGetAgentApiKeyListApiError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param', 'max_keys_exceeded']),
   }),
 )
 
@@ -237,6 +237,15 @@ export const zGetAgentApiKeyListApiError400 = zErrorResponse.and(
 export const zGetAgentApiKeyListApiError401 = zErrorResponse.and(
   z.object({
     code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetAgentApiKeyListApiError409
+ */
+export const zGetAgentApiKeyListApiError409 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['agent_not_published', 'conflict']),
   }),
 )
 
@@ -264,7 +273,7 @@ export const zApiKeyList = z.object({
  */
 export const zPostAgentApiKeyListApiError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param', 'max_keys_exceeded']),
   }),
 )
 
@@ -278,11 +287,20 @@ export const zPostAgentApiKeyListApiError401 = zErrorResponse.and(
 )
 
 /**
+ * PostAgentApiKeyListApiError409
+ */
+export const zPostAgentApiKeyListApiError409 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['agent_not_published', 'conflict']),
+  }),
+)
+
+/**
  * DeleteAgentApiKeyApiError400
  */
 export const zDeleteAgentApiKeyApiError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param', 'max_keys_exceeded']),
   }),
 )
 
@@ -292,6 +310,15 @@ export const zDeleteAgentApiKeyApiError400 = zErrorResponse.and(
 export const zDeleteAgentApiKeyApiError401 = zErrorResponse.and(
   z.object({
     code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * DeleteAgentApiKeyApiError409
+ */
+export const zDeleteAgentApiKeyApiError409 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['agent_not_published', 'conflict']),
   }),
 )
 
@@ -500,7 +527,7 @@ export const zPutAgentBuildDraftApiError401 = zErrorResponse.and(
  */
 export const zPutAgentBuildDraftApiError404 = zErrorResponse.and(
   z.object({
-    code: z.enum(['agent_not_found_error', 'not_found']),
+    code: z.enum(['agent_not_found_error', 'agent_version_not_found_error', 'not_found']),
   }),
 )
 
@@ -770,9 +797,11 @@ export const zPostAgentComposerValidateApiError400 = zErrorResponse.and(
   z.object({
     code: z.enum([
       'account_not_initialized',
+      'agent_soul_locked_error',
       'bad_request',
       'invalid_composer_config_error',
       'invalid_param',
+      'plaintext_secret_not_allowed_error',
     ]),
   }),
 )
@@ -1286,6 +1315,7 @@ export const zPostAgentPublishApiError400 = zErrorResponse.and(
     code: z.enum([
       'account_not_initialized',
       'agent_model_not_configured',
+      'agent_soul_locked_error',
       'bad_request',
       'invalid_composer_config_error',
       'invalid_param',

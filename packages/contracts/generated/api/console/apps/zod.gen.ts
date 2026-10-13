@@ -3429,6 +3429,24 @@ export const zListWorkflowCommentsError401 = zErrorResponse.and(
 )
 
 /**
+ * ListWorkflowCommentsError403
+ */
+export const zListWorkflowCommentsError403 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['forbidden']),
+  }),
+)
+
+/**
+ * ListWorkflowCommentsError404
+ */
+export const zListWorkflowCommentsError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
  * WorkflowCommentCreatePayload
  */
 export const zWorkflowCommentCreatePayload = z.object({
@@ -3465,6 +3483,24 @@ export const zCreateWorkflowCommentError401 = zErrorResponse.and(
 )
 
 /**
+ * CreateWorkflowCommentError403
+ */
+export const zCreateWorkflowCommentError403 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['forbidden']),
+  }),
+)
+
+/**
+ * CreateWorkflowCommentError404
+ */
+export const zCreateWorkflowCommentError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
  * WorkflowCommentMentionUsersError400
  */
 export const zWorkflowCommentMentionUsersError400 = zErrorResponse.and(
@@ -3479,6 +3515,24 @@ export const zWorkflowCommentMentionUsersError400 = zErrorResponse.and(
 export const zWorkflowCommentMentionUsersError401 = zErrorResponse.and(
   z.object({
     code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * WorkflowCommentMentionUsersError403
+ */
+export const zWorkflowCommentMentionUsersError403 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['forbidden']),
+  }),
+)
+
+/**
+ * WorkflowCommentMentionUsersError404
+ */
+export const zWorkflowCommentMentionUsersError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
   }),
 )
 
@@ -3501,6 +3555,24 @@ export const zDeleteWorkflowCommentError401 = zErrorResponse.and(
 )
 
 /**
+ * DeleteWorkflowCommentError403
+ */
+export const zDeleteWorkflowCommentError403 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['forbidden']),
+  }),
+)
+
+/**
+ * DeleteWorkflowCommentError404
+ */
+export const zDeleteWorkflowCommentError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
  * GetWorkflowCommentError400
  */
 export const zGetWorkflowCommentError400 = zErrorResponse.and(
@@ -3515,6 +3587,24 @@ export const zGetWorkflowCommentError400 = zErrorResponse.and(
 export const zGetWorkflowCommentError401 = zErrorResponse.and(
   z.object({
     code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetWorkflowCommentError403
+ */
+export const zGetWorkflowCommentError403 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['forbidden']),
+  }),
+)
+
+/**
+ * GetWorkflowCommentError404
+ */
+export const zGetWorkflowCommentError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
   }),
 )
 
@@ -3555,6 +3645,24 @@ export const zUpdateWorkflowCommentError401 = zErrorResponse.and(
 )
 
 /**
+ * UpdateWorkflowCommentError403
+ */
+export const zUpdateWorkflowCommentError403 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['forbidden']),
+  }),
+)
+
+/**
+ * UpdateWorkflowCommentError404
+ */
+export const zUpdateWorkflowCommentError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
  * WorkflowCommentReplyPayload
  */
 export const zWorkflowCommentReplyPayload = z.object({
@@ -3589,6 +3697,24 @@ export const zCreateWorkflowCommentReplyError401 = zErrorResponse.and(
 )
 
 /**
+ * CreateWorkflowCommentReplyError403
+ */
+export const zCreateWorkflowCommentReplyError403 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['forbidden']),
+  }),
+)
+
+/**
+ * CreateWorkflowCommentReplyError404
+ */
+export const zCreateWorkflowCommentReplyError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
  * DeleteWorkflowCommentReplyError400
  */
 export const zDeleteWorkflowCommentReplyError400 = zErrorResponse.and(
@@ -3603,6 +3729,24 @@ export const zDeleteWorkflowCommentReplyError400 = zErrorResponse.and(
 export const zDeleteWorkflowCommentReplyError401 = zErrorResponse.and(
   z.object({
     code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * DeleteWorkflowCommentReplyError403
+ */
+export const zDeleteWorkflowCommentReplyError403 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['forbidden']),
+  }),
+)
+
+/**
+ * DeleteWorkflowCommentReplyError404
+ */
+export const zDeleteWorkflowCommentReplyError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
   }),
 )
 
@@ -3633,6 +3777,24 @@ export const zUpdateWorkflowCommentReplyError401 = zErrorResponse.and(
 )
 
 /**
+ * UpdateWorkflowCommentReplyError403
+ */
+export const zUpdateWorkflowCommentReplyError403 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['forbidden']),
+  }),
+)
+
+/**
+ * UpdateWorkflowCommentReplyError404
+ */
+export const zUpdateWorkflowCommentReplyError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
  * WorkflowCommentResolve
  */
 export const zWorkflowCommentResolve = z.object({
@@ -3657,6 +3819,24 @@ export const zResolveWorkflowCommentError400 = zErrorResponse.and(
 export const zResolveWorkflowCommentError401 = zErrorResponse.and(
   z.object({
     code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * ResolveWorkflowCommentError403
+ */
+export const zResolveWorkflowCommentError403 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['forbidden']),
+  }),
+)
+
+/**
+ * ResolveWorkflowCommentError404
+ */
+export const zResolveWorkflowCommentError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
   }),
 )
 
@@ -4433,9 +4613,11 @@ export const zPostWorkflowAgentComposerValidateApiError400 = zErrorResponse.and(
   z.object({
     code: z.enum([
       'account_not_initialized',
+      'agent_soul_locked_error',
       'bad_request',
       'invalid_composer_config_error',
       'invalid_param',
+      'plaintext_secret_not_allowed_error',
     ]),
   }),
 )
@@ -5378,7 +5560,7 @@ export const zRestoreWorkflowToDraftError404 = zErrorResponse.and(
  */
 export const zGetAppApiKeysError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param', 'max_keys_exceeded']),
   }),
 )
 
@@ -5388,6 +5570,15 @@ export const zGetAppApiKeysError400 = zErrorResponse.and(
 export const zGetAppApiKeysError401 = zErrorResponse.and(
   z.object({
     code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetAppApiKeysError409
+ */
+export const zGetAppApiKeysError409 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['agent_not_published', 'conflict']),
   }),
 )
 
@@ -5415,7 +5606,7 @@ export const zApiKeyList = z.object({
  */
 export const zCreateAppApiKeyError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param', 'max_keys_exceeded']),
   }),
 )
 
@@ -5429,11 +5620,20 @@ export const zCreateAppApiKeyError401 = zErrorResponse.and(
 )
 
 /**
+ * CreateAppApiKeyError409
+ */
+export const zCreateAppApiKeyError409 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['agent_not_published', 'conflict']),
+  }),
+)
+
+/**
  * DeleteAppApiKeyError400
  */
 export const zDeleteAppApiKeyError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param', 'max_keys_exceeded']),
   }),
 )
 
@@ -5443,6 +5643,15 @@ export const zDeleteAppApiKeyError400 = zErrorResponse.and(
 export const zDeleteAppApiKeyError401 = zErrorResponse.and(
   z.object({
     code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * DeleteAppApiKeyError409
+ */
+export const zDeleteAppApiKeyError409 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['agent_not_published', 'conflict']),
   }),
 )
 

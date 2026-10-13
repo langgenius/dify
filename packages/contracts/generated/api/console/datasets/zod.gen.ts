@@ -150,7 +150,7 @@ export const zGetDatasetApiBaseInfoError401 = zErrorResponse.and(
  */
 export const zGetDatasetApiKeysError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param', 'max_keys_exceeded']),
   }),
 )
 
@@ -164,11 +164,20 @@ export const zGetDatasetApiKeysError401 = zErrorResponse.and(
 )
 
 /**
+ * GetDatasetApiKeysError409
+ */
+export const zGetDatasetApiKeysError409 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['agent_not_published', 'conflict']),
+  }),
+)
+
+/**
  * PostDatasetApiKeyApiError400
  */
 export const zPostDatasetApiKeyApiError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param', 'max_keys_exceeded']),
   }),
 )
 
@@ -182,11 +191,20 @@ export const zPostDatasetApiKeyApiError401 = zErrorResponse.and(
 )
 
 /**
+ * PostDatasetApiKeyApiError409
+ */
+export const zPostDatasetApiKeyApiError409 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['agent_not_published', 'conflict']),
+  }),
+)
+
+/**
  * DeleteDatasetApiKeyError400
  */
 export const zDeleteDatasetApiKeyError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param', 'max_keys_exceeded']),
   }),
 )
 
@@ -196,6 +214,15 @@ export const zDeleteDatasetApiKeyError400 = zErrorResponse.and(
 export const zDeleteDatasetApiKeyError401 = zErrorResponse.and(
   z.object({
     code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * DeleteDatasetApiKeyError409
+ */
+export const zDeleteDatasetApiKeyError409 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['agent_not_published', 'conflict']),
   }),
 )
 
@@ -2686,7 +2713,7 @@ export const zCheckDatasetUseError409 = zErrorResponse.and(
  */
 export const zGetDatasetApiKeys4114B8EbError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param', 'max_keys_exceeded']),
   }),
 )
 
@@ -2700,11 +2727,20 @@ export const zGetDatasetApiKeys4114B8EbError401 = zErrorResponse.and(
 )
 
 /**
+ * GetDatasetApiKeys4114b8ebError409
+ */
+export const zGetDatasetApiKeys4114B8EbError409 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['agent_not_published', 'conflict']),
+  }),
+)
+
+/**
  * CreateDatasetApiKeyError400
  */
 export const zCreateDatasetApiKeyError400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param', 'max_keys_exceeded']),
   }),
 )
 
@@ -2718,11 +2754,20 @@ export const zCreateDatasetApiKeyError401 = zErrorResponse.and(
 )
 
 /**
+ * CreateDatasetApiKeyError409
+ */
+export const zCreateDatasetApiKeyError409 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['agent_not_published', 'conflict']),
+  }),
+)
+
+/**
  * DeleteDatasetApiKeyA407edb2Error400
  */
 export const zDeleteDatasetApiKeyA407Edb2Error400 = zErrorResponse.and(
   z.object({
-    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param', 'max_keys_exceeded']),
   }),
 )
 
@@ -2732,6 +2777,15 @@ export const zDeleteDatasetApiKeyA407Edb2Error400 = zErrorResponse.and(
 export const zDeleteDatasetApiKeyA407Edb2Error401 = zErrorResponse.and(
   z.object({
     code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * DeleteDatasetApiKeyA407edb2Error409
+ */
+export const zDeleteDatasetApiKeyA407Edb2Error409 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['agent_not_published', 'conflict']),
   }),
 )
 
