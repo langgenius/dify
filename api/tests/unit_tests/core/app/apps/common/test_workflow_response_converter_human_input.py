@@ -1,17 +1,19 @@
 from datetime import UTC, datetime
 from types import SimpleNamespace
 
+from core.app.apps.common.user_snapshot import UserSnapshot
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.queue_entities import QueueHumanInputFormFilledEvent, QueueHumanInputFormTimeoutEvent
 from core.workflow.system_variables import build_system_variables
 from graphon.entities import WorkflowStartReason
+from graphon.enums import WorkflowExecutionStatus
 from graphon.runtime import GraphRuntimeState, VariablePool
 from graphon.variables.segments import StringSegment
 from models.account import Account
 
 
-def _build_converter():
+def _build_converter(*, user=None):
     system_variables = build_system_variables(
         files=[],
         user_id="user-1",
@@ -29,13 +31,72 @@ def _build_converter():
         workflow_execution_id="run-1",
         call_depth=0,
     )
-    account = Account(name="tester", email="tester@example.com")
-    account.id = "acc-1"
+    if user is None:
+        user = Account(name="tester", email="tester@example.com")
+        user.id = "acc-1"
     return WorkflowResponseConverter(
         application_generate_entity=app_entity,
-        user=account,
+        user=user,
         system_variables=system_variables,
     )
+
+
+def test_workflow_finish_serializes_account_snapshot():
+    converter = _build_converter(
+        user=UserSnapshot(
+            id="account-id",
+            is_account=True,
+            name="Snapshot Account",
+            email="snapshot@example.com",
+        )
+    )
+    converter.workflow_start_to_stream_response(
+        task_id="task-1",
+        workflow_run_id="run-1",
+        workflow_id="wf-1",
+        reason=WorkflowStartReason.INITIAL,
+    )
+
+    response = converter.workflow_finish_to_stream_response(
+        task_id="task-1",
+        workflow_id="wf-1",
+        status=WorkflowExecutionStatus.SUCCEEDED,
+        graph_runtime_state=GraphRuntimeState(variable_pool=VariablePool(), start_at=0.0),
+    )
+
+    assert response.data.created_by == {
+        "id": "account-id",
+        "name": "Snapshot Account",
+        "email": "snapshot@example.com",
+    }
+
+
+def test_workflow_finish_serializes_end_user_snapshot():
+    converter = _build_converter(
+        user=UserSnapshot(
+            id="end-user-id",
+            is_account=False,
+            session_id="end-user-session",
+        )
+    )
+    converter.workflow_start_to_stream_response(
+        task_id="task-1",
+        workflow_run_id="run-1",
+        workflow_id="wf-1",
+        reason=WorkflowStartReason.INITIAL,
+    )
+
+    response = converter.workflow_finish_to_stream_response(
+        task_id="task-1",
+        workflow_id="wf-1",
+        status=WorkflowExecutionStatus.SUCCEEDED,
+        graph_runtime_state=GraphRuntimeState(variable_pool=VariablePool(), start_at=0.0),
+    )
+
+    assert response.data.created_by == {
+        "id": "end-user-id",
+        "user": "end-user-session",
+    }
 
 
 def test_human_input_form_filled_stream_response_contains_rendered_content():
