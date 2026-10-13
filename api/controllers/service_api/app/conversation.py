@@ -4,8 +4,7 @@ from typing import Annotated, Any, Literal
 from uuid import UUID
 
 from flask_restx import Resource
-from pydantic import BaseModel, Field, WithJsonSchema, field_validator
-from werkzeug.exceptions import BadRequest, NotFound
+from pydantic import BaseModel, Field, JsonValue, WithJsonSchema, field_validator
 
 import services
 from controllers.common.controller_schemas import ConversationRenamePayload
@@ -13,6 +12,8 @@ from controllers.common.errors import (
     ConversationCursorNotFoundHTTPError,
     ConversationFirstMessageNotFoundHTTPError,
     ConversationNotFoundHTTPError,
+    ConversationVariableNotFoundHTTPError,
+    ConversationVariableTypeMismatchHTTPError,
 )
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console.wraps import model_validate
@@ -20,9 +21,8 @@ from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import NotChatAppError
 from controllers.service_api.flask_admission import service_api_end_user_admission
 from controllers.service_api.schema import expect_user_json, expect_with_user
-from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
+from controllers.service_api.wraps import FetchUserArg, WhereisUserArg
 from extensions.ext_application_services import application_services
-from extensions.ext_database import db
 from fields._value_type_serializer import serialize_value_type
 from fields.base import ResponseModel
 from fields.conversation_fields import (
@@ -32,8 +32,7 @@ from fields.conversation_fields import (
 from graphon.variables.types import SegmentType
 from libs.helper import UUIDStrOrEmpty, dump_response, to_timestamp
 from machinery.context import ServiceApiEndUserContext
-from models.model import App, AppMode, EndUser
-from services.conversation_service import ConversationService
+from models.model import AppMode
 from services.entities.conversation_entities import EndUserConversationRef, EndUserConversationScope
 from services.errors.message import MessageNotExistsError
 
@@ -91,7 +90,7 @@ class ConversationVariablesQuery(BaseModel):
 
 
 class ConversationVariableUpdatePayload(BaseModel):
-    value: Any = Field(description="The new value for the variable. Must match the variable's expected type.")
+    value: JsonValue = Field(description="The new value for the variable. Must match the variable's expected type.")
 
 
 class ConversationVariableResponse(ResponseModel):
@@ -323,57 +322,68 @@ class ConversationVariablesApi(Resource):
         description="Retrieve variables from a specific conversation.",
         tags=["Conversations"],
         responses={
-            200: "Successfully retrieved conversation variables.",
-            400: "`not_chat_app` : App mode does not match the API route.",
-            404: "`not_found` : Conversation does not exist.",
+            HTTPStatus.OK: "Conversation variables retrieved successfully.",
+            HTTPStatus.BAD_REQUEST: "Invalid app selection or app mode does not match the API route.",
+            HTTPStatus.UNAUTHORIZED: "Invalid API credentials.",
+            HTTPStatus.FORBIDDEN: "API credential, app or workspace access is unavailable.",
+            HTTPStatus.NOT_FOUND: (
+                "`conversation_not_found`: Conversation does not exist for this user and app. "
+                "`conversation_variable_not_found`: Cursor variable is outside the current list."
+            ),
+            HTTPStatus.UNPROCESSABLE_ENTITY: "Invalid conversation variables query.",
         },
     )
     @service_api_ns.doc("list_conversation_variables")
-    @service_api_ns.doc(description="List all variables for a conversation")
     @service_api_ns.doc(
         params={"conversation_id": "Conversation ID.", **query_params_from_model(ConversationVariablesQuery)}
     )
-    @service_api_ns.doc(
-        responses={
-            200: "Variables retrieved successfully",
-            401: "Unauthorized - invalid API token",
-            404: "Conversation not found",
-        }
-    )
     @service_api_ns.response(
-        200,
+        HTTPStatus.OK,
         "Variables retrieved successfully",
         service_api_ns.models[ConversationVariableInfiniteScrollPaginationResponse.__name__],
     )
-    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY))
+    @service_api_end_user_admission(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY))
     @model_validate(ConversationVariablesQuery)
-    def get(self, query_args: ConversationVariablesQuery, app_model: App, end_user: EndUser, conversation_id: UUID):
-        """List all variables for a conversation.
-
-        Conversational variables are only available for chat applications.
-        """
-        # conversational variable only for chat app
-        app_mode = AppMode.value_of(app_model.mode)
+    def get(
+        self, query_args: ConversationVariablesQuery, context: ServiceApiEndUserContext, conversation_id: UUID
+    ) -> dict[str, object]:
+        """List the current user's conversation variables."""
+        app_mode = AppMode.value_of(context.app_mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
 
-        conversation_id_str = str(conversation_id)
-
-        last_id = query_args.last_id or None
-
         try:
-            pagination = ConversationService.get_conversational_variable(
-                app_model,
-                conversation_id_str,
-                end_user,
-                query_args.limit,
-                last_id,
-                query_args.variable_name,
-                session=db.session(),
+            pagination = application_services().conversation_variables.get_page(
+                ref=EndUserConversationRef(
+                    app_id=context.app_id,
+                    tenant_id=context.tenant_id,
+                    end_user_id=context.end_user_id,
+                    conversation_id=str(conversation_id),
+                ),
+                last_id=query_args.last_id or None,
+                limit=query_args.limit,
+                variable_name=query_args.variable_name,
             )
-            return dump_response(ConversationVariableInfiniteScrollPaginationResponse, pagination)
-        except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+            return dump_response(
+                ConversationVariableInfiniteScrollPaginationResponse,
+                {
+                    "limit": pagination.limit,
+                    "has_more": pagination.has_more,
+                    "data": [
+                        {
+                            "created_at": row.created_at,
+                            "updated_at": row.updated_at,
+                            **row.variable.model_dump(),
+                            "id": row.id,
+                        }
+                        for row in pagination.data
+                    ],
+                },
+            )
+        except services.errors.conversation.ConversationNotExistsError as error:
+            raise ConversationNotFoundHTTPError() from error
+        except services.errors.conversation.ConversationVariableNotExistsError as error:
+            raise ConversationVariableNotFoundHTTPError() from error
 
 
 @service_api_ns.route("/conversations/<uuid:conversation_id>/variables/<uuid:variable_id>")
@@ -383,63 +393,66 @@ class ConversationVariableDetailApi(Resource):
         description="Update the value of a specific conversation variable. The value must match the expected type.",
         tags=["Conversations"],
         responses={
-            200: "Variable updated successfully.",
-            400: (
-                "- `not_chat_app` : App mode does not match the API route.\n"
-                "- `bad_request` : Variable value type mismatch."
+            HTTPStatus.OK: "Variable updated successfully.",
+            HTTPStatus.BAD_REQUEST: (
+                "Invalid app selection or app mode does not match the API route. "
+                "`conversation_variable_type_mismatch`: Value does not match the variable's expected type. "
+                "`invalid_param`: Value violates variable constraints, including the size limit."
             ),
-            404: (
-                "- `not_found` : Conversation does not exist.\n- `not_found` : Conversation variable does not exist."
+            HTTPStatus.UNAUTHORIZED: "Invalid API credentials.",
+            HTTPStatus.FORBIDDEN: "API credential, app or workspace access is unavailable.",
+            HTTPStatus.NOT_FOUND: (
+                "`conversation_not_found`: Conversation does not exist for this user and app. "
+                "`conversation_variable_not_found`: Variable does not exist for this conversation."
             ),
+            HTTPStatus.UNPROCESSABLE_ENTITY: "Invalid conversation variable update payload.",
         },
     )
     @expect_with_user(service_api_ns, ConversationVariableUpdatePayload)
     @service_api_ns.doc("update_conversation_variable")
-    @service_api_ns.doc(description="Update a conversation variable's value")
     @service_api_ns.doc(params={"conversation_id": "Conversation ID.", "variable_id": "Variable ID."})
-    @service_api_ns.doc(
-        responses={
-            200: "Variable updated successfully",
-            400: "Bad request - type mismatch",
-            401: "Unauthorized - invalid API token",
-            404: "Conversation or variable not found",
-        }
-    )
     @service_api_ns.response(
-        200,
+        HTTPStatus.OK,
         "Variable updated successfully",
         service_api_ns.models[ConversationVariableResponse.__name__],
     )
-    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON))
+    @service_api_end_user_admission(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON))
     @model_validate(ConversationVariableUpdatePayload)
     def put(
         self,
         payload: ConversationVariableUpdatePayload,
-        app_model: App,
-        end_user: EndUser,
+        context: ServiceApiEndUserContext,
         conversation_id: UUID,
         variable_id: UUID,
-    ):
-        """Update a conversation variable's value.
-
-        Allows updating the value of a specific conversation variable.
-        The value must match the variable's expected type.
-        """
-        app_mode = AppMode.value_of(app_model.mode)
+    ) -> dict[str, object]:
+        """Update a value without changing the variable's identity, type, or metadata."""
+        app_mode = AppMode.value_of(context.app_mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
 
-        conversation_id_str = str(conversation_id)
-        variable_id_str = str(variable_id)
-
         try:
-            variable = ConversationService.update_conversation_variable(
-                app_model, conversation_id_str, variable_id_str, end_user, payload.value, session=db.session()
+            row = application_services().conversation_variable_commands.update_value(
+                ref=EndUserConversationRef(
+                    app_id=context.app_id,
+                    tenant_id=context.tenant_id,
+                    end_user_id=context.end_user_id,
+                    conversation_id=str(conversation_id),
+                ),
+                variable_id=str(variable_id),
+                new_value=payload.value,
             )
-            return dump_response(ConversationVariableResponse, variable)
-        except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
-        except services.errors.conversation.ConversationVariableNotExistsError:
-            raise NotFound("Conversation Variable Not Exists.")
-        except services.errors.conversation.ConversationVariableTypeMismatchError as e:
-            raise BadRequest(str(e))
+            return dump_response(
+                ConversationVariableResponse,
+                {
+                    "created_at": row.created_at,
+                    "updated_at": row.updated_at,
+                    **row.variable.model_dump(),
+                    "id": row.id,
+                },
+            )
+        except services.errors.conversation.ConversationNotExistsError as error:
+            raise ConversationNotFoundHTTPError() from error
+        except services.errors.conversation.ConversationVariableNotExistsError as error:
+            raise ConversationVariableNotFoundHTTPError() from error
+        except services.errors.conversation.ConversationVariableTypeMismatchError as error:
+            raise ConversationVariableTypeMismatchHTTPError(str(error)) from error

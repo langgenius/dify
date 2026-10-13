@@ -63,7 +63,7 @@ from repositories.app_preview_query_repository import AppPreviewQueryRepository
 from repositories.app_scoped_end_user_repository import AppScopedEndUserRepo
 from repositories.app_statistic_query_repository import AppStatisticQueryRepository
 from repositories.conversation_repository import ConversationRepository
-from repositories.conversation_variable_query_repository import ConversationVariableQueryRepository
+from repositories.conversation_variable_repository import ConversationVariableRepository
 from repositories.credentials.query_repository import CredentialQueryRepository
 from repositories.explore_banner_query_repository import ExploreBannerQueryRepository
 from repositories.factory import DifyAPIRepositoryFactory
@@ -128,6 +128,7 @@ from services.conversation_name_generator import generate_conversation_name
 from services.conversation_name_service import ConversationNameService
 from services.conversation_query_service import ConversationQueryService
 from services.conversation_service import ConversationService
+from services.conversation_variable_command_service import ConversationVariableCommandService
 from services.conversation_variable_query import ConversationVariableQuery
 from services.credentials.query import CredentialQuery
 from services.enterprise.enterprise_service import EnterpriseService
@@ -272,6 +273,7 @@ class ApplicationServices:
     app_previews: AppPreviewQueryService
     app_sites: AppSiteService
     conversation_variables: ConversationVariableQuery
+    conversation_variable_commands: ConversationVariableCommandService
     app_statistics: AppStatisticQuery
     app_tracing_configs: AppTracingConfigService
     billing_portal: BillingPortalService
@@ -530,6 +532,7 @@ def build_application_services(
     )
 
     conversation_queries = ConversationQueryService(conversations=conversations, restore_inputs=restore_input_files)
+    conversation_variables = ConversationVariableRepository(session_factory=database_client)
 
     return ApplicationServices(
         rbac=rbac,
@@ -553,7 +556,8 @@ def build_application_services(
         app_sites=AppSiteService(
             sites=AppSiteCommandRepository(session_factory=database_client),
         ),
-        conversation_variables=ConversationVariableQueryRepository(session_factory=database_client),
+        conversation_variables=conversation_variables,
+        conversation_variable_commands=ConversationVariableCommandService(variables=conversation_variables),
         app_api_keys=build_app_api_key_service(database_client=database_client),
         dataset_api_keys=build_dataset_api_key_service(
             database_client=database_client,

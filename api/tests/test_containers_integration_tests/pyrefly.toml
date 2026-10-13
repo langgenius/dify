@@ -58,7 +58,6 @@ project-excludes = [
   "services/test_audio_service_db.py",
   "services/test_billing_service.py",
   "services/test_conversation_service.py",
-  "services/test_conversation_service_variables.py",
   "services/test_conversation_variable_updater.py",
   "services/test_dataset_permission_service.py",
   "services/test_dataset_service.py",
