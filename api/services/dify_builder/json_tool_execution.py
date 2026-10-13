@@ -70,6 +70,10 @@ _TOOL_DATA = {
     "credential_id",
     "credential_type",
     "credential_name",
+    "is_team_authorization",
+    "provider_show_name",
+    "provider_icon",
+    "provider_icon_dark",
 }
 _PARAM_SCHEMA_KEYS = {
     "auto_generate",
@@ -117,6 +121,8 @@ _EDGE_KEYS = {
 }
 _MAX_CONTENT = 65536
 _MAX_FILTER = 1024
+_MAX_PROVIDER_SHOW_NAME = 256
+_MAX_PROVIDER_ICON = 2048
 
 
 @dataclass(frozen=True, slots=True)
@@ -262,6 +268,16 @@ def _preflight_tool(data: Mapping[str, Any], start_id: str, names: set[str]) -> 
         _refuse()
     if any(data.get(key) is not None for key in ("credential_id", "credential_type", "credential_name")):
         _refuse("unsupported_json_credentials")
+    # Native editor display fields are inert here; credentials and dispatch still use the qualified binding.
+    if "is_team_authorization" in data and type(data["is_team_authorization"]) is not bool:
+        _refuse()
+    for key, limit in (
+        ("provider_show_name", _MAX_PROVIDER_SHOW_NAME),
+        ("provider_icon", _MAX_PROVIDER_ICON),
+        ("provider_icon_dark", _MAX_PROVIDER_ICON),
+    ):
+        if key in data:
+            _bounded_text(data[key], limit)
     if data.get("output_schema", {}) != {}:
         _refuse()
     parameters, configurations = data.get("tool_parameters"), data.get("tool_configurations")
@@ -367,7 +383,12 @@ def admit_json_workflow(snapshot: RestrictedAdmissionSnapshot) -> JsonToolAdmiss
     tool_output = False
     output_names: set[str] = set()
     for output in outputs:
-        if not isinstance(output, dict) or set(output) != {"variable", "value_selector"}:
+        if not isinstance(output, dict) or set(output) not in (
+            {"variable", "value_selector"},
+            {"variable", "value_selector", "value_type"},
+        ):
+            _refuse("unsupported_selector")
+        if "value_type" in output and (type(output["value_type"]) is not str or output["value_type"] != "string"):
             _refuse("unsupported_selector")
         name, selector = output["variable"], output["value_selector"]
         if type(name) is not str or not _START_NAME.fullmatch(name) or name in output_names:
