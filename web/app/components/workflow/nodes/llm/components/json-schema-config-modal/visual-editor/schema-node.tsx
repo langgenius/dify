@@ -135,62 +135,64 @@ const SchemaNode: FC<SchemaNodeProps> = ({
               depth={depth}
             />
           ) : (
-            <Card name={name} type={type} required={required} description={schema.description} />
+            <Card
+              name={name}
+              type={type}
+              required={required}
+              description={schema.description}
+              readOnly={readOnly}
+            />
           )}
         </div>
       </div>
 
-      <div
-        className={cn(
-          'absolute z-0 flex w-5 justify-center',
-          schema.description ? 'top-12 h-[calc(100%-3rem)]' : 'top-7 h-[calc(100%-1.75rem)]',
-          indentLeft[depth],
+      <div className="relative">
+        <div className={cn('absolute inset-y-0 z-0 flex w-5 justify-center', indentLeft[depth])}>
+          <Separator
+            decorative
+            orientation="vertical"
+            className={cn('mx-0', isHovering ? 'bg-divider-deep' : 'bg-divider-subtle')}
+          />
+        </div>
+
+        {isExpanded && hasChildren && depth < JSON_SCHEMA_MAX_DEPTH && (
+          <>
+            {schema.type === Type.object &&
+              schema.properties &&
+              Object.entries(schema.properties).map(([key, childSchema]) => (
+                <SchemaNode
+                  key={key}
+                  name={key}
+                  required={!!schema.required?.includes(key)}
+                  schema={childSchema}
+                  path={[...path, 'properties', key]}
+                  parentPath={path}
+                  depth={depth + 1}
+                  readOnly={readOnly}
+                />
+              ))}
+
+            {schema.type === Type.array &&
+              schema.items &&
+              schema.items.type === Type.object &&
+              schema.items.properties &&
+              Object.entries(schema.items.properties).map(([key, childSchema]) => (
+                <SchemaNode
+                  key={key}
+                  name={key}
+                  required={!!schema.items?.required?.includes(key)}
+                  schema={childSchema}
+                  path={[...path, 'items', 'properties', key]}
+                  parentPath={path}
+                  depth={depth + 1}
+                  readOnly={readOnly}
+                />
+              ))}
+          </>
         )}
-      >
-        <Separator
-          decorative
-          orientation="vertical"
-          className={cn('mx-0', isHovering ? 'bg-divider-deep' : 'bg-divider-subtle')}
-        />
+
+        {!readOnly && depth === 0 && !isAddingNewField && <AddField />}
       </div>
-
-      {isExpanded && hasChildren && depth < JSON_SCHEMA_MAX_DEPTH && (
-        <>
-          {schema.type === Type.object &&
-            schema.properties &&
-            Object.entries(schema.properties).map(([key, childSchema]) => (
-              <SchemaNode
-                key={key}
-                name={key}
-                required={!!schema.required?.includes(key)}
-                schema={childSchema}
-                path={[...path, 'properties', key]}
-                parentPath={path}
-                depth={depth + 1}
-                readOnly={readOnly}
-              />
-            ))}
-
-          {schema.type === Type.array &&
-            schema.items &&
-            schema.items.type === Type.object &&
-            schema.items.properties &&
-            Object.entries(schema.items.properties).map(([key, childSchema]) => (
-              <SchemaNode
-                key={key}
-                name={key}
-                required={!!schema.items?.required?.includes(key)}
-                schema={childSchema}
-                path={[...path, 'items', 'properties', key]}
-                parentPath={path}
-                depth={depth + 1}
-                readOnly={readOnly}
-              />
-            ))}
-        </>
-      )}
-
-      {!readOnly && depth === 0 && !isAddingNewField && <AddField />}
     </div>
   )
 }

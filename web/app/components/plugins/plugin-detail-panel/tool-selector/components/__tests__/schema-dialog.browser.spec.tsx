@@ -11,6 +11,18 @@ import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import { Type } from '@/app/components/workflow/nodes/llm/types'
 import { ReasoningConfigForm } from '../reasoning-config-form'
 
+vi.mock('react-i18next', async () => {
+  const actual = await vi.importActual<typeof import('react-i18next')>('react-i18next')
+  const { createReactI18nextMock } = await import('@/test/i18n-mock')
+  const { default: workflowAgent } = await import('@/i18n/locales/en-US/workflow-agent.json')
+  return {
+    ...actual,
+    ...createReactI18nextMock({
+      'workflowAgent.nodes.agent.parameterSchema': workflowAgent['nodes.agent.parameterSchema'],
+    }),
+  }
+})
+
 vi.mock('@monaco-editor/react', () => {
   function Editor({
     value,
@@ -131,7 +143,7 @@ it('preserves real reasoning fields in their Popover while each schema closes ba
     name: 'workflowAgent.nodes.agent.clickToViewParameterSchema: Profile',
   })
   await profileEntry.click()
-  const dialog = screen.getByRole('dialog', { name: 'workflowAgent.nodes.agent.parameterSchema' })
+  const dialog = screen.getByRole('dialog', { name: 'Parameter Schema' })
   await expect.element(dialog.getByText('Profile')).toBeVisible()
   await expect.element(dialog.getByText('person_name')).toBeVisible()
   await expect.element(dialog.getByText('row_count')).not.toBeInTheDocument()
@@ -179,7 +191,7 @@ it('keeps a long schema scrollable and Close reachable on a small viewport', asy
     name: 'workflowAgent.nodes.agent.clickToViewParameterSchema: Profile',
   })
   await entry.click()
-  const dialog = screen.getByRole('dialog', { name: 'workflowAgent.nodes.agent.parameterSchema' })
+  const dialog = screen.getByRole('dialog', { name: 'Parameter Schema' })
   const close = dialog.getByRole('button', { name: 'common.operation.close' })
   const closeBounds = close.element().getBoundingClientRect()
   expect(closeBounds.left).toBeGreaterThanOrEqual(0)
@@ -198,3 +210,54 @@ it('keeps a long schema scrollable and Close reachable on a small viewport', asy
   await expect.element(parent).toBeVisible()
   await expect.element(entry).toHaveFocus()
 })
+
+it.each([414, 1280])(
+  'shows complete schema names and descriptions at %ipx without editing',
+  async (width) => {
+    await page.viewport(width, 900)
+    const description = `Choose the destination used for delivery. ${'Include the full warehouse address. '.repeat(6)}\nReference: ${'warehouse-reference-'.repeat(12)}`
+    const nestedDescription =
+      'Use the receiving warehouse address, including the building, floor, and loading bay.'
+    const fieldName = 'receiving_warehouse_building_floor_and_loading_bay_identifier'
+    const screen = await render(
+      <ReasoningFixture
+        onChange={vi.fn()}
+        profile={{
+          type: Type.object,
+          description,
+          properties: {
+            destination: {
+              type: Type.object,
+              description: nestedDescription,
+              properties: { [fieldName]: { type: Type.string } },
+            },
+          },
+        }}
+      />,
+    )
+    await screen.getByRole('button', { name: 'Configure tool' }).click()
+    await screen
+      .getByRole('button', {
+        name: 'workflowAgent.nodes.agent.clickToViewParameterSchema: Profile',
+      })
+      .click()
+    const dialog = screen.getByRole('dialog', { name: 'Parameter Schema' })
+    for (const text of [description, nestedDescription, fieldName]) {
+      const content = dialog.getByText(text).element()
+      const bounds = content.getBoundingClientRect()
+      const dialogBounds = dialog.element().getBoundingClientRect()
+      expect(bounds.left).toBeGreaterThanOrEqual(dialogBounds.left)
+      expect(bounds.right).toBeLessThanOrEqual(dialogBounds.right)
+      const range = document.createRange()
+      range.selectNodeContents(content)
+      for (const line of range.getClientRects()) {
+        expect(line.left).toBeGreaterThanOrEqual(bounds.left)
+        expect(line.right).toBeLessThanOrEqual(bounds.right)
+        expect(line.bottom).toBeLessThanOrEqual(bounds.bottom)
+      }
+    }
+    await userEvent.hover(dialog.getByText(nestedDescription))
+    await expect.element(dialog.getByRole('textbox')).not.toBeInTheDocument()
+    await expect.element(dialog.getByText(fieldName)).toBeVisible()
+  },
+)
