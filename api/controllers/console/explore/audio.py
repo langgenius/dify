@@ -35,6 +35,7 @@ from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotIni
 from extensions.ext_application_services import application_services
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs.exception import BaseHTTPException
+from libs.external_api import document_errors
 from libs.helper import dump_response
 from machinery.context import RequestContext
 from services.agent.errors import AgentVersionNotFoundError
@@ -95,7 +96,22 @@ def _audio_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
             logger.exception("Installed-app audio operation failed")
             raise InternalServerError() from error
 
-    return decorated
+    return document_errors(
+        decorated,
+        AppUnavailableError,
+        NoAudioUploadedError,
+        AudioTooLargeError,
+        UnsupportedAudioTypeError,
+        ProviderNotSupportSpeechToTextError,
+        ProviderNotSupportTextToSpeechError,
+        SpeechToTextDisabledError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+        ProviderModelCurrentlyNotSupportError,
+        CompletionRequestError,
+        AgentVersionNotFoundHTTPError,
+        InternalServerError,
+    )
 
 
 @console_ns.route(

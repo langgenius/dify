@@ -36,6 +36,7 @@ from enums.account import TenantAccountRole
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from fields.member_fields import AccountWithRoleListResponse, AccountWithRoleResponse
+from libs.external_api import error_responses
 from libs.helper import EmailStr, dump_response, extract_remote_ip
 from machinery.context import RequestContext
 from services.account_errors import AccountNotFoundError
@@ -174,6 +175,7 @@ class MemberListApi(Resource):
 class MemberInviteEmailApi(Resource):
     """Invite a new member by email."""
 
+    @error_responses(InvalidMemberRoleError, SeatsLimitExceeded, WorkspaceMembersLimitExceeded)
     @console_ns.expect(console_ns.models[MemberInvitePayload.__name__])
     @console_ns.response(HTTPStatus.CREATED, "Success", console_ns.models[MemberInviteResponse.__name__])
     @console_ns.response(
@@ -230,6 +232,13 @@ class MemberInviteEmailApi(Resource):
 class MemberCancelInviteApi(Resource):
     """Cancel an invitation by member id."""
 
+    @error_responses(
+        ForbiddenError,
+        MemberCannotOperateSelfError,
+        MemberNotFoundError,
+        MemberRoleAlreadyAssignedError,
+        MemberRoleInvalidError,
+    )
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[MemberActionResponse.__name__])
     @console_account_admission()
     def delete(self, request_context: RequestContext, member_id: UUID):
@@ -250,6 +259,13 @@ class MemberCancelInviteApi(Resource):
 class MemberUpdateRoleApi(Resource):
     """Update member role."""
 
+    @error_responses(
+        ForbiddenError,
+        MemberCannotOperateSelfError,
+        MemberNotFoundError,
+        MemberRoleAlreadyAssignedError,
+        MemberRoleInvalidError,
+    )
     @console_ns.expect(console_ns.models[MemberRoleUpdatePayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultResponse.__name__])
     @console_account_admission()
@@ -283,6 +299,17 @@ class DatasetOperatorMemberListApi(Resource):
 class SendOwnerTransferEmailApi(Resource):
     """Send owner transfer email."""
 
+    @error_responses(
+        CannotTransferOwnerToSelfError,
+        EmailCodeError,
+        EmailSendIpLimitError,
+        InvalidEmailError,
+        InvalidTokenError,
+        MemberNotInTenantError,
+        NotOwnerError,
+        OwnerTransferLimitError,
+        OwnerTransferRateLimitExceededError,
+    )
     @console_ns.expect(console_ns.models[OwnerTransferEmailPayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultDataResponse.__name__])
     @console_account_admission(require_owner_transfer_enabled=True)
@@ -301,6 +328,17 @@ class SendOwnerTransferEmailApi(Resource):
 
 @console_ns.route("/workspaces/current/members/owner-transfer-check")
 class OwnerTransferCheckApi(Resource):
+    @error_responses(
+        CannotTransferOwnerToSelfError,
+        EmailCodeError,
+        EmailSendIpLimitError,
+        InvalidEmailError,
+        InvalidTokenError,
+        MemberNotInTenantError,
+        NotOwnerError,
+        OwnerTransferLimitError,
+        OwnerTransferRateLimitExceededError,
+    )
     @console_ns.expect(console_ns.models[OwnerTransferCheckPayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[VerificationTokenResponse.__name__])
     @console_account_admission(require_owner_transfer_enabled=True)
@@ -317,6 +355,17 @@ class OwnerTransferCheckApi(Resource):
 
 @console_ns.route("/workspaces/current/members/<uuid:member_id>/owner-transfer")
 class OwnerTransfer(Resource):
+    @error_responses(
+        CannotTransferOwnerToSelfError,
+        EmailCodeError,
+        EmailSendIpLimitError,
+        InvalidEmailError,
+        InvalidTokenError,
+        MemberNotInTenantError,
+        NotOwnerError,
+        OwnerTransferLimitError,
+        OwnerTransferRateLimitExceededError,
+    )
     @console_ns.expect(console_ns.models[OwnerTransferPayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultResponse.__name__])
     @console_account_admission(require_owner_transfer_enabled=True)

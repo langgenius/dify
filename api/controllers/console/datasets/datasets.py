@@ -36,6 +36,7 @@ from fields.dataset_fields import (
     DatasetDetailResponse,
     NotionEstimateWorkspacePayload,
 )
+from libs.external_api import error_responses
 from libs.helper import build_icon_url, dump_response, to_timestamp
 from machinery.context import RequestContext
 from models.account import TenantAccountRole
@@ -393,6 +394,7 @@ class DatasetListApi(Resource):
         )
         return dump_response(DatasetListResponse, result), HTTPStatus.OK
 
+    @error_responses(DatasetInUseError, DatasetNameDuplicateError)
     @console_ns.doc("create_dataset")
     @console_ns.doc(description="Create a new dataset")
     @console_ns.expect(console_ns.models[DatasetCreatePayload.__name__])
@@ -418,6 +420,7 @@ class DatasetListApi(Resource):
 
 @console_ns.route("/datasets/<uuid:dataset_id>")
 class DatasetApi(Resource):
+    @error_responses(DatasetInUseError, DatasetNameDuplicateError)
     @console_ns.doc("get_dataset")
     @console_ns.doc(description="Get dataset details")
     @console_ns.doc(params={"dataset_id": "Dataset ID"})
@@ -436,6 +439,7 @@ class DatasetApi(Resource):
             _raise_dataset_error(error)
         return dump_response(DatasetDetailWithPartialMembersResponse, result), 200
 
+    @error_responses(DatasetInUseError, DatasetNameDuplicateError)
     @console_ns.doc("update_dataset")
     @console_ns.doc(description="Update dataset details")
     @console_ns.expect(console_ns.models[DatasetUpdatePayload.__name__])
@@ -460,6 +464,7 @@ class DatasetApi(Resource):
             _raise_dataset_error(error)
         return dump_response(DatasetDetailWithPartialMembersResponse, result), 200
 
+    @error_responses(DatasetInUseError, DatasetNameDuplicateError)
     @console_ns.response(204, "Dataset deleted successfully")
     @console_account_admission(
         allowed_roles=_DATASET_EDIT_ROLES, rbac_checks=(RBACCheck(RBACPermission.DATASET_DELETE, DatasetId()),)
@@ -475,6 +480,7 @@ class DatasetApi(Resource):
 
 @console_ns.route("/datasets/<uuid:dataset_id>/use-check")
 class DatasetUseCheckApi(Resource):
+    @error_responses(DatasetInUseError, DatasetNameDuplicateError)
     @console_ns.doc("check_dataset_use")
     @console_ns.doc(description="Check if dataset is in use")
     @console_ns.doc(params={"dataset_id": "Dataset ID"})
@@ -494,6 +500,7 @@ class DatasetUseCheckApi(Resource):
 
 @console_ns.route("/datasets/<uuid:dataset_id>/queries")
 class DatasetQueryApi(Resource):
+    @error_responses(DatasetInUseError, DatasetNameDuplicateError)
     @console_ns.doc("get_dataset_queries")
     @console_ns.doc(description="Get dataset query history")
     @console_ns.doc(params={"dataset_id": "Dataset ID"})
@@ -518,6 +525,13 @@ class DatasetQueryApi(Resource):
 
 @console_ns.route("/datasets/indexing-estimate")
 class DatasetIndexingEstimateApi(Resource):
+    @error_responses(
+        DatasetAccessDeniedRequestError,
+        IndexingEstimateError,
+        InvalidArgumentError,
+        NotFoundError,
+        ProviderNotInitializeError,
+    )
     @console_ns.doc("estimate_dataset_indexing")
     @console_ns.doc(description="Estimate dataset indexing cost")
     @console_ns.response(
@@ -584,6 +598,7 @@ class DatasetIndexingEstimateApi(Resource):
 
 @console_ns.route("/datasets/<uuid:dataset_id>/related-apps")
 class DatasetRelatedAppListApi(Resource):
+    @error_responses(DatasetInUseError, DatasetNameDuplicateError)
     @console_ns.doc("get_dataset_related_apps")
     @console_ns.doc(description="Get applications related to dataset")
     @console_ns.doc(params={"dataset_id": "Dataset ID"})
@@ -603,6 +618,7 @@ class DatasetRelatedAppListApi(Resource):
 
 @console_ns.route("/datasets/<uuid:dataset_id>/indexing-status")
 class DatasetIndexingStatusApi(Resource):
+    @error_responses(DatasetInUseError, DatasetNameDuplicateError)
     @console_ns.doc("get_dataset_indexing_status")
     @console_ns.doc(description="Get dataset indexing status")
     @console_ns.doc(params={"dataset_id": "Dataset ID"})
@@ -672,6 +688,7 @@ class DatasetApiDeleteApi(Resource):
 
 @console_ns.route("/datasets/<uuid:dataset_id>/api-keys/<string:status>")
 class DatasetEnableApiApi(Resource):
+    @error_responses(DatasetInUseError, DatasetNameDuplicateError)
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @console_account_admission(
         allowed_roles=_DATASET_EDIT_ROLES, rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),)
@@ -732,6 +749,7 @@ class DatasetRetrievalSettingMockApi(Resource):
 
 @console_ns.route("/datasets/<uuid:dataset_id>/error-docs")
 class DatasetErrorDocs(Resource):
+    @error_responses(DatasetInUseError, DatasetNameDuplicateError)
     @console_ns.doc("get_dataset_error_docs")
     @console_ns.doc(description="Get dataset error documents")
     @console_ns.doc(params={"dataset_id": "Dataset ID"})
@@ -750,6 +768,7 @@ class DatasetErrorDocs(Resource):
 
 @console_ns.route("/datasets/<uuid:dataset_id>/permission-part-users")
 class DatasetPermissionUserListApi(Resource):
+    @error_responses(DatasetInUseError, DatasetNameDuplicateError)
     @console_ns.doc("get_dataset_permission_users")
     @console_ns.doc(description="Get dataset permission user list")
     @console_ns.doc(params={"dataset_id": "Dataset ID"})
@@ -773,6 +792,7 @@ class DatasetPermissionUserListApi(Resource):
 
 @console_ns.route("/datasets/<uuid:dataset_id>/auto-disable-logs")
 class DatasetAutoDisableLogApi(Resource):
+    @error_responses(DatasetInUseError, DatasetNameDuplicateError)
     @console_ns.doc("get_dataset_auto_disable_logs")
     @console_ns.doc(description="Get dataset auto disable logs")
     @console_ns.doc(params={"dataset_id": "Dataset ID"})

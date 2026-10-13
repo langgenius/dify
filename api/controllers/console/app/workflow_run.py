@@ -30,6 +30,7 @@ from fields.workflow_run_fields import (
     workflow_run_response_source,
 )
 from libs.custom_inputs import time_duration
+from libs.external_api import error_responses
 from libs.helper import dump_response, uuid_value
 from machinery.context import RequestContext
 from models import App, AppMode, WorkflowRunTriggeredFrom
@@ -266,6 +267,7 @@ class WorkflowRunCountApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/workflow-runs/<uuid:run_id>")
 class WorkflowRunDetailApi(Resource):
+    @error_responses(NotFoundError)
     @console_ns.doc("get_workflow_run_detail")
     @console_ns.doc(description="Get workflow run detail")
     @console_ns.doc(params={"app_id": "Application ID", "run_id": "Workflow run ID"})
@@ -327,6 +329,7 @@ class WorkflowRunNodeExecutionListApi(Resource):
 class ConsoleWorkflowPauseDetailsApi(Resource):
     """Console API for getting workflow pause details."""
 
+    @error_responses(NotFoundError)
     @console_ns.doc("get_workflow_pause_details")
     @console_ns.doc(description="Get workflow pause details")
     @console_ns.doc(params={"workflow_run_id": "Workflow run ID"})

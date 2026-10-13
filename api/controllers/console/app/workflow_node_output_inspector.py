@@ -43,6 +43,7 @@ from controllers.console.wraps import (
 )
 from extensions.ext_database import db
 from libs.exception import BaseHTTPException
+from libs.external_api import error_responses
 from libs.login import login_required
 from models import App, AppMode
 from services.workflow import inspector_events
@@ -149,6 +150,7 @@ class _InspectorNotFound(BaseHTTPException):
 class WorkflowDraftRunNodeOutputsApi(Resource):
     """Whole-run snapshot organized by producer node."""
 
+    @error_responses(_InspectorNotFound)
     @console_ns.doc("get_workflow_draft_run_node_outputs")
     @console_ns.doc(description="Snapshot of every node's declared outputs for a draft workflow run.")
     @console_ns.doc(params={"app_id": "Application ID", "run_id": "Workflow run ID"})
@@ -167,6 +169,7 @@ class WorkflowDraftRunNodeOutputsApi(Resource):
 class WorkflowDraftRunNodeOutputDetailApi(Resource):
     """One node's declared outputs + per-output status."""
 
+    @error_responses(_InspectorNotFound)
     @console_ns.doc("get_workflow_draft_run_node_output_detail")
     @console_ns.doc(description="One node's declared outputs for a draft workflow run.")
     @console_ns.doc(
@@ -193,6 +196,7 @@ class WorkflowDraftRunNodeOutputDetailApi(Resource):
 class WorkflowDraftRunNodeOutputPreviewApi(Resource):
     """Full value for one declared output (with signed URL for file refs)."""
 
+    @error_responses(_InspectorNotFound)
     @console_ns.doc("get_workflow_draft_run_node_output_preview")
     @console_ns.doc(description="Full value for one declared output, including signed download URL for files.")
     @console_ns.doc(
@@ -341,6 +345,7 @@ def _stream_inspector_events(app_model: App, run_id: UUID) -> Iterator[str]:
 class WorkflowDraftRunNodeOutputEventsApi(Resource):
     """SSE stream of inspector deltas for a draft run."""
 
+    @error_responses(_InspectorNotFound)
     @console_ns.doc("stream_workflow_draft_run_node_output_events")
     @console_ns.doc(description="Server-Sent Events stream of inspector deltas for a draft workflow run.")
     @console_ns.doc(params={"app_id": "Application ID", "run_id": "Workflow run ID"})
@@ -376,6 +381,7 @@ class WorkflowPublishedRunNodeOutputsApi(Resource):
     based on which page (Composer test-run vs. Run History) is mounted.
     """
 
+    @error_responses(_InspectorNotFound)
     @console_ns.doc("get_workflow_published_run_node_outputs")
     @console_ns.doc(description="Snapshot of every node's declared outputs for a published workflow run.")
     @console_ns.doc(params={"app_id": "Application ID", "run_id": "Workflow run ID"})
@@ -394,6 +400,7 @@ class WorkflowPublishedRunNodeOutputsApi(Resource):
 class WorkflowPublishedRunNodeOutputDetailApi(Resource):
     """One node's declared outputs + per-output status (published run)."""
 
+    @error_responses(_InspectorNotFound)
     @console_ns.doc("get_workflow_published_run_node_output_detail")
     @console_ns.doc(description="One node's declared outputs for a published workflow run.")
     @console_ns.doc(
@@ -421,6 +428,7 @@ class WorkflowPublishedRunNodeOutputDetailApi(Resource):
 class WorkflowPublishedRunNodeOutputPreviewApi(Resource):
     """Full value for one declared output of a published run."""
 
+    @error_responses(_InspectorNotFound)
     @console_ns.doc("get_workflow_published_run_node_output_preview")
     @console_ns.doc(description="Full value for one declared output of a published run.")
     @console_ns.doc(
@@ -446,6 +454,7 @@ class WorkflowPublishedRunNodeOutputPreviewApi(Resource):
 class WorkflowPublishedRunNodeOutputEventsApi(Resource):
     """SSE stream of inspector deltas for a published run."""
 
+    @error_responses(_InspectorNotFound)
     @console_ns.doc("stream_workflow_published_run_node_output_events")
     @console_ns.doc(description="Server-Sent Events stream of inspector deltas for a published workflow run.")
     @console_ns.doc(params={"app_id": "Application ID", "run_id": "Workflow run ID"})

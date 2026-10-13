@@ -35,6 +35,7 @@ from controllers.console.wraps import RBACPermission, validate_request
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from libs.exception import RelayedHTTPError
+from libs.external_api import error_responses
 from libs.helper import dump_response
 from machinery.context import RequestContext
 from services.agent.errors import AgentNotFoundError
@@ -157,6 +158,14 @@ def _handle(exc: Exception) -> NoReturn:
 
 @console_ns.route("/agent/<uuid:agent_id>/sandbox")
 class AgentAppSandboxInfoResource(Resource):
+    @error_responses(
+        AgentBackendUnreachableError,
+        AgentNotFoundError,
+        AgentSandboxBindingNotFoundHTTPError,
+        AgentSandboxDownloadUnavailableHTTPError,
+        AgentSandboxUnavailableHTTPError,
+        AppNotFoundError,
+    )
     @console_ns.doc("get_agent_app_sandbox_info")
     @console_ns.doc(description="Get basic information for an Agent App conversation sandbox")
     @console_ns.doc(params={"agent_id": "Agent ID", **query_params_from_model(AgentSandboxInfoQuery)})
@@ -175,6 +184,14 @@ class AgentAppSandboxInfoResource(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/sandbox/files")
 class AgentAppSandboxListResource(Resource):
+    @error_responses(
+        AgentBackendUnreachableError,
+        AgentNotFoundError,
+        AgentSandboxBindingNotFoundHTTPError,
+        AgentSandboxDownloadUnavailableHTTPError,
+        AgentSandboxUnavailableHTTPError,
+        AppNotFoundError,
+    )
     @console_ns.doc("list_agent_app_sandbox_files")
     @console_ns.doc(description="List a directory in an Agent App conversation sandbox")
     @console_ns.doc(params={"agent_id": "Agent ID", **query_params_from_model(AgentSandboxListQuery)})
@@ -193,6 +210,14 @@ class AgentAppSandboxListResource(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/sandbox/files/read")
 class AgentAppSandboxReadResource(Resource):
+    @error_responses(
+        AgentBackendUnreachableError,
+        AgentNotFoundError,
+        AgentSandboxBindingNotFoundHTTPError,
+        AgentSandboxDownloadUnavailableHTTPError,
+        AgentSandboxUnavailableHTTPError,
+        AppNotFoundError,
+    )
     @console_ns.doc("read_agent_app_sandbox_file")
     @console_ns.doc(description="Read a text/binary preview file in an Agent App conversation sandbox")
     @console_ns.doc(params={"agent_id": "Agent ID", **query_params_from_model(AgentSandboxFileQuery)})
@@ -211,6 +236,14 @@ class AgentAppSandboxReadResource(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/sandbox/files/download")
 class AgentAppSandboxDownloadResource(Resource):
+    @error_responses(
+        AgentBackendUnreachableError,
+        AgentNotFoundError,
+        AgentSandboxBindingNotFoundHTTPError,
+        AgentSandboxDownloadUnavailableHTTPError,
+        AgentSandboxUnavailableHTTPError,
+        AppNotFoundError,
+    )
     @console_ns.doc("download_agent_app_sandbox_file")
     @console_ns.doc(description="Create a ToolFile from one Agent App Binding file and return its download URL")
     @console_ns.expect(console_ns.models[AgentSandboxDownloadPayload.__name__])
@@ -229,6 +262,14 @@ class AgentAppSandboxDownloadResource(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/workflow-runs/<uuid:workflow_run_id>/agent-nodes/<string:node_id>/sandbox/files")
 class WorkflowAgentSandboxListResource(Resource):
+    @error_responses(
+        AgentBackendUnreachableError,
+        AgentNotFoundError,
+        AgentSandboxBindingNotFoundHTTPError,
+        AgentSandboxDownloadUnavailableHTTPError,
+        AgentSandboxUnavailableHTTPError,
+        AppNotFoundError,
+    )
     @console_ns.doc("list_workflow_agent_sandbox_files")
     @console_ns.doc(description="List a directory in a workflow Agent node sandbox")
     @console_ns.doc(
@@ -258,6 +299,14 @@ class WorkflowAgentSandboxListResource(Resource):
     "/apps/<uuid:app_id>/workflow-runs/<uuid:workflow_run_id>/agent-nodes/<string:node_id>/sandbox/files/read"
 )
 class WorkflowAgentSandboxReadResource(Resource):
+    @error_responses(
+        AgentBackendUnreachableError,
+        AgentNotFoundError,
+        AgentSandboxBindingNotFoundHTTPError,
+        AgentSandboxDownloadUnavailableHTTPError,
+        AgentSandboxUnavailableHTTPError,
+        AppNotFoundError,
+    )
     @console_ns.doc("read_workflow_agent_sandbox_file")
     @console_ns.doc(description="Read a text/binary preview file in a workflow Agent node sandbox")
     @console_ns.doc(
@@ -287,6 +336,14 @@ class WorkflowAgentSandboxReadResource(Resource):
     "/apps/<uuid:app_id>/workflow-runs/<uuid:workflow_run_id>/agent-nodes/<string:node_id>/sandbox/files/download"
 )
 class WorkflowAgentSandboxDownloadResource(Resource):
+    @error_responses(
+        AgentBackendUnreachableError,
+        AgentNotFoundError,
+        AgentSandboxBindingNotFoundHTTPError,
+        AgentSandboxDownloadUnavailableHTTPError,
+        AgentSandboxUnavailableHTTPError,
+        AppNotFoundError,
+    )
     @console_ns.doc("download_workflow_agent_sandbox_file")
     @console_ns.doc(description="Create a ToolFile from one workflow Agent Binding file and return its download URL")
     @console_ns.expect(console_ns.models[WorkflowAgentSandboxDownloadPayload.__name__])

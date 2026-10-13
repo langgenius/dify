@@ -12,6 +12,7 @@ from controllers.console.workspace.rbac.schemas import (
     _ReplaceMemberRolesRequest,
 )
 from extensions.ext_application_services import application_services
+from libs.external_api import error_responses
 from libs.helper import dump_response
 from machinery.context import RequestContext
 from services.account_errors import AccountNotFoundError
@@ -53,6 +54,7 @@ class RBACMemberRolesApi(Resource):
             application_services().rbac.members.get(context, str(member_id), language=rbac_language()),
         )
 
+    @error_responses(InvalidArgumentError)
     @console_account_admission()
     @console_ns.expect(console_ns.models[_ReplaceMemberRolesRequest.__name__])
     @console_ns.response(200, "Success", console_ns.models[dto.MemberRolesResponse.__name__])

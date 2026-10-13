@@ -7,9 +7,16 @@ from sqlalchemy.orm import Session
 
 from controllers.common.rbac import DatasetId, RBACCheck
 from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.console.app.error import (
+    CompletionRequestError,
+    ProviderModelCurrentlyNotSupportError,
+    ProviderNotInitializeError,
+    ProviderQuotaExceededError,
+)
 from controllers.console.app.wraps import with_session
 from controllers.console.wraps import RBACPermission, rbac_permission_required
 from fields.hit_testing_fields import HitTestingResponse
+from libs.external_api import error_responses
 from libs.helper import dump_response
 from libs.login import login_required
 from models import Account
@@ -30,6 +37,12 @@ register_response_schema_models(console_ns, HitTestingResponse)
 
 @console_ns.route("/datasets/<uuid:dataset_id>/hit-testing")
 class HitTestingApi(Resource, DatasetsHitTestingBase):
+    @error_responses(
+        CompletionRequestError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+    )
     @console_ns.doc("test_dataset_retrieval")
     @console_ns.doc(description="Test dataset knowledge retrieval")
     @console_ns.doc(params={"dataset_id": "Dataset ID"})

@@ -18,6 +18,7 @@ from controllers.web.error import (
 from core.db.session_factory import session_factory
 from core.logging.context import set_identity_context
 from extensions.ext_application_services import application_services
+from libs.external_api import document_errors
 from libs.passport import PassportService
 from libs.token import extract_webapp_passport
 from models.model import App, EndUser, Site
@@ -177,3 +178,13 @@ def _validate_user_accessibility(
 
 class WebApiResource(Resource):
     method_decorators = [validate_jwt_token]
+
+
+# method_decorators run at dispatch, so the guard's errors are documented on the class.
+document_errors(
+    WebApiResource,
+    WebAppNotFoundError,
+    WebAppAuthRequiredError,
+    WebAppAuthAccessDeniedError,
+    WebAppAccessServiceUnavailableError,
+)

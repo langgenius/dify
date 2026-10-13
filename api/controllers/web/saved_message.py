@@ -11,6 +11,7 @@ from controllers.web.wraps import WebApiResource
 from extensions.ext_application_services import application_services
 from fields.conversation_fields import ResultResponse
 from fields.message_fields import SavedMessageInfiniteScrollPagination
+from libs.external_api import error_responses
 from libs.helper import dump_response
 from models.model import App, EndUser
 from services.errors.message import MessageNotExistsError
@@ -22,6 +23,7 @@ register_response_schema_models(web_ns, ResultResponse, SavedMessageInfiniteScro
 
 @web_ns.route("/saved-messages")
 class SavedMessageListApi(WebApiResource):
+    @error_responses(NotCompletionAppError)
     @web_ns.doc("Get Saved Messages")
     @web_ns.doc(description="Retrieve paginated list of saved messages for a completion application.")
     @web_ns.doc(params=query_params_from_model(SavedMessageListQuery))
@@ -49,6 +51,7 @@ class SavedMessageListApi(WebApiResource):
         )
         return dump_response(SavedMessageInfiniteScrollPagination, pagination)
 
+    @error_responses(NotCompletionAppError)
     @web_ns.doc("Save Message")
     @web_ns.doc(description="Save a specific message for later reference.")
     @web_ns.doc(
@@ -87,6 +90,7 @@ class SavedMessageListApi(WebApiResource):
 
 @web_ns.route("/saved-messages/<uuid:message_id>")
 class SavedMessageApi(WebApiResource):
+    @error_responses(NotCompletionAppError)
     @web_ns.doc("Delete Saved Message")
     @web_ns.doc(description="Remove a message from saved messages.")
     @web_ns.doc(params={"message_id": {"description": "Message UUID to delete", "type": "string", "required": True}})

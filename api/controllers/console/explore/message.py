@@ -43,6 +43,7 @@ from fields.message_fields import ExploreMessageInfiniteScrollPagination, Sugges
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.exception import BaseHTTPException
+from libs.external_api import document_errors, error_responses
 from machinery.context import RequestContext
 from services.account_errors import AccountNotFoundError
 from services.app_definition_query_service import AppDefinitionUnavailableError
@@ -116,7 +117,25 @@ def _message_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
             logger.exception("Installed-app message operation failed")
             raise InternalServerError() from error
 
-    return decorated
+    return document_errors(
+        decorated,
+        InstalledAppNotFoundHTTPError,
+        AppUnavailableError,
+        UnauthorizedError,
+        NotChatAppError,
+        NotCompletionAppError,
+        MessageNotFoundHTTPError,
+        MessageCursorNotFoundHTTPError,
+        ConversationNotFoundHTTPError,
+        MessageFeedbackRatingRequiredHTTPError,
+        AppMoreLikeThisDisabledError,
+        AppSuggestedQuestionsAfterAnswerDisabledError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+        ProviderModelCurrentlyNotSupportError,
+        CompletionRequestError,
+        InternalServerError,
+    )
 
 
 @console_ns.route(
@@ -204,6 +223,7 @@ class MessageMoreLikeThisApi(Resource):
     endpoint="installed_app_suggested_question",
 )
 class MessageSuggestedQuestionApi(Resource):
+    @error_responses(InternalServerError, NotChatAppError)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SuggestedQuestionsResponse.__name__])
     @console_account_admission()
     @get_installed_app

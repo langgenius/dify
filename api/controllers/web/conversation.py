@@ -20,6 +20,7 @@ from fields.conversation_fields import (
     ResultResponse,
     SimpleConversation,
 )
+from libs.external_api import error_responses
 from libs.helper import uuid_value
 from models.model import App, AppMode, EndUser
 from services.conversation_service import ConversationService
@@ -47,6 +48,7 @@ register_response_schema_models(web_ns, ConversationInfiniteScrollPagination, Re
 
 @web_ns.route("/conversations")
 class ConversationListApi(WebApiResource):
+    @error_responses(NotChatAppError)
     @web_ns.doc("Get Conversation List")
     @web_ns.doc(description="Retrieve paginated list of conversations for a chat application.")
     @web_ns.doc(params=query_params_from_model(ConversationListQuery))
@@ -100,6 +102,7 @@ class ConversationListApi(WebApiResource):
 
 @web_ns.route("/conversations/<uuid:c_id>")
 class ConversationApi(WebApiResource):
+    @error_responses(NotChatAppError)
     @web_ns.doc("Delete Conversation")
     @web_ns.doc(description="Delete a specific conversation.")
     @web_ns.doc(params={"c_id": {"description": "Conversation UUID", "type": "string", "required": True}})
@@ -128,6 +131,7 @@ class ConversationApi(WebApiResource):
 
 @web_ns.route("/conversations/<uuid:c_id>/name")
 class ConversationRenameApi(WebApiResource):
+    @error_responses(NotChatAppError)
     @web_ns.doc("Rename Conversation")
     @web_ns.doc(description="Rename a specific conversation with a custom name or auto-generate one.")
     @web_ns.doc(params={"c_id": {"description": "Conversation UUID", "type": "string", "required": True}})
@@ -178,6 +182,7 @@ class ConversationRenameApi(WebApiResource):
 
 @web_ns.route("/conversations/<uuid:c_id>/pin")
 class ConversationPinApi(WebApiResource):
+    @error_responses(NotChatAppError)
     @web_ns.doc("Pin Conversation")
     @web_ns.doc(description="Pin a specific conversation to keep it at the top of the list.")
     @web_ns.doc(params={"c_id": {"description": "Conversation UUID", "type": "string", "required": True}})
@@ -209,6 +214,7 @@ class ConversationPinApi(WebApiResource):
 
 @web_ns.route("/conversations/<uuid:c_id>/unpin")
 class ConversationUnPinApi(WebApiResource):
+    @error_responses(NotChatAppError)
     @web_ns.doc("Unpin Conversation")
     @web_ns.doc(description="Unpin a specific conversation to remove it from the top of the list.")
     @web_ns.doc(params={"c_id": {"description": "Conversation UUID", "type": "string", "required": True}})

@@ -46,6 +46,7 @@ from fields.conversation_fields import (
 )
 from fields.conversation_fields import MessageResponseSource
 from graphon.model_runtime.errors.invoke import InvokeError
+from libs.external_api import error_responses
 from libs.helper import dump_response, uuid_value
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from libs.login import login_required
@@ -278,6 +279,15 @@ class MessageAnnotationCountApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/chat-messages/<uuid:message_id>/suggested-questions")
 class MessageSuggestedQuestionApi(Resource):
+    @error_responses(
+        AppNotFoundError,
+        AppSuggestedQuestionsAfterAnswerDisabledError,
+        AppUnavailableError,
+        CompletionRequestError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+    )
     @console_ns.doc("get_message_suggested_questions")
     @console_ns.doc(description="Get suggested questions for a message")
     @console_ns.doc(params={"app_id": "Application ID", "message_id": "Message ID"})
@@ -306,6 +316,15 @@ class MessageSuggestedQuestionApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/chat-messages/<uuid:message_id>/suggested-questions")
 class AgentMessageSuggestedQuestionApi(Resource):
+    @error_responses(
+        AgentNotFoundError,
+        AppSuggestedQuestionsAfterAnswerDisabledError,
+        AppUnavailableError,
+        CompletionRequestError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+    )
     @console_ns.doc("get_agent_message_suggested_questions")
     @console_ns.doc(description="Get suggested questions for an Agent App message")
     @console_ns.doc(params={"agent_id": "Agent ID", "message_id": "Message ID"})

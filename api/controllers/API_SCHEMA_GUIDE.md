@@ -246,6 +246,12 @@ Document business errors so clients can branch on `code`:
 - View decorators must keep `__apidoc__` from the view they wrap (`functools.wraps` does, unless `updated=()`; then
   add `"__apidoc__"` to `assigned`), or the errors documented below them are lost.
 
+`make api-error-lint` (`api/dev/lint_error_responses.py`) checks these declarations against what each Console, Web and
+Service API operation statically raises, and CI runs it. `--fix` adds what handlers are missing to their
+`@error_responses`; `make lint` runs it with `--fix`. Undocumented errors raised by a decorator are reported against the
+decorator and fixed there. Stale entries are warnings; `--fix --prune` removes them. Inference cannot see instance
+calls, signals or other dynamic dispatch, so add errors raised that way by hand.
+
 Each documented code is one shared component, `{Code}Error` (`draft_workflow_not_sync` documents as
 `DraftWorkflowNotSyncError`): the error body with `code` and `status` fixed, plus the class's `details_model` (a
 Pydantic model) when it declares one. The response of its status references it; several codes on one status are an

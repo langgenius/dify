@@ -59,6 +59,7 @@ from fields.workflow_run_fields import (
 )
 from graphon.graph_engine.manager import GraphEngineManager
 from libs import helper
+from libs.external_api import error_responses
 from libs.helper import TimestampField
 from libs.login import current_account_with_tenant, login_required
 from models import Account
@@ -160,6 +161,7 @@ def get_snippet[**P, R](view_func: Callable[P, R]) -> Callable[P, R]:
 
 @console_ns.route("/snippets/<uuid:snippet_id>/workflows/draft")
 class SnippetDraftWorkflowApi(Resource):
+    @error_responses(DraftWorkflowNotExist)
     @console_ns.doc("get_snippet_draft_workflow")
     @console_ns.response(
         200,
@@ -192,6 +194,7 @@ class SnippetDraftWorkflowApi(Resource):
         response["input_fields"] = snippet.input_fields_list
         return response
 
+    @error_responses(DraftWorkflowNotSync, InvalidArgumentError)
     @console_ns.doc("sync_snippet_draft_workflow")
     @console_ns.expect(console_ns.models.get(SnippetDraftSyncPayload.__name__))
     @console_ns.response(
@@ -284,6 +287,7 @@ class SnippetPublishedWorkflowApi(Resource):
         response["input_fields"] = snippet.input_fields_list
         return response
 
+    @error_responses(InvalidArgumentError)
     @console_ns.doc("publish_snippet_workflow")
     @console_ns.expect(console_ns.models.get(PublishWorkflowPayload.__name__))
     @console_ns.response(200, "Workflow published successfully", console_ns.models[WorkflowPublishResponse.__name__])
@@ -429,6 +433,7 @@ class SnippetDraftWorkflowRestoreApi(Resource):
 
 @console_ns.route("/snippets/<uuid:snippet_id>/workflows/<string:workflow_id>")
 class SnippetWorkflowByIdApi(Resource):
+    @error_responses(InvalidArgumentError)
     @console_ns.doc("update_snippet_workflow_by_id")
     @console_ns.doc(description="Update published snippet workflow attributes")
     @console_ns.doc(params={"snippet_id": "Snippet ID", "workflow_id": "Workflow ID"})

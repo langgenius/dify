@@ -34,6 +34,7 @@ from core.workflow.generator.types import WorkflowGenerateErrorCode
 from fields.base import ResponseModel
 from graphon.model_runtime.entities.llm_entities import LLMMode
 from graphon.model_runtime.errors.invoke import InvokeError
+from libs.external_api import error_responses
 from libs.helper import compact_generate_response, dump_response
 from libs.login import login_required
 from models import App
@@ -238,6 +239,12 @@ register_response_schema_models(
 
 @console_ns.route("/rule-generate")
 class RuleGenerateApi(Resource):
+    @error_responses(
+        CompletionRequestError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+    )
     @console_ns.doc("generate_rule_config")
     @console_ns.doc(description="Generate rule configuration using LLM")
     @console_ns.expect(console_ns.models[RuleGeneratePayload.__name__])
@@ -271,6 +278,12 @@ class RuleGenerateApi(Resource):
 
 @console_ns.route("/rule-code-generate")
 class RuleCodeGenerateApi(Resource):
+    @error_responses(
+        CompletionRequestError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+    )
     @console_ns.doc("generate_rule_code")
     @console_ns.doc(description="Generate code rules using LLM")
     @console_ns.expect(console_ns.models[RuleCodeGeneratePayload.__name__])
@@ -303,6 +316,12 @@ class RuleCodeGenerateApi(Resource):
 
 @console_ns.route("/rule-structured-output-generate")
 class RuleStructuredOutputGenerateApi(Resource):
+    @error_responses(
+        CompletionRequestError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+    )
     @console_ns.doc("generate_structured_output")
     @console_ns.doc(description="Generate structured output rules using LLM")
     @console_ns.expect(console_ns.models[RuleStructuredOutputPayload.__name__])
@@ -335,6 +354,12 @@ class RuleStructuredOutputGenerateApi(Resource):
 
 @console_ns.route("/instruction-generate")
 class InstructionGenerateApi(Resource):
+    @error_responses(
+        CompletionRequestError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+    )
     @console_ns.doc("generate_instruction")
     @console_ns.doc(description="Generate instruction for workflow nodes or general use")
     @console_ns.expect(console_ns.models[InstructionGeneratePayload.__name__])
@@ -501,6 +526,12 @@ class WorkflowGenerateApi(Resource):
     frontend can hand it straight to ``/apps/{id}/workflows/draft``.
     """
 
+    @error_responses(
+        CompletionRequestError,
+        ProviderModelCurrentlyNotSupportError,
+        ProviderNotInitializeError,
+        ProviderQuotaExceededError,
+    )
     @console_ns.doc("generate_workflow_graph")
     @console_ns.doc(description="Generate a Dify workflow graph from natural language")
     @console_ns.expect(console_ns.models[WorkflowGeneratePayload.__name__])

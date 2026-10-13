@@ -46,6 +46,7 @@ from fields.snippet_fields import (
     snippet_list_item_responses,
     snippet_response,
 )
+from libs.external_api import error_responses
 from libs.helper import dump_response
 from libs.login import login_required
 from models import Account
@@ -154,6 +155,7 @@ class CustomizedSnippetsApi(Resource):
             },
         ), HTTPStatus.OK
 
+    @error_responses(InvalidArgumentError)
     @console_ns.doc("create_customized_snippet")
     @console_ns.expect(console_ns.models.get(CreateSnippetPayload.__name__))
     @console_ns.response(201, "Snippet created successfully", console_ns.models[SnippetResponse.__name__])
@@ -223,6 +225,7 @@ class CustomizedSnippetDetailApi(Resource):
 
         return dump_response(SnippetResponse, snippet_response(snippet, session=session)), 200
 
+    @error_responses(InvalidArgumentError)
     @console_ns.doc("update_customized_snippet")
     @console_ns.expect(console_ns.models.get(UpdateSnippetPayload.__name__))
     @console_ns.response(200, "Snippet updated successfully", console_ns.models[SnippetResponse.__name__])

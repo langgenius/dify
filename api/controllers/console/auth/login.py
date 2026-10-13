@@ -47,6 +47,7 @@ from controllers.console.wraps import (
     setup_required,
 )
 from extensions.ext_application_services import application_services
+from libs.external_api import error_responses
 from libs.helper import EmailStr, dump_response, extract_remote_ip
 from libs.helper import timezone as validate_timezone_string
 from libs.login import current_account_with_tenant_optional
@@ -117,6 +118,28 @@ register_response_schema_models(
 class LoginApi(Resource):
     """Resource for user login."""
 
+    @error_responses(
+        AccountBannedError,
+        AccountInFreezeError,
+        AccountNotFound,
+        AuthenticationFailedError,
+        EmailCodeError,
+        EmailCodeLoginRateLimitExceededError,
+        EmailCodeLoginServiceUnavailableError,
+        EmailDomainSuspendedError,
+        EmailPasswordLoginLimitError,
+        EmailSendIpLimitError,
+        InvalidAccountPasswordRequestError,
+        InvalidEmailError,
+        InvalidTokenError,
+        NormalizedEmailAlreadyInUseError,
+        NotAllowedCreateWorkspace,
+        PasswordResetRateLimitExceededError,
+        SeatsLimitExceeded,
+        TurnstileServiceUnavailableError,
+        TurnstileVerificationFailedError,
+        WorkspacesLimitExceeded,
+    )
     @setup_required
     @email_password_login_enabled
     @console_ns.expect(console_ns.models[LoginPayload.__name__])
@@ -167,6 +190,28 @@ class LogoutApi(Resource):
 
 @console_ns.route("/reset-password")
 class ResetPasswordSendEmailApi(Resource):
+    @error_responses(
+        AccountBannedError,
+        AccountInFreezeError,
+        AccountNotFound,
+        AuthenticationFailedError,
+        EmailCodeError,
+        EmailCodeLoginRateLimitExceededError,
+        EmailCodeLoginServiceUnavailableError,
+        EmailDomainSuspendedError,
+        EmailPasswordLoginLimitError,
+        EmailSendIpLimitError,
+        InvalidAccountPasswordRequestError,
+        InvalidEmailError,
+        InvalidTokenError,
+        NormalizedEmailAlreadyInUseError,
+        NotAllowedCreateWorkspace,
+        PasswordResetRateLimitExceededError,
+        SeatsLimitExceeded,
+        TurnstileServiceUnavailableError,
+        TurnstileVerificationFailedError,
+        WorkspacesLimitExceeded,
+    )
     @setup_required
     @email_password_login_enabled
     @console_ns.expect(console_ns.models[EmailPayload.__name__])
@@ -186,6 +231,28 @@ class ResetPasswordSendEmailApi(Resource):
 
 @console_ns.route("/email-code-login")
 class EmailCodeLoginSendEmailApi(Resource):
+    @error_responses(
+        AccountBannedError,
+        AccountInFreezeError,
+        AccountNotFound,
+        AuthenticationFailedError,
+        EmailCodeError,
+        EmailCodeLoginRateLimitExceededError,
+        EmailCodeLoginServiceUnavailableError,
+        EmailDomainSuspendedError,
+        EmailPasswordLoginLimitError,
+        EmailSendIpLimitError,
+        InvalidAccountPasswordRequestError,
+        InvalidEmailError,
+        InvalidTokenError,
+        NormalizedEmailAlreadyInUseError,
+        NotAllowedCreateWorkspace,
+        PasswordResetRateLimitExceededError,
+        SeatsLimitExceeded,
+        TurnstileServiceUnavailableError,
+        TurnstileVerificationFailedError,
+        WorkspacesLimitExceeded,
+    )
     @setup_required
     @console_ns.expect(console_ns.models[EmailCodeSendPayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[SimpleResultDataResponse.__name__])
@@ -207,6 +274,28 @@ class EmailCodeLoginSendEmailApi(Resource):
 
 @console_ns.route("/email-code-login/validity")
 class EmailCodeLoginApi(Resource):
+    @error_responses(
+        AccountBannedError,
+        AccountInFreezeError,
+        AccountNotFound,
+        AuthenticationFailedError,
+        EmailCodeError,
+        EmailCodeLoginRateLimitExceededError,
+        EmailCodeLoginServiceUnavailableError,
+        EmailDomainSuspendedError,
+        EmailPasswordLoginLimitError,
+        EmailSendIpLimitError,
+        InvalidAccountPasswordRequestError,
+        InvalidEmailError,
+        InvalidTokenError,
+        NormalizedEmailAlreadyInUseError,
+        NotAllowedCreateWorkspace,
+        PasswordResetRateLimitExceededError,
+        SeatsLimitExceeded,
+        TurnstileServiceUnavailableError,
+        TurnstileVerificationFailedError,
+        WorkspacesLimitExceeded,
+    )
     @setup_required
     @console_ns.expect(console_ns.models[EmailCodeLoginPayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])

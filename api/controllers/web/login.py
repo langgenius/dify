@@ -30,6 +30,7 @@ from controllers.web.error import WebAppAccessServiceUnavailableError, WebAppNot
 from controllers.web.flask_admission import web_anonymous_admission
 from enums import DeploymentEdition
 from extensions.ext_application_services import application_services
+from libs.external_api import error_responses
 from libs.helper import EmailStr
 from libs.password import valid_password
 from libs.token import (
@@ -88,6 +89,7 @@ register_response_schema_models(
 class LoginApi(Resource):
     """Resource for web app email/password login."""
 
+    @error_responses(AccountBannedError, AuthenticationFailedError)
     @web_ns.expect(web_ns.models[LoginPayload.__name__])
     @web_anonymous_admission(editions=_ENTERPRISE_ONLY)
     @web_ns.doc("web_app_login")
@@ -127,6 +129,7 @@ class LoginApi(Resource):
 # TODO: remove in the future. frontend should redirect to login page by catching 401 status
 @web_ns.route("/login/status")
 class LoginStatusApi(Resource):
+    @error_responses(WebAppAccessServiceUnavailableError, WebAppNotFoundError)
     @web_anonymous_admission()
     @web_ns.doc("web_app_login_status")
     @web_ns.doc(description="Check login status")
@@ -179,6 +182,7 @@ class LogoutApi(Resource):
 
 @web_ns.route("/email-code-login")
 class EmailCodeLoginSendEmailApi(Resource):
+    @error_responses(AuthenticationFailedError)
     @web_anonymous_admission(editions=_ENTERPRISE_ONLY)
     @web_ns.doc("send_email_code_login")
     @web_ns.doc(description="Send email verification code for login")
@@ -207,6 +211,7 @@ class EmailCodeLoginSendEmailApi(Resource):
 
 @web_ns.route("/email-code-login/validity")
 class EmailCodeLoginApi(Resource):
+    @error_responses(AccountBannedError, AuthenticationFailedError, EmailCodeError, InvalidEmailError)
     @web_anonymous_admission(editions=_ENTERPRISE_ONLY)
     @web_ns.doc("verify_email_code_login")
     @web_ns.doc(description="Verify email code and complete login")
