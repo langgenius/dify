@@ -310,6 +310,7 @@ jobs:
               "api/tests/unit_tests/core/workflow/graph_engine/test_builder_restricted_native.py",
               "api/tests/unit_tests/services/dify_builder/test_execution_policy_service.py",
               "api/tests/unit_tests/services/dify_builder/test_json_tool_execution_admission.py",
+              "api/tests/unit_tests/services/dify_builder/test_json_tool_execution.py",
               "api/tests/unit_tests/core/dify_builder/test_verification.py",
               "api/tests/unit_tests/core/dify_builder/test_handlers_build.py",
               "api/tests/unit_tests/services/dify_builder/test_localize.py",
@@ -361,6 +362,50 @@ jobs:
           }
           if actual_json_admission != expected_json_admission:
               problems.append("JSON admission case identities differ from the reviewed four variants")
+          json_policy_module = "tests.unit_tests.services.dify_builder.test_json_tool_execution"
+          json_policy_expected = {
+              "test_reviewed_pure_mixed_graph_admits_exact_native_chain": 1,
+              "test_string_source_variants": 6,
+              "test_final_parameters_keep_native_boolean": 4,
+              "test_non_boolean_ensure_ascii_refuses_before_coercion": 10,
+              "test_exact_graph_and_static_tool_shape_refuse_mutations": 29,
+              "test_wrong_resolved_tool_class_refuses_before_class_validation": 1,
+              "test_pure_mixed_native_marker_source_limits": 3,
+              "test_direct_variable_retains_general_name_limit": 1,
+              "test_missing_or_duplicated_ensure_ascii_refuses": 1,
+              "test_non_pure_mixed_refuses_before_resolution": 12,
+              "test_content_constant_lookup_hazards_refuse": 12,
+              "test_direct_start_text_keeps_literal_markers_and_dots": 1,
+              "test_native_generation_and_log_read_only_declared_start_values": 2,
+              "test_native_jsonpath_constant_cannot_read_non_start_value": 1,
+              "test_admitted_jsonpath_grammar": 7,
+              "test_jsonpath_grammar_refuses_constant_and_resolved_values": 28,
+              "test_filter_utf8_byte_boundary": 2,
+              "test_content_utf8_byte_boundary": 4,
+              "test_parameter_validator_requires_exact_final_types_and_keys": 1,
+              "test_qualified_binding_is_frozen_and_strict": 1,
+          }
+          json_contract_expected = {
+              "tests.unit_tests.services.dify_builder.test_execution_policy_service": {
+                  "test_historical_restricted_context_tag_and_absence_decode_identically": 1,
+                  "test_json_context_digest_covers_qualified_binding": 13,
+                  "test_json_context_decodes_through_completion_and_requires_explicit_tag": 1,
+              },
+              "tests.unit_tests.core.dify_builder.test_execution_policy": {
+                  "test_json_evidence_variant_and_receipt_are_strict": 1,
+              },
+          }
+          for module, expected in {json_policy_module: json_policy_expected, **json_contract_expected}.items():
+              actual = {}
+              for classname, name in identities:
+                  if classname.removeprefix("api.") == module:
+                      function = name.split("[", 1)[0]
+                      actual[function] = actual.get(function, 0) + 1
+              for function, expected_count in expected.items():
+                  if actual.get(function, 0) != expected_count:
+                      problems.append(f"JSON case inventory mismatch {module}::{function}")
+              if module == json_policy_module and set(actual) != set(expected):
+                  problems.append("unexpected JSON policy test functions")
           print(f"COLLECTED total: {len(identities)} unit cases", flush=True)
           for problem in problems:
               print(f"COMPLETENESS {problem}", flush=True)
