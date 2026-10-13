@@ -83,6 +83,7 @@ class OpenApiErrorCode(StrEnum):
     NODE_TYPE_NOT_FOUND = "node_type_not_found"
     NODE_NOT_FOUND = "node_not_found"
     WEBAPP_ACCESS_MODE_CONSOLE_ONLY = "webapp_access_mode_console_only"
+    WEBAPP_PUBLIC_ACCESS_DISABLED = "webapp_public_access_disabled"
     SECRET_MASK_NOT_SECRET = "secret_mask_not_secret"
     MARKETPLACE_DISABLED = "marketplace_disabled"
     MARKETPLACE_UNAVAILABLE = "marketplace_unavailable"
@@ -349,6 +350,13 @@ class WebAppAccessModeConsoleOnly(OpenApiError):  # noqa: N818
     error_code = OpenApiErrorCode.WEBAPP_ACCESS_MODE_CONSOLE_ONLY
     description = "Member lists for access_mode private must be chosen in the Dify console."
     hint = "Use public, private_all or sso_verified here."
+
+
+class WebAppPublicAccessDisabled(OpenApiError):  # noqa: N818
+    code = 403
+    error_code = OpenApiErrorCode.WEBAPP_PUBLIC_ACCESS_DISABLED
+    description = "This server does not allow web apps with access_mode public."
+    hint = "Use private_all or sso_verified."
 
 
 class VersionNotRestorable(OpenApiError):  # noqa: N818

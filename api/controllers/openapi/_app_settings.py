@@ -12,7 +12,11 @@ from pydantic import BaseModel
 from werkzeug.exceptions import NotFound
 
 from configs import dify_config
-from controllers.openapi._errors import WebAppAccessModeConsoleOnly, WebAppAccessUnavailable
+from controllers.openapi._errors import (
+    WebAppAccessModeConsoleOnly,
+    WebAppAccessUnavailable,
+    WebAppPublicAccessDisabled,
+)
 from controllers.openapi._models import (
     AgentAppInfo,
     AgentAppInfoPatch,
@@ -212,6 +216,8 @@ def webapp_access(ctx: Context) -> WebAppAccess:
 def update_webapp_access(ctx: Context, body: WebAppAccessPayload) -> WebAppAccess:
     if body.access_mode not in _SETTABLE_ACCESS_MODES:
         raise WebAppAccessModeConsoleOnly()
+    if body.access_mode == WebAppAccessMode.PUBLIC and not dify_config.WEBAPP_PUBLIC_ACCESS_ENABLED:
+        raise WebAppPublicAccessDisabled()
     try:
         _ACCESS_POLICY.update_access_mode(ctx.app.id, body.access_mode)
     except WebAppAccessUnavailableError as error:
