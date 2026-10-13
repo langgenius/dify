@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import type { Dependency, Plugin, PluginDeclaration } from '../../../types'
 import { Button } from '@langgenius/dify-ui/button'
+import { ORPCError } from '@orpc/client'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { uploadFile } from '@/service/plugins'
@@ -71,7 +72,8 @@ const Uploading: FC<Props> = ({
     try {
       handleUploadedResponse(await uploadFile(file, isBundle))
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : undefined
+      // Only server answers carry a user-facing message; transport errors use the localized fallback.
+      const message = error instanceof ORPCError ? error.message : undefined
       if (message) {
         onFailed(message)
         return
