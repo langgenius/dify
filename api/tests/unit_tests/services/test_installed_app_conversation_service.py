@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from models.enums import ConversationFromSource
 from models.model import App, AppMode, Conversation, InstalledApp, Message
+from models.utils.file_input_compat import restore_input_files
 from repositories.conversation_repository import ConversationRepository
 from services.conversation_command_service import ConversationCleanup, ConversationCommandService
 from services.conversation_name_service import (
@@ -18,6 +19,7 @@ from services.conversation_name_service import (
     ConversationNameRequiredError,
     ConversationNameService,
 )
+from services.conversation_query_service import ConversationQueryService
 from services.entities.conversation_entities import InstalledAppConversationRef
 from services.errors.conversation import ConversationNotExistsError
 from services.installed_app_access_service import InstalledAppNotFoundError, InstalledAppRef
@@ -95,7 +97,7 @@ def _service(
 ) -> InstalledAppConversationService:
     repository = ConversationRepository(session_factory=factory)
     return InstalledAppConversationService(
-        conversations=repository,
+        queries=ConversationQueryService(conversations=repository, restore_inputs=restore_input_files),
         names=ConversationNameService(conversations=repository, generate_name=generate_name),
         commands=ConversationCommandService(conversations=repository, enqueue_delete_cleanup=cleanup),
     )
@@ -287,3 +289,36 @@ def test_non_chat_mode_is_rejected_before_rename_or_delete(
         service.delete(installed_app=installed_app, account_id=ref.account_id, conversation_id=ref.conversation_id)
     stored = ConversationRepository(session_factory=sqlite_session_factory).get(ref=ref)
     assert stored.name == "Original"
+
+
+def test_list_uses_shared_query_and_explore_scope(
+    sqlite_session_factory: sessionmaker[Session], ref: InstalledAppConversationRef
+) -> None:
+    with sqlite_session_factory.begin() as session:
+        session.add(
+            Conversation(
+                app_id=ref.app_id,
+                mode=AppMode.CHAT,
+                name="Other invocation",
+                inputs={},
+                from_source=ConversationFromSource.CONSOLE,
+                from_account_id=ref.account_id,
+                from_end_user_id=None,
+                invoke_from="debugger",
+                is_deleted=False,
+            )
+        )
+    service = _service(sqlite_session_factory, generate_name=_unexpected_generation, cleanup=_unexpected_cleanup)
+    page = service.get_page(
+        installed_app=ref.installed_app, account_id=ref.account_id, last_id=None, limit=20, pinned=None
+    )
+    assert [record.id for record in page.data] == [ref.conversation_id]
+    assert page.data[0].inputs == {"count": 0}
+    assert page.tenant_id == ref.installed_app.app_owner_tenant_id
+    assert page.has_more is False
+    assert (
+        service.get_page(
+            installed_app=ref.installed_app, account_id=ref.account_id, last_id=None, limit=20, pinned=True
+        ).data
+        == ()
+    )

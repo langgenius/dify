@@ -48,6 +48,7 @@ from extensions.ext_storage import storage
 from libs.helper import RateLimiter
 from libs.passport import PassportService
 from models.model import EndUser
+from models.utils.file_input_compat import restore_input_files
 from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
 from repositories.account_integration_repository import SQLAlchemyAccountIntegrationRepository
@@ -125,6 +126,7 @@ from services.compliance_download_service import ComplianceDownloadService
 from services.conversation_command_service import ConversationCommandService
 from services.conversation_name_generator import generate_conversation_name
 from services.conversation_name_service import ConversationNameService
+from services.conversation_query_service import ConversationQueryService
 from services.conversation_service import ConversationService
 from services.conversation_variable_query import ConversationVariableQuery
 from services.credentials.query import CredentialQuery
@@ -276,6 +278,7 @@ class ApplicationServices:
     compliance_downloads: ComplianceDownloadService
     conversation_names: ConversationNameService
     conversation_commands: ConversationCommandService
+    conversation_queries: ConversationQueryService
     data_sources: DataSourceServices
     knowledge: KnowledgeServices
     app_scoped_end_users: AppScopedEndUserServices
@@ -526,10 +529,13 @@ def build_application_services(
         conversations=conversations, enqueue_delete_cleanup=ConversationService.enqueue_delete_cleanup
     )
 
+    conversation_queries = ConversationQueryService(conversations=conversations, restore_inputs=restore_input_files)
+
     return ApplicationServices(
         rbac=rbac,
         conversation_names=conversation_names,
         conversation_commands=conversation_commands,
+        conversation_queries=conversation_queries,
         accounts=account_services,
         apps=apps,
         credential_queries=CredentialQueryRepository(session_factory=database_client),
@@ -601,7 +607,7 @@ def build_application_services(
             private_app_access_enabled=deployment_edition == DeploymentEdition.ENTERPRISE,
         ),
         installed_apps=build_installed_app_services(
-            conversations=conversations,
+            conversation_queries=conversation_queries,
             conversation_names=conversation_names,
             conversation_commands=conversation_commands,
             database_client=database_client,

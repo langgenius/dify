@@ -3265,7 +3265,7 @@ export const zGetConversationsQuery = z.object({
 })
 
 /**
- * Successfully retrieved conversations list.
+ * Conversations retrieved successfully.
  */
 export const zGetConversationsResponse = zConversationInfiniteScrollPagination
 

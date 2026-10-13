@@ -15,9 +15,13 @@ from models.model import App, AppMode, Conversation, EndUser, InstalledApp, Mess
 from models.web import PinnedConversation
 from repositories.conversation_repository import ConversationRepository
 from services.entities.conversation_entities import (
+    ConversationListSource,
     ConversationPage,
+    ConversationSort,
     EndUserConversationRef,
+    EndUserConversationScope,
     InstalledAppConversationRef,
+    InstalledAppConversationScope,
 )
 from services.errors.conversation import ConversationNotExistsError, LastConversationNotExistsError
 from services.errors.message import MessageNotExistsError
@@ -116,14 +120,29 @@ def test_page_preserves_empty_result_and_pinned_empty_short_circuit(
 ) -> None:
     repository = ConversationRepository(session_factory=sqlite_session_factory)
     assert repository.get_page(
-        installed_app=installation, account_id=_ACCOUNT_ID, last_id=None, limit=20, pinned=None
-    ) == ConversationPage(limit=20, has_more=False, data=())
+        scope=InstalledAppConversationScope(installed_app=installation, account_id=_ACCOUNT_ID),
+        invoke_from="explore",
+        sort_by="-updated_at",
+        last_id=None,
+        limit=20,
+        pinned=None,
+    ) == ConversationPage(tenant_id=_OWNER_TENANT_ID, limit=20, has_more=False, data=())
     assert repository.get_page(
-        installed_app=installation, account_id=_ACCOUNT_ID, last_id=str(uuid4()), limit=20, pinned=True
-    ) == ConversationPage(limit=20, has_more=False, data=())
+        scope=InstalledAppConversationScope(installed_app=installation, account_id=_ACCOUNT_ID),
+        invoke_from="explore",
+        sort_by="-updated_at",
+        last_id=str(uuid4()),
+        limit=20,
+        pinned=True,
+    ) == ConversationPage(tenant_id=_OWNER_TENANT_ID, limit=20, has_more=False, data=())
     with pytest.raises(LastConversationNotExistsError):
         repository.get_page(
-            installed_app=installation, account_id=_ACCOUNT_ID, last_id=str(uuid4()), limit=20, pinned=None
+            scope=InstalledAppConversationScope(installed_app=installation, account_id=_ACCOUNT_ID),
+            invoke_from="explore",
+            sort_by="-updated_at",
+            last_id=str(uuid4()),
+            limit=20,
+            pinned=None,
         )
 
 
@@ -137,10 +156,20 @@ def test_page_keeps_updated_order_cursor_and_detached_inputs(
     repository = ConversationRepository(session_factory=sqlite_session_factory)
 
     first_page = repository.get_page(
-        installed_app=installation, account_id=_ACCOUNT_ID, last_id=None, limit=2, pinned=None
+        scope=InstalledAppConversationScope(installed_app=installation, account_id=_ACCOUNT_ID),
+        invoke_from="explore",
+        sort_by="-updated_at",
+        last_id=None,
+        limit=2,
+        pinned=None,
     )
     final_page = repository.get_page(
-        installed_app=installation, account_id=_ACCOUNT_ID, last_id=middle.id, limit=1, pinned=None
+        scope=InstalledAppConversationScope(installed_app=installation, account_id=_ACCOUNT_ID),
+        invoke_from="explore",
+        sort_by="-updated_at",
+        last_id=middle.id,
+        limit=1,
+        pinned=None,
     )
 
     assert [item.id for item in first_page.data] == [newest.id, middle.id]
@@ -165,12 +194,24 @@ def test_page_keeps_existing_strict_timestamp_behavior_for_ties(
         _conversation(session, installation)
         _conversation(session, installation)
     repository = ConversationRepository(session_factory=sqlite_session_factory)
-    page = repository.get_page(installed_app=installation, account_id=_ACCOUNT_ID, last_id=None, limit=1, pinned=None)
+    page = repository.get_page(
+        scope=InstalledAppConversationScope(installed_app=installation, account_id=_ACCOUNT_ID),
+        invoke_from="explore",
+        sort_by="-updated_at",
+        last_id=None,
+        limit=1,
+        pinned=None,
+    )
     assert len(page.data) == 1
     assert page.has_more is False
     assert (
         repository.get_page(
-            installed_app=installation, account_id=_ACCOUNT_ID, last_id=page.data[0].id, limit=1, pinned=None
+            scope=InstalledAppConversationScope(installed_app=installation, account_id=_ACCOUNT_ID),
+            invoke_from="explore",
+            sort_by="-updated_at",
+            last_id=page.data[0].id,
+            limit=1,
+            pinned=None,
         ).data
         == ()
     )
@@ -191,14 +232,24 @@ def test_page_filters_invoke_source_and_scopes_pins_to_account_role_and_owner(
 
     for pinned, expected in [(None, [legacy.id, explore.id]), (True, [legacy.id]), (False, [explore.id])]:
         page = repository.get_page(
-            installed_app=installation, account_id=_ACCOUNT_ID, last_id=None, limit=20, pinned=pinned
+            scope=InstalledAppConversationScope(installed_app=installation, account_id=_ACCOUNT_ID),
+            invoke_from="explore",
+            sort_by="-updated_at",
+            last_id=None,
+            limit=20,
+            pinned=pinned,
         )
         assert [item.id for item in page.data] == expected
         assert page.has_more is False
     for cursor, pinned in [(debugging.id, None), (explore.id, True), (legacy.id, False)]:
         with pytest.raises(LastConversationNotExistsError):
             repository.get_page(
-                installed_app=installation, account_id=_ACCOUNT_ID, last_id=cursor, limit=20, pinned=pinned
+                scope=InstalledAppConversationScope(installed_app=installation, account_id=_ACCOUNT_ID),
+                invoke_from="explore",
+                sort_by="-updated_at",
+                last_id=cursor,
+                limit=20,
+                pinned=pinned,
             )
 
 
@@ -217,13 +268,23 @@ def test_every_conversation_ownership_predicate_protects_reads_and_mutations(
 
     assert (
         repository.get_page(
-            installed_app=installation, account_id=_ACCOUNT_ID, last_id=None, limit=20, pinned=None
+            scope=InstalledAppConversationScope(installed_app=installation, account_id=_ACCOUNT_ID),
+            invoke_from="explore",
+            sort_by="-updated_at",
+            last_id=None,
+            limit=20,
+            pinned=None,
         ).data
         == ()
     )
     with pytest.raises(LastConversationNotExistsError):
         repository.get_page(
-            installed_app=installation, account_id=_ACCOUNT_ID, last_id=conversation_id, limit=20, pinned=None
+            scope=InstalledAppConversationScope(installed_app=installation, account_id=_ACCOUNT_ID),
+            invoke_from="explore",
+            sort_by="-updated_at",
+            last_id=conversation_id,
+            limit=20,
+            pinned=None,
         )
     with pytest.raises(ConversationNotExistsError):
         repository.get(
@@ -285,7 +346,14 @@ def test_all_operations_revalidate_complete_installation_and_actual_app(
     repository = ConversationRepository(session_factory=sqlite_session_factory)
 
     with pytest.raises(InstalledAppNotFoundError):
-        repository.get_page(installed_app=installation, account_id=_ACCOUNT_ID, last_id=None, limit=20, pinned=True)
+        repository.get_page(
+            scope=InstalledAppConversationScope(installed_app=installation, account_id=_ACCOUNT_ID),
+            invoke_from="explore",
+            sort_by="-updated_at",
+            last_id=None,
+            limit=20,
+            pinned=True,
+        )
     with pytest.raises(InstalledAppNotFoundError):
         repository.get_name_source(
             ref=InstalledAppConversationRef(
@@ -620,3 +688,237 @@ def test_end_user_and_installed_account_refs_never_cross_owner_domains(
             repository.set_pinned(ref=foreign_ref, is_pinned=True)
     assert repository.get(ref=account_ref).name == "Original name"
     assert repository.get(ref=end_user_ref).name == "End-user conversation"
+
+
+@pytest.fixture
+def end_user_scope(
+    sqlite_session_factory: sessionmaker[Session], installation: InstalledAppRef
+) -> EndUserConversationScope:
+    with sqlite_session_factory.begin() as session:
+        user = EndUser(
+            id=_ACCOUNT_ID,
+            tenant_id=installation.app_owner_tenant_id,
+            app_id=installation.app_id,
+            type=EndUserType.BROWSER,
+            session_id=str(uuid4()),
+        )
+        session.add(user)
+        session.flush()
+        assert user.app_id is not None
+        return EndUserConversationScope(app_id=user.app_id, tenant_id=user.tenant_id, end_user_id=user.id)
+
+
+def _end_user_conversation(
+    session: Session,
+    scope: EndUserConversationScope,
+    *,
+    created_at: datetime = _TIME,
+    updated_at: datetime = _TIME,
+    invoke_from: InvokeFrom | None = InvokeFrom.WEB_APP,
+) -> Conversation:
+    conversation = Conversation(
+        app_id=scope.app_id,
+        mode=AppMode.CHAT,
+        name="End-user conversation",
+        inputs={"empty": "", "flag": False, "zero": 0, "nested": {"list": [None, 0]}},
+        from_source=ConversationFromSource.API,
+        from_account_id=None,
+        from_end_user_id=scope.end_user_id,
+        created_at=created_at,
+        updated_at=updated_at,
+        invoke_from=invoke_from,
+        is_deleted=False,
+    )
+    session.add(conversation)
+    session.flush()
+    return conversation
+
+
+@pytest.mark.parametrize("sort_by", ["created_at", "-created_at", "updated_at", "-updated_at"])
+def test_end_user_page_orders_and_advances_using_selected_timestamp(
+    sqlite_session_factory: sessionmaker[Session], end_user_scope: EndUserConversationScope, sort_by: ConversationSort
+) -> None:
+    with sqlite_session_factory.begin() as session:
+        first_created = _end_user_conversation(
+            session, end_user_scope, created_at=_TIME - timedelta(hours=1), updated_at=_TIME + timedelta(hours=1)
+        )
+        second_created = _end_user_conversation(
+            session, end_user_scope, created_at=_TIME, updated_at=_TIME - timedelta(hours=1)
+        )
+        last_created = _end_user_conversation(
+            session, end_user_scope, created_at=_TIME + timedelta(hours=1), updated_at=_TIME
+        )
+    chronological_ids = (
+        [first_created.id, second_created.id, last_created.id]
+        if sort_by.endswith("created_at")
+        else [second_created.id, last_created.id, first_created.id]
+    )
+    expected = list(reversed(chronological_ids)) if sort_by.startswith("-") else chronological_ids
+    repository = ConversationRepository(session_factory=sqlite_session_factory)
+    first_page = repository.get_page(
+        scope=end_user_scope, invoke_from="web-app", last_id=None, limit=2, pinned=None, sort_by=sort_by
+    )
+    second_page = repository.get_page(
+        scope=end_user_scope, invoke_from="web-app", last_id=expected[1], limit=2, pinned=None, sort_by=sort_by
+    )
+    assert first_page.tenant_id == end_user_scope.tenant_id
+    assert [record.id for record in first_page.data] == expected[:2]
+    assert first_page.has_more is True
+    assert [record.id for record in second_page.data] == expected[2:]
+    assert second_page.has_more is False
+
+
+@pytest.mark.parametrize("sort_by", ["created_at", "-created_at", "updated_at", "-updated_at"])
+def test_end_user_page_preserves_strict_timestamp_cursor_for_ties(
+    sqlite_session_factory: sessionmaker[Session], end_user_scope: EndUserConversationScope, sort_by: ConversationSort
+) -> None:
+    with sqlite_session_factory.begin() as session:
+        _end_user_conversation(session, end_user_scope)
+        _end_user_conversation(session, end_user_scope)
+    repository = ConversationRepository(session_factory=sqlite_session_factory)
+    page = repository.get_page(
+        scope=end_user_scope, invoke_from="web-app", last_id=None, limit=1, pinned=None, sort_by=sort_by
+    )
+    assert len(page.data) == 1
+    assert page.has_more is False
+    following_page = repository.get_page(
+        scope=end_user_scope,
+        invoke_from="web-app",
+        last_id=page.data[0].id,
+        limit=1,
+        pinned=None,
+        sort_by=sort_by,
+    )
+    assert following_page.data == ()
+    assert following_page.has_more is False
+
+
+@pytest.mark.parametrize("invoke_from", ["web-app", "service-api"])
+def test_end_user_page_filters_invocation_and_scopes_pins_to_app_actor_and_role(
+    sqlite_session_factory: sessionmaker[Session],
+    installation: InstalledAppRef,
+    end_user_scope: EndUserConversationScope,
+    invoke_from: ConversationListSource,
+) -> None:
+    with sqlite_session_factory.begin() as session:
+        legacy = _end_user_conversation(
+            session, end_user_scope, invoke_from=None, updated_at=_TIME + timedelta(hours=1)
+        )
+        matching = _end_user_conversation(session, end_user_scope, invoke_from=InvokeFrom(invoke_from))
+        different_source = _end_user_conversation(
+            session,
+            end_user_scope,
+            invoke_from=InvokeFrom.SERVICE_API if invoke_from == "web-app" else InvokeFrom.WEB_APP,
+        )
+        _conversation(session, installation, invoke_from=InvokeFrom(invoke_from))
+        _pin(session, installation, legacy.id, role=CreatorUserRole.END_USER)
+        _pin(session, installation, matching.id, role=CreatorUserRole.ACCOUNT)
+        _pin(session, installation, matching.id, role=CreatorUserRole.END_USER, account_id=str(uuid4()))
+        _pin(session, replace(installation, app_id=str(uuid4())), matching.id, role=CreatorUserRole.END_USER)
+    repository = ConversationRepository(session_factory=sqlite_session_factory)
+    for pinned, expected in [(None, [legacy.id, matching.id]), (True, [legacy.id]), (False, [matching.id])]:
+        page = repository.get_page(
+            scope=end_user_scope, invoke_from=invoke_from, last_id=None, limit=20, pinned=pinned, sort_by="-updated_at"
+        )
+        assert [record.id for record in page.data] == expected
+    for cursor, pinned in [(different_source.id, None), (matching.id, True), (legacy.id, False)]:
+        with pytest.raises(LastConversationNotExistsError):
+            repository.get_page(
+                scope=end_user_scope,
+                invoke_from=invoke_from,
+                last_id=cursor,
+                limit=20,
+                pinned=pinned,
+                sort_by="-updated_at",
+            )
+
+
+@pytest.mark.parametrize("mismatch", ["app_id", "from_end_user_id", "from_source", "from_account_id", "is_deleted"])
+def test_end_user_page_and_cursor_reject_every_conversation_owner_mismatch(
+    sqlite_session_factory: sessionmaker[Session], end_user_scope: EndUserConversationScope, mismatch: str
+) -> None:
+    with sqlite_session_factory.begin() as session:
+        matching = _end_user_conversation(session, end_user_scope)
+        unrelated = _end_user_conversation(session, end_user_scope)
+        value: str | bool = True if mismatch == "is_deleted" else str(uuid4())
+        if mismatch == "from_source":
+            value = ConversationFromSource.CONSOLE
+        session.execute(update(Conversation).where(Conversation.id == unrelated.id).values({mismatch: value}))
+    repository = ConversationRepository(session_factory=sqlite_session_factory)
+    page = repository.get_page(
+        scope=end_user_scope, invoke_from="web-app", last_id=None, limit=20, pinned=None, sort_by="-updated_at"
+    )
+    assert [record.id for record in page.data] == [matching.id]
+    with pytest.raises(LastConversationNotExistsError):
+        repository.get_page(
+            scope=end_user_scope,
+            invoke_from="web-app",
+            last_id=unrelated.id,
+            limit=20,
+            pinned=None,
+            sort_by="-updated_at",
+        )
+
+
+@pytest.mark.parametrize(
+    "mismatch", ["app_id", "tenant_id", "end_user_id", "user_app", "user_tenant", "missing_user", "missing_app"]
+)
+def test_end_user_page_revalidates_complete_app_and_user_owner_chain(
+    sqlite_session_factory: sessionmaker[Session], end_user_scope: EndUserConversationScope, mismatch: str
+) -> None:
+    with sqlite_session_factory.begin() as session:
+        _end_user_conversation(session, end_user_scope)
+        if mismatch == "missing_app":
+            app = session.get(App, end_user_scope.app_id)
+            assert app is not None
+            session.delete(app)
+        elif mismatch.startswith("user_") or mismatch == "missing_user":
+            user = session.get(EndUser, end_user_scope.end_user_id)
+            assert user is not None
+            if mismatch == "missing_user":
+                session.delete(user)
+            elif mismatch == "user_app":
+                user.app_id = str(uuid4())
+            else:
+                user.tenant_id = str(uuid4())
+        else:
+            end_user_scope = replace(end_user_scope, **{mismatch: str(uuid4())})
+    repository = ConversationRepository(session_factory=sqlite_session_factory)
+    with pytest.raises(ConversationNotExistsError):
+        repository.get_page(
+            scope=end_user_scope,
+            invoke_from="web-app",
+            last_id=None,
+            limit=20,
+            pinned=True,
+            sort_by="-updated_at",
+        )
+
+
+def test_end_user_empty_page_keeps_missing_cursor_and_empty_pin_semantics(
+    sqlite_session_factory: sessionmaker[Session], end_user_scope: EndUserConversationScope
+) -> None:
+    repository = ConversationRepository(session_factory=sqlite_session_factory)
+    assert repository.get_page(
+        scope=end_user_scope, invoke_from="web-app", last_id=None, limit=20, pinned=None, sort_by="-updated_at"
+    ) == ConversationPage(tenant_id=end_user_scope.tenant_id, limit=20, has_more=False, data=())
+    assert (
+        repository.get_page(
+            scope=end_user_scope,
+            invoke_from="web-app",
+            last_id=str(uuid4()),
+            limit=20,
+            pinned=True,
+            sort_by="-updated_at",
+        ).data
+        == ()
+    )
+    with pytest.raises(LastConversationNotExistsError):
+        repository.get_page(
+            scope=end_user_scope,
+            invoke_from="web-app",
+            last_id=str(uuid4()),
+            limit=20,
+            pinned=False,
+            sort_by="-updated_at",
+        )

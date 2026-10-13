@@ -98,6 +98,12 @@ class ConversationNotFoundHTTPError(BaseHTTPException):
     code = HTTPStatus.NOT_FOUND
 
 
+class ConversationCursorNotFoundHTTPError(BaseHTTPException):
+    error_code = "conversation_cursor_not_found"
+    description = "The conversation cursor is not in the current list. Refresh the list and try again."
+    code = HTTPStatus.NOT_FOUND
+
+
 class ConversationFirstMessageNotFoundHTTPError(BaseHTTPException):
     error_code = "conversation_first_message_not_found"
     description = "The conversation has no message from which to generate a name."

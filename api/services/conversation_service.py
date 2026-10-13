@@ -1,12 +1,11 @@
 import logging
-from collections.abc import Callable, Sequence
 from typing import Any
 
-from sqlalchemy import asc, desc, func, or_, select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from configs import dify_config
-from core.app.entities.app_invoke_entities import InvokeFrom, get_credit_usage_app_type
+from core.app.entities.app_invoke_entities import get_credit_usage_app_type
 from core.llm_generator.llm_generator import LLMGenerator
 from core.model_context import use_credit_usage_metadata
 from factories import variable_factory
@@ -20,7 +19,6 @@ from services.errors.conversation import (
     ConversationNotExistsError,
     ConversationVariableNotExistsError,
     ConversationVariableTypeMismatchError,
-    LastConversationNotExistsError,
 )
 from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
 from tasks.delete_conversation_task import delete_conversation_related_data
@@ -29,89 +27,6 @@ logger = logging.getLogger(__name__)
 
 
 class ConversationService:
-    @classmethod
-    def pagination_by_last_id(
-        cls,
-        *,
-        session: Session,
-        app_model: App,
-        user: Account | EndUser | None,
-        last_id: str | None,
-        limit: int,
-        invoke_from: InvokeFrom,
-        include_ids: Sequence[str] | None = None,
-        exclude_ids: Sequence[str] | None = None,
-        sort_by: str = "-updated_at",
-    ) -> InfiniteScrollPagination:
-        if not user:
-            return InfiniteScrollPagination(data=[], limit=limit, has_more=False)
-
-        stmt = select(Conversation).where(
-            Conversation.is_deleted == False,
-            Conversation.app_id == app_model.id,
-            Conversation.from_source == ("api" if isinstance(user, EndUser) else "console"),
-            Conversation.from_end_user_id == (user.id if isinstance(user, EndUser) else None),
-            Conversation.from_account_id == (user.id if isinstance(user, Account) else None),
-            or_(Conversation.invoke_from.is_(None), Conversation.invoke_from == invoke_from.value),
-        )
-        # Check if include_ids is not None to apply filter
-        if include_ids is not None:
-            if len(include_ids) == 0:
-                # If include_ids is empty, return empty result
-                return InfiniteScrollPagination(data=[], limit=limit, has_more=False)
-            stmt = stmt.where(Conversation.id.in_(include_ids))
-        # Check if exclude_ids is not None to apply filter
-        if exclude_ids is not None:
-            if len(exclude_ids) > 0:
-                stmt = stmt.where(~Conversation.id.in_(exclude_ids))
-
-        # define sort fields and directions
-        sort_field, sort_direction = cls._get_sort_params(sort_by)
-
-        if last_id:
-            last_conversation = session.scalar(stmt.where(Conversation.id == last_id))
-            if not last_conversation:
-                raise LastConversationNotExistsError()
-
-            # build filters based on sorting
-            filter_condition = cls._build_filter_condition(
-                sort_field=sort_field,
-                sort_direction=sort_direction,
-                reference_conversation=last_conversation,
-            )
-            stmt = stmt.where(filter_condition)
-        query_stmt = stmt.order_by(sort_direction(getattr(Conversation, sort_field))).limit(limit)
-        conversations = session.scalars(query_stmt).all()
-
-        has_more = False
-        if len(conversations) == limit:
-            current_page_last_conversation = conversations[-1]
-            rest_filter_condition = cls._build_filter_condition(
-                sort_field=sort_field,
-                sort_direction=sort_direction,
-                reference_conversation=current_page_last_conversation,
-            )
-            count_stmt = select(func.count()).select_from(stmt.where(rest_filter_condition).subquery())
-            rest_count = session.scalar(count_stmt) or 0
-            if rest_count > 0:
-                has_more = True
-
-        return InfiniteScrollPagination(data=conversations, limit=limit, has_more=has_more)
-
-    @classmethod
-    def _get_sort_params(cls, sort_by: str):
-        if sort_by.startswith("-"):
-            return sort_by[1:], desc
-        return sort_by, asc
-
-    @classmethod
-    def _build_filter_condition(cls, sort_field: str, sort_direction: Callable, reference_conversation: Conversation):
-        field_value = getattr(reference_conversation, sort_field)
-        if sort_direction is desc:
-            return getattr(Conversation, sort_field) < field_value
-
-        return getattr(Conversation, sort_field) > field_value
-
     @staticmethod
     def generate_name(*, tenant_id: str, app_id: str, conversation_id: str, query: str, app_mode: str) -> str:
         """Generate a conversation title with the appropriate credit usage metadata."""

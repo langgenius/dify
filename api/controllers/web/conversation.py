@@ -3,32 +3,30 @@ from typing import Literal
 from uuid import UUID
 
 from flask import request
-from pydantic import BaseModel, Field, TypeAdapter, field_validator
-from sqlalchemy.orm import sessionmaker
-from werkzeug.exceptions import NotFound
+from pydantic import BaseModel, Field, field_validator
 
 from controllers.common.controller_schemas import ConversationRenamePayload
-from controllers.common.errors import ConversationFirstMessageNotFoundHTTPError, ConversationNotFoundHTTPError
+from controllers.common.errors import (
+    ConversationCursorNotFoundHTTPError,
+    ConversationFirstMessageNotFoundHTTPError,
+    ConversationNotFoundHTTPError,
+)
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console.wraps import model_validate
 from controllers.web import web_ns
 from controllers.web.error import NotChatAppError
 from controllers.web.wraps import WebApiResource
-from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_application_services import application_services
-from extensions.ext_database import db
 from fields.conversation_fields import (
     ConversationInfiniteScrollPagination,
-    ConversationResponseSource,
     ResultResponse,
     SimpleConversation,
 )
 from libs.helper import dump_response, uuid_value
 from models.model import App, AppMode, EndUser
-from services.entities.conversation_entities import EndUserConversationRef
+from services.entities.conversation_entities import EndUserConversationRef, EndUserConversationScope
 from services.errors.conversation import ConversationNotExistsError, LastConversationNotExistsError
 from services.errors.message import MessageNotExistsError
-from services.web_conversation_service import WebConversationService
 
 
 class ConversationListQuery(BaseModel):
@@ -56,50 +54,42 @@ class ConversationListApi(WebApiResource):
     @web_ns.doc(params=query_params_from_model(ConversationListQuery))
     @web_ns.doc(
         responses={
-            200: "Success",
-            400: "Bad Request",
-            401: "Unauthorized",
-            403: "Forbidden",
-            404: "App Not Found or Not a Chat App",
-            500: "Internal Server Error",
+            HTTPStatus.OK: "Success",
+            HTTPStatus.BAD_REQUEST: "Invalid conversation list query or app mode does not match the API route.",
+            HTTPStatus.UNAUTHORIZED: "Unauthorized",
+            HTTPStatus.FORBIDDEN: "Forbidden",
+            HTTPStatus.NOT_FOUND: (
+                "`conversation_cursor_not_found`: Cursor is outside the current list. "
+                "`conversation_not_found`: The app or user is no longer available."
+            ),
+            HTTPStatus.INTERNAL_SERVER_ERROR: "Internal Server Error",
         }
     )
-    @web_ns.response(200, "Success", web_ns.models[ConversationInfiniteScrollPagination.__name__])
-    def get(self, app_model: App, end_user: EndUser):
+    @web_ns.response(HTTPStatus.OK, "Success", web_ns.models[ConversationInfiniteScrollPagination.__name__])
+    def get(self, app_model: App, end_user: EndUser) -> dict[str, object]:
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
             raise NotChatAppError()
 
-        raw_args = request.args.to_dict()
-        query = ConversationListQuery.model_validate(raw_args)
-
+        query = ConversationListQuery.model_validate(request.args.to_dict(flat=True))
         try:
-            with sessionmaker(db.engine).begin() as session:
-                pagination = WebConversationService.pagination_by_last_id(
-                    session=session,
-                    app_model=app_model,
-                    user=end_user,
-                    last_id=query.last_id,
-                    limit=query.limit,
-                    invoke_from=InvokeFrom.WEB_APP,
-                    pinned=query.pinned,
-                    sort_by=query.sort_by,
-                )
-                adapter = TypeAdapter(SimpleConversation)
-                conversations = [
-                    adapter.validate_python(
-                        ConversationResponseSource(item, session=session),
-                        from_attributes=True,
-                    )
-                    for item in pagination.data
-                ]
-                return ConversationInfiniteScrollPagination(
-                    limit=pagination.limit,
-                    has_more=pagination.has_more,
-                    data=conversations,
-                ).model_dump(mode="json")
-        except LastConversationNotExistsError:
-            raise NotFound("Last Conversation Not Exists.")
+            pagination = application_services().conversation_queries.get_page(
+                scope=EndUserConversationScope(
+                    app_id=app_model.id,
+                    tenant_id=app_model.tenant_id,
+                    end_user_id=end_user.id,
+                ),
+                invoke_from="web-app",
+                last_id=query.last_id,
+                limit=query.limit,
+                pinned=query.pinned,
+                sort_by=query.sort_by,
+            )
+            return dump_response(ConversationInfiniteScrollPagination, pagination)
+        except LastConversationNotExistsError as error:
+            raise ConversationCursorNotFoundHTTPError() from error
+        except ConversationNotExistsError as error:
+            raise ConversationNotFoundHTTPError() from error
 
 
 @web_ns.route("/conversations/<uuid:c_id>")

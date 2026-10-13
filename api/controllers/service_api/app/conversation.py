@@ -4,13 +4,16 @@ from typing import Annotated, Any, Literal
 from uuid import UUID
 
 from flask_restx import Resource
-from pydantic import BaseModel, Field, TypeAdapter, WithJsonSchema, field_validator
-from sqlalchemy.orm import sessionmaker
+from pydantic import BaseModel, Field, WithJsonSchema, field_validator
 from werkzeug.exceptions import BadRequest, NotFound
 
 import services
 from controllers.common.controller_schemas import ConversationRenamePayload
-from controllers.common.errors import ConversationFirstMessageNotFoundHTTPError, ConversationNotFoundHTTPError
+from controllers.common.errors import (
+    ConversationCursorNotFoundHTTPError,
+    ConversationFirstMessageNotFoundHTTPError,
+    ConversationNotFoundHTTPError,
+)
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console.wraps import model_validate
 from controllers.service_api import service_api_ns
@@ -18,14 +21,12 @@ from controllers.service_api.app.error import NotChatAppError
 from controllers.service_api.flask_admission import service_api_end_user_admission
 from controllers.service_api.schema import expect_user_json, expect_with_user
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
-from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from fields._value_type_serializer import serialize_value_type
 from fields.base import ResponseModel
 from fields.conversation_fields import (
     ConversationInfiniteScrollPagination,
-    ConversationResponseSource,
     SimpleConversation,
 )
 from graphon.variables.types import SegmentType
@@ -33,7 +34,7 @@ from libs.helper import UUIDStrOrEmpty, dump_response, to_timestamp
 from machinery.context import ServiceApiEndUserContext
 from models.model import App, AppMode, EndUser
 from services.conversation_service import ConversationService
-from services.entities.conversation_entities import EndUserConversationRef
+from services.entities.conversation_entities import EndUserConversationRef, EndUserConversationScope
 from services.errors.message import MessageNotExistsError
 
 UUIDString = Annotated[str, WithJsonSchema({"format": "uuid", "type": "string"})]
@@ -170,63 +171,50 @@ class ConversationApi(Resource):
         description="Retrieve the conversation list for the current user, ordered by most recently active.",
         tags=["Conversations"],
         responses={
-            200: "Successfully retrieved conversations list.",
-            400: "`not_chat_app` : App mode does not match the API route.",
-            404: "`not_found` : Last conversation does not exist (invalid `last_id`).",
+            HTTPStatus.OK: "Conversations retrieved successfully.",
+            HTTPStatus.BAD_REQUEST: "Invalid app selection or app mode does not match the API route.",
+            HTTPStatus.UNAUTHORIZED: "Invalid API credentials.",
+            HTTPStatus.FORBIDDEN: "API credential, app or workspace access is unavailable.",
+            HTTPStatus.NOT_FOUND: (
+                "`conversation_cursor_not_found`: Cursor is outside the current list. "
+                "`conversation_not_found`: The app or user is no longer available."
+            ),
+            HTTPStatus.UNPROCESSABLE_ENTITY: "Invalid conversation list query.",
         },
     )
     @service_api_ns.doc("list_conversations")
-    @service_api_ns.doc(description="List all conversations for the current user")
     @service_api_ns.doc(params=query_params_from_model(ConversationListQuery))
-    @service_api_ns.doc(
-        responses={
-            200: "Conversations retrieved successfully",
-            401: "Unauthorized - invalid API token",
-            404: "Last conversation not found",
-        }
-    )
     @service_api_ns.response(
-        200,
+        HTTPStatus.OK,
         "Conversations retrieved successfully",
         service_api_ns.models[ConversationInfiniteScrollPagination.__name__],
     )
-    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY))
+    @service_api_end_user_admission(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY))
     @model_validate(ConversationListQuery)
-    def get(self, query_args: ConversationListQuery, app_model: App, end_user: EndUser):
-        """List all conversations for the current user.
-
-        Supports pagination using last_id and limit parameters.
-        """
-        app_mode = AppMode.value_of(app_model.mode)
+    def get(self, query_args: ConversationListQuery, context: ServiceApiEndUserContext) -> dict[str, object]:
+        """List the current user's conversations, optionally continuing from a cursor."""
+        app_mode = AppMode.value_of(context.app_mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
             raise NotChatAppError()
 
-        last_id = query_args.last_id or None
-
         try:
-            with sessionmaker(db.engine).begin() as session:
-                pagination = ConversationService.pagination_by_last_id(
-                    session=session,
-                    app_model=app_model,
-                    user=end_user,
-                    last_id=last_id,
-                    limit=query_args.limit,
-                    invoke_from=InvokeFrom.SERVICE_API,
-                    sort_by=query_args.sort_by,
-                )
-                adapter = TypeAdapter(SimpleConversation)
-                conversations = [
-                    adapter.validate_python(
-                        ConversationResponseSource(item, session=session),
-                        from_attributes=True,
-                    )
-                    for item in pagination.data
-                ]
-                return ConversationInfiniteScrollPagination(
-                    limit=pagination.limit, has_more=pagination.has_more, data=conversations
-                ).model_dump(mode="json")
-        except services.errors.conversation.LastConversationNotExistsError:
-            raise NotFound("Last Conversation Not Exists.")
+            pagination = application_services().conversation_queries.get_page(
+                scope=EndUserConversationScope(
+                    app_id=context.app_id,
+                    tenant_id=context.tenant_id,
+                    end_user_id=context.end_user_id,
+                ),
+                invoke_from="service-api",
+                last_id=query_args.last_id or None,
+                limit=query_args.limit,
+                pinned=None,
+                sort_by=query_args.sort_by,
+            )
+            return dump_response(ConversationInfiniteScrollPagination, pagination)
+        except services.errors.conversation.LastConversationNotExistsError as error:
+            raise ConversationCursorNotFoundHTTPError() from error
+        except services.errors.conversation.ConversationNotExistsError as error:
+            raise ConversationNotFoundHTTPError() from error
 
 
 @service_api_ns.route("/conversations/<uuid:conversation_id>")
