@@ -3868,6 +3868,8 @@ Get draft workflow for an application
 **Sync draft workflow**
 
 Sync draft workflow configuration
+Empty initialization or clearing requires force=true;
+an already-empty draft may be saved with its current hash without force.
 
 #### Parameters
 
@@ -25346,7 +25348,7 @@ Tag type
 | execution_mode | string, <br>**Available values:** "confirmed_tool", "mock", "restricted" |  | No |
 | failure_reason | string |  | No |
 | outcome | string, <br>**Available values:** "execution_failed", "execution_succeeded_needs_review", "execution_unknown", "required_output_unresolved" |  | No |
-| policy_version | string, <br>**Available values:** "builder-confirmed-gmail-read-v1", "builder-restricted-v1" |  | No |
+| policy_version | string, <br>**Available values:** "builder-confirmed-gmail-read-v1", "builder-json-parse-v1", "builder-restricted-v1" |  | No |
 | review_note | string |  | No |
 | safety_outcome | string, <br>**Available values:** "confirmed_tool_completed", "execution_blocked", "execution_evidence_unknown", "native_failed", "restricted_execution_completed", "simulation_completed", "unsupported_safe_execution" |  | No |
 | simulated_node_ids | [ string ] |  | No |

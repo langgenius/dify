@@ -4050,10 +4050,13 @@ export const get75 = oc
  * Sync draft workflow
  *
  * Sync draft workflow configuration
+ * Empty initialization or clearing requires force=true;
+ * an already-empty draft may be saved with its current hash without force.
  */
 export const post60 = oc
   .route({
-    description: 'Sync draft workflow configuration',
+    description:
+      'Sync draft workflow configuration\nEmpty initialization or clearing requires force=true;\nan already-empty draft may be saved with its current hash without force.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postAppsByAppIdWorkflowsDraft',
