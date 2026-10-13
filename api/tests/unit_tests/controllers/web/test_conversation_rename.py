@@ -214,17 +214,15 @@ def test_invalid_manual_payload_is_rejected_without_writing(harness: _Harness, b
     harness.assert_closed()
 
 
-@pytest.mark.parametrize(
-    ("field", "value"),
-    [
-        ("app_id", str(uuid4())),
-        ("from_end_user_id", str(uuid4())),
-        ("from_source", ConversationFromSource.CONSOLE),
-        ("from_account_id", str(uuid4())),
-        ("is_deleted", True),
-    ],
-)
-def test_conversation_outside_end_user_scope_is_not_renamed(harness: _Harness, field: str, value: object) -> None:
+@pytest.mark.parametrize("field", ["app_id", "from_end_user_id", "from_source", "from_account_id", "is_deleted"])
+def test_conversation_outside_end_user_scope_is_not_renamed(harness: _Harness, field: str) -> None:
+    value: str | bool
+    if field == "is_deleted":
+        value = True
+    elif field == "from_source":
+        value = ConversationFromSource.CONSOLE
+    else:
+        value = str(uuid4())
     with harness.factory.begin() as session:
         session.execute(update(Conversation).where(Conversation.id == harness.conversation.id).values({field: value}))
     response = harness.post({"name": "Manual title"})
