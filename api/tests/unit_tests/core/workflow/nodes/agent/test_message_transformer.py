@@ -130,7 +130,7 @@ def test_transform_promotes_serialized_tool_file_link_to_files_output() -> None:
     ):
         text, files = _run_transform([message])
 
-    _assert_signed_tool_file_text(text, "tool-file-id", ".docx")
+    assert text == "File: /files/tools/tool-file-id.docx\n"
     assert files.value == [file]
     build_file.assert_called_once()
 
