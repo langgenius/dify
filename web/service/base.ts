@@ -1067,8 +1067,8 @@ export const request = async <T>(url: string, options = {}, otherOptions?: IOthe
       // refresh token
       const [refreshErr] = await asyncRunSafe(refreshAccessTokenOrReLogin(TIME_OUT))
       if (refreshErr === null) return baseFetch<T>(url, options, otherOptionsForBaseFetch)
-      // A refresh outage does not prove the session ended; keep the user signed in.
-      if (isTransientHttpError(refreshErr)) return Promise.reject(err)
+      // Preserve the transient failure so callers can retry instead of treating the session as ended.
+      if (isTransientHttpError(refreshErr)) return Promise.reject(refreshErr)
       // /device is the device-flow chooser; logged-out is a valid state
       // there. Redirecting to /signin loses the user_code context and
       // the post-login flow lands on /apps instead of returning here.
