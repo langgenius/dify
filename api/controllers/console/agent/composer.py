@@ -38,6 +38,7 @@ from services.agent.errors import (
     AgentVersionConflictError,
     AgentVersionNotFoundError,
     InvalidComposerConfigError,
+    PlaintextSecretNotAllowedError,
 )
 from services.entities.agent_entities import (
     ComposerSavePayload,
@@ -179,7 +180,7 @@ class WorkflowAgentComposerCopyFromRosterApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/agent-composer/validate")
 class WorkflowAgentComposerValidateApi(Resource):
-    @error_responses(InvalidComposerConfigError)
+    @error_responses(AgentSoulLockedError, InvalidComposerConfigError, PlaintextSecretNotAllowedError)
     @console_ns.expect(console_ns.models[ComposerSavePayload.__name__])
     @console_ns.response(
         200, "Workflow agent composer validation result", console_ns.models[AgentComposerValidateResponse.__name__]
@@ -411,7 +412,7 @@ class SnippetAgentComposerCopyFromRosterApi(Resource):
 
 @console_ns.route("/snippets/<uuid:snippet_id>/workflows/draft/nodes/<string:node_id>/agent-composer/validate")
 class SnippetAgentComposerValidateApi(Resource):
-    @error_responses(InvalidComposerConfigError)
+    @error_responses(AgentSoulLockedError, InvalidComposerConfigError, PlaintextSecretNotAllowedError)
     @console_ns.expect(console_ns.models[ComposerSavePayload.__name__])
     @console_ns.response(
         200, "Snippet agent composer validation", console_ns.models[AgentComposerValidateResponse.__name__]
@@ -565,7 +566,13 @@ class AgentComposerApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/composer/validate")
 class AgentComposerValidateApi(Resource):
-    @error_responses(AgentNotFoundError, AgentVersionNotFoundError, InvalidComposerConfigError)
+    @error_responses(
+        AgentNotFoundError,
+        AgentSoulLockedError,
+        AgentVersionNotFoundError,
+        InvalidComposerConfigError,
+        PlaintextSecretNotAllowedError,
+    )
     @console_ns.expect(console_ns.models[ComposerSavePayload.__name__])
     @console_ns.response(
         200, "Agent app composer validation result", console_ns.models[AgentComposerValidateResponse.__name__]

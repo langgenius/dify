@@ -164,7 +164,14 @@ class FileApi(Resource):
         )
         return dump_response(UploadConfig, config), 200
 
-    @error_responses(FilenameNotExistsError, NoFileUploadedError, TooManyFilesError)
+    @error_responses(
+        BlockedFileExtensionError,
+        FilenameNotExistsError,
+        FileTooLargeError,
+        NoFileUploadedError,
+        TooManyFilesError,
+        UnsupportedFileTypeError,
+    )
     @setup_required
     @login_required
     @account_initialization_required

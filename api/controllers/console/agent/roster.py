@@ -35,6 +35,7 @@ from controllers.console.app.app import (
 from controllers.console.app.app import (
     UpdateAppPayload as GenericUpdateAppPayload,
 )
+from controllers.console.error import ApiKeyLimitExceededHTTPError
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import (
     RBACPermission,
@@ -79,6 +80,7 @@ from models.enums import ApiTokenType
 from models.model import ApiToken, App, IconType
 from services.agent.composer_service import AgentComposerService
 from services.agent.errors import (
+    AgentAccessNotReadyError,
     AgentBuildSandboxNotFoundError,
     AgentModelNotConfiguredError,
     AgentNotFoundError,
@@ -835,7 +837,11 @@ class AgentDebugConversationRefreshApi(Resource):
 @console_ns.route("/agent/<uuid:agent_id>/publish")
 class AgentPublishApi(Resource):
     @error_responses(
-        AgentModelNotConfiguredError, AgentNotFoundError, AgentVersionNotFoundError, InvalidComposerConfigError
+        AgentModelNotConfiguredError,
+        AgentNotFoundError,
+        AgentSoulLockedError,
+        AgentVersionNotFoundError,
+        InvalidComposerConfigError,
     )
     @console_ns.expect(console_ns.models[AgentPublishPayload.__name__])
     @console_ns.response(200, "Agent draft published", console_ns.models[AgentPublishResponse.__name__])
@@ -918,7 +924,7 @@ class AgentBuildDraftApi(Resource):
             account_id=current_user.id,
         )
 
-    @error_responses(AgentNotFoundError, AgentSoulLockedError)
+    @error_responses(AgentNotFoundError, AgentSoulLockedError, AgentVersionNotFoundError)
     @console_ns.expect(console_ns.models[ComposerSavePayload.__name__])
     @console_ns.response(200, "Agent build draft saved", console_ns.models[AgentBuildDraftResponse.__name__])
     @setup_required
@@ -1062,6 +1068,7 @@ class AgentApiStatusApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/api-keys")
 class AgentApiKeyListApi(Resource):
+    @error_responses(AgentAccessNotReadyError, ApiKeyLimitExceededHTTPError)
     @console_ns.response(200, "Agent service API keys", console_ns.models[ApiKeyList.__name__])
     @console_account_admission(
         allowed_roles=API_KEY_EDIT_ROLES,
@@ -1072,6 +1079,7 @@ class AgentApiKeyListApi(Resource):
             keys = application_services().app_api_keys.list_agent_keys(request_context, str(agent_id))
         return dump_response(ApiKeyList, {"data": keys})
 
+    @error_responses(AgentAccessNotReadyError, ApiKeyLimitExceededHTTPError)
     @console_ns.response(201, "Agent service API key created", console_ns.models[ApiKeyItem.__name__])
     @console_ns.response(400, "Maximum keys exceeded")
     @console_account_admission(
@@ -1086,6 +1094,7 @@ class AgentApiKeyListApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/api-keys/<uuid:api_key_id>")
 class AgentApiKeyApi(Resource):
+    @error_responses(AgentAccessNotReadyError, ApiKeyLimitExceededHTTPError)
     @console_ns.response(204, "Agent service API key deleted")
     @console_account_admission(
         allowed_roles=API_KEY_DELETE_ROLES,
