@@ -116,6 +116,11 @@ jobs:
                   "test_composed_template_normal_workflow_citation_defaults_are_preserved": 1,
                   "test_composed_citation_display_change_invalidates_reserved_template_context": 2,
               },
+              "test_builder_json_tool_native": {
+                  "test_json_native_port_worker_graphon_run_and_end_seal": 4,
+                  "test_json_seal_refuses_cross_owner_and_corrupt_native_proof": 8,
+                  "test_concurrent_json_launch_claim_dispatches_at_most_once": 1,
+              },
               "test_workflow_empty_draft": {
                   "test_postgres_empty_save_state_transition": 20,
                   "test_postgres_empty_draft_confirmation_is_scoped_to_full_owner_chain": 4,
@@ -247,6 +252,7 @@ jobs:
                   "-o",
                   "faulthandler_timeout=120",
                   "api/tests/test_containers_integration_tests/core/workflow/test_builder_restricted_native.py",
+                  "api/tests/test_containers_integration_tests/core/workflow/test_builder_json_tool_native.py",
                   "api/tests/test_containers_integration_tests/core/workflow/test_builder_execution_policy_persistence.py",
                   "api/tests/test_containers_integration_tests/core/workflow/test_builder_real_call_consent_persistence.py",
                   "api/tests/test_containers_integration_tests/services/test_workflow_empty_draft.py",
@@ -365,12 +371,16 @@ jobs:
               f"test_owned_json_parse_prepare_persists_restricted_request[{variant}]"
               for variant in ("raw-true", "raw-false", "constant-true", "constant-false")
           }
+          expected_json_admission.update({
+              "test_json_prepare_reloads_owner_and_inputs_after_metadata",
+              "test_existing_restricted_policies_skip_json_metadata",
+          })
           actual_json_admission = {
               name for classname, name in identities
               if classname.removeprefix("api.") == json_admission_module
           }
           if actual_json_admission != expected_json_admission:
-              problems.append("JSON admission case identities differ from the reviewed four variants")
+              problems.append("JSON admission case identities differ from the reviewed prepare variants and owner checks")
           json_policy_module = "tests.unit_tests.services.dify_builder.test_json_tool_execution"
           json_policy_expected = {
               "test_reviewed_pure_mixed_graph_admits_exact_native_chain": 1,
