@@ -105,6 +105,40 @@ def test_unknown_policy_reason_uses_fixed_sanitized_fallback():
     assert first.terminal_outputs is None
 
 
+def test_generic_missing_coverage_keeps_workflow_editable():
+    card = result_card(refused_run("unsupported_node_implementation"))
+    assert card.failure_reason == (
+        "Builder does not yet have safe-test support for a node in this workflow. "
+        "The draft can still be edited; this test did not run. Automatic repair and publication are blocked."
+    )
+    assert "use supported nodes" not in card.failure_reason
+
+
+@pytest.mark.parametrize(
+    ("reason", "expected_phrase"),
+    [
+        ("unsupported_json_tool_configuration", "qualified JSON Parse setup"),
+        ("unsupported_json_credentials", "qualified JSON Parse setup"),
+        ("unsupported_json_content_constant", "Start string input"),
+        ("unsupported_json_filter", "JSONPath"),
+        ("unsupported_json_selector", "Start string input"),
+        ("invalid_json_parameters", "Ensure ASCII"),
+        ("json_execution_limit", "safe testing limits"),
+        ("installed_json_tool_unavailable", "Install the qualified JSON Process version"),
+        ("unsupported_json_tool_installation", "Install the qualified JSON Process version"),
+        ("json_tool_installation_changed", "installed JSON Process version changed"),
+    ],
+)
+def test_json_coverage_refusal_uses_only_static_actionable_copy(reason, expected_phrase):
+    card = result_card(refused_run(reason))
+    assert card.failure_reason is not None
+    assert expected_phrase in card.failure_reason
+    assert "did not run" in card.failure_reason
+    assert "Automatic repair and publication are blocked" in card.failure_reason
+    assert "SECRET-" not in json.dumps(asdict(card))
+    assert card.terminal_outputs is None
+
+
 def test_template_refusal_clears_staged_repairs_and_cannot_publish():
     from core.dify_builder.handlers_build import handle_test_and_repair
     from tests.unit_tests.core.dify_builder.fakes import FakeBuildDifyPort, StubAgent
