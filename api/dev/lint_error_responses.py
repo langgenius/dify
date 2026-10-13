@@ -51,7 +51,7 @@ from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from types import FunctionType, ModuleType
-from typing import Any
+from typing import Any, cast
 
 from flask import abort as flask_abort
 from flask_restx import Namespace
@@ -113,7 +113,33 @@ def resolve(expr: ast.AST, env: Mapping[str, object], owner: type | None) -> obj
             return getattr(base, expr.attr, None)  # guard-ignore: no-new-getattr -- resolves source attribute names
         except Exception:
             return None
+    if isinstance(expr, ast.Call):
+        # ``Service(...).method``: an instance resolves its methods like its class does.
+        built = resolve(expr.func, env, owner)
+        return built if isinstance(built, type) and not issubclass(built, BaseException) else None
     return None
+
+
+def local_instances(node: ast.AST, env: Mapping[str, object], owner: type | None) -> dict[str, type]:
+    """Names bound to ``Class(...)`` in ``node`` (``service = Service(session)``), for method resolution."""
+    bound: dict[str, type] = {}
+    for child in ast.walk(node):
+        targets: list[ast.expr] = []
+        value: ast.expr | None = None
+        if isinstance(child, ast.Assign):
+            targets, value = list(child.targets), child.value
+        elif isinstance(child, ast.AnnAssign) and child.value is not None:
+            targets, value = [cast(ast.expr, child.target)], child.value
+        elif isinstance(child, ast.withitem) and child.optional_vars is not None:
+            targets, value = [child.optional_vars], child.context_expr
+        if not isinstance(value, ast.Call):
+            continue
+        built = resolve(value, env, owner)
+        if isinstance(built, type):
+            for target in targets:
+                if isinstance(target, ast.Name):
+                    bound[target.id] = built
+    return bound
 
 
 def _eval_test(test: ast.expr, bindings: Mapping[str, object]) -> bool | None:
@@ -322,6 +348,7 @@ class RaiseAnalyzer:
                 current = parents.get(current)
             return None
 
+        env = {**env, **local_instances(node, env, owner)}
         found: set[type] = set()
         for child in _walk_pruned(node.body, bindings):
             if isinstance(child, ast.Raise):

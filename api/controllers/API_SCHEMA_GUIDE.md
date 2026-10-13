@@ -270,6 +270,8 @@ Signal errors by raising, not by returning `(body, status)`:
 
 - Raise a `BaseHTTPException` subclass so the body carries `code`, `message` and `status` and the code can be
   documented. Do not call `flask_restx.abort` with a message or extra fields; it replaces the standard body.
+- Services and core raise domain exceptions; controllers translate them. `scripts/check_no_new_service_http_errors.py`
+  (CI) blocks new HTTP exceptions raised or defined there; existing ones are legacy.
 - Raise `libs.exception.RelayedHTTPError` for a code and status relayed from a downstream service at runtime. It emits
   the standard body; the operation's open `default` error already documents it, since its codes are not known per
   class, so listing it in `error_responses` adds nothing to the document.

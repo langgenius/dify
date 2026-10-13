@@ -28,7 +28,14 @@ from libs.helper import RateLimiter, dump_response, extract_remote_ip, to_timest
 from models.account import TenantStatus
 from models.model import App, AppMode, Site
 from services.feature_service import FeatureService
-from services.human_input_service import Form, FormNotFoundError, HumanInputService
+from services.human_input_service import (
+    Form,
+    FormExpiredError,
+    FormNotFoundError,
+    FormSubmittedError,
+    HumanInputService,
+    InvalidFormDataError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -146,7 +153,7 @@ class HumanInputFormApi(Resource):
 
     # NOTE(QuantumGhost): this endpoint is unauthenticated on purpose for now.
 
-    @error_responses(NotFoundError, WebFormRateLimitExceededError)
+    @error_responses(FormExpiredError, FormSubmittedError, NotFoundError, WebFormRateLimitExceededError)
     @web_ns.doc("get_human_input_form")
     @web_ns.doc(description="Get a human input form definition by token")
     @web_ns.doc(params={"form_token": "Human input form token"})
@@ -208,7 +215,9 @@ class HumanInputFormApi(Resource):
             ),
         )
 
-    @error_responses(NotFoundError, WebFormRateLimitExceededError)
+    @error_responses(
+        FormExpiredError, FormSubmittedError, InvalidFormDataError, NotFoundError, WebFormRateLimitExceededError
+    )
     @web_ns.expect(web_ns.models[HumanInputFormSubmitPayload.__name__])
     @web_ns.doc("submit_human_input_form")
     @web_ns.doc(description="Submit a human input form by token")
