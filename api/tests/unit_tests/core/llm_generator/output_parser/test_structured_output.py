@@ -141,6 +141,55 @@ class TestStructuredOutput:
             with pytest.raises(OutputParserError):
                 _parse_structured_output(text)
 
+    def test_parse_structured_output_ignores_json_in_reasoning_block(self):
+        # Providers concatenate the reasoning block ahead of the answer, so a JSON object inside
+        # <think> must not be taken as the structured output.
+        text = '<think>\nthinking out loud\n{"think": "start"}\n</think>\n{"type": "user_input", "content": "hi"}'
+        assert _parse_structured_output(text) == {"type": "user_input", "content": "hi"}
+
+    def test_parse_structured_output_prefers_answer_over_reasoning_of_same_shape(self):
+        text = '<think>{"type": "draft", "content": "guess"}</think>{"type": "user_input", "content": "final"}'
+        assert _parse_structured_output(text) == {"type": "user_input", "content": "final"}
+
+    def test_parse_structured_output_ignores_reasoning_block_with_attributes(self):
+        text = '<Think duration="2s">{"think": "start"}</think>{"type": "user_input"}'
+        assert _parse_structured_output(text) == {"type": "user_input"}
+
+    def test_parse_structured_output_keeps_literal_think_tags_inside_answer(self):
+        text = '{"content": "<think>quoted, not reasoning</think>"}'
+        assert _parse_structured_output(text) == {"content": "<think>quoted, not reasoning</think>"}
+
+    def test_parse_structured_output_keeps_literal_think_tags_in_fenced_answer(self):
+        # Not strictly valid JSON, so it goes through the repair path, and the tags are still part
+        # of the answer rather than reasoning.
+        text = '```json\n{"content": "<think>quoted, not reasoning</think>"}\n```'
+        assert _parse_structured_output(text) == {"content": "<think>quoted, not reasoning</think>"}
+
+    def test_parse_structured_output_keeps_literal_think_tags_in_repaired_list(self):
+        # Repairs into several candidates, and the first one is already the answer: a response that
+        # does not open with a reasoning block keeps its literal tags.
+        text = '{"content": "<think>quoted, not reasoning</think>"}\n{"extra": 1}'
+        assert _parse_structured_output(text) == {"content": "<think>quoted, not reasoning</think>"}
+
+    def test_parse_structured_output_keeps_literal_think_tags_after_reasoning_block(self):
+        text = '<think>reasoning without json</think>{"content": "<think>x</think>"}\n{"extra": 1}'
+        assert _parse_structured_output(text) == {"content": "<think>x</think>"}
+
+    def test_parse_structured_output_keeps_literal_think_tags_after_empty_reasoning_block(self):
+        # The deepseek-r1 '<think>\n\n</think>\n' prefix the repair fallback already knew about.
+        text = '<think>\n\n</think>\n{"content": "<think>x</think>"}\n{"extra": 1}'
+        assert _parse_structured_output(text) == {"content": "<think>x</think>"}
+
+    def test_parse_structured_output_unclosed_reasoning_block(self):
+        # A truncated answer keeps whatever the repair fallback made of it before.
+        text = '<think>{"key": "value"}'
+        assert _parse_structured_output(text) == {"key": "value"}
+
+    def test_parse_structured_output_reasoning_only_output(self):
+        # Nothing but reasoning: there is no answer to prefer, so the old result stands.
+        text = '<think>{"key": "value"}</think>'
+        assert _parse_structured_output(text) == {"key": "value"}
+
     def test_set_response_format(self):
         # Test JSON
         params = {}
@@ -403,6 +452,38 @@ class TestStructuredOutput:
         assert chunks[-1].structured_output == {"key": "value"}
         assert chunks[-1].system_fingerprint == "fp1"
         assert chunks[-1].prompt_messages == [UserPromptMessage(content="hi")]
+
+    def test_invoke_llm_with_structured_output_stream_reasoning_block(self):
+        model_schema = make_model_schema("gpt-4")
+        model_schema.features = []
+        model_schema.parameter_rules = []
+        model_schema.model = "gpt-4"
+
+        # The reasoning block spans several deltas, so the tags only pair up once accumulated.
+        deltas = ['<think>{"think": ', '"start"}</think>', '{"type": "user_input",', ' "content": "hi"}']
+        chunks_in = [
+            LLMResultChunk(
+                model=model_schema.model,
+                delta=LLMResultChunkDelta(index=0, message=AssistantPromptMessage(content=delta)),
+                prompt_messages=[UserPromptMessage(content="hi")],
+                system_fingerprint="fp1",
+            )
+            for delta in deltas
+        ]
+
+        generator = invoke_llm_with_structured_output(
+            provider="openai",
+            model_schema=model_schema,
+            model_instance=_ModelInstance(iter(chunks_in)),
+            prompt_messages=[UserPromptMessage(content="hi")],
+            json_schema={},
+            stream=True,
+        )
+
+        chunks = list(generator)
+        assert chunks[-1].structured_output == {"type": "user_input", "content": "hi"}
+        # The streamed text itself is untouched, so the reasoning still reaches the UI.
+        assert "".join(str(chunk.delta.message.content) for chunk in chunks[:-1]) == "".join(deltas)
 
     def test_invoke_llm_with_structured_output_stream_no_id_events(self):
         model_schema = make_model_schema("gpt-4")
