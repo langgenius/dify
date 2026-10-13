@@ -798,7 +798,11 @@ export type TestResultCard = {
     | 'execution_unknown'
     | 'required_output_unresolved'
     | null
-  policy_version?: 'builder-confirmed-gmail-read-v1' | 'builder-restricted-v1' | null
+  policy_version?:
+    | 'builder-confirmed-gmail-read-v1'
+    | 'builder-json-parse-v1'
+    | 'builder-restricted-v1'
+    | null
   review_note?: string | null
   safety_outcome?:
     | 'confirmed_tool_completed'
