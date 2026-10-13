@@ -1,4 +1,3 @@
-import type { PostSnippetsBySnippetIdWorkflowsDraftErrors } from '@dify/contracts/api/console/snippets/types.gen'
 import type { SyncDraftCallback } from '@/app/components/workflow/hooks-store'
 import type { SnippetInputField } from '@/models/snippet'
 import type {
@@ -6,6 +5,7 @@ import type {
   SnippetDraftSyncResponse,
   SnippetWorkflow,
 } from '@/types/snippet'
+import { safe } from '@orpc/client'
 import { produce } from 'immer'
 import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
@@ -15,7 +15,6 @@ import { API_PREFIX } from '@/config'
 import { consoleClient } from '@/service/console'
 // oxlint-disable-next-line no-restricted-imports
 import { postWithKeepalive } from '@/service/fetch'
-import { isApiErrorCode } from '@/service/http-error'
 import { useSnippetDraftStore } from '../draft-store'
 import { useSnippetRefreshDraft } from './use-snippet-refresh-draft'
 
@@ -105,30 +104,27 @@ export const useNodesSyncDraft = (snippetId: string) => {
       const { setDraftUpdatedAt, setSyncWorkflowDraftHash, syncWorkflowDraftHash } =
         workflowStore.getState()
 
-      try {
-        const response = await consoleClient.snippets.bySnippetId.workflows.draft.post({
+      const [error, response, isDefined] = await safe(
+        consoleClient.snippets.bySnippetId.workflows.draft.post({
           params: { snippet_id: snippetId },
           body: {
             ...payload,
             hash: syncWorkflowDraftHash || undefined,
           },
-        })
+        }),
+      )
+      try {
+        if (error) {
+          if (isDefined && error.code === 'draft_workflow_not_sync' && !notRefreshWhenSyncError)
+            handleRefreshWorkflowDraft(onRefresh)
+          callback?.onError?.()
+          return undefined
+        }
 
         setSyncWorkflowDraftHash(response.hash)
         setDraftUpdatedAt(response.updated_at)
         callback?.onSuccess?.()
         return response
-      } catch (error: unknown) {
-        if (
-          isApiErrorCode<PostSnippetsBySnippetIdWorkflowsDraftErrors>(
-            error,
-            'draft_workflow_not_sync',
-          ) &&
-          !notRefreshWhenSyncError
-        )
-          handleRefreshWorkflowDraft(onRefresh)
-        callback?.onError?.()
-        return undefined
       } finally {
         callback?.onSettled?.()
       }

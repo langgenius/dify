@@ -1,9 +1,9 @@
-import type { GetRagPipelinesByPipelineIdWorkflowsDraftErrors } from '@dify/contracts/api/console/rag/types.gen'
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
+import { rag as ragContract } from '@dify/contracts/api/console/rag/orpc.gen'
 import { useCallback, useEffect, useState } from 'react'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
-import { isApiErrorCode } from '@/service/http-error'
+import { toDefinedError } from '@/service/console/defined-errors'
 import { fetchWorkflowDraft, syncWorkflowDraft } from '@/service/workflow'
 import { usePipelineConfig } from './use-pipeline-config'
 import { usePipelineTemplate } from './use-pipeline-template'
@@ -57,14 +57,13 @@ export const usePipelineInit = () => {
       setRagPipelineVariables?.(res.rag_pipeline_variables || [])
       workflowStore.setState({ isWorkflowDataLoaded: true })
       setIsLoading(false)
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const definedError = await toDefinedError(
+        ragContract.pipelines.byPipelineId.workflows.draft.get,
+        error,
+      )
       if (datasetId) {
-        if (
-          isApiErrorCode<GetRagPipelinesByPipelineIdWorkflowsDraftErrors>(
-            error,
-            'draft_workflow_not_exist',
-          )
-        ) {
+        if (definedError?.code === 'draft_workflow_not_exist') {
           workflowStore.setState({
             notInitialWorkflow: true,
             shouldAutoOpenStartNodeSelector: true,
