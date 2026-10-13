@@ -1,6 +1,5 @@
 import type { ApiKeyItem } from '@dify/contracts/api/console/apps/types.gen'
 import type { EnvironmentApiKey } from '@dify/contracts/enterprise-app-deploy/types.gen'
-import type { AlertDialogHandle } from '@langgenius/dify-ui/alert-dialog'
 import { AlertDialogTrigger } from '@langgenius/dify-ui/alert-dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useTranslation } from 'react-i18next'
@@ -9,17 +8,11 @@ import useTimestamp from '@/hooks/use-timestamp'
 type ApiKeyTableProps = {
   apiKeys: Array<ApiKeyItem | EnvironmentApiKey>
   canManage: boolean
-  deleteDialogHandle: AlertDialogHandle<string>
   // Dataset keys carry a knowledge-base scope; enable the SCOPE column to surface it.
   showScope?: boolean
 }
 
-export function ApiKeyTable({
-  apiKeys,
-  canManage,
-  showScope = false,
-  deleteDialogHandle,
-}: ApiKeyTableProps) {
+export function ApiKeyTable({ apiKeys, canManage, showScope = false }: ApiKeyTableProps) {
   const { t } = useTranslation(['appApi', 'common', 'time'])
   const { formatTime } = useTimestamp()
   const maskToken = (token: string) => `${token.slice(0, 3)}...${token.slice(-20)}`
@@ -79,7 +72,6 @@ export function ApiKeyTable({
                 <div className="flex justify-end gap-1">
                   {canManage && (
                     <AlertDialogTrigger
-                      handle={deleteDialogHandle}
                       id={apiKey.id}
                       payload={apiKey.id}
                       render={
