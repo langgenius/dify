@@ -14,7 +14,10 @@ import { BuiltInAccessPoints } from '../built-in-access-points'
 vi.mock('@/app/notifications', () => ({ toast: { error: vi.fn(), success: vi.fn() } }))
 vi.mock('@/context/i18n', () => ({ useDocLink: () => (path: string) => path }))
 vi.mock('@/service/use-triggers', () => ({ useAllTriggerPlugins: () => ({ data: [] }) }))
-vi.mock('@/app/components/app/overview/customize', () => ({ default: () => null }))
+vi.mock('@/app/components/app/overview/customize', () => ({
+  default: () => null,
+  CustomizeDialog: () => null,
+}))
 vi.mock('@/app/components/app/overview/settings', () => ({ default: () => null }))
 vi.mock('@/app/components/app/overview/embedded', () => ({ default: () => null }))
 
