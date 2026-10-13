@@ -12,7 +12,6 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { useMutation } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import { useInvalidateResourceAccessTokens } from './use-invalidate-resource-access-tokens'
 
@@ -41,7 +40,6 @@ export default function DeleteTokenDialog({
       },
       {
         onSuccess: () => {
-          toast.success(t(($) => $['resourceAccessToken.deleted'], { ns: 'accountSettings' }))
           onOpenChange(false)
           void invalidateResourceAccessTokens()
         },

@@ -145,11 +145,10 @@ function ImportSnippetDSLDialog({ isOpen, onClose }: ImportSnippetDSLDialogProps
       const snippetId = getImportedSnippetId(response)
 
       onClose()
-      toast.success(t(($) => $.importSuccess, { ns: 'snippet' }))
 
       if (snippetId) push(`/snippets/${snippetId}/orchestrate`)
     },
-    [onClose, push, t],
+    [onClose, push],
   )
 
   const handleImportResponse = useCallback(

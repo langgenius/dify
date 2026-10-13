@@ -3,7 +3,7 @@
 Dify API persists only opaque Home Snapshot, Binding, and Workspace backend
 refs. This adapter maps those refs to E2B resources internally. API keys,
 traffic tokens, SDK objects, shellctl clients, and ``RuntimeLease`` objects stay
-operation-local and are never serialized into Agenton state.
+operation-local and are never serialized into module JSON state.
 """
 
 from __future__ import annotations

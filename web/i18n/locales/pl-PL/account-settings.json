@@ -74,7 +74,6 @@
   "resourceAccessToken.createdTokenDescription": "Zapisz ten token dostępu w bezpiecznym miejscu, ponieważ nie będzie można go ponownie wyświetlić. Każdy, kto go posiada, może użyć Difyctl do wyszukiwania zasobów, do których token daje dostęp, i korzystania z nich. Jeśli go utracisz, utwórz nowy token i unieważnij stary.",
   "resourceAccessToken.deleteDescription": "Token dostępu zostanie natychmiast wyłączony. Żądania z użyciem tego tokenu będą odrzucane, co może przerwać trwające zadania lub spowodować ich niepowodzenie. Po usunięciu nie będzie można go wyświetlić ani zmienić.",
   "resourceAccessToken.deleteTitle": "Usunąć token dostępu?",
-  "resourceAccessToken.deleted": "Usunięto token dostępu",
   "resourceAccessToken.done": "Gotowe",
   "resourceAccessToken.editTitle": "Edytuj token dostępu",
   "resourceAccessToken.empty": "Nie ma jeszcze tokenów dostępu",

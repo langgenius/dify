@@ -396,7 +396,7 @@ const BaseField = ({
           )}
           {isSelect && (
             <>
-              <SelectTrigger id={controlId} {...controlProps} className="px-2">
+              <SelectTrigger id={controlId} {...controlProps}>
                 {multiple ? (
                   <SelectValue<string, true> placeholder={selectPlaceholder}>
                     {(selectedValue) =>

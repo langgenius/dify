@@ -74,7 +74,6 @@
   "resourceAccessToken.createdTokenDescription": "Bu erişim belirtecini güvenli bir yerde saklayın; bir daha görüntüleyemezsiniz. Belirteci elinde bulunduran herkes Difyctl ile izin verilen kaynakları bulup bunlara erişebilir. Kaybederseniz yeni bir belirteç oluşturun ve eskisini iptal edin.",
   "resourceAccessToken.deleteDescription": "Erişim belirteci hemen devre dışı bırakılır. Bu belirteci kullanan istekler reddedilir; bu durum devam eden görevleri kesintiye uğratabilir veya başarısız olmalarına neden olabilir. Sildikten sonra belirteci görüntüleyemez veya değiştiremezsiniz.",
   "resourceAccessToken.deleteTitle": "Erişim belirteci silinsin mi?",
-  "resourceAccessToken.deleted": "Erişim belirteci silindi",
   "resourceAccessToken.done": "Bitti",
   "resourceAccessToken.editTitle": "Erişim belirtecini düzenle",
   "resourceAccessToken.empty": "Henüz erişim belirteci yok",
