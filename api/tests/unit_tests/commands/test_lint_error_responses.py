@@ -2,7 +2,8 @@ import ast
 import inspect
 import sys
 import textwrap
-from collections.abc import Callable
+from collections.abc import Callable, Generator
+from contextlib import contextmanager
 
 import pytest
 from flask_restx import abort
@@ -207,3 +208,60 @@ def test_finds_hand_built_error_bodies_and_restx_aborts() -> None:
         (404, False, True),
         (409, True, False),
     ]
+
+
+class _OtherGuardError(BaseHTTPException):
+    error_code = "other_guard"
+    code = 409
+
+
+@contextmanager
+def _translate_service_errors() -> Generator[None]:
+    try:
+        yield
+    except _ServiceError:
+        raise _MissingError()
+
+
+@contextmanager
+def _translate_other_errors() -> Generator[None]:
+    try:
+        yield
+    except _ServiceError:
+        raise _OtherGuardError()
+
+
+def _context_manager_handler() -> None:
+    with _translate_service_errors():
+        _service()
+
+
+def _other_context_manager_handler() -> None:
+    with _translate_other_errors():
+        _service()
+
+
+def test_follows_context_managers_through_their_wrapper(analyzer: lint.RaiseAnalyzer) -> None:
+    # contextmanager wrappers share one __code__; each must be analyzed as its own function.
+    assert _MissingError in analyzer.raises_of_function(_context_manager_handler, None, 0)
+    other = analyzer.raises_of_function(_other_context_manager_handler, None, 0)
+    assert _OtherGuardError in other
+    assert _MissingError not in other
+
+
+def _leaf() -> None:
+    raise _MissingError()
+
+
+def _middle() -> None:
+    _leaf()
+
+
+def test_results_do_not_depend_on_scan_order(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(lint, "RECURSE_PREFIXES", (__name__,))
+    analyzer = lint.RaiseAnalyzer(max_depth=1)
+
+    # First reach _middle at the depth limit, where its callee is not followed...
+    assert _MissingError not in analyzer.raises_of_function(_middle, None, 1)
+    # ...then from a shallower call, which must follow it rather than reuse the cut-short result.
+    assert _MissingError in analyzer.raises_of_function(_middle, None, 0)

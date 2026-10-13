@@ -21,6 +21,7 @@ from controllers.console.datasets.error import (
     DatasetNameDuplicateError,
     IndexingEstimateError,
 )
+from controllers.console.error import ApiKeyLimitExceededHTTPError
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import (
     RBACPermission,
@@ -41,6 +42,7 @@ from libs.helper import build_icon_url, dump_response, to_timestamp
 from machinery.context import RequestContext
 from models.account import TenantAccountRole
 from models.enums import PermissionEnum as DatasetPermissionEnum
+from services.agent.errors import AgentAccessNotReadyError
 from services.errors.dataset import DatasetInUseError as DatasetInUseFailure
 from services.errors.dataset import DatasetNameDuplicateError as DatasetNameDuplicateFailure
 from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
@@ -640,6 +642,7 @@ class DatasetIndexingStatusApi(Resource):
 
 @console_ns.route("/datasets/api-keys")
 class DatasetApiKeyApi(Resource):
+    @error_responses(AgentAccessNotReadyError, ApiKeyLimitExceededHTTPError)
     @console_ns.doc("get_dataset_api_keys")
     @console_ns.doc(description="Get dataset API keys")
     @console_ns.response(200, "API keys retrieved successfully", console_ns.models[ApiKeyList.__name__])
@@ -652,6 +655,7 @@ class DatasetApiKeyApi(Resource):
             keys = application_services().dataset_api_keys.list_workspace_keys(request_context)
         return dump_response(ApiKeyList, build_masked_api_key_list(keys))
 
+    @error_responses(AgentAccessNotReadyError, ApiKeyLimitExceededHTTPError)
     @console_ns.expect(console_ns.models[DatasetApiKeyCreatePayload.__name__])
     @console_ns.response(200, "API key created successfully", console_ns.models[ApiKeyItem.__name__])
     @console_ns.response(400, "Maximum keys exceeded")
@@ -672,6 +676,7 @@ class DatasetApiKeyApi(Resource):
 
 @console_ns.route("/datasets/api-keys/<uuid:api_key_id>")
 class DatasetApiDeleteApi(Resource):
+    @error_responses(AgentAccessNotReadyError, ApiKeyLimitExceededHTTPError)
     @console_ns.doc("delete_dataset_api_key")
     @console_ns.doc(description="Delete dataset API key")
     @console_ns.doc(params={"api_key_id": "API key ID"})

@@ -206,6 +206,12 @@ class RaiseAnalyzer:
             obj = obj.__func__
         if inspect.ismethod(obj):
             obj = obj.__func__
+        if not inspect.isfunction(obj):
+            return None
+        # Analyze the wrapped function itself: ``inspect.getsource`` already unwraps, so its
+        # globals and cache key must come from the same function. Wrappers such as
+        # ``contextlib.contextmanager`` share one ``__code__`` across every decorated function.
+        obj = inspect.unwrap(obj)
         if inspect.isfunction(obj) and (obj.__module__ or "").startswith(RECURSE_PREFIXES):
             return obj
         return None
@@ -272,7 +278,9 @@ class RaiseAnalyzer:
         if node is None:
             return set()
         bindings = dict(bindings or {})
-        key = (fn.__code__, owner, frozenset(bindings.items()))
+        # Depth is part of the key: a result cut short at the depth limit must not be reused
+        # by a shallower call that could follow further.
+        key = (fn.__code__, owner, frozenset(bindings.items()), depth)
         return self._raises_in(node, self.function_env(fn), owner, depth, bindings, key)
 
     def raises_of_node(self, node: FunctionNode, env: Mapping[str, object], owner: type | None) -> set[type]:

@@ -485,7 +485,14 @@ simple_account_model = console_ns.models[TrialSimpleAccount.__name__]
     endpoint="trial_app_file_upload",
 )
 class TrialAppFileUploadApi(Resource):
-    @error_responses(FilenameNotExistsError, NoFileUploadedError, TooManyFilesError)
+    @error_responses(
+        BlockedFileExtensionError,
+        FilenameNotExistsError,
+        FileTooLargeError,
+        NoFileUploadedError,
+        TooManyFilesError,
+        UnsupportedFileTypeError,
+    )
     @console_ns.doc(consumes=["multipart/form-data"], params=FILE_UPLOAD_PARAMS)
     @console_ns.response(HTTPStatus.CREATED, "File uploaded successfully", console_ns.models[FileResponse.__name__])
     @console_account_admission()
