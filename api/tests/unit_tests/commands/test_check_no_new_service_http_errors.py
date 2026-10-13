@@ -141,3 +141,67 @@ def test_reasoned_guard_ignore_passes(tmp_path: Path) -> None:
     )
 
     assert check(tmp_path, base).returncode == 0
+
+
+def test_aliased_http_error_import_fails(tmp_path: Path) -> None:
+    base = repo_with_baseline(tmp_path)
+    write(
+        tmp_path,
+        "api/services/aliased.py",
+        """
+        from werkzeug import exceptions as http
+        from werkzeug.exceptions import NotFound as Missing
+
+
+        def load(item):
+            if item is None:
+                raise Missing()
+            raise http.Conflict()
+        """,
+    )
+
+    result = check(tmp_path, base)
+
+    assert result.returncode == 1
+    assert "api/services/aliased.py:7:" in result.stderr
+    assert "api/services/aliased.py:8:" in result.stderr
+
+
+def test_project_subclasses_of_http_errors_fail(tmp_path: Path) -> None:
+    base = repo_with_baseline(tmp_path)
+    write(
+        tmp_path,
+        "api/controllers/errors.py",
+        """
+        from werkzeug.exceptions import NotFound
+
+
+        class AgentNotFoundError(NotFound):
+            pass
+        """,
+    )
+    write(tmp_path, "api/controllers/__init__.py", "from .errors import AgentNotFoundError\n")
+    git(tmp_path, "add", ".")
+    git(tmp_path, "commit", "-m", "controller errors")
+    base = git(tmp_path, "rev-parse", "HEAD")
+    write(
+        tmp_path,
+        "api/services/agents.py",
+        """
+        from controllers import AgentNotFoundError as Missing
+
+
+        class StaleAgentError(Missing):
+            pass
+
+
+        def load() -> None:
+            raise StaleAgentError()
+        """,
+    )
+
+    result = check(tmp_path, base)
+
+    assert result.returncode == 1
+    assert "api/services/agents.py:4:" in result.stderr
+    assert "api/services/agents.py:9:" in result.stderr
