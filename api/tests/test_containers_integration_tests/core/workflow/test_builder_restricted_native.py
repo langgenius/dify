@@ -971,3 +971,65 @@ def test_composed_template_seal_replay_rejects_changed_output(native_owner, monk
         session.get(WorkflowRun, result.dify_run_id).outputs = '{"notification_markdown":"changed after seal"}'
     with pytest.raises(BuilderExecutionPolicyError, match="conflicting_execution_completion"):
         real_seal(service, request_id=summary.request_id, completion=captured[0])
+
+
+@pytest.mark.usefixtures("no_live", "no_jinja_compilation")
+def test_composed_template_normal_workflow_citation_defaults_are_preserved(native_owner, monkeypatch):
+    from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
+
+    retrieval = Mock(side_effect=AssertionError("citation display metadata initiated retrieval"))
+    monkeypatch.setattr(DatasetRetrieval, "retrieve", retrieval)
+    inputs = configure_template(native_owner)
+    features = {
+        "retriever_resource": {"enabled": True},
+        "file_upload": {},
+        "text_to_speech": {"enabled": False, "voice": "", "language": ""},
+        "sensitive_word_avoidance": {"enabled": False},
+    }
+    factory, _, _, workflow, _, _ = native_owner
+    with factory.begin() as session:
+        session.get(Workflow, workflow.id)._features = json.dumps(features)
+    result = run_port(native_owner, inputs)
+    # This actual normal metadata previously refused before allocating a run.
+    assert_template_native_rows(native_owner, result, "## Notice\n\nFirst paragraph.\nSecond paragraph.")
+    with factory() as session:
+        assert session.get(Workflow, workflow.id).features_dict == features
+        assert session.get(Workflow, workflow.id).features_dict["retriever_resource"]["enabled"] is True
+    retrieval.assert_not_called()
+
+
+@pytest.mark.usefixtures("no_live", "no_jinja_compilation")
+@pytest.mark.parametrize(
+    ("before", "after"), [(True, False), (False, True)], ids=["enabled-to-disabled", "disabled-to-enabled"]
+)
+def test_composed_citation_display_change_invalidates_reserved_template_context(
+    native_owner, monkeypatch, before, after
+):
+    from services.dify_builder.dify_port import _BuilderExecutionLaunch
+
+    factory, _, app, workflow, _, _ = native_owner
+    inputs = configure_template(native_owner)
+    with factory.begin() as session:
+        session.get(Workflow, workflow.id)._features = json.dumps({"retriever_resource": {"enabled": before}})
+    original = _BuilderExecutionLaunch.__call__
+
+    def change_before_admission(launch, *args, **kwargs):
+        with factory.begin() as session:
+            session.get(Workflow, workflow.id)._features = json.dumps({"retriever_resource": {"enabled": after}})
+        return original(launch, *args, **kwargs)
+
+    monkeypatch.setattr(_BuilderExecutionLaunch, "__call__", change_before_admission)
+    result = run_port(native_owner, inputs)
+    assert result.execution_refusal is not None
+    assert result.execution_refusal.reason_code == "stale_execution_revision"
+    assert result.dify_run_id == ""
+    assert result.per_node == []
+    assert is_execution_policy_blocker(result)
+    with factory() as session:
+        assert session.scalars(select(WorkflowRun).where(WorkflowRun.app_id == app.id)).first() is None
+        assert (
+            session.scalars(
+                select(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.app_id == app.id)
+            ).first()
+            is None
+        )
