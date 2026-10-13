@@ -24,7 +24,7 @@ from core.app.entities.app_invoke_entities import (
 )
 from core.app.entities.task_entities import WorkflowFinishStreamResponse, WorkflowStartStreamResponse
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, WorkflowResumptionContext
-from core.dify_builder.execution_policy import BuilderExecutionContext, BuilderExecutionPolicyError
+from core.dify_builder.execution_policy import BuilderExecutionContextValue, BuilderExecutionPolicyError
 from core.repositories import DifyCoreRepositoryFactory
 from extensions.ext_database import db
 from graphon.engine.filter import ResponseStreamFilter
@@ -93,7 +93,7 @@ type User = Annotated[
 
 
 class AppExecutionParams(BaseModel):
-    builder_execution: BuilderExecutionContext | None = None
+    builder_execution: BuilderExecutionContextValue | None = None
 
     app_id: str
     workflow_id: str
@@ -120,7 +120,7 @@ class AppExecutionParams(BaseModel):
         call_depth: int = 0,
         root_node_id: str | None = None,
         workflow_run_id: str | None = None,
-        builder_execution: BuilderExecutionContext | None = None,
+        builder_execution: BuilderExecutionContextValue | None = None,
     ):
         user_params: _Account | _EndUser
         match user:

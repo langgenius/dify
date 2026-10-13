@@ -21,6 +21,7 @@ from core.dify_builder.execution_policy import (
     BuilderExecutionPolicyError,
     BuilderExecutionRecorder,
     ConfirmedToolExecutionContext,
+    JsonToolExecutionContext,
     RestrictedAdmissionSnapshot,
     admit_restricted_workflow,
     canonical_digest,
@@ -108,6 +109,8 @@ from services.knowledge_fs.knowledge_retrieval_v2.automatic_metadata_filter impo
     KnowledgeFSAutomaticMetadataFilterExtractor,
 )
 from services.knowledge_fs.knowledge_retrieval_v2.entities import KNOWLEDGE_RETRIEVAL_V2_NODE_TYPE
+from services.dify_builder.json_tool_execution import admit_json_workflow
+from services.dify_builder.json_tool_runtime import QualifiedJsonToolNodeRuntime
 from services.dify_builder.template_execution import MAX_OUTPUT_BYTES, BoundedJinja2TemplateRenderer
 
 if TYPE_CHECKING:
@@ -428,6 +431,9 @@ class DifyNodeFactory(NodeFactory):
             case ConfirmedToolExecutionContext():
                 self._initialize_confirmed_tool_runtime(context)
                 return
+            case JsonToolExecutionContext():
+                self._initialize_json_tool_runtime(context)
+                return
             case BuilderExecutionContext():
                 self._initialize_restricted_runtime(context, _request_hmac_key)
                 return
@@ -500,7 +506,9 @@ class DifyNodeFactory(NodeFactory):
         self._agent_runtime_support = AgentRuntimeSupport()
         self._agent_message_transformer = AgentMessageTransformer(session_factory.create_session)
 
-    def _require_builder_owner(self, context: BuilderExecutionContext | ConfirmedToolExecutionContext) -> None:
+    def _require_builder_owner(
+        self, context: BuilderExecutionContext | ConfirmedToolExecutionContext | JsonToolExecutionContext
+    ) -> None:
         recorder = self.execution_recorder
         if recorder is None or not recorder.healthy:
             raise BuilderExecutionPolicyError("missing_execution_recorder")
@@ -570,6 +578,32 @@ class DifyNodeFactory(NodeFactory):
 
         self._confirmed_tool_runtime = DifyToolNodeRuntime(self._dify_context, confirmed_guard_factory=issue_guard)
 
+    def _initialize_json_tool_runtime(self, context: JsonToolExecutionContext) -> None:
+        """Admit the original three-node graph before native Tool data adaptation."""
+        from services.dify_builder.execution_policy_service import JsonLaunchRecorder
+
+        checked = validate_execution_context(context.model_dump(mode="json"))
+        if not isinstance(checked, JsonToolExecutionContext) or checked != context:
+            raise BuilderExecutionPolicyError("invalid_execution_context")
+        self._require_builder_owner(context)
+        recorder = self.execution_recorder
+        if not isinstance(recorder, JsonLaunchRecorder):
+            raise BuilderExecutionPolicyError("missing_json_tool_issuer")
+        snapshot = self._admission_snapshot()
+        for node_config in snapshot.graph.get("nodes", []):
+            self._validate_json_raw_config(node_config)
+        if admit_json_workflow(snapshot).nodes != context.admitted_nodes:
+            raise BuilderExecutionPolicyError("node_binding_mismatch")
+        native_run_id = get_system_text(self.graph_runtime_state.variable_pool, SystemVariableKey.WORKFLOW_EXECUTION_ID)
+        if not native_run_id:
+            raise BuilderExecutionPolicyError("execution_launch_mismatch")
+        self._json_tool_runtime = QualifiedJsonToolNodeRuntime(
+            self._dify_context,
+            native_run_id=native_run_id,
+            native_task_id=recorder.native_task_id,
+            issuer=recorder,
+        )
+
     @override
     def with_runtime_state(self, runtime_state: "RuntimeState") -> "DifyNodeFactory":
         return DifyNodeFactory(
@@ -631,6 +665,8 @@ class DifyNodeFactory(NodeFactory):
                 }
         if isinstance(context, ConfirmedToolExecutionContext):
             return self._create_confirmed_node(node_config)
+        if isinstance(context, JsonToolExecutionContext):
+            return self._create_json_node(node_config)
         if context is not None:
             self._validate_restricted_raw_config(node_config)
         try:
@@ -818,6 +854,51 @@ class DifyNodeFactory(NodeFactory):
             graph_runtime_state=self.graph_runtime_state,
             **kwargs,
         )
+
+    def _create_json_node(self, node_config: Mapping[str, Any]) -> Node:
+        """Construct only audited native classes, with the qualified Tool runtime."""
+        self._validate_json_raw_config(node_config)
+        adapted = adapt_node_config_for_graph(node_config)
+        node_id, _node_data, node_class, resolved = _validated_node_config(
+            adapted,
+            resolve_node_class=self._resolve_node_class,
+            validate_resolved_node_data=self._validate_resolved_node_data,
+        )
+        if node_class is not _CONFIRMED_CLASSES.get(resolved.type) or resolved.version != "1":
+            raise BuilderExecutionPolicyError("unsupported_node_implementation")
+        kwargs: dict[str, object] = {}
+        if node_class is ToolNode:
+            kwargs = {"tool_file_manager": _DeniedConfirmedToolFiles(), "runtime": self._json_tool_runtime}
+        return node_class(
+            node_id=node_id,
+            data=resolved.model_dump(mode="python", by_alias=True),
+            graph_init_params=self.graph_init_params,
+            graph_runtime_state=self.graph_runtime_state,
+            **kwargs,
+        )
+
+    def _validate_json_raw_config(self, node_config: Mapping[str, Any], node_class: type[Node] | None = None) -> None:
+        context = self._dify_context.builder_execution
+        if not isinstance(context, JsonToolExecutionContext):
+            raise BuilderExecutionPolicyError("unsupported_execution_policy")
+        data, node_id = node_config.get("data"), node_config.get("id")
+        if not isinstance(data, Mapping) or not isinstance(node_id, str):
+            raise BuilderExecutionPolicyError("invalid_node_configuration")
+        node_type, version = data.get("type"), data.get("version", "1")
+        if not isinstance(node_type, str) or node_type not in _CONFIRMED_CLASSES or version != "1":
+            raise BuilderExecutionPolicyError("unsupported_node_implementation")
+        if node_class is None:
+            node_class = self._resolve_node_class(node_type=node_type, node_version=version, node_data=data)
+        if node_class is not _CONFIRMED_CLASSES[node_type] or node_class.version() != "1":
+            raise BuilderExecutionPolicyError("unsupported_node_implementation")
+        binding = next((item for item in context.admitted_nodes if item.node_id == node_id), None)
+        if (
+            binding is None
+            or binding.implementation != f"{node_class.__module__}.{node_class.__qualname__}"
+            or binding.node_version != "1"
+            or binding.normalized_config_digest != canonical_digest({**data, "version": "1"})
+        ):
+            raise BuilderExecutionPolicyError("execution_binding_mismatch")
 
     def _validate_confirmed_raw_config(
         self, node_config: Mapping[str, Any], node_class: type[Node] | None = None

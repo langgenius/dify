@@ -39,6 +39,7 @@ from core.dify_builder.execution_policy import (
     BuilderExecutionPolicyError,
     BuilderExecutionRecorder,
     ConfirmedToolExecutionContext,
+    JsonToolExecutionContext,
     scalar_inputs_digest,
 )
 from core.helper.trace_id_helper import (
@@ -117,7 +118,7 @@ class BuilderExecutionAdmission(Protocol):
     def on_worker_finished(
         self,
         *,
-        context: BuilderExecutionContext | ConfirmedToolExecutionContext,
+        context: BuilderExecutionContext | ConfirmedToolExecutionContext | JsonToolExecutionContext,
         native_run_id: str,
         task_id: str,
         recorder: BuilderExecutionRecorder | None,
@@ -169,7 +170,10 @@ class WorkflowAppGenerator(BaseAppGenerator):
         allow_human_input: bool = True,
         pause_state_config: PauseStateLayerConfig | None = None,
         capture_agent_evaluation_trace: bool = False,
-        builder_execution: BuilderExecutionContext | ConfirmedToolExecutionContext | None = None,
+        builder_execution: BuilderExecutionContext
+        | ConfirmedToolExecutionContext
+        | JsonToolExecutionContext
+        | None = None,
         builder_execution_admit: BuilderExecutionAdmission | None = None,
     ) -> Generator[Mapping[str, Any] | str]: ...
 
@@ -193,7 +197,10 @@ class WorkflowAppGenerator(BaseAppGenerator):
         allow_human_input: bool = True,
         pause_state_config: PauseStateLayerConfig | None = None,
         capture_agent_evaluation_trace: bool = False,
-        builder_execution: BuilderExecutionContext | ConfirmedToolExecutionContext | None = None,
+        builder_execution: BuilderExecutionContext
+        | ConfirmedToolExecutionContext
+        | JsonToolExecutionContext
+        | None = None,
         builder_execution_admit: BuilderExecutionAdmission | None = None,
     ) -> Mapping[str, Any]: ...
 
@@ -217,7 +224,10 @@ class WorkflowAppGenerator(BaseAppGenerator):
         allow_human_input: bool = True,
         pause_state_config: PauseStateLayerConfig | None = None,
         capture_agent_evaluation_trace: bool = False,
-        builder_execution: BuilderExecutionContext | ConfirmedToolExecutionContext | None = None,
+        builder_execution: BuilderExecutionContext
+        | ConfirmedToolExecutionContext
+        | JsonToolExecutionContext
+        | None = None,
         builder_execution_admit: BuilderExecutionAdmission | None = None,
     ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str]: ...
 
@@ -240,7 +250,10 @@ class WorkflowAppGenerator(BaseAppGenerator):
         allow_human_input: bool = True,
         pause_state_config: PauseStateLayerConfig | None = None,
         capture_agent_evaluation_trace: bool = False,
-        builder_execution: BuilderExecutionContext | ConfirmedToolExecutionContext | None = None,
+        builder_execution: BuilderExecutionContext
+        | ConfirmedToolExecutionContext
+        | JsonToolExecutionContext
+        | None = None,
         builder_execution_admit: BuilderExecutionAdmission | None = None,
     ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str]:
         try:
@@ -865,6 +878,11 @@ class WorkflowAppGenerator(BaseAppGenerator):
                                 raise BuilderExecutionPolicyError("execution_owner_mismatch")
                             if graph_engine_layers:
                                 raise BuilderExecutionPolicyError("unsupported_execution_transport")
+                            if isinstance(application_generate_entity.builder_execution, JsonToolExecutionContext):
+                                # The owned worker read must release its SQL transaction
+                                # before the issuer revalidates daemon metadata.
+                                session.expunge_all()
+                                session.close()
                             execution_recorder = builder_execution_admit(
                                 workflow,
                                 app,
