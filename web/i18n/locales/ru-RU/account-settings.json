@@ -55,6 +55,8 @@
   "account.sendVerificationButton": "Отправить код подтверждения",
   "account.setPassword": "Установить пароль",
   "account.showAppLength": "Показать {{length}} приложений",
+  "account.timezoneNoResults": "Подходящие часовые пояса не найдены",
+  "account.timezoneSearchPlaceholder": "Поиск городов или часовых поясов…",
   "account.verificationLabel": "Проверочный код",
   "account.verificationPlaceholder": "Вставьте 6-значный код",
   "account.workspaceName": "Название рабочего пространства",

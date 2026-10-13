@@ -58,6 +58,8 @@ export default interface Resources {
     'account.sendVerificationButton': 'Send Verification Code'
     'account.setPassword': 'Set a password'
     'account.showAppLength': 'Show {{length}} apps'
+    'account.timezoneNoResults': 'No matching time zones found'
+    'account.timezoneSearchPlaceholder': 'Search cities or time zones...'
     'account.verificationLabel': 'Verification Code'
     'account.verificationPlaceholder': 'Paste the 6-digit code'
     'account.workspaceName': 'Workspace Name'
