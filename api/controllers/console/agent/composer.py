@@ -62,7 +62,7 @@ register_response_schema_models(
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/agent-composer")
 class WorkflowAgentComposerApi(Resource):
-    @error_responses(AgentVersionNotFoundError)
+    @error_responses(AgentNotFoundError, AgentVersionNotFoundError)
     @console_ns.response(
         200, "Workflow agent composer state", console_ns.models[WorkflowAgentComposerResponse.__name__]
     )
@@ -315,7 +315,7 @@ def _require_snippet_app_id(*, session: Session, tenant_id: str, snippet_id: UUI
 
 @console_ns.route("/snippets/<uuid:snippet_id>/workflows/draft/nodes/<string:node_id>/agent-composer")
 class SnippetAgentComposerApi(Resource):
-    @error_responses(AgentVersionNotFoundError)
+    @error_responses(AgentNotFoundError, AgentVersionNotFoundError)
     @console_ns.response(200, "Snippet agent composer state", console_ns.models[WorkflowAgentComposerResponse.__name__])
     @console_ns.doc(params=query_params_from_model(WorkflowAgentComposerQuery))
     @setup_required

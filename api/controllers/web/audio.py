@@ -29,6 +29,7 @@ from graphon.model_runtime.errors.invoke import InvokeError
 from libs.external_api import error_responses
 from libs.helper import dump_response, uuid_value
 from models.model import App, EndUser
+from services.agent.errors import AgentVersionNotFoundError
 from services.app_ref_service import AppRefService
 from services.audio_service import AudioService
 from services.errors.audio import (
@@ -64,6 +65,7 @@ logger = logging.getLogger(__name__)
 @web_ns.route("/audio-to-text")
 class AudioApi(WebApiResource):
     @error_responses(
+        AgentVersionNotFoundError,
         AppUnavailableError,
         AudioTooLargeError,
         CompletionRequestError,
