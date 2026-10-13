@@ -84,11 +84,13 @@ class AppAnnotationService:
                 args["embedding_provider_name"],
                 args["embedding_model_name"],
             )
-        except Exception:
+        except Exception as exc:
             try:
-                jobs.cancel(tenant_id=current_tenant_id, app_id=app_id, action="enable", job_id=job_id)
+                jobs.fail(
+                    tenant_id=current_tenant_id, app_id=app_id, action="enable", job_id=job_id, error_msg=str(exc)
+                )
             except Exception:
-                logger.exception("Failed to cancel annotation reply job %s for app %s", job_id, app_id)
+                logger.exception("Failed to record failure of annotation reply job %s for app %s", job_id, app_id)
             raise
         return {"job_id": job_id, "job_status": "waiting"}
 
@@ -103,11 +105,13 @@ class AppAnnotationService:
             if reserved_job_id != job_id:
                 return {"job_id": reserved_job_id, "job_status": "processing"}
             disable_annotation_reply_task.delay(job_id, app_id, current_tenant_id)
-        except Exception:
+        except Exception as exc:
             try:
-                jobs.cancel(tenant_id=current_tenant_id, app_id=app_id, action="disable", job_id=job_id)
+                jobs.fail(
+                    tenant_id=current_tenant_id, app_id=app_id, action="disable", job_id=job_id, error_msg=str(exc)
+                )
             except Exception:
-                logger.exception("Failed to cancel annotation reply job %s for app %s", job_id, app_id)
+                logger.exception("Failed to record failure of annotation reply job %s for app %s", job_id, app_id)
             raise
         return {"job_id": job_id, "job_status": "waiting"}
 

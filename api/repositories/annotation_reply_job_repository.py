@@ -4,6 +4,7 @@ from extensions.ext_redis import RedisClientWrapper
 from services.annotation_reply_service import AnnotationReplyAction, AnnotationReplyJob, AnnotationReplyJobStore
 
 _PENDING_JOB_TTL_SECONDS = 24 * 60 * 60
+_FAILED_JOB_TTL_SECONDS = 600
 _RESERVE_PROCESSING = """
 local existing = redis.call('GET', KEYS[1])
 if existing then return existing end
@@ -53,6 +54,7 @@ class RedisAnnotationReplyJobRepository(AnnotationReplyJobStore):
         return pending
 
     def cancel(self, *, tenant_id: str, app_id: str, action: AnnotationReplyAction, job_id: str) -> None:
+        """Discard an unused candidate that was not exposed as the processing job."""
         if not self._is_owner(tenant_id=tenant_id, app_id=app_id, action=action, job_id=job_id):
             return
         self.release_processing(app_id=app_id, action=action, job_id=job_id)
@@ -60,6 +62,15 @@ class RedisAnnotationReplyJobRepository(AnnotationReplyJobStore):
         self._redis.delete(f"{action}_app_annotation_job_{job_id}")
         self._redis.delete(f"{action}_app_annotation_error_{job_id}")
         self._redis.delete(annotation_reply_job_owner_key(action=action, job_id=job_id))
+
+    def fail(self, *, tenant_id: str, app_id: str, action: AnnotationReplyAction, job_id: str, error_msg: str) -> None:
+        if not self._is_owner(tenant_id=tenant_id, app_id=app_id, action=action, job_id=job_id):
+            return
+        # Concurrent callers may already be polling this ID; retain its result before allowing a retry.
+        self._redis.setex(f"{action}_app_annotation_error_{job_id}", _FAILED_JOB_TTL_SECONDS, error_msg)
+        self._redis.setex(f"{action}_app_annotation_job_{job_id}", _FAILED_JOB_TTL_SECONDS, "error")
+        self._redis.expire(annotation_reply_job_owner_key(action=action, job_id=job_id), _FAILED_JOB_TTL_SECONDS)
+        self.release_processing(app_id=app_id, action=action, job_id=job_id)
 
     def release_processing(self, *, app_id: str, action: AnnotationReplyAction, job_id: str) -> None:
         """An older worker must never release a newer job's reservation."""

@@ -98,8 +98,13 @@ const Annotation: FC<Props> = (props) => {
 
   const ensureJobCompleted = async (jobId: string, status: AnnotationEnableStatus) => {
     while (true) {
-      const res: any = await queryAnnotationJobStatus(appDetail.id, status, jobId)
+      const res = await queryAnnotationJobStatus(appDetail.id, status, jobId)
       if (res.job_status === JobStatus.completed) break
+      if (res.job_status === JobStatus.error) {
+        const error = new Error(res.error_msg || t(($) => $['api.actionFailed'], { ns: 'common' }))
+        toast.error(error.message)
+        throw error
+      }
       await sleep(2000)
     }
   }
@@ -208,14 +213,18 @@ const Annotation: FC<Props> = (props) => {
                         }
                         setIsShowEdit(true)
                       } else {
-                        const { job_id: jobId }: any = await updateAnnotationStatus(
-                          appDetail.id,
-                          AnnotationEnableStatus.disable,
-                          annotationConfig?.embedding_model,
-                          annotationConfig?.score_threshold,
-                        )
-                        await ensureJobCompleted(jobId, AnnotationEnableStatus.disable)
-                        await fetchAnnotationConfig()
+                        try {
+                          const { job_id: jobId } = await updateAnnotationStatus(
+                            appDetail.id,
+                            AnnotationEnableStatus.disable,
+                            annotationConfig?.embedding_model,
+                            annotationConfig?.score_threshold,
+                          )
+                          await ensureJobCompleted(jobId, AnnotationEnableStatus.disable)
+                          await fetchAnnotationConfig()
+                        } catch {
+                          // Request and job failures already have error feedback; keep the current state.
+                        }
                       }
                     }}
                   ></Switch>
@@ -320,7 +329,7 @@ const Annotation: FC<Props> = (props) => {
                 embeddingModel.embedding_provider_name !==
                   annotationConfig?.embedding_model?.embedding_provider_name
               ) {
-                const { job_id: jobId }: any = await updateAnnotationStatus(
+                const { job_id: jobId } = await updateAnnotationStatus(
                   appDetail.id,
                   AnnotationEnableStatus.enable,
                   embeddingModel,

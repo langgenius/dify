@@ -28,6 +28,7 @@ const AnnotationReply = ({ disabled, onChange }: Props) => {
   const appId = matched?.length && matched[1] ? matched[1] : ''
   const featuresStore = useFeaturesStore()
   const annotationReply = useFeatures((s) => s.features.annotationReply)
+  const [isDisabling, setIsDisabling] = useState(false)
 
   const updateAnnotationReply = useCallback(
     (newConfig: AnnotationReplyConfig) => {
@@ -64,11 +65,26 @@ const AnnotationReply = ({ disabled, onChange }: Props) => {
   })
 
   const handleSwitch = useCallback(
-    (enabled: boolean) => {
+    async (enabled: boolean) => {
+      if (isDisabling) return
       if (enabled) setIsShowAnnotationConfigInit(true)
-      else handleDisableAnnotation(annotationReply?.embedding_model as any)
+      else {
+        setIsDisabling(true)
+        try {
+          await handleDisableAnnotation(annotationReply?.embedding_model as any)
+        } catch {
+          // Request and job failures already have error feedback; keep the current state.
+        } finally {
+          setIsDisabling(false)
+        }
+      }
     },
-    [annotationReply?.embedding_model, handleDisableAnnotation, setIsShowAnnotationConfigInit],
+    [
+      annotationReply?.embedding_model,
+      handleDisableAnnotation,
+      isDisabling,
+      setIsShowAnnotationConfigInit,
+    ],
   )
 
   const [isHovering, setIsHovering] = useState(false)
@@ -90,6 +106,7 @@ const AnnotationReply = ({ disabled, onChange }: Props) => {
         onMouseEnter={() => setIsHovering(true)}
         onMouseLeave={() => setIsHovering(false)}
         disabled={disabled || (!annotationReply?.enabled && isAnnotationQuotaUnavailable)}
+        loading={isDisabling}
       >
         <>
           {!annotationReply?.enabled && (
@@ -99,7 +116,7 @@ const AnnotationReply = ({ disabled, onChange }: Props) => {
           )}
           {!!annotationReply?.enabled && (
             <>
-              {!isHovering && (
+              {(!isHovering || isDisabling) && (
                 <div className="flex items-center gap-4 pt-0.5">
                   <div className="">
                     <div className="mb-0.5 system-2xs-medium-uppercase text-text-tertiary">
@@ -120,7 +137,7 @@ const AnnotationReply = ({ disabled, onChange }: Props) => {
                   </div>
                 </div>
               )}
-              {isHovering && (
+              {isHovering && !isDisabling && (
                 <div className="flex items-center justify-between">
                   <Button
                     className="w-44.5"

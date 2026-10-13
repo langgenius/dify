@@ -218,3 +218,49 @@ def test_cancel_removes_job_and_allows_a_new_reservation(store: JobStore, action
         store.repository.reserve(tenant_id=store.tenant_id, app_id=store.app_id, action=action, job_id=next_job)
         == next_job
     )
+
+
+@pytest.mark.parametrize("action", ["enable", "disable"])
+def test_failed_job_remains_queryable_without_releasing_a_new_reservation(
+    store: JobStore, action: AnnotationReplyAction
+) -> None:
+    store.repository.reserve(tenant_id=store.tenant_id, app_id=store.app_id, action=action, job_id=store.job_id)
+    store.redis.expire(f"{action}_app_annotation_{store.app_id}", 0)
+    next_job = str(uuid4())
+    store.repository.reserve(tenant_id=store.tenant_id, app_id=store.app_id, action=action, job_id=next_job)
+
+    store.repository.fail(
+        tenant_id=store.tenant_id, app_id=store.app_id, action=action, job_id=store.job_id, error_msg="Publish failed"
+    )
+
+    assert store.repository.get(
+        tenant_id=store.tenant_id, app_id=store.app_id, action=action, job_id=store.job_id
+    ) == AnnotationReplyJob(job_id=store.job_id, job_status="error", error_msg="Publish failed")
+    for key in (
+        annotation_reply_job_owner_key(action=action, job_id=store.job_id),
+        f"{action}_app_annotation_job_{store.job_id}",
+        f"{action}_app_annotation_error_{store.job_id}",
+    ):
+        assert 0 < store.redis.ttl(key) <= 600
+    assert store.redis.get(f"{action}_app_annotation_{store.app_id}") in (next_job, next_job.encode())
+
+
+@pytest.mark.parametrize("different_owner", ["tenant", "app", "action"])
+def test_failure_cannot_change_another_owners_job(
+    store: JobStore, different_owner: Literal["tenant", "app", "action"]
+) -> None:
+    store.repository.reserve(tenant_id=store.tenant_id, app_id=store.app_id, action="enable", job_id=store.job_id)
+
+    store.repository.fail(
+        tenant_id=str(uuid4()) if different_owner == "tenant" else store.tenant_id,
+        app_id=str(uuid4()) if different_owner == "app" else store.app_id,
+        action="disable" if different_owner == "action" else "enable",
+        job_id=store.job_id,
+        error_msg="Publish failed",
+    )
+
+    assert store.repository.get(
+        tenant_id=store.tenant_id, app_id=store.app_id, action="enable", job_id=store.job_id
+    ) == AnnotationReplyJob(job_id=store.job_id, job_status="waiting")
+    assert store.redis.get(f"enable_app_annotation_{store.app_id}") in (store.job_id, store.job_id.encode())
+    assert store.redis.get(f"enable_app_annotation_error_{store.job_id}") is None

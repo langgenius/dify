@@ -28,7 +28,9 @@ class AnnotationReplyJobStore(Protocol):
         """Reserve this job or return the existing owned job ID without another publication."""
         ...
 
-    def cancel(self, *, tenant_id: str, app_id: str, action: AnnotationReplyAction, job_id: str) -> None: ...
+    def fail(self, *, tenant_id: str, app_id: str, action: AnnotationReplyAction, job_id: str, error_msg: str) -> None:
+        """Release the reservation while retaining a bounded, queryable error result."""
+        ...
 
     def get(
         self, *, tenant_id: str, app_id: str, action: AnnotationReplyAction, job_id: str
@@ -94,8 +96,10 @@ class AnnotationReplyService:
                 embedding_provider_name=embedding_provider_name,
                 embedding_model_name=embedding_model_name,
             )
-        except Exception:
-            self._cancel_failed_job(tenant_id=tenant_id, app_id=app_id, action="enable", job_id=job_id)
+        except Exception as exc:
+            self._record_failed_job(
+                tenant_id=tenant_id, app_id=app_id, action="enable", job_id=job_id, error_msg=str(exc)
+            )
             raise
         return AnnotationReplyJob(job_id=job_id, job_status="waiting")
 
@@ -107,17 +111,22 @@ class AnnotationReplyService:
             if pending != job_id:
                 return AnnotationReplyJob(job_id=pending, job_status="processing")
             self._disable_task(job_id=job_id, app_id=app_id, tenant_id=tenant_id)
-        except Exception:
-            self._cancel_failed_job(tenant_id=tenant_id, app_id=app_id, action="disable", job_id=job_id)
+        except Exception as exc:
+            self._record_failed_job(
+                tenant_id=tenant_id, app_id=app_id, action="disable", job_id=job_id, error_msg=str(exc)
+            )
             raise
         return AnnotationReplyJob(job_id=job_id, job_status="waiting")
 
-    def _cancel_failed_job(self, *, tenant_id: str, app_id: str, action: AnnotationReplyAction, job_id: str) -> None:
+    def _record_failed_job(
+        self, *, tenant_id: str, app_id: str, action: AnnotationReplyAction, job_id: str, error_msg: str
+    ) -> None:
         try:
-            self._jobs.cancel(tenant_id=tenant_id, app_id=app_id, action=action, job_id=job_id)
+            # Even a failed reservation call may have exposed this ID before Redis disconnected.
+            self._jobs.fail(tenant_id=tenant_id, app_id=app_id, action=action, job_id=job_id, error_msg=error_msg)
         except Exception:
             logger.exception(
-                "Failed to cancel annotation reply job %s for app %s in workspace %s", job_id, app_id, tenant_id
+                "Failed to record annotation reply job failure %s for app %s in workspace %s", job_id, app_id, tenant_id
             )
 
     def get_status(

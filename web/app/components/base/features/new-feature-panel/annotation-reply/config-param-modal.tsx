@@ -24,7 +24,7 @@ type Props = Readonly<{
       embedding_model_name: string
     },
     score: number,
-  ) => void
+  ) => void | Promise<void>
   isInit?: boolean
   annotationConfig: AnnotationReplyConfig
 }>
@@ -69,14 +69,19 @@ const ConfigParamModal: FC<Props> = ({
       return
     }
     setLoading(true)
-    await onSave(
-      {
-        embedding_provider_name: embeddingModel.providerName,
-        embedding_model_name: embeddingModel.modelName,
-      },
-      annotationConfig.score_threshold,
-    )
-    setLoading(false)
+    try {
+      await onSave(
+        {
+          embedding_provider_name: embeddingModel.providerName,
+          embedding_model_name: embeddingModel.modelName,
+        },
+        annotationConfig.score_threshold,
+      )
+    } catch {
+      // Request and job failures already have error feedback; leave the dialog open for retry.
+    } finally {
+      setLoading(false)
+    }
   }
   return (
     <Dialog

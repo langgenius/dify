@@ -9,7 +9,7 @@ from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, replace
 from queue import Empty
-from threading import Barrier
+from threading import Barrier, Event
 from typing import Literal
 from uuid import UUID, uuid4
 
@@ -289,13 +289,21 @@ def test_status_preserves_worker_error_and_handles_expired_error_key(
 
 
 @pytest.mark.parametrize("action", ["enable", "disable"])
-def test_publish_failure_cleans_job_and_allows_retry(harness: _Harness, action: AnnotationReplyAction) -> None:
+def test_concurrent_caller_can_poll_publication_failure_and_retry(
+    harness: _Harness, action: AnnotationReplyAction
+) -> None:
     task = harness.tasks[0 if action == "enable" else 1]
     task.serializer = "not-installed"
     vars(task).pop("_exec_options", None)
+    publishing = Event()
+    resume_publication = Event()
 
-    if action == "enable":
-        with pytest.raises(SerializerNotInstalled):
+    def pause_publication(**_kwargs: object) -> None:
+        publishing.set()
+        assert resume_publication.wait(timeout=10)
+
+    def start_job() -> None:
+        if action == "enable":
             harness.service.enable(
                 tenant_id=harness.target.tenant_id,
                 app_id=harness.target.id,
@@ -304,24 +312,53 @@ def test_publish_failure_cleans_job_and_allows_retry(harness: _Harness, action: 
                 embedding_provider_name="openai",
                 embedding_model_name="text-embedding-3-small",
             )
-    else:
-        with pytest.raises(SerializerNotInstalled):
+        else:
             harness.service.disable(tenant_id=harness.target.tenant_id, app_id=harness.target.id)
 
-    assert list(harness.redis.scan_iter(match=f"{action}_app_annotation_job_owner_*")) == []
-    assert list(harness.redis.scan_iter(match=f"{action}_app_annotation_job_*")) == []
+    # Pause the real publisher after reservation, then let its serializer fail.
+    before_task_publish.connect(pause_publication, sender=task.name, weak=True)
+    try:
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            first = executor.submit(start_job)
+            try:
+                assert publishing.wait(timeout=10)
+                response = harness.request(action)
+                assert response.status_code == 200
+                job_id = response.get_json()["job_id"]
+                assert response.get_json() == {"job_id": job_id, "job_status": "processing"}
+                pending = harness.request(action, job_id=job_id)
+                assert pending.status_code == 200
+                assert pending.get_json()["job_status"] == "waiting"
+                assert not first.done()
+            finally:
+                resume_publication.set()
+            with pytest.raises(SerializerNotInstalled) as error:
+                first.result(timeout=10)
+    finally:
+        del pause_publication
+        task.serializer = "json"
+        # Celery caches publication options on the first delay(), including a failed attempt.
+        vars(task).pop("_exec_options", None)
+
+    status = harness.request(action, job_id=job_id)
+    assert status.status_code == 200
+    assert status.get_json() == {"job_id": job_id, "job_status": "error", "error_msg": str(error.value)}
+    for key in (
+        annotation_reply_job_owner_key(action=action, job_id=job_id),
+        f"{action}_app_annotation_job_{job_id}",
+        f"{action}_app_annotation_error_{job_id}",
+    ):
+        assert 0 < harness.redis.ttl(key) <= 600
     assert harness.redis.get(f"{action}_app_annotation_{harness.target.id}") is None
-    assert all(not session.in_transaction() and not session.identity_map for session in harness.sessions)
+    assert harness.publications == [True]
     with harness.celery.connection_for_read() as connection, SimpleQueue(connection, harness.queue) as messages:
         with pytest.raises(Empty):
             messages.get(block=False)
 
-    task.serializer = "json"
-    # Celery caches publication options on the first delay(), including a failed attempt.
-    vars(task).pop("_exec_options", None)
     response = harness.request(action)
     assert response.status_code == 200
     assert response.get_json()["job_status"] == "waiting"
+    assert response.get_json()["job_id"] != job_id
     _consume_task(harness, action, response.get_json()["job_id"])
 
 

@@ -6,6 +6,7 @@ from uuid import uuid4
 
 import pytest
 from celery import Celery
+from celery.signals import before_task_publish
 from flask import Flask, g
 from kombu.exceptions import SerializerNotInstalled
 from kombu.simple import SimpleQueue
@@ -113,31 +114,51 @@ def test_legacy_producer_deduplicates_requests_and_preserves_task_arguments(
 
 
 @pytest.mark.parametrize("action", ["enable", "disable"])
-def test_legacy_producer_cancels_reservation_when_publication_fails(
+def test_legacy_producer_retains_failed_job_already_observed_by_another_request(
     action: AnnotationReplyAction,
     flask_app_with_containers: Flask,
     legacy_actor: tuple[Account, Tenant],
     memory_celery: Celery,
 ) -> None:
-    account, _tenant = legacy_actor
+    account, tenant = legacy_actor
     app_id = str(uuid4())
-    previous_keys = set(redis_client.scan_iter(match=f"{action}_app_annotation_*"))
     task_name = enable_annotation_reply_task.name if action == "enable" else disable_annotation_reply_task.name
     task = memory_celery.tasks[task_name]
     previous_serializer = task.serializer
+    observed: list[AnnotationJobStatusDict] = []
+
+    def observe_pending(**_kwargs: object) -> None:
+        # Interleave a second real request after reservation but before serialization fails.
+        with flask_app_with_containers.test_request_context():
+            g._login_user = account
+            observed.append(_start_job(action, app_id))
+
+    before_task_publish.connect(observe_pending, sender=task_name, weak=True)
     task.serializer = "annotation-test-unregistered-serializer"
     vars(task).pop("_exec_options", None)
     try:
         with flask_app_with_containers.test_request_context():
             g._login_user = account
-            with pytest.raises(SerializerNotInstalled):
+            with pytest.raises(SerializerNotInstalled) as failure:
                 _start_job(action, app_id)
     finally:
+        del observe_pending
         task.serializer = previous_serializer
         # Celery caches publication options even when serialization fails.
         vars(task).pop("_exec_options", None)
 
-    assert set(redis_client.scan_iter(match=f"{action}_app_annotation_*")) == previous_keys
+    assert len(observed) == 1
+    job_id = observed[0]["job_id"]
+    assert observed[0]["job_status"] == "processing"
+    jobs = RedisAnnotationReplyJobRepository(redis=redis_client)
+    expected = AnnotationReplyJob(job_id=job_id, job_status="error", error_msg=str(failure.value))
+    assert jobs.get(tenant_id=tenant.id, app_id=app_id, action=action, job_id=job_id) == expected
+    for key in (
+        f"{action}_app_annotation_job_{job_id}",
+        f"{action}_app_annotation_error_{job_id}",
+        annotation_reply_job_owner_key(action=action, job_id=job_id),
+    ):
+        assert 0 < redis_client.ttl(key) <= 600
     assert redis_client.get(f"{action}_app_annotation_{app_id}") is None
     with (
         memory_celery.connection_for_read() as connection,
@@ -150,4 +171,6 @@ def test_legacy_producer_cancels_reservation_when_publication_fails(
         g._login_user = account
         retry = _start_job(action, app_id)
     assert retry["job_status"] == "waiting"
+    assert retry["job_id"] != job_id
     assert redis_client.get(f"{action}_app_annotation_{app_id}") == retry["job_id"].encode()
+    assert jobs.get(tenant_id=tenant.id, app_id=app_id, action=action, job_id=job_id) == expected
