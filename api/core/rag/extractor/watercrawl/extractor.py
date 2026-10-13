@@ -12,8 +12,8 @@ class WaterCrawlWebExtractor(BaseExtractor):
 
     Args:
         url: The URL to scrape.
-        api_key: The API key for WaterCrawl.
-        base_url: The base URL for the Firecrawl API. Defaults to 'https://app.firecrawl.dev'.
+        job_id: The crawl job id.
+        tenant_id: The tenant id.
         mode: The mode of operation. Defaults to 'scrape'. Options are 'crawl', 'scrape' and 'crawl_return_urls'.
         only_main_content: Only return the main content of the page excluding headers, navs, footers, etc.
     """
