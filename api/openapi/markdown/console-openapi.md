@@ -26125,6 +26125,7 @@ Enum representing the deployment edition of the platform.
 | phase | [Phase](#phase) |  | Yes |
 | post_canvas_action_id | string |  | No |
 | recovery | [RecoveryRef](#recoveryref) |  | No |
+| reply_language | string | Detected user-input language (BCP-47); empty until a user language is detected. | Yes |
 | run_status | [RunStatus](#runstatus) |  | Yes |
 | session_id | string |  | Yes |
 | version | integer |  | Yes |
@@ -26393,6 +26394,7 @@ Create a Build, Edit, failed-run Fix, or checklist Fix session.
 | model | [SessionModel](#sessionmodel) |  | No |
 | phase | [Phase](#phase) |  | Yes |
 | recovery | [RecoveryRef](#recoveryref) |  | No |
+| reply_language | string | Detected user-input language (BCP-47); empty until a user language is detected. | Yes |
 | run_status | [RunStatus](#runstatus) |  | Yes |
 | session_id | string |  | Yes |
 | version | integer |  | Yes |
