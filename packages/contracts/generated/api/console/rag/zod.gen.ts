@@ -19,6 +19,54 @@ export const zErrorResponse = z.object({
 })
 
 /**
+ * AccountNotInitializedError
+ *
+ * The account has not been initialized yet. Please proceed with the initialization process first.
+ */
+export const zAccountNotInitializedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('account_not_initialized'),
+    status: z.literal(400).optional(),
+  }),
+)
+
+/**
+ * NotInitValidatedError
+ *
+ * Init validation has not been completed yet. Please proceed with the init validation process first.
+ */
+export const zNotInitValidatedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('not_init_validated'),
+    status: z.literal(401).optional(),
+  }),
+)
+
+/**
+ * NotSetupError
+ *
+ * Dify has not been initialized and installed yet. Please proceed with the initialization and installation process first.
+ */
+export const zNotSetupError = zErrorResponse.and(
+  z.object({
+    code: z.literal('not_setup'),
+    status: z.literal(401).optional(),
+  }),
+)
+
+/**
+ * UnauthorizedAndForceLogoutError
+ *
+ * Unauthorized and force logout.
+ */
+export const zUnauthorizedAndForceLogoutError = zErrorResponse.and(
+  z.object({
+    code: z.literal('unauthorized_and_force_logout'),
+    status: z.literal(401).optional(),
+  }),
+)
+
+/**
  * CustomizedPipelineTemplatePayload
  */
 export const zCustomizedPipelineTemplatePayload = z.object({
@@ -40,6 +88,18 @@ export const zSimpleDataResponse = z.object({
 export const zRagPipelineDatasetImportPayload = z.object({
   yaml_content: z.string(),
 })
+
+/**
+ * DatasetNameDuplicateError
+ *
+ * The dataset name already exists. Please modify your dataset name.
+ */
+export const zDatasetNameDuplicateError = zErrorResponse.and(
+  z.object({
+    code: z.literal('dataset_name_duplicate'),
+    status: z.literal(409).optional(),
+  }),
+)
 
 /**
  * PipelineTemplateDetailResponse
@@ -71,6 +131,18 @@ export const zRagPipelineImportPayload = z.object({
 })
 
 /**
+ * PipelineNotFoundError
+ *
+ * Pipeline not found.
+ */
+export const zPipelineNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('pipeline_not_found'),
+    status: z.literal(404).optional(),
+  }),
+)
+
+/**
  * RagPipelineOpaqueResponse
  */
 export const zRagPipelineOpaqueResponse = z.unknown()
@@ -93,6 +165,18 @@ export const zDefaultBlockConfigsResponse = z.array(z.record(z.string(), z.unkno
 export const zDefaultBlockConfigResponse = z.record(z.string(), z.unknown())
 
 /**
+ * DraftWorkflowNotExistError
+ *
+ * Draft workflow need to be initialized.
+ */
+export const zDraftWorkflowNotExistError = zErrorResponse.and(
+  z.object({
+    code: z.literal('draft_workflow_not_exist'),
+    status: z.literal(404).optional(),
+  }),
+)
+
+/**
  * DraftWorkflowSyncPayload
  */
 export const zDraftWorkflowSyncPayload = z.object({
@@ -112,6 +196,28 @@ export const zRagPipelineWorkflowSyncResponse = z.object({
   result: z.string(),
   updated_at: z.int(),
 })
+
+/**
+ * InvalidParamError
+ */
+export const zInvalidParamError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_param'),
+    status: z.literal(400).optional(),
+  }),
+)
+
+/**
+ * DraftWorkflowNotSyncError
+ *
+ * Workflow graph might have been modified, please refresh and resubmit.
+ */
+export const zDraftWorkflowNotSyncError = zErrorResponse.and(
+  z.object({
+    code: z.literal('draft_workflow_not_sync'),
+    status: z.literal(409).optional(),
+  }),
+)
 
 /**
  * DatasourceNodeRunPayload
@@ -162,6 +268,28 @@ export const zDraftWorkflowRunPayload = z.object({
   inputs: z.record(z.string(), z.unknown()),
   start_node_id: z.string(),
 })
+
+/**
+ * RateLimitError
+ *
+ * Rate Limit Error
+ */
+export const zRateLimitError = zErrorResponse.and(
+  z.object({
+    code: z.literal('rate_limit_error'),
+    status: z.literal(429).optional(),
+  }),
+)
+
+/**
+ * NotFoundError
+ */
+export const zNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('not_found'),
+    status: z.literal(404).optional(),
+  }),
+)
 
 /**
  * WorkflowDraftVariablePatchPayload

@@ -8,6 +8,21 @@ export type DataSourceIntegrateListResponse = {
   data: Array<DataSourceIntegrateResponse>
 }
 
+export type AccountNotInitializedError = ErrorResponse & {
+  code: 'account_not_initialized'
+  status?: 400
+}
+
+export type NotInitValidatedError = ErrorResponse & {
+  code: 'not_init_validated'
+  status?: 401
+}
+
+export type NotSetupError = ErrorResponse & {
+  code: 'not_setup'
+  status?: 401
+}
+
 export type ErrorResponse = {
   code: string
   details?: {
@@ -20,6 +35,21 @@ export type ErrorResponse = {
 
 export type SimpleResultResponse = {
   result: string
+}
+
+export type InvalidActionError = ErrorResponse & {
+  code: 'invalid_action'
+  status?: 400
+}
+
+export type InvalidParamError = ErrorResponse & {
+  code: 'invalid_param'
+  status?: 400
+}
+
+export type NotFoundError = ErrorResponse & {
+  code: 'not_found'
+  status?: 404
 }
 
 export type DataSourceIntegrateResponse = {
@@ -64,6 +94,8 @@ export type GetDataSourceIntegratesData = {
 }
 
 export type GetDataSourceIntegratesErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -88,6 +120,9 @@ export type PatchDataSourceIntegratesByBindingIdByActionData = {
 }
 
 export type PatchDataSourceIntegratesByBindingIdByActionErrors = {
+  400: AccountNotInitializedError | InvalidActionError | InvalidParamError
+  401: NotInitValidatedError | NotSetupError
+  404: NotFoundError
   default: ErrorResponse
 }
 

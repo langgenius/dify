@@ -8,6 +8,21 @@ export type TenantListResponse = {
   workspaces: Array<TenantListItemResponse>
 }
 
+export type AccountNotInitializedError = ErrorResponse & {
+  code: 'account_not_initialized'
+  status?: 400
+}
+
+export type NotInitValidatedError = ErrorResponse & {
+  code: 'not_init_validated'
+  status?: 401
+}
+
+export type NotSetupError = ErrorResponse & {
+  code: 'not_setup'
+  status?: 401
+}
+
 export type ErrorResponse = {
   code: string
   details?: {
@@ -79,6 +94,11 @@ export type SnippetResponse = {
   updated_by: SimpleAccountResponse | null
   use_count: number
   version: number
+}
+
+export type InvalidParamError = ErrorResponse & {
+  code: 'invalid_param'
+  status?: 400
 }
 
 export type SnippetImportPayload = {
@@ -196,6 +216,16 @@ export type MemberInviteErrorResponse = {
   status: 400
 }
 
+export type InvalidRoleError = ErrorResponse & {
+  code: 'invalid_role'
+  status?: 400
+}
+
+export type LimitExceededError = ErrorResponse & {
+  code: 'limit_exceeded'
+  status?: 400
+}
+
 export type OwnerTransferCheckPayload = {
   code: string
   token: string
@@ -205,6 +235,51 @@ export type VerificationTokenResponse = {
   email: string
   is_valid: boolean
   token: string
+}
+
+export type CannotTransferOwnerToSelfError = ErrorResponse & {
+  code: 'cannot_transfer_owner_to_self'
+  status?: 400
+}
+
+export type EmailCodeError = ErrorResponse & {
+  code: 'email_code_error'
+  status?: 400
+}
+
+export type InvalidEmailError = ErrorResponse & {
+  code: 'invalid_email'
+  status?: 400
+}
+
+export type InvalidOrExpiredTokenError = ErrorResponse & {
+  code: 'invalid_or_expired_token'
+  status?: 400
+}
+
+export type MemberNotInTenantError = ErrorResponse & {
+  code: 'member_not_in_tenant'
+  status?: 400
+}
+
+export type NotOwnerError = ErrorResponse & {
+  code: 'not_owner'
+  status?: 400
+}
+
+export type EmailSendIpLimitError = ErrorResponse & {
+  code: 'email_send_ip_limit'
+  status?: 429
+}
+
+export type OwnerTransferLimitError = ErrorResponse & {
+  code: 'owner_transfer_limit'
+  status?: 429
+}
+
+export type OwnerTransferRateLimitExceededError = ErrorResponse & {
+  code: 'owner_transfer_rate_limit_exceeded'
+  status?: 429
 }
 
 export type OwnerTransferEmailPayload = {
@@ -219,6 +294,26 @@ export type SimpleResultDataResponse = {
 export type MemberActionResponse = {
   result: string
   tenant_id: string
+}
+
+export type CannotOperateSelfError = ErrorResponse & {
+  code: 'cannot_operate_self'
+  status?: 400
+}
+
+export type RoleAlreadyAssignedError = ErrorResponse & {
+  code: 'role_already_assigned'
+  status?: 400
+}
+
+export type ForbiddenError = ErrorResponse & {
+  code: 'forbidden'
+  status?: 403
+}
+
+export type MemberNotFoundError = ErrorResponse & {
+  code: 'member_not_found'
+  status?: 404
 }
 
 export type OwnerTransferPayload = {
@@ -387,6 +482,11 @@ export type WorkspacePermissionResponse = {
 }
 
 export type BinaryFileResponse = Blob | File
+
+export type PluginError = ErrorResponse & {
+  code: 'plugin_error'
+  status?: 400
+}
 
 export type ParserAutoUpgradeChange = {
   auto_upgrade: PluginAutoUpgradeSettingsPayload
@@ -723,12 +823,27 @@ export type SkillDetailResponse = {
   visibility: string
 }
 
+export type InvalidRequestError = ErrorResponse & {
+  code: 'invalid_request'
+  status?: 400
+}
+
 export type SkillFileUploadResponse = {
   hash: string
   id: string
   mime_type: string
   name: string
   size: number
+}
+
+export type FilenameMissingError = ErrorResponse & {
+  code: 'filename_missing'
+  status?: 400
+}
+
+export type NoFileUploadedError = ErrorResponse & {
+  code: 'no_file_uploaded'
+  status?: 400
 }
 
 export type SkillTagListResponse = {
@@ -882,7 +997,17 @@ export type CurrentWorkspaceSummaryResponse = {
   role: TenantAccountRole
 }
 
+export type CurrentWorkspaceArchivedError = ErrorResponse & {
+  code: 'current_workspace_archived'
+  status?: 409
+}
+
 export type ToolLabelListResponse = Array<ToolLabel>
+
+export type UnauthorizedAndForceLogoutError = ErrorResponse & {
+  code: 'unauthorized_and_force_logout'
+  status?: 401
+}
 
 export type ApiToolProviderAddPayload = {
   credentials: {
@@ -1113,6 +1238,11 @@ export type WorkflowToolCreatePayload = {
   workflow_app_id: string
 }
 
+export type WorkflowToolHumanInputNotSupportedError = ErrorResponse & {
+  code: 'workflow_tool_human_input_not_supported'
+  status?: 400
+}
+
 export type WorkflowToolDeletePayload = {
   workflow_tool_id: string
 }
@@ -1245,6 +1375,11 @@ export type TriggerOAuthAuthorizeResponse = {
   subscription_builder_id: string
 }
 
+export type NotFoundError = ErrorResponse & {
+  code: 'not_found'
+  status?: 404
+}
+
 export type TriggerSubscriptionVerifyPayload = {
   credentials: {
     [key: string]: unknown
@@ -1272,6 +1407,26 @@ export type WorkspaceLogoUploadResponse = {
   id: string
 }
 
+export type FilenameNotExistsError = ErrorResponse & {
+  code: 'filename_not_exists_error'
+  status?: 400
+}
+
+export type TooManyFilesError = ErrorResponse & {
+  code: 'too_many_files'
+  status?: 400
+}
+
+export type FileTooLargeError = ErrorResponse & {
+  code: 'file_too_large'
+  status?: 413
+}
+
+export type UnsupportedFileTypeError = ErrorResponse & {
+  code: 'unsupported_file_type'
+  status?: 415
+}
+
 export type WorkspaceInfoPayload = {
   name: string
 }
@@ -1283,6 +1438,11 @@ export type SwitchWorkspacePayload = {
 export type SwitchWorkspaceResponse = {
   new_tenant: TenantInfoResponse
   result: string
+}
+
+export type AccountNotLinkTenantError = ErrorResponse & {
+  code: 'account_not_link_tenant'
+  status?: 403
 }
 
 export type TenantListItemResponse = {
@@ -2920,6 +3080,8 @@ export type GetWorkspacesData = {
 }
 
 export type GetWorkspacesErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -2941,6 +3103,8 @@ export type GetWorkspacesCurrentAgentProviderByProviderNameData = {
 }
 
 export type GetWorkspacesCurrentAgentProviderByProviderNameErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -2962,6 +3126,8 @@ export type GetWorkspacesCurrentAgentProvidersData = {
 }
 
 export type GetWorkspacesCurrentAgentProvidersErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -2985,6 +3151,8 @@ export type GetWorkspacesCurrentAgentsByAgentIdSkillsData = {
 }
 
 export type GetWorkspacesCurrentAgentsByAgentIdSkillsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -3008,6 +3176,8 @@ export type PutWorkspacesCurrentAgentsByAgentIdSkillsData = {
 }
 
 export type PutWorkspacesCurrentAgentsByAgentIdSkillsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -3036,6 +3206,8 @@ export type GetWorkspacesCurrentCustomizedSnippetsData = {
 }
 
 export type GetWorkspacesCurrentCustomizedSnippetsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -3057,7 +3229,8 @@ export type PostWorkspacesCurrentCustomizedSnippetsData = {
 }
 
 export type PostWorkspacesCurrentCustomizedSnippetsErrors = {
-  400: ErrorResponse
+  400: AccountNotInitializedError | InvalidParamError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -3079,7 +3252,8 @@ export type PostWorkspacesCurrentCustomizedSnippetsImportsData = {
 }
 
 export type PostWorkspacesCurrentCustomizedSnippetsImportsErrors = {
-  400: SnippetImportResponse | ErrorResponse
+  400: SnippetImportResponse | AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -3104,7 +3278,8 @@ export type PostWorkspacesCurrentCustomizedSnippetsImportsByImportIdConfirmData 
 }
 
 export type PostWorkspacesCurrentCustomizedSnippetsImportsByImportIdConfirmErrors = {
-  400: SnippetImportResponse | ErrorResponse
+  400: SnippetImportResponse | AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -3128,6 +3303,8 @@ export type DeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdData = {
 }
 
 export type DeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   404: ErrorResponse
   default: ErrorResponse
 }
@@ -3152,6 +3329,8 @@ export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdData = {
 }
 
 export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   404: ErrorResponse
   default: ErrorResponse
 }
@@ -3176,7 +3355,8 @@ export type PatchWorkspacesCurrentCustomizedSnippetsBySnippetIdData = {
 }
 
 export type PatchWorkspacesCurrentCustomizedSnippetsBySnippetIdErrors = {
-  400: ErrorResponse
+  400: AccountNotInitializedError | InvalidParamError
+  401: NotInitValidatedError | NotSetupError
   404: ErrorResponse
   default: ErrorResponse
 }
@@ -3201,6 +3381,8 @@ export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdCheckDependenciesDa
 }
 
 export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdCheckDependenciesErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   404: ErrorResponse
   default: ErrorResponse
 }
@@ -3228,6 +3410,8 @@ export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdExportData = {
 }
 
 export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdExportErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   404: ErrorResponse
   default: ErrorResponse
 }
@@ -3252,6 +3436,8 @@ export type PostWorkspacesCurrentCustomizedSnippetsBySnippetIdUseCountIncrementD
 }
 
 export type PostWorkspacesCurrentCustomizedSnippetsBySnippetIdUseCountIncrementErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   404: ErrorResponse
   default: ErrorResponse
 }
@@ -3274,6 +3460,8 @@ export type GetWorkspacesCurrentDatasetOperatorsData = {
 }
 
 export type GetWorkspacesCurrentDatasetOperatorsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -3297,6 +3485,8 @@ export type GetWorkspacesCurrentDefaultModelData = {
 }
 
 export type GetWorkspacesCurrentDefaultModelErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -3318,6 +3508,8 @@ export type PostWorkspacesCurrentDefaultModelData = {
 }
 
 export type PostWorkspacesCurrentDefaultModelErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -3339,6 +3531,8 @@ export type PostWorkspacesCurrentEndpointsData = {
 }
 
 export type PostWorkspacesCurrentEndpointsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   403: ErrorResponse
   default: ErrorResponse
 }
@@ -3361,6 +3555,8 @@ export type PostWorkspacesCurrentEndpointsCreateData = {
 }
 
 export type PostWorkspacesCurrentEndpointsCreateErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   403: ErrorResponse
   default: ErrorResponse
 }
@@ -3383,6 +3579,8 @@ export type PostWorkspacesCurrentEndpointsDeleteData = {
 }
 
 export type PostWorkspacesCurrentEndpointsDeleteErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   403: ErrorResponse
   default: ErrorResponse
 }
@@ -3405,6 +3603,8 @@ export type PostWorkspacesCurrentEndpointsDisableData = {
 }
 
 export type PostWorkspacesCurrentEndpointsDisableErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   403: ErrorResponse
   default: ErrorResponse
 }
@@ -3427,6 +3627,8 @@ export type PostWorkspacesCurrentEndpointsEnableData = {
 }
 
 export type PostWorkspacesCurrentEndpointsEnableErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   403: ErrorResponse
   default: ErrorResponse
 }
@@ -3452,6 +3654,8 @@ export type GetWorkspacesCurrentEndpointsListData = {
 }
 
 export type GetWorkspacesCurrentEndpointsListErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -3477,6 +3681,8 @@ export type GetWorkspacesCurrentEndpointsListPluginData = {
 }
 
 export type GetWorkspacesCurrentEndpointsListPluginErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -3498,6 +3704,8 @@ export type PostWorkspacesCurrentEndpointsUpdateData = {
 }
 
 export type PostWorkspacesCurrentEndpointsUpdateErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   403: ErrorResponse
   default: ErrorResponse
 }
@@ -3522,6 +3730,8 @@ export type DeleteWorkspacesCurrentEndpointsByIdData = {
 }
 
 export type DeleteWorkspacesCurrentEndpointsByIdErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   403: ErrorResponse
   default: ErrorResponse
 }
@@ -3546,6 +3756,8 @@ export type PatchWorkspacesCurrentEndpointsByIdData = {
 }
 
 export type PatchWorkspacesCurrentEndpointsByIdErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   403: ErrorResponse
   default: ErrorResponse
 }
@@ -3568,6 +3780,8 @@ export type GetWorkspacesCurrentMembersData = {
 }
 
 export type GetWorkspacesCurrentMembersErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -3589,7 +3803,12 @@ export type PostWorkspacesCurrentMembersInviteEmailData = {
 }
 
 export type PostWorkspacesCurrentMembersInviteEmailErrors = {
-  400: MemberInviteErrorResponse | ErrorResponse
+  400:
+    | MemberInviteErrorResponse
+    | AccountNotInitializedError
+    | InvalidRoleError
+    | LimitExceededError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -3611,6 +3830,16 @@ export type PostWorkspacesCurrentMembersOwnerTransferCheckData = {
 }
 
 export type PostWorkspacesCurrentMembersOwnerTransferCheckErrors = {
+  400:
+    | AccountNotInitializedError
+    | CannotTransferOwnerToSelfError
+    | EmailCodeError
+    | InvalidEmailError
+    | InvalidOrExpiredTokenError
+    | MemberNotInTenantError
+    | NotOwnerError
+  401: NotInitValidatedError | NotSetupError
+  429: EmailSendIpLimitError | OwnerTransferLimitError | OwnerTransferRateLimitExceededError
   default: ErrorResponse
 }
 
@@ -3632,6 +3861,16 @@ export type PostWorkspacesCurrentMembersSendOwnerTransferConfirmEmailData = {
 }
 
 export type PostWorkspacesCurrentMembersSendOwnerTransferConfirmEmailErrors = {
+  400:
+    | AccountNotInitializedError
+    | CannotTransferOwnerToSelfError
+    | EmailCodeError
+    | InvalidEmailError
+    | InvalidOrExpiredTokenError
+    | MemberNotInTenantError
+    | NotOwnerError
+  401: NotInitValidatedError | NotSetupError
+  429: EmailSendIpLimitError | OwnerTransferLimitError | OwnerTransferRateLimitExceededError
   default: ErrorResponse
 }
 
@@ -3655,6 +3894,14 @@ export type DeleteWorkspacesCurrentMembersByMemberIdData = {
 }
 
 export type DeleteWorkspacesCurrentMembersByMemberIdErrors = {
+  400:
+    | AccountNotInitializedError
+    | CannotOperateSelfError
+    | InvalidRoleError
+    | RoleAlreadyAssignedError
+  401: NotInitValidatedError | NotSetupError
+  403: ForbiddenError
+  404: MemberNotFoundError
   default: ErrorResponse
 }
 
@@ -3678,6 +3925,16 @@ export type PostWorkspacesCurrentMembersByMemberIdOwnerTransferData = {
 }
 
 export type PostWorkspacesCurrentMembersByMemberIdOwnerTransferErrors = {
+  400:
+    | AccountNotInitializedError
+    | CannotTransferOwnerToSelfError
+    | EmailCodeError
+    | InvalidEmailError
+    | InvalidOrExpiredTokenError
+    | MemberNotInTenantError
+    | NotOwnerError
+  401: NotInitValidatedError | NotSetupError
+  429: EmailSendIpLimitError | OwnerTransferLimitError | OwnerTransferRateLimitExceededError
   default: ErrorResponse
 }
 
@@ -3701,6 +3958,14 @@ export type PutWorkspacesCurrentMembersByMemberIdUpdateRoleData = {
 }
 
 export type PutWorkspacesCurrentMembersByMemberIdUpdateRoleErrors = {
+  400:
+    | AccountNotInitializedError
+    | CannotOperateSelfError
+    | InvalidRoleError
+    | RoleAlreadyAssignedError
+  401: NotInitValidatedError | NotSetupError
+  403: ForbiddenError
+  404: MemberNotFoundError
   default: ErrorResponse
 }
 
@@ -3724,6 +3989,8 @@ export type GetWorkspacesCurrentModelProvidersData = {
 }
 
 export type GetWorkspacesCurrentModelProvidersErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -3745,6 +4012,8 @@ export type GetWorkspacesCurrentModelProvidersCreditsData = {
 }
 
 export type GetWorkspacesCurrentModelProvidersCreditsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -3766,6 +4035,8 @@ export type GetWorkspacesCurrentModelProvidersSummaryData = {
 }
 
 export type GetWorkspacesCurrentModelProvidersSummaryErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -3789,6 +4060,8 @@ export type GetWorkspacesCurrentModelProvidersByProviderCheckoutUrlData = {
 }
 
 export type GetWorkspacesCurrentModelProvidersByProviderCheckoutUrlErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -3812,6 +4085,8 @@ export type DeleteWorkspacesCurrentModelProvidersByProviderCredentialsData = {
 }
 
 export type DeleteWorkspacesCurrentModelProvidersByProviderCredentialsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -3837,6 +4112,8 @@ export type GetWorkspacesCurrentModelProvidersByProviderCredentialsData = {
 }
 
 export type GetWorkspacesCurrentModelProvidersByProviderCredentialsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -3860,6 +4137,8 @@ export type PostWorkspacesCurrentModelProvidersByProviderCredentialsData = {
 }
 
 export type PostWorkspacesCurrentModelProvidersByProviderCredentialsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -3883,6 +4162,8 @@ export type PutWorkspacesCurrentModelProvidersByProviderCredentialsData = {
 }
 
 export type PutWorkspacesCurrentModelProvidersByProviderCredentialsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -3906,6 +4187,8 @@ export type PostWorkspacesCurrentModelProvidersByProviderCredentialsSwitchData =
 }
 
 export type PostWorkspacesCurrentModelProvidersByProviderCredentialsSwitchErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -3929,6 +4212,8 @@ export type PostWorkspacesCurrentModelProvidersByProviderCredentialsValidateData
 }
 
 export type PostWorkspacesCurrentModelProvidersByProviderCredentialsValidateErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -3955,6 +4240,8 @@ export type DeleteWorkspacesCurrentModelProvidersByProviderModelsData = {
 }
 
 export type DeleteWorkspacesCurrentModelProvidersByProviderModelsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -3978,6 +4265,8 @@ export type GetWorkspacesCurrentModelProvidersByProviderModelsData = {
 }
 
 export type GetWorkspacesCurrentModelProvidersByProviderModelsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -4001,6 +4290,8 @@ export type PostWorkspacesCurrentModelProvidersByProviderModelsData = {
 }
 
 export type PostWorkspacesCurrentModelProvidersByProviderModelsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -4028,6 +4319,8 @@ export type DeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsData
 }
 
 export type DeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -4056,6 +4349,8 @@ export type GetWorkspacesCurrentModelProvidersByProviderModelsCredentialsData = 
 }
 
 export type GetWorkspacesCurrentModelProvidersByProviderModelsCredentialsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -4079,6 +4374,8 @@ export type PostWorkspacesCurrentModelProvidersByProviderModelsCredentialsData =
 }
 
 export type PostWorkspacesCurrentModelProvidersByProviderModelsCredentialsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -4102,6 +4399,8 @@ export type PutWorkspacesCurrentModelProvidersByProviderModelsCredentialsData = 
 }
 
 export type PutWorkspacesCurrentModelProvidersByProviderModelsCredentialsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -4125,6 +4424,8 @@ export type PostWorkspacesCurrentModelProvidersByProviderModelsCredentialsSwitch
 }
 
 export type PostWorkspacesCurrentModelProvidersByProviderModelsCredentialsSwitchErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -4148,6 +4449,8 @@ export type PostWorkspacesCurrentModelProvidersByProviderModelsCredentialsValida
 }
 
 export type PostWorkspacesCurrentModelProvidersByProviderModelsCredentialsValidateErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -4171,6 +4474,8 @@ export type PatchWorkspacesCurrentModelProvidersByProviderModelsDisableData = {
 }
 
 export type PatchWorkspacesCurrentModelProvidersByProviderModelsDisableErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -4194,6 +4499,8 @@ export type PatchWorkspacesCurrentModelProvidersByProviderModelsEnableData = {
 }
 
 export type PatchWorkspacesCurrentModelProvidersByProviderModelsEnableErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -4219,6 +4526,8 @@ export type PostWorkspacesCurrentModelProvidersByProviderModelsLoadBalancingConf
 
 export type PostWorkspacesCurrentModelProvidersByProviderModelsLoadBalancingConfigsCredentialsValidateErrors =
   {
+    400: AccountNotInitializedError
+    401: NotInitValidatedError | NotSetupError
     default: ErrorResponse
   }
 
@@ -4246,6 +4555,8 @@ export type PostWorkspacesCurrentModelProvidersByProviderModelsLoadBalancingConf
 
 export type PostWorkspacesCurrentModelProvidersByProviderModelsLoadBalancingConfigsByConfigIdCredentialsValidateErrors =
   {
+    400: AccountNotInitializedError
+    401: NotInitValidatedError | NotSetupError
     default: ErrorResponse
   }
 
@@ -4272,6 +4583,8 @@ export type GetWorkspacesCurrentModelProvidersByProviderModelsParameterRulesData
 }
 
 export type GetWorkspacesCurrentModelProvidersByProviderModelsParameterRulesErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -4295,6 +4608,8 @@ export type PostWorkspacesCurrentModelProvidersByProviderPreferredProviderTypeDa
 }
 
 export type PostWorkspacesCurrentModelProvidersByProviderPreferredProviderTypeErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -4318,6 +4633,8 @@ export type GetWorkspacesCurrentModelsModelTypesByModelTypeData = {
 }
 
 export type GetWorkspacesCurrentModelsModelTypesByModelTypeErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -4339,6 +4656,8 @@ export type GetWorkspacesCurrentPermissionData = {
 }
 
 export type GetWorkspacesCurrentPermissionErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -4363,6 +4682,8 @@ export type GetWorkspacesCurrentPluginAssetData = {
 }
 
 export type GetWorkspacesCurrentPluginAssetErrors = {
+  400: AccountNotInitializedError | PluginError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -4384,6 +4705,8 @@ export type PostWorkspacesCurrentPluginAutoUpgradeChangeData = {
 }
 
 export type PostWorkspacesCurrentPluginAutoUpgradeChangeErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -4405,6 +4728,8 @@ export type PostWorkspacesCurrentPluginAutoUpgradeExcludeData = {
 }
 
 export type PostWorkspacesCurrentPluginAutoUpgradeExcludeErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -4428,6 +4753,8 @@ export type GetWorkspacesCurrentPluginAutoUpgradeFetchData = {
 }
 
 export type GetWorkspacesCurrentPluginAutoUpgradeFetchErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -4449,6 +4776,8 @@ export type GetWorkspacesCurrentPluginDebuggingKeyData = {
 }
 
 export type GetWorkspacesCurrentPluginDebuggingKeyErrors = {
+  400: AccountNotInitializedError | PluginError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -4472,6 +4801,8 @@ export type GetWorkspacesCurrentPluginFetchManifestData = {
 }
 
 export type GetWorkspacesCurrentPluginFetchManifestErrors = {
+  400: AccountNotInitializedError | PluginError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -4496,6 +4827,8 @@ export type GetWorkspacesCurrentPluginIconData = {
 }
 
 export type GetWorkspacesCurrentPluginIconErrors = {
+  400: PluginError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -4517,6 +4850,8 @@ export type PostWorkspacesCurrentPluginInstallGithubData = {
 }
 
 export type PostWorkspacesCurrentPluginInstallGithubErrors = {
+  400: AccountNotInitializedError | PluginError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -4538,6 +4873,8 @@ export type PostWorkspacesCurrentPluginInstallMarketplaceData = {
 }
 
 export type PostWorkspacesCurrentPluginInstallMarketplaceErrors = {
+  400: AccountNotInitializedError | PluginError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -4559,6 +4896,8 @@ export type PostWorkspacesCurrentPluginInstallPkgData = {
 }
 
 export type PostWorkspacesCurrentPluginInstallPkgErrors = {
+  400: AccountNotInitializedError | PluginError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -4582,6 +4921,8 @@ export type GetWorkspacesCurrentPluginInstalledIdsData = {
 }
 
 export type GetWorkspacesCurrentPluginInstalledIdsErrors = {
+  400: AccountNotInitializedError | PluginError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -4606,6 +4947,8 @@ export type GetWorkspacesCurrentPluginListData = {
 }
 
 export type GetWorkspacesCurrentPluginListErrors = {
+  400: AccountNotInitializedError | PluginError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -4627,6 +4970,8 @@ export type PostWorkspacesCurrentPluginListInstallationsIdsData = {
 }
 
 export type PostWorkspacesCurrentPluginListInstallationsIdsErrors = {
+  400: AccountNotInitializedError | PluginError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -4648,6 +4993,8 @@ export type PostWorkspacesCurrentPluginListLatestVersionsData = {
 }
 
 export type PostWorkspacesCurrentPluginListLatestVersionsErrors = {
+  400: AccountNotInitializedError | PluginError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -4671,6 +5018,8 @@ export type GetWorkspacesCurrentPluginMarketplacePkgData = {
 }
 
 export type GetWorkspacesCurrentPluginMarketplacePkgErrors = {
+  400: AccountNotInitializedError | PluginError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -4699,6 +5048,8 @@ export type GetWorkspacesCurrentPluginParametersDynamicOptionsData = {
 }
 
 export type GetWorkspacesCurrentPluginParametersDynamicOptionsErrors = {
+  400: AccountNotInitializedError | PluginError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -4720,6 +5071,8 @@ export type PostWorkspacesCurrentPluginParametersDynamicOptionsWithCredentialsDa
 }
 
 export type PostWorkspacesCurrentPluginParametersDynamicOptionsWithCredentialsErrors = {
+  400: AccountNotInitializedError | PluginError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -4741,6 +5094,8 @@ export type PostWorkspacesCurrentPluginPermissionChangeData = {
 }
 
 export type PostWorkspacesCurrentPluginPermissionChangeErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -4762,6 +5117,8 @@ export type GetWorkspacesCurrentPluginPermissionFetchData = {
 }
 
 export type GetWorkspacesCurrentPluginPermissionFetchErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -4786,6 +5143,8 @@ export type GetWorkspacesCurrentPluginReadmeData = {
 }
 
 export type GetWorkspacesCurrentPluginReadmeErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -4810,6 +5169,8 @@ export type GetWorkspacesCurrentPluginTasksData = {
 }
 
 export type GetWorkspacesCurrentPluginTasksErrors = {
+  400: AccountNotInitializedError | PluginError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -4831,6 +5192,8 @@ export type PostWorkspacesCurrentPluginTasksDeleteAllData = {
 }
 
 export type PostWorkspacesCurrentPluginTasksDeleteAllErrors = {
+  400: AccountNotInitializedError | PluginError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -4854,6 +5217,8 @@ export type GetWorkspacesCurrentPluginTasksByTaskIdData = {
 }
 
 export type GetWorkspacesCurrentPluginTasksByTaskIdErrors = {
+  400: AccountNotInitializedError | PluginError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -4877,6 +5242,8 @@ export type PostWorkspacesCurrentPluginTasksByTaskIdDeleteData = {
 }
 
 export type PostWorkspacesCurrentPluginTasksByTaskIdDeleteErrors = {
+  400: AccountNotInitializedError | PluginError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -4901,6 +5268,8 @@ export type PostWorkspacesCurrentPluginTasksByTaskIdDeleteByIdentifierData = {
 }
 
 export type PostWorkspacesCurrentPluginTasksByTaskIdDeleteByIdentifierErrors = {
+  400: AccountNotInitializedError | PluginError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -4922,6 +5291,8 @@ export type PostWorkspacesCurrentPluginUninstallData = {
 }
 
 export type PostWorkspacesCurrentPluginUninstallErrors = {
+  400: AccountNotInitializedError | PluginError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -4943,6 +5314,8 @@ export type PostWorkspacesCurrentPluginUpgradeGithubData = {
 }
 
 export type PostWorkspacesCurrentPluginUpgradeGithubErrors = {
+  400: AccountNotInitializedError | PluginError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -4964,6 +5337,8 @@ export type PostWorkspacesCurrentPluginUpgradeMarketplaceData = {
 }
 
 export type PostWorkspacesCurrentPluginUpgradeMarketplaceErrors = {
+  400: AccountNotInitializedError | PluginError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -4985,6 +5360,8 @@ export type PostWorkspacesCurrentPluginUploadBundleData = {
 }
 
 export type PostWorkspacesCurrentPluginUploadBundleErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -5006,6 +5383,8 @@ export type PostWorkspacesCurrentPluginUploadGithubData = {
 }
 
 export type PostWorkspacesCurrentPluginUploadGithubErrors = {
+  400: AccountNotInitializedError | PluginError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -5029,6 +5408,8 @@ export type PostWorkspacesCurrentPluginUploadPkgData = {
 }
 
 export type PostWorkspacesCurrentPluginUploadPkgErrors = {
+  400: AccountNotInitializedError | PluginError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -5058,6 +5439,8 @@ export type GetWorkspacesCurrentPluginByCategoryListData = {
 }
 
 export type GetWorkspacesCurrentPluginByCategoryListErrors = {
+  400: AccountNotInitializedError | InvalidParamError | PluginError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -5079,6 +5462,8 @@ export type GetWorkspacesCurrentRbacAccessPoliciesData = {
 }
 
 export type GetWorkspacesCurrentRbacAccessPoliciesErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -5100,6 +5485,8 @@ export type PostWorkspacesCurrentRbacAccessPoliciesData = {
 }
 
 export type PostWorkspacesCurrentRbacAccessPoliciesErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -5123,6 +5510,8 @@ export type DeleteWorkspacesCurrentRbacAccessPoliciesByPolicyIdData = {
 }
 
 export type DeleteWorkspacesCurrentRbacAccessPoliciesByPolicyIdErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -5146,6 +5535,8 @@ export type GetWorkspacesCurrentRbacAccessPoliciesByPolicyIdData = {
 }
 
 export type GetWorkspacesCurrentRbacAccessPoliciesByPolicyIdErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -5169,6 +5560,8 @@ export type PutWorkspacesCurrentRbacAccessPoliciesByPolicyIdData = {
 }
 
 export type PutWorkspacesCurrentRbacAccessPoliciesByPolicyIdErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -5192,6 +5585,8 @@ export type PostWorkspacesCurrentRbacAccessPoliciesByPolicyIdCopyData = {
 }
 
 export type PostWorkspacesCurrentRbacAccessPoliciesByPolicyIdCopyErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -5215,6 +5610,8 @@ export type PutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdLockData = {
 }
 
 export type PutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdLockErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -5238,6 +5635,8 @@ export type PutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdUnlockData = 
 }
 
 export type PutWorkspacesCurrentRbacAccessPolicyBindingsByBindingIdUnlockErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -5263,6 +5662,8 @@ export type DeleteWorkspacesCurrentRbacAgentsByAgentIdAccessPoliciesByPolicyIdMe
 
 export type DeleteWorkspacesCurrentRbacAgentsByAgentIdAccessPoliciesByPolicyIdMemberBindingsErrors =
   {
+    400: AccountNotInitializedError
+    401: NotInitValidatedError | NotSetupError
     default: ErrorResponse
   }
 
@@ -5288,6 +5689,8 @@ export type GetWorkspacesCurrentRbacAgentsByAgentIdAccessPoliciesByPolicyIdMembe
 }
 
 export type GetWorkspacesCurrentRbacAgentsByAgentIdAccessPoliciesByPolicyIdMemberBindingsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -5313,6 +5716,8 @@ export type GetWorkspacesCurrentRbacAgentsByAgentIdAccessPoliciesByPolicyIdRoleB
 }
 
 export type GetWorkspacesCurrentRbacAgentsByAgentIdAccessPoliciesByPolicyIdRoleBindingsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -5338,6 +5743,8 @@ export type GetWorkspacesCurrentRbacAgentsByAgentIdAccessPolicyData = {
 }
 
 export type GetWorkspacesCurrentRbacAgentsByAgentIdAccessPolicyErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -5366,6 +5773,8 @@ export type GetWorkspacesCurrentRbacAgentsByAgentIdUserAccessPoliciesData = {
 }
 
 export type GetWorkspacesCurrentRbacAgentsByAgentIdUserAccessPoliciesErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -5390,6 +5799,8 @@ export type PutWorkspacesCurrentRbacAgentsByAgentIdUsersByTargetAccountIdAccessP
 }
 
 export type PutWorkspacesCurrentRbacAgentsByAgentIdUsersByTargetAccountIdAccessPoliciesErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -5413,6 +5824,8 @@ export type GetWorkspacesCurrentRbacAgentsByAgentIdWhitelistData = {
 }
 
 export type GetWorkspacesCurrentRbacAgentsByAgentIdWhitelistErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -5436,6 +5849,8 @@ export type PutWorkspacesCurrentRbacAgentsByAgentIdWhitelistData = {
 }
 
 export type PutWorkspacesCurrentRbacAgentsByAgentIdWhitelistErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -5459,6 +5874,8 @@ export type GetWorkspacesCurrentRbacAgentsByAgentIdWhitelistConfigData = {
 }
 
 export type GetWorkspacesCurrentRbacAgentsByAgentIdWhitelistConfigErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -5483,6 +5900,8 @@ export type DeleteWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMember
 }
 
 export type DeleteWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberBindingsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -5508,6 +5927,8 @@ export type GetWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberBin
 }
 
 export type GetWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdMemberBindingsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -5532,6 +5953,8 @@ export type GetWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdRoleBindi
 }
 
 export type GetWorkspacesCurrentRbacAppsByAppIdAccessPoliciesByPolicyIdRoleBindingsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -5557,6 +5980,8 @@ export type GetWorkspacesCurrentRbacAppsByAppIdAccessPolicyData = {
 }
 
 export type GetWorkspacesCurrentRbacAppsByAppIdAccessPolicyErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -5585,6 +6010,8 @@ export type GetWorkspacesCurrentRbacAppsByAppIdUserAccessPoliciesData = {
 }
 
 export type GetWorkspacesCurrentRbacAppsByAppIdUserAccessPoliciesErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -5609,6 +6036,8 @@ export type PutWorkspacesCurrentRbacAppsByAppIdUsersByTargetAccountIdAccessPolic
 }
 
 export type PutWorkspacesCurrentRbacAppsByAppIdUsersByTargetAccountIdAccessPoliciesErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -5632,6 +6061,8 @@ export type GetWorkspacesCurrentRbacAppsByAppIdWhitelistData = {
 }
 
 export type GetWorkspacesCurrentRbacAppsByAppIdWhitelistErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -5655,6 +6086,8 @@ export type PutWorkspacesCurrentRbacAppsByAppIdWhitelistData = {
 }
 
 export type PutWorkspacesCurrentRbacAppsByAppIdWhitelistErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -5678,6 +6111,8 @@ export type GetWorkspacesCurrentRbacAppsByAppIdWhitelistConfigData = {
 }
 
 export type GetWorkspacesCurrentRbacAppsByAppIdWhitelistConfigErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -5704,6 +6139,8 @@ export type DeleteWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicy
 
 export type DeleteWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdMemberBindingsErrors =
   {
+    400: AccountNotInitializedError
+    401: NotInitValidatedError | NotSetupError
     default: ErrorResponse
   }
 
@@ -5731,6 +6168,8 @@ export type GetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdM
 
 export type GetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdMemberBindingsErrors =
   {
+    400: AccountNotInitializedError
+    401: NotInitValidatedError | NotSetupError
     default: ErrorResponse
   }
 
@@ -5757,6 +6196,8 @@ export type GetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdR
 
 export type GetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPoliciesByPolicyIdRoleBindingsErrors =
   {
+    400: AccountNotInitializedError
+    401: NotInitValidatedError | NotSetupError
     default: ErrorResponse
   }
 
@@ -5783,6 +6224,8 @@ export type GetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPolicyData = {
 }
 
 export type GetWorkspacesCurrentRbacDatasetsByDatasetIdAccessPolicyErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -5811,6 +6254,8 @@ export type GetWorkspacesCurrentRbacDatasetsByDatasetIdUserAccessPoliciesData = 
 }
 
 export type GetWorkspacesCurrentRbacDatasetsByDatasetIdUserAccessPoliciesErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -5836,6 +6281,8 @@ export type PutWorkspacesCurrentRbacDatasetsByDatasetIdUsersByTargetAccountIdAcc
 
 export type PutWorkspacesCurrentRbacDatasetsByDatasetIdUsersByTargetAccountIdAccessPoliciesErrors =
   {
+    400: AccountNotInitializedError
+    401: NotInitValidatedError | NotSetupError
     default: ErrorResponse
   }
 
@@ -5860,6 +6307,8 @@ export type GetWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistData = {
 }
 
 export type GetWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -5883,6 +6332,8 @@ export type PutWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistData = {
 }
 
 export type PutWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -5906,6 +6357,8 @@ export type GetWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistConfigData = {
 }
 
 export type GetWorkspacesCurrentRbacDatasetsByDatasetIdWhitelistConfigErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -5929,6 +6382,8 @@ export type GetWorkspacesCurrentRbacMembersByMemberIdRbacRolesData = {
 }
 
 export type GetWorkspacesCurrentRbacMembersByMemberIdRbacRolesErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -5952,6 +6407,8 @@ export type PutWorkspacesCurrentRbacMembersByMemberIdRbacRolesData = {
 }
 
 export type PutWorkspacesCurrentRbacMembersByMemberIdRbacRolesErrors = {
+  400: AccountNotInitializedError | InvalidParamError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -5973,6 +6430,8 @@ export type GetWorkspacesCurrentRbacMyPermissionsData = {
 }
 
 export type GetWorkspacesCurrentRbacMyPermissionsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -5994,6 +6453,8 @@ export type GetWorkspacesCurrentRbacRolePermissionsCatalogData = {
 }
 
 export type GetWorkspacesCurrentRbacRolePermissionsCatalogErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -6015,6 +6476,8 @@ export type GetWorkspacesCurrentRbacRolePermissionsCatalogAgentData = {
 }
 
 export type GetWorkspacesCurrentRbacRolePermissionsCatalogAgentErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -6036,6 +6499,8 @@ export type GetWorkspacesCurrentRbacRolePermissionsCatalogAppData = {
 }
 
 export type GetWorkspacesCurrentRbacRolePermissionsCatalogAppErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -6057,6 +6522,8 @@ export type GetWorkspacesCurrentRbacRolePermissionsCatalogDatasetData = {
 }
 
 export type GetWorkspacesCurrentRbacRolePermissionsCatalogDatasetErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -6078,6 +6545,8 @@ export type GetWorkspacesCurrentRbacRolesData = {
 }
 
 export type GetWorkspacesCurrentRbacRolesErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -6099,6 +6568,8 @@ export type PostWorkspacesCurrentRbacRolesData = {
 }
 
 export type PostWorkspacesCurrentRbacRolesErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -6122,6 +6593,8 @@ export type DeleteWorkspacesCurrentRbacRolesByRoleIdData = {
 }
 
 export type DeleteWorkspacesCurrentRbacRolesByRoleIdErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -6145,6 +6618,8 @@ export type GetWorkspacesCurrentRbacRolesByRoleIdData = {
 }
 
 export type GetWorkspacesCurrentRbacRolesByRoleIdErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -6168,6 +6643,8 @@ export type PutWorkspacesCurrentRbacRolesByRoleIdData = {
 }
 
 export type PutWorkspacesCurrentRbacRolesByRoleIdErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -6191,6 +6668,8 @@ export type PostWorkspacesCurrentRbacRolesByRoleIdCopyData = {
 }
 
 export type PostWorkspacesCurrentRbacRolesByRoleIdCopyErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -6214,6 +6693,8 @@ export type GetWorkspacesCurrentRbacRolesByRoleIdMembersData = {
 }
 
 export type GetWorkspacesCurrentRbacRolesByRoleIdMembersErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -6237,6 +6718,8 @@ export type PutWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdBindi
 }
 
 export type PutWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdBindingsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -6260,6 +6743,8 @@ export type GetWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdMembe
 }
 
 export type GetWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdMemberBindingsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -6284,6 +6769,8 @@ export type GetWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdRoleB
 }
 
 export type GetWorkspacesCurrentRbacWorkspaceAgentsAccessPoliciesByPolicyIdRoleBindingsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -6305,6 +6792,8 @@ export type GetWorkspacesCurrentRbacWorkspaceAgentsAccessPolicyData = {
 }
 
 export type GetWorkspacesCurrentRbacWorkspaceAgentsAccessPolicyErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -6328,6 +6817,8 @@ export type PutWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdBinding
 }
 
 export type PutWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdBindingsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -6351,6 +6842,8 @@ export type GetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdMemberB
 }
 
 export type GetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdMemberBindingsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -6374,6 +6867,8 @@ export type GetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdRoleBin
 }
 
 export type GetWorkspacesCurrentRbacWorkspaceAppsAccessPoliciesByPolicyIdRoleBindingsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -6395,6 +6890,8 @@ export type GetWorkspacesCurrentRbacWorkspaceAppsAccessPolicyData = {
 }
 
 export type GetWorkspacesCurrentRbacWorkspaceAppsAccessPolicyErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -6418,6 +6915,8 @@ export type PutWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdBin
 }
 
 export type PutWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdBindingsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -6442,6 +6941,8 @@ export type GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdMem
 
 export type GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdMemberBindingsErrors =
   {
+    400: AccountNotInitializedError
+    401: NotInitValidatedError | NotSetupError
     default: ErrorResponse
   }
 
@@ -6466,6 +6967,8 @@ export type GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdRol
 }
 
 export type GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPoliciesByPolicyIdRoleBindingsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -6488,6 +6991,8 @@ export type GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPolicyData = {
 }
 
 export type GetWorkspacesCurrentRbacWorkspaceDatasetsAccessPolicyErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -6514,6 +7019,8 @@ export type GetWorkspacesCurrentSkillsData = {
 }
 
 export type GetWorkspacesCurrentSkillsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -6535,6 +7042,8 @@ export type PostWorkspacesCurrentSkillsData = {
 }
 
 export type PostWorkspacesCurrentSkillsErrors = {
+  400: AccountNotInitializedError | InvalidRequestError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -6558,6 +7067,8 @@ export type PostWorkspacesCurrentSkillsFilesUploadData = {
 }
 
 export type PostWorkspacesCurrentSkillsFilesUploadErrors = {
+  400: AccountNotInitializedError | FilenameMissingError | NoFileUploadedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -6579,6 +7090,8 @@ export type PostWorkspacesCurrentSkillsImportData = {
 }
 
 export type PostWorkspacesCurrentSkillsImportErrors = {
+  400: AccountNotInitializedError | InvalidRequestError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -6600,6 +7113,8 @@ export type GetWorkspacesCurrentSkillsTagsData = {
 }
 
 export type GetWorkspacesCurrentSkillsTagsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -6623,6 +7138,8 @@ export type DeleteWorkspacesCurrentSkillsBySkillIdData = {
 }
 
 export type DeleteWorkspacesCurrentSkillsBySkillIdErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -6646,6 +7163,8 @@ export type GetWorkspacesCurrentSkillsBySkillIdData = {
 }
 
 export type GetWorkspacesCurrentSkillsBySkillIdErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -6669,6 +7188,8 @@ export type PatchWorkspacesCurrentSkillsBySkillIdData = {
 }
 
 export type PatchWorkspacesCurrentSkillsBySkillIdErrors = {
+  400: AccountNotInitializedError | InvalidRequestError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -6692,6 +7213,8 @@ export type PostWorkspacesCurrentSkillsBySkillIdAssistMessagesData = {
 }
 
 export type PostWorkspacesCurrentSkillsBySkillIdAssistMessagesErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -6717,6 +7240,8 @@ export type PostWorkspacesCurrentSkillsBySkillIdDuplicateData = {
 }
 
 export type PostWorkspacesCurrentSkillsBySkillIdDuplicateErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -6740,6 +7265,8 @@ export type GetWorkspacesCurrentSkillsBySkillIdExportData = {
 }
 
 export type GetWorkspacesCurrentSkillsBySkillIdExportErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -6765,6 +7292,8 @@ export type PatchWorkspacesCurrentSkillsBySkillIdFilesData = {
 }
 
 export type PatchWorkspacesCurrentSkillsBySkillIdFilesErrors = {
+  400: AccountNotInitializedError | InvalidRequestError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -6788,6 +7317,8 @@ export type PutWorkspacesCurrentSkillsBySkillIdFilesData = {
 }
 
 export type PutWorkspacesCurrentSkillsBySkillIdFilesErrors = {
+  400: AccountNotInitializedError | InvalidRequestError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -6811,6 +7342,8 @@ export type PostWorkspacesCurrentSkillsBySkillIdFilesCheckData = {
 }
 
 export type PostWorkspacesCurrentSkillsBySkillIdFilesCheckErrors = {
+  400: AccountNotInitializedError | InvalidRequestError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -6838,6 +7371,8 @@ export type GetWorkspacesCurrentSkillsBySkillIdFilesContentData = {
 }
 
 export type GetWorkspacesCurrentSkillsBySkillIdFilesContentErrors = {
+  400: AccountNotInitializedError | InvalidRequestError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -6864,6 +7399,8 @@ export type GetWorkspacesCurrentSkillsBySkillIdFilesPreviewData = {
 }
 
 export type GetWorkspacesCurrentSkillsBySkillIdFilesPreviewErrors = {
+  400: AccountNotInitializedError | InvalidRequestError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -6887,6 +7424,8 @@ export type PostWorkspacesCurrentSkillsBySkillIdPublishData = {
 }
 
 export type PostWorkspacesCurrentSkillsBySkillIdPublishErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -6910,6 +7449,8 @@ export type GetWorkspacesCurrentSkillsBySkillIdReferencesData = {
 }
 
 export type GetWorkspacesCurrentSkillsBySkillIdReferencesErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -6933,6 +7474,8 @@ export type PostWorkspacesCurrentSkillsBySkillIdRestoreData = {
 }
 
 export type PostWorkspacesCurrentSkillsBySkillIdRestoreErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -6956,6 +7499,8 @@ export type GetWorkspacesCurrentSkillsBySkillIdVersionsData = {
 }
 
 export type GetWorkspacesCurrentSkillsBySkillIdVersionsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -6980,6 +7525,8 @@ export type DeleteWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdData = {
 }
 
 export type DeleteWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -7004,6 +7551,8 @@ export type GetWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdData = {
 }
 
 export type GetWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -7028,6 +7577,8 @@ export type PatchWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdData = {
 }
 
 export type PatchWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -7049,7 +7600,9 @@ export type GetWorkspacesCurrentSummaryData = {
 }
 
 export type GetWorkspacesCurrentSummaryErrors = {
-  409: ErrorResponse
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  409: CurrentWorkspaceArchivedError
   default: ErrorResponse
 }
 
@@ -7071,6 +7624,8 @@ export type GetWorkspacesCurrentToolLabelsData = {
 }
 
 export type GetWorkspacesCurrentToolLabelsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError | UnauthorizedAndForceLogoutError
   default: ErrorResponse
 }
 
@@ -7092,6 +7647,8 @@ export type PostWorkspacesCurrentToolProviderApiAddData = {
 }
 
 export type PostWorkspacesCurrentToolProviderApiAddErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -7113,6 +7670,8 @@ export type PostWorkspacesCurrentToolProviderApiDeleteData = {
 }
 
 export type PostWorkspacesCurrentToolProviderApiDeleteErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -7136,6 +7695,8 @@ export type GetWorkspacesCurrentToolProviderApiGetData = {
 }
 
 export type GetWorkspacesCurrentToolProviderApiGetErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -7159,6 +7720,8 @@ export type GetWorkspacesCurrentToolProviderApiRemoteData = {
 }
 
 export type GetWorkspacesCurrentToolProviderApiRemoteErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -7180,6 +7743,8 @@ export type PostWorkspacesCurrentToolProviderApiSchemaData = {
 }
 
 export type PostWorkspacesCurrentToolProviderApiSchemaErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -7201,6 +7766,8 @@ export type PostWorkspacesCurrentToolProviderApiTestPreData = {
 }
 
 export type PostWorkspacesCurrentToolProviderApiTestPreErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -7224,6 +7791,8 @@ export type GetWorkspacesCurrentToolProviderApiToolsData = {
 }
 
 export type GetWorkspacesCurrentToolProviderApiToolsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -7245,6 +7814,8 @@ export type PostWorkspacesCurrentToolProviderApiUpdateData = {
 }
 
 export type PostWorkspacesCurrentToolProviderApiUpdateErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -7268,6 +7839,8 @@ export type PostWorkspacesCurrentToolProviderBuiltinByProviderAddData = {
 }
 
 export type PostWorkspacesCurrentToolProviderBuiltinByProviderAddErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -7293,6 +7866,8 @@ export type GetWorkspacesCurrentToolProviderBuiltinByProviderCredentialInfoData 
 }
 
 export type GetWorkspacesCurrentToolProviderBuiltinByProviderCredentialInfoErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -7319,6 +7894,8 @@ export type GetWorkspacesCurrentToolProviderBuiltinByProviderCredentialSchemaByC
 
 export type GetWorkspacesCurrentToolProviderBuiltinByProviderCredentialSchemaByCredentialTypeErrors =
   {
+    400: AccountNotInitializedError
+    401: NotInitValidatedError | NotSetupError
     default: ErrorResponse
   }
 
@@ -7345,6 +7922,8 @@ export type GetWorkspacesCurrentToolProviderBuiltinByProviderCredentialsData = {
 }
 
 export type GetWorkspacesCurrentToolProviderBuiltinByProviderCredentialsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -7368,6 +7947,8 @@ export type PostWorkspacesCurrentToolProviderBuiltinByProviderDefaultCredentialD
 }
 
 export type PostWorkspacesCurrentToolProviderBuiltinByProviderDefaultCredentialErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -7391,6 +7972,8 @@ export type PostWorkspacesCurrentToolProviderBuiltinByProviderDeleteData = {
 }
 
 export type PostWorkspacesCurrentToolProviderBuiltinByProviderDeleteErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -7414,6 +7997,7 @@ export type GetWorkspacesCurrentToolProviderBuiltinByProviderIconData = {
 }
 
 export type GetWorkspacesCurrentToolProviderBuiltinByProviderIconErrors = {
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -7439,6 +8023,8 @@ export type GetWorkspacesCurrentToolProviderBuiltinByProviderInfoData = {
 }
 
 export type GetWorkspacesCurrentToolProviderBuiltinByProviderInfoErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -7462,6 +8048,8 @@ export type GetWorkspacesCurrentToolProviderBuiltinByProviderOauthClientSchemaDa
 }
 
 export type GetWorkspacesCurrentToolProviderBuiltinByProviderOauthClientSchemaErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -7485,6 +8073,8 @@ export type DeleteWorkspacesCurrentToolProviderBuiltinByProviderOauthCustomClien
 }
 
 export type DeleteWorkspacesCurrentToolProviderBuiltinByProviderOauthCustomClientErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -7508,6 +8098,8 @@ export type GetWorkspacesCurrentToolProviderBuiltinByProviderOauthCustomClientDa
 }
 
 export type GetWorkspacesCurrentToolProviderBuiltinByProviderOauthCustomClientErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -7533,6 +8125,8 @@ export type PostWorkspacesCurrentToolProviderBuiltinByProviderOauthCustomClientD
 }
 
 export type PostWorkspacesCurrentToolProviderBuiltinByProviderOauthCustomClientErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -7556,6 +8150,8 @@ export type GetWorkspacesCurrentToolProviderBuiltinByProviderToolsData = {
 }
 
 export type GetWorkspacesCurrentToolProviderBuiltinByProviderToolsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -7579,6 +8175,8 @@ export type PostWorkspacesCurrentToolProviderBuiltinByProviderUpdateData = {
 }
 
 export type PostWorkspacesCurrentToolProviderBuiltinByProviderUpdateErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -7600,6 +8198,8 @@ export type DeleteWorkspacesCurrentToolProviderMcpData = {
 }
 
 export type DeleteWorkspacesCurrentToolProviderMcpErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -7621,6 +8221,8 @@ export type PostWorkspacesCurrentToolProviderMcpData = {
 }
 
 export type PostWorkspacesCurrentToolProviderMcpErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -7642,6 +8244,8 @@ export type PutWorkspacesCurrentToolProviderMcpData = {
 }
 
 export type PutWorkspacesCurrentToolProviderMcpErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -7663,6 +8267,8 @@ export type PostWorkspacesCurrentToolProviderMcpAuthData = {
 }
 
 export type PostWorkspacesCurrentToolProviderMcpAuthErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -7686,6 +8292,8 @@ export type GetWorkspacesCurrentToolProviderMcpToolsByProviderIdData = {
 }
 
 export type GetWorkspacesCurrentToolProviderMcpToolsByProviderIdErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -7709,6 +8317,8 @@ export type GetWorkspacesCurrentToolProviderMcpUpdateByProviderIdData = {
 }
 
 export type GetWorkspacesCurrentToolProviderMcpUpdateByProviderIdErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -7730,6 +8340,8 @@ export type PostWorkspacesCurrentToolProviderWorkflowCreateData = {
 }
 
 export type PostWorkspacesCurrentToolProviderWorkflowCreateErrors = {
+  400: AccountNotInitializedError | WorkflowToolHumanInputNotSupportedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -7751,6 +8363,8 @@ export type PostWorkspacesCurrentToolProviderWorkflowDeleteData = {
 }
 
 export type PostWorkspacesCurrentToolProviderWorkflowDeleteErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -7775,6 +8389,8 @@ export type GetWorkspacesCurrentToolProviderWorkflowGetData = {
 }
 
 export type GetWorkspacesCurrentToolProviderWorkflowGetErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -7798,6 +8414,8 @@ export type GetWorkspacesCurrentToolProviderWorkflowToolsData = {
 }
 
 export type GetWorkspacesCurrentToolProviderWorkflowToolsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -7819,6 +8437,8 @@ export type PostWorkspacesCurrentToolProviderWorkflowUpdateData = {
 }
 
 export type PostWorkspacesCurrentToolProviderWorkflowUpdateErrors = {
+  400: AccountNotInitializedError | WorkflowToolHumanInputNotSupportedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -7842,6 +8462,8 @@ export type GetWorkspacesCurrentToolProvidersData = {
 }
 
 export type GetWorkspacesCurrentToolProvidersErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -7863,6 +8485,8 @@ export type GetWorkspacesCurrentToolsApiData = {
 }
 
 export type GetWorkspacesCurrentToolsApiErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -7884,6 +8508,8 @@ export type GetWorkspacesCurrentToolsBuiltinData = {
 }
 
 export type GetWorkspacesCurrentToolsBuiltinErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -7905,6 +8531,8 @@ export type GetWorkspacesCurrentToolsMcpData = {
 }
 
 export type GetWorkspacesCurrentToolsMcpErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -7926,6 +8554,8 @@ export type GetWorkspacesCurrentToolsWorkflowData = {
 }
 
 export type GetWorkspacesCurrentToolsWorkflowErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -7949,6 +8579,8 @@ export type GetWorkspacesCurrentTriggerProviderByProviderIconData = {
 }
 
 export type GetWorkspacesCurrentTriggerProviderByProviderIconErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -7974,6 +8606,8 @@ export type GetWorkspacesCurrentTriggerProviderByProviderInfoData = {
 }
 
 export type GetWorkspacesCurrentTriggerProviderByProviderInfoErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -7997,6 +8631,8 @@ export type DeleteWorkspacesCurrentTriggerProviderByProviderOauthClientData = {
 }
 
 export type DeleteWorkspacesCurrentTriggerProviderByProviderOauthClientErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -8020,6 +8656,8 @@ export type GetWorkspacesCurrentTriggerProviderByProviderOauthClientData = {
 }
 
 export type GetWorkspacesCurrentTriggerProviderByProviderOauthClientErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -8043,6 +8681,8 @@ export type PostWorkspacesCurrentTriggerProviderByProviderOauthClientData = {
 }
 
 export type PostWorkspacesCurrentTriggerProviderByProviderOauthClientErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -8069,6 +8709,8 @@ export type PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderBu
 
 export type PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderBuildBySubscriptionBuilderIdErrors =
   {
+    400: AccountNotInitializedError
+    401: NotInitValidatedError | NotSetupError
     default: ErrorResponse
   }
 
@@ -8093,6 +8735,8 @@ export type PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderCr
 }
 
 export type PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderCreateErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -8119,6 +8763,8 @@ export type GetWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderLog
 
 export type GetWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderLogsBySubscriptionBuilderIdErrors =
   {
+    400: AccountNotInitializedError
+    401: NotInitValidatedError | NotSetupError
     default: ErrorResponse
   }
 
@@ -8146,6 +8792,8 @@ export type PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderUp
 
 export type PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderUpdateBySubscriptionBuilderIdErrors =
   {
+    400: AccountNotInitializedError
+    401: NotInitValidatedError | NotSetupError
     default: ErrorResponse
   }
 
@@ -8173,6 +8821,8 @@ export type PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderVe
 
 export type PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderVerifyAndUpdateBySubscriptionBuilderIdErrors =
   {
+    400: AccountNotInitializedError
+    401: NotInitValidatedError | NotSetupError
     default: ErrorResponse
   }
 
@@ -8200,6 +8850,8 @@ export type GetWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderByS
 
 export type GetWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderBySubscriptionBuilderIdErrors =
   {
+    400: AccountNotInitializedError
+    401: NotInitValidatedError | NotSetupError
     default: ErrorResponse
   }
 
@@ -8224,6 +8876,8 @@ export type GetWorkspacesCurrentTriggerProviderByProviderSubscriptionsListData =
 }
 
 export type GetWorkspacesCurrentTriggerProviderByProviderSubscriptionsListErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   404: TriggerProviderErrorResponse | ErrorResponse
   default: ErrorResponse
 }
@@ -8248,6 +8902,9 @@ export type GetWorkspacesCurrentTriggerProviderByProviderSubscriptionsOauthAutho
 }
 
 export type GetWorkspacesCurrentTriggerProviderByProviderSubscriptionsOauthAuthorizeErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: NotFoundError
   default: ErrorResponse
 }
 
@@ -8274,6 +8931,8 @@ export type PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsVerifyByS
 
 export type PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsVerifyBySubscriptionIdErrors =
   {
+    400: AccountNotInitializedError
+    401: NotInitValidatedError | NotSetupError
     default: ErrorResponse
   }
 
@@ -8298,6 +8957,8 @@ export type PostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsDel
 }
 
 export type PostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsDeleteErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -8321,6 +8982,9 @@ export type PostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsUpd
 }
 
 export type PostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsUpdateErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: NotFoundError
   default: ErrorResponse
 }
 
@@ -8342,6 +9006,8 @@ export type GetWorkspacesCurrentTriggersData = {
 }
 
 export type GetWorkspacesCurrentTriggersErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -8363,6 +9029,8 @@ export type GetWorkspacesCustomConfigData = {
 }
 
 export type GetWorkspacesCustomConfigErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -8384,6 +9052,8 @@ export type PostWorkspacesCustomConfigData = {
 }
 
 export type PostWorkspacesCustomConfigErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -8407,6 +9077,10 @@ export type PostWorkspacesCustomConfigWebappLogoUploadData = {
 }
 
 export type PostWorkspacesCustomConfigWebappLogoUploadErrors = {
+  400: AccountNotInitializedError | FilenameNotExistsError | NoFileUploadedError | TooManyFilesError
+  401: NotInitValidatedError | NotSetupError
+  413: FileTooLargeError
+  415: UnsupportedFileTypeError
   default: ErrorResponse
 }
 
@@ -8428,6 +9102,8 @@ export type PostWorkspacesInfoData = {
 }
 
 export type PostWorkspacesInfoErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -8448,6 +9124,9 @@ export type PostWorkspacesSwitchData = {
 }
 
 export type PostWorkspacesSwitchErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  403: AccountNotLinkTenantError
   default: ErrorResponse
 }
 

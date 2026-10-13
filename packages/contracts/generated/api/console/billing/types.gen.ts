@@ -8,6 +8,21 @@ export type BillingInvoiceResponse = {
   url: string
 }
 
+export type AccountNotInitializedError = ErrorResponse & {
+  code: 'account_not_initialized'
+  status?: 400
+}
+
+export type NotInitValidatedError = ErrorResponse & {
+  code: 'not_init_validated'
+  status?: 401
+}
+
+export type NotSetupError = ErrorResponse & {
+  code: 'not_setup'
+  status?: 401
+}
+
 export type ErrorResponse = {
   code: string
   details?: {
@@ -48,6 +63,8 @@ export type GetBillingInvoicesData = {
 }
 
 export type GetBillingInvoicesErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   403: ErrorResponse
   502: BillingOperationFailedErrorResponse | ErrorResponse
   503: BillingUnavailableErrorResponse | ErrorResponse
@@ -74,6 +91,8 @@ export type GetBillingSubscriptionData = {
 }
 
 export type GetBillingSubscriptionErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   403: ErrorResponse
   422: BillingUnprocessableEntityErrorResponse | ErrorResponse
   502: BillingOperationFailedErrorResponse | ErrorResponse

@@ -4,6 +4,11 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/v1` | (string & {})
 }
 
+export type AgentNotPublishedError = ErrorResponse & {
+  code: 'agent_not_published'
+  status?: 400
+}
+
 export type AgentThought = {
   answer?: string | null
   chain_id?: string | null
@@ -95,7 +100,22 @@ export type AppMetaResponse = {
   }
 }
 
+export type AppUnavailableError = ErrorResponse & {
+  code: 'app_unavailable'
+  status?: 400
+}
+
+export type ArchivedDocumentImmutableError = ErrorResponse & {
+  code: 'archived_document_immutable'
+  status?: 403
+}
+
 export type AudioBinaryResponse = Blob | File
+
+export type AudioTooLargeError = ErrorResponse & {
+  code: 'audio_too_large'
+  status?: 413
+}
 
 export type AudioTranscriptResponse = {
   text: string
@@ -351,6 +371,11 @@ export type CompletionBlockingResponse = {
   mode: string
   task_id: string
   [key: string]: unknown
+}
+
+export type CompletionRequestError = ErrorResponse & {
+  code: 'completion_request_error'
+  status?: 400
 }
 
 export type CompletionRequestPayload = {
@@ -715,6 +740,11 @@ export type DatasetMetadataResponse = {
   type: string
 }
 
+export type DatasetNameDuplicateError = ErrorResponse & {
+  code: 'dataset_name_duplicate'
+  status?: 409
+}
+
 export type DatasetRerankingModelResponse = {
   reranking_model_name?: string | null
   reranking_provider_name?: string | null
@@ -1013,6 +1043,11 @@ export type EndUserDetail = {
   updated_at: string
 }
 
+export type EndUserNotFoundError = ErrorResponse & {
+  code: 'end_user_not_found'
+  status?: 404
+}
+
 export type ErrorMessageResponse = {
   error: string
 }
@@ -1038,6 +1073,16 @@ export type FeedbackListQuery = {
 
 export type FetchFrom = 'customizable-model' | 'predefined-model'
 
+export type FileAccessDeniedError = ErrorResponse & {
+  code: 'file_access_denied'
+  status?: 403
+}
+
+export type FileExtensionBlockedError = ErrorResponse & {
+  code: 'file_extension_blocked'
+  status?: 400
+}
+
 export type FileInputConfig = {
   allowed_file_extensions?: Array<string>
   allowed_file_types?: Array<FileType>
@@ -1053,6 +1098,11 @@ export type FileListInputConfig = {
   number_limits?: number
   output_variable_name: string
   type?: 'file-list'
+}
+
+export type FileNotFoundError = ErrorResponse & {
+  code: 'file_not_found'
+  status?: 404
 }
 
 export type FilePreviewQuery = {
@@ -1077,9 +1127,19 @@ export type FileResponse = {
   user_id?: string | null
 }
 
+export type FileTooLargeError = ErrorResponse & {
+  code: 'file_too_large'
+  status?: 413
+}
+
 export type FileTransferMethod = 'datasource_file' | 'local_file' | 'remote_url' | 'tool_file'
 
 export type FileType = 'audio' | 'custom' | 'document' | 'image' | 'video'
+
+export type FilenameNotExistsError = ErrorResponse & {
+  code: 'filename_not_exists_error'
+  status?: 400
+}
 
 export type FormInputConfig =
   | ({
@@ -1248,6 +1308,11 @@ export type IndexInfoResponse = {
   welcome: string
 }
 
+export type InvalidActionError = ErrorResponse & {
+  code: 'invalid_action'
+  status?: 400
+}
+
 export type JsonObject = {
   [key: string]: unknown
 }
@@ -1351,6 +1416,11 @@ export type MetadataUpdatePayload = {
   name: string
 }
 
+export type ModelCurrentlyNotSupportError = ErrorResponse & {
+  code: 'model_currently_not_support'
+  status?: 400
+}
+
 export type ModelFeature =
   | 'agent-thought'
   | 'audio'
@@ -1385,6 +1455,26 @@ export type ModelStatus =
   | 'quota-exceeded'
 
 export type ModelType = 'llm' | 'moderation' | 'rerank' | 'speech2text' | 'text-embedding' | 'tts'
+
+export type NoAudioUploadedError = ErrorResponse & {
+  code: 'no_audio_uploaded'
+  status?: 400
+}
+
+export type NoFileUploadedError = ErrorResponse & {
+  code: 'no_file_uploaded'
+  status?: 400
+}
+
+export type NotChatAppError = ErrorResponse & {
+  code: 'not_chat_app'
+  status?: 400
+}
+
+export type NotWorkflowAppError = ErrorResponse & {
+  code: 'not_workflow_app'
+  status?: 400
+}
 
 export type OptionalServiceApiUserPayload = {
   user?: string
@@ -1777,6 +1867,11 @@ export type PipelineRunApiEntity = {
   start_node_id: string
 }
 
+export type PipelineRunError = ErrorResponse & {
+  code: 'pipeline_run_error'
+  status?: 500
+}
+
 export type PipelineRunJsonResponse = PublishedPipelineRunResponse | WorkflowBlockingResponse
 
 export type PipelineUploadFileResponse = {
@@ -1818,6 +1913,21 @@ export type ProviderModelWithStatusEntity = {
   status: ModelStatus
 }
 
+export type ProviderNotInitializeError = ErrorResponse & {
+  code: 'provider_not_initialize'
+  status?: 400
+}
+
+export type ProviderNotSupportSpeechToTextError = ErrorResponse & {
+  code: 'provider_not_support_speech_to_text'
+  status?: 400
+}
+
+export type ProviderQuotaExceededError = ErrorResponse & {
+  code: 'provider_quota_exceeded'
+  status?: 400
+}
+
 export type ProviderWithModelsListResponse = {
   data: Array<ProviderWithModelsResponse>
 }
@@ -1836,6 +1946,11 @@ export type PublishedPipelineRunResponse = {
   batch: string
   dataset: PipelineDataset
   documents: Array<PipelineDocument>
+}
+
+export type RateLimitError = ErrorResponse & {
+  code: 'rate_limit_error'
+  status?: 429
 }
 
 export type RerankingModel = {
@@ -2063,6 +2178,11 @@ export type Site = {
   use_icon_as_answer_icon: boolean
 }
 
+export type SpeechToTextDisabledError = ErrorResponse & {
+  code: 'speech_to_text_disabled'
+  status?: 400
+}
+
 export type StringListSource = {
   selector?: Array<string>
   type: ValueSourceType
@@ -2128,9 +2248,29 @@ export type TextToAudioPayloadWithUser = {
   voice?: string | null
 }
 
+export type TooManyFilesError = ErrorResponse & {
+  code: 'too_many_files'
+  status?: 400
+}
+
 export type ToolIcon = {
   background: string
   content: string
+}
+
+export type TriggerWorkflowServiceModeUnavailableError = ErrorResponse & {
+  code: 'trigger_workflow_service_mode_unavailable'
+  status?: 403
+}
+
+export type UnsupportedAudioTypeError = ErrorResponse & {
+  code: 'unsupported_audio_type'
+  status?: 415
+}
+
+export type UnsupportedFileTypeError = ErrorResponse & {
+  code: 'unsupported_file_type'
+  status?: 415
 }
 
 export type UrlResponse = {
@@ -2395,6 +2535,11 @@ export type WorkflowTaskStopPayload = {
   user: string
 }
 
+export type WorkflowVersionExecutionNotAllowedError = ErrorResponse & {
+  code: 'workflow_version_execution_not_allowed'
+  status?: 403
+}
+
 export type HumanInputFormSubmitResponseWritable = {
   [key: string]: never
 }
@@ -2652,11 +2797,19 @@ export type PostAudioToTextData = {
 }
 
 export type PostAudioToTextErrors = {
-  400: ErrorResponse
+  400:
+    | AppUnavailableError
+    | CompletionRequestError
+    | ModelCurrentlyNotSupportError
+    | NoAudioUploadedError
+    | ProviderNotInitializeError
+    | ProviderNotSupportSpeechToTextError
+    | ProviderQuotaExceededError
+    | SpeechToTextDisabledError
   401: ErrorResponse
   403: ErrorResponse
-  413: ErrorResponse
-  415: ErrorResponse
+  413: AudioTooLargeError
+  415: UnsupportedAudioTypeError
   500: ErrorResponse
   default: ErrorResponse
 }
@@ -2677,11 +2830,18 @@ export type PostChatMessagesData = {
 }
 
 export type PostChatMessagesErrors = {
-  400: ErrorResponse
+  400:
+    | AgentNotPublishedError
+    | AppUnavailableError
+    | CompletionRequestError
+    | ModelCurrentlyNotSupportError
+    | NotChatAppError
+    | ProviderNotInitializeError
+    | ProviderQuotaExceededError
   401: ErrorResponse
-  403: ErrorResponse
+  403: WorkflowVersionExecutionNotAllowedError
   404: ErrorResponse
-  429: ErrorResponse
+  429: RateLimitError
   500: ErrorResponse
   default: ErrorResponse
 }
@@ -2704,7 +2864,7 @@ export type PostChatMessagesByTaskIdStopData = {
 }
 
 export type PostChatMessagesByTaskIdStopErrors = {
-  400: ErrorResponse
+  400: NotChatAppError
   401: ErrorResponse
   403: ErrorResponse
   default: ErrorResponse
@@ -2728,7 +2888,13 @@ export type PostCompletionMessagesData = {
 }
 
 export type PostCompletionMessagesErrors = {
-  400: ErrorResponse
+  400:
+    | AgentNotPublishedError
+    | AppUnavailableError
+    | CompletionRequestError
+    | ModelCurrentlyNotSupportError
+    | ProviderNotInitializeError
+    | ProviderQuotaExceededError
   401: ErrorResponse
   403: ErrorResponse
   429: ErrorResponse
@@ -2756,7 +2922,7 @@ export type PostCompletionMessagesByTaskIdStopData = {
 }
 
 export type PostCompletionMessagesByTaskIdStopErrors = {
-  400: ErrorResponse
+  400: AppUnavailableError
   401: ErrorResponse
   403: ErrorResponse
   default: ErrorResponse
@@ -2785,7 +2951,7 @@ export type GetConversationsData = {
 }
 
 export type GetConversationsErrors = {
-  400: ErrorResponse
+  400: NotChatAppError
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
@@ -2810,7 +2976,7 @@ export type DeleteConversationsByConversationIdData = {
 }
 
 export type DeleteConversationsByConversationIdErrors = {
-  400: ErrorResponse
+  400: NotChatAppError
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
@@ -2837,7 +3003,7 @@ export type PostConversationsByConversationIdNameData = {
 }
 
 export type PostConversationsByConversationIdNameErrors = {
-  400: ErrorResponse
+  400: NotChatAppError
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
@@ -2869,7 +3035,7 @@ export type GetConversationsByConversationIdVariablesData = {
 }
 
 export type GetConversationsByConversationIdVariablesErrors = {
-  400: ErrorResponse
+  400: NotChatAppError
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
@@ -2897,7 +3063,7 @@ export type PutConversationsByConversationIdVariablesByVariableIdData = {
 }
 
 export type PutConversationsByConversationIdVariablesByVariableIdErrors = {
-  400: ErrorResponse
+  400: NotChatAppError
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
@@ -2952,7 +3118,7 @@ export type PostDatasetsErrors = {
   400: ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
-  409: ErrorResponse
+  409: DatasetNameDuplicateError
   default: ErrorResponse
 }
 
@@ -2974,11 +3140,11 @@ export type PostDatasetsPipelineFileUploadData = {
 }
 
 export type PostDatasetsPipelineFileUploadErrors = {
-  400: ErrorResponse
+  400: FilenameNotExistsError | NoFileUploadedError | TooManyFilesError
   401: ErrorResponse
   403: ErrorResponse
-  413: ErrorResponse
-  415: ErrorResponse
+  413: FileTooLargeError
+  415: UnsupportedFileTypeError
   default: ErrorResponse
 }
 
@@ -3221,11 +3387,11 @@ export type PostDatasetsByDatasetIdDocumentCreateByFileData = {
 }
 
 export type PostDatasetsByDatasetIdDocumentCreateByFileErrors = {
-  400: ErrorResponse
+  400: FilenameNotExistsError | NoFileUploadedError | ProviderNotInitializeError | TooManyFilesError
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
-  413: ErrorResponse
+  413: FileTooLargeError
   503: ErrorResponse
   default: ErrorResponse
 }
@@ -3250,7 +3416,7 @@ export type PostDatasetsByDatasetIdDocumentCreateByTextData = {
 }
 
 export type PostDatasetsByDatasetIdDocumentCreateByTextErrors = {
-  400: ErrorResponse
+  400: ProviderNotInitializeError
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
@@ -3281,11 +3447,11 @@ export type PostDatasetsByDatasetIdDocumentCreateByFile2Data = {
 }
 
 export type PostDatasetsByDatasetIdDocumentCreateByFile2Errors = {
-  400: ErrorResponse
+  400: FilenameNotExistsError | NoFileUploadedError | ProviderNotInitializeError | TooManyFilesError
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
-  413: ErrorResponse
+  413: FileTooLargeError
   503: ErrorResponse
   default: ErrorResponse
 }
@@ -3310,7 +3476,7 @@ export type PostDatasetsByDatasetIdDocumentCreateByText2Data = {
 }
 
 export type PostDatasetsByDatasetIdDocumentCreateByText2Errors = {
-  400: ErrorResponse
+  400: ProviderNotInitializeError
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
@@ -3423,7 +3589,7 @@ export type PatchDatasetsByDatasetIdDocumentsStatusByActionData = {
 }
 
 export type PatchDatasetsByDatasetIdDocumentsStatusByActionErrors = {
-  400: ErrorResponse
+  400: InvalidActionError
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
@@ -3479,7 +3645,7 @@ export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdData = {
 
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdErrors = {
   401: ErrorResponse
-  403: ErrorResponse
+  403: ArchivedDocumentImmutableError
   404: ErrorResponse
   default: ErrorResponse
 }
@@ -3538,12 +3704,12 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdData = {
 }
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdErrors = {
-  400: ErrorResponse
+  400: FilenameNotExistsError | ProviderNotInitializeError | TooManyFilesError
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
-  413: ErrorResponse
-  415: ErrorResponse
+  413: FileTooLargeError
+  415: UnsupportedFileTypeError
   503: ErrorResponse
   default: ErrorResponse
 }
@@ -3601,7 +3767,7 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsData = {
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsErrors = {
-  400: ErrorResponse
+  400: ProviderNotInitializeError
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
@@ -3629,7 +3795,7 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsData = {
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsErrors = {
-  400: ErrorMessageResponse | ErrorResponse
+  400: ErrorMessageResponse | ProviderNotInitializeError
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
@@ -3717,7 +3883,7 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdData 
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdErrors = {
-  400: ErrorResponse
+  400: ProviderNotInitializeError
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
@@ -3779,7 +3945,7 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChild
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksErrors = {
-  400: ErrorResponse
+  400: ProviderNotInitializeError
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
@@ -3878,12 +4044,12 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileData = {
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileErrors = {
-  400: ErrorResponse
+  400: FilenameNotExistsError | ProviderNotInitializeError | TooManyFilesError
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
-  413: ErrorResponse
-  415: ErrorResponse
+  413: FileTooLargeError
+  415: UnsupportedFileTypeError
   503: ErrorResponse
   default: ErrorResponse
 }
@@ -3909,7 +4075,7 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextData = {
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextErrors = {
-  400: ErrorResponse
+  400: ProviderNotInitializeError
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
@@ -3941,12 +4107,12 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Data = {
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Errors = {
-  400: ErrorResponse
+  400: FilenameNotExistsError | ProviderNotInitializeError | TooManyFilesError
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
-  413: ErrorResponse
-  415: ErrorResponse
+  413: FileTooLargeError
+  415: UnsupportedFileTypeError
   503: ErrorResponse
   default: ErrorResponse
 }
@@ -3972,6 +4138,7 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Data = {
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Errors = {
+  400: ProviderNotInitializeError
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
@@ -3999,7 +4166,11 @@ export type PostDatasetsByDatasetIdHitTestingData = {
 }
 
 export type PostDatasetsByDatasetIdHitTestingErrors = {
-  400: ErrorResponse
+  400:
+    | CompletionRequestError
+    | ModelCurrentlyNotSupportError
+    | ProviderNotInitializeError
+    | ProviderQuotaExceededError
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
@@ -4249,7 +4420,7 @@ export type PostDatasetsByDatasetIdPipelineRunErrors = {
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
-  500: ErrorResponse
+  500: PipelineRunError
   default: ErrorResponse
 }
 
@@ -4273,7 +4444,11 @@ export type PostDatasetsByDatasetIdRetrieveData = {
 }
 
 export type PostDatasetsByDatasetIdRetrieveErrors = {
-  400: ErrorResponse
+  400:
+    | CompletionRequestError
+    | ModelCurrentlyNotSupportError
+    | ProviderNotInitializeError
+    | ProviderQuotaExceededError
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
@@ -4329,7 +4504,7 @@ export type GetEndUsersByEndUserIdData = {
 export type GetEndUsersByEndUserIdErrors = {
   401: ErrorResponse
   403: ErrorResponse
-  404: ErrorResponse
+  404: EndUserNotFoundError
   default: ErrorResponse
 }
 
@@ -4354,11 +4529,11 @@ export type PostFilesUploadData = {
 }
 
 export type PostFilesUploadErrors = {
-  400: ErrorResponse
+  400: FileExtensionBlockedError | FilenameNotExistsError | NoFileUploadedError | TooManyFilesError
   401: ErrorResponse
   403: ErrorResponse
-  413: ErrorResponse
-  415: ErrorResponse
+  413: FileTooLargeError
+  415: UnsupportedFileTypeError
   default: ErrorResponse
 }
 
@@ -4384,8 +4559,8 @@ export type GetFilesByFileIdPreviewData = {
 
 export type GetFilesByFileIdPreviewErrors = {
   401: ErrorResponse
-  403: ErrorResponse
-  404: ErrorResponse
+  403: FileAccessDeniedError
+  404: FileNotFoundError
   default: ErrorResponse
 }
 
@@ -4462,7 +4637,7 @@ export type GetInfoData = {
 }
 
 export type GetInfoErrors = {
-  400: ErrorResponse
+  400: AppUnavailableError
   401: ErrorResponse
   403: ErrorResponse
   default: ErrorResponse
@@ -4489,7 +4664,7 @@ export type GetMessagesData = {
 }
 
 export type GetMessagesErrors = {
-  400: ErrorResponse
+  400: NotChatAppError
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
@@ -4543,7 +4718,7 @@ export type GetMessagesByMessageIdSuggestedData = {
 }
 
 export type GetMessagesByMessageIdSuggestedErrors = {
-  400: ErrorResponse
+  400: NotChatAppError
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
@@ -4569,7 +4744,7 @@ export type GetMetaData = {
 }
 
 export type GetMetaErrors = {
-  400: ErrorResponse
+  400: AppUnavailableError
   401: ErrorResponse
   403: ErrorResponse
   default: ErrorResponse
@@ -4591,7 +4766,7 @@ export type GetParametersData = {
 }
 
 export type GetParametersErrors = {
-  400: ErrorResponse
+  400: AgentNotPublishedError | AppUnavailableError
   401: ErrorResponse
   403: ErrorResponse
   default: ErrorResponse
@@ -4634,9 +4809,18 @@ export type PostTextToAudioData = {
 }
 
 export type PostTextToAudioErrors = {
-  400: ErrorResponse
+  400:
+    | AppUnavailableError
+    | CompletionRequestError
+    | ModelCurrentlyNotSupportError
+    | NoAudioUploadedError
+    | ProviderNotInitializeError
+    | ProviderNotSupportSpeechToTextError
+    | ProviderQuotaExceededError
   401: ErrorResponse
   403: ErrorResponse
+  413: AudioTooLargeError
+  415: UnsupportedAudioTypeError
   500: ErrorResponse
   default: ErrorResponse
 }
@@ -4663,7 +4847,7 @@ export type GetWorkflowByWorkflowRunIdEventsData = {
 }
 
 export type GetWorkflowByWorkflowRunIdEventsErrors = {
-  400: ErrorResponse
+  400: NotWorkflowAppError
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
@@ -4719,10 +4903,15 @@ export type PostWorkflowsRunData = {
 }
 
 export type PostWorkflowsRunErrors = {
-  400: ErrorResponse
+  400:
+    | CompletionRequestError
+    | ModelCurrentlyNotSupportError
+    | NotWorkflowAppError
+    | ProviderNotInitializeError
+    | ProviderQuotaExceededError
   401: ErrorResponse
-  403: ErrorResponse
-  429: ErrorResponse
+  403: TriggerWorkflowServiceModeUnavailableError
+  429: RateLimitError
   500: ErrorResponse
   default: ErrorResponse
 }
@@ -4745,7 +4934,7 @@ export type GetWorkflowsRunByWorkflowRunIdData = {
 }
 
 export type GetWorkflowsRunByWorkflowRunIdErrors = {
-  400: ErrorResponse
+  400: NotWorkflowAppError
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
@@ -4772,7 +4961,7 @@ export type PostWorkflowsTasksByTaskIdStopData = {
 }
 
 export type PostWorkflowsTasksByTaskIdStopErrors = {
-  400: ErrorResponse
+  400: NotWorkflowAppError
   401: ErrorResponse
   403: ErrorResponse
   default: ErrorResponse
@@ -4798,11 +4987,16 @@ export type PostWorkflowsByWorkflowIdRunData = {
 }
 
 export type PostWorkflowsByWorkflowIdRunErrors = {
-  400: ErrorResponse
+  400:
+    | CompletionRequestError
+    | ModelCurrentlyNotSupportError
+    | NotWorkflowAppError
+    | ProviderNotInitializeError
+    | ProviderQuotaExceededError
   401: ErrorResponse
-  403: ErrorResponse
+  403: TriggerWorkflowServiceModeUnavailableError | WorkflowVersionExecutionNotAllowedError
   404: ErrorResponse
-  429: ErrorResponse
+  429: RateLimitError
   500: ErrorResponse
   default: ErrorResponse
 }

@@ -47,7 +47,7 @@ Deprecated legacy alias for creating a new document by providing text content. U
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Document created successfully | **application/json**: [DocumentAndBatchResponse](#documentandbatchresponse)<br> |
-| 400 | Bad request - invalid parameters | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | Bad request - invalid parameters | **application/json**: [ProviderNotInitializeError](#providernotinitializeerror)<br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | `not_found` : Knowledge base not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -80,6 +80,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Document updated successfully | **application/json**: [DocumentAndBatchResponse](#documentandbatchresponse)<br> |
+| 400 | Bad Request | **application/json**: [ProviderNotInitializeError](#providernotinitializeerror)<br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Document not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -298,11 +299,11 @@ Convert audio file to text. Supported MIME types: `audio/mp3`, `audio/mpga`, `au
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Successfully converted audio to text. | **application/json**: [AudioTranscriptResponse](#audiotranscriptresponse)<br> |
-| 400 | - `app_unavailable` : App unavailable or misconfigured. - `speech_to_text_disabled` : Speech-to-text is disabled for this app. - `provider_not_support_speech_to_text` : Model provider does not support speech-to-text. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model does not support this operation. - `completion_request_error` : Speech recognition request failed. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | - `app_unavailable` : App unavailable or misconfigured. - `speech_to_text_disabled` : Speech-to-text is disabled for this app. - `provider_not_support_speech_to_text` : Model provider does not support speech-to-text. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model does not support this operation. - `completion_request_error` : Speech recognition request failed. | **application/json**: <br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 413 | `audio_too_large` : Audio file size exceeded the limit. | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 415 | `unsupported_audio_type` : Audio type is not allowed. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 413 | `audio_too_large` : Audio file size exceeded the limit. | **application/json**: [AudioTooLargeError](#audiotoolargeerror)<br> |
+| 415 | `unsupported_audio_type` : Audio type is not allowed. | **application/json**: [UnsupportedAudioTypeError](#unsupportedaudiotypeerror)<br> |
 | 500 | `internal_server_error` : Internal server error. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -322,9 +323,11 @@ Convert text to speech.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Returns the generated audio. The `Content-Type` header reflects the provider audio container, verified from the response bytes when recognizable. The binary response can be AAC, FLAC, MP4, MP3, Ogg, WAV, or WebM. | **audio/aac**: binary<br>**audio/flac**: binary<br>**audio/mp4**: binary<br>**audio/mpeg**: binary<br>**audio/ogg**: binary<br>**audio/wav**: binary<br>**audio/webm**: binary<br> |
-| 400 | - `app_unavailable` : App unavailable or misconfigured. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model does not support this operation. - `completion_request_error` : Text-to-speech request failed. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | - `app_unavailable` : App unavailable or misconfigured. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model does not support this operation. - `completion_request_error` : Text-to-speech request failed. | **application/json**: <br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 413 | Request Entity Too Large | **application/json**: [AudioTooLargeError](#audiotoolargeerror)<br> |
+| 415 | Unsupported Media Type | **application/json**: [UnsupportedAudioTypeError](#unsupportedaudiotypeerror)<br> |
 | 500 | `internal_server_error` : Internal server error. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -347,11 +350,11 @@ Send a request to the chat application.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Successful response. The content type and structure depend on the `response_mode` parameter in the request.  - If `response_mode` is `blocking`, returns `application/json` with a `ChatCompletionResponse` object. - If `response_mode` is `streaming`, returns `text/event-stream` with a stream of Server-Sent Events. | **application/json**: [ChatBlockingResponse](#chatblockingresponse)<br>**text/event-stream**: string<br> |
-| 400 | - `app_unavailable` : App unavailable or misconfigured. - `not_chat_app` : App mode does not match the API route. - `conversation_completed` : The conversation has ended. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model unavailable. - `completion_request_error` : Text generation failed. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | - `app_unavailable` : App unavailable or misconfigured. - `not_chat_app` : App mode does not match the API route. - `conversation_completed` : The conversation has ended. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model unavailable. - `completion_request_error` : Text generation failed. | **application/json**: <br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 403 | `workflow_version_execution_not_allowed` : Workflow version execution is unavailable on the current plan. Upgrade to a paid plan. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | `workflow_version_execution_not_allowed` : Workflow version execution is unavailable on the current plan. Upgrade to a paid plan. | **application/json**: [WorkflowVersionExecutionNotAllowedError](#workflowversionexecutionnotallowederror)<br> |
 | 404 | `not_found` : Conversation does not exist. | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 429 | - `too_many_requests` : Too many concurrent requests for this app. - `rate_limit_error` : The Dify Cloud workflow execution quota for this workspace has been reached. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 429 | - `too_many_requests` : Too many concurrent requests for this app. - `rate_limit_error` : The Dify Cloud workflow execution quota for this workspace has been reached. | **application/json**: [RateLimitError](#ratelimiterror)<br> |
 | 500 | `internal_server_error` : Internal server error. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -377,7 +380,7 @@ Stops a chat message generation task. Only supported in `streaming` mode.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Task stopped successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 400 | `not_chat_app` : App mode does not match the API route. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | `not_chat_app` : App mode does not match the API route. | **application/json**: [NotChatAppError](#notchatapperror)<br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -399,7 +402,7 @@ Get next questions suggestions for the current message.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Suggested questions retrieved successfully | **application/json**: [SimpleResultStringListResponse](#simpleresultstringlistresponse)<br> |
-| 400 | - `not_chat_app` : App mode does not match the API route. - `bad_request` : Suggested questions feature is disabled. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | - `not_chat_app` : App mode does not match the API route. - `bad_request` : Suggested questions feature is disabled. | **application/json**: [NotChatAppError](#notchatapperror)<br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | `not_found` : Message does not exist. | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -425,7 +428,7 @@ Resume the Server-Sent Events stream for a workflow run after a pause or a dropp
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Server-Sent Events stream. Each event is delivered as `data: {JSON}\\n\\n`. Event payloads follow the same schemas as the original streaming response. | **text/event-stream**: string<br> |
-| 400 | `not_workflow_app` : Please check if your app mode matches the right API route. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | `not_workflow_app` : Please check if your app mode matches the right API route. | **application/json**: [NotWorkflowAppError](#notworkflowapperror)<br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | `not_found` : Workflow run not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -475,7 +478,7 @@ Retrieve the current execution results of a workflow task based on the workflow 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Successfully retrieved workflow run details. | **application/json**: [WorkflowRunResponse](#workflowrunresponse)<br> |
-| 400 | `not_workflow_app` : App mode does not match the API route. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | `not_workflow_app` : App mode does not match the API route. | **application/json**: [NotWorkflowAppError](#notworkflowapperror)<br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | `not_found` : Workflow run not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -500,11 +503,11 @@ Send a request to the chat application.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Successful response. The content type and structure depend on the `response_mode` parameter in the request.  - If `response_mode` is `blocking`, returns `application/json` with a `ChatCompletionResponse` object. - If `response_mode` is `streaming`, returns `text/event-stream` with a stream of Server-Sent Events. | **application/json**: [ChatBlockingResponse](#chatblockingresponse)<br>**text/event-stream**: string<br> |
-| 400 | - `app_unavailable` : App unavailable or misconfigured. - `not_chat_app` : App mode does not match the API route. - `conversation_completed` : The conversation has ended. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model unavailable. - `completion_request_error` : Text generation failed. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | - `app_unavailable` : App unavailable or misconfigured. - `not_chat_app` : App mode does not match the API route. - `conversation_completed` : The conversation has ended. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model unavailable. - `completion_request_error` : Text generation failed. | **application/json**: <br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 403 | `workflow_version_execution_not_allowed` : Workflow version execution is unavailable on the current plan. Upgrade to a paid plan. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | `workflow_version_execution_not_allowed` : Workflow version execution is unavailable on the current plan. Upgrade to a paid plan. | **application/json**: [WorkflowVersionExecutionNotAllowedError](#workflowversionexecutionnotallowederror)<br> |
 | 404 | `not_found` : Conversation does not exist. | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 429 | - `too_many_requests` : Too many concurrent requests for this app. - `rate_limit_error` : The Dify Cloud workflow execution quota for this workspace has been reached. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 429 | - `too_many_requests` : Too many concurrent requests for this app. - `rate_limit_error` : The Dify Cloud workflow execution quota for this workspace has been reached. | **application/json**: [RateLimitError](#ratelimiterror)<br> |
 | 500 | `internal_server_error` : Internal server error. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -530,7 +533,7 @@ Stops a chat message generation task. Only supported in `streaming` mode.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Task stopped successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 400 | `not_chat_app` : App mode does not match the API route. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | `not_chat_app` : App mode does not match the API route. | **application/json**: [NotChatAppError](#notchatapperror)<br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -552,7 +555,7 @@ Get next questions suggestions for the current message.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Suggested questions retrieved successfully | **application/json**: [SimpleResultStringListResponse](#simpleresultstringlistresponse)<br> |
-| 400 | - `not_chat_app` : App mode does not match the API route. - `bad_request` : Suggested questions feature is disabled. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | - `not_chat_app` : App mode does not match the API route. - `bad_request` : Suggested questions feature is disabled. | **application/json**: [NotChatAppError](#notchatapperror)<br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | `not_found` : Message does not exist. | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -578,7 +581,7 @@ Send a request to the text generation application.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Successful response. The content type and structure depend on the `response_mode` parameter in the request.  - If `response_mode` is `blocking`, returns `application/json` with a `CompletionResponse` object. - If `response_mode` is `streaming`, returns `text/event-stream` with a stream of `ChunkCompletionEvent` objects. | **application/json**: [CompletionBlockingResponse](#completionblockingresponse)<br>**text/event-stream**: string<br> |
-| 400 | - `app_unavailable` : App unavailable or misconfigured. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model unavailable. - `completion_request_error` : Text generation failed. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | - `app_unavailable` : App unavailable or misconfigured. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model unavailable. - `completion_request_error` : Text generation failed. | **application/json**: <br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 429 | `too_many_requests` : Too many concurrent requests for this app. | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -607,7 +610,7 @@ Stops a completion message generation task. Only supported in `streaming` mode.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Task stopped successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 400 | `app_unavailable` : App unavailable or misconfigured. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | `app_unavailable` : App unavailable or misconfigured. | **application/json**: [AppUnavailableError](#appunavailableerror)<br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -634,7 +637,7 @@ Retrieve the conversation list for the current user, ordered by most recently ac
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Successfully retrieved conversations list. | **application/json**: [ConversationInfiniteScrollPagination](#conversationinfinitescrollpagination)<br> |
-| 400 | `not_chat_app` : App mode does not match the API route. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | `not_chat_app` : App mode does not match the API route. | **application/json**: [NotChatAppError](#notchatapperror)<br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | `not_found` : Last conversation does not exist (invalid `last_id`). | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -662,7 +665,7 @@ Delete a conversation.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 204 | Conversation deleted successfully. |  |
-| 400 | `not_chat_app` : App mode does not match the API route. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | `not_chat_app` : App mode does not match the API route. | **application/json**: [NotChatAppError](#notchatapperror)<br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | `not_found` : Conversation does not exist. | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -690,7 +693,7 @@ Rename a conversation or auto-generate a name. The conversation name is used for
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Conversation renamed successfully. | **application/json**: [SimpleConversation](#simpleconversation)<br> |
-| 400 | `not_chat_app` : App mode does not match the API route. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | `not_chat_app` : App mode does not match the API route. | **application/json**: [NotChatAppError](#notchatapperror)<br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | `not_found` : Conversation does not exist. | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -716,7 +719,7 @@ Retrieve variables from a specific conversation.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Successfully retrieved conversation variables. | **application/json**: [ConversationVariableInfiniteScrollPaginationResponse](#conversationvariableinfinitescrollpaginationresponse)<br> |
-| 400 | `not_chat_app` : App mode does not match the API route. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | `not_chat_app` : App mode does not match the API route. | **application/json**: [NotChatAppError](#notchatapperror)<br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | `not_found` : Conversation does not exist. | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -745,7 +748,7 @@ Update the value of a specific conversation variable. The value must match the e
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Variable updated successfully. | **application/json**: [ConversationVariableResponse](#conversationvariableresponse)<br> |
-| 400 | - `not_chat_app` : App mode does not match the API route. - `bad_request` : Variable value type mismatch. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | - `not_chat_app` : App mode does not match the API route. - `bad_request` : Variable value type mismatch. | **application/json**: [NotChatAppError](#notchatapperror)<br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | - `not_found` : Conversation does not exist. - `not_found` : Conversation variable does not exist. | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -770,7 +773,7 @@ Returns historical chat records in a scrolling load format, with the first page 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Successfully retrieved conversation history. | **application/json**: [MessageInfiniteScrollPagination](#messageinfinitescrollpagination)<br> |
-| 400 | `not_chat_app` : App mode does not match the API route. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | `not_chat_app` : App mode does not match the API route. | **application/json**: [NotChatAppError](#notchatapperror)<br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | - `not_found` : Conversation does not exist. - `not_found` : First message does not exist. | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -822,7 +825,7 @@ Create a new empty knowledge base. After creation, use [Create Document by Text]
 | 400 | Bad request - invalid parameters | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 409 | `dataset_name_duplicate` : The dataset name already exists. Please modify your dataset name. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 409 | `dataset_name_duplicate` : The dataset name already exists. Please modify your dataset name. | **application/json**: [DatasetNameDuplicateError](#datasetnameduplicateerror)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /datasets/{dataset_id}
@@ -920,7 +923,7 @@ Performs a search query against a knowledge base to retrieve the most relevant c
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Retrieval results. | **application/json**: [HitTestingResponse](#hittestingresponse)<br> |
-| 400 | - `dataset_not_initialized` : The dataset is still being initialized or indexing. Please wait a moment. - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `provider_quota_exceeded` : Your quota for Dify Hosted OpenAI has been exhausted. Please go to Settings -> Model Provider to complete your own provider credentials. - `model_currently_not_support` : Dify Hosted OpenAI trial currently not support the GPT-4 model. - `completion_request_error` : Completion request failed. - `invalid_param` : Invalid parameter value. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | - `dataset_not_initialized` : The dataset is still being initialized or indexing. Please wait a moment. - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `provider_quota_exceeded` : Your quota for Dify Hosted OpenAI has been exhausted. Please go to Settings -> Model Provider to complete your own provider credentials. - `model_currently_not_support` : Dify Hosted OpenAI trial currently not support the GPT-4 model. - `completion_request_error` : Completion request failed. - `invalid_param` : Invalid parameter value. | **application/json**: <br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | `forbidden` : Insufficient permissions. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | `not_found` : Knowledge base not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -949,7 +952,7 @@ Performs a search query against a knowledge base to retrieve the most relevant c
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Retrieval results. | **application/json**: [HitTestingResponse](#hittestingresponse)<br> |
-| 400 | - `dataset_not_initialized` : The dataset is still being initialized or indexing. Please wait a moment. - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `provider_quota_exceeded` : Your quota for Dify Hosted OpenAI has been exhausted. Please go to Settings -> Model Provider to complete your own provider credentials. - `model_currently_not_support` : Dify Hosted OpenAI trial currently not support the GPT-4 model. - `completion_request_error` : Completion request failed. - `invalid_param` : Invalid parameter value. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | - `dataset_not_initialized` : The dataset is still being initialized or indexing. Please wait a moment. - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `provider_quota_exceeded` : Your quota for Dify Hosted OpenAI has been exhausted. Please go to Settings -> Model Provider to complete your own provider credentials. - `model_currently_not_support` : Dify Hosted OpenAI trial currently not support the GPT-4 model. - `completion_request_error` : Completion request failed. - `invalid_param` : Invalid parameter value. | **application/json**: <br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | `forbidden` : Insufficient permissions. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | `not_found` : Knowledge base not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -975,11 +978,11 @@ Upload a file for use in a knowledge pipeline. Accepts a single file via `multip
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | File uploaded successfully. | **application/json**: [PipelineUploadFileResponse](#pipelineuploadfileresponse)<br> |
-| 400 | - `no_file_uploaded` : Please upload your file. - `filename_not_exists_error` : The specified filename does not exist. - `too_many_files` : Only one file is allowed. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | - `no_file_uploaded` : Please upload your file. - `filename_not_exists_error` : The specified filename does not exist. - `too_many_files` : Only one file is allowed. | **application/json**: <br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 413 | `file_too_large` : File size exceeded. | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 415 | `unsupported_file_type` : File type not allowed. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 413 | `file_too_large` : File size exceeded. | **application/json**: [FileTooLargeError](#filetoolargeerror)<br> |
+| 415 | `unsupported_file_type` : File type not allowed. | **application/json**: [UnsupportedFileTypeError](#unsupportedfiletypeerror)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/pipeline/datasource-plugins
@@ -1060,7 +1063,7 @@ Execute the full knowledge pipeline for a knowledge base. Published runs are que
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | `forbidden` : Forbidden. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | `not_found` : Dataset not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 500 | `pipeline_run_error` : Pipeline execution failed. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 500 | `pipeline_run_error` : Pipeline execution failed. | **application/json**: [PipelineRunError](#pipelinerunerror)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
@@ -1232,11 +1235,11 @@ Create a document by uploading a file. Supports common document formats (PDF, TX
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Document created successfully. | **application/json**: [DocumentAndBatchResponse](#documentandbatchresponse)<br> |
-| 400 | - `no_file_uploaded` : Please upload your file. - `too_many_files` : Only one file is allowed. - `filename_not_exists_error` : The specified filename does not exist. - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `invalid_param` : Knowledge base does not exist, external datasets not supported, unsupported file type, missing required fields, or invalid doc_form (must be `text_model`, `hierarchical_model`, or `qa_model`). | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | - `no_file_uploaded` : Please upload your file. - `too_many_files` : Only one file is allowed. - `filename_not_exists_error` : The specified filename does not exist. - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `invalid_param` : Knowledge base does not exist, external datasets not supported, unsupported file type, missing required fields, or invalid doc_form (must be `text_model`, `hierarchical_model`, or `qa_model`). | **application/json**: <br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | `not_found` : Knowledge base not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 413 | `file_too_large` : File size exceeded. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 413 | `file_too_large` : File size exceeded. | **application/json**: [FileTooLargeError](#filetoolargeerror)<br> |
 | 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -1262,7 +1265,7 @@ Create a document from raw text content. The document is processed asynchronousl
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Document created successfully. | **application/json**: [DocumentAndBatchResponse](#documentandbatchresponse)<br> |
-| 400 | - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `invalid_param` : Knowledge base does not exist. / indexing_technique is required. / Invalid doc_form (must be `text_model`, `hierarchical_model`, or `qa_model`). | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `invalid_param` : Knowledge base does not exist. / indexing_technique is required. / Invalid doc_form (must be `text_model`, `hierarchical_model`, or `qa_model`). | **application/json**: [ProviderNotInitializeError](#providernotinitializeerror)<br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | `not_found` : Knowledge base not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -1294,11 +1297,11 @@ Create a document by uploading a file. Supports common document formats (PDF, TX
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Document created successfully. | **application/json**: [DocumentAndBatchResponse](#documentandbatchresponse)<br> |
-| 400 | - `no_file_uploaded` : Please upload your file. - `too_many_files` : Only one file is allowed. - `filename_not_exists_error` : The specified filename does not exist. - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `invalid_param` : Knowledge base does not exist, external datasets not supported, unsupported file type, missing required fields, or invalid doc_form (must be `text_model`, `hierarchical_model`, or `qa_model`). | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | - `no_file_uploaded` : Please upload your file. - `too_many_files` : Only one file is allowed. - `filename_not_exists_error` : The specified filename does not exist. - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `invalid_param` : Knowledge base does not exist, external datasets not supported, unsupported file type, missing required fields, or invalid doc_form (must be `text_model`, `hierarchical_model`, or `qa_model`). | **application/json**: <br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | `not_found` : Knowledge base not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 413 | `file_too_large` : File size exceeded. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 413 | `file_too_large` : File size exceeded. | **application/json**: [FileTooLargeError](#filetoolargeerror)<br> |
 | 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -1377,7 +1380,7 @@ Enable, disable, archive, or unarchive multiple documents at once.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Document status updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 400 | `invalid_action` : Invalid action. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | `invalid_action` : Invalid action. | **application/json**: [InvalidActionError](#invalidactionerror)<br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | `forbidden` : Insufficient permissions. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | `not_found` : Knowledge base not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -1423,7 +1426,7 @@ Permanently delete a document and all its chunks from the knowledge base.
 | ---- | ----------- | ------ |
 | 204 | Success. |  |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 403 | `archived_document_immutable` : The archived document is not editable. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | `archived_document_immutable` : The archived document is not editable. | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br> |
 | 404 | `not_found` : Document Not Exists. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -1474,12 +1477,12 @@ Update an existing document by uploading a new file. Re-triggers indexing — us
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Document updated successfully. | **application/json**: [DocumentAndBatchResponse](#documentandbatchresponse)<br> |
-| 400 | - `too_many_files` : Only one file is allowed. - `filename_not_exists_error` : The specified filename does not exist. - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `invalid_param` : Knowledge base does not exist, external datasets not supported, unsupported file type, or invalid doc_form (must be `text_model`, `hierarchical_model`, or `qa_model`). | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | - `too_many_files` : Only one file is allowed. - `filename_not_exists_error` : The specified filename does not exist. - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `invalid_param` : Knowledge base does not exist, external datasets not supported, unsupported file type, or invalid doc_form (must be `text_model`, `hierarchical_model`, or `qa_model`). | **application/json**: <br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Document not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 413 | `file_too_large` : File size exceeded. | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 415 | Unsupported file type | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 413 | `file_too_large` : File size exceeded. | **application/json**: [FileTooLargeError](#filetoolargeerror)<br> |
+| 415 | Unsupported file type | **application/json**: [UnsupportedFileTypeError](#unsupportedfiletypeerror)<br> |
 | 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -1531,12 +1534,12 @@ Update an existing document by uploading a new file. Re-triggers indexing — us
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Document updated successfully. | **application/json**: [DocumentAndBatchResponse](#documentandbatchresponse)<br> |
-| 400 | - `too_many_files` : Only one file is allowed. - `filename_not_exists_error` : The specified filename does not exist. - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `invalid_param` : Knowledge base does not exist, external datasets not supported, unsupported file type, or invalid doc_form (must be `text_model`, `hierarchical_model`, or `qa_model`). | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | - `too_many_files` : Only one file is allowed. - `filename_not_exists_error` : The specified filename does not exist. - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `invalid_param` : Knowledge base does not exist, external datasets not supported, unsupported file type, or invalid doc_form (must be `text_model`, `hierarchical_model`, or `qa_model`). | **application/json**: <br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Document not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 413 | `file_too_large` : File size exceeded. | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 415 | Unsupported file type | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 413 | `file_too_large` : File size exceeded. | **application/json**: [FileTooLargeError](#filetoolargeerror)<br> |
+| 415 | Unsupported file type | **application/json**: [UnsupportedFileTypeError](#unsupportedfiletypeerror)<br> |
 | 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -1563,7 +1566,7 @@ Update an existing document's text content, name, or processing configuration. R
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Document updated successfully. | **application/json**: [DocumentAndBatchResponse](#documentandbatchresponse)<br> |
-| 400 | - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `invalid_param` : Knowledge base does not exist, name is required when text is provided, or invalid doc_form (must be `text_model`, `hierarchical_model`, or `qa_model`). | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `invalid_param` : Knowledge base does not exist, name is required when text is provided, or invalid doc_form (must be `text_model`, `hierarchical_model`, or `qa_model`). | **application/json**: [ProviderNotInitializeError](#providernotinitializeerror)<br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Document not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -1596,12 +1599,12 @@ Update an existing document by uploading a new file. Re-triggers indexing — us
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Document updated successfully. | **application/json**: [DocumentAndBatchResponse](#documentandbatchresponse)<br> |
-| 400 | - `too_many_files` : Only one file is allowed. - `filename_not_exists_error` : The specified filename does not exist. - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `invalid_param` : Knowledge base does not exist, external datasets not supported, unsupported file type, or invalid doc_form (must be `text_model`, `hierarchical_model`, or `qa_model`). | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | - `too_many_files` : Only one file is allowed. - `filename_not_exists_error` : The specified filename does not exist. - `provider_not_initialize` : No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. - `invalid_param` : Knowledge base does not exist, external datasets not supported, unsupported file type, or invalid doc_form (must be `text_model`, `hierarchical_model`, or `qa_model`). | **application/json**: <br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Document not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 413 | `file_too_large` : File size exceeded. | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 415 | Unsupported file type | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 413 | `file_too_large` : File size exceeded. | **application/json**: [FileTooLargeError](#filetoolargeerror)<br> |
+| 415 | Unsupported file type | **application/json**: [UnsupportedFileTypeError](#unsupportedfiletypeerror)<br> |
 | 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -1803,7 +1806,7 @@ Returns a paginated list of chunks within a document. Supports filtering by keyw
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | List of chunks. | **application/json**: [SegmentListResponse](#segmentlistresponse)<br> |
-| 400 | Bad request - embedding model is not configured | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | Bad request - embedding model is not configured | **application/json**: [ProviderNotInitializeError](#providernotinitializeerror)<br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Dataset or document not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -1911,7 +1914,7 @@ Update a chunk's content, keywords, or answer. Re-triggers indexing for the modi
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Chunk updated successfully. | **application/json**: [SegmentDetailResponse](#segmentdetailresponse)<br> |
-| 400 | Bad request - invalid segment or embedding model configuration | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | Bad request - invalid segment or embedding model configuration | **application/json**: [ProviderNotInitializeError](#providernotinitializeerror)<br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Dataset, document, or segment not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -1968,7 +1971,7 @@ Create a child chunk under the specified segment.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Child chunk created successfully. | **application/json**: [ChildChunkDetailResponse](#childchunkdetailresponse)<br> |
-| 400 | `invalid_param` : Create child chunk index failed. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | `invalid_param` : Create child chunk index failed. | **application/json**: [ProviderNotInitializeError](#providernotinitializeerror)<br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Dataset, document, or segment not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -2053,7 +2056,7 @@ Retrieve an end user by ID. Useful when other APIs return an end-user ID (e.g., 
 | 200 | End user retrieved successfully. | **application/json**: [EndUserDetail](#enduserdetail)<br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | `end_user_not_found` : End user not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | `end_user_not_found` : End user not found. | **application/json**: [EndUserNotFoundError](#endusernotfounderror)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
@@ -2075,11 +2078,11 @@ Upload a file for use when sending messages, enabling multimodal understanding o
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | File uploaded successfully. | **application/json**: [FileResponse](#fileresponse)<br> |
-| 400 | - `no_file_uploaded` : No file was provided in the request. - `too_many_files` : Only one file is allowed per request. - `filename_not_exists_error` : The uploaded file has no filename. - `file_extension_blocked` : The file extension is blocked for security reasons. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | - `no_file_uploaded` : No file was provided in the request. - `too_many_files` : Only one file is allowed per request. - `filename_not_exists_error` : The uploaded file has no filename. - `file_extension_blocked` : The file extension is blocked for security reasons. | **application/json**: <br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 413 | `file_too_large` : File size exceeded. | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 415 | `unsupported_file_type` : File type not allowed. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 413 | `file_too_large` : File size exceeded. | **application/json**: [FileTooLargeError](#filetoolargeerror)<br> |
+| 415 | `unsupported_file_type` : File type not allowed. | **application/json**: [UnsupportedFileTypeError](#unsupportedfiletypeerror)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /files/{file_id}/preview
@@ -2101,8 +2104,8 @@ Preview or download uploaded files previously uploaded via the [Upload File](/ap
 | ---- | ----------- | ------ |
 | 200 | Returns the raw file content. The `Content-Type` header is set to the file's MIME type. If `as_attachment` is `true`, the file is returned as a download with `Content-Disposition: attachment`. | `*/*`: binary<br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 403 | `file_access_denied` : Access to the requested file is denied. | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | `file_not_found` : The requested file was not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | `file_access_denied` : Access to the requested file is denied. | **application/json**: [FileAccessDeniedError](#fileaccessdeniederror)<br> |
+| 404 | `file_not_found` : The requested file was not found. | **application/json**: [FileNotFoundError](#filenotfounderror)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
@@ -2172,7 +2175,7 @@ Retrieve basic information about this application, including name, description, 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Basic information of the application. | **application/json**: [AppInfoResponse](#appinforesponse)<br> |
-| 400 | `app_unavailable` : App unavailable or misconfigured. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | `app_unavailable` : App unavailable or misconfigured. | **application/json**: [AppUnavailableError](#appunavailableerror)<br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -2187,7 +2190,7 @@ Retrieve metadata about this application, including tool icons and other configu
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Successfully retrieved application meta information. | **application/json**: [AppMetaResponse](#appmetaresponse)<br> |
-| 400 | `app_unavailable` : App unavailable or misconfigured. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | `app_unavailable` : App unavailable or misconfigured. | **application/json**: [AppUnavailableError](#appunavailableerror)<br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -2202,7 +2205,7 @@ Retrieve the application's input form configuration, including feature switches,
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Application parameters information. | **application/json**: [Parameters](#parameters)<br> |
-| 400 | `app_unavailable` : App unavailable or misconfigured. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | `app_unavailable` : App unavailable or misconfigured. | **application/json**: <br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -2243,7 +2246,7 @@ Resume the Server-Sent Events stream for a workflow run after a pause or a dropp
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Server-Sent Events stream. Each event is delivered as `data: {JSON}\\n\\n`. Event payloads follow the same schemas as the original streaming response. | **text/event-stream**: string<br> |
-| 400 | `not_workflow_app` : Please check if your app mode matches the right API route. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | `not_workflow_app` : Please check if your app mode matches the right API route. | **application/json**: [NotWorkflowAppError](#notworkflowapperror)<br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | `not_found` : Workflow run not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -2293,10 +2296,10 @@ Execute a workflow. Cannot be executed without a published workflow.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Successful response. The content type and structure depend on the `response_mode` parameter in the request.  - If `response_mode` is `blocking`, returns `application/json` with a `WorkflowBlockingResponse` object. - If `response_mode` is `streaming`, returns `text/event-stream` with a stream of `ChunkWorkflowEvent` objects. | **application/json**: [WorkflowBlockingResponse](#workflowblockingresponse)<br>**text/event-stream**: string<br> |
-| 400 | - `not_workflow_app` : App mode does not match the API route. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model unavailable. - `completion_request_error` : Workflow execution request failed. - `invalid_param` : Invalid parameter value. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | - `not_workflow_app` : App mode does not match the API route. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model unavailable. - `completion_request_error` : Workflow execution request failed. - `invalid_param` : Invalid parameter value. | **application/json**: <br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 403 | - `forbidden` : Token scope, app, or workspace access denied. - `trigger_workflow_service_mode_unavailable` : Trigger-entry workflows cannot be invoked through Web App, Service API, OpenAPI, or MCP. | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 429 | - `too_many_requests` : Too many concurrent requests for this app. - `rate_limit_error` : The Dify Cloud workflow execution quota for this workspace has been reached. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | - `forbidden` : Token scope, app, or workspace access denied. - `trigger_workflow_service_mode_unavailable` : Trigger-entry workflows cannot be invoked through Web App, Service API, OpenAPI, or MCP. | **application/json**: [TriggerWorkflowServiceModeUnavailableError](#triggerworkflowservicemodeunavailableerror)<br> |
+| 429 | - `too_many_requests` : Too many concurrent requests for this app. - `rate_limit_error` : The Dify Cloud workflow execution quota for this workspace has been reached. | **application/json**: [RateLimitError](#ratelimiterror)<br> |
 | 500 | `internal_server_error` : Internal server error. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -2316,7 +2319,7 @@ Retrieve the current execution results of a workflow task based on the workflow 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Successfully retrieved workflow run details. | **application/json**: [WorkflowRunResponse](#workflowrunresponse)<br> |
-| 400 | `not_workflow_app` : App mode does not match the API route. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | `not_workflow_app` : App mode does not match the API route. | **application/json**: [NotWorkflowAppError](#notworkflowapperror)<br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | `not_found` : Workflow run not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -2344,7 +2347,7 @@ Stop a running workflow task. Only supported in `streaming` mode.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Task stopped successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 400 | - `not_workflow_app` : App mode does not match the API route. - `invalid_param` : Required parameter missing or invalid. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | - `not_workflow_app` : App mode does not match the API route. - `invalid_param` : Required parameter missing or invalid. | **application/json**: [NotWorkflowAppError](#notworkflowapperror)<br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -2371,11 +2374,11 @@ Execute a specific workflow version identified by its ID. Useful for running a p
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Successful response. The content type and structure depend on the `response_mode` parameter in the request.  - If `response_mode` is `blocking`, returns `application/json` with a `WorkflowBlockingResponse` object. - If `response_mode` is `streaming`, returns `text/event-stream` with a stream of `ChunkWorkflowEvent` objects. | **application/json**: [WorkflowBlockingResponse](#workflowblockingresponse)<br>**text/event-stream**: string<br> |
-| 400 | - `not_workflow_app` : App mode does not match the API route. - `bad_request` : Workflow is a draft or has an invalid ID format. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model unavailable. - `completion_request_error` : Workflow execution request failed. - `invalid_param` : Required parameter missing or invalid. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | - `not_workflow_app` : App mode does not match the API route. - `bad_request` : Workflow is a draft or has an invalid ID format. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model unavailable. - `completion_request_error` : Workflow execution request failed. - `invalid_param` : Required parameter missing or invalid. | **application/json**: <br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 403 | - `forbidden` : Token scope, app, or workspace access denied. - `workflow_version_execution_not_allowed` : Workflow version execution is unavailable on the current plan. Upgrade to a paid plan. - `trigger_workflow_service_mode_unavailable` : The selected workflow version uses a trigger entry and cannot be invoked through Web App, Service API, OpenAPI, or MCP. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | - `forbidden` : Token scope, app, or workspace access denied. - `workflow_version_execution_not_allowed` : Workflow version execution is unavailable on the current plan. Upgrade to a paid plan. - `trigger_workflow_service_mode_unavailable` : The selected workflow version uses a trigger entry and cannot be invoked through Web App, Service API, OpenAPI, or MCP. | **application/json**: <br> |
 | 404 | `not_found` : Workflow not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 429 | - `too_many_requests` : Too many concurrent requests for this app. - `rate_limit_error` : The Dify Cloud workflow execution quota for this workspace has been reached. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 429 | - `too_many_requests` : Too many concurrent requests for this app. - `rate_limit_error` : The Dify Cloud workflow execution quota for this workspace has been reached. | **application/json**: [RateLimitError](#ratelimiterror)<br> |
 | 500 | `internal_server_error` : Internal server error. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -2403,6 +2406,14 @@ Retrieve the list of available models by type. Primarily used to query `text-emb
 
 ---
 ### Schemas
+
+#### AgentNotPublishedError
+
+Agent has not been published. Please publish the Agent before using the API.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AgentNotPublishedError |  | Agent has not been published. Please publish the Agent before using the API. |  |
 
 #### AgentThought
 
@@ -2517,11 +2528,35 @@ Retrieve the list of available models by type. Primarily used to query `text-emb
 | ---- | ---- | ----------- | -------- |
 | tool_icons | object |  | No |
 
+#### AppUnavailableError
+
+App unavailable, please check your app configurations.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AppUnavailableError |  | App unavailable, please check your app configurations. |  |
+
+#### ArchivedDocumentImmutableError
+
+The archived document is not editable.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ArchivedDocumentImmutableError |  | The archived document is not editable. |  |
+
 #### AudioBinaryResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | AudioBinaryResponse | string |  |  |
+
+#### AudioTooLargeError
+
+Audio size exceeded. {message}
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AudioTooLargeError |  | Audio size exceeded. {message} |  |
 
 #### AudioTranscriptResponse
 
@@ -2752,6 +2787,14 @@ Public pause reason emitted by a blocking Chatflow execution.
 | metadata | [BlockingMetadataResponse](#blockingmetadataresponse) | Metadata including usage and retriever resources. | Yes |
 | mode | string |  | Yes |
 | task_id | string (uuid) |  | Yes |
+
+#### CompletionRequestError
+
+Completion request failed.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| CompletionRequestError |  | Completion request failed. |  |
 
 #### CompletionRequestPayload
 
@@ -3078,6 +3121,14 @@ Enum class for custom configuration status.
 | name | string |  | Yes |
 | type | string |  | Yes |
 
+#### DatasetNameDuplicateError
+
+The dataset name already exists. Please modify your dataset name.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| DatasetNameDuplicateError |  | The dataset name already exists. Please modify your dataset name. |  |
+
 #### DatasetRerankingModelResponse
 
 | Name | Type | Description | Required |
@@ -3386,6 +3437,14 @@ Full end-user detail returned by the Service API.
 | type | string |  | Yes |
 | updated_at | dateTime |  | Yes |
 
+#### EndUserNotFoundError
+
+End user not found.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| EndUserNotFoundError |  | End user not found. |  |
+
 #### ErrorMessageResponse
 
 Legacy ``{"error": message}`` body a few endpoints return instead of the standard error body.
@@ -3436,6 +3495,22 @@ Enum class for fetch from.
 | ---- | ---- | ----------- | -------- |
 | FetchFrom | string | Enum class for fetch from. |  |
 
+#### FileAccessDeniedError
+
+Access to the requested file is denied.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| FileAccessDeniedError |  | Access to the requested file is denied. |  |
+
+#### FileExtensionBlockedError
+
+The file extension is blocked for security reasons.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| FileExtensionBlockedError |  | The file extension is blocked for security reasons. |  |
+
 #### FileInputConfig
 
 | Name | Type | Description | Required |
@@ -3456,6 +3531,14 @@ Enum class for fetch from.
 | number_limits | integer |  | No |
 | output_variable_name | string |  | Yes |
 | type | string |  | No |
+
+#### FileNotFoundError
+
+The requested file was not found.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| FileNotFoundError |  | The requested file was not found. |  |
 
 #### FilePreviewQuery
 
@@ -3483,6 +3566,14 @@ Enum class for fetch from.
 | tenant_id | string |  | No |
 | user_id | string |  | No |
 
+#### FileTooLargeError
+
+File size exceeded. {message}
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| FileTooLargeError |  | File size exceeded. {message} |  |
+
 #### FileTransferMethod
 
 | Name | Type | Description | Required |
@@ -3494,6 +3585,14 @@ Enum class for fetch from.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | FileType | string |  |  |
+
+#### FilenameNotExistsError
+
+The specified filename does not exist.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| FilenameNotExistsError |  | The specified filename does not exist. |  |
 
 #### FormInputConfig
 
@@ -3675,6 +3774,14 @@ Model class for i18n object.
 | server_version | string |  | Yes |
 | welcome | string |  | Yes |
 
+#### InvalidActionError
+
+Invalid action.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| InvalidActionError |  | Invalid action. |  |
+
 #### JSONObject
 
 | Name | Type | Description | Required |
@@ -3822,6 +3929,14 @@ Metadata operation data
 | ---- | ---- | ----------- | -------- |
 | name | string | New metadata field name. | Yes |
 
+#### ModelCurrentlyNotSupportError
+
+Dify Hosted OpenAI trial currently not support the GPT-4 model.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ModelCurrentlyNotSupportError |  | Dify Hosted OpenAI trial currently not support the GPT-4 model. |  |
+
 #### ModelFeature
 
 Enum class for llm feature.
@@ -3853,6 +3968,38 @@ Enum class for model type.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | ModelType | string | Enum class for model type. |  |
+
+#### NoAudioUploadedError
+
+Please upload your audio.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| NoAudioUploadedError |  | Please upload your audio. |  |
+
+#### NoFileUploadedError
+
+Please upload your file.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| NoFileUploadedError |  | Please upload your file. |  |
+
+#### NotChatAppError
+
+Please check if your app mode matches the right API route.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| NotChatAppError |  | Please check if your app mode matches the right API route. |  |
+
+#### NotWorkflowAppError
+
+Please check if your app mode matches the right API route.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| NotWorkflowAppError |  | Please check if your app mode matches the right API route. |  |
 
 #### OptionalServiceApiUserPayload
 
@@ -3928,6 +4075,14 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | response_mode | string, <br>**Available values:** "blocking", "streaming" | Response mode for draft runs. Use `streaming` for SSE or `blocking` for JSON. Published runs are queued and always return batch metadata as JSON.<br>*Enum:* `"blocking"`, `"streaming"` | Yes |
 | start_node_id | string | ID of the datasource node where the run starts. | Yes |
 
+#### PipelineRunError
+
+An error occurred while running the pipeline.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| PipelineRunError |  | An error occurred while running the pipeline. |  |
+
 #### PipelineRunJsonResponse
 
 JSON result for published runs and draft runs using `response_mode: blocking`.
@@ -3993,6 +4148,30 @@ Model class for model response.
 | model_type | [ModelType](#modeltype) | Type of the model, matching the `model_type` path parameter. | Yes |
 | status | [ModelStatus](#modelstatus) | Model availability status. `active` when ready to use. | Yes |
 
+#### ProviderNotInitializeError
+
+No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ProviderNotInitializeError |  | No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials. |  |
+
+#### ProviderNotSupportSpeechToTextError
+
+Provider not support speech to text.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ProviderNotSupportSpeechToTextError |  | Provider not support speech to text. |  |
+
+#### ProviderQuotaExceededError
+
+Your quota for Dify Hosted OpenAI has been exhausted. Please go to Settings -> Model Provider to complete your own provider credentials.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ProviderQuotaExceededError |  | Your quota for Dify Hosted OpenAI has been exhausted. Please go to Settings -> Model Provider to complete your own provider credentials. |  |
+
 #### ProviderWithModelsListResponse
 
 | Name | Type | Description | Required |
@@ -4020,6 +4199,14 @@ Model class for provider with models response.
 | batch | string |  | Yes |
 | dataset | [PipelineDataset](#pipelinedataset) |  | Yes |
 | documents | [ [PipelineDocument](#pipelinedocument) ] |  | Yes |
+
+#### RateLimitError
+
+Rate Limit Error
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| RateLimitError |  | Rate Limit Error |  |
 
 #### RerankingModel
 
@@ -4291,6 +4478,14 @@ Model class for provider with models response.
 | title | string |  | Yes |
 | use_icon_as_answer_icon | boolean |  | Yes |
 
+#### SpeechToTextDisabledError
+
+Speech to text is disabled.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| SpeechToTextDisabledError |  | Speech to text is disabled. |  |
+
 #### StringListSource
 
 | Name | Type | Description | Required |
@@ -4372,12 +4567,44 @@ Accepts either the legacy tag_id payload or the normalized tag_ids payload.
 | user | string | End-user identifier, defined by your app and unique within it. Identifies the end user for this request. See [End User Identity](/api-reference/guides/end-user-identity) for endpoint-specific access rules. | No |
 | voice | string | Voice to use for text-to-speech. Available voices depend on the TTS provider configured for this app. Omit to use the app's configured voice when available; that value is exposed by [Get App Parameters](/api-reference/applications/get-app-parameters) as `text_to_speech.voice`. | No |
 
+#### TooManyFilesError
+
+Only one file is allowed.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TooManyFilesError |  | Only one file is allowed. |  |
+
 #### ToolIcon
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | background | string |  | Yes |
 | content | string |  | Yes |
+
+#### TriggerWorkflowServiceModeUnavailableError
+
+This workflow uses a trigger entry and cannot be invoked through Web App, Service API, OpenAPI, or MCP.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TriggerWorkflowServiceModeUnavailableError |  | This workflow uses a trigger entry and cannot be invoked through Web App, Service API, OpenAPI, or MCP. |  |
+
+#### UnsupportedAudioTypeError
+
+Audio type not allowed.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| UnsupportedAudioTypeError |  | Audio type not allowed. |  |
+
+#### UnsupportedFileTypeError
+
+File type not allowed.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| UnsupportedFileTypeError |  | File type not allowed. |  |
 
 #### UrlResponse
 
@@ -4600,3 +4827,11 @@ Public pause reason emitted by a blocking Workflow execution.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | user | string | End-user identifier, defined by your app and unique within it. It does not need to match the `user` that started the run; the stop applies to the task regardless of `user`. See [End User Identity](/api-reference/guides/end-user-identity). | Yes |
+
+#### WorkflowVersionExecutionNotAllowedError
+
+Workflow version execution is not available on your current plan. Please upgrade to a paid plan.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| WorkflowVersionExecutionNotAllowedError |  | Workflow version execution is not available on your current plan. Please upgrade to a paid plan. |  |

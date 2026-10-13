@@ -24,65 +24,58 @@ export const zErrorResponse = z.object({
 })
 
 /**
- * GetConsoleWorkflowEventsApiError400
+ * AccountNotInitializedError
+ *
+ * The account has not been initialized yet. Please proceed with the initialization process first.
  */
-export const zGetConsoleWorkflowEventsApiError400 = zErrorResponse.and(
+export const zAccountNotInitializedError = zErrorResponse.and(
   z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'security_error',
-      'websocket_mismatch',
-    ]),
+    code: z.literal('account_not_initialized'),
+    status: z.literal(400).optional(),
   }),
 )
 
 /**
- * GetConsoleWorkflowEventsApiError404
+ * InvalidParamError
  */
-export const zGetConsoleWorkflowEventsApiError404 = zErrorResponse.and(
+export const zInvalidParamError = zErrorResponse.and(
   z.object({
-    code: z.enum(['not_found']),
+    code: z.literal('invalid_param'),
+    status: z.literal(400).optional(),
   }),
 )
 
 /**
- * GetWorkflowPauseDetailsError400
+ * NotFoundError
  */
-export const zGetWorkflowPauseDetailsError400 = zErrorResponse.and(
+export const zNotFoundError = zErrorResponse.and(
   z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'security_error',
-      'websocket_mismatch',
-    ]),
+    code: z.literal('not_found'),
+    status: z.literal(404).optional(),
   }),
 )
 
 /**
- * GetWorkflowPauseDetailsError401
+ * NotInitValidatedError
+ *
+ * Init validation has not been completed yet. Please proceed with the init validation process first.
  */
-export const zGetWorkflowPauseDetailsError401 = zErrorResponse.and(
+export const zNotInitValidatedError = zErrorResponse.and(
   z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+    code: z.literal('not_init_validated'),
+    status: z.literal(401).optional(),
   }),
 )
 
 /**
- * GetWorkflowPauseDetailsError404
+ * NotSetupError
+ *
+ * Dify has not been initialized and installed yet. Please proceed with the initialization and installation process first.
  */
-export const zGetWorkflowPauseDetailsError404 = zErrorResponse.and(
+export const zNotSetupError = zErrorResponse.and(
   z.object({
-    code: z.enum(['not_found']),
+    code: z.literal('not_setup'),
+    status: z.literal(401).optional(),
   }),
 )
 

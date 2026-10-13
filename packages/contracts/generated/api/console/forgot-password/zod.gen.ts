@@ -35,24 +35,50 @@ export const zErrorResponse = z.object({
 })
 
 /**
- * SendForgotPasswordEmailError401
+ * NotInitValidatedError
+ *
+ * Init validation has not been completed yet. Please proceed with the init validation process first.
  */
-export const zSendForgotPasswordEmailError401 = zErrorResponse.and(
+export const zNotInitValidatedError = zErrorResponse.and(
   z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+    code: z.literal('not_init_validated'),
+    status: z.literal(401).optional(),
   }),
 )
 
 /**
- * SendForgotPasswordEmailError429
+ * NotSetupError
+ *
+ * Dify has not been initialized and installed yet. Please proceed with the initialization and installation process first.
  */
-export const zSendForgotPasswordEmailError429 = zErrorResponse.and(
+export const zNotSetupError = zErrorResponse.and(
   z.object({
-    code: z.enum([
-      'email_send_ip_limit',
-      'password_reset_rate_limit_exceeded',
-      'too_many_requests',
-    ]),
+    code: z.literal('not_setup'),
+    status: z.literal(401).optional(),
+  }),
+)
+
+/**
+ * EmailSendIpLimitError
+ *
+ * Too many emails have been sent from this IP address recently. Please try again later.
+ */
+export const zEmailSendIpLimitError = zErrorResponse.and(
+  z.object({
+    code: z.literal('email_send_ip_limit'),
+    status: z.literal(429).optional(),
+  }),
+)
+
+/**
+ * PasswordResetRateLimitExceededError
+ *
+ * Too many password reset emails have been sent. Please try again in {minutes} minutes.
+ */
+export const zPasswordResetRateLimitExceededError = zErrorResponse.and(
+  z.object({
+    code: z.literal('password_reset_rate_limit_exceeded'),
+    status: z.literal(429).optional(),
   }),
 )
 
@@ -73,31 +99,38 @@ export const zForgotPasswordResetResponse = z.object({
 })
 
 /**
- * ResetPasswordError400
+ * AccountNotFoundError
+ *
+ * Account not found.
  */
-export const zResetPasswordError400 = zErrorResponse.and(
+export const zAccountNotFoundError = zErrorResponse.and(
   z.object({
-    code: z.enum([
-      'account_not_found',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_or_expired_token',
-      'invalid_param',
-      'password_mismatch',
-      'security_error',
-      'websocket_mismatch',
-    ]),
+    code: z.literal('account_not_found'),
+    status: z.literal(400).optional(),
   }),
 )
 
 /**
- * ResetPasswordError401
+ * InvalidOrExpiredTokenError
+ *
+ * The token is invalid or has expired.
  */
-export const zResetPasswordError401 = zErrorResponse.and(
+export const zInvalidOrExpiredTokenError = zErrorResponse.and(
   z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+    code: z.literal('invalid_or_expired_token'),
+    status: z.literal(400).optional(),
+  }),
+)
+
+/**
+ * PasswordMismatchError
+ *
+ * The passwords do not match.
+ */
+export const zPasswordMismatchError = zErrorResponse.and(
+  z.object({
+    code: z.literal('password_mismatch'),
+    status: z.literal(400).optional(),
   }),
 )
 
@@ -120,40 +153,38 @@ export const zForgotPasswordCheckResponse = z.object({
 })
 
 /**
- * CheckForgotPasswordCodeError400
+ * EmailCodeError
+ *
+ * Email code is invalid or expired.
  */
-export const zCheckForgotPasswordCodeError400 = zErrorResponse.and(
+export const zEmailCodeError = zErrorResponse.and(
   z.object({
-    code: z.enum([
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'email_code_error',
-      'invalid_email',
-      'invalid_or_expired_token',
-      'invalid_param',
-      'security_error',
-      'websocket_mismatch',
-    ]),
+    code: z.literal('email_code_error'),
+    status: z.literal(400).optional(),
   }),
 )
 
 /**
- * CheckForgotPasswordCodeError401
+ * InvalidEmailError
+ *
+ * The email address is not valid.
  */
-export const zCheckForgotPasswordCodeError401 = zErrorResponse.and(
+export const zInvalidEmailError = zErrorResponse.and(
   z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+    code: z.literal('invalid_email'),
+    status: z.literal(400).optional(),
   }),
 )
 
 /**
- * CheckForgotPasswordCodeError429
+ * EmailPasswordResetLimitError
+ *
+ * Too many failed password reset attempts. Please try again in 24 hours.
  */
-export const zCheckForgotPasswordCodeError429 = zErrorResponse.and(
+export const zEmailPasswordResetLimitError = zErrorResponse.and(
   z.object({
-    code: z.enum(['email_password_reset_limit', 'too_many_requests']),
+    code: z.literal('email_password_reset_limit'),
+    status: z.literal(429).optional(),
   }),
 )
 

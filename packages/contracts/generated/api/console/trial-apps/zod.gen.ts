@@ -19,6 +19,90 @@ export const zErrorResponse = z.object({
 })
 
 /**
+ * AccountNotInitializedError
+ *
+ * The account has not been initialized yet. Please proceed with the initialization process first.
+ */
+export const zAccountNotInitializedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('account_not_initialized'),
+    status: z.literal(400).optional(),
+  }),
+)
+
+/**
+ * AppUnavailableError
+ *
+ * App unavailable, please check your app configurations.
+ */
+export const zAppUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('app_unavailable'),
+    status: z.literal(400).optional(),
+  }),
+)
+
+/**
+ * NotInitValidatedError
+ *
+ * Init validation has not been completed yet. Please proceed with the init validation process first.
+ */
+export const zNotInitValidatedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('not_init_validated'),
+    status: z.literal(401).optional(),
+  }),
+)
+
+/**
+ * NotSetupError
+ *
+ * Dify has not been initialized and installed yet. Please proceed with the initialization and installation process first.
+ */
+export const zNotSetupError = zErrorResponse.and(
+  z.object({
+    code: z.literal('not_setup'),
+    status: z.literal(401).optional(),
+  }),
+)
+
+/**
+ * UnauthorizedError
+ *
+ * Authentication is required.
+ */
+export const zUnauthorizedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('unauthorized'),
+    status: z.literal(401).optional(),
+  }),
+)
+
+/**
+ * AppSiteUnavailableError
+ *
+ * The app preview site is unavailable.
+ */
+export const zAppSiteUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('app_site_unavailable'),
+    status: z.literal(403).optional(),
+  }),
+)
+
+/**
+ * AppNotFoundError
+ *
+ * App not found.
+ */
+export const zAppNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('app_not_found'),
+    status: z.literal(404).optional(),
+  }),
+)
+
+/**
  * AgentConfigDownloadResponse
  */
 export const zAgentConfigDownloadResponse = z.object({
@@ -55,6 +139,174 @@ export const zAudioTranscriptResponse = z.object({
 })
 
 /**
+ * CompletionRequestError
+ *
+ * Completion request failed.
+ */
+export const zCompletionRequestError = zErrorResponse.and(
+  z.object({
+    code: z.literal('completion_request_error'),
+    status: z.literal(400).optional(),
+  }),
+)
+
+/**
+ * ModelCurrentlyNotSupportError
+ *
+ * Dify Hosted OpenAI trial currently not support the GPT-4 model.
+ */
+export const zModelCurrentlyNotSupportError = zErrorResponse.and(
+  z.object({
+    code: z.literal('model_currently_not_support'),
+    status: z.literal(400).optional(),
+  }),
+)
+
+/**
+ * NoAudioUploadedError
+ *
+ * Please upload your audio.
+ */
+export const zNoAudioUploadedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('no_audio_uploaded'),
+    status: z.literal(400).optional(),
+  }),
+)
+
+/**
+ * ProviderNotInitializeError
+ *
+ * No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials.
+ */
+export const zProviderNotInitializeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('provider_not_initialize'),
+    status: z.literal(400).optional(),
+  }),
+)
+
+/**
+ * ProviderNotSupportSpeechToTextError
+ *
+ * Provider not support speech to text.
+ */
+export const zProviderNotSupportSpeechToTextError = zErrorResponse.and(
+  z.object({
+    code: z.literal('provider_not_support_speech_to_text'),
+    status: z.literal(400).optional(),
+  }),
+)
+
+/**
+ * ProviderQuotaExceededError
+ *
+ * Your quota for Dify Hosted Model Provider has been exhausted. Please go to Settings -> Model Provider to complete your own provider credentials.
+ */
+export const zProviderQuotaExceededError = zErrorResponse.and(
+  z.object({
+    code: z.literal('provider_quota_exceeded'),
+    status: z.literal(400).optional(),
+  }),
+)
+
+/**
+ * SpeechToTextDisabledError
+ *
+ * Speech to text is disabled.
+ */
+export const zSpeechToTextDisabledError = zErrorResponse.and(
+  z.object({
+    code: z.literal('speech_to_text_disabled'),
+    status: z.literal(400).optional(),
+  }),
+)
+
+/**
+ * TrialAppFeatureDisabledError
+ *
+ * Trial app feature is not enabled.
+ */
+export const zTrialAppFeatureDisabledError = zErrorResponse.and(
+  z.object({
+    code: z.literal('trial_app_feature_disabled'),
+    status: z.literal(403).optional(),
+  }),
+)
+
+/**
+ * TrialAppLimitExceededError
+ *
+ * The user has exceeded the trial app limit.
+ */
+export const zTrialAppLimitExceededError = zErrorResponse.and(
+  z.object({
+    code: z.literal('trial_app_limit_exceeded'),
+    status: z.literal(403).optional(),
+  }),
+)
+
+/**
+ * TrialAppNotAllowedError
+ *
+ * the app is not allowed to be trial.
+ */
+export const zTrialAppNotAllowedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('trial_app_not_allowed'),
+    status: z.literal(403).optional(),
+  }),
+)
+
+/**
+ * AgentVersionNotFoundError
+ *
+ * Agent config version not found.
+ */
+export const zAgentVersionNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('agent_version_not_found_error'),
+    status: z.literal(404).optional(),
+  }),
+)
+
+/**
+ * AudioTooLargeError
+ *
+ * Audio size exceeded. {message}
+ */
+export const zAudioTooLargeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('audio_too_large'),
+    status: z.literal(413).optional(),
+  }),
+)
+
+/**
+ * UnsupportedAudioTypeError
+ *
+ * Audio type not allowed.
+ */
+export const zUnsupportedAudioTypeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('unsupported_audio_type'),
+    status: z.literal(415).optional(),
+  }),
+)
+
+/**
+ * InternalServerError
+ *
+ * The server encountered an internal error and was unable to complete your request. Either the server is overloaded or there is an error in the application.
+ */
+export const zInternalServerError = zErrorResponse.and(
+  z.object({
+    code: z.literal('internal_server_error'),
+    status: z.literal(500).optional(),
+  }),
+)
+
+/**
  * ChatRequest
  */
 export const zChatRequest = z.object({
@@ -65,6 +317,40 @@ export const zChatRequest = z.object({
   query: z.string(),
   retriever_from: z.string().optional().default('explore_app'),
 })
+
+/**
+ * NotChatAppError
+ *
+ * App mode is invalid.
+ */
+export const zNotChatAppError = zErrorResponse.and(
+  z.object({
+    code: z.literal('not_chat_app'),
+    status: z.literal(400).optional(),
+  }),
+)
+
+/**
+ * NotFoundError
+ */
+export const zNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('not_found'),
+    status: z.literal(404).optional(),
+  }),
+)
+
+/**
+ * RateLimitError
+ *
+ * Rate Limit Error
+ */
+export const zRateLimitError = zErrorResponse.and(
+  z.object({
+    code: z.literal('rate_limit_error'),
+    status: z.literal(429).optional(),
+  }),
+)
 
 /**
  * SimpleResultResponse
@@ -85,11 +371,47 @@ export const zCompletionRequest = z.object({
 })
 
 /**
+ * NotCompletionAppError
+ *
+ * Not Completion App
+ */
+export const zNotCompletionAppError = zErrorResponse.and(
+  z.object({
+    code: z.literal('not_completion_app'),
+    status: z.literal(400).optional(),
+  }),
+)
+
+/**
+ * NeedAddIdsError
+ *
+ * Need to add ids.
+ */
+export const zNeedAddIdsError = zErrorResponse.and(
+  z.object({
+    code: z.literal('need_add_ids'),
+    status: z.literal(400).optional(),
+  }),
+)
+
+/**
  * AppExportResponse
  */
 export const zAppExportResponse = z.object({
   data: z.string(),
 })
+
+/**
+ * RecommendedAppNotFoundError
+ *
+ * Recommended app not found.
+ */
+export const zRecommendedAppNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('recommended_app_not_found'),
+    status: z.literal(404).optional(),
+  }),
+)
 
 /**
  * FileResponse
@@ -113,11 +435,95 @@ export const zFileResponse = z.object({
 })
 
 /**
+ * FileExtensionBlockedError
+ *
+ * The file extension is blocked for security reasons.
+ */
+export const zFileExtensionBlockedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('file_extension_blocked'),
+    status: z.literal(400).optional(),
+  }),
+)
+
+/**
+ * FilenameNotExistsError
+ *
+ * The specified filename does not exist.
+ */
+export const zFilenameNotExistsError = zErrorResponse.and(
+  z.object({
+    code: z.literal('filename_not_exists_error'),
+    status: z.literal(400).optional(),
+  }),
+)
+
+/**
+ * NoFileUploadedError
+ *
+ * Please upload your file.
+ */
+export const zNoFileUploadedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('no_file_uploaded'),
+    status: z.literal(400).optional(),
+  }),
+)
+
+/**
+ * TooManyFilesError
+ *
+ * Only one file is allowed.
+ */
+export const zTooManyFilesError = zErrorResponse.and(
+  z.object({
+    code: z.literal('too_many_files'),
+    status: z.literal(400).optional(),
+  }),
+)
+
+/**
+ * FileTooLargeError
+ *
+ * File size exceeded. {message}
+ */
+export const zFileTooLargeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('file_too_large'),
+    status: z.literal(413).optional(),
+  }),
+)
+
+/**
+ * UnsupportedFileTypeError
+ *
+ * File type not allowed.
+ */
+export const zUnsupportedFileTypeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('unsupported_file_type'),
+    status: z.literal(415).optional(),
+  }),
+)
+
+/**
  * SuggestedQuestionsResponse
  */
 export const zSuggestedQuestionsResponse = z.object({
   data: z.array(z.string()),
 })
+
+/**
+ * AppSuggestedQuestionsAfterAnswerDisabledError
+ *
+ * Function Suggested questions after answer disabled.
+ */
+export const zAppSuggestedQuestionsAfterAnswerDisabledError = zErrorResponse.and(
+  z.object({
+    code: z.literal('app_suggested_questions_after_answer_disabled'),
+    status: z.literal(403).optional(),
+  }),
+)
 
 /**
  * RemoteFileUploadPayload
@@ -141,6 +547,78 @@ export const zFileWithSignedUrl = z.object({
 })
 
 /**
+ * RemoteFileAccessDeniedError
+ *
+ * The remote file cannot be accessed without authorization.
+ */
+export const zRemoteFileAccessDeniedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('remote_file_access_denied'),
+    status: z.literal(400).optional(),
+  }),
+)
+
+/**
+ * RemoteFileInvalidUrlError
+ *
+ * The remote file URL is invalid.
+ */
+export const zRemoteFileInvalidUrlError = zErrorResponse.and(
+  z.object({
+    code: z.literal('remote_file_invalid_url'),
+    status: z.literal(400).optional(),
+  }),
+)
+
+/**
+ * RemoteFileUrlBlockedError
+ *
+ * The remote file URL is not allowed.
+ */
+export const zRemoteFileUrlBlockedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('remote_file_url_blocked'),
+    status: z.literal(400).optional(),
+  }),
+)
+
+/**
+ * RemoteFileNotFoundError
+ *
+ * The remote file could not be found.
+ */
+export const zRemoteFileNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('remote_file_not_found'),
+    status: z.literal(404).optional(),
+  }),
+)
+
+/**
+ * RemoteFileInvalidResponseError
+ *
+ * The remote file server returned an invalid response.
+ */
+export const zRemoteFileInvalidResponseError = zErrorResponse.and(
+  z.object({
+    code: z.literal('remote_file_invalid_response'),
+    status: z.literal(502).optional(),
+  }),
+)
+
+/**
+ * RemoteFileUnavailableError
+ *
+ * The remote file is temporarily unavailable.
+ */
+export const zRemoteFileUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('remote_file_unavailable'),
+    status: z.literal(502).optional(),
+  }),
+)
+
+/**
  * Site
  */
 export const zSite = z.object({
@@ -160,6 +638,18 @@ export const zSite = z.object({
   title: z.string(),
   use_icon_as_answer_icon: z.boolean(),
 })
+
+/**
+ * AppOwnerUnavailableError
+ *
+ * The app preview owner is unavailable.
+ */
+export const zAppOwnerUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('app_owner_unavailable'),
+    status: z.literal(403).optional(),
+  }),
+)
 
 /**
  * TextToSpeechRequest
@@ -185,6 +675,18 @@ export const zWorkflowRunRequest = z.object({
   files: z.array(z.unknown()).nullish(),
   inputs: z.record(z.string(), z.unknown()),
 })
+
+/**
+ * NotWorkflowAppError
+ *
+ * Only support workflow app.
+ */
+export const zNotWorkflowAppError = zErrorResponse.and(
+  z.object({
+    code: z.literal('not_workflow_app'),
+    status: z.literal(400).optional(),
+  }),
+)
 
 /**
  * TrialDeletedToolResponse

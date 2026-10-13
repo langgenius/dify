@@ -24,6 +24,26 @@ export type ErrorResponse = {
   status: number
 }
 
+export type NotInitValidatedError = ErrorResponse & {
+  code: 'not_init_validated'
+  status?: 401
+}
+
+export type NotSetupError = ErrorResponse & {
+  code: 'not_setup'
+  status?: 401
+}
+
+export type EmailSendIpLimitError = ErrorResponse & {
+  code: 'email_send_ip_limit'
+  status?: 429
+}
+
+export type PasswordResetRateLimitExceededError = ErrorResponse & {
+  code: 'password_reset_rate_limit_exceeded'
+  status?: 429
+}
+
 export type ForgotPasswordResetPayload = {
   new_password: string
   password_confirm: string
@@ -32,6 +52,21 @@ export type ForgotPasswordResetPayload = {
 
 export type ForgotPasswordResetResponse = {
   result: string
+}
+
+export type AccountNotFoundError = ErrorResponse & {
+  code: 'account_not_found'
+  status?: 400
+}
+
+export type InvalidOrExpiredTokenError = ErrorResponse & {
+  code: 'invalid_or_expired_token'
+  status?: 400
+}
+
+export type PasswordMismatchError = ErrorResponse & {
+  code: 'password_mismatch'
+  status?: 400
 }
 
 export type ForgotPasswordCheckPayload = {
@@ -46,6 +81,21 @@ export type ForgotPasswordCheckResponse = {
   token: string
 }
 
+export type EmailCodeError = ErrorResponse & {
+  code: 'email_code_error'
+  status?: 400
+}
+
+export type InvalidEmailError = ErrorResponse & {
+  code: 'invalid_email'
+  status?: 400
+}
+
+export type EmailPasswordResetLimitError = ErrorResponse & {
+  code: 'email_password_reset_limit'
+  status?: 429
+}
+
 export type PostForgotPasswordData = {
   body: ForgotPasswordSendPayload
   path?: never
@@ -55,6 +105,8 @@ export type PostForgotPasswordData = {
 
 export type PostForgotPasswordErrors = {
   400: ErrorResponse
+  401: NotInitValidatedError | NotSetupError
+  429: EmailSendIpLimitError | PasswordResetRateLimitExceededError
   default: ErrorResponse
 }
 
@@ -75,7 +127,8 @@ export type PostForgotPasswordResetsData = {
 }
 
 export type PostForgotPasswordResetsErrors = {
-  400: ErrorResponse
+  400: AccountNotFoundError | InvalidOrExpiredTokenError | PasswordMismatchError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -97,7 +150,9 @@ export type PostForgotPasswordValidityData = {
 }
 
 export type PostForgotPasswordValidityErrors = {
-  400: ErrorResponse
+  400: EmailCodeError | InvalidEmailError | InvalidOrExpiredTokenError
+  401: NotInitValidatedError | NotSetupError
+  429: EmailPasswordResetLimitError
   default: ErrorResponse
 }
 

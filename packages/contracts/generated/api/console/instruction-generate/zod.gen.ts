@@ -33,33 +33,86 @@ export const zErrorResponse = z.object({
 })
 
 /**
- * GenerateInstructionError400
+ * AccountNotInitializedError
+ *
+ * The account has not been initialized yet. Please proceed with the initialization process first.
  */
-export const zGenerateInstructionError400 = zErrorResponse.and(
+export const zAccountNotInitializedError = zErrorResponse.and(
   z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'completion_request_error',
-      'invalid_param',
-      'model_currently_not_support',
-      'provider_not_initialize',
-      'provider_quota_exceeded',
-      'security_error',
-      'websocket_mismatch',
-    ]),
+    code: z.literal('account_not_initialized'),
+    status: z.literal(400).optional(),
   }),
 )
 
 /**
- * GenerateInstructionError401
+ * CompletionRequestError
+ *
+ * Completion request failed.
  */
-export const zGenerateInstructionError401 = zErrorResponse.and(
+export const zCompletionRequestError = zErrorResponse.and(
   z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+    code: z.literal('completion_request_error'),
+    status: z.literal(400).optional(),
+  }),
+)
+
+/**
+ * ModelCurrentlyNotSupportError
+ *
+ * Dify Hosted OpenAI trial currently not support the GPT-4 model.
+ */
+export const zModelCurrentlyNotSupportError = zErrorResponse.and(
+  z.object({
+    code: z.literal('model_currently_not_support'),
+    status: z.literal(400).optional(),
+  }),
+)
+
+/**
+ * ProviderNotInitializeError
+ *
+ * No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials.
+ */
+export const zProviderNotInitializeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('provider_not_initialize'),
+    status: z.literal(400).optional(),
+  }),
+)
+
+/**
+ * ProviderQuotaExceededError
+ *
+ * Your quota for Dify Hosted Model Provider has been exhausted. Please go to Settings -> Model Provider to complete your own provider credentials.
+ */
+export const zProviderQuotaExceededError = zErrorResponse.and(
+  z.object({
+    code: z.literal('provider_quota_exceeded'),
+    status: z.literal(400).optional(),
+  }),
+)
+
+/**
+ * NotInitValidatedError
+ *
+ * Init validation has not been completed yet. Please proceed with the init validation process first.
+ */
+export const zNotInitValidatedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('not_init_validated'),
+    status: z.literal(401).optional(),
+  }),
+)
+
+/**
+ * NotSetupError
+ *
+ * Dify has not been initialized and installed yet. Please proceed with the initialization and installation process first.
+ */
+export const zNotSetupError = zErrorResponse.and(
+  z.object({
+    code: z.literal('not_setup'),
+    status: z.literal(401).optional(),
   }),
 )
 
@@ -76,33 +129,6 @@ export const zInstructionTemplatePayload = z.object({
 export const zSimpleDataResponse = z.object({
   data: z.string(),
 })
-
-/**
- * GetInstructionTemplateError400
- */
-export const zGetInstructionTemplateError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * GetInstructionTemplateError401
- */
-export const zGetInstructionTemplateError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
 
 /**
  * LLMMode

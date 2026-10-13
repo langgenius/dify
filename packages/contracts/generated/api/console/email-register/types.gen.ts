@@ -17,6 +17,51 @@ export type EmailRegisterResetResponse = {
   result: string
 }
 
+export type AccountInFreezeError = ErrorResponse & {
+  code: 'account_in_freeze'
+  status?: 400
+}
+
+export type EmailAlreadyInUseError = ErrorResponse & {
+  code: 'email_already_in_use'
+  status?: 400
+}
+
+export type EmailDomainSuspendedError = ErrorResponse & {
+  code: 'email_domain_suspended'
+  status?: 400
+}
+
+export type InvalidOrExpiredTokenError = ErrorResponse & {
+  code: 'invalid_or_expired_token'
+  status?: 400
+}
+
+export type LimitExceededError = ErrorResponse & {
+  code: 'limit_exceeded'
+  status?: 400
+}
+
+export type NormalizedEmailAlreadyInUseError = ErrorResponse & {
+  code: 'normalized_email_already_in_use'
+  status?: 400
+}
+
+export type PasswordMismatchError = ErrorResponse & {
+  code: 'password_mismatch'
+  status?: 400
+}
+
+export type NotInitValidatedError = ErrorResponse & {
+  code: 'not_init_validated'
+  status?: 401
+}
+
+export type NotSetupError = ErrorResponse & {
+  code: 'not_setup'
+  status?: 401
+}
+
 export type ErrorResponse = {
   code: string
   details?: {
@@ -37,6 +82,16 @@ export type SimpleResultDataResponse = {
   result: string
 }
 
+export type EmailRegisterRateLimitExceededError = ErrorResponse & {
+  code: 'email_register_rate_limit_exceeded'
+  status?: 429
+}
+
+export type EmailSendIpLimitError = ErrorResponse & {
+  code: 'email_send_ip_limit'
+  status?: 429
+}
+
 export type EmailRegisterValidityPayload = {
   code: string
   email: string
@@ -47,6 +102,21 @@ export type VerificationTokenResponse = {
   email: string
   is_valid: boolean
   token: string
+}
+
+export type EmailCodeError = ErrorResponse & {
+  code: 'email_code_error'
+  status?: 400
+}
+
+export type InvalidEmailError = ErrorResponse & {
+  code: 'invalid_email'
+  status?: 400
+}
+
+export type EmailRegisterLimitError = ErrorResponse & {
+  code: 'email_register_limit'
+  status?: 429
 }
 
 export type EmailRegisterTokenPairResponse = {
@@ -63,6 +133,15 @@ export type PostEmailRegisterData = {
 }
 
 export type PostEmailRegisterErrors = {
+  400:
+    | AccountInFreezeError
+    | EmailAlreadyInUseError
+    | EmailDomainSuspendedError
+    | InvalidOrExpiredTokenError
+    | LimitExceededError
+    | NormalizedEmailAlreadyInUseError
+    | PasswordMismatchError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -82,6 +161,9 @@ export type PostEmailRegisterSendEmailData = {
 }
 
 export type PostEmailRegisterSendEmailErrors = {
+  400: AccountInFreezeError | EmailDomainSuspendedError
+  401: NotInitValidatedError | NotSetupError
+  429: EmailRegisterRateLimitExceededError | EmailSendIpLimitError
   default: ErrorResponse
 }
 
@@ -103,6 +185,9 @@ export type PostEmailRegisterValidityData = {
 }
 
 export type PostEmailRegisterValidityErrors = {
+  400: EmailCodeError | InvalidEmailError | InvalidOrExpiredTokenError
+  401: NotInitValidatedError | NotSetupError
+  429: EmailRegisterLimitError
   default: ErrorResponse
 }
 

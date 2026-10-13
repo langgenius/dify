@@ -33,74 +33,50 @@ export const zErrorResponse = z.object({
 })
 
 /**
- * CrawlWebsiteError400
+ * AccountNotInitializedError
+ *
+ * The account has not been initialized yet. Please proceed with the initialization process first.
  */
-export const zCrawlWebsiteError400 = zErrorResponse.and(
+export const zAccountNotInitializedError = zErrorResponse.and(
   z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'security_error',
-      'websocket_mismatch',
-    ]),
+    code: z.literal('account_not_initialized'),
+    status: z.literal(400).optional(),
   }),
 )
 
 /**
- * CrawlWebsiteError401
+ * NotInitValidatedError
+ *
+ * Init validation has not been completed yet. Please proceed with the init validation process first.
  */
-export const zCrawlWebsiteError401 = zErrorResponse.and(
+export const zNotInitValidatedError = zErrorResponse.and(
   z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+    code: z.literal('not_init_validated'),
+    status: z.literal(401).optional(),
   }),
 )
 
 /**
- * CrawlWebsiteError500
+ * NotSetupError
+ *
+ * Dify has not been initialized and installed yet. Please proceed with the initialization and installation process first.
  */
-export const zCrawlWebsiteError500 = zErrorResponse.and(
+export const zNotSetupError = zErrorResponse.and(
   z.object({
-    code: z.enum(['active_workspace_required', 'crawl_failed', 'internal_server_error', 'unknown']),
+    code: z.literal('not_setup'),
+    status: z.literal(401).optional(),
   }),
 )
 
 /**
- * GetCrawlStatusError400
+ * CrawlFailedError
+ *
+ * {message}
  */
-export const zGetCrawlStatusError400 = zErrorResponse.and(
+export const zCrawlFailedError = zErrorResponse.and(
   z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * GetCrawlStatusError401
- */
-export const zGetCrawlStatusError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * GetCrawlStatusError500
- */
-export const zGetCrawlStatusError500 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['active_workspace_required', 'crawl_failed', 'internal_server_error', 'unknown']),
+    code: z.literal('crawl_failed'),
+    status: z.literal(500).optional(),
   }),
 )
 

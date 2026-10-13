@@ -9,6 +9,21 @@ export type WorkflowRunArchiveListResponse = {
   summary: WorkflowRunArchiveSummaryResponse
 }
 
+export type AccountNotInitializedError = ErrorResponse & {
+  code: 'account_not_initialized'
+  status?: 400
+}
+
+export type NotInitValidatedError = ErrorResponse & {
+  code: 'not_init_validated'
+  status?: 401
+}
+
+export type NotSetupError = ErrorResponse & {
+  code: 'not_setup'
+  status?: 401
+}
+
 export type ErrorResponse = {
   code: string
   details?: {
@@ -69,6 +84,8 @@ export type GetWorkflowRunArchivesData = {
 }
 
 export type GetWorkflowRunArchivesErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -90,6 +107,8 @@ export type PostWorkflowRunArchivesDownloadsData = {
 }
 
 export type PostWorkflowRunArchivesDownloadsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -113,6 +132,8 @@ export type GetWorkflowRunArchivesDownloadsByDownloadIdData = {
 }
 
 export type GetWorkflowRunArchivesDownloadsByDownloadIdErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 

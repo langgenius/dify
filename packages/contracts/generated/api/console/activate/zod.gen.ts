@@ -38,30 +38,50 @@ export const zErrorResponse = z.object({
 })
 
 /**
- * ActivateAccountError400
+ * AccountInFreezeError
+ *
+ * This email account has been deleted within the past 30 days and is temporarily unavailable for new account registration.
  */
-export const zActivateAccountError400 = zErrorResponse.and(
+export const zAccountInFreezeError = zErrorResponse.and(
   z.object({
-    code: z.enum([
-      'account_in_freeze',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'email_domain_suspended',
-      'invalid_param',
-      'security_error',
-      'websocket_mismatch',
-    ]),
+    code: z.literal('account_in_freeze'),
+    status: z.literal(400).optional(),
   }),
 )
 
 /**
- * ActivateAccountError403
+ * EmailDomainSuspendedError
+ *
+ * This email domain has been suspended.
  */
-export const zActivateAccountError403 = zErrorResponse.and(
+export const zEmailDomainSuspendedError = zErrorResponse.and(
   z.object({
-    code: z.enum(['already_activate', 'forbidden', 'invitation_account_mismatch']),
+    code: z.literal('email_domain_suspended'),
+    status: z.literal(400).optional(),
+  }),
+)
+
+/**
+ * AlreadyActivateError
+ *
+ * Auth Token is invalid or account already activated, please check again.
+ */
+export const zAlreadyActivateError = zErrorResponse.and(
+  z.object({
+    code: z.literal('already_activate'),
+    status: z.literal(403).optional(),
+  }),
+)
+
+/**
+ * InvitationAccountMismatchError
+ *
+ * This invitation was sent to another account. Please sign in with the invited account.
+ */
+export const zInvitationAccountMismatchError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invitation_account_mismatch'),
+    status: z.literal(403).optional(),
   }),
 )
 

@@ -6,6 +6,21 @@ export type ClientOptions = {
 
 export type TagListResponse = Array<TagResponse>
 
+export type AccountNotInitializedError = ErrorResponse & {
+  code: 'account_not_initialized'
+  status?: 400
+}
+
+export type NotInitValidatedError = ErrorResponse & {
+  code: 'not_init_validated'
+  status?: 401
+}
+
+export type NotSetupError = ErrorResponse & {
+  code: 'not_setup'
+  status?: 401
+}
+
 export type ErrorResponse = {
   code: string
   details?: {
@@ -45,6 +60,8 @@ export type GetTagsData = {
 }
 
 export type GetTagsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -64,6 +81,8 @@ export type PostTagsData = {
 }
 
 export type PostTagsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -85,6 +104,8 @@ export type DeleteTagsByTagIdData = {
 }
 
 export type DeleteTagsByTagIdErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -106,6 +127,8 @@ export type PatchTagsByTagIdData = {
 }
 
 export type PatchTagsByTagIdErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 

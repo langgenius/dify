@@ -12,6 +12,21 @@ export type ErrorMessageResponse = {
   error: string
 }
 
+export type AccountNotInitializedError = ErrorResponse & {
+  code: 'account_not_initialized'
+  status?: 400
+}
+
+export type NotInitValidatedError = ErrorResponse & {
+  code: 'not_init_validated'
+  status?: 401
+}
+
+export type NotSetupError = ErrorResponse & {
+  code: 'not_setup'
+  status?: 401
+}
+
 export type ErrorResponse = {
   code: string
   details?: {
@@ -94,7 +109,8 @@ export type GetOauthDataSourceBindingByProviderData = {
 }
 
 export type GetOauthDataSourceBindingByProviderErrors = {
-  400: ErrorMessageResponse | ErrorResponse
+  400: ErrorMessageResponse | AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -118,7 +134,8 @@ export type GetOauthDataSourceByProviderData = {
 }
 
 export type GetOauthDataSourceByProviderErrors = {
-  400: ErrorMessageResponse | ErrorResponse
+  400: ErrorMessageResponse | AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   403: ErrorResponse
   default: ErrorResponse
 }
@@ -144,7 +161,8 @@ export type GetOauthDataSourceByProviderByBindingIdSyncData = {
 }
 
 export type GetOauthDataSourceByProviderByBindingIdSyncErrors = {
-  400: ErrorMessageResponse | ErrorResponse
+  400: ErrorMessageResponse | AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -171,6 +189,8 @@ export type GetOauthPluginByProviderIdDatasourceGetAuthorizationUrlData = {
 }
 
 export type GetOauthPluginByProviderIdDatasourceGetAuthorizationUrlErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -196,6 +216,8 @@ export type GetOauthPluginByProviderToolAuthorizationUrlData = {
 }
 
 export type GetOauthPluginByProviderToolAuthorizationUrlErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -217,6 +239,7 @@ export type PostOauthProviderData = {
 }
 
 export type PostOauthProviderErrors = {
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -236,6 +259,7 @@ export type PostOauthProviderAccountData = {
 }
 
 export type PostOauthProviderAccountErrors = {
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -257,6 +281,8 @@ export type PostOauthProviderAuthorizeData = {
 }
 
 export type PostOauthProviderAuthorizeErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -278,6 +304,7 @@ export type PostOauthProviderTokenData = {
 }
 
 export type PostOauthProviderTokenErrors = {
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 

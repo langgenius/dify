@@ -40,64 +40,110 @@ export const zErrorResponse = z.object({
 })
 
 /**
- * PostRemoteFileUploadError400
+ * FileExtensionBlockedError
+ *
+ * The file extension is blocked for security reasons.
  */
-export const zPostRemoteFileUploadError400 = zErrorResponse.and(
+export const zFileExtensionBlockedError = zErrorResponse.and(
   z.object({
-    code: z.enum([
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'file_extension_blocked',
-      'invalid_param',
-      'remote_file_access_denied',
-      'remote_file_invalid_url',
-      'remote_file_url_blocked',
-      'security_error',
-      'websocket_mismatch',
-    ]),
+    code: z.literal('file_extension_blocked'),
+    status: z.literal(400).optional(),
   }),
 )
 
 /**
- * PostRemoteFileUploadError404
+ * RemoteFileAccessDeniedError
+ *
+ * The remote file cannot be accessed without authorization.
  */
-export const zPostRemoteFileUploadError404 = zErrorResponse.and(
+export const zRemoteFileAccessDeniedError = zErrorResponse.and(
   z.object({
-    code: z.enum(['not_found', 'remote_file_not_found']),
+    code: z.literal('remote_file_access_denied'),
+    status: z.literal(400).optional(),
   }),
 )
 
 /**
- * PostRemoteFileUploadError413
+ * RemoteFileInvalidUrlError
+ *
+ * The remote file URL is invalid.
  */
-export const zPostRemoteFileUploadError413 = zErrorResponse.and(
+export const zRemoteFileInvalidUrlError = zErrorResponse.and(
   z.object({
-    code: z.enum(['file_too_large', 'request_entity_too_large']),
+    code: z.literal('remote_file_invalid_url'),
+    status: z.literal(400).optional(),
   }),
 )
 
 /**
- * PostRemoteFileUploadError415
+ * RemoteFileUrlBlockedError
+ *
+ * The remote file URL is not allowed.
  */
-export const zPostRemoteFileUploadError415 = zErrorResponse.and(
+export const zRemoteFileUrlBlockedError = zErrorResponse.and(
   z.object({
-    code: z.enum(['unsupported_file_type', 'unsupported_media_type']),
+    code: z.literal('remote_file_url_blocked'),
+    status: z.literal(400).optional(),
   }),
 )
 
 /**
- * PostRemoteFileUploadError502
+ * RemoteFileNotFoundError
+ *
+ * The remote file could not be found.
  */
-export const zPostRemoteFileUploadError502 = zErrorResponse.and(
+export const zRemoteFileNotFoundError = zErrorResponse.and(
   z.object({
-    code: z.enum([
-      'bad_gateway',
-      'plugin_runtime_error',
-      'remote_file_invalid_response',
-      'remote_file_unavailable',
-    ]),
+    code: z.literal('remote_file_not_found'),
+    status: z.literal(404).optional(),
+  }),
+)
+
+/**
+ * FileTooLargeError
+ *
+ * File size exceeded. {message}
+ */
+export const zFileTooLargeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('file_too_large'),
+    status: z.literal(413).optional(),
+  }),
+)
+
+/**
+ * UnsupportedFileTypeError
+ *
+ * File type not allowed.
+ */
+export const zUnsupportedFileTypeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('unsupported_file_type'),
+    status: z.literal(415).optional(),
+  }),
+)
+
+/**
+ * RemoteFileInvalidResponseError
+ *
+ * The remote file server returned an invalid response.
+ */
+export const zRemoteFileInvalidResponseError = zErrorResponse.and(
+  z.object({
+    code: z.literal('remote_file_invalid_response'),
+    status: z.literal(502).optional(),
+  }),
+)
+
+/**
+ * RemoteFileUnavailableError
+ *
+ * The remote file is temporarily unavailable.
+ */
+export const zRemoteFileUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('remote_file_unavailable'),
+    status: z.literal(502).optional(),
   }),
 )
 
@@ -110,55 +156,38 @@ export const zRemoteFileInfo = z.object({
 })
 
 /**
- * GetGetRemoteFileInfoError400
+ * AccountNotInitializedError
+ *
+ * The account has not been initialized yet. Please proceed with the initialization process first.
  */
-export const zGetGetRemoteFileInfoError400 = zErrorResponse.and(
+export const zAccountNotInitializedError = zErrorResponse.and(
   z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'remote_file_access_denied',
-      'remote_file_invalid_url',
-      'remote_file_url_blocked',
-      'security_error',
-      'websocket_mismatch',
-    ]),
+    code: z.literal('account_not_initialized'),
+    status: z.literal(400).optional(),
   }),
 )
 
 /**
- * GetGetRemoteFileInfoError401
+ * NotInitValidatedError
+ *
+ * Init validation has not been completed yet. Please proceed with the init validation process first.
  */
-export const zGetGetRemoteFileInfoError401 = zErrorResponse.and(
+export const zNotInitValidatedError = zErrorResponse.and(
   z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+    code: z.literal('not_init_validated'),
+    status: z.literal(401).optional(),
   }),
 )
 
 /**
- * GetGetRemoteFileInfoError404
+ * NotSetupError
+ *
+ * Dify has not been initialized and installed yet. Please proceed with the initialization and installation process first.
  */
-export const zGetGetRemoteFileInfoError404 = zErrorResponse.and(
+export const zNotSetupError = zErrorResponse.and(
   z.object({
-    code: z.enum(['not_found', 'remote_file_not_found']),
-  }),
-)
-
-/**
- * GetGetRemoteFileInfoError502
- */
-export const zGetGetRemoteFileInfoError502 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'bad_gateway',
-      'plugin_runtime_error',
-      'remote_file_invalid_response',
-      'remote_file_unavailable',
-    ]),
+    code: z.literal('not_setup'),
+    status: z.literal(401).optional(),
   }),
 )
 

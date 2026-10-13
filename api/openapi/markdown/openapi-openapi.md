@@ -343,6 +343,8 @@ Upload a file to use as an input variable when running the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Approved | **application/json**: [DeviceMutateResponse](#devicemutateresponse)<br> |
+| 400 | Bad Request | **application/json**: [AccountNotInitializedError](#accountnotinitializederror)<br> |
+| 401 | Unauthorized | **application/json**: <br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [POST] /oauth/device/code
@@ -371,6 +373,8 @@ Upload a file to use as an input variable when running the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Denied | **application/json**: [DeviceMutateResponse](#devicemutateresponse)<br> |
+| 400 | Bad Request | **application/json**: [AccountNotInitializedError](#accountnotinitializederror)<br> |
+| 401 | Unauthorized | **application/json**: <br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [GET] /oauth/device/lookup
@@ -595,6 +599,14 @@ Upload a file to use as an input variable when running the app
 
 ---
 ### Schemas
+
+#### AccountNotInitializedError
+
+The account has not been initialized yet. Please proceed with the initialization process first.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AccountNotInitializedError |  | The account has not been initialized yet. Please proceed with the initialization process first. |  |
 
 #### AccountPayload
 
@@ -1072,6 +1084,22 @@ Strict (extra='forbid').
 | ---- | ---- | ----------- | -------- |
 | retriever_resources | [ object ], <br>**Default:**  |  | No |
 | usage | [UsageInfo](#usageinfo) |  | No |
+
+#### NotInitValidatedError
+
+Init validation has not been completed yet. Please proceed with the init validation process first.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| NotInitValidatedError |  | Init validation has not been completed yet. Please proceed with the init validation process first. |  |
+
+#### NotSetupError
+
+Dify has not been initialized and installed yet. Please proceed with the initialization and installation process first.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| NotSetupError |  | Dify has not been initialized and installed yet. Please proceed with the initialization and installation process first. |  |
 
 #### OpenApiErrorCode
 

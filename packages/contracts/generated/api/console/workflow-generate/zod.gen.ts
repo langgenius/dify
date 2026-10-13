@@ -19,60 +19,86 @@ export const zErrorResponse = z.object({
 })
 
 /**
- * GenerateWorkflowGraphError400
+ * AccountNotInitializedError
+ *
+ * The account has not been initialized yet. Please proceed with the initialization process first.
  */
-export const zGenerateWorkflowGraphError400 = zErrorResponse.and(
+export const zAccountNotInitializedError = zErrorResponse.and(
   z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'completion_request_error',
-      'invalid_param',
-      'model_currently_not_support',
-      'provider_not_initialize',
-      'provider_quota_exceeded',
-      'security_error',
-      'websocket_mismatch',
-    ]),
+    code: z.literal('account_not_initialized'),
+    status: z.literal(400).optional(),
   }),
 )
 
 /**
- * GenerateWorkflowGraphError401
+ * CompletionRequestError
+ *
+ * Completion request failed.
  */
-export const zGenerateWorkflowGraphError401 = zErrorResponse.and(
+export const zCompletionRequestError = zErrorResponse.and(
   z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+    code: z.literal('completion_request_error'),
+    status: z.literal(400).optional(),
   }),
 )
 
 /**
- * GenerateWorkflowGraphStreamError400
+ * ModelCurrentlyNotSupportError
+ *
+ * Dify Hosted OpenAI trial currently not support the GPT-4 model.
  */
-export const zGenerateWorkflowGraphStreamError400 = zErrorResponse.and(
+export const zModelCurrentlyNotSupportError = zErrorResponse.and(
   z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'security_error',
-      'websocket_mismatch',
-    ]),
+    code: z.literal('model_currently_not_support'),
+    status: z.literal(400).optional(),
   }),
 )
 
 /**
- * GenerateWorkflowGraphStreamError401
+ * ProviderNotInitializeError
+ *
+ * No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials.
  */
-export const zGenerateWorkflowGraphStreamError401 = zErrorResponse.and(
+export const zProviderNotInitializeError = zErrorResponse.and(
   z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+    code: z.literal('provider_not_initialize'),
+    status: z.literal(400).optional(),
+  }),
+)
+
+/**
+ * ProviderQuotaExceededError
+ *
+ * Your quota for Dify Hosted Model Provider has been exhausted. Please go to Settings -> Model Provider to complete your own provider credentials.
+ */
+export const zProviderQuotaExceededError = zErrorResponse.and(
+  z.object({
+    code: z.literal('provider_quota_exceeded'),
+    status: z.literal(400).optional(),
+  }),
+)
+
+/**
+ * NotInitValidatedError
+ *
+ * Init validation has not been completed yet. Please proceed with the init validation process first.
+ */
+export const zNotInitValidatedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('not_init_validated'),
+    status: z.literal(401).optional(),
+  }),
+)
+
+/**
+ * NotSetupError
+ *
+ * Dify has not been initialized and installed yet. Please proceed with the initialization and installation process first.
+ */
+export const zNotSetupError = zErrorResponse.and(
+  z.object({
+    code: z.literal('not_setup'),
+    status: z.literal(401).optional(),
   }),
 )
 
@@ -97,33 +123,6 @@ export const zWorkflowInstructionSuggestionsPayload = z.object({
 export const zWorkflowInstructionSuggestionsResponse = z.object({
   suggestions: z.array(z.string()),
 })
-
-/**
- * GenerateWorkflowInstructionSuggestionsError400
- */
-export const zGenerateWorkflowInstructionSuggestionsError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * GenerateWorkflowInstructionSuggestionsError401
- */
-export const zGenerateWorkflowInstructionSuggestionsError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
 
 /**
  * WorkflowGraphEdge

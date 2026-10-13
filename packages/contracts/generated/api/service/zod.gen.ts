@@ -1101,320 +1101,86 @@ export const zErrorResponse = z.object({
 })
 
 /**
- * AudioToTextError400
+ * AgentNotPublishedError
+ *
+ * Agent has not been published. Please publish the Agent before using the API.
  */
-export const zAudioToTextError400 = zErrorResponse.and(
+export const zAgentNotPublishedError = zErrorResponse.and(
   z.object({
-    code: z.enum([
-      'app_unavailable',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'completion_request_error',
-      'invalid_param',
-      'model_currently_not_support',
-      'no_audio_uploaded',
-      'provider_not_initialize',
-      'provider_not_support_speech_to_text',
-      'provider_quota_exceeded',
-      'security_error',
-      'speech_to_text_disabled',
-      'websocket_mismatch',
-    ]),
+    code: z.literal('agent_not_published'),
+    status: z.literal(400).optional(),
   }),
 )
 
 /**
- * AudioToTextError413
+ * AppUnavailableError
+ *
+ * App unavailable, please check your app configurations.
  */
-export const zAudioToTextError413 = zErrorResponse.and(
+export const zAppUnavailableError = zErrorResponse.and(
   z.object({
-    code: z.enum(['audio_too_large', 'request_entity_too_large']),
+    code: z.literal('app_unavailable'),
+    status: z.literal(400).optional(),
   }),
 )
 
 /**
- * AudioToTextError415
+ * ArchivedDocumentImmutableError
+ *
+ * The archived document is not editable.
  */
-export const zAudioToTextError415 = zErrorResponse.and(
+export const zArchivedDocumentImmutableError = zErrorResponse.and(
   z.object({
-    code: z.enum(['unsupported_audio_type', 'unsupported_media_type']),
+    code: z.literal('archived_document_immutable'),
+    status: z.literal(403).optional(),
   }),
 )
 
 /**
- * CreateChatMessageError400
+ * AudioTooLargeError
+ *
+ * Audio size exceeded. {message}
  */
-export const zCreateChatMessageError400 = zErrorResponse.and(
+export const zAudioTooLargeError = zErrorResponse.and(
   z.object({
-    code: z.enum([
-      'agent_not_published',
-      'app_unavailable',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'completion_request_error',
-      'invalid_param',
-      'model_currently_not_support',
-      'not_chat_app',
-      'provider_not_initialize',
-      'provider_quota_exceeded',
-      'security_error',
-      'websocket_mismatch',
-    ]),
+    code: z.literal('audio_too_large'),
+    status: z.literal(413).optional(),
   }),
 )
 
 /**
- * CreateChatMessageError403
+ * CompletionRequestError
+ *
+ * Completion request failed.
  */
-export const zCreateChatMessageError403 = zErrorResponse.and(
+export const zCompletionRequestError = zErrorResponse.and(
   z.object({
-    code: z.enum(['forbidden', 'workflow_version_execution_not_allowed']),
+    code: z.literal('completion_request_error'),
+    status: z.literal(400).optional(),
   }),
 )
 
 /**
- * CreateChatMessageError429
+ * DatasetNameDuplicateError
+ *
+ * The dataset name already exists. Please modify your dataset name.
  */
-export const zCreateChatMessageError429 = zErrorResponse.and(
+export const zDatasetNameDuplicateError = zErrorResponse.and(
   z.object({
-    code: z.enum(['rate_limit_error', 'too_many_requests']),
+    code: z.literal('dataset_name_duplicate'),
+    status: z.literal(409).optional(),
   }),
 )
 
 /**
- * CreateChildChunkError400
+ * EndUserNotFoundError
+ *
+ * End user not found.
  */
-export const zCreateChildChunkError400 = zErrorResponse.and(
+export const zEndUserNotFoundError = zErrorResponse.and(
   z.object({
-    code: z.enum([
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'provider_not_initialize',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * CreateCompletionError400
- */
-export const zCreateCompletionError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'agent_not_published',
-      'app_unavailable',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'completion_request_error',
-      'invalid_param',
-      'model_currently_not_support',
-      'provider_not_initialize',
-      'provider_quota_exceeded',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * CreateDatasetError409
- */
-export const zCreateDatasetError409 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['conflict', 'dataset_name_duplicate']),
-  }),
-)
-
-/**
- * CreateDocumentByFile75a87285Error400
- */
-export const zCreateDocumentByFile75A87285Error400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'filename_not_exists_error',
-      'invalid_param',
-      'no_file_uploaded',
-      'provider_not_initialize',
-      'security_error',
-      'too_many_files',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * CreateDocumentByFile75a87285Error413
- */
-export const zCreateDocumentByFile75A87285Error413 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['file_too_large', 'request_entity_too_large']),
-  }),
-)
-
-/**
- * CreateDocumentByFileError400
- */
-export const zCreateDocumentByFileError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'filename_not_exists_error',
-      'invalid_param',
-      'no_file_uploaded',
-      'provider_not_initialize',
-      'security_error',
-      'too_many_files',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * CreateDocumentByFileError413
- */
-export const zCreateDocumentByFileError413 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['file_too_large', 'request_entity_too_large']),
-  }),
-)
-
-/**
- * CreateDocumentByTextDeprecatedError400
- */
-export const zCreateDocumentByTextDeprecatedError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'provider_not_initialize',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * CreateDocumentByTextError400
- */
-export const zCreateDocumentByTextError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'provider_not_initialize',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * CreateSegmentsError400
- */
-export const zCreateSegmentsError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'provider_not_initialize',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * DatasetHitTestingError400
- */
-export const zDatasetHitTestingError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'completion_request_error',
-      'invalid_param',
-      'model_currently_not_support',
-      'provider_not_initialize',
-      'provider_quota_exceeded',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * DatasetHitTestingF584b2ddError400
- */
-export const zDatasetHitTestingF584B2DdError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'completion_request_error',
-      'invalid_param',
-      'model_currently_not_support',
-      'provider_not_initialize',
-      'provider_quota_exceeded',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * DeleteConversationError400
- */
-export const zDeleteConversationError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'not_chat_app',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * DeleteDocumentError403
- */
-export const zDeleteDocumentError403 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['archived_document_immutable', 'forbidden']),
+    code: z.literal('end_user_not_found'),
+    status: z.literal(404).optional(),
   }),
 )
 
@@ -1444,6 +1210,42 @@ export const zFeedbackListQuery = z.object({
 export const zFetchFrom = z.enum(['customizable-model', 'predefined-model'])
 
 /**
+ * FileAccessDeniedError
+ *
+ * Access to the requested file is denied.
+ */
+export const zFileAccessDeniedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('file_access_denied'),
+    status: z.literal(403).optional(),
+  }),
+)
+
+/**
+ * FileExtensionBlockedError
+ *
+ * The file extension is blocked for security reasons.
+ */
+export const zFileExtensionBlockedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('file_extension_blocked'),
+    status: z.literal(400).optional(),
+  }),
+)
+
+/**
+ * FileNotFoundError
+ *
+ * The requested file was not found.
+ */
+export const zFileNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('file_not_found'),
+    status: z.literal(404).optional(),
+  }),
+)
+
+/**
  * FilePreviewQuery
  */
 export const zFilePreviewQuery = z.object({
@@ -1470,6 +1272,18 @@ export const zFileResponse = z.object({
   tenant_id: z.uuid().nullish(),
   user_id: z.uuid().nullish(),
 })
+
+/**
+ * FileTooLargeError
+ *
+ * File size exceeded. {message}
+ */
+export const zFileTooLargeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('file_too_large'),
+    status: z.literal(413).optional(),
+  }),
+)
 
 /**
  * FileTransferMethod
@@ -1510,120 +1324,14 @@ export const zFileListInputConfig = z.object({
 })
 
 /**
- * GetAppInfoError400
+ * FilenameNotExistsError
+ *
+ * The specified filename does not exist.
  */
-export const zGetAppInfoError400 = zErrorResponse.and(
+export const zFilenameNotExistsError = zErrorResponse.and(
   z.object({
-    code: z.enum([
-      'app_unavailable',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * GetAppMetaError400
- */
-export const zGetAppMetaError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'app_unavailable',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * GetAppParametersError400
- */
-export const zGetAppParametersError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'agent_not_published',
-      'app_unavailable',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * GetEndUserError404
- */
-export const zGetEndUserError404 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['end_user_not_found', 'not_found']),
-  }),
-)
-
-/**
- * GetSuggestedQuestionsError400
- */
-export const zGetSuggestedQuestionsError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'not_chat_app',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * GetWorkflowEventsError400
- */
-export const zGetWorkflowEventsError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'not_workflow_app',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * GetWorkflowRunDetailError400
- */
-export const zGetWorkflowRunDetailError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'not_workflow_app',
-      'security_error',
-      'websocket_mismatch',
-    ]),
+    code: z.literal('filename_not_exists_error'),
+    status: z.literal(400).optional(),
   }),
 )
 
@@ -1739,6 +1447,18 @@ export const zIndexInfoResponse = z.object({
   server_version: z.string(),
   welcome: z.string(),
 })
+
+/**
+ * InvalidActionError
+ *
+ * Invalid action.
+ */
+export const zInvalidActionError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_action'),
+    status: z.literal(400).optional(),
+  }),
+)
 
 export const zJsonObject = z.record(z.string(), z.unknown())
 
@@ -1879,116 +1599,6 @@ export const zKnowledgeTagResponse = z.object({
 export const zKnowledgeTagListResponse = z.array(zKnowledgeTagResponse)
 
 /**
- * KnowledgebasePipelineFileUploadError400
- */
-export const zKnowledgebasePipelineFileUploadError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'filename_not_exists_error',
-      'invalid_param',
-      'no_file_uploaded',
-      'security_error',
-      'too_many_files',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * KnowledgebasePipelineFileUploadError413
- */
-export const zKnowledgebasePipelineFileUploadError413 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['file_too_large', 'request_entity_too_large']),
-  }),
-)
-
-/**
- * KnowledgebasePipelineFileUploadError415
- */
-export const zKnowledgebasePipelineFileUploadError415 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['unsupported_file_type', 'unsupported_media_type']),
-  }),
-)
-
-/**
- * ListConversationVariablesError400
- */
-export const zListConversationVariablesError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'not_chat_app',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * ListConversationsError400
- */
-export const zListConversationsError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'not_chat_app',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * ListMessagesError400
- */
-export const zListMessagesError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'not_chat_app',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * ListSegmentsError400
- */
-export const zListSegmentsError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'provider_not_initialize',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
  * MessageFeedbackPayload
  */
 export const zMessageFeedbackPayload = z.object({
@@ -2082,6 +1692,18 @@ export const zMetadataUpdatePayload = z.object({
 })
 
 /**
+ * ModelCurrentlyNotSupportError
+ *
+ * Dify Hosted OpenAI trial currently not support the GPT-4 model.
+ */
+export const zModelCurrentlyNotSupportError = zErrorResponse.and(
+  z.object({
+    code: z.literal('model_currently_not_support'),
+    status: z.literal(400).optional(),
+  }),
+)
+
+/**
  * ModelFeature
  *
  * Enum class for llm feature.
@@ -2145,6 +1767,54 @@ export const zModelType = z.enum([
   'text-embedding',
   'tts',
 ])
+
+/**
+ * NoAudioUploadedError
+ *
+ * Please upload your audio.
+ */
+export const zNoAudioUploadedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('no_audio_uploaded'),
+    status: z.literal(400).optional(),
+  }),
+)
+
+/**
+ * NoFileUploadedError
+ *
+ * Please upload your file.
+ */
+export const zNoFileUploadedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('no_file_uploaded'),
+    status: z.literal(400).optional(),
+  }),
+)
+
+/**
+ * NotChatAppError
+ *
+ * Please check if your app mode matches the right API route.
+ */
+export const zNotChatAppError = zErrorResponse.and(
+  z.object({
+    code: z.literal('not_chat_app'),
+    status: z.literal(400).optional(),
+  }),
+)
+
+/**
+ * NotWorkflowAppError
+ *
+ * Please check if your app mode matches the right API route.
+ */
+export const zNotWorkflowAppError = zErrorResponse.and(
+  z.object({
+    code: z.literal('not_workflow_app'),
+    status: z.literal(400).optional(),
+  }),
+)
 
 /**
  * ServiceApiUserPayload
@@ -2223,6 +1893,18 @@ export const zPipelineRunApiEntity = z.object({
 })
 
 /**
+ * PipelineRunError
+ *
+ * An error occurred while running the pipeline.
+ */
+export const zPipelineRunError = zErrorResponse.and(
+  z.object({
+    code: z.literal('pipeline_run_error'),
+    status: z.literal(500).optional(),
+  }),
+)
+
+/**
  * PipelineUploadFileResponse
  */
 export const zPipelineUploadFileResponse = z.object({
@@ -2250,24 +1932,6 @@ export const zPreProcessingRule = z.object({
 })
 
 /**
- * PreviewFileError403
- */
-export const zPreviewFileError403 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['file_access_denied', 'forbidden']),
-  }),
-)
-
-/**
- * PreviewFileError404
- */
-export const zPreviewFileError404 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['file_not_found', 'not_found']),
-  }),
-)
-
-/**
  * ProcessRuleMode
  *
  * Dataset Process Rule Mode
@@ -2291,6 +1955,42 @@ export const zProviderModelWithStatusEntity = z.object({
   model_type: zModelType,
   status: zModelStatus,
 })
+
+/**
+ * ProviderNotInitializeError
+ *
+ * No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials.
+ */
+export const zProviderNotInitializeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('provider_not_initialize'),
+    status: z.literal(400).optional(),
+  }),
+)
+
+/**
+ * ProviderNotSupportSpeechToTextError
+ *
+ * Provider not support speech to text.
+ */
+export const zProviderNotSupportSpeechToTextError = zErrorResponse.and(
+  z.object({
+    code: z.literal('provider_not_support_speech_to_text'),
+    status: z.literal(400).optional(),
+  }),
+)
+
+/**
+ * ProviderQuotaExceededError
+ *
+ * Your quota for Dify Hosted OpenAI has been exhausted. Please go to Settings -> Model Provider to complete your own provider credentials.
+ */
+export const zProviderQuotaExceededError = zErrorResponse.and(
+  z.object({
+    code: z.literal('provider_quota_exceeded'),
+    status: z.literal(400).optional(),
+  }),
+)
 
 /**
  * ProviderWithModelsResponse
@@ -2324,20 +2024,14 @@ export const zPublishedPipelineRunResponse = z.object({
 })
 
 /**
- * RenameConversationError400
+ * RateLimitError
+ *
+ * Rate Limit Error
  */
-export const zRenameConversationError400 = zErrorResponse.and(
+export const zRateLimitError = zErrorResponse.and(
   z.object({
-    code: z.enum([
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'not_chat_app',
-      'security_error',
-      'websocket_mismatch',
-    ]),
+    code: z.literal('rate_limit_error'),
+    status: z.literal(429).optional(),
   }),
 )
 
@@ -2393,99 +2087,6 @@ export const zRetrieverResource = z.object({
   title: z.string().nullish(),
   word_count: z.int().nullish(),
 })
-
-/**
- * RunPipelineError500
- */
-export const zRunPipelineError500 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['internal_server_error', 'pipeline_run_error', 'unknown']),
-  }),
-)
-
-/**
- * RunWorkflowByIdError400
- */
-export const zRunWorkflowByIdError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'completion_request_error',
-      'invalid_param',
-      'model_currently_not_support',
-      'not_workflow_app',
-      'provider_not_initialize',
-      'provider_quota_exceeded',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * RunWorkflowByIdError403
- */
-export const zRunWorkflowByIdError403 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'forbidden',
-      'trigger_workflow_service_mode_unavailable',
-      'workflow_version_execution_not_allowed',
-    ]),
-  }),
-)
-
-/**
- * RunWorkflowByIdError429
- */
-export const zRunWorkflowByIdError429 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['rate_limit_error', 'too_many_requests']),
-  }),
-)
-
-/**
- * RunWorkflowError400
- */
-export const zRunWorkflowError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'completion_request_error',
-      'invalid_param',
-      'model_currently_not_support',
-      'not_workflow_app',
-      'provider_not_initialize',
-      'provider_quota_exceeded',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * RunWorkflowError403
- */
-export const zRunWorkflowError403 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['forbidden', 'trigger_workflow_service_mode_unavailable']),
-  }),
-)
-
-/**
- * RunWorkflowError429
- */
-export const zRunWorkflowError429 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['rate_limit_error', 'too_many_requests']),
-  }),
-)
 
 /**
  * ServiceApiUserPayload
@@ -2726,56 +2327,14 @@ export const zSite = z.object({
 })
 
 /**
- * StopChatMessageError400
+ * SpeechToTextDisabledError
+ *
+ * Speech to text is disabled.
  */
-export const zStopChatMessageError400 = zErrorResponse.and(
+export const zSpeechToTextDisabledError = zErrorResponse.and(
   z.object({
-    code: z.enum([
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'not_chat_app',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * StopCompletionError400
- */
-export const zStopCompletionError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'app_unavailable',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * StopWorkflowTaskError400
- */
-export const zStopWorkflowTaskError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'not_workflow_app',
-      'security_error',
-      'websocket_mismatch',
-    ]),
+    code: z.literal('speech_to_text_disabled'),
+    status: z.literal(400).optional(),
   }),
 )
 
@@ -3181,48 +2740,6 @@ export const zTagUpdatePayload = z.object({
 })
 
 /**
- * TextToAudioError400
- */
-export const zTextToAudioError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'app_unavailable',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'completion_request_error',
-      'invalid_param',
-      'model_currently_not_support',
-      'no_audio_uploaded',
-      'provider_not_initialize',
-      'provider_not_support_speech_to_text',
-      'provider_quota_exceeded',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * TextToAudioError413
- */
-export const zTextToAudioError413 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['audio_too_large', 'request_entity_too_large']),
-  }),
-)
-
-/**
- * TextToAudioError415
- */
-export const zTextToAudioError415 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['unsupported_audio_type', 'unsupported_media_type']),
-  }),
-)
-
-/**
  * TextToAudioPayload
  */
 export const zTextToAudioPayload = z.object({
@@ -3244,6 +2761,18 @@ export const zTextToAudioPayloadWithUser = z.object({
 })
 
 /**
+ * TooManyFilesError
+ *
+ * Only one file is allowed.
+ */
+export const zTooManyFilesError = zErrorResponse.and(
+  z.object({
+    code: z.literal('too_many_files'),
+    status: z.literal(400).optional(),
+  }),
+)
+
+/**
  * ToolIcon
  */
 export const zToolIcon = z.object({
@@ -3259,245 +2788,38 @@ export const zAppMetaResponse = z.object({
 })
 
 /**
- * UpdateConversationVariableError400
+ * TriggerWorkflowServiceModeUnavailableError
+ *
+ * This workflow uses a trigger entry and cannot be invoked through Web App, Service API, OpenAPI, or MCP.
  */
-export const zUpdateConversationVariableError400 = zErrorResponse.and(
+export const zTriggerWorkflowServiceModeUnavailableError = zErrorResponse.and(
   z.object({
-    code: z.enum([
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'not_chat_app',
-      'security_error',
-      'websocket_mismatch',
-    ]),
+    code: z.literal('trigger_workflow_service_mode_unavailable'),
+    status: z.literal(403).optional(),
   }),
 )
 
 /**
- * UpdateDocumentByFileDeprecated5dc5fe59Error400
+ * UnsupportedAudioTypeError
+ *
+ * Audio type not allowed.
  */
-export const zUpdateDocumentByFileDeprecated5Dc5Fe59Error400 = zErrorResponse.and(
+export const zUnsupportedAudioTypeError = zErrorResponse.and(
   z.object({
-    code: z.enum([
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'filename_not_exists_error',
-      'invalid_param',
-      'provider_not_initialize',
-      'security_error',
-      'too_many_files',
-      'websocket_mismatch',
-    ]),
+    code: z.literal('unsupported_audio_type'),
+    status: z.literal(415).optional(),
   }),
 )
 
 /**
- * UpdateDocumentByFileDeprecated5dc5fe59Error413
+ * UnsupportedFileTypeError
+ *
+ * File type not allowed.
  */
-export const zUpdateDocumentByFileDeprecated5Dc5Fe59Error413 = zErrorResponse.and(
+export const zUnsupportedFileTypeError = zErrorResponse.and(
   z.object({
-    code: z.enum(['file_too_large', 'request_entity_too_large']),
-  }),
-)
-
-/**
- * UpdateDocumentByFileDeprecated5dc5fe59Error415
- */
-export const zUpdateDocumentByFileDeprecated5Dc5Fe59Error415 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['unsupported_file_type', 'unsupported_media_type']),
-  }),
-)
-
-/**
- * UpdateDocumentByFileDeprecatedError400
- */
-export const zUpdateDocumentByFileDeprecatedError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'filename_not_exists_error',
-      'invalid_param',
-      'provider_not_initialize',
-      'security_error',
-      'too_many_files',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * UpdateDocumentByFileDeprecatedError413
- */
-export const zUpdateDocumentByFileDeprecatedError413 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['file_too_large', 'request_entity_too_large']),
-  }),
-)
-
-/**
- * UpdateDocumentByFileDeprecatedError415
- */
-export const zUpdateDocumentByFileDeprecatedError415 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['unsupported_file_type', 'unsupported_media_type']),
-  }),
-)
-
-/**
- * UpdateDocumentByFileError400
- */
-export const zUpdateDocumentByFileError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'filename_not_exists_error',
-      'invalid_param',
-      'provider_not_initialize',
-      'security_error',
-      'too_many_files',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * UpdateDocumentByFileError413
- */
-export const zUpdateDocumentByFileError413 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['file_too_large', 'request_entity_too_large']),
-  }),
-)
-
-/**
- * UpdateDocumentByFileError415
- */
-export const zUpdateDocumentByFileError415 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['unsupported_file_type', 'unsupported_media_type']),
-  }),
-)
-
-/**
- * UpdateDocumentByTextDeprecatedError400
- */
-export const zUpdateDocumentByTextDeprecatedError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'provider_not_initialize',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * UpdateDocumentByTextError400
- */
-export const zUpdateDocumentByTextError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'provider_not_initialize',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * UpdateDocumentStatusError400
- */
-export const zUpdateDocumentStatusError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_action',
-      'invalid_param',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * UpdateSegmentError400
- */
-export const zUpdateSegmentError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'provider_not_initialize',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * UploadFileError400
- */
-export const zUploadFileError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'file_extension_blocked',
-      'filename_not_exists_error',
-      'invalid_param',
-      'no_file_uploaded',
-      'security_error',
-      'too_many_files',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * UploadFileError413
- */
-export const zUploadFileError413 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['file_too_large', 'request_entity_too_large']),
-  }),
-)
-
-/**
- * UploadFileError415
- */
-export const zUploadFileError415 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['unsupported_file_type', 'unsupported_media_type']),
+    code: z.literal('unsupported_file_type'),
+    status: z.literal(415).optional(),
   }),
 )
 
@@ -4103,6 +3425,18 @@ export const zWorkflowRunResponse = z.object({
 export const zWorkflowTaskStopPayload = z.object({
   user: z.string(),
 })
+
+/**
+ * WorkflowVersionExecutionNotAllowedError
+ *
+ * Workflow version execution is not available on your current plan. Please upgrade to a paid plan.
+ */
+export const zWorkflowVersionExecutionNotAllowedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('workflow_version_execution_not_allowed'),
+    status: z.literal(403).optional(),
+  }),
+)
 
 /**
  * HumanInputFormSubmitResponse

@@ -19,11 +19,71 @@ export const zErrorResponse = z.object({
 })
 
 /**
+ * AccountNotInitializedError
+ *
+ * The account has not been initialized yet. Please proceed with the initialization process first.
+ */
+export const zAccountNotInitializedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('account_not_initialized'),
+    status: z.literal(400).optional(),
+  }),
+)
+
+/**
+ * NotInitValidatedError
+ *
+ * Init validation has not been completed yet. Please proceed with the init validation process first.
+ */
+export const zNotInitValidatedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('not_init_validated'),
+    status: z.literal(401).optional(),
+  }),
+)
+
+/**
+ * NotSetupError
+ *
+ * Dify has not been initialized and installed yet. Please proceed with the initialization and installation process first.
+ */
+export const zNotSetupError = zErrorResponse.and(
+  z.object({
+    code: z.literal('not_setup'),
+    status: z.literal(401).optional(),
+  }),
+)
+
+/**
  * SimpleResultResponse
  */
 export const zSimpleResultResponse = z.object({
   result: z.string(),
 })
+
+/**
+ * UnsupportedDataSourceApiKeyAuthProviderError
+ *
+ * The data-source API-key authentication provider is not supported.
+ */
+export const zUnsupportedDataSourceApiKeyAuthProviderError = zErrorResponse.and(
+  z.object({
+    code: z.literal('unsupported_data_source_api_key_auth_provider'),
+    status: z.literal(400).optional(),
+  }),
+)
+
+/**
+ * DataSourceApiKeyAuthProviderUnavailableError
+ *
+ * The data-source API-key authentication provider is temporarily unavailable.
+ */
+export const zDataSourceApiKeyAuthProviderUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('data_source_api_key_auth_provider_unavailable'),
+    status: z.literal(502).optional(),
+  }),
+)
 
 /**
  * ApiKeyAuthDataSourceItem

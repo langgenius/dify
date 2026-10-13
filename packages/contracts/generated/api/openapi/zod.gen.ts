@@ -291,6 +291,18 @@ export const zErrorBody = z.object({
 })
 
 /**
+ * AccountNotInitializedError
+ *
+ * The account has not been initialized yet. Please proceed with the initialization process first.
+ */
+export const zAccountNotInitializedError = zErrorBody.and(
+  z.object({
+    code: z.literal('account_not_initialized'),
+    status: z.literal(400).optional(),
+  }),
+)
+
+/**
  * EventStreamResponse
  */
 export const zEventStreamResponse = z.string()
@@ -503,6 +515,30 @@ export const zMemberRoleUpdatePayload = z.object({
 })
 
 /**
+ * NotInitValidatedError
+ *
+ * Init validation has not been completed yet. Please proceed with the init validation process first.
+ */
+export const zNotInitValidatedError = zErrorBody.and(
+  z.object({
+    code: z.literal('not_init_validated'),
+    status: z.literal(401).optional(),
+  }),
+)
+
+/**
+ * NotSetupError
+ *
+ * Dify has not been initialized and installed yet. Please proceed with the initialization and installation process first.
+ */
+export const zNotSetupError = zErrorBody.and(
+  z.object({
+    code: z.literal('not_setup'),
+    status: z.literal(401).optional(),
+  }),
+)
+
+/**
  * OpenApiErrorCode
  */
 export const zOpenApiErrorCode = z.enum([
@@ -601,42 +637,6 @@ export const zPluginDependency = z.object({
 export const zCheckDependenciesResult = z.object({
   leaked_dependencies: z.array(zPluginDependency).optional(),
 })
-
-/**
- * PostDeviceApproveApiError400
- */
-export const zPostDeviceApproveApiError400 = zErrorBody.and(
-  z.object({
-    code: z.enum(['account_not_initialized', 'bad_request']),
-  }),
-)
-
-/**
- * PostDeviceApproveApiError401
- */
-export const zPostDeviceApproveApiError401 = zErrorBody.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * PostDeviceDenyApiError400
- */
-export const zPostDeviceDenyApiError400 = zErrorBody.and(
-  z.object({
-    code: z.enum(['account_not_initialized', 'bad_request']),
-  }),
-)
-
-/**
- * PostDeviceDenyApiError401
- */
-export const zPostDeviceDenyApiError401 = zErrorBody.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
 
 /**
  * RevokeResponse

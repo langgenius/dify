@@ -4,6 +4,26 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/console/api` | (string & {})
 }
 
+export type AccountNotInitializedError = ErrorResponse & {
+  code: 'account_not_initialized'
+  status?: 400
+}
+
+export type NotInitValidatedError = ErrorResponse & {
+  code: 'not_init_validated'
+  status?: 401
+}
+
+export type NotSetupError = ErrorResponse & {
+  code: 'not_setup'
+  status?: 401
+}
+
+export type UnauthorizedAndForceLogoutError = ErrorResponse & {
+  code: 'unauthorized_and_force_logout'
+  status?: 401
+}
+
 export type ErrorResponse = {
   code: string
   details?: {
@@ -38,6 +58,11 @@ export type RagPipelineImportResponse = {
   imported_dsl_version: string
   pipeline_id?: string | null
   status: ImportStatus
+}
+
+export type DatasetNameDuplicateError = ErrorResponse & {
+  code: 'dataset_name_duplicate'
+  status?: 409
 }
 
 export type DatasetDetailResponse = {
@@ -117,6 +142,11 @@ export type RagPipelineImportCheckDependenciesResponse = {
   leaked_dependencies?: Array<PluginDependency>
 }
 
+export type PipelineNotFoundError = ErrorResponse & {
+  code: 'pipeline_not_found'
+  status?: 404
+}
+
 export type RagPipelineOpaqueResponse = unknown
 
 export type WorkflowRunPaginationResponse = {
@@ -190,6 +220,11 @@ export type WorkflowResponse = {
   version_number?: number | null
 }
 
+export type DraftWorkflowNotExistError = ErrorResponse & {
+  code: 'draft_workflow_not_exist'
+  status?: 404
+}
+
 export type DraftWorkflowSyncPayload = {
   conversation_variables?: Array<{
     [key: string]: unknown
@@ -213,6 +248,16 @@ export type RagPipelineWorkflowSyncResponse = {
   hash: string
   result: string
   updated_at: number
+}
+
+export type InvalidParamError = ErrorResponse & {
+  code: 'invalid_param'
+  status?: 400
+}
+
+export type DraftWorkflowNotSyncError = ErrorResponse & {
+  code: 'draft_workflow_not_sync'
+  status?: 409
 }
 
 export type DatasourceNodeRunPayload = {
@@ -293,9 +338,19 @@ export type DraftWorkflowRunPayload = {
   start_node_id: string
 }
 
+export type RateLimitError = ErrorResponse & {
+  code: 'rate_limit_error'
+  status?: 429
+}
+
 export type WorkflowDraftVariableListWithoutValueResponse = {
   items: Array<WorkflowDraftVariableWithoutValueResponse>
   total: number | null
+}
+
+export type NotFoundError = ErrorResponse & {
+  code: 'not_found'
+  status?: 404
 }
 
 export type WorkflowDraftVariableResponse = {
@@ -752,6 +807,8 @@ export type DeleteRagPipelineCustomizedTemplatesByTemplateIdData = {
 }
 
 export type DeleteRagPipelineCustomizedTemplatesByTemplateIdErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError | UnauthorizedAndForceLogoutError
   default: ErrorResponse
 }
 
@@ -775,6 +832,8 @@ export type PatchRagPipelineCustomizedTemplatesByTemplateIdData = {
 }
 
 export type PatchRagPipelineCustomizedTemplatesByTemplateIdErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError | UnauthorizedAndForceLogoutError
   default: ErrorResponse
 }
 
@@ -798,6 +857,8 @@ export type PostRagPipelineCustomizedTemplatesByTemplateIdData = {
 }
 
 export type PostRagPipelineCustomizedTemplatesByTemplateIdErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError | UnauthorizedAndForceLogoutError
   404: ErrorResponse
   default: ErrorResponse
 }
@@ -820,6 +881,9 @@ export type PostRagPipelineDatasetData = {
 }
 
 export type PostRagPipelineDatasetErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  409: DatasetNameDuplicateError
   default: ErrorResponse
 }
 
@@ -841,6 +905,8 @@ export type PostRagPipelineEmptyDatasetData = {
 }
 
 export type PostRagPipelineEmptyDatasetErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -865,6 +931,8 @@ export type GetRagPipelineTemplatesData = {
 }
 
 export type GetRagPipelineTemplatesErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError | UnauthorizedAndForceLogoutError
   default: ErrorResponse
 }
 
@@ -890,6 +958,8 @@ export type GetRagPipelineTemplatesByTemplateIdData = {
 }
 
 export type GetRagPipelineTemplatesByTemplateIdErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError | UnauthorizedAndForceLogoutError
   404: ErrorResponse
   default: ErrorResponse
 }
@@ -912,6 +982,8 @@ export type GetRagPipelinesDatasourcePluginsData = {
 }
 
 export type GetRagPipelinesDatasourcePluginsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -933,7 +1005,8 @@ export type PostRagPipelinesImportsData = {
 }
 
 export type PostRagPipelinesImportsErrors = {
-  400: RagPipelineImportResponse | ErrorResponse
+  400: RagPipelineImportResponse | AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -958,7 +1031,8 @@ export type PostRagPipelinesImportsByImportIdConfirmData = {
 }
 
 export type PostRagPipelinesImportsByImportIdConfirmErrors = {
-  400: RagPipelineImportResponse | ErrorResponse
+  400: RagPipelineImportResponse | AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -982,6 +1056,9 @@ export type GetRagPipelinesImportsByPipelineIdCheckDependenciesData = {
 }
 
 export type GetRagPipelinesImportsByPipelineIdCheckDependenciesErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: PipelineNotFoundError
   default: ErrorResponse
 }
 
@@ -1005,6 +1082,8 @@ export type GetRagPipelinesRecommendedPluginsData = {
 }
 
 export type GetRagPipelinesRecommendedPluginsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -1028,6 +1107,8 @@ export type PostRagPipelinesTransformDatasetsByDatasetIdData = {
 }
 
 export type PostRagPipelinesTransformDatasetsByDatasetIdErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   404: ErrorResponse
   default: ErrorResponse
 }
@@ -1052,7 +1133,9 @@ export type PostRagPipelinesByPipelineIdCustomizedPublishData = {
 }
 
 export type PostRagPipelinesByPipelineIdCustomizedPublishErrors = {
-  404: ErrorResponse
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError | UnauthorizedAndForceLogoutError
+  404: PipelineNotFoundError
   default: ErrorResponse
 }
 
@@ -1078,6 +1161,9 @@ export type GetRagPipelinesByPipelineIdExportsData = {
 }
 
 export type GetRagPipelinesByPipelineIdExportsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: PipelineNotFoundError
   default: ErrorResponse
 }
 
@@ -1104,6 +1190,9 @@ export type GetRagPipelinesByPipelineIdWorkflowRunsData = {
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowRunsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: PipelineNotFoundError
   default: ErrorResponse
 }
 
@@ -1128,6 +1217,9 @@ export type PostRagPipelinesByPipelineIdWorkflowRunsTasksByTaskIdStopData = {
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowRunsTasksByTaskIdStopErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: PipelineNotFoundError
   default: ErrorResponse
 }
 
@@ -1152,6 +1244,9 @@ export type GetRagPipelinesByPipelineIdWorkflowRunsByRunIdData = {
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowRunsByRunIdErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: PipelineNotFoundError
   default: ErrorResponse
 }
 
@@ -1176,6 +1271,9 @@ export type GetRagPipelinesByPipelineIdWorkflowRunsByRunIdNodeExecutionsData = {
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowRunsByRunIdNodeExecutionsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: PipelineNotFoundError
   default: ErrorResponse
 }
 
@@ -1204,7 +1302,10 @@ export type GetRagPipelinesByPipelineIdWorkflowsData = {
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   403: ErrorResponse
+  404: PipelineNotFoundError
   default: ErrorResponse
 }
 
@@ -1228,6 +1329,9 @@ export type GetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsData 
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: PipelineNotFoundError
   default: ErrorResponse
 }
 
@@ -1254,6 +1358,9 @@ export type GetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsByBlo
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: PipelineNotFoundError
   default: ErrorResponse
 }
 
@@ -1277,7 +1384,9 @@ export type GetRagPipelinesByPipelineIdWorkflowsDraftData = {
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsDraftErrors = {
-  404: ErrorResponse
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: DraftWorkflowNotExistError | PipelineNotFoundError
   default: ErrorResponse
 }
 
@@ -1301,6 +1410,10 @@ export type PostRagPipelinesByPipelineIdWorkflowsDraftData = {
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsDraftErrors = {
+  400: AccountNotInitializedError | InvalidParamError
+  401: NotInitValidatedError | NotSetupError
+  404: PipelineNotFoundError
+  409: DraftWorkflowNotSyncError
   default: ErrorResponse
 }
 
@@ -1325,6 +1438,9 @@ export type PostRagPipelinesByPipelineIdWorkflowsDraftDatasourceNodesByNodeIdRun
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsDraftDatasourceNodesByNodeIdRunErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: PipelineNotFoundError
   default: ErrorResponse
 }
 
@@ -1348,6 +1464,9 @@ export type PostRagPipelinesByPipelineIdWorkflowsDraftDatasourceVariablesInspect
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsDraftDatasourceVariablesInspectErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: PipelineNotFoundError
   default: ErrorResponse
 }
 
@@ -1371,6 +1490,9 @@ export type GetRagPipelinesByPipelineIdWorkflowsDraftEnvironmentVariablesData = 
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsDraftEnvironmentVariablesErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: DraftWorkflowNotExistError | PipelineNotFoundError
   default: ErrorResponse
 }
 
@@ -1395,6 +1517,9 @@ export type PostRagPipelinesByPipelineIdWorkflowsDraftIterationNodesByNodeIdRunD
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsDraftIterationNodesByNodeIdRunErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: PipelineNotFoundError
   default: ErrorResponse
 }
 
@@ -1419,6 +1544,9 @@ export type PostRagPipelinesByPipelineIdWorkflowsDraftLoopNodesByNodeIdRunData =
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsDraftLoopNodesByNodeIdRunErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: PipelineNotFoundError
   default: ErrorResponse
 }
 
@@ -1443,6 +1571,9 @@ export type GetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdLastRunData = 
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdLastRunErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: PipelineNotFoundError
   default: ErrorResponse
 }
 
@@ -1467,6 +1598,9 @@ export type PostRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdRunData = {
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdRunErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: PipelineNotFoundError
   default: ErrorResponse
 }
 
@@ -1491,6 +1625,9 @@ export type DeleteRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesDa
 }
 
 export type DeleteRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesErrors = {
+  400: AccountNotInitializedError | InvalidParamError
+  401: NotInitValidatedError | NotSetupError
+  404: PipelineNotFoundError
   default: ErrorResponse
 }
 
@@ -1515,6 +1652,9 @@ export type GetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesData 
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesErrors = {
+  400: AccountNotInitializedError | InvalidParamError
+  401: NotInitValidatedError | NotSetupError
+  404: PipelineNotFoundError
   default: ErrorResponse
 }
 
@@ -1540,6 +1680,9 @@ export type GetRagPipelinesByPipelineIdWorkflowsDraftPreProcessingParametersData
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsDraftPreProcessingParametersErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: PipelineNotFoundError
   default: ErrorResponse
 }
 
@@ -1565,6 +1708,9 @@ export type GetRagPipelinesByPipelineIdWorkflowsDraftProcessingParametersData = 
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsDraftProcessingParametersErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: PipelineNotFoundError
   default: ErrorResponse
 }
 
@@ -1588,6 +1734,10 @@ export type PostRagPipelinesByPipelineIdWorkflowsDraftRunData = {
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsDraftRunErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: PipelineNotFoundError
+  429: RateLimitError
   default: ErrorResponse
 }
 
@@ -1611,6 +1761,9 @@ export type GetRagPipelinesByPipelineIdWorkflowsDraftSystemVariablesData = {
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsDraftSystemVariablesErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: PipelineNotFoundError
   default: ErrorResponse
 }
 
@@ -1634,6 +1787,9 @@ export type DeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesData = {
 }
 
 export type DeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: PipelineNotFoundError
   default: ErrorResponse
 }
 
@@ -1660,6 +1816,9 @@ export type GetRagPipelinesByPipelineIdWorkflowsDraftVariablesData = {
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsDraftVariablesErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: DraftWorkflowNotExistError | PipelineNotFoundError
   default: ErrorResponse
 }
 
@@ -1684,6 +1843,9 @@ export type DeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdDat
 }
 
 export type DeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: NotFoundError | PipelineNotFoundError
   default: ErrorResponse
 }
 
@@ -1708,6 +1870,9 @@ export type GetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdData =
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: NotFoundError | PipelineNotFoundError
   default: ErrorResponse
 }
 
@@ -1732,6 +1897,9 @@ export type PatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdData
 }
 
 export type PatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdErrors = {
+  400: AccountNotInitializedError | InvalidParamError
+  401: NotInitValidatedError | NotSetupError
+  404: NotFoundError | PipelineNotFoundError
   default: ErrorResponse
 }
 
@@ -1756,6 +1924,9 @@ export type PutRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResetD
 }
 
 export type PutRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResetErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: NotFoundError | PipelineNotFoundError
   default: ErrorResponse
 }
 
@@ -1780,6 +1951,9 @@ export type GetRagPipelinesByPipelineIdWorkflowsPublishData = {
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsPublishErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: PipelineNotFoundError
   default: ErrorResponse
 }
 
@@ -1803,6 +1977,9 @@ export type PostRagPipelinesByPipelineIdWorkflowsPublishData = {
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsPublishErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: PipelineNotFoundError
   default: ErrorResponse
 }
 
@@ -1827,6 +2004,9 @@ export type PostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeI
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: PipelineNotFoundError
   default: ErrorResponse
 }
 
@@ -1854,6 +2034,9 @@ export type PostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeI
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdRunErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: PipelineNotFoundError
   default: ErrorResponse
 }
 
@@ -1879,6 +2062,9 @@ export type GetRagPipelinesByPipelineIdWorkflowsPublishedPreProcessingParameters
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsPublishedPreProcessingParametersErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: PipelineNotFoundError
   default: ErrorResponse
 }
 
@@ -1904,6 +2090,9 @@ export type GetRagPipelinesByPipelineIdWorkflowsPublishedProcessingParametersDat
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsPublishedProcessingParametersErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: PipelineNotFoundError
   default: ErrorResponse
 }
 
@@ -1927,6 +2116,10 @@ export type PostRagPipelinesByPipelineIdWorkflowsPublishedRunData = {
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsPublishedRunErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: PipelineNotFoundError
+  429: RateLimitError
   default: ErrorResponse
 }
 
@@ -1951,6 +2144,9 @@ export type DeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdData = {
 }
 
 export type DeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: PipelineNotFoundError
   default: ErrorResponse
 }
 
@@ -1975,9 +2171,10 @@ export type PatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdData = {
 }
 
 export type PatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdErrors = {
-  400: ErrorResponse
+  400: AccountNotInitializedError | InvalidParamError
+  401: NotInitValidatedError | NotSetupError
   403: ErrorResponse
-  404: ErrorResponse
+  404: PipelineNotFoundError
   default: ErrorResponse
 }
 
@@ -2002,6 +2199,9 @@ export type PostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestoreData = {
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestoreErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: PipelineNotFoundError
   default: ErrorResponse
 }
 

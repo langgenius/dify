@@ -17,6 +17,26 @@ export type ActivationResponse = {
   result: string
 }
 
+export type AccountInFreezeError = ErrorResponse & {
+  code: 'account_in_freeze'
+  status?: 400
+}
+
+export type EmailDomainSuspendedError = ErrorResponse & {
+  code: 'email_domain_suspended'
+  status?: 400
+}
+
+export type AlreadyActivateError = ErrorResponse & {
+  code: 'already_activate'
+  status?: 403
+}
+
+export type InvitationAccountMismatchError = ErrorResponse & {
+  code: 'invitation_account_mismatch'
+  status?: 403
+}
+
 export type ErrorResponse = {
   code: string
   details?: {
@@ -48,7 +68,8 @@ export type PostActivateData = {
 }
 
 export type PostActivateErrors = {
-  400: ErrorResponse
+  400: AccountInFreezeError | EmailDomainSuspendedError
+  403: AlreadyActivateError | InvitationAccountMismatchError
   default: ErrorResponse
 }
 

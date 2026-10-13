@@ -4,6 +4,11 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/openapi/v1` | (string & {})
 }
 
+export type AccountNotInitializedError = ErrorBody & {
+  code: 'account_not_initialized'
+  status?: 400
+}
+
 export type AccountPayload = {
   email: string
   id: string
@@ -374,6 +379,16 @@ export type MessageMetadata = {
     [key: string]: unknown
   }>
   usage?: UsageInfo | null
+}
+
+export type NotInitValidatedError = ErrorBody & {
+  code: 'not_init_validated'
+  status?: 401
+}
+
+export type NotSetupError = ErrorBody & {
+  code: 'not_setup'
+  status?: 401
 }
 
 export type OpenApiErrorCode =
@@ -1042,6 +1057,8 @@ export type PostOauthDeviceApproveData = {
 }
 
 export type PostOauthDeviceApproveErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorBody
 }
 
@@ -1083,6 +1100,8 @@ export type PostOauthDeviceDenyData = {
 }
 
 export type PostOauthDeviceDenyErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorBody
 }
 

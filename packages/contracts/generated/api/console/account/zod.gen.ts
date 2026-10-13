@@ -26,6 +26,42 @@ export const zErrorResponse = z.object({
 })
 
 /**
+ * AccountNotInitializedError
+ *
+ * The account has not been initialized yet. Please proceed with the initialization process first.
+ */
+export const zAccountNotInitializedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('account_not_initialized'),
+    status: z.literal(400).optional(),
+  }),
+)
+
+/**
+ * NotInitValidatedError
+ *
+ * Init validation has not been completed yet. Please proceed with the init validation process first.
+ */
+export const zNotInitValidatedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('not_init_validated'),
+    status: z.literal(401).optional(),
+  }),
+)
+
+/**
+ * NotSetupError
+ *
+ * Dify has not been initialized and installed yet. Please proceed with the initialization and installation process first.
+ */
+export const zNotSetupError = zErrorResponse.and(
+  z.object({
+    code: z.literal('not_setup'),
+    status: z.literal(401).optional(),
+  }),
+)
+
+/**
  * AccountAvatarPayload
  */
 export const zAccountAvatarPayload = z.object({
@@ -51,6 +87,18 @@ export const zAccountResponse = z.object({
 })
 
 /**
+ * AccountNotFoundError
+ *
+ * Account not found.
+ */
+export const zAccountNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('account_not_found'),
+    status: z.literal(400).optional(),
+  }),
+)
+
+/**
  * ChangeEmailSendPayload
  */
 export const zChangeEmailSendPayload = z.object({
@@ -69,6 +117,54 @@ export const zSimpleResultDataResponse = z.object({
 })
 
 /**
+ * InvalidEmailError
+ *
+ * The email address is not valid.
+ */
+export const zInvalidEmailError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_email'),
+    status: z.literal(400).optional(),
+  }),
+)
+
+/**
+ * InvalidOrExpiredTokenError
+ *
+ * The token is invalid or has expired.
+ */
+export const zInvalidOrExpiredTokenError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_or_expired_token'),
+    status: z.literal(400).optional(),
+  }),
+)
+
+/**
+ * EmailChangeRateLimitExceededError
+ *
+ * Too many email change emails have been sent. Please try again in {minutes} minutes.
+ */
+export const zEmailChangeRateLimitExceededError = zErrorResponse.and(
+  z.object({
+    code: z.literal('email_change_rate_limit_exceeded'),
+    status: z.literal(429).optional(),
+  }),
+)
+
+/**
+ * EmailSendIpLimitError
+ *
+ * Too many emails have been sent from this IP address recently. Please try again later.
+ */
+export const zEmailSendIpLimitError = zErrorResponse.and(
+  z.object({
+    code: z.literal('email_send_ip_limit'),
+    status: z.literal(429).optional(),
+  }),
+)
+
+/**
  * CheckEmailUniquePayload
  */
 export const zCheckEmailUniquePayload = z.object({
@@ -81,6 +177,42 @@ export const zCheckEmailUniquePayload = z.object({
 export const zSimpleResultResponse = z.object({
   result: z.string(),
 })
+
+/**
+ * AccountInFreezeError
+ *
+ * This email account has been deleted within the past 30 days and is temporarily unavailable for new account registration.
+ */
+export const zAccountInFreezeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('account_in_freeze'),
+    status: z.literal(400).optional(),
+  }),
+)
+
+/**
+ * EmailAlreadyInUseError
+ *
+ * A user with this email already exists.
+ */
+export const zEmailAlreadyInUseError = zErrorResponse.and(
+  z.object({
+    code: z.literal('email_already_in_use'),
+    status: z.literal(400).optional(),
+  }),
+)
+
+/**
+ * EmailDomainSuspendedError
+ *
+ * This email domain has been suspended.
+ */
+export const zEmailDomainSuspendedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('email_domain_suspended'),
+    status: z.literal(400).optional(),
+  }),
+)
 
 /**
  * ChangeEmailResetPayload
@@ -109,6 +241,30 @@ export const zVerificationTokenResponse = z.object({
 })
 
 /**
+ * EmailCodeError
+ *
+ * Email code is invalid or expired.
+ */
+export const zEmailCodeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('email_code_error'),
+    status: z.literal(400).optional(),
+  }),
+)
+
+/**
+ * EmailChangeLimitError
+ *
+ * Too many failed email change attempts. Please try again in 24 hours.
+ */
+export const zEmailChangeLimitError = zErrorResponse.and(
+  z.object({
+    code: z.literal('email_change_limit'),
+    status: z.literal(429).optional(),
+  }),
+)
+
+/**
  * AccountDeletePayload
  */
 export const zAccountDeletePayload = z.object({
@@ -117,12 +273,36 @@ export const zAccountDeletePayload = z.object({
 })
 
 /**
+ * InvalidAccountDeletionCodeError
+ *
+ * Invalid account deletion code.
+ */
+export const zInvalidAccountDeletionCodeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_account_deletion_code'),
+    status: z.literal(400).optional(),
+  }),
+)
+
+/**
  * AccountDeletionFeedbackPayload
  */
 export const zAccountDeletionFeedbackPayload = z.object({
   email: z.string(),
   feedback: z.string(),
 })
+
+/**
+ * EmailCodeAccountDeletionRateLimitExceededError
+ *
+ * Too many account deletion emails have been sent. Please try again in {minutes} minutes.
+ */
+export const zEmailCodeAccountDeletionRateLimitExceededError = zErrorResponse.and(
+  z.object({
+    code: z.literal('email_code_account_deletion_rate_limit_exceeded'),
+    status: z.literal(429).optional(),
+  }),
+)
 
 /**
  * EducationStatusResponse
@@ -151,6 +331,18 @@ export const zEducationActivateResponse = z.object({
 })
 
 /**
+ * EducationActivateLimitError
+ *
+ * Rate limit exceeded
+ */
+export const zEducationActivateLimitError = zErrorResponse.and(
+  z.object({
+    code: z.literal('education_activate_limit'),
+    status: z.literal(429).optional(),
+  }),
+)
+
+/**
  * EducationAutocompleteResponse
  */
 export const zEducationAutocompleteResponse = z.object({
@@ -167,6 +359,18 @@ export const zEducationVerifyResponse = z.object({
 })
 
 /**
+ * EducationVerifyLimitError
+ *
+ * Rate limit exceeded
+ */
+export const zEducationVerifyLimitError = zErrorResponse.and(
+  z.object({
+    code: z.literal('education_verify_limit'),
+    status: z.literal(429).optional(),
+  }),
+)
+
+/**
  * AccountInitPayload
  */
 export const zAccountInitPayload = z.object({
@@ -174,6 +378,42 @@ export const zAccountInitPayload = z.object({
   invitation_code: z.string().nullish(),
   timezone: z.string(),
 })
+
+/**
+ * AccountAlreadyInitedError
+ *
+ * The account has been initialized. Please refresh the page.
+ */
+export const zAccountAlreadyInitedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('account_already_inited'),
+    status: z.literal(400).optional(),
+  }),
+)
+
+/**
+ * InvalidInvitationCodeError
+ *
+ * Invalid invitation code.
+ */
+export const zInvalidInvitationCodeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_invitation_code'),
+    status: z.literal(400).optional(),
+  }),
+)
+
+/**
+ * MissingInvitationCodeError
+ *
+ * Invitation code is required.
+ */
+export const zMissingInvitationCodeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('missing_invitation_code'),
+    status: z.literal(400).optional(),
+  }),
+)
 
 /**
  * AccountInterfaceLanguagePayload
@@ -204,6 +444,42 @@ export const zAccountPasswordPayload = z.object({
   password: z.string().nullish(),
   repeat_new_password: z.string(),
 })
+
+/**
+ * CurrentPasswordIncorrectError
+ *
+ * Current password is incorrect.
+ */
+export const zCurrentPasswordIncorrectError = zErrorResponse.and(
+  z.object({
+    code: z.literal('current_password_incorrect'),
+    status: z.literal(400).optional(),
+  }),
+)
+
+/**
+ * InvalidAccountPasswordError
+ *
+ * The password does not satisfy the account password policy.
+ */
+export const zInvalidAccountPasswordError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_account_password'),
+    status: z.literal(400).optional(),
+  }),
+)
+
+/**
+ * UnauthorizedAndForceLogoutError
+ *
+ * Unauthorized and force logout.
+ */
+export const zUnauthorizedAndForceLogoutError = zErrorResponse.and(
+  z.object({
+    code: z.literal('unauthorized_and_force_logout'),
+    status: z.literal(401).optional(),
+  }),
+)
 
 /**
  * AccountProfilePatchPayload

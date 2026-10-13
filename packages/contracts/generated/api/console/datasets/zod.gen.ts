@@ -3,11 +3,123 @@
 import * as z from 'zod'
 
 /**
+ * ErrorResponse
+ *
+ * Documented non-2xx body emitted by ``register_external_error_handlers``.
+ *
+ * ``params`` and ``details`` appear only on the errors that set them. The schema
+ * stays open because ``HTTPException.data`` may carry extra keys.
+ */
+export const zErrorResponse = z.object({
+  code: z.string(),
+  details: z.record(z.string(), z.unknown()).optional(),
+  message: z.string(),
+  params: z.string().optional(),
+  status: z.int(),
+})
+
+/**
+ * AccountNotInitializedError
+ *
+ * The account has not been initialized yet. Please proceed with the initialization process first.
+ */
+export const zAccountNotInitializedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('account_not_initialized'),
+    status: z.literal(400).optional(),
+  }),
+)
+
+/**
+ * NotInitValidatedError
+ *
+ * Init validation has not been completed yet. Please proceed with the init validation process first.
+ */
+export const zNotInitValidatedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('not_init_validated'),
+    status: z.literal(401).optional(),
+  }),
+)
+
+/**
+ * NotSetupError
+ *
+ * Dify has not been initialized and installed yet. Please proceed with the initialization and installation process first.
+ */
+export const zNotSetupError = zErrorResponse.and(
+  z.object({
+    code: z.literal('not_setup'),
+    status: z.literal(401).optional(),
+  }),
+)
+
+/**
+ * UnauthorizedAndForceLogoutError
+ *
+ * Unauthorized and force logout.
+ */
+export const zUnauthorizedAndForceLogoutError = zErrorResponse.and(
+  z.object({
+    code: z.literal('unauthorized_and_force_logout'),
+    status: z.literal(401).optional(),
+  }),
+)
+
+/**
+ * DatasetInUseError
+ *
+ * The dataset is being used by some apps. Please remove the dataset from the apps before deleting it.
+ */
+export const zDatasetInUseError = zErrorResponse.and(
+  z.object({
+    code: z.literal('dataset_in_use'),
+    status: z.literal(409).optional(),
+  }),
+)
+
+/**
+ * DatasetNameDuplicateError
+ *
+ * The dataset name already exists. Please modify your dataset name.
+ */
+export const zDatasetNameDuplicateError = zErrorResponse.and(
+  z.object({
+    code: z.literal('dataset_name_duplicate'),
+    status: z.literal(409).optional(),
+  }),
+)
+
+/**
  * ApiBaseUrlResponse
  */
 export const zApiBaseUrlResponse = z.object({
   api_base_url: z.string(),
 })
+
+/**
+ * MaxKeysExceededError
+ *
+ * The API key limit has been reached.
+ */
+export const zMaxKeysExceededError = zErrorResponse.and(
+  z.object({
+    code: z.literal('max_keys_exceeded'),
+    status: z.literal(400).optional(),
+  }),
+)
+
+/**
+ * AgentNotPublishedError
+ *
+ * Publish the Agent before enabling Web App or API access.
+ */
+export const zAgentNotPublishedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('agent_not_published'),
+    status: z.literal(409).optional(),
+  }),
+)
 
 /**
  * DatasetApiKeyCreatePayload
@@ -62,318 +174,6 @@ export const zExternalDatasetCreatePayload = z.object({
 })
 
 /**
- * ErrorResponse
- *
- * Documented non-2xx body emitted by ``register_external_error_handlers``.
- *
- * ``params`` and ``details`` appear only on the errors that set them. The schema
- * stays open because ``HTTPException.data`` may carry extra keys.
- */
-export const zErrorResponse = z.object({
-  code: z.string(),
-  details: z.record(z.string(), z.unknown()).optional(),
-  message: z.string(),
-  params: z.string().optional(),
-  status: z.int(),
-})
-
-/**
- * GetDatasetsError400
- */
-export const zGetDatasetsError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * GetDatasetsError401
- */
-export const zGetDatasetsError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'not_init_validated',
-      'not_setup',
-      'unauthorized',
-      'unauthorized_and_force_logout',
-    ]),
-  }),
-)
-
-/**
- * CreateDatasetError400
- */
-export const zCreateDatasetError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * CreateDatasetError401
- */
-export const zCreateDatasetError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * CreateDatasetError409
- */
-export const zCreateDatasetError409 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['conflict', 'dataset_in_use', 'dataset_name_duplicate']),
-  }),
-)
-
-/**
- * GetDatasetApiBaseInfoError400
- */
-export const zGetDatasetApiBaseInfoError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * GetDatasetApiBaseInfoError401
- */
-export const zGetDatasetApiBaseInfoError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * GetDatasetApiKeysError400
- */
-export const zGetDatasetApiKeysError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'max_keys_exceeded',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * GetDatasetApiKeysError401
- */
-export const zGetDatasetApiKeysError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * GetDatasetApiKeysError409
- */
-export const zGetDatasetApiKeysError409 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['agent_not_published', 'conflict']),
-  }),
-)
-
-/**
- * PostDatasetApiKeyApiError400
- */
-export const zPostDatasetApiKeyApiError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'max_keys_exceeded',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * PostDatasetApiKeyApiError401
- */
-export const zPostDatasetApiKeyApiError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * PostDatasetApiKeyApiError409
- */
-export const zPostDatasetApiKeyApiError409 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['agent_not_published', 'conflict']),
-  }),
-)
-
-/**
- * DeleteDatasetApiKeyError400
- */
-export const zDeleteDatasetApiKeyError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'max_keys_exceeded',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * DeleteDatasetApiKeyError401
- */
-export const zDeleteDatasetApiKeyError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * DeleteDatasetApiKeyError409
- */
-export const zDeleteDatasetApiKeyError409 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['agent_not_published', 'conflict']),
-  }),
-)
-
-/**
- * GetDatasetDocumentSegmentBatchImportStatusApiError400
- */
-export const zGetDatasetDocumentSegmentBatchImportStatusApiError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * GetDatasetDocumentSegmentBatchImportStatusApiError401
- */
-export const zGetDatasetDocumentSegmentBatchImportStatusApiError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * CreateExternalDatasetError400
- */
-export const zCreateExternalDatasetError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * CreateExternalDatasetError401
- */
-export const zCreateExternalDatasetError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * CreateExternalDatasetError409
- */
-export const zCreateExternalDatasetError409 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['conflict', 'dataset_name_duplicate']),
-  }),
-)
-
-/**
- * GetExternalApiTemplatesError400
- */
-export const zGetExternalApiTemplatesError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * GetExternalApiTemplatesError401
- */
-export const zGetExternalApiTemplatesError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
  * ExternalKnowledgeApiPayload
  */
 export const zExternalKnowledgeApiPayload = z.object({
@@ -382,183 +182,12 @@ export const zExternalKnowledgeApiPayload = z.object({
 })
 
 /**
- * CreateExternalApiTemplateError400
- */
-export const zCreateExternalApiTemplateError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * CreateExternalApiTemplateError401
- */
-export const zCreateExternalApiTemplateError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * CreateExternalApiTemplateError409
- */
-export const zCreateExternalApiTemplateError409 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['conflict', 'dataset_name_duplicate']),
-  }),
-)
-
-/**
- * DeleteExternalApiTemplateApiError400
- */
-export const zDeleteExternalApiTemplateApiError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * DeleteExternalApiTemplateApiError401
- */
-export const zDeleteExternalApiTemplateApiError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * DeleteExternalApiTemplateApiError409
- */
-export const zDeleteExternalApiTemplateApiError409 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['conflict', 'dataset_name_duplicate']),
-  }),
-)
-
-/**
- * GetExternalApiTemplateError400
- */
-export const zGetExternalApiTemplateError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * GetExternalApiTemplateError401
- */
-export const zGetExternalApiTemplateError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * GetExternalApiTemplateError409
- */
-export const zGetExternalApiTemplateError409 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['conflict', 'dataset_name_duplicate']),
-  }),
-)
-
-/**
- * UpdateExternalApiTemplateError400
- */
-export const zUpdateExternalApiTemplateError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * UpdateExternalApiTemplateError401
- */
-export const zUpdateExternalApiTemplateError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * UpdateExternalApiTemplateError409
- */
-export const zUpdateExternalApiTemplateError409 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['conflict', 'dataset_name_duplicate']),
-  }),
-)
-
-/**
  * UsageCountResponse
  */
 export const zUsageCountResponse = z.object({
   count: z.int(),
   is_using: z.boolean(),
 })
-
-/**
- * CheckExternalApiUsageError400
- */
-export const zCheckExternalApiUsageError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * CheckExternalApiUsageError401
- */
-export const zCheckExternalApiUsageError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
 
 /**
  * IndexingEstimatePayload
@@ -573,222 +202,118 @@ export const zIndexingEstimatePayload = z.object({
 })
 
 /**
- * EstimateDatasetIndexingError400
+ * InvalidParamError
  */
-export const zEstimateDatasetIndexingError400 = zErrorResponse.and(
+export const zInvalidParamError = zErrorResponse.and(
   z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'provider_not_initialize',
-      'security_error',
-      'websocket_mismatch',
-    ]),
+    code: z.literal('invalid_param'),
+    status: z.literal(400).optional(),
   }),
 )
 
 /**
- * EstimateDatasetIndexingError401
+ * ProviderNotInitializeError
+ *
+ * No valid model provider credentials found. Please go to Settings -> Model Provider to complete your provider credentials.
  */
-export const zEstimateDatasetIndexingError401 = zErrorResponse.and(
+export const zProviderNotInitializeError = zErrorResponse.and(
   z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+    code: z.literal('provider_not_initialize'),
+    status: z.literal(400).optional(),
   }),
 )
 
 /**
- * EstimateDatasetIndexingError403
+ * DatasetAccessDeniedError
+ *
+ * Dataset access denied.
  */
-export const zEstimateDatasetIndexingError403 = zErrorResponse.and(
+export const zDatasetAccessDeniedError = zErrorResponse.and(
   z.object({
-    code: z.enum(['dataset_access_denied', 'forbidden']),
+    code: z.literal('dataset_access_denied'),
+    status: z.literal(403).optional(),
   }),
 )
 
 /**
- * EstimateDatasetIndexingError404
+ * NotFoundError
  */
-export const zEstimateDatasetIndexingError404 = zErrorResponse.and(
+export const zNotFoundError = zErrorResponse.and(
   z.object({
-    code: z.enum(['not_found']),
+    code: z.literal('not_found'),
+    status: z.literal(404).optional(),
   }),
 )
 
 /**
- * EstimateDatasetIndexingError500
+ * IndexingEstimateError
+ *
+ * Knowledge indexing estimate failed: {message}
  */
-export const zEstimateDatasetIndexingError500 = zErrorResponse.and(
+export const zIndexingEstimateError = zErrorResponse.and(
   z.object({
-    code: z.enum([
-      'active_workspace_required',
-      'indexing_estimate_error',
-      'internal_server_error',
-      'unknown',
-    ]),
+    code: z.literal('indexing_estimate_error'),
+    status: z.literal(500).optional(),
   }),
 )
 
 /**
- * InitDatasetError400
+ * DocumentIndexingError
+ *
+ * The document is being processed and cannot be edited.
  */
-export const zInitDatasetError400 = zErrorResponse.and(
+export const zDocumentIndexingError = zErrorResponse.and(
   z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'document_indexing',
-      'invalid_action',
-      'invalid_param',
-      'model_currently_not_support',
-      'provider_not_initialize',
-      'provider_quota_exceeded',
-      'security_error',
-      'websocket_mismatch',
-    ]),
+    code: z.literal('document_indexing'),
+    status: z.literal(400).optional(),
   }),
 )
 
 /**
- * InitDatasetError401
+ * InvalidActionError
+ *
+ * Invalid action.
  */
-export const zInitDatasetError401 = zErrorResponse.and(
+export const zInvalidActionError = zErrorResponse.and(
   z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+    code: z.literal('invalid_action'),
+    status: z.literal(400).optional(),
   }),
 )
 
 /**
- * InitDatasetError403
+ * ModelCurrentlyNotSupportError
+ *
+ * Dify Hosted OpenAI trial currently not support the GPT-4 model.
  */
-export const zInitDatasetError403 = zErrorResponse.and(
+export const zModelCurrentlyNotSupportError = zErrorResponse.and(
   z.object({
-    code: z.enum(['archived_document_immutable', 'forbidden']),
+    code: z.literal('model_currently_not_support'),
+    status: z.literal(400).optional(),
   }),
 )
 
 /**
- * GetDatasetMetadataBuiltInFieldApiError400
+ * ProviderQuotaExceededError
+ *
+ * Your quota for Dify Hosted Model Provider has been exhausted. Please go to Settings -> Model Provider to complete your own provider credentials.
  */
-export const zGetDatasetMetadataBuiltInFieldApiError400 = zErrorResponse.and(
+export const zProviderQuotaExceededError = zErrorResponse.and(
   z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'security_error',
-      'websocket_mismatch',
-    ]),
+    code: z.literal('provider_quota_exceeded'),
+    status: z.literal(400).optional(),
   }),
 )
 
 /**
- * GetDatasetMetadataBuiltInFieldApiError401
+ * ArchivedDocumentImmutableError
+ *
+ * The archived document is not editable.
  */
-export const zGetDatasetMetadataBuiltInFieldApiError401 = zErrorResponse.and(
+export const zArchivedDocumentImmutableError = zErrorResponse.and(
   z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * PostDataSourceNotionIndexingEstimateApiError400
- */
-export const zPostDataSourceNotionIndexingEstimateApiError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'provider_not_initialize',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * PostDataSourceNotionIndexingEstimateApiError401
- */
-export const zPostDataSourceNotionIndexingEstimateApiError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * PostDataSourceNotionIndexingEstimateApiError404
- */
-export const zPostDataSourceNotionIndexingEstimateApiError404 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_found']),
-  }),
-)
-
-/**
- * PostDataSourceNotionIndexingEstimateApiError500
- */
-export const zPostDataSourceNotionIndexingEstimateApiError500 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'active_workspace_required',
-      'indexing_estimate_error',
-      'internal_server_error',
-      'unknown',
-    ]),
-  }),
-)
-
-/**
- * GetProcessRuleError400
- */
-export const zGetProcessRuleError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'document_indexing',
-      'invalid_action',
-      'invalid_param',
-      'model_currently_not_support',
-      'provider_not_initialize',
-      'provider_quota_exceeded',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * GetProcessRuleError401
- */
-export const zGetProcessRuleError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * GetProcessRuleError403
- */
-export const zGetProcessRuleError403 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['archived_document_immutable', 'forbidden']),
+    code: z.literal('archived_document_immutable'),
+    status: z.literal(403).optional(),
   }),
 )
 
@@ -800,209 +325,11 @@ export const zRetrievalSettingResponse = z.object({
 })
 
 /**
- * GetDatasetRetrievalSettingError400
- */
-export const zGetDatasetRetrievalSettingError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * GetDatasetRetrievalSettingError401
- */
-export const zGetDatasetRetrievalSettingError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * GetDatasetRetrievalSettingMockError400
- */
-export const zGetDatasetRetrievalSettingMockError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * GetDatasetRetrievalSettingMockError401
- */
-export const zGetDatasetRetrievalSettingMockError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * DeleteDatasetApiError400
- */
-export const zDeleteDatasetApiError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * DeleteDatasetApiError401
- */
-export const zDeleteDatasetApiError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * DeleteDatasetApiError409
- */
-export const zDeleteDatasetApiError409 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['conflict', 'dataset_in_use', 'dataset_name_duplicate']),
-  }),
-)
-
-/**
- * GetDatasetError400
- */
-export const zGetDatasetError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * GetDatasetError401
- */
-export const zGetDatasetError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * GetDatasetError409
- */
-export const zGetDatasetError409 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['conflict', 'dataset_in_use', 'dataset_name_duplicate']),
-  }),
-)
-
-/**
- * UpdateDatasetError400
- */
-export const zUpdateDatasetError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * UpdateDatasetError401
- */
-export const zUpdateDatasetError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * UpdateDatasetError409
- */
-export const zUpdateDatasetError409 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['conflict', 'dataset_in_use', 'dataset_name_duplicate']),
-  }),
-)
-
-/**
  * SimpleResultResponse
  */
 export const zSimpleResultResponse = z.object({
   result: z.string(),
 })
-
-/**
- * PostDatasetEnableApiApiError400
- */
-export const zPostDatasetEnableApiApiError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * PostDatasetEnableApiApiError401
- */
-export const zPostDatasetEnableApiApiError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * PostDatasetEnableApiApiError409
- */
-export const zPostDatasetEnableApiApiError409 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['conflict', 'dataset_in_use', 'dataset_name_duplicate']),
-  }),
-)
 
 /**
  * AutoDisableLogsResponse
@@ -1013,263 +340,14 @@ export const zAutoDisableLogsResponse = z.object({
 })
 
 /**
- * GetDatasetAutoDisableLogsError400
+ * DocumentAlreadyFinishedError
+ *
+ * The document has been processed. Please refresh the page or go to the document details.
  */
-export const zGetDatasetAutoDisableLogsError400 = zErrorResponse.and(
+export const zDocumentAlreadyFinishedError = zErrorResponse.and(
   z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * GetDatasetAutoDisableLogsError401
- */
-export const zGetDatasetAutoDisableLogsError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * GetDatasetAutoDisableLogsError409
- */
-export const zGetDatasetAutoDisableLogsError409 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['conflict', 'dataset_in_use', 'dataset_name_duplicate']),
-  }),
-)
-
-/**
- * GetDocumentBatchIndexingEstimateApiError400
- */
-export const zGetDocumentBatchIndexingEstimateApiError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'document_already_finished',
-      'invalid_param',
-      'provider_not_initialize',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * GetDocumentBatchIndexingEstimateApiError401
- */
-export const zGetDocumentBatchIndexingEstimateApiError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * GetDocumentBatchIndexingEstimateApiError403
- */
-export const zGetDocumentBatchIndexingEstimateApiError403 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['dataset_access_denied', 'forbidden']),
-  }),
-)
-
-/**
- * GetDocumentBatchIndexingEstimateApiError404
- */
-export const zGetDocumentBatchIndexingEstimateApiError404 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_found']),
-  }),
-)
-
-/**
- * GetDocumentBatchIndexingEstimateApiError500
- */
-export const zGetDocumentBatchIndexingEstimateApiError500 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'active_workspace_required',
-      'indexing_estimate_error',
-      'internal_server_error',
-      'unknown',
-    ]),
-  }),
-)
-
-/**
- * GetDocumentBatchIndexingStatusApiError400
- */
-export const zGetDocumentBatchIndexingStatusApiError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'document_indexing',
-      'invalid_action',
-      'invalid_param',
-      'model_currently_not_support',
-      'provider_not_initialize',
-      'provider_quota_exceeded',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * GetDocumentBatchIndexingStatusApiError401
- */
-export const zGetDocumentBatchIndexingStatusApiError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * GetDocumentBatchIndexingStatusApiError403
- */
-export const zGetDocumentBatchIndexingStatusApiError403 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['archived_document_immutable', 'forbidden']),
-  }),
-)
-
-/**
- * DeleteDatasetDocumentListApiError400
- */
-export const zDeleteDatasetDocumentListApiError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'document_indexing',
-      'invalid_action',
-      'invalid_param',
-      'model_currently_not_support',
-      'provider_not_initialize',
-      'provider_quota_exceeded',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * DeleteDatasetDocumentListApiError401
- */
-export const zDeleteDatasetDocumentListApiError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * DeleteDatasetDocumentListApiError403
- */
-export const zDeleteDatasetDocumentListApiError403 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['archived_document_immutable', 'forbidden']),
-  }),
-)
-
-/**
- * GetDatasetDocumentsError400
- */
-export const zGetDatasetDocumentsError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'document_indexing',
-      'invalid_action',
-      'invalid_param',
-      'model_currently_not_support',
-      'provider_not_initialize',
-      'provider_quota_exceeded',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * GetDatasetDocumentsError401
- */
-export const zGetDatasetDocumentsError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * GetDatasetDocumentsError403
- */
-export const zGetDatasetDocumentsError403 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['archived_document_immutable', 'forbidden']),
-  }),
-)
-
-/**
- * PostDatasetDocumentListApiError400
- */
-export const zPostDatasetDocumentListApiError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'document_indexing',
-      'invalid_action',
-      'invalid_param',
-      'model_currently_not_support',
-      'provider_not_initialize',
-      'provider_quota_exceeded',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * PostDatasetDocumentListApiError401
- */
-export const zPostDatasetDocumentListApiError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * PostDatasetDocumentListApiError403
- */
-export const zPostDatasetDocumentListApiError403 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['archived_document_immutable', 'forbidden']),
+    code: z.literal('document_already_finished'),
+    status: z.literal(400).optional(),
   }),
 )
 
@@ -1283,47 +361,6 @@ export const zDocumentBatchDownloadZipPayload = z.object({
 })
 
 /**
- * DownloadDatasetDocumentsAsZipError400
- */
-export const zDownloadDatasetDocumentsAsZipError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'document_indexing',
-      'invalid_action',
-      'invalid_param',
-      'model_currently_not_support',
-      'provider_not_initialize',
-      'provider_quota_exceeded',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * DownloadDatasetDocumentsAsZipError401
- */
-export const zDownloadDatasetDocumentsAsZipError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * DownloadDatasetDocumentsAsZipError403
- */
-export const zDownloadDatasetDocumentsAsZipError403 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['archived_document_immutable', 'forbidden']),
-  }),
-)
-
-/**
  * GenerateSummaryPayload
  */
 export const zGenerateSummaryPayload = z.object({
@@ -1331,194 +368,14 @@ export const zGenerateSummaryPayload = z.object({
 })
 
 /**
- * GenerateSummaryForDocumentsError400
+ * InvalidMetadataError
+ *
+ * The metadata content is incorrect. Please check and verify.
  */
-export const zGenerateSummaryForDocumentsError400 = zErrorResponse.and(
+export const zInvalidMetadataError = zErrorResponse.and(
   z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'document_indexing',
-      'invalid_action',
-      'invalid_param',
-      'model_currently_not_support',
-      'provider_not_initialize',
-      'provider_quota_exceeded',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * GenerateSummaryForDocumentsError401
- */
-export const zGenerateSummaryForDocumentsError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * GenerateSummaryForDocumentsError403
- */
-export const zGenerateSummaryForDocumentsError403 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['archived_document_immutable', 'forbidden']),
-  }),
-)
-
-/**
- * PostDocumentMetadataEditApiError400
- */
-export const zPostDocumentMetadataEditApiError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * PostDocumentMetadataEditApiError401
- */
-export const zPostDocumentMetadataEditApiError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * PatchDocumentStatusApiError400
- */
-export const zPatchDocumentStatusApiError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'document_indexing',
-      'invalid_action',
-      'invalid_param',
-      'model_currently_not_support',
-      'provider_not_initialize',
-      'provider_quota_exceeded',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * PatchDocumentStatusApiError401
- */
-export const zPatchDocumentStatusApiError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * PatchDocumentStatusApiError403
- */
-export const zPatchDocumentStatusApiError403 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['archived_document_immutable', 'forbidden']),
-  }),
-)
-
-/**
- * DeleteDocumentApiError400
- */
-export const zDeleteDocumentApiError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'document_indexing',
-      'invalid_action',
-      'invalid_param',
-      'model_currently_not_support',
-      'provider_not_initialize',
-      'provider_quota_exceeded',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * DeleteDocumentApiError401
- */
-export const zDeleteDocumentApiError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * DeleteDocumentApiError403
- */
-export const zDeleteDocumentApiError403 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['archived_document_immutable', 'forbidden']),
-  }),
-)
-
-/**
- * GetDocumentError400
- */
-export const zGetDocumentError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'document_indexing',
-      'invalid_action',
-      'invalid_metadata',
-      'invalid_param',
-      'model_currently_not_support',
-      'provider_not_initialize',
-      'provider_quota_exceeded',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * GetDocumentError401
- */
-export const zGetDocumentError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * GetDocumentError403
- */
-export const zGetDocumentError403 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['archived_document_immutable', 'forbidden']),
+    code: z.literal('invalid_metadata'),
+    status: z.literal(400).optional(),
   }),
 )
 
@@ -1528,108 +385,6 @@ export const zGetDocumentError403 = zErrorResponse.and(
 export const zUrlResponse = z.object({
   url: z.string(),
 })
-
-/**
- * GetDatasetDocumentDownloadUrlError400
- */
-export const zGetDatasetDocumentDownloadUrlError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'document_indexing',
-      'invalid_action',
-      'invalid_param',
-      'model_currently_not_support',
-      'provider_not_initialize',
-      'provider_quota_exceeded',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * GetDatasetDocumentDownloadUrlError401
- */
-export const zGetDatasetDocumentDownloadUrlError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * GetDatasetDocumentDownloadUrlError403
- */
-export const zGetDatasetDocumentDownloadUrlError403 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['archived_document_immutable', 'forbidden']),
-  }),
-)
-
-/**
- * EstimateDocumentIndexingError400
- */
-export const zEstimateDocumentIndexingError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'document_already_finished',
-      'invalid_param',
-      'provider_not_initialize',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * EstimateDocumentIndexingError401
- */
-export const zEstimateDocumentIndexingError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * EstimateDocumentIndexingError403
- */
-export const zEstimateDocumentIndexingError403 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['dataset_access_denied', 'forbidden']),
-  }),
-)
-
-/**
- * EstimateDocumentIndexingError404
- */
-export const zEstimateDocumentIndexingError404 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_found']),
-  }),
-)
-
-/**
- * EstimateDocumentIndexingError500
- */
-export const zEstimateDocumentIndexingError500 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'active_workspace_required',
-      'indexing_estimate_error',
-      'internal_server_error',
-      'unknown',
-    ]),
-  }),
-)
 
 /**
  * DocumentStatusResponse
@@ -1657,47 +412,6 @@ export const zDocumentStatusListResponse = z.object({
 })
 
 /**
- * GetDocumentIndexingStatusError400
- */
-export const zGetDocumentIndexingStatusError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'document_indexing',
-      'invalid_action',
-      'invalid_param',
-      'model_currently_not_support',
-      'provider_not_initialize',
-      'provider_quota_exceeded',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * GetDocumentIndexingStatusError401
- */
-export const zGetDocumentIndexingStatusError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * GetDocumentIndexingStatusError403
- */
-export const zGetDocumentIndexingStatusError403 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['archived_document_immutable', 'forbidden']),
-  }),
-)
-
-/**
  * DocumentMetadataUpdatePayload
  */
 export const zDocumentMetadataUpdatePayload = z.object({
@@ -1714,302 +428,11 @@ export const zSimpleResultMessageResponse = z.object({
 })
 
 /**
- * UpdateDocumentMetadataError400
- */
-export const zUpdateDocumentMetadataError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'document_indexing',
-      'invalid_action',
-      'invalid_param',
-      'model_currently_not_support',
-      'provider_not_initialize',
-      'provider_quota_exceeded',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * UpdateDocumentMetadataError401
- */
-export const zUpdateDocumentMetadataError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * UpdateDocumentMetadataError403
- */
-export const zUpdateDocumentMetadataError403 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['archived_document_immutable', 'forbidden']),
-  }),
-)
-
-/**
- * GetDataSourceNotionDocumentSyncApiError400
- */
-export const zGetDataSourceNotionDocumentSyncApiError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * GetDataSourceNotionDocumentSyncApiError401
- */
-export const zGetDataSourceNotionDocumentSyncApiError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * GetDataSourceNotionDocumentSyncApiError403
- */
-export const zGetDataSourceNotionDocumentSyncApiError403 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['dataset_access_denied', 'forbidden']),
-  }),
-)
-
-/**
- * GetDataSourceNotionDocumentSyncApiError404
- */
-export const zGetDataSourceNotionDocumentSyncApiError404 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_found']),
-  }),
-)
-
-/**
- * GetDocumentPipelineExecutionLogApiError400
- */
-export const zGetDocumentPipelineExecutionLogApiError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'document_indexing',
-      'invalid_action',
-      'invalid_param',
-      'model_currently_not_support',
-      'provider_not_initialize',
-      'provider_quota_exceeded',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * GetDocumentPipelineExecutionLogApiError401
- */
-export const zGetDocumentPipelineExecutionLogApiError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * GetDocumentPipelineExecutionLogApiError403
- */
-export const zGetDocumentPipelineExecutionLogApiError403 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['archived_document_immutable', 'forbidden']),
-  }),
-)
-
-/**
- * PatchDocumentPauseApiError400
- */
-export const zPatchDocumentPauseApiError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'document_indexing',
-      'invalid_action',
-      'invalid_param',
-      'model_currently_not_support',
-      'provider_not_initialize',
-      'provider_quota_exceeded',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * PatchDocumentPauseApiError401
- */
-export const zPatchDocumentPauseApiError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * PatchDocumentPauseApiError403
- */
-export const zPatchDocumentPauseApiError403 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['archived_document_immutable', 'forbidden']),
-  }),
-)
-
-/**
- * PatchDocumentRecoverApiError400
- */
-export const zPatchDocumentRecoverApiError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'document_indexing',
-      'invalid_action',
-      'invalid_param',
-      'model_currently_not_support',
-      'provider_not_initialize',
-      'provider_quota_exceeded',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * PatchDocumentRecoverApiError401
- */
-export const zPatchDocumentRecoverApiError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * PatchDocumentRecoverApiError403
- */
-export const zPatchDocumentRecoverApiError403 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['archived_document_immutable', 'forbidden']),
-  }),
-)
-
-/**
- * UpdateDocumentProcessingError400
- */
-export const zUpdateDocumentProcessingError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'document_indexing',
-      'invalid_action',
-      'invalid_param',
-      'model_currently_not_support',
-      'provider_not_initialize',
-      'provider_quota_exceeded',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * UpdateDocumentProcessingError401
- */
-export const zUpdateDocumentProcessingError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * UpdateDocumentProcessingError403
- */
-export const zUpdateDocumentProcessingError403 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['archived_document_immutable', 'forbidden']),
-  }),
-)
-
-/**
  * DocumentRenamePayload
  */
 export const zDocumentRenamePayload = z.object({
   name: z.string(),
 })
-
-/**
- * PostDocumentRenameApiError400
- */
-export const zPostDocumentRenameApiError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'document_indexing',
-      'invalid_action',
-      'invalid_param',
-      'model_currently_not_support',
-      'provider_not_initialize',
-      'provider_quota_exceeded',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * PostDocumentRenameApiError401
- */
-export const zPostDocumentRenameApiError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * PostDocumentRenameApiError403
- */
-export const zPostDocumentRenameApiError403 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['archived_document_immutable', 'forbidden']),
-  }),
-)
 
 /**
  * SegmentCreatePayload
@@ -2022,178 +445,26 @@ export const zSegmentCreatePayload = z.object({
 })
 
 /**
- * PostDatasetDocumentSegmentAddApiError400
+ * ChildChunkDeleteIndexError
+ *
+ * Delete child chunk index failed: {message}
  */
-export const zPostDatasetDocumentSegmentAddApiError400 = zErrorResponse.and(
+export const zChildChunkDeleteIndexError = zErrorResponse.and(
   z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_action',
-      'invalid_param',
-      'provider_not_initialize',
-      'security_error',
-      'websocket_mismatch',
-    ]),
+    code: z.literal('child_chunk_delete_index_error'),
+    status: z.literal(500).optional(),
   }),
 )
 
 /**
- * PostDatasetDocumentSegmentAddApiError401
+ * ChildChunkIndexingError
+ *
+ * Create child chunk index failed: {message}
  */
-export const zPostDatasetDocumentSegmentAddApiError401 = zErrorResponse.and(
+export const zChildChunkIndexingError = zErrorResponse.and(
   z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * PostDatasetDocumentSegmentAddApiError500
- */
-export const zPostDatasetDocumentSegmentAddApiError500 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'active_workspace_required',
-      'child_chunk_delete_index_error',
-      'child_chunk_indexing_error',
-      'internal_server_error',
-      'unknown',
-    ]),
-  }),
-)
-
-/**
- * PatchDatasetDocumentSegmentApiError400
- */
-export const zPatchDatasetDocumentSegmentApiError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_action',
-      'invalid_param',
-      'provider_not_initialize',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * PatchDatasetDocumentSegmentApiError401
- */
-export const zPatchDatasetDocumentSegmentApiError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * PatchDatasetDocumentSegmentApiError500
- */
-export const zPatchDatasetDocumentSegmentApiError500 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'active_workspace_required',
-      'child_chunk_delete_index_error',
-      'child_chunk_indexing_error',
-      'internal_server_error',
-      'unknown',
-    ]),
-  }),
-)
-
-/**
- * DeleteDatasetDocumentSegmentListApiError400
- */
-export const zDeleteDatasetDocumentSegmentListApiError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_action',
-      'invalid_param',
-      'provider_not_initialize',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * DeleteDatasetDocumentSegmentListApiError401
- */
-export const zDeleteDatasetDocumentSegmentListApiError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * DeleteDatasetDocumentSegmentListApiError500
- */
-export const zDeleteDatasetDocumentSegmentListApiError500 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'active_workspace_required',
-      'child_chunk_delete_index_error',
-      'child_chunk_indexing_error',
-      'internal_server_error',
-      'unknown',
-    ]),
-  }),
-)
-
-/**
- * GetDatasetDocumentSegmentListApiError400
- */
-export const zGetDatasetDocumentSegmentListApiError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_action',
-      'invalid_param',
-      'provider_not_initialize',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * GetDatasetDocumentSegmentListApiError401
- */
-export const zGetDatasetDocumentSegmentListApiError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * GetDatasetDocumentSegmentListApiError500
- */
-export const zGetDatasetDocumentSegmentListApiError500 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'active_workspace_required',
-      'child_chunk_delete_index_error',
-      'child_chunk_indexing_error',
-      'internal_server_error',
-      'unknown',
-    ]),
+    code: z.literal('child_chunk_indexing_error'),
+    status: z.literal(500).optional(),
   }),
 )
 
@@ -2205,35 +476,6 @@ export const zBatchImportPayload = z.object({
 })
 
 /**
- * PostDatasetDocumentSegmentBatchImportApiError400
- */
-export const zPostDatasetDocumentSegmentBatchImportApiError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_action',
-      'invalid_param',
-      'provider_not_initialize',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * PostDatasetDocumentSegmentBatchImportApiError401
- */
-export const zPostDatasetDocumentSegmentBatchImportApiError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
  * ErrorMessageResponse
  *
  * Legacy ``{"error": message}`` body a few endpoints return instead of the standard error body.
@@ -2241,65 +483,6 @@ export const zPostDatasetDocumentSegmentBatchImportApiError401 = zErrorResponse.
 export const zErrorMessageResponse = z.object({
   error: z.string(),
 })
-
-/**
- * PostDatasetDocumentSegmentBatchImportApiError500
- */
-export const zPostDatasetDocumentSegmentBatchImportApiError500 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'active_workspace_required',
-      'child_chunk_delete_index_error',
-      'child_chunk_indexing_error',
-      'internal_server_error',
-      'unknown',
-    ]),
-  }),
-)
-
-/**
- * DeleteDatasetDocumentSegmentUpdateApiError400
- */
-export const zDeleteDatasetDocumentSegmentUpdateApiError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_action',
-      'invalid_param',
-      'provider_not_initialize',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * DeleteDatasetDocumentSegmentUpdateApiError401
- */
-export const zDeleteDatasetDocumentSegmentUpdateApiError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * DeleteDatasetDocumentSegmentUpdateApiError500
- */
-export const zDeleteDatasetDocumentSegmentUpdateApiError500 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'active_workspace_required',
-      'child_chunk_delete_index_error',
-      'child_chunk_indexing_error',
-      'internal_server_error',
-      'unknown',
-    ]),
-  }),
-)
 
 /**
  * SegmentUpdatePayload
@@ -2314,231 +497,11 @@ export const zSegmentUpdatePayload = z.object({
 })
 
 /**
- * PatchDatasetDocumentSegmentUpdateApiError400
- */
-export const zPatchDatasetDocumentSegmentUpdateApiError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_action',
-      'invalid_param',
-      'provider_not_initialize',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * PatchDatasetDocumentSegmentUpdateApiError401
- */
-export const zPatchDatasetDocumentSegmentUpdateApiError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * PatchDatasetDocumentSegmentUpdateApiError500
- */
-export const zPatchDatasetDocumentSegmentUpdateApiError500 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'active_workspace_required',
-      'child_chunk_delete_index_error',
-      'child_chunk_indexing_error',
-      'internal_server_error',
-      'unknown',
-    ]),
-  }),
-)
-
-/**
- * GetChildChunkAddApiError400
- */
-export const zGetChildChunkAddApiError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_action',
-      'invalid_param',
-      'provider_not_initialize',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * GetChildChunkAddApiError401
- */
-export const zGetChildChunkAddApiError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * GetChildChunkAddApiError500
- */
-export const zGetChildChunkAddApiError500 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'active_workspace_required',
-      'child_chunk_delete_index_error',
-      'child_chunk_indexing_error',
-      'internal_server_error',
-      'unknown',
-    ]),
-  }),
-)
-
-/**
- * PatchChildChunkAddApiError400
- */
-export const zPatchChildChunkAddApiError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_action',
-      'invalid_param',
-      'provider_not_initialize',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * PatchChildChunkAddApiError401
- */
-export const zPatchChildChunkAddApiError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * PatchChildChunkAddApiError500
- */
-export const zPatchChildChunkAddApiError500 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'active_workspace_required',
-      'child_chunk_delete_index_error',
-      'child_chunk_indexing_error',
-      'internal_server_error',
-      'unknown',
-    ]),
-  }),
-)
-
-/**
  * ChildChunkCreatePayload
  */
 export const zChildChunkCreatePayload = z.object({
   content: z.string(),
 })
-
-/**
- * PostChildChunkAddApiError400
- */
-export const zPostChildChunkAddApiError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_action',
-      'invalid_param',
-      'provider_not_initialize',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * PostChildChunkAddApiError401
- */
-export const zPostChildChunkAddApiError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * PostChildChunkAddApiError500
- */
-export const zPostChildChunkAddApiError500 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'active_workspace_required',
-      'child_chunk_delete_index_error',
-      'child_chunk_indexing_error',
-      'internal_server_error',
-      'unknown',
-    ]),
-  }),
-)
-
-/**
- * DeleteChildChunkUpdateApiError400
- */
-export const zDeleteChildChunkUpdateApiError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_action',
-      'invalid_param',
-      'provider_not_initialize',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * DeleteChildChunkUpdateApiError401
- */
-export const zDeleteChildChunkUpdateApiError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * DeleteChildChunkUpdateApiError500
- */
-export const zDeleteChildChunkUpdateApiError500 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'active_workspace_required',
-      'child_chunk_delete_index_error',
-      'child_chunk_indexing_error',
-      'internal_server_error',
-      'unknown',
-    ]),
-  }),
-)
 
 /**
  * ChildChunkUpdatePayload
@@ -2548,174 +511,12 @@ export const zChildChunkUpdatePayload = z.object({
 })
 
 /**
- * PatchChildChunkUpdateApiError400
- */
-export const zPatchChildChunkUpdateApiError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_action',
-      'invalid_param',
-      'provider_not_initialize',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * PatchChildChunkUpdateApiError401
- */
-export const zPatchChildChunkUpdateApiError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * PatchChildChunkUpdateApiError500
- */
-export const zPatchChildChunkUpdateApiError500 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'active_workspace_required',
-      'child_chunk_delete_index_error',
-      'child_chunk_indexing_error',
-      'internal_server_error',
-      'unknown',
-    ]),
-  }),
-)
-
-/**
- * GetDocumentSummaryStatusError400
- */
-export const zGetDocumentSummaryStatusError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'document_indexing',
-      'invalid_action',
-      'invalid_param',
-      'model_currently_not_support',
-      'provider_not_initialize',
-      'provider_quota_exceeded',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * GetDocumentSummaryStatusError401
- */
-export const zGetDocumentSummaryStatusError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * GetDocumentSummaryStatusError403
- */
-export const zGetDocumentSummaryStatusError403 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['archived_document_immutable', 'forbidden']),
-  }),
-)
-
-/**
- * GetWebsiteDocumentSyncApiError400
- */
-export const zGetWebsiteDocumentSyncApiError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'document_indexing',
-      'invalid_action',
-      'invalid_param',
-      'model_currently_not_support',
-      'provider_not_initialize',
-      'provider_quota_exceeded',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * GetWebsiteDocumentSyncApiError401
- */
-export const zGetWebsiteDocumentSyncApiError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * GetWebsiteDocumentSyncApiError403
- */
-export const zGetWebsiteDocumentSyncApiError403 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['archived_document_immutable', 'forbidden']),
-  }),
-)
-
-/**
  * ErrorDocsResponse
  */
 export const zErrorDocsResponse = z.object({
   data: z.array(zDocumentStatusResponse),
   total: z.int(),
 })
-
-/**
- * GetDatasetErrorDocsError400
- */
-export const zGetDatasetErrorDocsError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * GetDatasetErrorDocsError401
- */
-export const zGetDatasetErrorDocsError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * GetDatasetErrorDocsError409
- */
-export const zGetDatasetErrorDocsError409 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['conflict', 'dataset_in_use', 'dataset_name_duplicate']),
-  }),
-)
 
 /**
  * ExternalHitTestingPayload
@@ -2727,132 +528,14 @@ export const zExternalHitTestingPayload = z.object({
 })
 
 /**
- * TestExternalKnowledgeRetrievalError400
+ * CompletionRequestError
+ *
+ * Completion request failed.
  */
-export const zTestExternalKnowledgeRetrievalError400 = zErrorResponse.and(
+export const zCompletionRequestError = zErrorResponse.and(
   z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * TestExternalKnowledgeRetrievalError401
- */
-export const zTestExternalKnowledgeRetrievalError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * TestExternalKnowledgeRetrievalError409
- */
-export const zTestExternalKnowledgeRetrievalError409 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['conflict', 'dataset_name_duplicate']),
-  }),
-)
-
-/**
- * TestDatasetRetrievalError400
- */
-export const zTestDatasetRetrievalError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'completion_request_error',
-      'invalid_param',
-      'model_currently_not_support',
-      'provider_not_initialize',
-      'provider_quota_exceeded',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * TestDatasetRetrievalError401
- */
-export const zTestDatasetRetrievalError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * GetDatasetIndexingStatusError400
- */
-export const zGetDatasetIndexingStatusError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * GetDatasetIndexingStatusError401
- */
-export const zGetDatasetIndexingStatusError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * GetDatasetIndexingStatusError409
- */
-export const zGetDatasetIndexingStatusError409 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['conflict', 'dataset_in_use', 'dataset_name_duplicate']),
-  }),
-)
-
-/**
- * GetDatasetMetadataCreateApiError400
- */
-export const zGetDatasetMetadataCreateApiError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * GetDatasetMetadataCreateApiError401
- */
-export const zGetDatasetMetadataCreateApiError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+    code: z.literal('completion_request_error'),
+    status: z.literal(400).optional(),
   }),
 )
 
@@ -2874,164 +557,11 @@ export const zDatasetMetadataResponse = z.object({
 })
 
 /**
- * PostDatasetMetadataCreateApiError400
- */
-export const zPostDatasetMetadataCreateApiError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * PostDatasetMetadataCreateApiError401
- */
-export const zPostDatasetMetadataCreateApiError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * PostDatasetMetadataBuiltInFieldActionApiError400
- */
-export const zPostDatasetMetadataBuiltInFieldActionApiError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * PostDatasetMetadataBuiltInFieldActionApiError401
- */
-export const zPostDatasetMetadataBuiltInFieldActionApiError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * DeleteDatasetMetadataApiError400
- */
-export const zDeleteDatasetMetadataApiError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * DeleteDatasetMetadataApiError401
- */
-export const zDeleteDatasetMetadataApiError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
  * MetadataUpdatePayload
  */
 export const zMetadataUpdatePayload = z.object({
   name: z.string(),
 })
-
-/**
- * PatchDatasetMetadataApiError400
- */
-export const zPatchDatasetMetadataApiError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * PatchDatasetMetadataApiError401
- */
-export const zPatchDatasetMetadataApiError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * GetDataSourceNotionDatasetSyncApiError400
- */
-export const zGetDataSourceNotionDatasetSyncApiError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * GetDataSourceNotionDatasetSyncApiError401
- */
-export const zGetDataSourceNotionDatasetSyncApiError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * GetDataSourceNotionDatasetSyncApiError403
- */
-export const zGetDataSourceNotionDatasetSyncApiError403 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['dataset_access_denied', 'forbidden']),
-  }),
-)
-
-/**
- * GetDataSourceNotionDatasetSyncApiError404
- */
-export const zGetDataSourceNotionDatasetSyncApiError404 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_found']),
-  }),
-)
 
 /**
  * PartialMemberListResponse
@@ -3041,114 +571,6 @@ export const zPartialMemberListResponse = z.object({
 })
 
 /**
- * GetDatasetPermissionUsersError400
- */
-export const zGetDatasetPermissionUsersError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * GetDatasetPermissionUsersError401
- */
-export const zGetDatasetPermissionUsersError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * GetDatasetPermissionUsersError409
- */
-export const zGetDatasetPermissionUsersError409 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['conflict', 'dataset_in_use', 'dataset_name_duplicate']),
-  }),
-)
-
-/**
- * GetDatasetQueriesError400
- */
-export const zGetDatasetQueriesError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * GetDatasetQueriesError401
- */
-export const zGetDatasetQueriesError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * GetDatasetQueriesError409
- */
-export const zGetDatasetQueriesError409 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['conflict', 'dataset_in_use', 'dataset_name_duplicate']),
-  }),
-)
-
-/**
- * GetDatasetRelatedAppsError400
- */
-export const zGetDatasetRelatedAppsError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * GetDatasetRelatedAppsError401
- */
-export const zGetDatasetRelatedAppsError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * GetDatasetRelatedAppsError409
- */
-export const zGetDatasetRelatedAppsError409 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['conflict', 'dataset_in_use', 'dataset_name_duplicate']),
-  }),
-)
-
-/**
  * DocumentRetryPayload
  */
 export const zDocumentRetryPayload = z.object({
@@ -3156,199 +578,11 @@ export const zDocumentRetryPayload = z.object({
 })
 
 /**
- * PostDocumentRetryApiError400
- */
-export const zPostDocumentRetryApiError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'document_indexing',
-      'invalid_action',
-      'invalid_param',
-      'model_currently_not_support',
-      'provider_not_initialize',
-      'provider_quota_exceeded',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * PostDocumentRetryApiError401
- */
-export const zPostDocumentRetryApiError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * PostDocumentRetryApiError403
- */
-export const zPostDocumentRetryApiError403 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['archived_document_immutable', 'forbidden']),
-  }),
-)
-
-/**
  * UsageCheckResponse
  */
 export const zUsageCheckResponse = z.object({
   is_using: z.boolean(),
 })
-
-/**
- * CheckDatasetUseError400
- */
-export const zCheckDatasetUseError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * CheckDatasetUseError401
- */
-export const zCheckDatasetUseError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * CheckDatasetUseError409
- */
-export const zCheckDatasetUseError409 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['conflict', 'dataset_in_use', 'dataset_name_duplicate']),
-  }),
-)
-
-/**
- * GetDatasetApiKeys4114b8ebError400
- */
-export const zGetDatasetApiKeys4114B8EbError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'max_keys_exceeded',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * GetDatasetApiKeys4114b8ebError401
- */
-export const zGetDatasetApiKeys4114B8EbError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * GetDatasetApiKeys4114b8ebError409
- */
-export const zGetDatasetApiKeys4114B8EbError409 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['agent_not_published', 'conflict']),
-  }),
-)
-
-/**
- * CreateDatasetApiKeyError400
- */
-export const zCreateDatasetApiKeyError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'max_keys_exceeded',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * CreateDatasetApiKeyError401
- */
-export const zCreateDatasetApiKeyError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * CreateDatasetApiKeyError409
- */
-export const zCreateDatasetApiKeyError409 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['agent_not_published', 'conflict']),
-  }),
-)
-
-/**
- * DeleteDatasetApiKeyA407edb2Error400
- */
-export const zDeleteDatasetApiKeyA407Edb2Error400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'max_keys_exceeded',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * DeleteDatasetApiKeyA407edb2Error401
- */
-export const zDeleteDatasetApiKeyA407Edb2Error401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * DeleteDatasetApiKeyA407edb2Error409
- */
-export const zDeleteDatasetApiKeyA407Edb2Error409 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['agent_not_published', 'conflict']),
-  }),
-)
 
 /**
  * PermissionEnum

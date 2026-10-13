@@ -19,13 +19,6 @@ export const zErrorMessageResponse = z.object({
 })
 
 /**
- * OAuthDataSourceResponse
- */
-export const zOAuthDataSourceResponse = z.object({
-  data: z.string(),
-})
-
-/**
  * ErrorResponse
  *
  * Documented non-2xx body emitted by ``register_external_error_handlers``.
@@ -42,58 +35,47 @@ export const zErrorResponse = z.object({
 })
 
 /**
- * OauthDataSourceBindingError400
+ * AccountNotInitializedError
+ *
+ * The account has not been initialized yet. Please proceed with the initialization process first.
  */
-export const zOauthDataSourceBindingError400 = zErrorResponse.and(
+export const zAccountNotInitializedError = zErrorResponse.and(
   z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'security_error',
-      'websocket_mismatch',
-    ]),
+    code: z.literal('account_not_initialized'),
+    status: z.literal(400).optional(),
   }),
 )
 
 /**
- * OauthDataSourceBindingError401
+ * NotInitValidatedError
+ *
+ * Init validation has not been completed yet. Please proceed with the init validation process first.
  */
-export const zOauthDataSourceBindingError401 = zErrorResponse.and(
+export const zNotInitValidatedError = zErrorResponse.and(
   z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+    code: z.literal('not_init_validated'),
+    status: z.literal(401).optional(),
   }),
 )
 
 /**
- * OauthDataSourceError400
+ * NotSetupError
+ *
+ * Dify has not been initialized and installed yet. Please proceed with the initialization and installation process first.
  */
-export const zOauthDataSourceError400 = zErrorResponse.and(
+export const zNotSetupError = zErrorResponse.and(
   z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'security_error',
-      'websocket_mismatch',
-    ]),
+    code: z.literal('not_setup'),
+    status: z.literal(401).optional(),
   }),
 )
 
 /**
- * OauthDataSourceError401
+ * OAuthDataSourceResponse
  */
-export const zOauthDataSourceError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
+export const zOAuthDataSourceResponse = z.object({
+  data: z.string(),
+})
 
 /**
  * OAuthDataSourceSyncResponse
@@ -103,92 +85,11 @@ export const zOAuthDataSourceSyncResponse = z.object({
 })
 
 /**
- * OauthDataSourceSyncError400
- */
-export const zOauthDataSourceSyncError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * OauthDataSourceSyncError401
- */
-export const zOauthDataSourceSyncError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
  * PluginOAuthAuthorizationUrlResponse
  */
 export const zPluginOAuthAuthorizationUrlResponse = z.object({
   authorization_url: z.string(),
 })
-
-/**
- * GetDatasourcePluginOAuthAuthorizationUrlError400
- */
-export const zGetDatasourcePluginOAuthAuthorizationUrlError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * GetDatasourcePluginOAuthAuthorizationUrlError401
- */
-export const zGetDatasourcePluginOAuthAuthorizationUrlError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
- * GetToolPluginOAuthApiError400
- */
-export const zGetToolPluginOAuthApiError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * GetToolPluginOAuthApiError401
- */
-export const zGetToolPluginOAuthApiError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
 
 /**
  * OAuthProviderRequest
@@ -207,15 +108,6 @@ export const zOAuthProviderAppResponse = z.object({
   auto_authorize: z.boolean(),
   scope: z.string(),
 })
-
-/**
- * PostOAuthServerAppApiError401
- */
-export const zPostOAuthServerAppApiError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
 
 /**
  * OAuthClientPayload
@@ -238,47 +130,11 @@ export const zOAuthProviderAccountResponse = z.object({
 })
 
 /**
- * PostOAuthServerUserAccountApiError401
- */
-export const zPostOAuthServerUserAccountApiError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
-
-/**
  * OAuthProviderAuthorizeResponse
  */
 export const zOAuthProviderAuthorizeResponse = z.object({
   code: z.string(),
 })
-
-/**
- * PostOAuthServerUserAuthorizeApiError400
- */
-export const zPostOAuthServerUserAuthorizeApiError400 = zErrorResponse.and(
-  z.object({
-    code: z.enum([
-      'account_not_initialized',
-      'bad_host',
-      'bad_request',
-      'bad_request_key_error',
-      'client_disconnected',
-      'invalid_param',
-      'security_error',
-      'websocket_mismatch',
-    ]),
-  }),
-)
-
-/**
- * PostOAuthServerUserAuthorizeApiError401
- */
-export const zPostOAuthServerUserAuthorizeApiError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
 
 /**
  * OAuthTokenRequest
@@ -301,15 +157,6 @@ export const zOAuthProviderTokenResponse = z.object({
   refresh_token: z.string(),
   token_type: z.string(),
 })
-
-/**
- * PostOAuthServerUserTokenApiError401
- */
-export const zPostOAuthServerUserTokenApiError401 = zErrorResponse.and(
-  z.object({
-    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
-  }),
-)
 
 export const zGetOauthDataSourceBindingByProviderPath = z.object({
   provider: z.string(),

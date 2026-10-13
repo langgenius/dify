@@ -30,6 +30,114 @@ export const zErrorResponse = z.object({
 })
 
 /**
+ * AccountInFreezeError
+ *
+ * This email account has been deleted within the past 30 days and is temporarily unavailable for new account registration.
+ */
+export const zAccountInFreezeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('account_in_freeze'),
+    status: z.literal(400).optional(),
+  }),
+)
+
+/**
+ * EmailAlreadyInUseError
+ *
+ * A user with this email already exists.
+ */
+export const zEmailAlreadyInUseError = zErrorResponse.and(
+  z.object({
+    code: z.literal('email_already_in_use'),
+    status: z.literal(400).optional(),
+  }),
+)
+
+/**
+ * EmailDomainSuspendedError
+ *
+ * This email domain has been suspended.
+ */
+export const zEmailDomainSuspendedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('email_domain_suspended'),
+    status: z.literal(400).optional(),
+  }),
+)
+
+/**
+ * InvalidOrExpiredTokenError
+ *
+ * The token is invalid or has expired.
+ */
+export const zInvalidOrExpiredTokenError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_or_expired_token'),
+    status: z.literal(400).optional(),
+  }),
+)
+
+/**
+ * LimitExceededError
+ *
+ * Unable to create account because the licensed seats limit was exceeded
+ */
+export const zLimitExceededError = zErrorResponse.and(
+  z.object({
+    code: z.literal('limit_exceeded'),
+    status: z.literal(400).optional(),
+  }),
+)
+
+/**
+ * NormalizedEmailAlreadyInUseError
+ *
+ * An account with an equivalent email address already exists.
+ */
+export const zNormalizedEmailAlreadyInUseError = zErrorResponse.and(
+  z.object({
+    code: z.literal('normalized_email_already_in_use'),
+    status: z.literal(400).optional(),
+  }),
+)
+
+/**
+ * PasswordMismatchError
+ *
+ * The passwords do not match.
+ */
+export const zPasswordMismatchError = zErrorResponse.and(
+  z.object({
+    code: z.literal('password_mismatch'),
+    status: z.literal(400).optional(),
+  }),
+)
+
+/**
+ * NotInitValidatedError
+ *
+ * Init validation has not been completed yet. Please proceed with the init validation process first.
+ */
+export const zNotInitValidatedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('not_init_validated'),
+    status: z.literal(401).optional(),
+  }),
+)
+
+/**
+ * NotSetupError
+ *
+ * Dify has not been initialized and installed yet. Please proceed with the initialization and installation process first.
+ */
+export const zNotSetupError = zErrorResponse.and(
+  z.object({
+    code: z.literal('not_setup'),
+    status: z.literal(401).optional(),
+  }),
+)
+
+/**
  * EmailRegisterSendPayload
  */
 export const zEmailRegisterSendPayload = z.object({
@@ -44,6 +152,30 @@ export const zSimpleResultDataResponse = z.object({
   data: z.string(),
   result: z.string(),
 })
+
+/**
+ * EmailRegisterRateLimitExceededError
+ *
+ * Too many email register emails have been sent. Please try again in {minutes} minutes.
+ */
+export const zEmailRegisterRateLimitExceededError = zErrorResponse.and(
+  z.object({
+    code: z.literal('email_register_rate_limit_exceeded'),
+    status: z.literal(429).optional(),
+  }),
+)
+
+/**
+ * EmailSendIpLimitError
+ *
+ * Too many emails have been sent from this IP address recently. Please try again later.
+ */
+export const zEmailSendIpLimitError = zErrorResponse.and(
+  z.object({
+    code: z.literal('email_send_ip_limit'),
+    status: z.literal(429).optional(),
+  }),
+)
 
 /**
  * EmailRegisterValidityPayload
@@ -62,6 +194,42 @@ export const zVerificationTokenResponse = z.object({
   is_valid: z.boolean(),
   token: z.string(),
 })
+
+/**
+ * EmailCodeError
+ *
+ * Email code is invalid or expired.
+ */
+export const zEmailCodeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('email_code_error'),
+    status: z.literal(400).optional(),
+  }),
+)
+
+/**
+ * InvalidEmailError
+ *
+ * The email address is not valid.
+ */
+export const zInvalidEmailError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_email'),
+    status: z.literal(400).optional(),
+  }),
+)
+
+/**
+ * EmailRegisterLimitError
+ *
+ * Too many failed email register attempts. Please try again in 24 hours.
+ */
+export const zEmailRegisterLimitError = zErrorResponse.and(
+  z.object({
+    code: z.literal('email_register_limit'),
+    status: z.literal(429).optional(),
+  }),
+)
 
 /**
  * EmailRegisterTokenPairResponse

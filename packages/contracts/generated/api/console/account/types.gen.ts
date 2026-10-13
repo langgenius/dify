@@ -8,6 +8,21 @@ export type AvatarUrlResponse = {
   avatar_url: string
 }
 
+export type AccountNotInitializedError = ErrorResponse & {
+  code: 'account_not_initialized'
+  status?: 400
+}
+
+export type NotInitValidatedError = ErrorResponse & {
+  code: 'not_init_validated'
+  status?: 401
+}
+
+export type NotSetupError = ErrorResponse & {
+  code: 'not_setup'
+  status?: 401
+}
+
 export type ErrorResponse = {
   code: string
   details?: {
@@ -37,6 +52,11 @@ export type AccountResponse = {
   timezone?: string | null
 }
 
+export type AccountNotFoundError = ErrorResponse & {
+  code: 'account_not_found'
+  status?: 400
+}
+
 export type ChangeEmailSendPayload = {
   email: string
   language?: string | null
@@ -49,12 +69,47 @@ export type SimpleResultDataResponse = {
   result: string
 }
 
+export type InvalidEmailError = ErrorResponse & {
+  code: 'invalid_email'
+  status?: 400
+}
+
+export type InvalidOrExpiredTokenError = ErrorResponse & {
+  code: 'invalid_or_expired_token'
+  status?: 400
+}
+
+export type EmailChangeRateLimitExceededError = ErrorResponse & {
+  code: 'email_change_rate_limit_exceeded'
+  status?: 429
+}
+
+export type EmailSendIpLimitError = ErrorResponse & {
+  code: 'email_send_ip_limit'
+  status?: 429
+}
+
 export type CheckEmailUniquePayload = {
   email: string
 }
 
 export type SimpleResultResponse = {
   result: string
+}
+
+export type AccountInFreezeError = ErrorResponse & {
+  code: 'account_in_freeze'
+  status?: 400
+}
+
+export type EmailAlreadyInUseError = ErrorResponse & {
+  code: 'email_already_in_use'
+  status?: 400
+}
+
+export type EmailDomainSuspendedError = ErrorResponse & {
+  code: 'email_domain_suspended'
+  status?: 400
 }
 
 export type ChangeEmailResetPayload = {
@@ -74,14 +129,34 @@ export type VerificationTokenResponse = {
   token: string
 }
 
+export type EmailCodeError = ErrorResponse & {
+  code: 'email_code_error'
+  status?: 400
+}
+
+export type EmailChangeLimitError = ErrorResponse & {
+  code: 'email_change_limit'
+  status?: 429
+}
+
 export type AccountDeletePayload = {
   code: string
   token: string
 }
 
+export type InvalidAccountDeletionCodeError = ErrorResponse & {
+  code: 'invalid_account_deletion_code'
+  status?: 400
+}
+
 export type AccountDeletionFeedbackPayload = {
   email: string
   feedback: string
+}
+
+export type EmailCodeAccountDeletionRateLimitExceededError = ErrorResponse & {
+  code: 'email_code_account_deletion_rate_limit_exceeded'
+  status?: 429
 }
 
 export type EducationStatusResponse = {
@@ -101,6 +176,11 @@ export type EducationActivateResponse = {
   message: string
 }
 
+export type EducationActivateLimitError = ErrorResponse & {
+  code: 'education_activate_limit'
+  status?: 429
+}
+
 export type EducationAutocompleteResponse = {
   curr_page?: number | null
   data?: Array<string>
@@ -111,10 +191,30 @@ export type EducationVerifyResponse = {
   token?: string | null
 }
 
+export type EducationVerifyLimitError = ErrorResponse & {
+  code: 'education_verify_limit'
+  status?: 429
+}
+
 export type AccountInitPayload = {
   interface_language: string
   invitation_code?: string | null
   timezone: string
+}
+
+export type AccountAlreadyInitedError = ErrorResponse & {
+  code: 'account_already_inited'
+  status?: 400
+}
+
+export type InvalidInvitationCodeError = ErrorResponse & {
+  code: 'invalid_invitation_code'
+  status?: 400
+}
+
+export type MissingInvitationCodeError = ErrorResponse & {
+  code: 'missing_invitation_code'
+  status?: 400
 }
 
 export type AccountIntegrateListResponse = {
@@ -137,6 +237,21 @@ export type AccountPasswordPayload = {
   new_password: string
   password?: string | null
   repeat_new_password: string
+}
+
+export type CurrentPasswordIncorrectError = ErrorResponse & {
+  code: 'current_password_incorrect'
+  status?: 400
+}
+
+export type InvalidAccountPasswordError = ErrorResponse & {
+  code: 'invalid_account_password'
+  status?: 400
+}
+
+export type UnauthorizedAndForceLogoutError = ErrorResponse & {
+  code: 'unauthorized_and_force_logout'
+  status?: 401
 }
 
 export type AccountProfilePatchPayload = {
@@ -182,6 +297,8 @@ export type GetAccountAvatarData = {
 }
 
 export type GetAccountAvatarErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -201,6 +318,8 @@ export type PostAccountAvatarData = {
 }
 
 export type PostAccountAvatarErrors = {
+  400: AccountNotFoundError | AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -220,6 +339,13 @@ export type PostAccountChangeEmailData = {
 }
 
 export type PostAccountChangeEmailErrors = {
+  400:
+    | AccountNotFoundError
+    | AccountNotInitializedError
+    | InvalidEmailError
+    | InvalidOrExpiredTokenError
+  401: NotInitValidatedError | NotSetupError
+  429: EmailChangeRateLimitExceededError | EmailSendIpLimitError
   default: ErrorResponse
 }
 
@@ -241,6 +367,8 @@ export type PostAccountChangeEmailCheckEmailUniqueData = {
 }
 
 export type PostAccountChangeEmailCheckEmailUniqueErrors = {
+  400: AccountInFreezeError | EmailAlreadyInUseError | EmailDomainSuspendedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -262,6 +390,14 @@ export type PostAccountChangeEmailResetData = {
 }
 
 export type PostAccountChangeEmailResetErrors = {
+  400:
+    | AccountInFreezeError
+    | AccountNotFoundError
+    | AccountNotInitializedError
+    | EmailAlreadyInUseError
+    | EmailDomainSuspendedError
+    | InvalidOrExpiredTokenError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -283,6 +419,9 @@ export type PostAccountChangeEmailValidityData = {
 }
 
 export type PostAccountChangeEmailValidityErrors = {
+  400: AccountNotInitializedError | EmailCodeError | InvalidEmailError | InvalidOrExpiredTokenError
+  401: NotInitValidatedError | NotSetupError
+  429: EmailChangeLimitError
   default: ErrorResponse
 }
 
@@ -304,6 +443,8 @@ export type PostAccountDeleteData = {
 }
 
 export type PostAccountDeleteErrors = {
+  400: AccountNotInitializedError | InvalidAccountDeletionCodeError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -323,6 +464,7 @@ export type PostAccountDeleteFeedbackData = {
 }
 
 export type PostAccountDeleteFeedbackErrors = {
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -344,6 +486,9 @@ export type GetAccountDeleteVerifyData = {
 }
 
 export type GetAccountDeleteVerifyErrors = {
+  400: AccountNotFoundError | AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  429: EmailCodeAccountDeletionRateLimitExceededError
   default: ErrorResponse
 }
 
@@ -365,6 +510,8 @@ export type GetAccountEducationData = {
 }
 
 export type GetAccountEducationErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -385,6 +532,9 @@ export type PostAccountEducationData = {
 }
 
 export type PostAccountEducationErrors = {
+  400: AccountNotFoundError | AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  429: EducationActivateLimitError
   default: ErrorResponse
 }
 
@@ -409,6 +559,8 @@ export type GetAccountEducationAutocompleteData = {
 }
 
 export type GetAccountEducationAutocompleteErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -430,6 +582,9 @@ export type GetAccountEducationVerifyData = {
 }
 
 export type GetAccountEducationVerifyErrors = {
+  400: AccountNotFoundError | AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  429: EducationVerifyLimitError
   default: ErrorResponse
 }
 
@@ -451,6 +606,12 @@ export type PostAccountInitData = {
 }
 
 export type PostAccountInitErrors = {
+  400:
+    | AccountAlreadyInitedError
+    | AccountNotFoundError
+    | InvalidInvitationCodeError
+    | MissingInvitationCodeError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -470,6 +631,8 @@ export type GetAccountIntegratesData = {
 }
 
 export type GetAccountIntegratesErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -490,6 +653,8 @@ export type PostAccountInterfaceLanguageData = {
 }
 
 export type PostAccountInterfaceLanguageErrors = {
+  400: AccountNotFoundError | AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -511,6 +676,8 @@ export type PostAccountInterfaceThemeData = {
 }
 
 export type PostAccountInterfaceThemeErrors = {
+  400: AccountNotFoundError | AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -532,6 +699,8 @@ export type PostAccountNameData = {
 }
 
 export type PostAccountNameErrors = {
+  400: AccountNotFoundError | AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -551,6 +720,12 @@ export type PostAccountPasswordData = {
 }
 
 export type PostAccountPasswordErrors = {
+  400:
+    | AccountNotFoundError
+    | AccountNotInitializedError
+    | CurrentPasswordIncorrectError
+    | InvalidAccountPasswordError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -571,6 +746,8 @@ export type GetAccountProfileData = {
 }
 
 export type GetAccountProfileErrors = {
+  400: AccountNotFoundError | AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError | UnauthorizedAndForceLogoutError
   default: ErrorResponse
 }
 
@@ -590,6 +767,8 @@ export type PatchAccountProfileData = {
 }
 
 export type PatchAccountProfileErrors = {
+  400: AccountNotFoundError | AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -610,6 +789,8 @@ export type PostAccountTimezoneData = {
 }
 
 export type PostAccountTimezoneErrors = {
+  400: AccountNotFoundError | AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 

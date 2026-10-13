@@ -8,6 +8,26 @@ export type ConsoleHumanInputFormDefinitionResponse = {
   [key: string]: unknown
 }
 
+export type AccountNotInitializedError = ErrorResponse & {
+  code: 'account_not_initialized'
+  status?: 400
+}
+
+export type NotInitValidatedError = ErrorResponse & {
+  code: 'not_init_validated'
+  status?: 401
+}
+
+export type NotSetupError = ErrorResponse & {
+  code: 'not_setup'
+  status?: 401
+}
+
+export type NotFoundError = ErrorResponse & {
+  code: 'not_found'
+  status?: 404
+}
+
 export type ErrorResponse = {
   code: string
   details?: {
@@ -42,6 +62,9 @@ export type GetFormHumanInputByFormTokenData = {
 }
 
 export type GetFormHumanInputByFormTokenErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: NotFoundError
   default: ErrorResponse
 }
 
@@ -65,6 +88,8 @@ export type PostFormHumanInputByFormTokenData = {
 }
 
 export type PostFormHumanInputByFormTokenErrors = {
+  400: AccountNotInitializedError
+  404: NotFoundError
   default: ErrorResponse
 }
 

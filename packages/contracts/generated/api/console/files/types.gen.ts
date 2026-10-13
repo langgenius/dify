@@ -8,6 +8,21 @@ export type AllowedExtensionsResponse = {
   allowed_extensions: Array<string>
 }
 
+export type AccountNotInitializedError = ErrorResponse & {
+  code: 'account_not_initialized'
+  status?: 400
+}
+
+export type NotInitValidatedError = ErrorResponse & {
+  code: 'not_init_validated'
+  status?: 401
+}
+
+export type NotSetupError = ErrorResponse & {
+  code: 'not_setup'
+  status?: 401
+}
+
 export type ErrorResponse = {
   code: string
   details?: {
@@ -51,6 +66,36 @@ export type FileResponse = {
   user_id?: string | null
 }
 
+export type FileExtensionBlockedError = ErrorResponse & {
+  code: 'file_extension_blocked'
+  status?: 400
+}
+
+export type FilenameNotExistsError = ErrorResponse & {
+  code: 'filename_not_exists_error'
+  status?: 400
+}
+
+export type NoFileUploadedError = ErrorResponse & {
+  code: 'no_file_uploaded'
+  status?: 400
+}
+
+export type TooManyFilesError = ErrorResponse & {
+  code: 'too_many_files'
+  status?: 400
+}
+
+export type FileTooLargeError = ErrorResponse & {
+  code: 'file_too_large'
+  status?: 413
+}
+
+export type UnsupportedFileTypeError = ErrorResponse & {
+  code: 'unsupported_file_type'
+  status?: 415
+}
+
 export type TextContentResponse = {
   content: string
 }
@@ -63,6 +108,8 @@ export type GetFilesSupportTypeData = {
 }
 
 export type GetFilesSupportTypeErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -83,6 +130,8 @@ export type GetFilesUploadData = {
 }
 
 export type GetFilesUploadErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -105,6 +154,15 @@ export type PostFilesUploadData = {
 }
 
 export type PostFilesUploadErrors = {
+  400:
+    | AccountNotInitializedError
+    | FileExtensionBlockedError
+    | FilenameNotExistsError
+    | NoFileUploadedError
+    | TooManyFilesError
+  401: NotInitValidatedError | NotSetupError
+  413: FileTooLargeError
+  415: UnsupportedFileTypeError
   default: ErrorResponse
 }
 
@@ -126,6 +184,8 @@ export type GetFilesByFileIdPreviewData = {
 }
 
 export type GetFilesByFileIdPreviewErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 

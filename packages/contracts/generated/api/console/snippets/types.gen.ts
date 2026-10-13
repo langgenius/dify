@@ -10,6 +10,21 @@ export type WorkflowRunPaginationResponse = {
   limit: number
 }
 
+export type AccountNotInitializedError = ErrorResponse & {
+  code: 'account_not_initialized'
+  status?: 400
+}
+
+export type NotInitValidatedError = ErrorResponse & {
+  code: 'not_init_validated'
+  status?: 401
+}
+
+export type NotSetupError = ErrorResponse & {
+  code: 'not_setup'
+  status?: 401
+}
+
 export type ErrorResponse = {
   code: string
   details?: {
@@ -84,6 +99,11 @@ export type SnippetWorkflowResponse = {
   version_number?: number | null
 }
 
+export type DraftWorkflowNotExistError = ErrorResponse & {
+  code: 'draft_workflow_not_exist'
+  status?: 404
+}
+
 export type SnippetDraftSyncPayload = {
   conversation_variables?: Array<{
     [key: string]: unknown
@@ -101,6 +121,16 @@ export type WorkflowRestoreResponse = {
   hash: string
   result: string
   updated_at: number
+}
+
+export type InvalidParamError = ErrorResponse & {
+  code: 'invalid_param'
+  status?: 400
+}
+
+export type DraftWorkflowNotSyncError = ErrorResponse & {
+  code: 'draft_workflow_not_sync'
+  status?: 409
 }
 
 export type SnippetDraftConfigResponse = {
@@ -152,6 +182,11 @@ export type WorkflowAgentComposerResponse = {
   workflow_id?: string | null
 }
 
+export type AgentVersionNotFoundError = ErrorResponse & {
+  code: 'agent_version_not_found_error'
+  status?: 404
+}
+
 export type ComposerSavePayload = {
   agent_soul?: AgentSoulConfig | null
   binding?: ComposerBindingPayload | null
@@ -170,6 +205,26 @@ export type ComposerSavePayload = {
   version_note?: string | null
 }
 
+export type AgentSoulLockedError = ErrorResponse & {
+  code: 'agent_soul_locked_error'
+  status?: 400
+}
+
+export type InvalidComposerConfigError = ErrorResponse & {
+  code: 'invalid_composer_config_error'
+  status?: 400
+}
+
+export type PlaintextSecretNotAllowedError = ErrorResponse & {
+  code: 'plaintext_secret_not_allowed_error'
+  status?: 400
+}
+
+export type AgentNotFoundError = ErrorResponse & {
+  code: 'agent_not_found_error'
+  status?: 404
+}
+
 export type AgentComposerCandidatesResponse = {
   allowed_node_job_candidates?: AgentComposerNodeJobCandidatesResponse
   allowed_soul_candidates?: AgentComposerSoulCandidatesResponse
@@ -182,6 +237,11 @@ export type WorkflowComposerCopyFromRosterPayload = {
   idempotency_key?: string | null
   source_agent_id: string
   source_snapshot_id?: string | null
+}
+
+export type AgentVersionConflictError = ErrorResponse & {
+  code: 'agent_version_conflict_error'
+  status?: 409
 }
 
 export type AgentComposerImpactResponse = {
@@ -245,6 +305,11 @@ export type SnippetDraftRunPayload = {
 export type WorkflowDraftVariableListWithoutValueResponse = {
   items: Array<WorkflowDraftVariableWithoutValueResponse>
   total: number | null
+}
+
+export type NotFoundError = ErrorResponse & {
+  code: 'not_found'
+  status?: 404
 }
 
 export type WorkflowDraftVariableResponse = {
@@ -1149,6 +1214,8 @@ export type GetSnippetsBySnippetIdWorkflowRunsData = {
 }
 
 export type GetSnippetsBySnippetIdWorkflowRunsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -1173,6 +1240,8 @@ export type PostSnippetsBySnippetIdWorkflowRunsTasksByTaskIdStopData = {
 }
 
 export type PostSnippetsBySnippetIdWorkflowRunsTasksByTaskIdStopErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   404: ErrorResponse
   default: ErrorResponse
 }
@@ -1198,6 +1267,8 @@ export type GetSnippetsBySnippetIdWorkflowRunsByRunIdData = {
 }
 
 export type GetSnippetsBySnippetIdWorkflowRunsByRunIdErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   404: ErrorResponse
   default: ErrorResponse
 }
@@ -1223,6 +1294,8 @@ export type GetSnippetsBySnippetIdWorkflowRunsByRunIdNodeExecutionsData = {
 }
 
 export type GetSnippetsBySnippetIdWorkflowRunsByRunIdNodeExecutionsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -1249,6 +1322,8 @@ export type GetSnippetsBySnippetIdWorkflowsData = {
 }
 
 export type GetSnippetsBySnippetIdWorkflowsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -1272,6 +1347,8 @@ export type GetSnippetsBySnippetIdWorkflowsDefaultWorkflowBlockConfigsData = {
 }
 
 export type GetSnippetsBySnippetIdWorkflowsDefaultWorkflowBlockConfigsErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -1295,7 +1372,9 @@ export type GetSnippetsBySnippetIdWorkflowsDraftData = {
 }
 
 export type GetSnippetsBySnippetIdWorkflowsDraftErrors = {
-  404: ErrorResponse
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: DraftWorkflowNotExistError
   default: ErrorResponse
 }
 
@@ -1319,7 +1398,9 @@ export type PostSnippetsBySnippetIdWorkflowsDraftData = {
 }
 
 export type PostSnippetsBySnippetIdWorkflowsDraftErrors = {
-  400: ErrorResponse
+  400: AccountNotInitializedError | InvalidParamError
+  401: NotInitValidatedError | NotSetupError
+  409: DraftWorkflowNotSyncError
   default: ErrorResponse
 }
 
@@ -1343,6 +1424,8 @@ export type GetSnippetsBySnippetIdWorkflowsDraftConfigData = {
 }
 
 export type GetSnippetsBySnippetIdWorkflowsDraftConfigErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -1366,6 +1449,8 @@ export type GetSnippetsBySnippetIdWorkflowsDraftConversationVariablesData = {
 }
 
 export type GetSnippetsBySnippetIdWorkflowsDraftConversationVariablesErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -1389,7 +1474,9 @@ export type GetSnippetsBySnippetIdWorkflowsDraftEnvironmentVariablesData = {
 }
 
 export type GetSnippetsBySnippetIdWorkflowsDraftEnvironmentVariablesErrors = {
-  404: ErrorResponse
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: DraftWorkflowNotExistError
   default: ErrorResponse
 }
 
@@ -1414,6 +1501,8 @@ export type PostSnippetsBySnippetIdWorkflowsDraftIterationNodesByNodeIdRunData =
 }
 
 export type PostSnippetsBySnippetIdWorkflowsDraftIterationNodesByNodeIdRunErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   404: ErrorResponse
   default: ErrorResponse
 }
@@ -1439,6 +1528,8 @@ export type PostSnippetsBySnippetIdWorkflowsDraftLoopNodesByNodeIdRunData = {
 }
 
 export type PostSnippetsBySnippetIdWorkflowsDraftLoopNodesByNodeIdRunErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   404: ErrorResponse
   default: ErrorResponse
 }
@@ -1466,6 +1557,9 @@ export type GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerData =
 }
 
 export type GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: AgentVersionNotFoundError
   default: ErrorResponse
 }
 
@@ -1490,6 +1584,13 @@ export type PutSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerData =
 }
 
 export type PutSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerErrors = {
+  400:
+    | AccountNotInitializedError
+    | AgentSoulLockedError
+    | InvalidComposerConfigError
+    | PlaintextSecretNotAllowedError
+  401: NotInitValidatedError | NotSetupError
+  404: AgentNotFoundError | AgentVersionNotFoundError
   default: ErrorResponse
 }
 
@@ -1514,6 +1615,8 @@ export type GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerCandid
 }
 
 export type GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -1538,6 +1641,10 @@ export type PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerCopyF
 }
 
 export type PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRosterErrors = {
+  400: AccountNotInitializedError | InvalidComposerConfigError
+  401: NotInitValidatedError | NotSetupError
+  404: AgentNotFoundError | AgentVersionNotFoundError
+  409: AgentVersionConflictError
   default: ErrorResponse
 }
 
@@ -1563,6 +1670,8 @@ export type PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerImpac
 }
 
 export type PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerImpactErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -1587,6 +1696,13 @@ export type PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerSaveT
 }
 
 export type PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRosterErrors = {
+  400:
+    | AccountNotInitializedError
+    | AgentSoulLockedError
+    | InvalidComposerConfigError
+    | PlaintextSecretNotAllowedError
+  401: NotInitValidatedError | NotSetupError
+  404: AgentNotFoundError | AgentVersionNotFoundError
   default: ErrorResponse
 }
 
@@ -1611,6 +1727,12 @@ export type PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerValid
 }
 
 export type PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerValidateErrors = {
+  400:
+    | AccountNotInitializedError
+    | AgentSoulLockedError
+    | InvalidComposerConfigError
+    | PlaintextSecretNotAllowedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -1635,6 +1757,8 @@ export type GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdLastRunData = {
 }
 
 export type GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdLastRunErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   404: ErrorResponse
   default: ErrorResponse
 }
@@ -1660,6 +1784,8 @@ export type PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdRunData = {
 }
 
 export type PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdRunErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   404: ErrorResponse
   default: ErrorResponse
 }
@@ -1685,6 +1811,8 @@ export type DeleteSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesData = 
 }
 
 export type DeleteSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesErrors = {
+  400: AccountNotInitializedError | InvalidParamError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -1709,6 +1837,8 @@ export type GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesData = {
 }
 
 export type GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesErrors = {
+  400: AccountNotInitializedError | InvalidParamError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -1732,6 +1862,8 @@ export type PostSnippetsBySnippetIdWorkflowsDraftRunData = {
 }
 
 export type PostSnippetsBySnippetIdWorkflowsDraftRunErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   404: ErrorResponse
   default: ErrorResponse
 }
@@ -1756,6 +1888,8 @@ export type GetSnippetsBySnippetIdWorkflowsDraftSystemVariablesData = {
 }
 
 export type GetSnippetsBySnippetIdWorkflowsDraftSystemVariablesErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -1779,6 +1913,8 @@ export type DeleteSnippetsBySnippetIdWorkflowsDraftVariablesData = {
 }
 
 export type DeleteSnippetsBySnippetIdWorkflowsDraftVariablesErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -1805,6 +1941,9 @@ export type GetSnippetsBySnippetIdWorkflowsDraftVariablesData = {
 }
 
 export type GetSnippetsBySnippetIdWorkflowsDraftVariablesErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: DraftWorkflowNotExistError
   default: ErrorResponse
 }
 
@@ -1829,7 +1968,9 @@ export type DeleteSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdData = {
 }
 
 export type DeleteSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdErrors = {
-  404: ErrorResponse
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: NotFoundError
   default: ErrorResponse
 }
 
@@ -1854,7 +1995,9 @@ export type GetSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdData = {
 }
 
 export type GetSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdErrors = {
-  404: ErrorResponse
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: NotFoundError
   default: ErrorResponse
 }
 
@@ -1879,7 +2022,9 @@ export type PatchSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdData = {
 }
 
 export type PatchSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdErrors = {
-  404: ErrorResponse
+  400: AccountNotInitializedError | InvalidParamError
+  401: NotInitValidatedError | NotSetupError
+  404: NotFoundError
   default: ErrorResponse
 }
 
@@ -1904,7 +2049,9 @@ export type PutSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResetData =
 }
 
 export type PutSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResetErrors = {
-  404: ErrorResponse
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
+  404: NotFoundError
   default: ErrorResponse
 }
 
@@ -1929,6 +2076,8 @@ export type GetSnippetsBySnippetIdWorkflowsPublishData = {
 }
 
 export type GetSnippetsBySnippetIdWorkflowsPublishErrors = {
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   404: ErrorResponse
   default: ErrorResponse
 }
@@ -1953,7 +2102,8 @@ export type PostSnippetsBySnippetIdWorkflowsPublishData = {
 }
 
 export type PostSnippetsBySnippetIdWorkflowsPublishErrors = {
-  400: ErrorResponse
+  400: AccountNotInitializedError | InvalidParamError
+  401: NotInitValidatedError | NotSetupError
   default: ErrorResponse
 }
 
@@ -1978,7 +2128,8 @@ export type DeleteSnippetsBySnippetIdWorkflowsByWorkflowIdData = {
 }
 
 export type DeleteSnippetsBySnippetIdWorkflowsByWorkflowIdErrors = {
-  400: ErrorResponse
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   404: ErrorResponse
   default: ErrorResponse
 }
@@ -2004,7 +2155,8 @@ export type PatchSnippetsBySnippetIdWorkflowsByWorkflowIdData = {
 }
 
 export type PatchSnippetsBySnippetIdWorkflowsByWorkflowIdErrors = {
-  400: ErrorResponse
+  400: AccountNotInitializedError | InvalidParamError
+  401: NotInitValidatedError | NotSetupError
   404: ErrorResponse
   default: ErrorResponse
 }
@@ -2030,7 +2182,8 @@ export type PostSnippetsBySnippetIdWorkflowsByWorkflowIdRestoreData = {
 }
 
 export type PostSnippetsBySnippetIdWorkflowsByWorkflowIdRestoreErrors = {
-  400: ErrorResponse
+  400: AccountNotInitializedError
+  401: NotInitValidatedError | NotSetupError
   404: ErrorResponse
   default: ErrorResponse
 }
