@@ -631,7 +631,9 @@ class TestResultCard(_Card):
     blocked_node_ids: list[str] = field(default_factory=list)
     # Confirmed Tool runs only: the policy, the spent grant and its sanitized
     # outcome. Message content stays in the native authorized Run.
-    policy_version: Literal["builder-restricted-v1", "builder-confirmed-gmail-read-v1"] | None = None
+    policy_version: (
+        Literal["builder-restricted-v1", "builder-confirmed-gmail-read-v1", "builder-json-parse-v1"] | None
+    ) = None
     consent_id: str | None = None
     action_state: Literal["completed", "failed", "unknown"] | None = None
     action_reason_code: str | None = None
