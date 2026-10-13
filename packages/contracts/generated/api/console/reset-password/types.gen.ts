@@ -74,6 +74,16 @@ export type TurnstileVerificationFailedError = ErrorResponse & {
   status: 400
 }
 
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type AuthenticationFailedError = ErrorResponse & {
   code: 'authentication_failed'
   status: 401
@@ -109,16 +119,6 @@ export type TurnstileServiceUnavailableError = ErrorResponse & {
   status: 503
 }
 
-export type ErrorResponse = {
-  code: string
-  details?: {
-    [key: string]: unknown
-  }
-  message: string
-  params?: string
-  status: number
-}
-
 export type PostResetPasswordData = {
   body: EmailPayload
   path?: never
@@ -140,13 +140,15 @@ export type PostResetPasswordErrors = {
     | NormalizedEmailAlreadyInUseError
     | NotAllowedCreateWorkspaceError
     | TurnstileVerificationFailedError
-  401: AuthenticationFailedError
+    | ErrorResponse
+  401: AuthenticationFailedError | ErrorResponse
   429:
     | EmailCodeLoginLimitError
     | EmailCodeLoginRateLimitExceededError
     | EmailSendIpLimitError
     | PasswordResetRateLimitExceededError
-  503: EmailCodeLoginServiceUnavailableError | TurnstileServiceUnavailableError
+    | ErrorResponse
+  503: EmailCodeLoginServiceUnavailableError | TurnstileServiceUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 

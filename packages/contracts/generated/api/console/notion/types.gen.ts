@@ -69,7 +69,7 @@ export type GetNotionPagesByPageIdByPageTypePreviewData = {
 }
 
 export type GetNotionPagesByPageIdByPageTypePreviewErrors = {
-  404: NotFoundError
+  404: NotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -94,8 +94,8 @@ export type GetNotionPreImportPagesData = {
 }
 
 export type GetNotionPreImportPagesErrors = {
-  403: DatasetAccessDeniedError
-  404: NotFoundError
+  403: DatasetAccessDeniedError | ErrorResponse
+  404: NotFoundError | ErrorResponse
   default: ErrorResponse
 }
 

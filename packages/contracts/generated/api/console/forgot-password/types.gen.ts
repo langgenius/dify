@@ -95,7 +95,7 @@ export type PostForgotPasswordData = {
 
 export type PostForgotPasswordErrors = {
   400: ErrorResponse
-  429: EmailSendIpLimitError | PasswordResetRateLimitExceededError
+  429: EmailSendIpLimitError | PasswordResetRateLimitExceededError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -116,7 +116,7 @@ export type PostForgotPasswordResetsData = {
 }
 
 export type PostForgotPasswordResetsErrors = {
-  400: AccountNotFoundError | InvalidOrExpiredTokenError | PasswordMismatchError
+  400: AccountNotFoundError | InvalidOrExpiredTokenError | PasswordMismatchError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -138,8 +138,8 @@ export type PostForgotPasswordValidityData = {
 }
 
 export type PostForgotPasswordValidityErrors = {
-  400: EmailCodeError | InvalidEmailError | InvalidOrExpiredTokenError
-  429: EmailPasswordResetLimitError
+  400: EmailCodeError | InvalidEmailError | InvalidOrExpiredTokenError | ErrorResponse
+  429: EmailPasswordResetLimitError | ErrorResponse
   default: ErrorResponse
 }
 

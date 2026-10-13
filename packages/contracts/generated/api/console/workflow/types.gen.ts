@@ -48,7 +48,7 @@ export type GetWorkflowByWorkflowRunIdEventsData = {
 }
 
 export type GetWorkflowByWorkflowRunIdEventsErrors = {
-  404: NotFoundError
+  404: NotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -72,7 +72,7 @@ export type GetWorkflowByWorkflowRunIdPauseDetailsData = {
 }
 
 export type GetWorkflowByWorkflowRunIdPauseDetailsErrors = {
-  404: NotFoundError
+  404: NotFoundError | ErrorResponse
   default: ErrorResponse
 }
 

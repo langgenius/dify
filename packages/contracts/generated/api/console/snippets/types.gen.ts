@@ -1340,7 +1340,7 @@ export type GetSnippetsBySnippetIdWorkflowsDraftData = {
 }
 
 export type GetSnippetsBySnippetIdWorkflowsDraftErrors = {
-  404: DraftWorkflowNotExistError
+  404: DraftWorkflowNotExistError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1365,7 +1365,7 @@ export type PostSnippetsBySnippetIdWorkflowsDraftData = {
 
 export type PostSnippetsBySnippetIdWorkflowsDraftErrors = {
   400: ErrorResponse
-  409: DraftWorkflowNotSyncError
+  409: DraftWorkflowNotSyncError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1435,7 +1435,7 @@ export type GetSnippetsBySnippetIdWorkflowsDraftEnvironmentVariablesData = {
 }
 
 export type GetSnippetsBySnippetIdWorkflowsDraftEnvironmentVariablesErrors = {
-  404: DraftWorkflowNotExistError
+  404: DraftWorkflowNotExistError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1512,7 +1512,7 @@ export type GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerData =
 }
 
 export type GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerErrors = {
-  404: AgentNotFoundError | AgentVersionNotFoundError
+  404: AgentNotFoundError | AgentVersionNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1537,8 +1537,12 @@ export type PutSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerData =
 }
 
 export type PutSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerErrors = {
-  400: AgentSoulLockedError | InvalidComposerConfigError | PlaintextSecretNotAllowedError
-  404: AgentNotFoundError | AgentVersionNotFoundError
+  400:
+    | AgentSoulLockedError
+    | InvalidComposerConfigError
+    | PlaintextSecretNotAllowedError
+    | ErrorResponse
+  404: AgentNotFoundError | AgentVersionNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1587,9 +1591,9 @@ export type PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerCopyF
 }
 
 export type PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRosterErrors = {
-  400: InvalidComposerConfigError
-  404: AgentNotFoundError | AgentVersionNotFoundError
-  409: AgentVersionConflictError
+  400: InvalidComposerConfigError | ErrorResponse
+  404: AgentNotFoundError | AgentVersionNotFoundError | ErrorResponse
+  409: AgentVersionConflictError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1639,8 +1643,12 @@ export type PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerSaveT
 }
 
 export type PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRosterErrors = {
-  400: AgentSoulLockedError | InvalidComposerConfigError | PlaintextSecretNotAllowedError
-  404: AgentNotFoundError | AgentVersionNotFoundError
+  400:
+    | AgentSoulLockedError
+    | InvalidComposerConfigError
+    | PlaintextSecretNotAllowedError
+    | ErrorResponse
+  404: AgentNotFoundError | AgentVersionNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1665,7 +1673,11 @@ export type PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerValid
 }
 
 export type PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerValidateErrors = {
-  400: AgentSoulLockedError | InvalidComposerConfigError | PlaintextSecretNotAllowedError
+  400:
+    | AgentSoulLockedError
+    | InvalidComposerConfigError
+    | PlaintextSecretNotAllowedError
+    | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1860,7 +1872,7 @@ export type GetSnippetsBySnippetIdWorkflowsDraftVariablesData = {
 }
 
 export type GetSnippetsBySnippetIdWorkflowsDraftVariablesErrors = {
-  404: DraftWorkflowNotExistError
+  404: DraftWorkflowNotExistError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1885,7 +1897,7 @@ export type DeleteSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdData = {
 }
 
 export type DeleteSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdErrors = {
-  404: NotFoundError
+  404: NotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1910,7 +1922,7 @@ export type GetSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdData = {
 }
 
 export type GetSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdErrors = {
-  404: NotFoundError
+  404: NotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1935,7 +1947,7 @@ export type PatchSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdData = {
 }
 
 export type PatchSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdErrors = {
-  404: NotFoundError
+  404: NotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1960,7 +1972,7 @@ export type PutSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResetData =
 }
 
 export type PutSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResetErrors = {
-  404: NotFoundError
+  404: NotFoundError | ErrorResponse
   default: ErrorResponse
 }
 

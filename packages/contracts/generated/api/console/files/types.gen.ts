@@ -135,9 +135,14 @@ export type PostFilesUploadData = {
 }
 
 export type PostFilesUploadErrors = {
-  400: FileExtensionBlockedError | FilenameNotExistsError | NoFileUploadedError | TooManyFilesError
-  413: FileTooLargeError
-  415: UnsupportedFileTypeError
+  400:
+    | FileExtensionBlockedError
+    | FilenameNotExistsError
+    | NoFileUploadedError
+    | TooManyFilesError
+    | ErrorResponse
+  413: FileTooLargeError | ErrorResponse
+  415: UnsupportedFileTypeError | ErrorResponse
   default: ErrorResponse
 }
 

@@ -15,11 +15,6 @@ export type InvalidCursorError = ErrorResponse & {
   status: 400
 }
 
-export type WebAppAccessUnavailableError = ErrorResponse & {
-  code: 'web_app_access_unavailable'
-  status: 503
-}
-
 export type ErrorResponse = {
   code: string
   details?: {
@@ -28,6 +23,11 @@ export type ErrorResponse = {
   message: string
   params?: string
   status: number
+}
+
+export type WebAppAccessUnavailableError = ErrorResponse & {
+  code: 'web_app_access_unavailable'
+  status: 503
 }
 
 export type InstalledAppResponse = {
@@ -1000,8 +1000,8 @@ export type GetInstalledAppsData = {
 }
 
 export type GetInstalledAppsErrors = {
-  400: InvalidCursorError
-  503: WebAppAccessUnavailableError
+  400: InvalidCursorError | ErrorResponse
+  503: WebAppAccessUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1023,9 +1023,9 @@ export type GetInstalledAppsByInstalledAppIdData = {
 }
 
 export type GetInstalledAppsByInstalledAppIdErrors = {
-  403: AccessDeniedError
-  404: InstalledAppNotFoundError | InstalledAppUnavailableError
-  503: WebAppAccessUnavailableError
+  403: AccessDeniedError | ErrorResponse
+  404: InstalledAppNotFoundError | InstalledAppUnavailableError | ErrorResponse
+  503: WebAppAccessUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1049,9 +1049,9 @@ export type PatchInstalledAppsByInstalledAppIdData = {
 }
 
 export type PatchInstalledAppsByInstalledAppIdErrors = {
-  403: AccessDeniedError
-  404: InstalledAppNotFoundError
-  503: WebAppAccessUnavailableError
+  403: AccessDeniedError | ErrorResponse
+  404: InstalledAppNotFoundError | ErrorResponse
+  503: WebAppAccessUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1085,12 +1085,13 @@ export type PostInstalledAppsByInstalledAppIdAudioToTextErrors = {
     | ProviderNotSupportTextToSpeechError
     | ProviderQuotaExceededError
     | SpeechToTextDisabledError
-  403: AccessDeniedError
-  404: AgentVersionNotFoundError | InstalledAppNotFoundError
-  413: AudioTooLargeError
-  415: UnsupportedAudioTypeError
-  500: InternalServerError
-  503: WebAppAccessUnavailableError
+    | ErrorResponse
+  403: AccessDeniedError | ErrorResponse
+  404: AgentVersionNotFoundError | InstalledAppNotFoundError | ErrorResponse
+  413: AudioTooLargeError | ErrorResponse
+  415: UnsupportedAudioTypeError | ErrorResponse
+  500: InternalServerError | ErrorResponse
+  503: WebAppAccessUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1121,12 +1122,13 @@ export type PostInstalledAppsByInstalledAppIdChatMessagesErrors = {
     | NotChatAppError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  401: UnauthorizedError
-  403: AccessDeniedError
-  404: InstalledAppNotFoundError | NotFoundError
-  429: RateLimitError
-  500: InternalServerError
-  503: WebAppAccessUnavailableError
+    | ErrorResponse
+  401: UnauthorizedError | ErrorResponse
+  403: AccessDeniedError | ErrorResponse
+  404: InstalledAppNotFoundError | NotFoundError | ErrorResponse
+  429: RateLimitError | ErrorResponse
+  500: InternalServerError | ErrorResponse
+  503: WebAppAccessUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1153,10 +1155,10 @@ export type PostInstalledAppsByInstalledAppIdChatMessagesByTaskIdStopData = {
 }
 
 export type PostInstalledAppsByInstalledAppIdChatMessagesByTaskIdStopErrors = {
-  400: NotChatAppError
-  403: AccessDeniedError
-  404: InstalledAppNotFoundError
-  503: WebAppAccessUnavailableError
+  400: NotChatAppError | ErrorResponse
+  403: AccessDeniedError | ErrorResponse
+  404: InstalledAppNotFoundError | ErrorResponse
+  503: WebAppAccessUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1187,11 +1189,12 @@ export type PostInstalledAppsByInstalledAppIdCompletionMessagesErrors = {
     | NotCompletionAppError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  401: UnauthorizedError
-  403: AccessDeniedError
-  404: InstalledAppNotFoundError | NotFoundError
-  500: InternalServerError
-  503: WebAppAccessUnavailableError
+    | ErrorResponse
+  401: UnauthorizedError | ErrorResponse
+  403: AccessDeniedError | ErrorResponse
+  404: InstalledAppNotFoundError | NotFoundError | ErrorResponse
+  500: InternalServerError | ErrorResponse
+  503: WebAppAccessUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1218,10 +1221,10 @@ export type PostInstalledAppsByInstalledAppIdCompletionMessagesByTaskIdStopData 
 }
 
 export type PostInstalledAppsByInstalledAppIdCompletionMessagesByTaskIdStopErrors = {
-  400: NotCompletionAppError
-  403: AccessDeniedError
-  404: InstalledAppNotFoundError
-  503: WebAppAccessUnavailableError
+  400: NotCompletionAppError | ErrorResponse
+  403: AccessDeniedError | ErrorResponse
+  404: InstalledAppNotFoundError | ErrorResponse
+  503: WebAppAccessUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1249,14 +1252,15 @@ export type GetInstalledAppsByInstalledAppIdConversationsData = {
 }
 
 export type GetInstalledAppsByInstalledAppIdConversationsErrors = {
-  400: ConversationNameRequiredError | NotChatAppError
-  403: AccessDeniedError
+  400: ConversationNameRequiredError | NotChatAppError | ErrorResponse
+  403: AccessDeniedError | ErrorResponse
   404:
     | ConversationCursorNotFoundError
     | ConversationFirstMessageNotFoundError
     | ConversationNotFoundError
     | InstalledAppNotFoundError
-  503: WebAppAccessUnavailableError
+    | ErrorResponse
+  503: WebAppAccessUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1281,14 +1285,15 @@ export type DeleteInstalledAppsByInstalledAppIdConversationsByCIdData = {
 }
 
 export type DeleteInstalledAppsByInstalledAppIdConversationsByCIdErrors = {
-  400: ConversationNameRequiredError | NotChatAppError
-  403: AccessDeniedError
+  400: ConversationNameRequiredError | NotChatAppError | ErrorResponse
+  403: AccessDeniedError | ErrorResponse
   404:
     | ConversationCursorNotFoundError
     | ConversationFirstMessageNotFoundError
     | ConversationNotFoundError
     | InstalledAppNotFoundError
-  503: WebAppAccessUnavailableError
+    | ErrorResponse
+  503: WebAppAccessUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1313,14 +1318,15 @@ export type PostInstalledAppsByInstalledAppIdConversationsByCIdNameData = {
 }
 
 export type PostInstalledAppsByInstalledAppIdConversationsByCIdNameErrors = {
-  400: ConversationNameRequiredError | NotChatAppError
-  403: AccessDeniedError
+  400: ConversationNameRequiredError | NotChatAppError | ErrorResponse
+  403: AccessDeniedError | ErrorResponse
   404:
     | ConversationCursorNotFoundError
     | ConversationFirstMessageNotFoundError
     | ConversationNotFoundError
     | InstalledAppNotFoundError
-  503: WebAppAccessUnavailableError
+    | ErrorResponse
+  503: WebAppAccessUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1345,14 +1351,15 @@ export type PatchInstalledAppsByInstalledAppIdConversationsByCIdPinData = {
 }
 
 export type PatchInstalledAppsByInstalledAppIdConversationsByCIdPinErrors = {
-  400: ConversationNameRequiredError | NotChatAppError
-  403: AccessDeniedError
+  400: ConversationNameRequiredError | NotChatAppError | ErrorResponse
+  403: AccessDeniedError | ErrorResponse
   404:
     | ConversationCursorNotFoundError
     | ConversationFirstMessageNotFoundError
     | ConversationNotFoundError
     | InstalledAppNotFoundError
-  503: WebAppAccessUnavailableError
+    | ErrorResponse
+  503: WebAppAccessUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1377,14 +1384,15 @@ export type PatchInstalledAppsByInstalledAppIdConversationsByCIdUnpinData = {
 }
 
 export type PatchInstalledAppsByInstalledAppIdConversationsByCIdUnpinErrors = {
-  400: ConversationNameRequiredError | NotChatAppError
-  403: AccessDeniedError
+  400: ConversationNameRequiredError | NotChatAppError | ErrorResponse
+  403: AccessDeniedError | ErrorResponse
   404:
     | ConversationCursorNotFoundError
     | ConversationFirstMessageNotFoundError
     | ConversationNotFoundError
     | InstalledAppNotFoundError
-  503: WebAppAccessUnavailableError
+    | ErrorResponse
+  503: WebAppAccessUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1421,18 +1429,21 @@ export type GetInstalledAppsByInstalledAppIdMessagesErrors = {
     | NotCompletionAppError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  401: UnauthorizedError
+    | ErrorResponse
+  401: UnauthorizedError | ErrorResponse
   403:
     | AccessDeniedError
     | AppMoreLikeThisDisabledError
     | AppSuggestedQuestionsAfterAnswerDisabledError
+    | ErrorResponse
   404:
     | ConversationNotFoundError
     | InstalledAppNotFoundError
     | MessageCursorNotFoundError
     | MessageNotFoundError
-  500: InternalServerError
-  503: WebAppAccessUnavailableError
+    | ErrorResponse
+  500: InternalServerError | ErrorResponse
+  503: WebAppAccessUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1466,18 +1477,21 @@ export type PostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksErrors 
     | NotCompletionAppError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  401: UnauthorizedError
+    | ErrorResponse
+  401: UnauthorizedError | ErrorResponse
   403:
     | AccessDeniedError
     | AppMoreLikeThisDisabledError
     | AppSuggestedQuestionsAfterAnswerDisabledError
+    | ErrorResponse
   404:
     | ConversationNotFoundError
     | InstalledAppNotFoundError
     | MessageCursorNotFoundError
     | MessageNotFoundError
-  500: InternalServerError
-  503: WebAppAccessUnavailableError
+    | ErrorResponse
+  500: InternalServerError | ErrorResponse
+  503: WebAppAccessUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1513,18 +1527,21 @@ export type GetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisError
     | NotCompletionAppError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  401: UnauthorizedError
+    | ErrorResponse
+  401: UnauthorizedError | ErrorResponse
   403:
     | AccessDeniedError
     | AppMoreLikeThisDisabledError
     | AppSuggestedQuestionsAfterAnswerDisabledError
+    | ErrorResponse
   404:
     | ConversationNotFoundError
     | InstalledAppNotFoundError
     | MessageCursorNotFoundError
     | MessageNotFoundError
-  500: InternalServerError
-  503: WebAppAccessUnavailableError
+    | ErrorResponse
+  500: InternalServerError | ErrorResponse
+  503: WebAppAccessUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1560,18 +1577,21 @@ export type GetInstalledAppsByInstalledAppIdMessagesByMessageIdSuggestedQuestion
     | NotCompletionAppError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  401: UnauthorizedError
+    | ErrorResponse
+  401: UnauthorizedError | ErrorResponse
   403:
     | AccessDeniedError
     | AppMoreLikeThisDisabledError
     | AppSuggestedQuestionsAfterAnswerDisabledError
+    | ErrorResponse
   404:
     | ConversationNotFoundError
     | InstalledAppNotFoundError
     | MessageCursorNotFoundError
     | MessageNotFoundError
-  500: InternalServerError
-  503: WebAppAccessUnavailableError
+    | ErrorResponse
+  500: InternalServerError | ErrorResponse
+  503: WebAppAccessUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1595,10 +1615,10 @@ export type GetInstalledAppsByInstalledAppIdMetaData = {
 }
 
 export type GetInstalledAppsByInstalledAppIdMetaErrors = {
-  400: AppUnavailableError
-  403: AccessDeniedError
-  404: InstalledAppNotFoundError
-  503: WebAppAccessUnavailableError
+  400: AppUnavailableError | ErrorResponse
+  403: AccessDeniedError | ErrorResponse
+  404: InstalledAppNotFoundError | ErrorResponse
+  503: WebAppAccessUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1622,10 +1642,10 @@ export type GetInstalledAppsByInstalledAppIdParametersData = {
 }
 
 export type GetInstalledAppsByInstalledAppIdParametersErrors = {
-  400: AppUnavailableError
-  403: AccessDeniedError
-  404: InstalledAppNotFoundError
-  503: WebAppAccessUnavailableError
+  400: AppUnavailableError | ErrorResponse
+  403: AccessDeniedError | ErrorResponse
+  404: InstalledAppNotFoundError | ErrorResponse
+  503: WebAppAccessUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1652,10 +1672,10 @@ export type GetInstalledAppsByInstalledAppIdSavedMessagesData = {
 }
 
 export type GetInstalledAppsByInstalledAppIdSavedMessagesErrors = {
-  400: NotCompletionAppError
-  403: AccessDeniedError
-  404: InstalledAppNotFoundError
-  503: WebAppAccessUnavailableError
+  400: NotCompletionAppError | ErrorResponse
+  403: AccessDeniedError | ErrorResponse
+  404: InstalledAppNotFoundError | ErrorResponse
+  503: WebAppAccessUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1679,10 +1699,10 @@ export type PostInstalledAppsByInstalledAppIdSavedMessagesData = {
 }
 
 export type PostInstalledAppsByInstalledAppIdSavedMessagesErrors = {
-  400: NotCompletionAppError
-  403: AccessDeniedError
-  404: InstalledAppNotFoundError | NotFoundError
-  503: WebAppAccessUnavailableError
+  400: NotCompletionAppError | ErrorResponse
+  403: AccessDeniedError | ErrorResponse
+  404: InstalledAppNotFoundError | NotFoundError | ErrorResponse
+  503: WebAppAccessUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1707,10 +1727,10 @@ export type DeleteInstalledAppsByInstalledAppIdSavedMessagesByMessageIdData = {
 }
 
 export type DeleteInstalledAppsByInstalledAppIdSavedMessagesByMessageIdErrors = {
-  400: NotCompletionAppError
-  403: AccessDeniedError
-  404: InstalledAppNotFoundError
-  503: WebAppAccessUnavailableError
+  400: NotCompletionAppError | ErrorResponse
+  403: AccessDeniedError | ErrorResponse
+  404: InstalledAppNotFoundError | ErrorResponse
+  503: WebAppAccessUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1744,12 +1764,13 @@ export type PostInstalledAppsByInstalledAppIdTextToAudioErrors = {
     | ProviderNotSupportTextToSpeechError
     | ProviderQuotaExceededError
     | SpeechToTextDisabledError
-  403: AccessDeniedError
-  404: AgentVersionNotFoundError | InstalledAppNotFoundError
-  413: AudioTooLargeError
-  415: UnsupportedAudioTypeError
-  500: InternalServerError
-  503: WebAppAccessUnavailableError
+    | ErrorResponse
+  403: AccessDeniedError | ErrorResponse
+  404: AgentVersionNotFoundError | InstalledAppNotFoundError | ErrorResponse
+  413: AudioTooLargeError | ErrorResponse
+  415: UnsupportedAudioTypeError | ErrorResponse
+  500: InternalServerError | ErrorResponse
+  503: WebAppAccessUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1779,12 +1800,13 @@ export type PostInstalledAppsByInstalledAppIdWorkflowsRunErrors = {
     | NotWorkflowAppError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  401: UnauthorizedError
-  403: AccessDeniedError
-  404: InstalledAppNotFoundError
-  429: RateLimitError
-  500: InternalServerError
-  503: WebAppAccessUnavailableError
+    | ErrorResponse
+  401: UnauthorizedError | ErrorResponse
+  403: AccessDeniedError | ErrorResponse
+  404: InstalledAppNotFoundError | ErrorResponse
+  429: RateLimitError | ErrorResponse
+  500: InternalServerError | ErrorResponse
+  503: WebAppAccessUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1811,10 +1833,10 @@ export type PostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopData = {
 }
 
 export type PostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopErrors = {
-  400: NotWorkflowAppError
-  403: AccessDeniedError
-  404: InstalledAppNotFoundError
-  503: WebAppAccessUnavailableError
+  400: NotWorkflowAppError | ErrorResponse
+  403: AccessDeniedError | ErrorResponse
+  404: InstalledAppNotFoundError | ErrorResponse
+  503: WebAppAccessUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 

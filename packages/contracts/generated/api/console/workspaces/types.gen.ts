@@ -3724,7 +3724,7 @@ export type PostWorkspacesCurrentMembersInviteEmailData = {
 }
 
 export type PostWorkspacesCurrentMembersInviteEmailErrors = {
-  400: MemberInviteErrorResponse | InvalidRoleError | LimitExceededError
+  400: MemberInviteErrorResponse | InvalidRoleError | LimitExceededError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3753,7 +3753,12 @@ export type PostWorkspacesCurrentMembersOwnerTransferCheckErrors = {
     | InvalidOrExpiredTokenError
     | MemberNotInTenantError
     | NotOwnerError
-  429: EmailSendIpLimitError | OwnerTransferLimitError | OwnerTransferRateLimitExceededError
+    | ErrorResponse
+  429:
+    | EmailSendIpLimitError
+    | OwnerTransferLimitError
+    | OwnerTransferRateLimitExceededError
+    | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3782,7 +3787,12 @@ export type PostWorkspacesCurrentMembersSendOwnerTransferConfirmEmailErrors = {
     | InvalidOrExpiredTokenError
     | MemberNotInTenantError
     | NotOwnerError
-  429: EmailSendIpLimitError | OwnerTransferLimitError | OwnerTransferRateLimitExceededError
+    | ErrorResponse
+  429:
+    | EmailSendIpLimitError
+    | OwnerTransferLimitError
+    | OwnerTransferRateLimitExceededError
+    | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3806,9 +3816,9 @@ export type DeleteWorkspacesCurrentMembersByMemberIdData = {
 }
 
 export type DeleteWorkspacesCurrentMembersByMemberIdErrors = {
-  400: CannotOperateSelfError | InvalidRoleError | RoleAlreadyAssignedError
-  403: ForbiddenError
-  404: MemberNotFoundError
+  400: CannotOperateSelfError | InvalidRoleError | RoleAlreadyAssignedError | ErrorResponse
+  403: ForbiddenError | ErrorResponse
+  404: MemberNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3839,7 +3849,12 @@ export type PostWorkspacesCurrentMembersByMemberIdOwnerTransferErrors = {
     | InvalidOrExpiredTokenError
     | MemberNotInTenantError
     | NotOwnerError
-  429: EmailSendIpLimitError | OwnerTransferLimitError | OwnerTransferRateLimitExceededError
+    | ErrorResponse
+  429:
+    | EmailSendIpLimitError
+    | OwnerTransferLimitError
+    | OwnerTransferRateLimitExceededError
+    | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3863,9 +3878,9 @@ export type PutWorkspacesCurrentMembersByMemberIdUpdateRoleData = {
 }
 
 export type PutWorkspacesCurrentMembersByMemberIdUpdateRoleErrors = {
-  400: CannotOperateSelfError | InvalidRoleError | RoleAlreadyAssignedError
-  403: ForbiddenError
-  404: MemberNotFoundError
+  400: CannotOperateSelfError | InvalidRoleError | RoleAlreadyAssignedError | ErrorResponse
+  403: ForbiddenError | ErrorResponse
+  404: MemberNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -4528,7 +4543,7 @@ export type GetWorkspacesCurrentPluginAssetData = {
 }
 
 export type GetWorkspacesCurrentPluginAssetErrors = {
-  400: PluginError
+  400: PluginError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -4615,7 +4630,7 @@ export type GetWorkspacesCurrentPluginDebuggingKeyData = {
 }
 
 export type GetWorkspacesCurrentPluginDebuggingKeyErrors = {
-  400: PluginError
+  400: PluginError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -4639,7 +4654,7 @@ export type GetWorkspacesCurrentPluginFetchManifestData = {
 }
 
 export type GetWorkspacesCurrentPluginFetchManifestErrors = {
-  400: PluginError
+  400: PluginError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -4664,7 +4679,7 @@ export type GetWorkspacesCurrentPluginIconData = {
 }
 
 export type GetWorkspacesCurrentPluginIconErrors = {
-  400: PluginError
+  400: PluginError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -4686,7 +4701,7 @@ export type PostWorkspacesCurrentPluginInstallGithubData = {
 }
 
 export type PostWorkspacesCurrentPluginInstallGithubErrors = {
-  400: PluginError
+  400: PluginError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -4708,7 +4723,7 @@ export type PostWorkspacesCurrentPluginInstallMarketplaceData = {
 }
 
 export type PostWorkspacesCurrentPluginInstallMarketplaceErrors = {
-  400: PluginError
+  400: PluginError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -4730,7 +4745,7 @@ export type PostWorkspacesCurrentPluginInstallPkgData = {
 }
 
 export type PostWorkspacesCurrentPluginInstallPkgErrors = {
-  400: PluginError
+  400: PluginError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -4754,7 +4769,7 @@ export type GetWorkspacesCurrentPluginInstalledIdsData = {
 }
 
 export type GetWorkspacesCurrentPluginInstalledIdsErrors = {
-  400: PluginError
+  400: PluginError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -4779,7 +4794,7 @@ export type GetWorkspacesCurrentPluginListData = {
 }
 
 export type GetWorkspacesCurrentPluginListErrors = {
-  400: PluginError
+  400: PluginError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -4801,7 +4816,7 @@ export type PostWorkspacesCurrentPluginListInstallationsIdsData = {
 }
 
 export type PostWorkspacesCurrentPluginListInstallationsIdsErrors = {
-  400: PluginError
+  400: PluginError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -4823,7 +4838,7 @@ export type PostWorkspacesCurrentPluginListLatestVersionsData = {
 }
 
 export type PostWorkspacesCurrentPluginListLatestVersionsErrors = {
-  400: PluginError
+  400: PluginError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -4847,7 +4862,7 @@ export type GetWorkspacesCurrentPluginMarketplacePkgData = {
 }
 
 export type GetWorkspacesCurrentPluginMarketplacePkgErrors = {
-  400: PluginError
+  400: PluginError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -4876,7 +4891,7 @@ export type GetWorkspacesCurrentPluginParametersDynamicOptionsData = {
 }
 
 export type GetWorkspacesCurrentPluginParametersDynamicOptionsErrors = {
-  400: PluginError
+  400: PluginError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -4898,7 +4913,7 @@ export type PostWorkspacesCurrentPluginParametersDynamicOptionsWithCredentialsDa
 }
 
 export type PostWorkspacesCurrentPluginParametersDynamicOptionsWithCredentialsErrors = {
-  400: PluginError
+  400: PluginError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -4989,7 +5004,7 @@ export type GetWorkspacesCurrentPluginTasksData = {
 }
 
 export type GetWorkspacesCurrentPluginTasksErrors = {
-  400: PluginError
+  400: PluginError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -5011,7 +5026,7 @@ export type PostWorkspacesCurrentPluginTasksDeleteAllData = {
 }
 
 export type PostWorkspacesCurrentPluginTasksDeleteAllErrors = {
-  400: PluginError
+  400: PluginError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -5035,7 +5050,7 @@ export type GetWorkspacesCurrentPluginTasksByTaskIdData = {
 }
 
 export type GetWorkspacesCurrentPluginTasksByTaskIdErrors = {
-  400: PluginError
+  400: PluginError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -5059,7 +5074,7 @@ export type PostWorkspacesCurrentPluginTasksByTaskIdDeleteData = {
 }
 
 export type PostWorkspacesCurrentPluginTasksByTaskIdDeleteErrors = {
-  400: PluginError
+  400: PluginError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -5084,7 +5099,7 @@ export type PostWorkspacesCurrentPluginTasksByTaskIdDeleteByIdentifierData = {
 }
 
 export type PostWorkspacesCurrentPluginTasksByTaskIdDeleteByIdentifierErrors = {
-  400: PluginError
+  400: PluginError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -5106,7 +5121,7 @@ export type PostWorkspacesCurrentPluginUninstallData = {
 }
 
 export type PostWorkspacesCurrentPluginUninstallErrors = {
-  400: PluginError
+  400: PluginError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -5128,7 +5143,7 @@ export type PostWorkspacesCurrentPluginUpgradeGithubData = {
 }
 
 export type PostWorkspacesCurrentPluginUpgradeGithubErrors = {
-  400: PluginError
+  400: PluginError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -5150,7 +5165,7 @@ export type PostWorkspacesCurrentPluginUpgradeMarketplaceData = {
 }
 
 export type PostWorkspacesCurrentPluginUpgradeMarketplaceErrors = {
-  400: PluginError
+  400: PluginError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -5193,7 +5208,7 @@ export type PostWorkspacesCurrentPluginUploadGithubData = {
 }
 
 export type PostWorkspacesCurrentPluginUploadGithubErrors = {
-  400: PluginError
+  400: PluginError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -5217,7 +5232,7 @@ export type PostWorkspacesCurrentPluginUploadPkgData = {
 }
 
 export type PostWorkspacesCurrentPluginUploadPkgErrors = {
-  400: PluginError
+  400: PluginError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -5247,7 +5262,7 @@ export type GetWorkspacesCurrentPluginByCategoryListData = {
 }
 
 export type GetWorkspacesCurrentPluginByCategoryListErrors = {
-  400: PluginError
+  400: PluginError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -6725,7 +6740,7 @@ export type PostWorkspacesCurrentSkillsData = {
 }
 
 export type PostWorkspacesCurrentSkillsErrors = {
-  400: InvalidRequestError
+  400: InvalidRequestError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -6749,7 +6764,7 @@ export type PostWorkspacesCurrentSkillsFilesUploadData = {
 }
 
 export type PostWorkspacesCurrentSkillsFilesUploadErrors = {
-  400: FilenameMissingError | NoFileUploadedError
+  400: FilenameMissingError | NoFileUploadedError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -6771,7 +6786,7 @@ export type PostWorkspacesCurrentSkillsImportData = {
 }
 
 export type PostWorkspacesCurrentSkillsImportErrors = {
-  400: InvalidRequestError
+  400: InvalidRequestError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -6862,7 +6877,7 @@ export type PatchWorkspacesCurrentSkillsBySkillIdData = {
 }
 
 export type PatchWorkspacesCurrentSkillsBySkillIdErrors = {
-  400: InvalidRequestError
+  400: InvalidRequestError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -6959,7 +6974,7 @@ export type PatchWorkspacesCurrentSkillsBySkillIdFilesData = {
 }
 
 export type PatchWorkspacesCurrentSkillsBySkillIdFilesErrors = {
-  400: InvalidRequestError
+  400: InvalidRequestError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -6983,7 +6998,7 @@ export type PutWorkspacesCurrentSkillsBySkillIdFilesData = {
 }
 
 export type PutWorkspacesCurrentSkillsBySkillIdFilesErrors = {
-  400: InvalidRequestError
+  400: InvalidRequestError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -7007,7 +7022,7 @@ export type PostWorkspacesCurrentSkillsBySkillIdFilesCheckData = {
 }
 
 export type PostWorkspacesCurrentSkillsBySkillIdFilesCheckErrors = {
-  400: InvalidRequestError
+  400: InvalidRequestError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -7035,7 +7050,7 @@ export type GetWorkspacesCurrentSkillsBySkillIdFilesContentData = {
 }
 
 export type GetWorkspacesCurrentSkillsBySkillIdFilesContentErrors = {
-  400: InvalidRequestError
+  400: InvalidRequestError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -7062,7 +7077,7 @@ export type GetWorkspacesCurrentSkillsBySkillIdFilesPreviewData = {
 }
 
 export type GetWorkspacesCurrentSkillsBySkillIdFilesPreviewErrors = {
-  400: InvalidRequestError
+  400: InvalidRequestError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -7248,7 +7263,7 @@ export type GetWorkspacesCurrentSummaryData = {
 }
 
 export type GetWorkspacesCurrentSummaryErrors = {
-  409: CurrentWorkspaceArchivedError
+  409: CurrentWorkspaceArchivedError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -7929,7 +7944,7 @@ export type PostWorkspacesCurrentToolProviderWorkflowCreateData = {
 }
 
 export type PostWorkspacesCurrentToolProviderWorkflowCreateErrors = {
-  400: WorkflowToolHumanInputNotSupportedError
+  400: WorkflowToolHumanInputNotSupportedError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -8019,7 +8034,7 @@ export type PostWorkspacesCurrentToolProviderWorkflowUpdateData = {
 }
 
 export type PostWorkspacesCurrentToolProviderWorkflowUpdateErrors = {
-  400: WorkflowToolHumanInputNotSupportedError
+  400: WorkflowToolHumanInputNotSupportedError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -8449,7 +8464,7 @@ export type GetWorkspacesCurrentTriggerProviderByProviderSubscriptionsOauthAutho
 }
 
 export type GetWorkspacesCurrentTriggerProviderByProviderSubscriptionsOauthAuthorizeErrors = {
-  404: NotFoundError
+  404: NotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -8523,7 +8538,7 @@ export type PostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsUpd
 }
 
 export type PostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsUpdateErrors = {
-  404: NotFoundError
+  404: NotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -8610,9 +8625,9 @@ export type PostWorkspacesCustomConfigWebappLogoUploadData = {
 }
 
 export type PostWorkspacesCustomConfigWebappLogoUploadErrors = {
-  400: FilenameNotExistsError | NoFileUploadedError | TooManyFilesError
-  413: FileTooLargeError
-  415: UnsupportedFileTypeError
+  400: FilenameNotExistsError | NoFileUploadedError | TooManyFilesError | ErrorResponse
+  413: FileTooLargeError | ErrorResponse
+  415: UnsupportedFileTypeError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -8654,7 +8669,7 @@ export type PostWorkspacesSwitchData = {
 }
 
 export type PostWorkspacesSwitchErrors = {
-  403: AccountNotLinkTenantError
+  403: AccountNotLinkTenantError | ErrorResponse
   default: ErrorResponse
 }
 

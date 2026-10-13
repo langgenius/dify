@@ -66,6 +66,7 @@ export type PostRuleGenerateErrors = {
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
+    | ErrorResponse
   default: ErrorResponse
 }
 

@@ -343,9 +343,9 @@ Upload a file to use as an input variable when running the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Approved | **application/json**: [DeviceMutateResponse](#devicemutateresponse)<br> |
-| 404 | Unknown or expired user code | **application/json**: <br> |
-| 409 | Already resolved, in progress, or state lost | **application/json**: <br> |
-| 503 | Approval outcome unknown | **application/json**: <br> |
+| 404 | Unknown or expired user code | **application/json**: [DeviceFlowErrorResponse](#deviceflowerrorresponse)<br>[ErrorBody](#errorbody)<br> |
+| 409 | Already resolved, in progress, or state lost | **application/json**: [DeviceFlowErrorResponse](#deviceflowerrorresponse)<br>[ErrorBody](#errorbody)<br> |
+| 503 | Approval outcome unknown | **application/json**: [DeviceFlowErrorResponse](#deviceflowerrorresponse)<br>[ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [POST] /oauth/device/code
@@ -360,7 +360,7 @@ Upload a file to use as an input variable when running the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Device code created | **application/json**: [DeviceCodeResponse](#devicecoderesponse)<br> |
-| 400 | Unsupported client | **application/json**: <br> |
+| 400 | Unsupported client | **application/json**: [DeviceFlowErrorResponse](#deviceflowerrorresponse)<br>[ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [POST] /oauth/device/deny
@@ -375,9 +375,9 @@ Upload a file to use as an input variable when running the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Denied | **application/json**: [DeviceMutateResponse](#devicemutateresponse)<br> |
-| 404 | Unknown or expired user code | **application/json**: <br> |
-| 409 | Already resolved, in progress, or state lost | **application/json**: <br> |
-| 503 | Approval outcome unknown | **application/json**: <br> |
+| 404 | Unknown or expired user code | **application/json**: [DeviceFlowErrorResponse](#deviceflowerrorresponse)<br>[ErrorBody](#errorbody)<br> |
+| 409 | Already resolved, in progress, or state lost | **application/json**: [DeviceFlowErrorResponse](#deviceflowerrorresponse)<br>[ErrorBody](#errorbody)<br> |
+| 503 | Approval outcome unknown | **application/json**: [DeviceFlowErrorResponse](#deviceflowerrorresponse)<br>[ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [GET] /oauth/device/lookup
@@ -406,7 +406,7 @@ Upload a file to use as an input variable when running the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Device token | **application/json**: [DeviceTokenResponse](#devicetokenresponse)<br> |
-| 400 | Authorization pending, polling too fast, expired, or denied | **application/json**: <br> |
+| 400 | Authorization pending, polling too fast, expired, or denied | **application/json**: [DeviceFlowErrorResponse](#deviceflowerrorresponse)<br>[ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [GET] /permitted-external-apps
@@ -492,7 +492,7 @@ Upload a file to use as an input variable when running the app
 | ---- | ----------- | ------ |
 | 200 | Import completed | **application/json**: [AppDslImportResponse](#appdslimportresponse)<br> |
 | 202 | Import pending confirmation | **application/json**: [AppDslImportResponse](#appdslimportresponse)<br> |
-| 400 | Import failed | **application/json**: <br> |
+| 400 | Import failed | **application/json**: [AppDslImportResponse](#appdslimportresponse)<br>[ErrorBody](#errorbody)<br> |
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
@@ -509,7 +509,7 @@ Upload a file to use as an input variable when running the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Import confirmed | **application/json**: [Import](#import)<br> |
-| 400 | Import failed | **application/json**: <br> |
+| 400 | Import failed | **application/json**: [Import](#import)<br>[ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [GET] /workspaces/{workspace_id}/members

@@ -168,7 +168,7 @@ export type GetExploreAppsByAppIdData = {
 }
 
 export type GetExploreAppsByAppIdErrors = {
-  404: RecommendedAppNotFoundError
+  404: RecommendedAppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 

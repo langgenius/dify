@@ -83,6 +83,7 @@ export type PostInstructionGenerateErrors = {
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
+    | ErrorResponse
   default: ErrorResponse
 }
 

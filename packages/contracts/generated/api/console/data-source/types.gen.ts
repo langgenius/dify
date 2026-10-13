@@ -98,8 +98,8 @@ export type PatchDataSourceIntegratesByBindingIdByActionData = {
 }
 
 export type PatchDataSourceIntegratesByBindingIdByActionErrors = {
-  400: InvalidActionError
-  404: NotFoundError
+  400: InvalidActionError | ErrorResponse
+  404: NotFoundError | ErrorResponse
   default: ErrorResponse
 }
 

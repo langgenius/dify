@@ -40,7 +40,7 @@ export type PostWebsiteCrawlData = {
 
 export type PostWebsiteCrawlErrors = {
   400: ErrorResponse
-  500: CrawlFailedError
+  500: CrawlFailedError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -66,7 +66,7 @@ export type GetWebsiteCrawlStatusByJobIdData = {
 export type GetWebsiteCrawlStatusByJobIdErrors = {
   400: ErrorResponse
   404: ErrorResponse
-  500: CrawlFailedError
+  500: CrawlFailedError | ErrorResponse
   default: ErrorResponse
 }
 

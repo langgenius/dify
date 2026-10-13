@@ -45,7 +45,7 @@ Deprecated. Use PATCH /account/profile instead.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AccountResponse](#accountresponse)<br> |
-| 400 | Bad Request | **application/json**: [AccountNotFoundError](#accountnotfounderror)<br> |
+| 400 | Bad Request | **application/json**: [AccountNotFoundError](#accountnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /account/change-email
@@ -60,8 +60,8 @@ Deprecated. Use PATCH /account/profile instead.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultDataResponse](#simpleresultdataresponse)<br> |
-| 400 | Bad Request | **application/json**: <br> |
-| 429 | Too Many Requests | **application/json**: <br> |
+| 400 | Bad Request | **application/json**: [AccountNotFoundError](#accountnotfounderror)<br>[InvalidEmailError](#invalidemailerror)<br>[InvalidOrExpiredTokenError](#invalidorexpiredtokenerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [EmailChangeRateLimitExceededError](#emailchangeratelimitexceedederror)<br>[EmailSendIpLimitError](#emailsendiplimiterror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /account/change-email/check-email-unique
@@ -76,7 +76,7 @@ Deprecated. Use PATCH /account/profile instead.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 400 | Bad Request | **application/json**: <br> |
+| 400 | Bad Request | **application/json**: [AccountInFreezeError](#accountinfreezeerror)<br>[EmailAlreadyInUseError](#emailalreadyinuseerror)<br>[EmailDomainSuspendedError](#emaildomainsuspendederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /account/change-email/reset
@@ -91,7 +91,7 @@ Deprecated. Use PATCH /account/profile instead.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AccountResponse](#accountresponse)<br> |
-| 400 | Bad Request | **application/json**: <br> |
+| 400 | Bad Request | **application/json**: [AccountInFreezeError](#accountinfreezeerror)<br>[AccountNotFoundError](#accountnotfounderror)<br>[EmailAlreadyInUseError](#emailalreadyinuseerror)<br>[EmailDomainSuspendedError](#emaildomainsuspendederror)<br>[InvalidOrExpiredTokenError](#invalidorexpiredtokenerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /account/change-email/validity
@@ -106,8 +106,8 @@ Deprecated. Use PATCH /account/profile instead.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [VerificationTokenResponse](#verificationtokenresponse)<br> |
-| 400 | Bad Request | **application/json**: <br> |
-| 429 | Too Many Requests | **application/json**: [EmailChangeLimitError](#emailchangelimiterror)<br> |
+| 400 | Bad Request | **application/json**: [EmailCodeError](#emailcodeerror)<br>[InvalidEmailError](#invalidemailerror)<br>[InvalidOrExpiredTokenError](#invalidorexpiredtokenerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [EmailChangeLimitError](#emailchangelimiterror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /account/delete
@@ -122,7 +122,7 @@ Deprecated. Use PATCH /account/profile instead.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 400 | Bad Request | **application/json**: [InvalidAccountDeletionCodeError](#invalidaccountdeletioncodeerror)<br> |
+| 400 | Bad Request | **application/json**: [InvalidAccountDeletionCodeError](#invalidaccountdeletioncodeerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /account/delete/feedback
@@ -145,8 +145,8 @@ Deprecated. Use PATCH /account/profile instead.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultDataResponse](#simpleresultdataresponse)<br> |
-| 400 | Bad Request | **application/json**: [AccountNotFoundError](#accountnotfounderror)<br> |
-| 429 | Too Many Requests | **application/json**: [EmailCodeAccountDeletionRateLimitExceededError](#emailcodeaccountdeletionratelimitexceedederror)<br> |
+| 400 | Bad Request | **application/json**: [AccountNotFoundError](#accountnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [EmailCodeAccountDeletionRateLimitExceededError](#emailcodeaccountdeletionratelimitexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /account/education
@@ -169,8 +169,8 @@ Deprecated. Use PATCH /account/profile instead.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [EducationActivateResponse](#educationactivateresponse)<br> |
-| 400 | Bad Request | **application/json**: [AccountNotFoundError](#accountnotfounderror)<br> |
-| 429 | Too Many Requests | **application/json**: [EducationActivateLimitError](#educationactivatelimiterror)<br> |
+| 400 | Bad Request | **application/json**: [AccountNotFoundError](#accountnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [EducationActivateLimitError](#educationactivatelimiterror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /account/education/autocomplete
@@ -195,8 +195,8 @@ Deprecated. Use PATCH /account/profile instead.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [EducationVerifyResponse](#educationverifyresponse)<br> |
-| 400 | Bad Request | **application/json**: [AccountNotFoundError](#accountnotfounderror)<br> |
-| 429 | Too Many Requests | **application/json**: [EducationVerifyLimitError](#educationverifylimiterror)<br> |
+| 400 | Bad Request | **application/json**: [AccountNotFoundError](#accountnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [EducationVerifyLimitError](#educationverifylimiterror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /account/init
@@ -211,7 +211,7 @@ Deprecated. Use PATCH /account/profile instead.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 400 | Bad Request | **application/json**: <br> |
+| 400 | Bad Request | **application/json**: [AccountAlreadyInitedError](#accountalreadyinitederror)<br>[AccountNotFoundError](#accountnotfounderror)<br>[InvalidInvitationCodeError](#invalidinvitationcodeerror)<br>[MissingInvitationCodeError](#missinginvitationcodeerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /account/integrates
@@ -239,7 +239,7 @@ Deprecated. Use PATCH /account/profile instead.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AccountResponse](#accountresponse)<br> |
-| 400 | Bad Request | **application/json**: [AccountNotFoundError](#accountnotfounderror)<br> |
+| 400 | Bad Request | **application/json**: [AccountNotFoundError](#accountnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### ~~[POST] /account/interface-theme~~
@@ -259,7 +259,7 @@ Deprecated. Use PATCH /account/profile instead.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AccountResponse](#accountresponse)<br> |
-| 400 | Bad Request | **application/json**: [AccountNotFoundError](#accountnotfounderror)<br> |
+| 400 | Bad Request | **application/json**: [AccountNotFoundError](#accountnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### ~~[POST] /account/name~~
@@ -279,7 +279,7 @@ Deprecated. Use PATCH /account/profile instead.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AccountResponse](#accountresponse)<br> |
-| 400 | Bad Request | **application/json**: [AccountNotFoundError](#accountnotfounderror)<br> |
+| 400 | Bad Request | **application/json**: [AccountNotFoundError](#accountnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /account/password
@@ -294,7 +294,7 @@ Deprecated. Use PATCH /account/profile instead.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AccountResponse](#accountresponse)<br> |
-| 400 | Bad Request | **application/json**: <br> |
+| 400 | Bad Request | **application/json**: [AccountNotFoundError](#accountnotfounderror)<br>[CurrentPasswordIncorrectError](#currentpasswordincorrecterror)<br>[InvalidAccountPasswordError](#invalidaccountpassworderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /account/profile
@@ -303,7 +303,7 @@ Deprecated. Use PATCH /account/profile instead.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AccountResponse](#accountresponse)<br> |
-| 400 | Bad Request | **application/json**: [AccountNotFoundError](#accountnotfounderror)<br> |
+| 400 | Bad Request | **application/json**: [AccountNotFoundError](#accountnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /account/profile
@@ -318,7 +318,7 @@ Deprecated. Use PATCH /account/profile instead.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AccountResponse](#accountresponse)<br> |
-| 400 | Bad Request | **application/json**: [AccountNotFoundError](#accountnotfounderror)<br> |
+| 400 | Bad Request | **application/json**: [AccountNotFoundError](#accountnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### ~~[POST] /account/timezone~~
@@ -338,7 +338,7 @@ Deprecated. Use PATCH /account/profile instead.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AccountResponse](#accountresponse)<br> |
-| 400 | Bad Request | **application/json**: [AccountNotFoundError](#accountnotfounderror)<br> |
+| 400 | Bad Request | **application/json**: [AccountNotFoundError](#accountnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /activate
@@ -360,8 +360,8 @@ invitation before the token is consumed or tenant membership is changed.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Account activated successfully | **application/json**: [ActivationResponse](#activationresponse)<br> |
-| 400 | Already activated or invalid token | **application/json**: <br> |
-| 403 | Forbidden | **application/json**: <br> |
+| 400 | Already activated or invalid token | **application/json**: [AccountInFreezeError](#accountinfreezeerror)<br>[EmailDomainSuspendedError](#emaildomainsuspendederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [AlreadyActivateError](#alreadyactivateerror)<br>[InvitationAccountMismatchError](#invitationaccountmismatcherror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /activate/check
@@ -419,7 +419,7 @@ Check if activation token is valid
 | 201 | Agent app created successfully | **application/json**: [AgentAppDetailWithSite](#agentappdetailwithsite)<br> |
 | 400 | Invalid request parameters | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br> |
+| 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 409 | Agent name already exists | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -467,7 +467,7 @@ Check if activation token is valid
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent app detail | **application/json**: [AgentAppDetailWithSite](#agentappdetailwithsite)<br> |
-| 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br> |
+| 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /agent/{agent_id}
@@ -490,7 +490,7 @@ Check if activation token is valid
 | 200 | Agent app updated successfully | **application/json**: [AgentAppDetailWithSite](#agentappdetailwithsite)<br> |
 | 400 | Invalid request parameters | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br> |
+| 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/api-access
@@ -526,7 +526,7 @@ Check if activation token is valid
 | ---- | ----------- | ------ |
 | 200 | Agent service API status updated | **application/json**: [AgentApiAccessResponse](#agentapiaccessresponse)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 409 | Conflict | **application/json**: [AgentNotPublishedError](#agentnotpublishederror)<br> |
+| 409 | Conflict | **application/json**: [AgentNotPublishedError](#agentnotpublishederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/api-keys
@@ -541,8 +541,8 @@ Check if activation token is valid
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent service API keys | **application/json**: [ApiKeyList](#apikeylist)<br> |
-| 400 | Bad Request | **application/json**: [MaxKeysExceededError](#maxkeysexceedederror)<br> |
-| 409 | Conflict | **application/json**: [AgentNotPublishedError](#agentnotpublishederror)<br> |
+| 400 | Bad Request | **application/json**: [MaxKeysExceededError](#maxkeysexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [AgentNotPublishedError](#agentnotpublishederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/api-keys
@@ -557,8 +557,8 @@ Check if activation token is valid
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Agent service API key created | **application/json**: [ApiKeyItem](#apikeyitem)<br> |
-| 400 | Maximum keys exceeded | **application/json**: [MaxKeysExceededError](#maxkeysexceedederror)<br> |
-| 409 | Conflict | **application/json**: [AgentNotPublishedError](#agentnotpublishederror)<br> |
+| 400 | Maximum keys exceeded | **application/json**: [MaxKeysExceededError](#maxkeysexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [AgentNotPublishedError](#agentnotpublishederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /agent/{agent_id}/api-keys/{api_key_id}
@@ -574,8 +574,8 @@ Check if activation token is valid
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 204 | Agent service API key deleted |  |
-| 400 | Bad Request | **application/json**: [MaxKeysExceededError](#maxkeysexceedederror)<br> |
-| 409 | Conflict | **application/json**: [AgentNotPublishedError](#agentnotpublishederror)<br> |
+| 400 | Bad Request | **application/json**: [MaxKeysExceededError](#maxkeysexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [AgentNotPublishedError](#agentnotpublishederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/audio-to-text
@@ -598,10 +598,10 @@ Transcribe audio using the current Agent debug configuration
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Audio transcription successful | **application/json**: [AudioTranscriptResponse](#audiotranscriptresponse)<br> |
-| 400 | Bad request - Speech to text disabled or unsupported audio | **application/json**: <br> |
-| 404 | Agent or build draft not found | **application/json**: <br> |
-| 413 | Audio file too large | **application/json**: [AudioTooLargeError](#audiotoolargeerror)<br> |
-| 415 | Unsupported Media Type | **application/json**: [UnsupportedAudioTypeError](#unsupportedaudiotypeerror)<br> |
+| 400 | Bad request - Speech to text disabled or unsupported audio | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NoAudioUploadedError](#noaudiouploadederror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderNotSupportSpeechToTextError](#providernotsupportspeechtotexterror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[SpeechToTextDisabledError](#speechtotextdisablederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Agent or build draft not found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AgentVersionNotFoundError](#agentversionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 413 | Audio file too large | **application/json**: [AudioTooLargeError](#audiotoolargeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 415 | Unsupported Media Type | **application/json**: [UnsupportedAudioTypeError](#unsupportedaudiotypeerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/build-chat/finalize
@@ -618,9 +618,9 @@ Run a build-draft Agent App turn that asks the agent to push config updates
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 400 | Invalid request parameters | **application/json**: <br> |
-| 404 | Agent, build draft, or conversation not found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br> |
-| 429 | Too Many Requests | **application/json**: [RateLimitError](#ratelimiterror)<br> |
+| 400 | Invalid request parameters | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Agent, build draft, or conversation not found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [RateLimitError](#ratelimiterror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /agent/{agent_id}/build-draft
@@ -635,7 +635,7 @@ Run a build-draft Agent App turn that asks the agent to push config updates
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent build draft discarded | **application/json**: [AgentSimpleResultResponse](#agentsimpleresultresponse)<br> |
-| 404 | Not Found | **application/json**: <br> |
+| 404 | Not Found | **application/json**: [AgentBuildSandboxNotFoundError](#agentbuildsandboxnotfounderror)<br>[AgentNotFoundError](#agentnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/build-draft
@@ -650,7 +650,7 @@ Run a build-draft Agent App turn that asks the agent to push config updates
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent build draft | **application/json**: [AgentBuildDraftResponse](#agentbuilddraftresponse)<br> |
-| 404 | Agent build draft not found | **application/json**: [AgentVersionNotFoundError](#agentversionnotfounderror)<br> |
+| 404 | Agent build draft not found | **application/json**: [AgentVersionNotFoundError](#agentversionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /agent/{agent_id}/build-draft
@@ -671,8 +671,8 @@ Run a build-draft Agent App turn that asks the agent to push config updates
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent build draft saved | **application/json**: [AgentBuildDraftResponse](#agentbuilddraftresponse)<br> |
-| 400 | Bad Request | **application/json**: [AgentSoulLockedError](#agentsoullockederror)<br> |
-| 404 | Not Found | **application/json**: <br> |
+| 400 | Bad Request | **application/json**: [AgentSoulLockedError](#agentsoullockederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AgentVersionNotFoundError](#agentversionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/build-draft/apply
@@ -687,8 +687,8 @@ Run a build-draft Agent App turn that asks the agent to push config updates
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent build draft applied | **application/json**: [AgentBuildDraftApplyResponse](#agentbuilddraftapplyresponse)<br> |
-| 400 | Bad Request | **application/json**: <br> |
-| 404 | Not Found | **application/json**: <br> |
+| 400 | Bad Request | **application/json**: [AgentSoulLockedError](#agentsoullockederror)<br>[InvalidComposerConfigError](#invalidcomposerconfigerror)<br>[PlaintextSecretNotAllowedError](#plaintextsecretnotallowederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AgentBuildSandboxNotFoundError](#agentbuildsandboxnotfounderror)<br>[AgentNotFoundError](#agentnotfounderror)<br>[AgentVersionNotFoundError](#agentversionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/build-draft/checkout
@@ -709,7 +709,7 @@ Run a build-draft Agent App turn that asks the agent to push config updates
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent build draft checked out | **application/json**: [AgentBuildDraftResponse](#agentbuilddraftresponse)<br> |
-| 404 | Not Found | **application/json**: <br> |
+| 404 | Not Found | **application/json**: [AgentBuildSandboxNotFoundError](#agentbuildsandboxnotfounderror)<br>[AgentNotFoundError](#agentnotfounderror)<br>[AgentVersionNotFoundError](#agentversionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/chat-messages
@@ -729,7 +729,7 @@ Get Agent App chat messages for a conversation with pagination
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [MessageInfiniteScrollPaginationResponse](#messageinfinitescrollpaginationresponse)<br> |
-| 404 | Agent or conversation not found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br> |
+| 404 | Agent or conversation not found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/chat-messages/{message_id}/suggested-questions
@@ -747,10 +747,10 @@ Get suggested questions for an Agent App message
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Suggested questions retrieved successfully | **application/json**: [SuggestedQuestionsResponse](#suggestedquestionsresponse)<br> |
-| 400 | App or model provider unavailable, or generation failed | **application/json**: <br> |
+| 400 | App or model provider unavailable, or generation failed | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Account authentication required | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 403 | Insufficient permissions or suggested questions disabled | **application/json**: [AppSuggestedQuestionsAfterAnswerDisabledError](#appsuggestedquestionsafteranswerdisablederror)<br> |
-| 404 | Agent, message, or conversation not found | **application/json**: <br> |
+| 403 | Insufficient permissions or suggested questions disabled | **application/json**: [AppSuggestedQuestionsAfterAnswerDisabledError](#appsuggestedquestionsafteranswerdisablederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Agent, message, or conversation not found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AgentVersionNotFoundError](#agentversionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 500 | Unexpected server error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -769,7 +769,7 @@ Stop a running Agent App chat message generation
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Task stopped successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br> |
+| 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/composer
@@ -784,7 +784,7 @@ Stop a running Agent App chat message generation
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent app composer state | **application/json**: [AgentAppComposerResponse](#agentappcomposerresponse)<br> |
-| 404 | Not Found | **application/json**: <br> |
+| 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AgentVersionNotFoundError](#agentversionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /agent/{agent_id}/composer
@@ -805,8 +805,8 @@ Stop a running Agent App chat message generation
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent app composer saved | **application/json**: [AgentAppComposerResponse](#agentappcomposerresponse)<br> |
-| 400 | Bad Request | **application/json**: <br> |
-| 404 | Not Found | **application/json**: <br> |
+| 400 | Bad Request | **application/json**: [AgentSoulLockedError](#agentsoullockederror)<br>[InvalidComposerConfigError](#invalidcomposerconfigerror)<br>[PlaintextSecretNotAllowedError](#plaintextsecretnotallowederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AgentVersionNotFoundError](#agentversionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/composer/candidates
@@ -821,7 +821,7 @@ Stop a running Agent App chat message generation
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent app composer candidates | **application/json**: [AgentComposerCandidatesResponse](#agentcomposercandidatesresponse)<br> |
-| 404 | Not Found | **application/json**: [AgentVersionNotFoundError](#agentversionnotfounderror)<br> |
+| 404 | Not Found | **application/json**: [AgentVersionNotFoundError](#agentversionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/composer/validate
@@ -842,8 +842,8 @@ Stop a running Agent App chat message generation
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent app composer validation result | **application/json**: [AgentComposerValidateResponse](#agentcomposervalidateresponse)<br> |
-| 400 | Bad Request | **application/json**: <br> |
-| 404 | Not Found | **application/json**: <br> |
+| 400 | Bad Request | **application/json**: [AgentSoulLockedError](#agentsoullockederror)<br>[InvalidComposerConfigError](#invalidcomposerconfigerror)<br>[PlaintextSecretNotAllowedError](#plaintextsecretnotallowederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AgentVersionNotFoundError](#agentversionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/config/files
@@ -860,7 +860,7 @@ Stop a running Agent App chat message generation
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Config files | **application/json**: [AgentConfigFileListResponse](#agentconfigfilelistresponse)<br> |
-| 404 | Not Found | **application/json**: <br> |
+| 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AgentVersionNotFoundError](#agentversionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/config/files
@@ -883,7 +883,7 @@ Stop a running Agent App chat message generation
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Uploaded config file | **application/json**: [AgentConfigFileUploadResponse](#agentconfigfileuploadresponse)<br> |
-| 404 | Not Found | **application/json**: <br> |
+| 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AgentVersionNotFoundError](#agentversionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /agent/{agent_id}/config/files/{name}
@@ -901,7 +901,7 @@ Stop a running Agent App chat message generation
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Config file deleted | **application/json**: [AgentConfigDeleteResponse](#agentconfigdeleteresponse)<br> |
-| 404 | Not Found | **application/json**: <br> |
+| 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AgentVersionNotFoundError](#agentversionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/config/files/{name}/download
@@ -919,7 +919,7 @@ Stop a running Agent App chat message generation
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Config file download URL | **application/json**: [AgentConfigDownloadResponse](#agentconfigdownloadresponse)<br> |
-| 404 | Not Found | **application/json**: <br> |
+| 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AgentVersionNotFoundError](#agentversionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/config/files/{name}/preview
@@ -937,7 +937,7 @@ Stop a running Agent App chat message generation
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Preview | **application/json**: [AgentConfigFilePreviewResponse](#agentconfigfilepreviewresponse)<br> |
-| 404 | Not Found | **application/json**: <br> |
+| 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AgentVersionNotFoundError](#agentversionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/config/manifest
@@ -954,7 +954,7 @@ Stop a running Agent App chat message generation
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent config manifest | **application/json**: [AgentConfigManifestResponse](#agentconfigmanifestresponse)<br> |
-| 404 | Not Found | **application/json**: <br> |
+| 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AgentVersionNotFoundError](#agentversionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/config/skills
@@ -971,7 +971,7 @@ Stop a running Agent App chat message generation
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Config skills | **application/json**: [AgentConfigSkillListResponse](#agentconfigskilllistresponse)<br> |
-| 404 | Not Found | **application/json**: <br> |
+| 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AgentVersionNotFoundError](#agentversionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/config/skills/upload
@@ -994,7 +994,7 @@ Stop a running Agent App chat message generation
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Uploaded config skill | **application/json**: [AgentConfigSkillUploadResponse](#agentconfigskilluploadresponse)<br> |
-| 404 | Not Found | **application/json**: <br> |
+| 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AgentVersionNotFoundError](#agentversionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /agent/{agent_id}/config/skills/{name}
@@ -1012,7 +1012,7 @@ Stop a running Agent App chat message generation
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Config skill deleted | **application/json**: [AgentConfigDeleteResponse](#agentconfigdeleteresponse)<br> |
-| 404 | Not Found | **application/json**: <br> |
+| 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AgentVersionNotFoundError](#agentversionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/config/skills/{name}/download
@@ -1030,7 +1030,7 @@ Stop a running Agent App chat message generation
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Config skill download URL | **application/json**: [AgentConfigDownloadResponse](#agentconfigdownloadresponse)<br> |
-| 404 | Not Found | **application/json**: <br> |
+| 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AgentVersionNotFoundError](#agentversionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/config/skills/{name}/files/content
@@ -1046,7 +1046,7 @@ Stop a running Agent App chat message generation
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success |  |
-| 404 | Not Found | **application/json**: <br> |
+| 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AgentVersionNotFoundError](#agentversionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/config/skills/{name}/files/download
@@ -1065,7 +1065,7 @@ Stop a running Agent App chat message generation
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Config skill file download URL | **application/json**: [AgentConfigDownloadResponse](#agentconfigdownloadresponse)<br> |
-| 404 | Not Found | **application/json**: <br> |
+| 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AgentVersionNotFoundError](#agentversionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/config/skills/{name}/files/preview
@@ -1084,7 +1084,7 @@ Stop a running Agent App chat message generation
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Config skill file preview | **application/json**: [AgentConfigSkillFilePreviewResponse](#agentconfigskillfilepreviewresponse)<br> |
-| 404 | Not Found | **application/json**: <br> |
+| 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AgentVersionNotFoundError](#agentversionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/config/skills/{name}/inspect
@@ -1102,7 +1102,7 @@ Stop a running Agent App chat message generation
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Config skill inspect view | **application/json**: [AgentConfigSkillInspectResponse](#agentconfigskillinspectresponse)<br> |
-| 404 | Not Found | **application/json**: <br> |
+| 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AgentVersionNotFoundError](#agentversionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/copy
@@ -1125,7 +1125,7 @@ Stop a running Agent App chat message generation
 | 201 | Agent app copied successfully | **application/json**: [AgentAppDetailWithSite](#agentappdetailwithsite)<br> |
 | 400 | Invalid request parameters | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br> |
+| 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/debug-conversation/refresh
@@ -1164,7 +1164,7 @@ Update an Agent App's presentation features (opener, follow-up, citations, ...)
 | ---- | ----------- | ------ |
 | 200 | Features updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 | 400 | Invalid configuration | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | Agent not found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br> |
+| 404 | Agent not found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/feedbacks
@@ -1187,7 +1187,7 @@ Create or update Agent App message feedback
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Feedback updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 404 | Agent or message not found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br> |
+| 404 | Agent or message not found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/log-sources
@@ -1270,7 +1270,7 @@ Get Agent App message details by ID
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Message retrieved successfully | **application/json**: [MessageDetailResponse](#messagedetailresponse)<br> |
-| 404 | Agent or message not found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br> |
+| 404 | Agent or message not found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/publish
@@ -1291,9 +1291,9 @@ Get Agent App message details by ID
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent draft published | **application/json**: [AgentPublishResponse](#agentpublishresponse)<br> |
-| 400 | Bad Request | **application/json**: <br> |
+| 400 | Bad Request | **application/json**: [AgentModelNotConfiguredError](#agentmodelnotconfigurederror)<br>[AgentSoulLockedError](#agentsoullockederror)<br>[InvalidComposerConfigError](#invalidcomposerconfigerror)<br>[PlaintextSecretNotAllowedError](#plaintextsecretnotallowederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | Not Found | **application/json**: <br> |
+| 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AgentVersionNotFoundError](#agentversionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/referencing-workflows
@@ -1310,7 +1310,7 @@ List workflow apps that reference this Agent App's bound Agent (read-only)
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Referencing workflows listed successfully | **application/json**: [AgentReferencingWorkflowsResponse](#agentreferencingworkflowsresponse)<br> |
-| 404 | Agent not found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br> |
+| 404 | Agent not found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/sandbox
@@ -1329,9 +1329,9 @@ Get basic information for an Agent App conversation sandbox
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Sandbox information returned | **application/json**: [SandboxInfoResponse](#sandboxinforesponse)<br> |
-| 404 | Not Found | **application/json**: <br> |
-| 502 | Bad Gateway | **application/json**: <br> |
-| 503 | Service Unavailable | **application/json**: [InspectorUnavailableError](#inspectorunavailableerror)<br> |
+| 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AppNotFoundError](#appnotfounderror)<br>[NoActiveBindingError](#noactivebindingerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [AgentBackendUnreachableError](#agentbackendunreachableerror)<br>[BindingFileDownloadUnavailableError](#bindingfiledownloadunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [InspectorUnavailableError](#inspectorunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/sandbox/files
@@ -1351,9 +1351,9 @@ List a directory in an Agent App conversation sandbox
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Listing returned | **application/json**: [SandboxListResponse](#sandboxlistresponse)<br> |
-| 404 | Not Found | **application/json**: <br> |
-| 502 | Bad Gateway | **application/json**: <br> |
-| 503 | Service Unavailable | **application/json**: [InspectorUnavailableError](#inspectorunavailableerror)<br> |
+| 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AppNotFoundError](#appnotfounderror)<br>[NoActiveBindingError](#noactivebindingerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [AgentBackendUnreachableError](#agentbackendunreachableerror)<br>[BindingFileDownloadUnavailableError](#bindingfiledownloadunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [InspectorUnavailableError](#inspectorunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/sandbox/files/download
@@ -1376,9 +1376,9 @@ Create a ToolFile from one Agent App Binding file and return its download URL
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Download URL returned | **application/json**: [SandboxDownloadResponse](#sandboxdownloadresponse)<br> |
-| 404 | Not Found | **application/json**: <br> |
-| 502 | Bad Gateway | **application/json**: <br> |
-| 503 | Service Unavailable | **application/json**: [InspectorUnavailableError](#inspectorunavailableerror)<br> |
+| 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AppNotFoundError](#appnotfounderror)<br>[NoActiveBindingError](#noactivebindingerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [AgentBackendUnreachableError](#agentbackendunreachableerror)<br>[BindingFileDownloadUnavailableError](#bindingfiledownloadunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [InspectorUnavailableError](#inspectorunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/sandbox/files/read
@@ -1398,9 +1398,9 @@ Read a text/binary preview file in an Agent App conversation sandbox
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Preview returned | **application/json**: [SandboxReadResponse](#sandboxreadresponse)<br> |
-| 404 | Not Found | **application/json**: <br> |
-| 502 | Bad Gateway | **application/json**: <br> |
-| 503 | Service Unavailable | **application/json**: [InspectorUnavailableError](#inspectorunavailableerror)<br> |
+| 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AppNotFoundError](#appnotfounderror)<br>[NoActiveBindingError](#noactivebindingerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [AgentBackendUnreachableError](#agentbackendunreachableerror)<br>[BindingFileDownloadUnavailableError](#bindingfiledownloadunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [InspectorUnavailableError](#inspectorunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/statistics/summary
@@ -1440,11 +1440,11 @@ Preview an Agent TTS voice or read an Agent chat message
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Generated audio bytes in the provider audio format | **audio/aac**: binary<br>**audio/flac**: binary<br>**audio/mp4**: binary<br>**audio/mpeg**: binary<br>**audio/ogg**: binary<br>**audio/wav**: binary<br>**audio/webm**: binary<br> |
-| 400 | Invalid text or voice | **application/json**: <br> |
+| 400 | Invalid text or voice | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NoAudioUploadedError](#noaudiouploadederror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderNotSupportSpeechToTextError](#providernotsupportspeechtotexterror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | Agent not found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br> |
-| 413 | Request Entity Too Large | **application/json**: [AudioTooLargeError](#audiotoolargeerror)<br> |
-| 415 | Unsupported Media Type | **application/json**: [UnsupportedAudioTypeError](#unsupportedaudiotypeerror)<br> |
+| 404 | Agent not found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 413 | Request Entity Too Large | **application/json**: [AudioTooLargeError](#audiotoolargeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 415 | Unsupported Media Type | **application/json**: [UnsupportedAudioTypeError](#unsupportedaudiotypeerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/text-to-audio/voices
@@ -1462,10 +1462,10 @@ Get available TTS voices for an Agent and language
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | TTS voices retrieved successfully | **application/json**: [TextToSpeechVoiceListResponse](#texttospeechvoicelistresponse)<br> |
-| 400 | Invalid language parameter | **application/json**: <br> |
-| 404 | Agent not found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br> |
-| 413 | Request Entity Too Large | **application/json**: [AudioTooLargeError](#audiotoolargeerror)<br> |
-| 415 | Unsupported Media Type | **application/json**: [UnsupportedAudioTypeError](#unsupportedaudiotypeerror)<br> |
+| 400 | Invalid language parameter | **application/json**: [CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NoAudioUploadedError](#noaudiouploadederror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderNotSupportSpeechToTextError](#providernotsupportspeechtotexterror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Agent not found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 413 | Request Entity Too Large | **application/json**: [AudioTooLargeError](#audiotoolargeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 415 | Unsupported Media Type | **application/json**: [UnsupportedAudioTypeError](#unsupportedaudiotypeerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/versions
@@ -1627,8 +1627,8 @@ Update API-based extension
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 400 | Bad Request | **application/json**: [UnsupportedDataSourceApiKeyAuthProviderError](#unsupporteddatasourceapikeyauthprovidererror)<br> |
-| 502 | Bad Gateway | **application/json**: [DataSourceApiKeyAuthProviderUnavailableError](#datasourceapikeyauthproviderunavailableerror)<br> |
+| 400 | Bad Request | **application/json**: [UnsupportedDataSourceApiKeyAuthProviderError](#unsupporteddatasourceapikeyauthprovidererror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [DataSourceApiKeyAuthProviderUnavailableError](#datasourceapikeyauthproviderunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /api-key-auth/data-source/{binding_id}
@@ -1732,9 +1732,9 @@ Create a new application
 | ---- | ----------- | ------ |
 | 200 | Import completed | **application/json**: [Import](#import)<br> |
 | 202 | Import pending confirmation | **application/json**: [Import](#import)<br> |
-| 400 | Import failed | **application/json**: <br> |
+| 400 | Import failed | **application/json**: [Import](#import)<br>[InvalidRosterAgentPackageError](#invalidrosteragentpackageerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Insufficient import permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | Not Found | **application/json**: [RecommendedAppNotFoundError](#recommendedappnotfounderror)<br> |
+| 404 | Not Found | **application/json**: [RecommendedAppNotFoundError](#recommendedappnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 409 | Agent name conflict | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 413 | Roster Agent package exceeds the size limit | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -1751,7 +1751,7 @@ Create a new application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Dependencies checked | **application/json**: [CheckDependenciesResult](#checkdependenciesresult)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/imports/{import_id}/confirm
@@ -1766,7 +1766,7 @@ Create a new application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Import confirmed | **application/json**: [Import](#import)<br> |
-| 400 | Import failed | **application/json**: <br> |
+| 400 | Import failed | **application/json**: [Import](#import)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/recent
@@ -1902,7 +1902,7 @@ Get advanced chat workflow run list
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow runs retrieved successfully | **application/json**: [AdvancedChatWorkflowRunPaginationResponse](#advancedchatworkflowrunpaginationresponse)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/advanced-chat/workflow-runs/count
@@ -1922,7 +1922,7 @@ Get advanced chat workflow run list
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow runs count retrieved successfully | **application/json**: [WorkflowRunCountResponse](#workflowruncountresponse)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/advanced-chat/workflows/draft/human-input/nodes/{node_id}/form/preview
@@ -1948,7 +1948,7 @@ Get human input form preview for advanced chat workflow
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Human input form preview | **application/json**: [HumanInputFormPreviewResponse](#humaninputformpreviewresponse)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/advanced-chat/workflows/draft/human-input/nodes/{node_id}/form/run
@@ -1974,7 +1974,7 @@ Submit human input form preview for advanced chat workflow
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Human input form submission result | **application/json**: [HumanInputFormSubmitResponse](#humaninputformsubmitresponse)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/advanced-chat/workflows/draft/iteration/nodes/{node_id}/run
@@ -2001,7 +2001,7 @@ Run draft workflow iteration node for advanced chat
 | ---- | ----------- | ------ |
 | 200 | Iteration node run started successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | Node not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Node not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/advanced-chat/workflows/draft/loop/nodes/{node_id}/run
@@ -2028,7 +2028,7 @@ Run draft workflow loop node for advanced chat
 | ---- | ----------- | ------ |
 | 200 | Loop node run started successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | Node not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Node not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/advanced-chat/workflows/draft/run
@@ -2055,8 +2055,8 @@ Run draft workflow for advanced chat application
 | 200 | Workflow run started successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
 | 400 | Invalid request parameters | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
-| 429 | Too Many Requests | **application/json**: [RateLimitError](#ratelimiterror)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [RateLimitError](#ratelimiterror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/agent/config/files
@@ -2074,8 +2074,8 @@ Run draft workflow for advanced chat application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Config files | **application/json**: [AgentConfigFileListResponse](#agentconfigfilelistresponse)<br> |
-| 400 | Bad Request | **application/json**: [AgentNotBoundError](#agentnotbounderror)<br> |
-| 404 | Not Found | **application/json**: <br> |
+| 400 | Bad Request | **application/json**: [AgentNotBoundError](#agentnotbounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AgentVersionNotFoundError](#agentversionnotfounderror)<br>[AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/agent/config/files
@@ -2099,8 +2099,8 @@ Run draft workflow for advanced chat application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Uploaded config file | **application/json**: [AgentConfigFileUploadResponse](#agentconfigfileuploadresponse)<br> |
-| 400 | Bad Request | **application/json**: [AgentNotBoundError](#agentnotbounderror)<br> |
-| 404 | Not Found | **application/json**: <br> |
+| 400 | Bad Request | **application/json**: [AgentNotBoundError](#agentnotbounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AgentVersionNotFoundError](#agentversionnotfounderror)<br>[AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /apps/{app_id}/agent/config/files/{name}
@@ -2119,8 +2119,8 @@ Run draft workflow for advanced chat application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Config file deleted | **application/json**: [AgentConfigDeleteResponse](#agentconfigdeleteresponse)<br> |
-| 400 | Bad Request | **application/json**: [AgentNotBoundError](#agentnotbounderror)<br> |
-| 404 | Not Found | **application/json**: <br> |
+| 400 | Bad Request | **application/json**: [AgentNotBoundError](#agentnotbounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AgentVersionNotFoundError](#agentversionnotfounderror)<br>[AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/agent/config/files/{name}/download
@@ -2139,8 +2139,8 @@ Run draft workflow for advanced chat application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Config file download URL | **application/json**: [AgentConfigDownloadResponse](#agentconfigdownloadresponse)<br> |
-| 400 | Bad Request | **application/json**: [AgentNotBoundError](#agentnotbounderror)<br> |
-| 404 | Not Found | **application/json**: <br> |
+| 400 | Bad Request | **application/json**: [AgentNotBoundError](#agentnotbounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AgentVersionNotFoundError](#agentversionnotfounderror)<br>[AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/agent/config/files/{name}/preview
@@ -2159,8 +2159,8 @@ Run draft workflow for advanced chat application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Preview | **application/json**: [AgentConfigFilePreviewResponse](#agentconfigfilepreviewresponse)<br> |
-| 400 | Bad Request | **application/json**: [AgentNotBoundError](#agentnotbounderror)<br> |
-| 404 | Not Found | **application/json**: <br> |
+| 400 | Bad Request | **application/json**: [AgentNotBoundError](#agentnotbounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AgentVersionNotFoundError](#agentversionnotfounderror)<br>[AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/agent/config/manifest
@@ -2178,8 +2178,8 @@ Run draft workflow for advanced chat application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent config manifest | **application/json**: [AgentConfigManifestResponse](#agentconfigmanifestresponse)<br> |
-| 400 | Bad Request | **application/json**: [AgentNotBoundError](#agentnotbounderror)<br> |
-| 404 | Not Found | **application/json**: <br> |
+| 400 | Bad Request | **application/json**: [AgentNotBoundError](#agentnotbounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AgentVersionNotFoundError](#agentversionnotfounderror)<br>[AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/agent/config/skills
@@ -2197,8 +2197,8 @@ Run draft workflow for advanced chat application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Config skills | **application/json**: [AgentConfigSkillListResponse](#agentconfigskilllistresponse)<br> |
-| 400 | Bad Request | **application/json**: [AgentNotBoundError](#agentnotbounderror)<br> |
-| 404 | Not Found | **application/json**: <br> |
+| 400 | Bad Request | **application/json**: [AgentNotBoundError](#agentnotbounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AgentVersionNotFoundError](#agentversionnotfounderror)<br>[AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/agent/config/skills/upload
@@ -2222,8 +2222,8 @@ Run draft workflow for advanced chat application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Uploaded config skill | **application/json**: [AgentConfigSkillUploadResponse](#agentconfigskilluploadresponse)<br> |
-| 400 | Bad Request | **application/json**: [AgentNotBoundError](#agentnotbounderror)<br> |
-| 404 | Not Found | **application/json**: <br> |
+| 400 | Bad Request | **application/json**: [AgentNotBoundError](#agentnotbounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AgentVersionNotFoundError](#agentversionnotfounderror)<br>[AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /apps/{app_id}/agent/config/skills/{name}
@@ -2242,8 +2242,8 @@ Run draft workflow for advanced chat application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Config skill deleted | **application/json**: [AgentConfigDeleteResponse](#agentconfigdeleteresponse)<br> |
-| 400 | Bad Request | **application/json**: [AgentNotBoundError](#agentnotbounderror)<br> |
-| 404 | Not Found | **application/json**: <br> |
+| 400 | Bad Request | **application/json**: [AgentNotBoundError](#agentnotbounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AgentVersionNotFoundError](#agentversionnotfounderror)<br>[AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/agent/config/skills/{name}/download
@@ -2262,8 +2262,8 @@ Run draft workflow for advanced chat application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Config skill download URL | **application/json**: [AgentConfigDownloadResponse](#agentconfigdownloadresponse)<br> |
-| 400 | Bad Request | **application/json**: [AgentNotBoundError](#agentnotbounderror)<br> |
-| 404 | Not Found | **application/json**: <br> |
+| 400 | Bad Request | **application/json**: [AgentNotBoundError](#agentnotbounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AgentVersionNotFoundError](#agentversionnotfounderror)<br>[AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/agent/config/skills/{name}/files/content
@@ -2279,8 +2279,8 @@ Run draft workflow for advanced chat application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success |  |
-| 400 | Bad Request | **application/json**: [AgentNotBoundError](#agentnotbounderror)<br> |
-| 404 | Not Found | **application/json**: <br> |
+| 400 | Bad Request | **application/json**: [AgentNotBoundError](#agentnotbounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AgentVersionNotFoundError](#agentversionnotfounderror)<br>[AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/agent/config/skills/{name}/files/download
@@ -2300,8 +2300,8 @@ Run draft workflow for advanced chat application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Config skill file download URL | **application/json**: [AgentConfigDownloadResponse](#agentconfigdownloadresponse)<br> |
-| 400 | Bad Request | **application/json**: [AgentNotBoundError](#agentnotbounderror)<br> |
-| 404 | Not Found | **application/json**: <br> |
+| 400 | Bad Request | **application/json**: [AgentNotBoundError](#agentnotbounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AgentVersionNotFoundError](#agentversionnotfounderror)<br>[AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/agent/config/skills/{name}/files/preview
@@ -2321,8 +2321,8 @@ Run draft workflow for advanced chat application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Config skill file preview | **application/json**: [AgentConfigSkillFilePreviewResponse](#agentconfigskillfilepreviewresponse)<br> |
-| 400 | Bad Request | **application/json**: [AgentNotBoundError](#agentnotbounderror)<br> |
-| 404 | Not Found | **application/json**: <br> |
+| 400 | Bad Request | **application/json**: [AgentNotBoundError](#agentnotbounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AgentVersionNotFoundError](#agentversionnotfounderror)<br>[AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/agent/config/skills/{name}/inspect
@@ -2341,8 +2341,8 @@ Run draft workflow for advanced chat application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Config skill inspect view | **application/json**: [AgentConfigSkillInspectResponse](#agentconfigskillinspectresponse)<br> |
-| 400 | Bad Request | **application/json**: [AgentNotBoundError](#agentnotbounderror)<br> |
-| 404 | Not Found | **application/json**: <br> |
+| 400 | Bad Request | **application/json**: [AgentNotBoundError](#agentnotbounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AgentVersionNotFoundError](#agentversionnotfounderror)<br>[AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/agent/logs
@@ -2364,7 +2364,7 @@ Get agent execution logs for an application
 | ---- | ----------- | ------ |
 | 200 | Agent logs retrieved successfully | **application/json**: [AgentLogResponse](#agentlogresponse)<br> |
 | 400 | Invalid request parameters | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/annotation-reply/{action}
@@ -2522,7 +2522,7 @@ Batch import annotations from CSV file with rate limiting and security checks
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Batch import started successfully | **application/json**: [AnnotationBatchImportResponse](#annotationbatchimportresponse)<br> |
-| 400 | No file uploaded or too many files | **application/json**: <br> |
+| 400 | No file uploaded or too many files | **application/json**: [NoFileUploadedError](#nofileuploadederror)<br>[TooManyFilesError](#toomanyfileserror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 413 | File too large | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 429 | Too many requests or concurrent imports | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -2560,7 +2560,7 @@ Get count of message annotations for the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Annotation count retrieved successfully | **application/json**: [AnnotationCountResponse](#annotationcountresponse)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/annotations/export
@@ -2683,10 +2683,10 @@ Transcript audio to text for chat messages
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Audio transcription successful | **application/json**: [AudioTranscriptResponse](#audiotranscriptresponse)<br> |
-| 400 | Bad request - No audio uploaded or unsupported type | **application/json**: <br> |
-| 404 | Not Found | **application/json**: <br> |
-| 413 | Audio file too large | **application/json**: [AudioTooLargeError](#audiotoolargeerror)<br> |
-| 415 | Unsupported Media Type | **application/json**: [UnsupportedAudioTypeError](#unsupportedaudiotypeerror)<br> |
+| 400 | Bad request - No audio uploaded or unsupported type | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NoAudioUploadedError](#noaudiouploadederror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderNotSupportSpeechToTextError](#providernotsupportspeechtotexterror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[SpeechToTextDisabledError](#speechtotextdisablederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AgentVersionNotFoundError](#agentversionnotfounderror)<br>[AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 413 | Audio file too large | **application/json**: [AudioTooLargeError](#audiotoolargeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 415 | Unsupported Media Type | **application/json**: [UnsupportedAudioTypeError](#unsupportedaudiotypeerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/chat-conversations
@@ -2711,7 +2711,7 @@ Get chat conversations with pagination, filtering and summary
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ConversationWithSummaryPagination](#conversationwithsummarypagination)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /apps/{app_id}/chat-conversations/{conversation_id}
@@ -2730,7 +2730,7 @@ Delete a chat conversation
 | ---- | ----------- | ------ |
 | 204 | Conversation deleted successfully |  |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | Conversation not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Conversation not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/chat-conversations/{conversation_id}
@@ -2749,7 +2749,7 @@ Get chat conversation details
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ConversationDetail](#conversationdetail)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | Conversation not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Conversation not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/chat-messages
@@ -2769,7 +2769,7 @@ Get chat messages for a conversation with pagination
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [MessageInfiniteScrollPaginationResponse](#messageinfinitescrollpaginationresponse)<br> |
-| 404 | Conversation not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Conversation not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/chat-messages/{message_id}/suggested-questions
@@ -2787,10 +2787,10 @@ Get suggested questions for a message
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Suggested questions retrieved successfully | **application/json**: [SuggestedQuestionsResponse](#suggestedquestionsresponse)<br> |
-| 400 | App or model provider unavailable, or generation failed | **application/json**: <br> |
+| 400 | App or model provider unavailable, or generation failed | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Account authentication required | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 403 | Insufficient permissions or suggested questions disabled | **application/json**: [AppSuggestedQuestionsAfterAnswerDisabledError](#appsuggestedquestionsafteranswerdisablederror)<br> |
-| 404 | App, message, or conversation not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 403 | Insufficient permissions or suggested questions disabled | **application/json**: [AppSuggestedQuestionsAfterAnswerDisabledError](#appsuggestedquestionsafteranswerdisablederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | App, message, or conversation not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 500 | Unexpected server error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -2809,7 +2809,7 @@ Stop a running chat message generation
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Task stopped successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/completion-conversations
@@ -2833,7 +2833,7 @@ Get completion conversations with pagination and filtering
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ConversationPagination](#conversationpagination)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /apps/{app_id}/completion-conversations/{conversation_id}
@@ -2852,7 +2852,7 @@ Delete a completion conversation
 | ---- | ----------- | ------ |
 | 204 | Conversation deleted successfully |  |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | Conversation not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Conversation not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/completion-conversations/{conversation_id}
@@ -2871,7 +2871,7 @@ Get completion conversation details with messages
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ConversationMessageDetail](#conversationmessagedetail)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | Conversation not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Conversation not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/completion-messages
@@ -2894,8 +2894,8 @@ Generate completion message for debugging
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Completion generated successfully |  |
-| 400 | Invalid request parameters | **application/json**: <br> |
-| 404 | App not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 400 | Invalid request parameters | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | App not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/completion-messages/{task_id}/stop
@@ -2913,7 +2913,7 @@ Stop a running completion message generation
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Task stopped successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/conversation-variables
@@ -2931,7 +2931,7 @@ Get conversation variables for an application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Conversation variables retrieved successfully | **application/json**: [PaginatedConversationVariableResponse](#paginatedconversationvariableresponse)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/convert-to-workflow
@@ -2960,7 +2960,7 @@ Convert Completion App to Workflow App
 | 200 | Application converted to workflow successfully | **application/json**: [NewAppResponse](#newappresponse)<br> |
 | 400 | Application cannot be converted | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/copy
@@ -2984,7 +2984,7 @@ Create a copy of an existing application
 | ---- | ----------- | ------ |
 | 201 | App copied successfully | **application/json**: [AppDetailWithSite](#appdetailwithsite)<br> |
 | 202 | App copy requires confirmation | **application/json**: [AppImportResponse](#appimportresponse)<br> |
-| 400 | App copy failed | **application/json**: <br> |
+| 400 | App copy failed | **application/json**: [AppImportResponse](#appimportresponse)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -3029,7 +3029,7 @@ Create or update message feedback (like/dislike)
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Feedback updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 404 | Message not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Message not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/icon
@@ -3070,7 +3070,7 @@ Get message details by ID
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Message retrieved successfully | **application/json**: [MessageDetailResponse](#messagedetailresponse)<br> |
-| 404 | Message not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Message not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/model-config
@@ -3096,7 +3096,7 @@ Update application model configuration
 | ---- | ----------- | ------ |
 | 200 | Model configuration updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 | 400 | Invalid configuration | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | App not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | App not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/name
@@ -3149,7 +3149,7 @@ Get MCP server configuration for an application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | MCP server configuration retrieved successfully | **application/json**: [AppMCPServerResponse](#appmcpserverresponse)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/server
@@ -3173,7 +3173,7 @@ Create MCP server configuration for an application
 | ---- | ----------- | ------ |
 | 201 | MCP server configuration created successfully | **application/json**: [AppMCPServerResponse](#appmcpserverresponse)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 409 | MCP server already exists for this app | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -3198,7 +3198,7 @@ Update MCP server configuration for an application
 | ---- | ----------- | ------ |
 | 200 | MCP server configuration updated successfully | **application/json**: [AppMCPServerResponse](#appmcpserverresponse)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | Server not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Server not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/server/refresh
@@ -3216,7 +3216,7 @@ Refresh MCP server configuration and regenerate server code
 | ---- | ----------- | ------ |
 | 200 | MCP server refreshed successfully | **application/json**: [AppMCPServerResponse](#appmcpserverresponse)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | Server not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Server not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/site
@@ -3240,7 +3240,7 @@ Update application site configuration
 | ---- | ----------- | ------ |
 | 200 | Site configuration updated successfully | **application/json**: [AppSiteResponse](#appsiteresponse)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | App not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | App not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/site-enable
@@ -3281,7 +3281,7 @@ Reset access token for application site
 | ---- | ----------- | ------ |
 | 200 | Access token reset successfully | **application/json**: [AppSiteResponse](#appsiteresponse)<br> |
 | 403 | Insufficient permissions (admin/owner required) | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | App or site not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | App or site not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /apps/{app_id}/star
@@ -3334,7 +3334,7 @@ Get average response time statistics for an application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Average response time statistics retrieved successfully | **application/json**: [AverageResponseTimeStatisticResponse](#averageresponsetimestatisticresponse)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/statistics/average-session-interactions
@@ -3353,7 +3353,7 @@ Get average session interaction statistics for an application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Average session interaction statistics retrieved successfully | **application/json**: [AverageSessionInteractionStatisticResponse](#averagesessioninteractionstatisticresponse)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/statistics/daily-conversations
@@ -3372,7 +3372,7 @@ Get daily conversation statistics for an application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Daily conversation statistics retrieved successfully | **application/json**: [DailyConversationStatisticResponse](#dailyconversationstatisticresponse)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/statistics/daily-end-users
@@ -3391,7 +3391,7 @@ Get daily terminal/end-user statistics for an application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Daily terminal statistics retrieved successfully | **application/json**: [DailyTerminalStatisticResponse](#dailyterminalstatisticresponse)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/statistics/daily-messages
@@ -3410,7 +3410,7 @@ Get daily message statistics for an application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Daily message statistics retrieved successfully | **application/json**: [DailyMessageStatisticResponse](#dailymessagestatisticresponse)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/statistics/token-costs
@@ -3429,7 +3429,7 @@ Get daily token cost statistics for an application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Daily token cost statistics retrieved successfully | **application/json**: [DailyTokenCostStatisticResponse](#dailytokencoststatisticresponse)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/statistics/tokens-per-second
@@ -3448,7 +3448,7 @@ Get tokens per second statistics for an application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Tokens per second statistics retrieved successfully | **application/json**: [TokensPerSecondStatisticResponse](#tokenspersecondstatisticresponse)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/statistics/user-satisfaction-rate
@@ -3467,7 +3467,7 @@ Get user satisfaction rate statistics for an application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | User satisfaction rate statistics retrieved successfully | **application/json**: [UserSatisfactionRateStatisticResponse](#usersatisfactionratestatisticresponse)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/text-to-audio
@@ -3490,10 +3490,10 @@ Convert text to speech for chat messages
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Text to speech conversion successful |  |
-| 400 | Bad request - Invalid parameters | **application/json**: <br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
-| 413 | Request Entity Too Large | **application/json**: [AudioTooLargeError](#audiotoolargeerror)<br> |
-| 415 | Unsupported Media Type | **application/json**: [UnsupportedAudioTypeError](#unsupportedaudiotypeerror)<br> |
+| 400 | Bad request - Invalid parameters | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NoAudioUploadedError](#noaudiouploadederror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderNotSupportSpeechToTextError](#providernotsupportspeechtotexterror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 413 | Request Entity Too Large | **application/json**: [AudioTooLargeError](#audiotoolargeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 415 | Unsupported Media Type | **application/json**: [UnsupportedAudioTypeError](#unsupportedaudiotypeerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/text-to-audio/voices
@@ -3511,10 +3511,10 @@ Get available TTS voices for a specific language
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | TTS voices retrieved successfully | **application/json**: [TextToSpeechVoiceListResponse](#texttospeechvoicelistresponse)<br> |
-| 400 | Invalid language parameter | **application/json**: <br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
-| 413 | Request Entity Too Large | **application/json**: [AudioTooLargeError](#audiotoolargeerror)<br> |
-| 415 | Unsupported Media Type | **application/json**: [UnsupportedAudioTypeError](#unsupportedaudiotypeerror)<br> |
+| 400 | Invalid language parameter | **application/json**: [CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NoAudioUploadedError](#noaudiouploadederror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderNotSupportSpeechToTextError](#providernotsupportspeechtotexterror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 413 | Request Entity Too Large | **application/json**: [AudioTooLargeError](#audiotoolargeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 415 | Unsupported Media Type | **application/json**: [UnsupportedAudioTypeError](#unsupportedaudiotypeerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/trace
@@ -3553,7 +3553,7 @@ Update app tracing configuration
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Trace configuration updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 400 | Bad Request | **application/json**: [TracingProviderUnavailableError](#tracingproviderunavailableerror)<br> |
+| 400 | Bad Request | **application/json**: [TracingProviderUnavailableError](#tracingproviderunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -3574,10 +3574,10 @@ Delete an existing tracing configuration for an application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 204 | Tracing configuration deleted successfully |  |
-| 400 | Invalid request parameters or unsupported tracing provider | **application/json**: [UnsupportedTracingProviderError](#unsupportedtracingprovidererror)<br> |
+| 400 | Invalid request parameters or unsupported tracing provider | **application/json**: [UnsupportedTracingProviderError](#unsupportedtracingprovidererror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | Application or tracing configuration not found | **application/json**: <br> |
-| 500 | Tracing configuration processing failed | **application/json**: [TracingConfigProcessingFailedError](#tracingconfigprocessingfailederror)<br> |
+| 404 | Application or tracing configuration not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[TraceConfigNotFoundError](#traceconfignotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Tracing configuration processing failed | **application/json**: [TracingConfigProcessingFailedError](#tracingconfigprocessingfailederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/trace-config
@@ -3595,9 +3595,9 @@ Get tracing configuration for an application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Tracing configuration retrieved successfully | **application/json**: [TraceAppConfigResponse](#traceappconfigresponse)<br> |
-| 400 | Invalid request parameters or unsupported tracing provider | **application/json**: <br> |
-| 404 | Application not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
-| 500 | Tracing configuration processing failed | **application/json**: [TracingConfigProcessingFailedError](#tracingconfigprocessingfailederror)<br> |
+| 400 | Invalid request parameters or unsupported tracing provider | **application/json**: [TracingProviderUnavailableError](#tracingproviderunavailableerror)<br>[UnsupportedTracingProviderError](#unsupportedtracingprovidererror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Application not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Tracing configuration processing failed | **application/json**: [TracingConfigProcessingFailedError](#tracingconfigprocessingfailederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /apps/{app_id}/trace-config
@@ -3622,10 +3622,10 @@ Update an existing tracing configuration for an application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Tracing configuration updated successfully | **application/json**: [TraceAppConfigResponse](#traceappconfigresponse)<br> |
-| 400 | Invalid request parameters or tracing configuration | **application/json**: <br> |
+| 400 | Invalid request parameters or tracing configuration | **application/json**: [InvalidTracingConfigError](#invalidtracingconfigerror)<br>[TracingConfigVerificationFailedError](#tracingconfigverificationfailederror)<br>[TracingProviderUnavailableError](#tracingproviderunavailableerror)<br>[UnsupportedTracingProviderError](#unsupportedtracingprovidererror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | Application or tracing configuration not found | **application/json**: <br> |
-| 500 | Tracing configuration processing failed | **application/json**: [TracingConfigProcessingFailedError](#tracingconfigprocessingfailederror)<br> |
+| 404 | Application or tracing configuration not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[TraceConfigNotFoundError](#traceconfignotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Tracing configuration processing failed | **application/json**: [TracingConfigProcessingFailedError](#tracingconfigprocessingfailederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/trace-config
@@ -3650,11 +3650,11 @@ Create a new tracing configuration for an application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Tracing configuration created successfully | **application/json**: [TraceAppConfigResponse](#traceappconfigresponse)<br> |
-| 400 | Invalid request parameters or tracing configuration | **application/json**: <br> |
+| 400 | Invalid request parameters or tracing configuration | **application/json**: [InvalidTracingConfigError](#invalidtracingconfigerror)<br>[TracingConfigVerificationFailedError](#tracingconfigverificationfailederror)<br>[TracingProviderUnavailableError](#tracingproviderunavailableerror)<br>[UnsupportedTracingProviderError](#unsupportedtracingprovidererror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | Application not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
-| 409 | Tracing configuration already exists | **application/json**: [TraceConfigAlreadyExistsError](#traceconfigalreadyexistserror)<br> |
-| 500 | Tracing configuration processing failed | **application/json**: [TracingConfigProcessingFailedError](#tracingconfigprocessingfailederror)<br> |
+| 404 | Application not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Tracing configuration already exists | **application/json**: [TraceConfigAlreadyExistsError](#traceconfigalreadyexistserror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Tracing configuration processing failed | **application/json**: [TracingConfigProcessingFailedError](#tracingconfigprocessingfailederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/trigger-enable
@@ -3677,7 +3677,7 @@ Create a new tracing configuration for an application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [WorkflowTriggerResponse](#workflowtriggerresponse)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/triggers
@@ -3694,7 +3694,7 @@ Create a new tracing configuration for an application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [WorkflowTriggerListResponse](#workflowtriggerlistresponse)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflow-app-logs
@@ -3722,7 +3722,7 @@ Get workflow application execution logs
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow app logs retrieved successfully | **application/json**: [WorkflowAppLogPaginationResponse](#workflowapplogpaginationresponse)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflow-runs
@@ -3743,7 +3743,7 @@ Get workflow application execution logs
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow runs retrieved successfully | **application/json**: [WorkflowRunPaginationResponse](#workflowrunpaginationresponse)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflow-runs/count
@@ -3763,7 +3763,7 @@ Get workflow application execution logs
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow runs count retrieved successfully | **application/json**: [WorkflowRunCountResponse](#workflowruncountresponse)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflow-runs/tasks/{task_id}/stop
@@ -3784,7 +3784,7 @@ Stop running workflow task
 | ---- | ----------- | ------ |
 | 200 | Task stopped successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | Task not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Task not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflow-runs/{run_id}
@@ -3802,7 +3802,7 @@ Stop running workflow task
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow run detail retrieved successfully | **application/json**: [WorkflowRunDetailResponse](#workflowrundetailresponse)<br> |
-| 404 | Workflow run not found | **application/json**: <br> |
+| 404 | Workflow run not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[NotFoundError](#notfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflow-runs/{run_id}/node-executions
@@ -3820,7 +3820,7 @@ Stop running workflow task
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Node executions retrieved successfully | **application/json**: [WorkflowRunNodeExecutionListResponse](#workflowrunnodeexecutionlistresponse)<br> |
-| 404 | Workflow run not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Workflow run not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/sandbox/files
@@ -3841,9 +3841,9 @@ List a directory in a workflow Agent node sandbox
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Listing returned | **application/json**: [SandboxListResponse](#sandboxlistresponse)<br> |
-| 404 | Not Found | **application/json**: <br> |
-| 502 | Bad Gateway | **application/json**: <br> |
-| 503 | Service Unavailable | **application/json**: [InspectorUnavailableError](#inspectorunavailableerror)<br> |
+| 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AppNotFoundError](#appnotfounderror)<br>[NoActiveBindingError](#noactivebindingerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [AgentBackendUnreachableError](#agentbackendunreachableerror)<br>[BindingFileDownloadUnavailableError](#bindingfiledownloadunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [InspectorUnavailableError](#inspectorunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/sandbox/files/download
@@ -3868,9 +3868,9 @@ Create a ToolFile from one workflow Agent Binding file and return its download U
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Download URL returned | **application/json**: [SandboxDownloadResponse](#sandboxdownloadresponse)<br> |
-| 404 | Not Found | **application/json**: <br> |
-| 502 | Bad Gateway | **application/json**: <br> |
-| 503 | Service Unavailable | **application/json**: [InspectorUnavailableError](#inspectorunavailableerror)<br> |
+| 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AppNotFoundError](#appnotfounderror)<br>[NoActiveBindingError](#noactivebindingerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [AgentBackendUnreachableError](#agentbackendunreachableerror)<br>[BindingFileDownloadUnavailableError](#bindingfiledownloadunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [InspectorUnavailableError](#inspectorunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/sandbox/files/read
@@ -3891,9 +3891,9 @@ Read a text/binary preview file in a workflow Agent node sandbox
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Preview returned | **application/json**: [SandboxReadResponse](#sandboxreadresponse)<br> |
-| 404 | Not Found | **application/json**: <br> |
-| 502 | Bad Gateway | **application/json**: <br> |
-| 503 | Service Unavailable | **application/json**: [InspectorUnavailableError](#inspectorunavailableerror)<br> |
+| 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AppNotFoundError](#appnotfounderror)<br>[NoActiveBindingError](#noactivebindingerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [AgentBackendUnreachableError](#agentbackendunreachableerror)<br>[BindingFileDownloadUnavailableError](#bindingfiledownloadunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [InspectorUnavailableError](#inspectorunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflow/comments
@@ -3910,8 +3910,8 @@ Read a text/binary preview file in a workflow Agent node sandbox
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Comments retrieved successfully | **application/json**: [WorkflowCommentBasicList](#workflowcommentbasiclist)<br> |
-| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br> |
-| 404 | Not Found | **application/json**: <br> |
+| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[NotFoundError](#notfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflow/comments
@@ -3934,8 +3934,8 @@ Read a text/binary preview file in a workflow Agent node sandbox
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Comment created successfully | **application/json**: [WorkflowCommentCreate](#workflowcommentcreate)<br> |
-| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br> |
-| 404 | Not Found | **application/json**: <br> |
+| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[NotFoundError](#notfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflow/comments/mention-users
@@ -3952,8 +3952,8 @@ Read a text/binary preview file in a workflow Agent node sandbox
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Mentionable users retrieved successfully | **application/json**: [WorkflowCommentMentionUsersPayload](#workflowcommentmentionuserspayload)<br> |
-| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br> |
-| 404 | Not Found | **application/json**: <br> |
+| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[NotFoundError](#notfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /apps/{app_id}/workflow/comments/{comment_id}
@@ -3971,8 +3971,8 @@ Read a text/binary preview file in a workflow Agent node sandbox
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 204 | Comment deleted successfully |  |
-| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br> |
-| 404 | Not Found | **application/json**: <br> |
+| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[NotFoundError](#notfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflow/comments/{comment_id}
@@ -3990,8 +3990,8 @@ Read a text/binary preview file in a workflow Agent node sandbox
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Comment retrieved successfully | **application/json**: [WorkflowCommentDetail](#workflowcommentdetail)<br> |
-| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br> |
-| 404 | Not Found | **application/json**: <br> |
+| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[NotFoundError](#notfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /apps/{app_id}/workflow/comments/{comment_id}
@@ -4015,8 +4015,8 @@ Read a text/binary preview file in a workflow Agent node sandbox
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Comment updated successfully | **application/json**: [WorkflowCommentUpdate](#workflowcommentupdate)<br> |
-| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br> |
-| 404 | Not Found | **application/json**: <br> |
+| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[NotFoundError](#notfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflow/comments/{comment_id}/replies
@@ -4040,8 +4040,8 @@ Read a text/binary preview file in a workflow Agent node sandbox
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Reply created successfully | **application/json**: [WorkflowCommentReplyCreate](#workflowcommentreplycreate)<br> |
-| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br> |
-| 404 | Not Found | **application/json**: <br> |
+| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[NotFoundError](#notfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /apps/{app_id}/workflow/comments/{comment_id}/replies/{reply_id}
@@ -4060,8 +4060,8 @@ Read a text/binary preview file in a workflow Agent node sandbox
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 204 | Reply deleted successfully |  |
-| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br> |
-| 404 | Not Found | **application/json**: <br> |
+| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[NotFoundError](#notfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /apps/{app_id}/workflow/comments/{comment_id}/replies/{reply_id}
@@ -4086,8 +4086,8 @@ Read a text/binary preview file in a workflow Agent node sandbox
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Reply updated successfully | **application/json**: [WorkflowCommentReplyUpdate](#workflowcommentreplyupdate)<br> |
-| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br> |
-| 404 | Not Found | **application/json**: <br> |
+| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[NotFoundError](#notfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflow/comments/{comment_id}/resolve
@@ -4105,8 +4105,8 @@ Read a text/binary preview file in a workflow Agent node sandbox
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Comment resolved successfully | **application/json**: [WorkflowCommentResolve](#workflowcommentresolve)<br> |
-| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br> |
-| 404 | Not Found | **application/json**: <br> |
+| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[NotFoundError](#notfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflow/statistics/average-app-interactions
@@ -4125,7 +4125,7 @@ Get workflow average app interaction statistics
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Average app interaction statistics retrieved successfully | **application/json**: [WorkflowAverageAppInteractionStatisticResponse](#workflowaverageappinteractionstatisticresponse)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflow/statistics/daily-conversations
@@ -4144,7 +4144,7 @@ Get workflow daily runs statistics
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Daily runs statistics retrieved successfully | **application/json**: [WorkflowDailyRunsStatisticResponse](#workflowdailyrunsstatisticresponse)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflow/statistics/daily-terminals
@@ -4163,7 +4163,7 @@ Get workflow daily terminals statistics
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Daily terminals statistics retrieved successfully | **application/json**: [WorkflowDailyTerminalsStatisticResponse](#workflowdailyterminalsstatisticresponse)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflow/statistics/token-costs
@@ -4182,7 +4182,7 @@ Get workflow daily token cost statistics
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Daily token cost statistics retrieved successfully | **application/json**: [WorkflowDailyTokenCostStatisticResponse](#workflowdailytokencoststatisticresponse)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows
@@ -4205,7 +4205,7 @@ Get all published workflows for an application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Published workflows retrieved successfully | **application/json**: [WorkflowPaginationResponse](#workflowpaginationresponse)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/default-workflow-block-configs
@@ -4224,7 +4224,7 @@ Get default block configurations for workflow
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Default block configurations retrieved successfully | **application/json**: [DefaultBlockConfigsResponse](#defaultblockconfigsresponse)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/default-workflow-block-configs/{block_type}
@@ -4245,7 +4245,7 @@ Get default block configuration by type
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Default block configuration retrieved successfully | **application/json**: [DefaultBlockConfigResponse](#defaultblockconfigresponse)<br> |
-| 404 | Block type not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Block type not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/draft
@@ -4264,7 +4264,7 @@ Get draft workflow for an application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Draft workflow retrieved successfully | **application/json**: [WorkflowResponse](#workflowresponse)<br> |
-| 404 | Draft workflow not found | **application/json**: <br> |
+| 404 | Draft workflow not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[DraftWorkflowNotExistError](#draftworkflownotexisterror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft
@@ -4291,8 +4291,8 @@ Sync draft workflow configuration
 | 200 | Draft workflow synced successfully | **application/json**: [SyncDraftWorkflowResponse](#syncdraftworkflowresponse)<br> |
 | 400 | Invalid workflow configuration | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
-| 409 | Conflict | **application/json**: [DraftWorkflowNotSyncError](#draftworkflownotsyncerror)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [DraftWorkflowNotSyncError](#draftworkflownotsyncerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/draft/conversation-variables
@@ -4309,7 +4309,7 @@ Get conversation variables for workflow
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Conversation variables retrieved successfully | **application/json**: [WorkflowDraftVariableListResponse](#workflowdraftvariablelistresponse)<br> |
-| 404 | Draft workflow not found | **application/json**: <br> |
+| 404 | Draft workflow not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[NotFoundError](#notfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/conversation-variables
@@ -4332,7 +4332,7 @@ Update conversation variables for workflow draft
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Conversation variables updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/draft/environment-variables
@@ -4351,7 +4351,7 @@ Get environment variables for workflow
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Environment variables retrieved successfully | **application/json**: [EnvironmentVariableListResponse](#environmentvariablelistresponse)<br> |
-| 404 | Draft workflow not found | **application/json**: <br> |
+| 404 | Draft workflow not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[DraftWorkflowNotExistError](#draftworkflownotexisterror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/environment-variables
@@ -4374,7 +4374,7 @@ Update environment variables for workflow draft
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Environment variables updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/features
@@ -4397,7 +4397,7 @@ Update draft workflow features
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow features updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/human-input/nodes/{node_id}/delivery-test
@@ -4423,7 +4423,7 @@ Test human input delivery for workflow
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Human input delivery test result | **application/json**: [EmptyObjectResponse](#emptyobjectresponse)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/human-input/nodes/{node_id}/form/preview
@@ -4449,7 +4449,7 @@ Get human input form preview for workflow
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Human input form preview | **application/json**: [HumanInputFormPreviewResponse](#humaninputformpreviewresponse)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/human-input/nodes/{node_id}/form/run
@@ -4475,7 +4475,7 @@ Submit human input form preview for workflow
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Human input form submission result | **application/json**: [HumanInputFormSubmitResponse](#humaninputformsubmitresponse)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/iteration/nodes/{node_id}/run
@@ -4500,7 +4500,7 @@ Submit human input form preview for workflow
 | ---- | ----------- | ------ |
 | 200 | Workflow iteration node run started successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | Node not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Node not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/loop/nodes/{node_id}/run
@@ -4525,7 +4525,7 @@ Submit human input form preview for workflow
 | ---- | ----------- | ------ |
 | 200 | Workflow loop node run started successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | Node not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Node not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer
@@ -4542,7 +4542,7 @@ Submit human input form preview for workflow
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow agent composer state | **application/json**: [WorkflowAgentComposerResponse](#workflowagentcomposerresponse)<br> |
-| 404 | Not Found | **application/json**: <br> |
+| 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AgentVersionNotFoundError](#agentversionnotfounderror)<br>[AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer
@@ -4564,8 +4564,8 @@ Submit human input form preview for workflow
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow agent composer saved | **application/json**: [WorkflowAgentComposerResponse](#workflowagentcomposerresponse)<br> |
-| 400 | Bad Request | **application/json**: <br> |
-| 404 | Not Found | **application/json**: <br> |
+| 400 | Bad Request | **application/json**: [AgentSoulLockedError](#agentsoullockederror)<br>[InvalidComposerConfigError](#invalidcomposerconfigerror)<br>[PlaintextSecretNotAllowedError](#plaintextsecretnotallowederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AgentVersionNotFoundError](#agentversionnotfounderror)<br>[AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/candidates
@@ -4581,7 +4581,7 @@ Submit human input form preview for workflow
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow agent composer candidates | **application/json**: [AgentComposerCandidatesResponse](#agentcomposercandidatesresponse)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/copy-from-roster
@@ -4603,9 +4603,9 @@ Submit human input form preview for workflow
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow roster agent copied to inline agent | **application/json**: [WorkflowAgentComposerResponse](#workflowagentcomposerresponse)<br> |
-| 400 | Bad Request | **application/json**: [InvalidComposerConfigError](#invalidcomposerconfigerror)<br> |
-| 404 | Not Found | **application/json**: <br> |
-| 409 | Conflict | **application/json**: [AgentVersionConflictError](#agentversionconflicterror)<br> |
+| 400 | Bad Request | **application/json**: [InvalidComposerConfigError](#invalidcomposerconfigerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AgentVersionNotFoundError](#agentversionnotfounderror)<br>[AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [AgentVersionConflictError](#agentversionconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/impact
@@ -4627,7 +4627,7 @@ Submit human input form preview for workflow
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow agent composer impact | **application/json**: [AgentComposerImpactResponse](#agentcomposerimpactresponse)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/save-to-roster
@@ -4649,8 +4649,8 @@ Submit human input form preview for workflow
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow agent composer saved to roster | **application/json**: [WorkflowAgentComposerResponse](#workflowagentcomposerresponse)<br> |
-| 400 | Bad Request | **application/json**: <br> |
-| 404 | Not Found | **application/json**: <br> |
+| 400 | Bad Request | **application/json**: [AgentSoulLockedError](#agentsoullockederror)<br>[InvalidComposerConfigError](#invalidcomposerconfigerror)<br>[PlaintextSecretNotAllowedError](#plaintextsecretnotallowederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AgentVersionNotFoundError](#agentversionnotfounderror)<br>[AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/validate
@@ -4672,8 +4672,8 @@ Submit human input form preview for workflow
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow agent composer validation result | **application/json**: [AgentComposerValidateResponse](#agentcomposervalidateresponse)<br> |
-| 400 | Bad Request | **application/json**: <br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 400 | Bad Request | **application/json**: [AgentSoulLockedError](#agentsoullockederror)<br>[InvalidComposerConfigError](#invalidcomposerconfigerror)<br>[PlaintextSecretNotAllowedError](#plaintextsecretnotallowederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/draft/nodes/{node_id}/last-run
@@ -4692,7 +4692,7 @@ Get last run result for draft workflow node
 | ---- | ----------- | ------ |
 | 200 | Node last run retrieved successfully | **application/json**: [WorkflowRunNodeExecutionResponse](#workflowrunnodeexecutionresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | Node last run not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Node last run not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/nodes/{node_id}/run
@@ -4717,7 +4717,7 @@ Get last run result for draft workflow node
 | ---- | ----------- | ------ |
 | 200 | Node run started successfully | **application/json**: [WorkflowRunNodeExecutionResponse](#workflowrunnodeexecutionresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | Node not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Node not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/nodes/{node_id}/trigger/run
@@ -4735,9 +4735,9 @@ Get last run result for draft workflow node
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Trigger event received and node executed successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
-| 400 | Trigger run failed | **application/json**: <br> |
+| 400 | Trigger run failed | **application/json**: [WorkflowTriggerRunErrorResponse](#workflowtriggerrunerrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 500 | Internal server error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -4756,7 +4756,7 @@ Delete all variables for a specific node
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 204 | Node variables deleted successfully |  |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/draft/nodes/{node_id}/variables
@@ -4774,7 +4774,7 @@ Get variables for a specific node
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Node variables retrieved successfully | **application/json**: [WorkflowDraftVariableListResponse](#workflowdraftvariablelistresponse)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/run
@@ -4798,8 +4798,8 @@ Get variables for a specific node
 | ---- | ----------- | ------ |
 | 200 | Draft workflow run started successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
-| 429 | Too Many Requests | **application/json**: [RateLimitError](#ratelimiterror)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [RateLimitError](#ratelimiterror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/draft/runs/{run_id}/node-outputs
@@ -4817,7 +4817,7 @@ Snapshot of every node's declared outputs for a draft workflow run.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow run node outputs | **application/json**: [WorkflowRunSnapshotView](#workflowrunsnapshotview)<br> |
-| 404 | Workflow run not found | **application/json**: <br> |
+| 404 | Workflow run not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[NodeNotInWorkflowRunError](#nodenotinworkflowrunerror)<br>[NodeOutputNotDeclaredError](#nodeoutputnotdeclarederror)<br>[WorkflowRunNotFoundError](#workflowrunnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/draft/runs/{run_id}/node-outputs/events
@@ -4835,7 +4835,7 @@ Server-Sent Events stream of inspector deltas for a draft workflow run.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow run node output event stream | **application/json**: [EventStreamResponse](#eventstreamresponse)<br> |
-| 404 | Workflow run not found | **application/json**: <br> |
+| 404 | Workflow run not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[NodeNotInWorkflowRunError](#nodenotinworkflowrunerror)<br>[NodeOutputNotDeclaredError](#nodeoutputnotdeclarederror)<br>[WorkflowRunNotFoundError](#workflowrunnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/draft/runs/{run_id}/node-outputs/{node_id}
@@ -4854,7 +4854,7 @@ One node's declared outputs for a draft workflow run.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow run node output detail | **application/json**: [NodeOutputsView](#nodeoutputsview)<br> |
-| 404 | Workflow run / node not found | **application/json**: <br> |
+| 404 | Workflow run / node not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[NodeNotInWorkflowRunError](#nodenotinworkflowrunerror)<br>[NodeOutputNotDeclaredError](#nodeoutputnotdeclarederror)<br>[WorkflowRunNotFoundError](#workflowrunnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/draft/runs/{run_id}/node-outputs/{node_id}/{output_name}/preview
@@ -4874,7 +4874,7 @@ Full value for one declared output, including signed download URL for files.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow run node output preview | **application/json**: [OutputPreviewView](#outputpreviewview)<br> |
-| 404 | Workflow run / node / output not found | **application/json**: <br> |
+| 404 | Workflow run / node / output not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[NodeNotInWorkflowRunError](#nodenotinworkflowrunerror)<br>[NodeOutputNotDeclaredError](#nodeoutputnotdeclarederror)<br>[WorkflowRunNotFoundError](#workflowrunnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/draft/system-variables
@@ -4891,7 +4891,7 @@ Get system variables for workflow
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | System variables retrieved successfully | **application/json**: [WorkflowDraftVariableListResponse](#workflowdraftvariablelistresponse)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/trigger/run
@@ -4914,10 +4914,10 @@ Get system variables for workflow
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Trigger event received and workflow executed successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
-| 400 | Trigger run failed | **application/json**: <br> |
+| 400 | Trigger run failed | **application/json**: [WorkflowTriggerRunErrorResponse](#workflowtriggerrunerrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
-| 429 | Too Many Requests | **application/json**: [RateLimitError](#ratelimiterror)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [RateLimitError](#ratelimiterror)<br>[ErrorResponse](#errorresponse)<br> |
 | 500 | Internal server error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -4941,10 +4941,10 @@ Get system variables for workflow
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow executed successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
-| 400 | Trigger run failed | **application/json**: <br> |
+| 400 | Trigger run failed | **application/json**: [WorkflowTriggerRunErrorResponse](#workflowtriggerrunerrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
-| 429 | Too Many Requests | **application/json**: [RateLimitError](#ratelimiterror)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [RateLimitError](#ratelimiterror)<br>[ErrorResponse](#errorresponse)<br> |
 | 500 | Internal server error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -4962,7 +4962,7 @@ Delete all draft workflow variables
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 204 | Workflow variables deleted successfully |  |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/draft/variables
@@ -4983,7 +4983,7 @@ Get draft workflow variables
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow variables retrieved successfully | **application/json**: [WorkflowDraftVariableListWithoutValueResponse](#workflowdraftvariablelistwithoutvalueresponse)<br> |
-| 404 | Not Found | **application/json**: <br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[DraftWorkflowNotExistError](#draftworkflownotexisterror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /apps/{app_id}/workflows/draft/variables/{variable_id}
@@ -5001,7 +5001,7 @@ Delete a workflow variable
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 204 | Variable deleted successfully |  |
-| 404 | Variable not found | **application/json**: <br> |
+| 404 | Variable not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[NotFoundError](#notfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/draft/variables/{variable_id}
@@ -5019,7 +5019,7 @@ Get a specific workflow variable
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Variable retrieved successfully | **application/json**: [WorkflowDraftVariableResponse](#workflowdraftvariableresponse)<br> |
-| 404 | Variable not found | **application/json**: <br> |
+| 404 | Variable not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[NotFoundError](#notfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /apps/{app_id}/workflows/draft/variables/{variable_id}
@@ -5043,7 +5043,7 @@ Update a workflow variable
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Variable updated successfully | **application/json**: [WorkflowDraftVariableResponse](#workflowdraftvariableresponse)<br> |
-| 404 | Variable not found | **application/json**: <br> |
+| 404 | Variable not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[NotFoundError](#notfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /apps/{app_id}/workflows/draft/variables/{variable_id}/reset
@@ -5062,7 +5062,7 @@ Reset a workflow variable to its default value
 | ---- | ----------- | ------ |
 | 200 | Variable reset successfully | **application/json**: [WorkflowDraftVariableResponse](#workflowdraftvariableresponse)<br> |
 | 204 | Variable reset (no content) |  |
-| 404 | Variable not found | **application/json**: <br> |
+| 404 | Variable not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[NotFoundError](#notfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/publish
@@ -5081,7 +5081,7 @@ Get published workflow for an application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Published workflow retrieved successfully, or null if not found | **application/json**: [WorkflowResponse](#workflowresponse)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/publish
@@ -5104,7 +5104,7 @@ Get published workflow for an application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow published successfully | **application/json**: [WorkflowPublishResponse](#workflowpublishresponse)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/published/runs/{run_id}/node-outputs
@@ -5122,7 +5122,7 @@ Snapshot of every node's declared outputs for a published workflow run.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow run node outputs | **application/json**: [WorkflowRunSnapshotView](#workflowrunsnapshotview)<br> |
-| 404 | Workflow run not found | **application/json**: <br> |
+| 404 | Workflow run not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[NodeNotInWorkflowRunError](#nodenotinworkflowrunerror)<br>[NodeOutputNotDeclaredError](#nodeoutputnotdeclarederror)<br>[WorkflowRunNotFoundError](#workflowrunnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/published/runs/{run_id}/node-outputs/events
@@ -5140,7 +5140,7 @@ Server-Sent Events stream of inspector deltas for a published workflow run.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow run node output event stream | **application/json**: [EventStreamResponse](#eventstreamresponse)<br> |
-| 404 | Workflow run not found | **application/json**: <br> |
+| 404 | Workflow run not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[NodeNotInWorkflowRunError](#nodenotinworkflowrunerror)<br>[NodeOutputNotDeclaredError](#nodeoutputnotdeclarederror)<br>[WorkflowRunNotFoundError](#workflowrunnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/published/runs/{run_id}/node-outputs/{node_id}
@@ -5159,7 +5159,7 @@ One node's declared outputs for a published workflow run.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow run node output detail | **application/json**: [NodeOutputsView](#nodeoutputsview)<br> |
-| 404 | Workflow run / node not found | **application/json**: <br> |
+| 404 | Workflow run / node not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[NodeNotInWorkflowRunError](#nodenotinworkflowrunerror)<br>[NodeOutputNotDeclaredError](#nodeoutputnotdeclarederror)<br>[WorkflowRunNotFoundError](#workflowrunnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/published/runs/{run_id}/node-outputs/{node_id}/{output_name}/preview
@@ -5179,7 +5179,7 @@ Full value for one declared output of a published run.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow run node output preview | **application/json**: [OutputPreviewView](#outputpreviewview)<br> |
-| 404 | Workflow run / node / output not found | **application/json**: <br> |
+| 404 | Workflow run / node / output not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[NodeNotInWorkflowRunError](#nodenotinworkflowrunerror)<br>[NodeOutputNotDeclaredError](#nodeoutputnotdeclarederror)<br>[WorkflowRunNotFoundError](#workflowrunnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/triggers/webhook
@@ -5197,7 +5197,7 @@ Full value for one declared output of a published run.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [WebhookTriggerResponse](#webhooktriggerresponse)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /apps/{app_id}/workflows/{workflow_id}
@@ -5215,7 +5215,7 @@ Full value for one declared output of a published run.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 204 | Workflow deleted successfully |  |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /apps/{app_id}/workflows/{workflow_id}
@@ -5242,7 +5242,7 @@ Update workflow by ID
 | ---- | ----------- | ------ |
 | 200 | Workflow updated successfully | **application/json**: [WorkflowResponse](#workflowresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | Workflow not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Workflow not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/{workflow_id}/restore
@@ -5261,7 +5261,7 @@ Restore a published workflow version into the draft workflow
 | ---- | ----------- | ------ |
 | 200 | Workflow restored successfully | **application/json**: [WorkflowRestoreResponse](#workflowrestoreresponse)<br> |
 | 400 | Source workflow must be published | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | Workflow not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Workflow not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{resource_id}/api-keys
@@ -5278,8 +5278,8 @@ Get all API keys for an app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | API keys retrieved successfully | **application/json**: [ApiKeyList](#apikeylist)<br> |
-| 400 | Bad Request | **application/json**: [MaxKeysExceededError](#maxkeysexceedederror)<br> |
-| 409 | Conflict | **application/json**: [AgentNotPublishedError](#agentnotpublishederror)<br> |
+| 400 | Bad Request | **application/json**: [MaxKeysExceededError](#maxkeysexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [AgentNotPublishedError](#agentnotpublishederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{resource_id}/api-keys
@@ -5296,8 +5296,8 @@ Create a new API key for an app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | API key created successfully | **application/json**: [ApiKeyItem](#apikeyitem)<br> |
-| 400 | Maximum keys exceeded | **application/json**: [MaxKeysExceededError](#maxkeysexceedederror)<br> |
-| 409 | Conflict | **application/json**: [AgentNotPublishedError](#agentnotpublishederror)<br> |
+| 400 | Maximum keys exceeded | **application/json**: [MaxKeysExceededError](#maxkeysexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [AgentNotPublishedError](#agentnotpublishederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /apps/{resource_id}/api-keys/{api_key_id}
@@ -5315,8 +5315,8 @@ Delete an API key for an app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 204 | API key deleted successfully |  |
-| 400 | Bad Request | **application/json**: [MaxKeysExceededError](#maxkeysexceedederror)<br> |
-| 409 | Conflict | **application/json**: [AgentNotPublishedError](#agentnotpublishederror)<br> |
+| 400 | Bad Request | **application/json**: [MaxKeysExceededError](#maxkeysexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [AgentNotPublishedError](#agentnotpublishederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /auth/plugin/datasource/default-list
@@ -5490,8 +5490,8 @@ Delete an API key for an app
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [BillingInvoiceResponse](#billinginvoiceresponse)<br> |
 | 403 | Forbidden | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 502 | Billing operation failed | **application/json**: <br> |
-| 503 | Billing unavailable | **application/json**: <br> |
+| 502 | Billing operation failed | **application/json**: [BillingOperationFailedErrorResponse](#billingoperationfailederrorresponse)<br>[BillingOperationFailedError](#billingoperationfailederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Billing unavailable | **application/json**: [BillingUnavailableErrorResponse](#billingunavailableerrorresponse)<br>[BillingUnavailableError](#billingunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /billing/subscription
@@ -5508,9 +5508,9 @@ Delete an API key for an app
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [BillingSubscriptionResponse](#billingsubscriptionresponse)<br> |
 | 403 | Forbidden | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 422 | Invalid subscription query | **application/json**: <br> |
-| 502 | Billing operation failed | **application/json**: <br> |
-| 503 | Billing unavailable | **application/json**: <br> |
+| 422 | Invalid subscription query | **application/json**: [BillingUnprocessableEntityErrorResponse](#billingunprocessableentityerrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Billing operation failed | **application/json**: [BillingOperationFailedErrorResponse](#billingoperationfailederrorresponse)<br>[BillingOperationFailedError](#billingoperationfailederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Billing unavailable | **application/json**: [BillingUnavailableErrorResponse](#billingunavailableerrorresponse)<br>[BillingUnavailableError](#billingunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /code-based-extension
@@ -5543,10 +5543,10 @@ Get compliance document download link
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ComplianceDownloadResponse](#compliancedownloadresponse)<br> |
-| 422 | Invalid compliance download query | **application/json**: <br> |
-| 429 | Compliance download rate limit exceeded | **application/json**: <br> |
-| 502 | Compliance download failed | **application/json**: <br> |
-| 503 | Billing unavailable | **application/json**: <br> |
+| 422 | Invalid compliance download query | **application/json**: [BillingUnprocessableEntityErrorResponse](#billingunprocessableentityerrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Compliance download rate limit exceeded | **application/json**: [ComplianceRateLimitErrorResponse](#complianceratelimiterrorresponse)<br>[ComplianceRateLimitError](#complianceratelimiterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Compliance download failed | **application/json**: [BillingOperationFailedErrorResponse](#billingoperationfailederrorresponse)<br>[BillingOperationFailedError](#billingoperationfailederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Billing unavailable | **application/json**: [BillingUnavailableErrorResponse](#billingunavailableerrorresponse)<br>[BillingUnavailableError](#billingunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /data-source/integrates
@@ -5570,8 +5570,8 @@ Get compliance document download link
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 400 | Bad Request | **application/json**: [InvalidActionError](#invalidactionerror)<br> |
-| 404 | Not Found | **application/json**: [NotFoundError](#notfounderror)<br> |
+| 400 | Bad Request | **application/json**: [InvalidActionError](#invalidactionerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [NotFoundError](#notfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets
@@ -5610,7 +5610,7 @@ Create a new dataset
 | ---- | ----------- | ------ |
 | 201 | Dataset created successfully | **application/json**: [DatasetDetailWithPartialMembersResponse](#datasetdetailwithpartialmembersresponse)<br> |
 | 400 | Invalid request parameters | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 409 | Conflict | **application/json**: <br> |
+| 409 | Conflict | **application/json**: [DatasetInUseError](#datasetinuseerror)<br>[DatasetNameDuplicateError](#datasetnameduplicateerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/api-base-info
@@ -5631,8 +5631,8 @@ Get dataset API keys
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | API keys retrieved successfully | **application/json**: [ApiKeyList](#apikeylist)<br> |
-| 400 | Bad Request | **application/json**: [MaxKeysExceededError](#maxkeysexceedederror)<br> |
-| 409 | Conflict | **application/json**: [AgentNotPublishedError](#agentnotpublishederror)<br> |
+| 400 | Bad Request | **application/json**: [MaxKeysExceededError](#maxkeysexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [AgentNotPublishedError](#agentnotpublishederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/api-keys
@@ -5647,8 +5647,8 @@ Get dataset API keys
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | API key created successfully | **application/json**: [ApiKeyItem](#apikeyitem)<br> |
-| 400 | Maximum keys exceeded | **application/json**: [MaxKeysExceededError](#maxkeysexceedederror)<br> |
-| 409 | Conflict | **application/json**: [AgentNotPublishedError](#agentnotpublishederror)<br> |
+| 400 | Maximum keys exceeded | **application/json**: [MaxKeysExceededError](#maxkeysexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [AgentNotPublishedError](#agentnotpublishederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /datasets/api-keys/{api_key_id}
@@ -5665,8 +5665,8 @@ Delete dataset API key
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 204 | API key deleted successfully |  |
-| 400 | Bad Request | **application/json**: [MaxKeysExceededError](#maxkeysexceedederror)<br> |
-| 409 | Conflict | **application/json**: [AgentNotPublishedError](#agentnotpublishederror)<br> |
+| 400 | Bad Request | **application/json**: [MaxKeysExceededError](#maxkeysexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [AgentNotPublishedError](#agentnotpublishederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/batch_import_status/{job_id}
@@ -5699,7 +5699,7 @@ Create external knowledge dataset
 | 201 | External dataset created successfully | **application/json**: [DatasetDetailResponse](#datasetdetailresponse)<br> |
 | 400 | Invalid parameters | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 409 | Conflict | **application/json**: [DatasetNameDuplicateError](#datasetnameduplicateerror)<br> |
+| 409 | Conflict | **application/json**: [DatasetNameDuplicateError](#datasetnameduplicateerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/external-knowledge-api
@@ -5735,7 +5735,7 @@ Create external knowledge API template
 | ---- | ----------- | ------ |
 | 201 | External API template created successfully | **application/json**: [ExternalKnowledgeApiResponse](#externalknowledgeapiresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 409 | Conflict | **application/json**: [DatasetNameDuplicateError](#datasetnameduplicateerror)<br> |
+| 409 | Conflict | **application/json**: [DatasetNameDuplicateError](#datasetnameduplicateerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /datasets/external-knowledge-api/{external_knowledge_api_id}
@@ -5750,7 +5750,7 @@ Create external knowledge API template
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 204 | External knowledge API deleted successfully |  |
-| 409 | Conflict | **application/json**: [DatasetNameDuplicateError](#datasetnameduplicateerror)<br> |
+| 409 | Conflict | **application/json**: [DatasetNameDuplicateError](#datasetnameduplicateerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/external-knowledge-api/{external_knowledge_api_id}
@@ -5768,7 +5768,7 @@ Get external knowledge API template details
 | ---- | ----------- | ------ |
 | 200 | External API template retrieved successfully | **application/json**: [ExternalKnowledgeApiResponse](#externalknowledgeapiresponse)<br> |
 | 404 | Template not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 409 | Conflict | **application/json**: [DatasetNameDuplicateError](#datasetnameduplicateerror)<br> |
+| 409 | Conflict | **application/json**: [DatasetNameDuplicateError](#datasetnameduplicateerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /datasets/external-knowledge-api/{external_knowledge_api_id}
@@ -5792,7 +5792,7 @@ Update external knowledge API template
 | ---- | ----------- | ------ |
 | 200 | External API template updated successfully | **application/json**: [ExternalKnowledgeApiResponse](#externalknowledgeapiresponse)<br> |
 | 404 | Template not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 409 | Conflict | **application/json**: [DatasetNameDuplicateError](#datasetnameduplicateerror)<br> |
+| 409 | Conflict | **application/json**: [DatasetNameDuplicateError](#datasetnameduplicateerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/external-knowledge-api/{external_knowledge_api_id}/use-check
@@ -5825,10 +5825,10 @@ Estimate dataset indexing cost
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Indexing estimate calculated successfully | **application/json**: [IndexingEstimateResponse](#indexingestimateresponse)<br> |
-| 400 | Bad Request | **application/json**: [ProviderNotInitializeError](#providernotinitializeerror)<br> |
-| 403 | Forbidden | **application/json**: [DatasetAccessDeniedError](#datasetaccessdeniederror)<br> |
-| 404 | Not Found | **application/json**: [NotFoundError](#notfounderror)<br> |
-| 500 | Internal Server Error | **application/json**: [IndexingEstimateError](#indexingestimateerror)<br> |
+| 400 | Bad Request | **application/json**: [ProviderNotInitializeError](#providernotinitializeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [DatasetAccessDeniedError](#datasetaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [NotFoundError](#notfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [IndexingEstimateError](#indexingestimateerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/init
@@ -5845,8 +5845,8 @@ Initialize dataset with documents
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Dataset initialized successfully | **application/json**: [DatasetAndDocumentResponse](#datasetanddocumentresponse)<br> |
-| 400 | Invalid request parameters | **application/json**: <br> |
-| 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br> |
+| 400 | Invalid request parameters | **application/json**: [DocumentIndexingError](#documentindexingerror)<br>[InvalidActionError](#invalidactionerror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/metadata/built-in
@@ -5869,9 +5869,9 @@ Initialize dataset with documents
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [IndexingEstimate](#indexingestimate)<br> |
-| 400 | Bad Request | **application/json**: [ProviderNotInitializeError](#providernotinitializeerror)<br> |
-| 404 | Not Found | **application/json**: [NotFoundError](#notfounderror)<br> |
-| 500 | Internal Server Error | **application/json**: [IndexingEstimateError](#indexingestimateerror)<br> |
+| 400 | Bad Request | **application/json**: [ProviderNotInitializeError](#providernotinitializeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [NotFoundError](#notfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [IndexingEstimateError](#indexingestimateerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/process-rule
@@ -5888,8 +5888,8 @@ Get dataset document processing rules
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Process rules retrieved successfully | **application/json**: [ProcessRuleResponse](#processruleresponse)<br> |
-| 400 | Bad Request | **application/json**: <br> |
-| 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br> |
+| 400 | Bad Request | **application/json**: [DocumentIndexingError](#documentindexingerror)<br>[InvalidActionError](#invalidactionerror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/retrieval-setting
@@ -5930,7 +5930,7 @@ Get mock dataset retrieval settings by vector type
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 204 | Dataset deleted successfully |  |
-| 409 | Conflict | **application/json**: <br> |
+| 409 | Conflict | **application/json**: [DatasetInUseError](#datasetinuseerror)<br>[DatasetNameDuplicateError](#datasetnameduplicateerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}
@@ -5949,7 +5949,7 @@ Get dataset details
 | 200 | Dataset retrieved successfully | **application/json**: [DatasetDetailWithPartialMembersResponse](#datasetdetailwithpartialmembersresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Dataset not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 409 | Conflict | **application/json**: <br> |
+| 409 | Conflict | **application/json**: [DatasetInUseError](#datasetinuseerror)<br>[DatasetNameDuplicateError](#datasetnameduplicateerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /datasets/{dataset_id}
@@ -5974,7 +5974,7 @@ Update dataset details
 | 200 | Dataset updated successfully | **application/json**: [DatasetDetailWithPartialMembersResponse](#datasetdetailwithpartialmembersresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Dataset not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 409 | Conflict | **application/json**: <br> |
+| 409 | Conflict | **application/json**: [DatasetInUseError](#datasetinuseerror)<br>[DatasetNameDuplicateError](#datasetnameduplicateerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/api-keys/{status}
@@ -5990,7 +5990,7 @@ Update dataset details
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 409 | Conflict | **application/json**: <br> |
+| 409 | Conflict | **application/json**: [DatasetInUseError](#datasetinuseerror)<br>[DatasetNameDuplicateError](#datasetnameduplicateerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/auto-disable-logs
@@ -6008,7 +6008,7 @@ Get dataset auto disable logs
 | ---- | ----------- | ------ |
 | 200 | Auto disable logs retrieved successfully | **application/json**: [AutoDisableLogsResponse](#autodisablelogsresponse)<br> |
 | 404 | Dataset not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 409 | Conflict | **application/json**: <br> |
+| 409 | Conflict | **application/json**: [DatasetInUseError](#datasetinuseerror)<br>[DatasetNameDuplicateError](#datasetnameduplicateerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/batch/{batch}/indexing-estimate
@@ -6024,10 +6024,10 @@ Get dataset auto disable logs
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Indexing estimate calculated successfully | **application/json**: [IndexingEstimateResponse](#indexingestimateresponse)<br> |
-| 400 | Bad Request | **application/json**: <br> |
-| 403 | Forbidden | **application/json**: [DatasetAccessDeniedError](#datasetaccessdeniederror)<br> |
-| 404 | Not Found | **application/json**: [NotFoundError](#notfounderror)<br> |
-| 500 | Internal Server Error | **application/json**: [IndexingEstimateError](#indexingestimateerror)<br> |
+| 400 | Bad Request | **application/json**: [DocumentAlreadyFinishedError](#documentalreadyfinishederror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [DatasetAccessDeniedError](#datasetaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [NotFoundError](#notfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [IndexingEstimateError](#indexingestimateerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/batch/{batch}/indexing-status
@@ -6043,8 +6043,8 @@ Get dataset auto disable logs
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Indexing status retrieved successfully | **application/json**: [DocumentStatusListResponse](#documentstatuslistresponse)<br> |
-| 400 | Bad Request | **application/json**: <br> |
-| 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br> |
+| 400 | Bad Request | **application/json**: [DocumentIndexingError](#documentindexingerror)<br>[InvalidActionError](#invalidactionerror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /datasets/{dataset_id}/documents
@@ -6059,8 +6059,8 @@ Get dataset auto disable logs
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 204 | Documents deleted successfully |  |
-| 400 | Bad Request | **application/json**: <br> |
-| 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br> |
+| 400 | Bad Request | **application/json**: [DocumentIndexingError](#documentindexingerror)<br>[InvalidActionError](#invalidactionerror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/documents
@@ -6083,8 +6083,8 @@ Get documents in a dataset
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Documents retrieved successfully | **application/json**: [DocumentWithSegmentsListResponse](#documentwithsegmentslistresponse)<br> |
-| 400 | Bad Request | **application/json**: <br> |
-| 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br> |
+| 400 | Bad Request | **application/json**: [DocumentIndexingError](#documentindexingerror)<br>[InvalidActionError](#invalidactionerror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/documents
@@ -6105,8 +6105,8 @@ Get documents in a dataset
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Documents created successfully | **application/json**: [DatasetAndDocumentResponse](#datasetanddocumentresponse)<br> |
-| 400 | Bad Request | **application/json**: <br> |
-| 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br> |
+| 400 | Bad Request | **application/json**: [DocumentIndexingError](#documentindexingerror)<br>[InvalidActionError](#invalidactionerror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/documents/download-zip
@@ -6131,8 +6131,8 @@ Download selected dataset documents as a single ZIP archive (upload-file only)
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | ZIP archive downloaded successfully |  |
-| 400 | Bad Request | **application/json**: <br> |
-| 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br> |
+| 400 | Bad Request | **application/json**: [DocumentIndexingError](#documentindexingerror)<br>[InvalidActionError](#invalidactionerror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/documents/generate-summary
@@ -6160,8 +6160,8 @@ then asynchronously generates summary indexes for the provided documents.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Summary generation started successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 400 | Invalid request or dataset configuration | **application/json**: <br> |
-| 403 | Permission denied | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br> |
+| 400 | Invalid request or dataset configuration | **application/json**: [DocumentIndexingError](#documentindexingerror)<br>[InvalidActionError](#invalidactionerror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Permission denied | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Dataset not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -6199,8 +6199,8 @@ then asynchronously generates summary indexes for the provided documents.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 400 | Bad Request | **application/json**: <br> |
-| 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br> |
+| 400 | Bad Request | **application/json**: [DocumentIndexingError](#documentindexingerror)<br>[InvalidActionError](#invalidactionerror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /datasets/{dataset_id}/documents/{document_id}
@@ -6216,8 +6216,8 @@ then asynchronously generates summary indexes for the provided documents.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 204 | Document deleted successfully |  |
-| 400 | Bad Request | **application/json**: <br> |
-| 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br> |
+| 400 | Bad Request | **application/json**: [DocumentIndexingError](#documentindexingerror)<br>[InvalidActionError](#invalidactionerror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/documents/{document_id}
@@ -6236,8 +6236,8 @@ Get document details
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Document retrieved successfully | **application/json**: [DocumentDetailResponse](#documentdetailresponse)<br> |
-| 400 | Bad Request | **application/json**: <br> |
-| 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br> |
+| 400 | Bad Request | **application/json**: [DocumentIndexingError](#documentindexingerror)<br>[InvalidActionError](#invalidactionerror)<br>[InvalidMetadataError](#invalidmetadataerror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Document not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -6256,8 +6256,8 @@ Get a signed download URL for a dataset document's original uploaded file
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Download URL generated successfully | **application/json**: [UrlResponse](#urlresponse)<br> |
-| 400 | Bad Request | **application/json**: <br> |
-| 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br> |
+| 400 | Bad Request | **application/json**: [DocumentIndexingError](#documentindexingerror)<br>[InvalidActionError](#invalidactionerror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/documents/{document_id}/indexing-estimate
@@ -6275,10 +6275,10 @@ Estimate document indexing cost
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Indexing estimate calculated successfully | **application/json**: [IndexingEstimateResponse](#indexingestimateresponse)<br> |
-| 400 | Document already finished | **application/json**: <br> |
-| 403 | Forbidden | **application/json**: [DatasetAccessDeniedError](#datasetaccessdeniederror)<br> |
-| 404 | Document not found | **application/json**: [NotFoundError](#notfounderror)<br> |
-| 500 | Internal Server Error | **application/json**: [IndexingEstimateError](#indexingestimateerror)<br> |
+| 400 | Document already finished | **application/json**: [DocumentAlreadyFinishedError](#documentalreadyfinishederror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [DatasetAccessDeniedError](#datasetaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Document not found | **application/json**: [NotFoundError](#notfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [IndexingEstimateError](#indexingestimateerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/documents/{document_id}/indexing-status
@@ -6296,8 +6296,8 @@ Get document indexing status
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Indexing status retrieved successfully | **application/json**: [DocumentStatusResponse](#documentstatusresponse)<br> |
-| 400 | Bad Request | **application/json**: <br> |
-| 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br> |
+| 400 | Bad Request | **application/json**: [DocumentIndexingError](#documentindexingerror)<br>[InvalidActionError](#invalidactionerror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Document not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -6322,8 +6322,8 @@ Update document metadata
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Document metadata updated successfully | **application/json**: [SimpleResultMessageResponse](#simpleresultmessageresponse)<br> |
-| 400 | Bad Request | **application/json**: <br> |
-| 403 | Permission denied | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br> |
+| 400 | Bad Request | **application/json**: [DocumentIndexingError](#documentindexingerror)<br>[InvalidActionError](#invalidactionerror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Permission denied | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Document not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -6340,8 +6340,8 @@ Update document metadata
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 403 | Forbidden | **application/json**: [DatasetAccessDeniedError](#datasetaccessdeniederror)<br> |
-| 404 | Not Found | **application/json**: [NotFoundError](#notfounderror)<br> |
+| 403 | Forbidden | **application/json**: [DatasetAccessDeniedError](#datasetaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [NotFoundError](#notfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/documents/{document_id}/pipeline-execution-log
@@ -6357,8 +6357,8 @@ Update document metadata
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Pipeline execution log retrieved successfully | **application/json**: [DocumentPipelineExecutionLogResponse](#documentpipelineexecutionlogresponse)<br> |
-| 400 | Bad Request | **application/json**: <br> |
-| 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br> |
+| 400 | Bad Request | **application/json**: [DocumentIndexingError](#documentindexingerror)<br>[InvalidActionError](#invalidactionerror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /datasets/{dataset_id}/documents/{document_id}/processing/pause
@@ -6376,8 +6376,8 @@ Update document metadata
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 204 | Document paused successfully |  |
-| 400 | Bad Request | **application/json**: <br> |
-| 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br> |
+| 400 | Bad Request | **application/json**: [DocumentIndexingError](#documentindexingerror)<br>[InvalidActionError](#invalidactionerror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /datasets/{dataset_id}/documents/{document_id}/processing/resume
@@ -6395,8 +6395,8 @@ Update document metadata
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 204 | Document resumed successfully |  |
-| 400 | Bad Request | **application/json**: <br> |
-| 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br> |
+| 400 | Bad Request | **application/json**: [DocumentIndexingError](#documentindexingerror)<br>[InvalidActionError](#invalidactionerror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /datasets/{dataset_id}/documents/{document_id}/processing/{action}
@@ -6415,8 +6415,8 @@ Update document processing status (pause/resume)
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Processing status updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 400 | Invalid action | **application/json**: <br> |
-| 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br> |
+| 400 | Invalid action | **application/json**: [DocumentIndexingError](#documentindexingerror)<br>[InvalidActionError](#invalidactionerror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Document not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -6439,8 +6439,8 @@ Update document processing status (pause/resume)
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Document renamed successfully | **application/json**: [DocumentResponse](#documentresponse)<br> |
-| 400 | Bad Request | **application/json**: <br> |
-| 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br> |
+| 400 | Bad Request | **application/json**: [DocumentIndexingError](#documentindexingerror)<br>[InvalidActionError](#invalidactionerror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/documents/{document_id}/segment
@@ -6462,8 +6462,8 @@ Update document processing status (pause/resume)
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Segment created successfully | **application/json**: [SegmentDetailResponse](#segmentdetailresponse)<br> |
-| 400 | Bad Request | **application/json**: <br> |
-| 500 | Internal Server Error | **application/json**: <br> |
+| 400 | Bad Request | **application/json**: [InvalidActionError](#invalidactionerror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [ChildChunkDeleteIndexError](#childchunkdeleteindexerror)<br>[ChildChunkIndexingError](#childchunkindexingerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /datasets/{dataset_id}/documents/{document_id}/segment/{action}
@@ -6481,8 +6481,8 @@ Update document processing status (pause/resume)
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 400 | Bad Request | **application/json**: <br> |
-| 500 | Internal Server Error | **application/json**: <br> |
+| 400 | Bad Request | **application/json**: [InvalidActionError](#invalidactionerror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [ChildChunkDeleteIndexError](#childchunkdeleteindexerror)<br>[ChildChunkIndexingError](#childchunkindexingerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /datasets/{dataset_id}/documents/{document_id}/segments
@@ -6499,8 +6499,8 @@ Update document processing status (pause/resume)
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 204 | Segments deleted successfully |  |
-| 400 | Bad Request | **application/json**: <br> |
-| 500 | Internal Server Error | **application/json**: <br> |
+| 400 | Bad Request | **application/json**: [InvalidActionError](#invalidactionerror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [ChildChunkDeleteIndexError](#childchunkdeleteindexerror)<br>[ChildChunkIndexingError](#childchunkindexingerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/documents/{document_id}/segments
@@ -6522,8 +6522,8 @@ Update document processing status (pause/resume)
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Segments retrieved successfully | **application/json**: [ConsoleSegmentListResponse](#consolesegmentlistresponse)<br> |
-| 400 | Bad Request | **application/json**: <br> |
-| 500 | Internal Server Error | **application/json**: <br> |
+| 400 | Bad Request | **application/json**: [InvalidActionError](#invalidactionerror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [ChildChunkDeleteIndexError](#childchunkdeleteindexerror)<br>[ChildChunkIndexingError](#childchunkindexingerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/documents/{document_id}/segments/batch_import
@@ -6545,8 +6545,8 @@ Update document processing status (pause/resume)
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Batch import started | **application/json**: [SegmentBatchImportStatusResponse](#segmentbatchimportstatusresponse)<br> |
-| 400 | Bad Request | **application/json**: <br> |
-| 500 | Batch import failed | **application/json**: <br> |
+| 400 | Bad Request | **application/json**: [InvalidActionError](#invalidactionerror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Batch import failed | **application/json**: [ErrorMessageResponse](#errormessageresponse)<br>[ChildChunkDeleteIndexError](#childchunkdeleteindexerror)<br>[ChildChunkIndexingError](#childchunkindexingerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}
@@ -6563,8 +6563,8 @@ Update document processing status (pause/resume)
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 204 | Segment deleted successfully |  |
-| 400 | Bad Request | **application/json**: <br> |
-| 500 | Internal Server Error | **application/json**: <br> |
+| 400 | Bad Request | **application/json**: [InvalidActionError](#invalidactionerror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [ChildChunkDeleteIndexError](#childchunkdeleteindexerror)<br>[ChildChunkIndexingError](#childchunkindexingerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}
@@ -6587,8 +6587,8 @@ Update document processing status (pause/resume)
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Segment updated successfully | **application/json**: [SegmentDetailResponse](#segmentdetailresponse)<br> |
-| 400 | Bad Request | **application/json**: <br> |
-| 500 | Internal Server Error | **application/json**: <br> |
+| 400 | Bad Request | **application/json**: [InvalidActionError](#invalidactionerror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [ChildChunkDeleteIndexError](#childchunkdeleteindexerror)<br>[ChildChunkIndexingError](#childchunkindexingerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks
@@ -6608,8 +6608,8 @@ Update document processing status (pause/resume)
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Child chunks retrieved successfully | **application/json**: [ChildChunkListResponse](#childchunklistresponse)<br> |
-| 400 | Bad Request | **application/json**: <br> |
-| 500 | Internal Server Error | **application/json**: <br> |
+| 400 | Bad Request | **application/json**: [InvalidActionError](#invalidactionerror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [ChildChunkDeleteIndexError](#childchunkdeleteindexerror)<br>[ChildChunkIndexingError](#childchunkindexingerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks
@@ -6632,8 +6632,8 @@ Update document processing status (pause/resume)
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Child chunks updated successfully | **application/json**: [ChildChunkBatchUpdateResponse](#childchunkbatchupdateresponse)<br> |
-| 400 | Bad Request | **application/json**: <br> |
-| 500 | Internal Server Error | **application/json**: <br> |
+| 400 | Bad Request | **application/json**: [InvalidActionError](#invalidactionerror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [ChildChunkDeleteIndexError](#childchunkdeleteindexerror)<br>[ChildChunkIndexingError](#childchunkindexingerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks
@@ -6656,8 +6656,8 @@ Update document processing status (pause/resume)
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Child chunk created successfully | **application/json**: [ChildChunkDetailResponse](#childchunkdetailresponse)<br> |
-| 400 | Bad Request | **application/json**: <br> |
-| 500 | Internal Server Error | **application/json**: <br> |
+| 400 | Bad Request | **application/json**: [InvalidActionError](#invalidactionerror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [ChildChunkDeleteIndexError](#childchunkdeleteindexerror)<br>[ChildChunkIndexingError](#childchunkindexingerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks/{child_chunk_id}
@@ -6675,8 +6675,8 @@ Update document processing status (pause/resume)
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 204 | Child chunk deleted successfully |  |
-| 400 | Bad Request | **application/json**: <br> |
-| 500 | Internal Server Error | **application/json**: <br> |
+| 400 | Bad Request | **application/json**: [InvalidActionError](#invalidactionerror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [ChildChunkDeleteIndexError](#childchunkdeleteindexerror)<br>[ChildChunkIndexingError](#childchunkindexingerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks/{child_chunk_id}
@@ -6700,8 +6700,8 @@ Update document processing status (pause/resume)
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Child chunk updated successfully | **application/json**: [ChildChunkDetailResponse](#childchunkdetailresponse)<br> |
-| 400 | Bad Request | **application/json**: <br> |
-| 500 | Internal Server Error | **application/json**: <br> |
+| 400 | Bad Request | **application/json**: [InvalidActionError](#invalidactionerror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [ChildChunkDeleteIndexError](#childchunkdeleteindexerror)<br>[ChildChunkIndexingError](#childchunkindexingerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/documents/{document_id}/summary-status
@@ -6730,8 +6730,8 @@ Returns:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Summary status retrieved successfully | **application/json**: [DocumentSummaryStatusResponse](#documentsummarystatusresponse)<br> |
-| 400 | Bad Request | **application/json**: <br> |
-| 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br> |
+| 400 | Bad Request | **application/json**: [DocumentIndexingError](#documentindexingerror)<br>[InvalidActionError](#invalidactionerror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Document not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -6750,8 +6750,8 @@ Returns:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 400 | Bad Request | **application/json**: <br> |
-| 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br> |
+| 400 | Bad Request | **application/json**: [DocumentIndexingError](#documentindexingerror)<br>[InvalidActionError](#invalidactionerror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/error-docs
@@ -6769,7 +6769,7 @@ Get dataset error documents
 | ---- | ----------- | ------ |
 | 200 | Error documents retrieved successfully | **application/json**: [ErrorDocsResponse](#errordocsresponse)<br> |
 | 404 | Dataset not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 409 | Conflict | **application/json**: <br> |
+| 409 | Conflict | **application/json**: [DatasetInUseError](#datasetinuseerror)<br>[DatasetNameDuplicateError](#datasetnameduplicateerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/external-hit-testing
@@ -6794,7 +6794,7 @@ Test external knowledge retrieval for dataset
 | 200 | External hit testing completed successfully | **application/json**: [ExternalHitTestingResponse](#externalhittestingresponse)<br> |
 | 400 | Invalid parameters | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Dataset not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 409 | Conflict | **application/json**: [DatasetNameDuplicateError](#datasetnameduplicateerror)<br> |
+| 409 | Conflict | **application/json**: [DatasetNameDuplicateError](#datasetnameduplicateerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/hit-testing
@@ -6817,7 +6817,7 @@ Test dataset knowledge retrieval
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Hit testing completed successfully | **application/json**: [HitTestingResponse](#hittestingresponse)<br> |
-| 400 | Invalid parameters | **application/json**: <br> |
+| 400 | Invalid parameters | **application/json**: [CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Dataset not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -6835,7 +6835,7 @@ Get dataset indexing status
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Indexing status retrieved successfully | **application/json**: [DocumentStatusListResponse](#documentstatuslistresponse)<br> |
-| 409 | Conflict | **application/json**: <br> |
+| 409 | Conflict | **application/json**: [DatasetInUseError](#datasetinuseerror)<br>[DatasetNameDuplicateError](#datasetnameduplicateerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/metadata
@@ -6935,8 +6935,8 @@ Get dataset indexing status
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 403 | Forbidden | **application/json**: [DatasetAccessDeniedError](#datasetaccessdeniederror)<br> |
-| 404 | Not Found | **application/json**: [NotFoundError](#notfounderror)<br> |
+| 403 | Forbidden | **application/json**: [DatasetAccessDeniedError](#datasetaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [NotFoundError](#notfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/permission-part-users
@@ -6955,7 +6955,7 @@ Get dataset permission user list
 | 200 | Permission users retrieved successfully | **application/json**: [PartialMemberListResponse](#partialmemberlistresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Dataset not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 409 | Conflict | **application/json**: <br> |
+| 409 | Conflict | **application/json**: [DatasetInUseError](#datasetinuseerror)<br>[DatasetNameDuplicateError](#datasetnameduplicateerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/queries
@@ -6972,7 +6972,7 @@ Get dataset query history
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Query history retrieved successfully | **application/json**: [DatasetQueryListResponse](#datasetquerylistresponse)<br> |
-| 409 | Conflict | **application/json**: <br> |
+| 409 | Conflict | **application/json**: [DatasetInUseError](#datasetinuseerror)<br>[DatasetNameDuplicateError](#datasetnameduplicateerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/related-apps
@@ -6989,7 +6989,7 @@ Get applications related to dataset
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Related apps retrieved successfully | **application/json**: [RelatedAppListResponse](#relatedapplistresponse)<br> |
-| 409 | Conflict | **application/json**: <br> |
+| 409 | Conflict | **application/json**: [DatasetInUseError](#datasetinuseerror)<br>[DatasetNameDuplicateError](#datasetnameduplicateerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/retry
@@ -7012,8 +7012,8 @@ Get applications related to dataset
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 204 | Documents retry started successfully |  |
-| 400 | Bad Request | **application/json**: <br> |
-| 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br> |
+| 400 | Bad Request | **application/json**: [DocumentIndexingError](#documentindexingerror)<br>[InvalidActionError](#invalidactionerror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/use-check
@@ -7030,7 +7030,7 @@ Check if dataset is in use
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Dataset use status retrieved successfully | **application/json**: [UsageCheckResponse](#usagecheckresponse)<br> |
-| 409 | Conflict | **application/json**: <br> |
+| 409 | Conflict | **application/json**: [DatasetInUseError](#datasetinuseerror)<br>[DatasetNameDuplicateError](#datasetnameduplicateerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{resource_id}/api-keys
@@ -7047,8 +7047,8 @@ Get all API keys for a dataset
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | API keys retrieved successfully | **application/json**: [ApiKeyList](#apikeylist)<br> |
-| 400 | Bad Request | **application/json**: [MaxKeysExceededError](#maxkeysexceedederror)<br> |
-| 409 | Conflict | **application/json**: [AgentNotPublishedError](#agentnotpublishederror)<br> |
+| 400 | Bad Request | **application/json**: [MaxKeysExceededError](#maxkeysexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [AgentNotPublishedError](#agentnotpublishederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{resource_id}/api-keys
@@ -7065,8 +7065,8 @@ Create a new API key for a dataset
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | API key created successfully | **application/json**: [ApiKeyItem](#apikeyitem)<br> |
-| 400 | Maximum keys exceeded | **application/json**: [MaxKeysExceededError](#maxkeysexceedederror)<br> |
-| 409 | Conflict | **application/json**: [AgentNotPublishedError](#agentnotpublishederror)<br> |
+| 400 | Maximum keys exceeded | **application/json**: [MaxKeysExceededError](#maxkeysexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [AgentNotPublishedError](#agentnotpublishederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /datasets/{resource_id}/api-keys/{api_key_id}
@@ -7084,8 +7084,8 @@ Delete an API key for a dataset
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 204 | API key deleted successfully |  |
-| 400 | Bad Request | **application/json**: [MaxKeysExceededError](#maxkeysexceedederror)<br> |
-| 409 | Conflict | **application/json**: [AgentNotPublishedError](#agentnotpublishederror)<br> |
+| 400 | Bad Request | **application/json**: [MaxKeysExceededError](#maxkeysexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [AgentNotPublishedError](#agentnotpublishederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /email-code-login
@@ -7100,10 +7100,10 @@ Delete an API key for a dataset
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultDataResponse](#simpleresultdataresponse)<br> |
-| 400 | Bad Request | **application/json**: <br> |
-| 401 | Unauthorized | **application/json**: [AuthenticationFailedError](#authenticationfailederror)<br> |
-| 429 | Too Many Requests | **application/json**: <br> |
-| 503 | Service Unavailable | **application/json**: <br> |
+| 400 | Bad Request | **application/json**: [AccountBannedError](#accountbannederror)<br>[AccountInFreezeError](#accountinfreezeerror)<br>[AccountNotFoundError](#accountnotfounderror)<br>[EmailCodeError](#emailcodeerror)<br>[EmailDomainSuspendedError](#emaildomainsuspendederror)<br>[InvalidAccountPasswordError](#invalidaccountpassworderror)<br>[InvalidEmailError](#invalidemailerror)<br>[InvalidOrExpiredTokenError](#invalidorexpiredtokenerror)<br>[LimitExceededError](#limitexceedederror)<br>[NormalizedEmailAlreadyInUseError](#normalizedemailalreadyinuseerror)<br>[NotAllowedCreateWorkspaceError](#notallowedcreateworkspaceerror)<br>[TurnstileVerificationFailedError](#turnstileverificationfailederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [AuthenticationFailedError](#authenticationfailederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [EmailCodeLoginLimitError](#emailcodeloginlimiterror)<br>[EmailCodeLoginRateLimitExceededError](#emailcodeloginratelimitexceedederror)<br>[EmailSendIpLimitError](#emailsendiplimiterror)<br>[PasswordResetRateLimitExceededError](#passwordresetratelimitexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [EmailCodeLoginServiceUnavailableError](#emailcodeloginserviceunavailableerror)<br>[TurnstileServiceUnavailableError](#turnstileserviceunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /email-code-login/validity
@@ -7118,10 +7118,10 @@ Delete an API key for a dataset
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 400 | Bad Request | **application/json**: <br> |
-| 401 | Unauthorized | **application/json**: [AuthenticationFailedError](#authenticationfailederror)<br> |
-| 429 | Too Many Requests | **application/json**: <br> |
-| 503 | Service Unavailable | **application/json**: <br> |
+| 400 | Bad Request | **application/json**: [AccountBannedError](#accountbannederror)<br>[AccountInFreezeError](#accountinfreezeerror)<br>[AccountNotFoundError](#accountnotfounderror)<br>[EmailCodeError](#emailcodeerror)<br>[EmailDomainSuspendedError](#emaildomainsuspendederror)<br>[InvalidAccountPasswordError](#invalidaccountpassworderror)<br>[InvalidEmailError](#invalidemailerror)<br>[InvalidOrExpiredTokenError](#invalidorexpiredtokenerror)<br>[LimitExceededError](#limitexceedederror)<br>[NormalizedEmailAlreadyInUseError](#normalizedemailalreadyinuseerror)<br>[NotAllowedCreateWorkspaceError](#notallowedcreateworkspaceerror)<br>[TurnstileVerificationFailedError](#turnstileverificationfailederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [AuthenticationFailedError](#authenticationfailederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [EmailCodeLoginLimitError](#emailcodeloginlimiterror)<br>[EmailCodeLoginRateLimitExceededError](#emailcodeloginratelimitexceedederror)<br>[EmailSendIpLimitError](#emailsendiplimiterror)<br>[PasswordResetRateLimitExceededError](#passwordresetratelimitexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [EmailCodeLoginServiceUnavailableError](#emailcodeloginserviceunavailableerror)<br>[TurnstileServiceUnavailableError](#turnstileserviceunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /email-register
@@ -7136,7 +7136,7 @@ Delete an API key for a dataset
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [EmailRegisterResetResponse](#emailregisterresetresponse)<br> |
-| 400 | Bad Request | **application/json**: <br> |
+| 400 | Bad Request | **application/json**: [AccountInFreezeError](#accountinfreezeerror)<br>[EmailAlreadyInUseError](#emailalreadyinuseerror)<br>[EmailDomainSuspendedError](#emaildomainsuspendederror)<br>[InvalidOrExpiredTokenError](#invalidorexpiredtokenerror)<br>[LimitExceededError](#limitexceedederror)<br>[NormalizedEmailAlreadyInUseError](#normalizedemailalreadyinuseerror)<br>[PasswordMismatchError](#passwordmismatcherror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /email-register/send-email
@@ -7151,8 +7151,8 @@ Delete an API key for a dataset
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultDataResponse](#simpleresultdataresponse)<br> |
-| 400 | Bad Request | **application/json**: <br> |
-| 429 | Too Many Requests | **application/json**: <br> |
+| 400 | Bad Request | **application/json**: [AccountInFreezeError](#accountinfreezeerror)<br>[EmailDomainSuspendedError](#emaildomainsuspendederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [EmailRegisterRateLimitExceededError](#emailregisterratelimitexceedederror)<br>[EmailSendIpLimitError](#emailsendiplimiterror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /email-register/validity
@@ -7167,8 +7167,8 @@ Delete an API key for a dataset
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [VerificationTokenResponse](#verificationtokenresponse)<br> |
-| 400 | Bad Request | **application/json**: <br> |
-| 429 | Too Many Requests | **application/json**: [EmailRegisterLimitError](#emailregisterlimiterror)<br> |
+| 400 | Bad Request | **application/json**: [EmailCodeError](#emailcodeerror)<br>[InvalidEmailError](#invalidemailerror)<br>[InvalidOrExpiredTokenError](#invalidorexpiredtokenerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [EmailRegisterLimitError](#emailregisterlimiterror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /explore/apps
@@ -7211,7 +7211,7 @@ Delete an API key for a dataset
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [RecommendedAppDetailResponse](#recommendedappdetailresponse)<br> |
-| 404 | Recommended app not found | **application/json**: [RecommendedAppNotFoundError](#recommendedappnotfounderror)<br> |
+| 404 | Recommended app not found | **application/json**: [RecommendedAppNotFoundError](#recommendedappnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /features
@@ -7264,9 +7264,9 @@ Get feature availability and limits for the current workspace
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | File uploaded successfully | **application/json**: [FileResponse](#fileresponse)<br> |
-| 400 | Bad Request | **application/json**: <br> |
-| 413 | Request Entity Too Large | **application/json**: [FileTooLargeError](#filetoolargeerror)<br> |
-| 415 | Unsupported Media Type | **application/json**: [UnsupportedFileTypeError](#unsupportedfiletypeerror)<br> |
+| 400 | Bad Request | **application/json**: [FileExtensionBlockedError](#fileextensionblockederror)<br>[FilenameNotExistsError](#filenamenotexistserror)<br>[NoFileUploadedError](#nofileuploadederror)<br>[TooManyFilesError](#toomanyfileserror)<br>[ErrorResponse](#errorresponse)<br> |
+| 413 | Request Entity Too Large | **application/json**: [FileTooLargeError](#filetoolargeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 415 | Unsupported Media Type | **application/json**: [UnsupportedFileTypeError](#unsupportedfiletypeerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /files/{file_id}/preview
@@ -7298,7 +7298,7 @@ Send password reset email
 | ---- | ----------- | ------ |
 | 200 | Email sent successfully | **application/json**: [ForgotPasswordEmailResponse](#forgotpasswordemailresponse)<br> |
 | 400 | Invalid email or rate limit exceeded | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 429 | Too Many Requests | **application/json**: <br> |
+| 429 | Too Many Requests | **application/json**: [EmailSendIpLimitError](#emailsendiplimiterror)<br>[PasswordResetRateLimitExceededError](#passwordresetratelimitexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /forgot-password/resets
@@ -7315,7 +7315,7 @@ Reset password with verification token
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Password reset successfully | **application/json**: [ForgotPasswordResetResponse](#forgotpasswordresetresponse)<br> |
-| 400 | Invalid token or password mismatch | **application/json**: <br> |
+| 400 | Invalid token or password mismatch | **application/json**: [AccountNotFoundError](#accountnotfounderror)<br>[InvalidOrExpiredTokenError](#invalidorexpiredtokenerror)<br>[PasswordMismatchError](#passwordmismatcherror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /forgot-password/validity
@@ -7332,8 +7332,8 @@ Verify password reset code
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Code verified successfully | **application/json**: [ForgotPasswordCheckResponse](#forgotpasswordcheckresponse)<br> |
-| 400 | Invalid code or token | **application/json**: <br> |
-| 429 | Too Many Requests | **application/json**: [EmailPasswordResetLimitError](#emailpasswordresetlimiterror)<br> |
+| 400 | Invalid code or token | **application/json**: [EmailCodeError](#emailcodeerror)<br>[InvalidEmailError](#invalidemailerror)<br>[InvalidOrExpiredTokenError](#invalidorexpiredtokenerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [EmailPasswordResetLimitError](#emailpasswordresetlimiterror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /form/human_input/{form_token}
@@ -7352,8 +7352,8 @@ GET /console/api/form/human_input/<form_token>
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ConsoleHumanInputFormDefinitionResponse](#consolehumaninputformdefinitionresponse)<br> |
-| 404 | Not Found | **application/json**: [NotFoundError](#notfounderror)<br> |
-| 412 | Precondition Failed | **application/json**: [HumanInputFormSubmittedError](#humaninputformsubmittederror)<br> |
+| 404 | Not Found | **application/json**: [NotFoundError](#notfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 412 | Precondition Failed | **application/json**: [HumanInputFormSubmittedError](#humaninputformsubmittederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /form/human_input/{form_token}
@@ -7386,9 +7386,9 @@ Request body:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ConsoleHumanInputFormSubmitResponse](#consolehumaninputformsubmitresponse)<br> |
-| 400 | Bad Request | **application/json**: [InvalidFormDataError](#invalidformdataerror)<br> |
-| 404 | Not Found | **application/json**: [NotFoundError](#notfounderror)<br> |
-| 412 | Precondition Failed | **application/json**: <br> |
+| 400 | Bad Request | **application/json**: [InvalidFormDataError](#invalidformdataerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [NotFoundError](#notfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 412 | Precondition Failed | **application/json**: [HumanInputFormExpiredError](#humaninputformexpirederror)<br>[HumanInputFormSubmittedError](#humaninputformsubmittederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /installed-apps
@@ -7406,8 +7406,8 @@ Request body:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [InstalledAppListResponse](#installedapplistresponse)<br> |
-| 400 | Bad Request | **application/json**: [InvalidCursorError](#invalidcursorerror)<br> |
-| 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br> |
+| 400 | Bad Request | **application/json**: [InvalidCursorError](#invalidcursorerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /installed-apps/{installed_app_id}
@@ -7422,9 +7422,9 @@ Request body:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [InstalledAppResponse](#installedappresponse)<br> |
-| 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br> |
-| 404 | Not Found | **application/json**: <br> |
-| 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br> |
+| 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [InstalledAppNotFoundError](#installedappnotfounderror)<br>[InstalledAppUnavailableError](#installedappunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /installed-apps/{installed_app_id}
@@ -7445,9 +7445,9 @@ Request body:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultMessageResponse](#simpleresultmessageresponse)<br> |
-| 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br> |
-| 404 | Not Found | **application/json**: [InstalledAppNotFoundError](#installedappnotfounderror)<br> |
-| 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br> |
+| 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [InstalledAppNotFoundError](#installedappnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /installed-apps/{installed_app_id}/audio-to-text
@@ -7462,13 +7462,13 @@ Request body:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AudioTranscriptResponse](#audiotranscriptresponse)<br> |
-| 400 | Bad Request | **application/json**: <br> |
-| 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br> |
-| 404 | Not Found | **application/json**: <br> |
-| 413 | Request Entity Too Large | **application/json**: [AudioTooLargeError](#audiotoolargeerror)<br> |
-| 415 | Unsupported Media Type | **application/json**: [UnsupportedAudioTypeError](#unsupportedaudiotypeerror)<br> |
-| 500 | Internal Server Error | **application/json**: [InternalServerError](#internalservererror)<br> |
-| 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br> |
+| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NoAudioUploadedError](#noaudiouploadederror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderNotSupportSpeechToTextError](#providernotsupportspeechtotexterror)<br>[ProviderNotSupportTextToSpeechError](#providernotsupporttexttospeecherror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[SpeechToTextDisabledError](#speechtotextdisablederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AgentVersionNotFoundError](#agentversionnotfounderror)<br>[InstalledAppNotFoundError](#installedappnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 413 | Request Entity Too Large | **application/json**: [AudioTooLargeError](#audiotoolargeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 415 | Unsupported Media Type | **application/json**: [UnsupportedAudioTypeError](#unsupportedaudiotypeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [InternalServerError](#internalservererror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /installed-apps/{installed_app_id}/chat-messages
@@ -7489,13 +7489,13 @@ Request body:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success |  |
-| 400 | Bad Request | **application/json**: <br> |
-| 401 | Unauthorized | **application/json**: [UnauthorizedError](#unauthorizederror)<br> |
-| 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br> |
-| 404 | Not Found | **application/json**: <br> |
-| 429 | Too Many Requests | **application/json**: [RateLimitError](#ratelimiterror)<br> |
-| 500 | Internal Server Error | **application/json**: [InternalServerError](#internalservererror)<br> |
-| 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br> |
+| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NotChatAppError](#notchatapperror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [UnauthorizedError](#unauthorizederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [InstalledAppNotFoundError](#installedappnotfounderror)<br>[NotFoundError](#notfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [RateLimitError](#ratelimiterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [InternalServerError](#internalservererror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /installed-apps/{installed_app_id}/chat-messages/{task_id}/stop
@@ -7511,10 +7511,10 @@ Request body:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 400 | Bad Request | **application/json**: [NotChatAppError](#notchatapperror)<br> |
-| 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br> |
-| 404 | Not Found | **application/json**: [InstalledAppNotFoundError](#installedappnotfounderror)<br> |
-| 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br> |
+| 400 | Bad Request | **application/json**: [NotChatAppError](#notchatapperror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [InstalledAppNotFoundError](#installedappnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /installed-apps/{installed_app_id}/completion-messages
@@ -7535,12 +7535,12 @@ Request body:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success |  |
-| 400 | Bad Request | **application/json**: <br> |
-| 401 | Unauthorized | **application/json**: [UnauthorizedError](#unauthorizederror)<br> |
-| 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br> |
-| 404 | Not Found | **application/json**: <br> |
-| 500 | Internal Server Error | **application/json**: [InternalServerError](#internalservererror)<br> |
-| 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br> |
+| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NotCompletionAppError](#notcompletionapperror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [UnauthorizedError](#unauthorizederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [InstalledAppNotFoundError](#installedappnotfounderror)<br>[NotFoundError](#notfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [InternalServerError](#internalservererror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /installed-apps/{installed_app_id}/completion-messages/{task_id}/stop
@@ -7556,10 +7556,10 @@ Request body:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 400 | Bad Request | **application/json**: [NotCompletionAppError](#notcompletionapperror)<br> |
-| 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br> |
-| 404 | Not Found | **application/json**: [InstalledAppNotFoundError](#installedappnotfounderror)<br> |
-| 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br> |
+| 400 | Bad Request | **application/json**: [NotCompletionAppError](#notcompletionapperror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [InstalledAppNotFoundError](#installedappnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /installed-apps/{installed_app_id}/conversations
@@ -7577,10 +7577,10 @@ Request body:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ConversationInfiniteScrollPagination](#conversationinfinitescrollpagination)<br> |
-| 400 | Bad Request | **application/json**: <br> |
-| 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br> |
-| 404 | Not Found | **application/json**: <br> |
-| 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br> |
+| 400 | Bad Request | **application/json**: [ConversationNameRequiredError](#conversationnamerequirederror)<br>[NotChatAppError](#notchatapperror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [ConversationCursorNotFoundError](#conversationcursornotfounderror)<br>[ConversationFirstMessageNotFoundError](#conversationfirstmessagenotfounderror)<br>[ConversationNotFoundError](#conversationnotfounderror)<br>[InstalledAppNotFoundError](#installedappnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /installed-apps/{installed_app_id}/conversations/{c_id}
@@ -7596,10 +7596,10 @@ Request body:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 204 | Conversation deleted successfully |  |
-| 400 | Bad Request | **application/json**: <br> |
-| 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br> |
-| 404 | Not Found | **application/json**: <br> |
-| 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br> |
+| 400 | Bad Request | **application/json**: [ConversationNameRequiredError](#conversationnamerequirederror)<br>[NotChatAppError](#notchatapperror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [ConversationCursorNotFoundError](#conversationcursornotfounderror)<br>[ConversationFirstMessageNotFoundError](#conversationfirstmessagenotfounderror)<br>[ConversationNotFoundError](#conversationnotfounderror)<br>[InstalledAppNotFoundError](#installedappnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /installed-apps/{installed_app_id}/conversations/{c_id}/name
@@ -7621,10 +7621,10 @@ Request body:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Conversation renamed successfully | **application/json**: [SimpleConversation](#simpleconversation)<br> |
-| 400 | Bad Request | **application/json**: <br> |
-| 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br> |
-| 404 | Not Found | **application/json**: <br> |
-| 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br> |
+| 400 | Bad Request | **application/json**: [ConversationNameRequiredError](#conversationnamerequirederror)<br>[NotChatAppError](#notchatapperror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [ConversationCursorNotFoundError](#conversationcursornotfounderror)<br>[ConversationFirstMessageNotFoundError](#conversationfirstmessagenotfounderror)<br>[ConversationNotFoundError](#conversationnotfounderror)<br>[InstalledAppNotFoundError](#installedappnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /installed-apps/{installed_app_id}/conversations/{c_id}/pin
@@ -7640,10 +7640,10 @@ Request body:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ResultResponse](#resultresponse)<br> |
-| 400 | Bad Request | **application/json**: <br> |
-| 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br> |
-| 404 | Not Found | **application/json**: <br> |
-| 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br> |
+| 400 | Bad Request | **application/json**: [ConversationNameRequiredError](#conversationnamerequirederror)<br>[NotChatAppError](#notchatapperror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [ConversationCursorNotFoundError](#conversationcursornotfounderror)<br>[ConversationFirstMessageNotFoundError](#conversationfirstmessagenotfounderror)<br>[ConversationNotFoundError](#conversationnotfounderror)<br>[InstalledAppNotFoundError](#installedappnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /installed-apps/{installed_app_id}/conversations/{c_id}/unpin
@@ -7659,10 +7659,10 @@ Request body:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ResultResponse](#resultresponse)<br> |
-| 400 | Bad Request | **application/json**: <br> |
-| 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br> |
-| 404 | Not Found | **application/json**: <br> |
-| 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br> |
+| 400 | Bad Request | **application/json**: [ConversationNameRequiredError](#conversationnamerequirederror)<br>[NotChatAppError](#notchatapperror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [ConversationCursorNotFoundError](#conversationcursornotfounderror)<br>[ConversationFirstMessageNotFoundError](#conversationfirstmessagenotfounderror)<br>[ConversationNotFoundError](#conversationnotfounderror)<br>[InstalledAppNotFoundError](#installedappnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /installed-apps/{installed_app_id}/messages
@@ -7680,12 +7680,12 @@ Request body:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ExploreMessageInfiniteScrollPagination](#exploremessageinfinitescrollpagination)<br> |
-| 400 | Bad Request | **application/json**: <br> |
-| 401 | Unauthorized | **application/json**: [UnauthorizedError](#unauthorizederror)<br> |
-| 403 | Forbidden | **application/json**: <br> |
-| 404 | Not Found | **application/json**: <br> |
-| 500 | Internal Server Error | **application/json**: [InternalServerError](#internalservererror)<br> |
-| 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br> |
+| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[MessageFeedbackRatingRequiredError](#messagefeedbackratingrequirederror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NotChatAppError](#notchatapperror)<br>[NotCompletionAppError](#notcompletionapperror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [UnauthorizedError](#unauthorizederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br>[AppMoreLikeThisDisabledError](#appmorelikethisdisablederror)<br>[AppSuggestedQuestionsAfterAnswerDisabledError](#appsuggestedquestionsafteranswerdisablederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [ConversationNotFoundError](#conversationnotfounderror)<br>[InstalledAppNotFoundError](#installedappnotfounderror)<br>[MessageCursorNotFoundError](#messagecursornotfounderror)<br>[MessageNotFoundError](#messagenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [InternalServerError](#internalservererror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /installed-apps/{installed_app_id}/messages/{message_id}/feedbacks
@@ -7707,12 +7707,12 @@ Request body:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Feedback submitted successfully | **application/json**: [ResultResponse](#resultresponse)<br> |
-| 400 | Bad Request | **application/json**: <br> |
-| 401 | Unauthorized | **application/json**: [UnauthorizedError](#unauthorizederror)<br> |
-| 403 | Forbidden | **application/json**: <br> |
-| 404 | Not Found | **application/json**: <br> |
-| 500 | Internal Server Error | **application/json**: [InternalServerError](#internalservererror)<br> |
-| 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br> |
+| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[MessageFeedbackRatingRequiredError](#messagefeedbackratingrequirederror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NotChatAppError](#notchatapperror)<br>[NotCompletionAppError](#notcompletionapperror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [UnauthorizedError](#unauthorizederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br>[AppMoreLikeThisDisabledError](#appmorelikethisdisablederror)<br>[AppSuggestedQuestionsAfterAnswerDisabledError](#appsuggestedquestionsafteranswerdisablederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [ConversationNotFoundError](#conversationnotfounderror)<br>[InstalledAppNotFoundError](#installedappnotfounderror)<br>[MessageCursorNotFoundError](#messagecursornotfounderror)<br>[MessageNotFoundError](#messagenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [InternalServerError](#internalservererror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /installed-apps/{installed_app_id}/messages/{message_id}/more-like-this
@@ -7729,12 +7729,12 @@ Request body:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success |  |
-| 400 | Bad Request | **application/json**: <br> |
-| 401 | Unauthorized | **application/json**: [UnauthorizedError](#unauthorizederror)<br> |
-| 403 | Forbidden | **application/json**: <br> |
-| 404 | Not Found | **application/json**: <br> |
-| 500 | Internal Server Error | **application/json**: [InternalServerError](#internalservererror)<br> |
-| 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br> |
+| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[MessageFeedbackRatingRequiredError](#messagefeedbackratingrequirederror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NotChatAppError](#notchatapperror)<br>[NotCompletionAppError](#notcompletionapperror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [UnauthorizedError](#unauthorizederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br>[AppMoreLikeThisDisabledError](#appmorelikethisdisablederror)<br>[AppSuggestedQuestionsAfterAnswerDisabledError](#appsuggestedquestionsafteranswerdisablederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [ConversationNotFoundError](#conversationnotfounderror)<br>[InstalledAppNotFoundError](#installedappnotfounderror)<br>[MessageCursorNotFoundError](#messagecursornotfounderror)<br>[MessageNotFoundError](#messagenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [InternalServerError](#internalservererror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /installed-apps/{installed_app_id}/messages/{message_id}/suggested-questions
@@ -7750,12 +7750,12 @@ Request body:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SuggestedQuestionsResponse](#suggestedquestionsresponse)<br> |
-| 400 | Bad Request | **application/json**: <br> |
-| 401 | Unauthorized | **application/json**: [UnauthorizedError](#unauthorizederror)<br> |
-| 403 | Forbidden | **application/json**: <br> |
-| 404 | Not Found | **application/json**: <br> |
-| 500 | Internal Server Error | **application/json**: [InternalServerError](#internalservererror)<br> |
-| 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br> |
+| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[MessageFeedbackRatingRequiredError](#messagefeedbackratingrequirederror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NotChatAppError](#notchatapperror)<br>[NotCompletionAppError](#notcompletionapperror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [UnauthorizedError](#unauthorizederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br>[AppMoreLikeThisDisabledError](#appmorelikethisdisablederror)<br>[AppSuggestedQuestionsAfterAnswerDisabledError](#appsuggestedquestionsafteranswerdisablederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [ConversationNotFoundError](#conversationnotfounderror)<br>[InstalledAppNotFoundError](#installedappnotfounderror)<br>[MessageCursorNotFoundError](#messagecursornotfounderror)<br>[MessageNotFoundError](#messagenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [InternalServerError](#internalservererror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /installed-apps/{installed_app_id}/meta
@@ -7772,10 +7772,10 @@ Request body:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ExploreAppMetaResponse](#exploreappmetaresponse)<br> |
-| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br> |
-| 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br> |
-| 404 | Not Found | **application/json**: [InstalledAppNotFoundError](#installedappnotfounderror)<br> |
-| 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br> |
+| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [InstalledAppNotFoundError](#installedappnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /installed-apps/{installed_app_id}/parameters
@@ -7792,10 +7792,10 @@ Request body:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [Parameters](#parameters)<br> |
-| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br> |
-| 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br> |
-| 404 | Not Found | **application/json**: [InstalledAppNotFoundError](#installedappnotfounderror)<br> |
-| 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br> |
+| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [InstalledAppNotFoundError](#installedappnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /installed-apps/{installed_app_id}/saved-messages
@@ -7812,10 +7812,10 @@ Request body:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SavedMessageInfiniteScrollPagination](#savedmessageinfinitescrollpagination)<br> |
-| 400 | Bad Request | **application/json**: [NotCompletionAppError](#notcompletionapperror)<br> |
-| 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br> |
-| 404 | Not Found | **application/json**: [InstalledAppNotFoundError](#installedappnotfounderror)<br> |
-| 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br> |
+| 400 | Bad Request | **application/json**: [NotCompletionAppError](#notcompletionapperror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [InstalledAppNotFoundError](#installedappnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /installed-apps/{installed_app_id}/saved-messages
@@ -7836,10 +7836,10 @@ Request body:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ResultResponse](#resultresponse)<br> |
-| 400 | Bad Request | **application/json**: [NotCompletionAppError](#notcompletionapperror)<br> |
-| 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br> |
-| 404 | Not Found | **application/json**: <br> |
-| 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br> |
+| 400 | Bad Request | **application/json**: [NotCompletionAppError](#notcompletionapperror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [InstalledAppNotFoundError](#installedappnotfounderror)<br>[NotFoundError](#notfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /installed-apps/{installed_app_id}/saved-messages/{message_id}
@@ -7855,10 +7855,10 @@ Request body:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 204 | Saved message deleted successfully |  |
-| 400 | Bad Request | **application/json**: [NotCompletionAppError](#notcompletionapperror)<br> |
-| 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br> |
-| 404 | Not Found | **application/json**: [InstalledAppNotFoundError](#installedappnotfounderror)<br> |
-| 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br> |
+| 400 | Bad Request | **application/json**: [NotCompletionAppError](#notcompletionapperror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [InstalledAppNotFoundError](#installedappnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /installed-apps/{installed_app_id}/text-to-audio
@@ -7879,13 +7879,13 @@ Request body:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AudioBinaryResponse](#audiobinaryresponse)<br> |
-| 400 | Bad Request | **application/json**: <br> |
-| 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br> |
-| 404 | Not Found | **application/json**: <br> |
-| 413 | Request Entity Too Large | **application/json**: [AudioTooLargeError](#audiotoolargeerror)<br> |
-| 415 | Unsupported Media Type | **application/json**: [UnsupportedAudioTypeError](#unsupportedaudiotypeerror)<br> |
-| 500 | Internal Server Error | **application/json**: [InternalServerError](#internalservererror)<br> |
-| 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br> |
+| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NoAudioUploadedError](#noaudiouploadederror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderNotSupportSpeechToTextError](#providernotsupportspeechtotexterror)<br>[ProviderNotSupportTextToSpeechError](#providernotsupporttexttospeecherror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[SpeechToTextDisabledError](#speechtotextdisablederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AgentVersionNotFoundError](#agentversionnotfounderror)<br>[InstalledAppNotFoundError](#installedappnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 413 | Request Entity Too Large | **application/json**: [AudioTooLargeError](#audiotoolargeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 415 | Unsupported Media Type | **application/json**: [UnsupportedAudioTypeError](#unsupportedaudiotypeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [InternalServerError](#internalservererror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /installed-apps/{installed_app_id}/workflows/run
@@ -7908,13 +7908,13 @@ Request body:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success |  |
-| 400 | Bad Request | **application/json**: <br> |
-| 401 | Unauthorized | **application/json**: [UnauthorizedError](#unauthorizederror)<br> |
-| 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br> |
-| 404 | Not Found | **application/json**: [InstalledAppNotFoundError](#installedappnotfounderror)<br> |
-| 429 | Too Many Requests | **application/json**: [RateLimitError](#ratelimiterror)<br> |
-| 500 | Internal Server Error | **application/json**: [InternalServerError](#internalservererror)<br> |
-| 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br> |
+| 400 | Bad Request | **application/json**: [CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NotWorkflowAppError](#notworkflowapperror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [UnauthorizedError](#unauthorizederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [InstalledAppNotFoundError](#installedappnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [RateLimitError](#ratelimiterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [InternalServerError](#internalservererror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /installed-apps/{installed_app_id}/workflows/tasks/{task_id}/stop
@@ -7932,10 +7932,10 @@ Request body:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 400 | Bad Request | **application/json**: [NotWorkflowAppError](#notworkflowapperror)<br> |
-| 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br> |
-| 404 | Not Found | **application/json**: [InstalledAppNotFoundError](#installedappnotfounderror)<br> |
-| 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br> |
+| 400 | Bad Request | **application/json**: [NotWorkflowAppError](#notworkflowapperror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [InstalledAppNotFoundError](#installedappnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /instruction-generate
@@ -7952,7 +7952,7 @@ Generate instruction for workflow nodes or general use
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Instruction generated successfully | **application/json**: [GeneratorResponse](#generatorresponse)<br> |
-| 400 | Invalid request parameters or flow/workflow not found | **application/json**: <br> |
+| 400 | Invalid request parameters or flow/workflow not found | **application/json**: [ErrorMessageResponse](#errormessageresponse)<br>[CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /instruction-generate/template
@@ -7986,10 +7986,10 @@ Get instruction generation template
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultOptionalDataResponse](#simpleresultoptionaldataresponse)<br> |
-| 400 | Bad Request | **application/json**: <br> |
-| 401 | Unauthorized | **application/json**: [AuthenticationFailedError](#authenticationfailederror)<br> |
-| 429 | Too Many Requests | **application/json**: <br> |
-| 503 | Service Unavailable | **application/json**: <br> |
+| 400 | Bad Request | **application/json**: [AccountBannedError](#accountbannederror)<br>[AccountInFreezeError](#accountinfreezeerror)<br>[AccountNotFoundError](#accountnotfounderror)<br>[EmailCodeError](#emailcodeerror)<br>[EmailDomainSuspendedError](#emaildomainsuspendederror)<br>[InvalidAccountPasswordError](#invalidaccountpassworderror)<br>[InvalidEmailError](#invalidemailerror)<br>[InvalidOrExpiredTokenError](#invalidorexpiredtokenerror)<br>[LimitExceededError](#limitexceedederror)<br>[NormalizedEmailAlreadyInUseError](#normalizedemailalreadyinuseerror)<br>[NotAllowedCreateWorkspaceError](#notallowedcreateworkspaceerror)<br>[TurnstileVerificationFailedError](#turnstileverificationfailederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [AuthenticationFailedError](#authenticationfailederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [EmailCodeLoginLimitError](#emailcodeloginlimiterror)<br>[EmailCodeLoginRateLimitExceededError](#emailcodeloginratelimitexceedederror)<br>[EmailSendIpLimitError](#emailsendiplimiterror)<br>[PasswordResetRateLimitExceededError](#passwordresetratelimitexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [EmailCodeLoginServiceUnavailableError](#emailcodeloginserviceunavailableerror)<br>[TurnstileServiceUnavailableError](#turnstileserviceunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /logout
@@ -8063,7 +8063,7 @@ Mark a notification as dismissed for the current user.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [TextContentResponse](#textcontentresponse)<br> |
-| 404 | Not Found | **application/json**: [NotFoundError](#notfounderror)<br> |
+| 404 | Not Found | **application/json**: [NotFoundError](#notfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /notion/pre-import/pages
@@ -8079,8 +8079,8 @@ Mark a notification as dismissed for the current user.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [NotionIntegrateInfoListResponse](#notionintegrateinfolistresponse)<br> |
-| 403 | Forbidden | **application/json**: [DatasetAccessDeniedError](#datasetaccessdeniederror)<br> |
-| 404 | Not Found | **application/json**: [NotFoundError](#notfounderror)<br> |
+| 403 | Forbidden | **application/json**: [DatasetAccessDeniedError](#datasetaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [NotFoundError](#notfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /oauth/authorize/{provider}
@@ -8099,7 +8099,7 @@ Handle OAuth callback and complete login process
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 302 | Redirect to console with access token | **application/json**: [RedirectResponse](#redirectresponse)<br> |
-| 400 | OAuth process failed | **application/json**: <br> |
+| 400 | OAuth process failed | **application/json**: [OAuthErrorResponse](#oautherrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /oauth/data-source/binding/{provider}
@@ -8117,7 +8117,7 @@ Bind OAuth data source with authorization code
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Data source binding success | **application/json**: [OAuthDataSourceBindingResponse](#oauthdatasourcebindingresponse)<br> |
-| 400 | Invalid provider or code | **application/json**: <br> |
+| 400 | Invalid provider or code | **application/json**: [ErrorMessageResponse](#errormessageresponse)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /oauth/data-source/callback/{provider}
@@ -8136,7 +8136,7 @@ Handle OAuth callback from data source provider
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 302 | Redirect to console with result | **application/json**: [RedirectResponse](#redirectresponse)<br> |
-| 400 | Invalid provider | **application/json**: <br> |
+| 400 | Invalid provider | **application/json**: [ErrorMessageResponse](#errormessageresponse)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /oauth/data-source/{provider}
@@ -8153,7 +8153,7 @@ Get OAuth authorization URL for data source provider
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Authorization URL or internal setup success | **application/json**: [OAuthDataSourceResponse](#oauthdatasourceresponse)<br> |
-| 400 | Invalid provider | **application/json**: <br> |
+| 400 | Invalid provider | **application/json**: [ErrorMessageResponse](#errormessageresponse)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Admin privileges required | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -8172,7 +8172,7 @@ Sync data from OAuth data source
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Data source sync success | **application/json**: [OAuthDataSourceSyncResponse](#oauthdatasourcesyncresponse)<br> |
-| 400 | Invalid provider or sync failed | **application/json**: <br> |
+| 400 | Invalid provider or sync failed | **application/json**: [ErrorMessageResponse](#errormessageresponse)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /oauth/login/{provider}
@@ -8193,7 +8193,7 @@ Initiate OAuth login process
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 302 | Redirect to OAuth authorization URL | **application/json**: [RedirectResponse](#redirectresponse)<br> |
-| 400 | Invalid provider | **application/json**: <br> |
+| 400 | Invalid provider | **application/json**: [OAuthErrorResponse](#oautherrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /oauth/plugin/{provider_id}/datasource/callback
@@ -8418,7 +8418,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | RAG pipeline dataset import started | **application/json**: [RagPipelineImportResponse](#ragpipelineimportresponse)<br> |
-| 409 | Conflict | **application/json**: [DatasetNameDuplicateError](#datasetnameduplicateerror)<br> |
+| 409 | Conflict | **application/json**: [DatasetNameDuplicateError](#datasetnameduplicateerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /rag/pipeline/empty-dataset
@@ -8481,7 +8481,7 @@ Update account-level Step-by-step Tour state
 | ---- | ----------- | ------ |
 | 200 | Import completed | **application/json**: [RagPipelineImportResponse](#ragpipelineimportresponse)<br> |
 | 202 | Import pending confirmation | **application/json**: [RagPipelineImportResponse](#ragpipelineimportresponse)<br> |
-| 400 | Import failed | **application/json**: <br> |
+| 400 | Import failed | **application/json**: [RagPipelineImportResponse](#ragpipelineimportresponse)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /rag/pipelines/imports/{import_id}/confirm
@@ -8496,7 +8496,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Import confirmed | **application/json**: [RagPipelineImportResponse](#ragpipelineimportresponse)<br> |
-| 400 | Import failed | **application/json**: <br> |
+| 400 | Import failed | **application/json**: [RagPipelineImportResponse](#ragpipelineimportresponse)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /rag/pipelines/imports/{pipeline_id}/check-dependencies
@@ -8511,7 +8511,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Dependencies checked | **application/json**: [RagPipelineImportCheckDependenciesResponse](#ragpipelineimportcheckdependenciesresponse)<br> |
-| 404 | Not Found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br> |
+| 404 | Not Found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /rag/pipelines/recommended-plugins
@@ -8561,7 +8561,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 204 | Pipeline template published |  |
-| 404 | Pipeline, workflow, or dataset not found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br> |
+| 404 | Pipeline, workflow, or dataset not found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /rag/pipelines/{pipeline_id}/exports
@@ -8577,7 +8577,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Pipeline exported | **application/json**: [SimpleDataResponse](#simpledataresponse)<br> |
-| 404 | Not Found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br> |
+| 404 | Not Found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /rag/pipelines/{pipeline_id}/workflow-runs
@@ -8596,7 +8596,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow runs retrieved successfully | **application/json**: [WorkflowRunPaginationResponse](#workflowrunpaginationresponse)<br> |
-| 404 | Not Found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br> |
+| 404 | Not Found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /rag/pipelines/{pipeline_id}/workflow-runs/tasks/{task_id}/stop
@@ -8614,7 +8614,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Task stopped successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 404 | Not Found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br> |
+| 404 | Not Found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /rag/pipelines/{pipeline_id}/workflow-runs/{run_id}
@@ -8632,7 +8632,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow run detail retrieved successfully | **application/json**: [WorkflowRunDetailResponse](#workflowrundetailresponse)<br> |
-| 404 | Not Found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br> |
+| 404 | Not Found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /rag/pipelines/{pipeline_id}/workflow-runs/{run_id}/node-executions
@@ -8650,7 +8650,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Node executions retrieved successfully | **application/json**: [WorkflowRunNodeExecutionListResponse](#workflowrunnodeexecutionlistresponse)<br> |
-| 404 | Not Found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br> |
+| 404 | Not Found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /rag/pipelines/{pipeline_id}/workflows
@@ -8672,7 +8672,7 @@ Update account-level Step-by-step Tour state
 | ---- | ----------- | ------ |
 | 200 | Published workflows retrieved successfully | **application/json**: [WorkflowPaginationResponse](#workflowpaginationresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | Not Found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br> |
+| 404 | Not Found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /rag/pipelines/{pipeline_id}/workflows/default-workflow-block-configs
@@ -8689,7 +8689,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Default block configs retrieved successfully | **application/json**: [DefaultBlockConfigsResponse](#defaultblockconfigsresponse)<br> |
-| 404 | Not Found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br> |
+| 404 | Not Found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /rag/pipelines/{pipeline_id}/workflows/default-workflow-block-configs/{block_type}
@@ -8708,7 +8708,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Default block config retrieved successfully | **application/json**: [DefaultBlockConfigResponse](#defaultblockconfigresponse)<br> |
-| 404 | Not Found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br> |
+| 404 | Not Found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /rag/pipelines/{pipeline_id}/workflows/draft
@@ -8725,7 +8725,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Draft workflow retrieved successfully | **application/json**: [WorkflowResponse](#workflowresponse)<br> |
-| 404 | Draft workflow not found | **application/json**: <br> |
+| 404 | Draft workflow not found | **application/json**: [DraftWorkflowNotExistError](#draftworkflownotexisterror)<br>[PipelineNotFoundError](#pipelinenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /rag/pipelines/{pipeline_id}/workflows/draft
@@ -8748,8 +8748,8 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [RagPipelineWorkflowSyncResponse](#ragpipelineworkflowsyncresponse)<br> |
-| 404 | Not Found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br> |
-| 409 | Conflict | **application/json**: [DraftWorkflowNotSyncError](#draftworkflownotsyncerror)<br> |
+| 404 | Not Found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [DraftWorkflowNotSyncError](#draftworkflownotsyncerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /rag/pipelines/{pipeline_id}/workflows/draft/datasource/nodes/{node_id}/run
@@ -8773,7 +8773,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [RagPipelineOpaqueResponse](#ragpipelineopaqueresponse)<br> |
-| 404 | Not Found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br> |
+| 404 | Not Found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /rag/pipelines/{pipeline_id}/workflows/draft/datasource/variables-inspect
@@ -8796,7 +8796,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Datasource variables set successfully | **application/json**: [WorkflowRunNodeExecutionResponse](#workflowrunnodeexecutionresponse)<br> |
-| 404 | Not Found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br> |
+| 404 | Not Found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /rag/pipelines/{pipeline_id}/workflows/draft/environment-variables
@@ -8813,7 +8813,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Environment variables retrieved successfully | **application/json**: [EnvironmentVariableListResponse](#environmentvariablelistresponse)<br> |
-| 404 | Not Found | **application/json**: <br> |
+| 404 | Not Found | **application/json**: [DraftWorkflowNotExistError](#draftworkflownotexisterror)<br>[PipelineNotFoundError](#pipelinenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /rag/pipelines/{pipeline_id}/workflows/draft/iteration/nodes/{node_id}/run
@@ -8837,7 +8837,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [RagPipelineOpaqueResponse](#ragpipelineopaqueresponse)<br> |
-| 404 | Not Found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br> |
+| 404 | Not Found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /rag/pipelines/{pipeline_id}/workflows/draft/loop/nodes/{node_id}/run
@@ -8861,7 +8861,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [RagPipelineOpaqueResponse](#ragpipelineopaqueresponse)<br> |
-| 404 | Not Found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br> |
+| 404 | Not Found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /rag/pipelines/{pipeline_id}/workflows/draft/nodes/{node_id}/last-run
@@ -8877,7 +8877,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Node last run retrieved successfully | **application/json**: [WorkflowRunNodeExecutionResponse](#workflowrunnodeexecutionresponse)<br> |
-| 404 | Not Found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br> |
+| 404 | Not Found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /rag/pipelines/{pipeline_id}/workflows/draft/nodes/{node_id}/run
@@ -8901,7 +8901,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Node run started successfully | **application/json**: [WorkflowRunNodeExecutionResponse](#workflowrunnodeexecutionresponse)<br> |
-| 404 | Not Found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br> |
+| 404 | Not Found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /rag/pipelines/{pipeline_id}/workflows/draft/nodes/{node_id}/variables
@@ -8917,7 +8917,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 204 | Node variables deleted successfully |  |
-| 404 | Not Found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br> |
+| 404 | Not Found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /rag/pipelines/{pipeline_id}/workflows/draft/nodes/{node_id}/variables
@@ -8933,7 +8933,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Node variables retrieved successfully | **application/json**: [WorkflowDraftVariableListResponse](#workflowdraftvariablelistresponse)<br> |
-| 404 | Not Found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br> |
+| 404 | Not Found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /rag/pipelines/{pipeline_id}/workflows/draft/pre-processing/parameters
@@ -8951,7 +8951,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [RagPipelineStepParametersResponse](#ragpipelinestepparametersresponse)<br> |
-| 404 | Not Found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br> |
+| 404 | Not Found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /rag/pipelines/{pipeline_id}/workflows/draft/processing/parameters
@@ -8969,7 +8969,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [RagPipelineStepParametersResponse](#ragpipelinestepparametersresponse)<br> |
-| 404 | Not Found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br> |
+| 404 | Not Found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /rag/pipelines/{pipeline_id}/workflows/draft/run
@@ -8992,8 +8992,8 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [RagPipelineOpaqueResponse](#ragpipelineopaqueresponse)<br> |
-| 404 | Not Found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br> |
-| 429 | Too Many Requests | **application/json**: [RateLimitError](#ratelimiterror)<br> |
+| 404 | Not Found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [RateLimitError](#ratelimiterror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /rag/pipelines/{pipeline_id}/workflows/draft/system-variables
@@ -9008,7 +9008,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | System variables retrieved successfully | **application/json**: [WorkflowDraftVariableListResponse](#workflowdraftvariablelistresponse)<br> |
-| 404 | Not Found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br> |
+| 404 | Not Found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /rag/pipelines/{pipeline_id}/workflows/draft/variables
@@ -9023,7 +9023,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 204 | Workflow variables deleted successfully |  |
-| 404 | Not Found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br> |
+| 404 | Not Found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /rag/pipelines/{pipeline_id}/workflows/draft/variables
@@ -9042,7 +9042,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow variables retrieved successfully | **application/json**: [WorkflowDraftVariableListWithoutValueResponse](#workflowdraftvariablelistwithoutvalueresponse)<br> |
-| 404 | Not Found | **application/json**: <br> |
+| 404 | Not Found | **application/json**: [DraftWorkflowNotExistError](#draftworkflownotexisterror)<br>[PipelineNotFoundError](#pipelinenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /rag/pipelines/{pipeline_id}/workflows/draft/variables/{variable_id}
@@ -9058,7 +9058,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 204 | Variable deleted successfully |  |
-| 404 | Not Found | **application/json**: <br> |
+| 404 | Not Found | **application/json**: [NotFoundError](#notfounderror)<br>[PipelineNotFoundError](#pipelinenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /rag/pipelines/{pipeline_id}/workflows/draft/variables/{variable_id}
@@ -9074,7 +9074,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Variable retrieved successfully | **application/json**: [WorkflowDraftVariableResponse](#workflowdraftvariableresponse)<br> |
-| 404 | Not Found | **application/json**: <br> |
+| 404 | Not Found | **application/json**: [NotFoundError](#notfounderror)<br>[PipelineNotFoundError](#pipelinenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /rag/pipelines/{pipeline_id}/workflows/draft/variables/{variable_id}
@@ -9096,7 +9096,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Variable updated successfully | **application/json**: [WorkflowDraftVariableResponse](#workflowdraftvariableresponse)<br> |
-| 404 | Not Found | **application/json**: <br> |
+| 404 | Not Found | **application/json**: [NotFoundError](#notfounderror)<br>[PipelineNotFoundError](#pipelinenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /rag/pipelines/{pipeline_id}/workflows/draft/variables/{variable_id}/reset
@@ -9113,7 +9113,7 @@ Update account-level Step-by-step Tour state
 | ---- | ----------- | ------ |
 | 200 | Variable reset successfully | **application/json**: [WorkflowDraftVariableResponse](#workflowdraftvariableresponse)<br> |
 | 204 | Variable reset (no content) |  |
-| 404 | Not Found | **application/json**: <br> |
+| 404 | Not Found | **application/json**: [NotFoundError](#notfounderror)<br>[PipelineNotFoundError](#pipelinenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /rag/pipelines/{pipeline_id}/workflows/publish
@@ -9130,7 +9130,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Published workflow retrieved successfully, or null if not exist | **application/json**: [WorkflowResponse](#workflowresponse)<br> |
-| 404 | Not Found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br> |
+| 404 | Not Found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /rag/pipelines/{pipeline_id}/workflows/publish
@@ -9147,7 +9147,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [RagPipelineWorkflowPublishResponse](#ragpipelineworkflowpublishresponse)<br> |
-| 404 | Not Found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br> |
+| 404 | Not Found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /rag/pipelines/{pipeline_id}/workflows/published/datasource/nodes/{node_id}/preview
@@ -9171,7 +9171,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success |  |
-| 404 | Not Found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br> |
+| 404 | Not Found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /rag/pipelines/{pipeline_id}/workflows/published/datasource/nodes/{node_id}/run
@@ -9195,7 +9195,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [RagPipelineOpaqueResponse](#ragpipelineopaqueresponse)<br> |
-| 404 | Not Found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br> |
+| 404 | Not Found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /rag/pipelines/{pipeline_id}/workflows/published/pre-processing/parameters
@@ -9213,7 +9213,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [RagPipelineStepParametersResponse](#ragpipelinestepparametersresponse)<br> |
-| 404 | Not Found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br> |
+| 404 | Not Found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /rag/pipelines/{pipeline_id}/workflows/published/processing/parameters
@@ -9231,7 +9231,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [RagPipelineStepParametersResponse](#ragpipelinestepparametersresponse)<br> |
-| 404 | Not Found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br> |
+| 404 | Not Found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /rag/pipelines/{pipeline_id}/workflows/published/run
@@ -9254,8 +9254,8 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [RagPipelineOpaqueResponse](#ragpipelineopaqueresponse)<br> |
-| 404 | Not Found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br> |
-| 429 | Too Many Requests | **application/json**: [RateLimitError](#ratelimiterror)<br> |
+| 404 | Not Found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [RateLimitError](#ratelimiterror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /rag/pipelines/{pipeline_id}/workflows/{workflow_id}
@@ -9273,7 +9273,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 204 | Workflow deleted successfully |  |
-| 404 | Not Found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br> |
+| 404 | Not Found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /rag/pipelines/{pipeline_id}/workflows/{workflow_id}
@@ -9299,7 +9299,7 @@ Update account-level Step-by-step Tour state
 | 200 | Workflow updated successfully | **application/json**: [WorkflowResponse](#workflowresponse)<br> |
 | 400 | No valid fields to update | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | Workflow not found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br> |
+| 404 | Workflow not found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /rag/pipelines/{pipeline_id}/workflows/{workflow_id}/restore
@@ -9315,7 +9315,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [RagPipelineWorkflowSyncResponse](#ragpipelineworkflowsyncresponse)<br> |
-| 404 | Not Found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br> |
+| 404 | Not Found | **application/json**: [PipelineNotFoundError](#pipelinenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /refresh-token
@@ -9324,7 +9324,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 401 | Unauthorized | **application/json**: <br> |
+| 401 | Unauthorized | **application/json**: [SimpleResultMessageResponse](#simpleresultmessageresponse)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /remote-files/upload
@@ -9339,13 +9339,13 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | File uploaded successfully | **application/json**: [FileWithSignedUrl](#filewithsignedurl)<br> |
-| 400 | Invalid, blocked, or inaccessible remote file URL | **application/json**: <br> |
-| 404 | Remote file not found | **application/json**: [RemoteFileNotFoundError](#remotefilenotfounderror)<br> |
-| 413 | File too large | **application/json**: [FileTooLargeError](#filetoolargeerror)<br> |
-| 415 | Unsupported file type | **application/json**: [UnsupportedFileTypeError](#unsupportedfiletypeerror)<br> |
+| 400 | Invalid, blocked, or inaccessible remote file URL | **application/json**: [FileExtensionBlockedError](#fileextensionblockederror)<br>[RemoteFileAccessDeniedError](#remotefileaccessdeniederror)<br>[RemoteFileInvalidUrlError](#remotefileinvalidurlerror)<br>[RemoteFileUrlBlockedError](#remotefileurlblockederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Remote file not found | **application/json**: [RemoteFileNotFoundError](#remotefilenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 413 | File too large | **application/json**: [FileTooLargeError](#filetoolargeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 415 | Unsupported file type | **application/json**: [UnsupportedFileTypeError](#unsupportedfiletypeerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 422 | Request payload validation failed | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Internal server error | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 502 | Remote file unavailable or returned an invalid response | **application/json**: <br> |
+| 502 | Remote file unavailable or returned an invalid response | **application/json**: [RemoteFileInvalidResponseError](#remotefileinvalidresponseerror)<br>[RemoteFileUnavailableError](#remotefileunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /remote-files/{url}
@@ -9360,10 +9360,10 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [RemoteFileInfo](#remotefileinfo)<br> |
-| 400 | Invalid, blocked, or inaccessible remote file URL | **application/json**: <br> |
-| 404 | Remote file not found | **application/json**: [RemoteFileNotFoundError](#remotefilenotfounderror)<br> |
+| 400 | Invalid, blocked, or inaccessible remote file URL | **application/json**: [RemoteFileAccessDeniedError](#remotefileaccessdeniederror)<br>[RemoteFileInvalidUrlError](#remotefileinvalidurlerror)<br>[RemoteFileUrlBlockedError](#remotefileurlblockederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Remote file not found | **application/json**: [RemoteFileNotFoundError](#remotefilenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 500 | Internal server error | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 502 | Remote file unavailable or returned an invalid response | **application/json**: <br> |
+| 502 | Remote file unavailable or returned an invalid response | **application/json**: [RemoteFileInvalidResponseError](#remotefileinvalidresponseerror)<br>[RemoteFileUnavailableError](#remotefileunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /reset-password
@@ -9378,10 +9378,10 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultDataResponse](#simpleresultdataresponse)<br> |
-| 400 | Bad Request | **application/json**: <br> |
-| 401 | Unauthorized | **application/json**: [AuthenticationFailedError](#authenticationfailederror)<br> |
-| 429 | Too Many Requests | **application/json**: <br> |
-| 503 | Service Unavailable | **application/json**: <br> |
+| 400 | Bad Request | **application/json**: [AccountBannedError](#accountbannederror)<br>[AccountInFreezeError](#accountinfreezeerror)<br>[AccountNotFoundError](#accountnotfounderror)<br>[EmailCodeError](#emailcodeerror)<br>[EmailDomainSuspendedError](#emaildomainsuspendederror)<br>[InvalidAccountPasswordError](#invalidaccountpassworderror)<br>[InvalidEmailError](#invalidemailerror)<br>[InvalidOrExpiredTokenError](#invalidorexpiredtokenerror)<br>[LimitExceededError](#limitexceedederror)<br>[NormalizedEmailAlreadyInUseError](#normalizedemailalreadyinuseerror)<br>[NotAllowedCreateWorkspaceError](#notallowedcreateworkspaceerror)<br>[TurnstileVerificationFailedError](#turnstileverificationfailederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [AuthenticationFailedError](#authenticationfailederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [EmailCodeLoginLimitError](#emailcodeloginlimiterror)<br>[EmailCodeLoginRateLimitExceededError](#emailcodeloginratelimitexceedederror)<br>[EmailSendIpLimitError](#emailsendiplimiterror)<br>[PasswordResetRateLimitExceededError](#passwordresetratelimitexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [EmailCodeLoginServiceUnavailableError](#emailcodeloginserviceunavailableerror)<br>[TurnstileServiceUnavailableError](#turnstileserviceunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /resource-access-tokens
@@ -9463,7 +9463,7 @@ Generate code rules using LLM
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Code rules generated successfully | **application/json**: [GeneratorResponse](#generatorresponse)<br> |
-| 400 | Invalid request parameters | **application/json**: <br> |
+| 400 | Invalid request parameters | **application/json**: [CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /rule-generate
@@ -9480,7 +9480,7 @@ Generate rule configuration using LLM
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Rule configuration generated successfully | **application/json**: [GeneratorResponse](#generatorresponse)<br> |
-| 400 | Invalid request parameters | **application/json**: <br> |
+| 400 | Invalid request parameters | **application/json**: [CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /rule-structured-output-generate
@@ -9497,7 +9497,7 @@ Generate structured output rules using LLM
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Structured output generated successfully | **application/json**: [GeneratorResponse](#generatorresponse)<br> |
-| 400 | Invalid request parameters | **application/json**: <br> |
+| 400 | Invalid request parameters | **application/json**: [CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /snippets/{snippet_id}/workflow-runs
@@ -9624,7 +9624,7 @@ Get all published workflows for a snippet
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Draft workflow retrieved successfully | **application/json**: [SnippetWorkflowResponse](#snippetworkflowresponse)<br> |
-| 404 | Snippet or draft workflow not found | **application/json**: [DraftWorkflowNotExistError](#draftworkflownotexisterror)<br> |
+| 404 | Snippet or draft workflow not found | **application/json**: [DraftWorkflowNotExistError](#draftworkflownotexisterror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /snippets/{snippet_id}/workflows/draft
@@ -9648,7 +9648,7 @@ Get all published workflows for a snippet
 | ---- | ----------- | ------ |
 | 200 | Draft workflow synced successfully | **application/json**: [WorkflowRestoreResponse](#workflowrestoreresponse)<br> |
 | 400 | Hash mismatch | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 409 | Conflict | **application/json**: [DraftWorkflowNotSyncError](#draftworkflownotsyncerror)<br> |
+| 409 | Conflict | **application/json**: [DraftWorkflowNotSyncError](#draftworkflownotsyncerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /snippets/{snippet_id}/workflows/draft/config
@@ -9697,7 +9697,7 @@ Get environment variables from snippet draft workflow graph
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Environment variables retrieved successfully | **application/json**: [EnvironmentVariableListResponse](#environmentvariablelistresponse)<br> |
-| 404 | Draft workflow not found | **application/json**: [DraftWorkflowNotExistError](#draftworkflownotexisterror)<br> |
+| 404 | Draft workflow not found | **application/json**: [DraftWorkflowNotExistError](#draftworkflownotexisterror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /snippets/{snippet_id}/workflows/draft/iteration/nodes/{node_id}/run
@@ -9770,7 +9770,7 @@ Returns an SSE event stream with loop progress and results.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Snippet agent composer state | **application/json**: [WorkflowAgentComposerResponse](#workflowagentcomposerresponse)<br> |
-| 404 | Not Found | **application/json**: <br> |
+| 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AgentVersionNotFoundError](#agentversionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer
@@ -9792,8 +9792,8 @@ Returns an SSE event stream with loop progress and results.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Snippet agent composer saved | **application/json**: [WorkflowAgentComposerResponse](#workflowagentcomposerresponse)<br> |
-| 400 | Bad Request | **application/json**: <br> |
-| 404 | Not Found | **application/json**: <br> |
+| 400 | Bad Request | **application/json**: [AgentSoulLockedError](#agentsoullockederror)<br>[InvalidComposerConfigError](#invalidcomposerconfigerror)<br>[PlaintextSecretNotAllowedError](#plaintextsecretnotallowederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AgentVersionNotFoundError](#agentversionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer/candidates
@@ -9830,9 +9830,9 @@ Returns an SSE event stream with loop progress and results.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Roster agent copied into snippet | **application/json**: [WorkflowAgentComposerResponse](#workflowagentcomposerresponse)<br> |
-| 400 | Bad Request | **application/json**: [InvalidComposerConfigError](#invalidcomposerconfigerror)<br> |
-| 404 | Not Found | **application/json**: <br> |
-| 409 | Conflict | **application/json**: [AgentVersionConflictError](#agentversionconflicterror)<br> |
+| 400 | Bad Request | **application/json**: [InvalidComposerConfigError](#invalidcomposerconfigerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AgentVersionNotFoundError](#agentversionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [AgentVersionConflictError](#agentversionconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer/impact
@@ -9875,8 +9875,8 @@ Returns an SSE event stream with loop progress and results.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Snippet agent saved to roster | **application/json**: [WorkflowAgentComposerResponse](#workflowagentcomposerresponse)<br> |
-| 400 | Bad Request | **application/json**: <br> |
-| 404 | Not Found | **application/json**: <br> |
+| 400 | Bad Request | **application/json**: [AgentSoulLockedError](#agentsoullockederror)<br>[InvalidComposerConfigError](#invalidcomposerconfigerror)<br>[PlaintextSecretNotAllowedError](#plaintextsecretnotallowederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AgentVersionNotFoundError](#agentversionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer/validate
@@ -9898,7 +9898,7 @@ Returns an SSE event stream with loop progress and results.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Snippet agent composer validation | **application/json**: [AgentComposerValidateResponse](#agentcomposervalidateresponse)<br> |
-| 400 | Bad Request | **application/json**: <br> |
+| 400 | Bad Request | **application/json**: [AgentSoulLockedError](#agentsoullockederror)<br>[InvalidComposerConfigError](#invalidcomposerconfigerror)<br>[PlaintextSecretNotAllowedError](#plaintextsecretnotallowederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/last-run
@@ -10059,7 +10059,7 @@ List draft workflow variables without values (paginated, snippet scope)
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow variables retrieved successfully | **application/json**: [WorkflowDraftVariableListWithoutValueResponse](#workflowdraftvariablelistwithoutvalueresponse)<br> |
-| 404 | Not Found | **application/json**: [DraftWorkflowNotExistError](#draftworkflownotexisterror)<br> |
+| 404 | Not Found | **application/json**: [DraftWorkflowNotExistError](#draftworkflownotexisterror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /snippets/{snippet_id}/workflows/draft/variables/{variable_id}
@@ -10077,7 +10077,7 @@ Delete a draft workflow variable (snippet scope)
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 204 | Variable deleted successfully |  |
-| 404 | Variable not found | **application/json**: [NotFoundError](#notfounderror)<br> |
+| 404 | Variable not found | **application/json**: [NotFoundError](#notfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /snippets/{snippet_id}/workflows/draft/variables/{variable_id}
@@ -10095,7 +10095,7 @@ Get a specific draft workflow variable (snippet scope)
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Variable retrieved successfully | **application/json**: [WorkflowDraftVariableResponse](#workflowdraftvariableresponse)<br> |
-| 404 | Variable not found | **application/json**: [NotFoundError](#notfounderror)<br> |
+| 404 | Variable not found | **application/json**: [NotFoundError](#notfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /snippets/{snippet_id}/workflows/draft/variables/{variable_id}
@@ -10119,7 +10119,7 @@ Update a draft workflow variable (snippet scope)
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Variable updated successfully | **application/json**: [WorkflowDraftVariableResponse](#workflowdraftvariableresponse)<br> |
-| 404 | Variable not found | **application/json**: [NotFoundError](#notfounderror)<br> |
+| 404 | Variable not found | **application/json**: [NotFoundError](#notfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /snippets/{snippet_id}/workflows/draft/variables/{variable_id}/reset
@@ -10138,7 +10138,7 @@ Reset a draft workflow variable to its default value (snippet scope)
 | ---- | ----------- | ------ |
 | 200 | Variable reset successfully | **application/json**: [WorkflowDraftVariableResponse](#workflowdraftvariableresponse)<br> |
 | 204 | Variable reset (no content) |  |
-| 404 | Variable not found | **application/json**: [NotFoundError](#notfounderror)<br> |
+| 404 | Variable not found | **application/json**: [NotFoundError](#notfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /snippets/{snippet_id}/workflows/publish
@@ -10393,10 +10393,10 @@ Remove one or more tag bindings from a target.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [TrialAppDetailResponse](#trialappdetailresponse)<br> |
-| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br> |
-| 401 | Unauthorized | **application/json**: [UnauthorizedError](#unauthorizederror)<br> |
-| 403 | Forbidden | **application/json**: [AppSiteUnavailableError](#appsiteunavailableerror)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [UnauthorizedError](#unauthorizederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [AppSiteUnavailableError](#appsiteunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /trial-apps/{app_id}/agent-composer
@@ -10411,8 +10411,8 @@ Remove one or more tag bindings from a target.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Published Agent configuration | **application/json**: [AgentAppComposerResponse](#agentappcomposerresponse)<br> |
-| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /trial-apps/{app_id}/agent/config/files
@@ -10428,8 +10428,8 @@ Remove one or more tag bindings from a target.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Published template resource | **application/json**: [AgentConfigFileListResponse](#agentconfigfilelistresponse)<br> |
-| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /trial-apps/{app_id}/agent/config/files/{name}/download
@@ -10446,8 +10446,8 @@ Remove one or more tag bindings from a target.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Published template resource | **application/json**: [AgentConfigDownloadResponse](#agentconfigdownloadresponse)<br> |
-| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /trial-apps/{app_id}/agent/config/files/{name}/preview
@@ -10464,8 +10464,8 @@ Remove one or more tag bindings from a target.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Published template resource | **application/json**: [AgentConfigFilePreviewResponse](#agentconfigfilepreviewresponse)<br> |
-| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /trial-apps/{app_id}/agent/config/skills
@@ -10481,8 +10481,8 @@ Remove one or more tag bindings from a target.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Published template resource | **application/json**: [AgentConfigSkillListResponse](#agentconfigskilllistresponse)<br> |
-| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /trial-apps/{app_id}/agent/config/skills/{name}/download
@@ -10499,8 +10499,8 @@ Remove one or more tag bindings from a target.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Published template resource | **application/json**: [AgentConfigDownloadResponse](#agentconfigdownloadresponse)<br> |
-| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /trial-apps/{app_id}/agent/config/skills/{name}/files/content
@@ -10518,8 +10518,8 @@ Remove one or more tag bindings from a target.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Published template resource | **application/octet-stream**: binary<br> |
-| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /trial-apps/{app_id}/agent/config/skills/{name}/files/download
@@ -10537,8 +10537,8 @@ Remove one or more tag bindings from a target.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Published template resource | **application/json**: [AgentConfigDownloadResponse](#agentconfigdownloadresponse)<br> |
-| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /trial-apps/{app_id}/agent/config/skills/{name}/files/preview
@@ -10556,8 +10556,8 @@ Remove one or more tag bindings from a target.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Published template resource | **application/json**: [AgentConfigSkillFilePreviewResponse](#agentconfigskillfilepreviewresponse)<br> |
-| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /trial-apps/{app_id}/agent/config/skills/{name}/inspect
@@ -10574,8 +10574,8 @@ Remove one or more tag bindings from a target.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Published template resource | **application/json**: [AgentConfigSkillInspectResponse](#agentconfigskillinspectresponse)<br> |
-| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /trial-apps/{app_id}/audio-to-text
@@ -10590,12 +10590,12 @@ Remove one or more tag bindings from a target.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AudioTranscriptResponse](#audiotranscriptresponse)<br> |
-| 400 | Bad Request | **application/json**: <br> |
-| 403 | Forbidden | **application/json**: <br> |
-| 404 | Not Found | **application/json**: [AgentVersionNotFoundError](#agentversionnotfounderror)<br> |
-| 413 | Request Entity Too Large | **application/json**: [AudioTooLargeError](#audiotoolargeerror)<br> |
-| 415 | Unsupported Media Type | **application/json**: [UnsupportedAudioTypeError](#unsupportedaudiotypeerror)<br> |
-| 500 | Internal Server Error | **application/json**: [InternalServerError](#internalservererror)<br> |
+| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NoAudioUploadedError](#noaudiouploadederror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderNotSupportSpeechToTextError](#providernotsupportspeechtotexterror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[SpeechToTextDisabledError](#speechtotextdisablederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [TrialAppFeatureDisabledError](#trialappfeaturedisablederror)<br>[TrialAppLimitExceededError](#trialapplimitexceedederror)<br>[TrialAppNotAllowedError](#trialappnotallowederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AgentVersionNotFoundError](#agentversionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 413 | Request Entity Too Large | **application/json**: [AudioTooLargeError](#audiotoolargeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 415 | Unsupported Media Type | **application/json**: [UnsupportedAudioTypeError](#unsupportedaudiotypeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [InternalServerError](#internalservererror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /trial-apps/{app_id}/chat-messages
@@ -10616,12 +10616,12 @@ Remove one or more tag bindings from a target.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success |  |
-| 400 | Bad Request | **application/json**: <br> |
-| 401 | Unauthorized | **application/json**: [UnauthorizedError](#unauthorizederror)<br> |
-| 403 | Forbidden | **application/json**: <br> |
-| 404 | Not Found | **application/json**: [NotFoundError](#notfounderror)<br> |
-| 429 | Too Many Requests | **application/json**: [RateLimitError](#ratelimiterror)<br> |
-| 500 | Internal Server Error | **application/json**: [InternalServerError](#internalservererror)<br> |
+| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NotChatAppError](#notchatapperror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [UnauthorizedError](#unauthorizederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [TrialAppFeatureDisabledError](#trialappfeaturedisablederror)<br>[TrialAppLimitExceededError](#trialapplimitexceedederror)<br>[TrialAppNotAllowedError](#trialappnotallowederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [NotFoundError](#notfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [RateLimitError](#ratelimiterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [InternalServerError](#internalservererror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /trial-apps/{app_id}/chat-messages/{task_id}/stop
@@ -10637,8 +10637,8 @@ Remove one or more tag bindings from a target.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 400 | Bad Request | **application/json**: [NotChatAppError](#notchatapperror)<br> |
-| 403 | Forbidden | **application/json**: <br> |
+| 400 | Bad Request | **application/json**: [NotChatAppError](#notchatapperror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [TrialAppFeatureDisabledError](#trialappfeaturedisablederror)<br>[TrialAppLimitExceededError](#trialapplimitexceedederror)<br>[TrialAppNotAllowedError](#trialappnotallowederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /trial-apps/{app_id}/completion-messages
@@ -10659,12 +10659,12 @@ Remove one or more tag bindings from a target.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success |  |
-| 400 | Bad Request | **application/json**: <br> |
-| 401 | Unauthorized | **application/json**: [UnauthorizedError](#unauthorizederror)<br> |
-| 403 | Forbidden | **application/json**: <br> |
-| 404 | Not Found | **application/json**: [NotFoundError](#notfounderror)<br> |
-| 429 | Too Many Requests | **application/json**: [RateLimitError](#ratelimiterror)<br> |
-| 500 | Internal Server Error | **application/json**: [InternalServerError](#internalservererror)<br> |
+| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NotCompletionAppError](#notcompletionapperror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [UnauthorizedError](#unauthorizederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [TrialAppFeatureDisabledError](#trialappfeaturedisablederror)<br>[TrialAppLimitExceededError](#trialapplimitexceedederror)<br>[TrialAppNotAllowedError](#trialappnotallowederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [NotFoundError](#notfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [RateLimitError](#ratelimiterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [InternalServerError](#internalservererror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /trial-apps/{app_id}/datasets
@@ -10682,8 +10682,8 @@ Remove one or more tag bindings from a target.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [TrialDatasetListResponse](#trialdatasetlistresponse)<br> |
-| 400 | Bad Request | **application/json**: [NeedAddIdsError](#needaddidserror)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 400 | Bad Request | **application/json**: [NeedAddIdsError](#needaddidserror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /trial-apps/{app_id}/export
@@ -10700,7 +10700,7 @@ Remove one or more tag bindings from a target.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Published Agent template export | **application/json**: [AppExportResponse](#appexportresponse)<br>**application/zip**: binary<br> |
-| 404 | Published template unavailable | **application/json**: [RecommendedAppNotFoundError](#recommendedappnotfounderror)<br> |
+| 404 | Published template unavailable | **application/json**: [RecommendedAppNotFoundError](#recommendedappnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /trial-apps/{app_id}/files/upload
@@ -10723,10 +10723,10 @@ Remove one or more tag bindings from a target.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | File uploaded successfully | **application/json**: [FileResponse](#fileresponse)<br> |
-| 400 | Bad Request | **application/json**: <br> |
-| 403 | Forbidden | **application/json**: <br> |
-| 413 | Request Entity Too Large | **application/json**: [FileTooLargeError](#filetoolargeerror)<br> |
-| 415 | Unsupported Media Type | **application/json**: [UnsupportedFileTypeError](#unsupportedfiletypeerror)<br> |
+| 400 | Bad Request | **application/json**: [FileExtensionBlockedError](#fileextensionblockederror)<br>[FilenameNotExistsError](#filenamenotexistserror)<br>[NoFileUploadedError](#nofileuploadederror)<br>[TooManyFilesError](#toomanyfileserror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [TrialAppFeatureDisabledError](#trialappfeaturedisablederror)<br>[TrialAppLimitExceededError](#trialapplimitexceedederror)<br>[TrialAppNotAllowedError](#trialappnotallowederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 413 | Request Entity Too Large | **application/json**: [FileTooLargeError](#filetoolargeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 415 | Unsupported Media Type | **application/json**: [UnsupportedFileTypeError](#unsupportedfiletypeerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /trial-apps/{app_id}/messages/{message_id}/suggested-questions
@@ -10742,11 +10742,11 @@ Remove one or more tag bindings from a target.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SuggestedQuestionsResponse](#suggestedquestionsresponse)<br> |
-| 400 | Bad Request | **application/json**: <br> |
-| 401 | Unauthorized | **application/json**: [UnauthorizedError](#unauthorizederror)<br> |
-| 403 | Forbidden | **application/json**: <br> |
-| 404 | Not Found | **application/json**: [NotFoundError](#notfounderror)<br> |
-| 500 | Internal Server Error | **application/json**: [InternalServerError](#internalservererror)<br> |
+| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NotChatAppError](#notchatapperror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [UnauthorizedError](#unauthorizederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [AppSuggestedQuestionsAfterAnswerDisabledError](#appsuggestedquestionsafteranswerdisablederror)<br>[TrialAppFeatureDisabledError](#trialappfeaturedisablederror)<br>[TrialAppLimitExceededError](#trialapplimitexceedederror)<br>[TrialAppNotAllowedError](#trialappnotallowederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [NotFoundError](#notfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [InternalServerError](#internalservererror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /trial-apps/{app_id}/parameters
@@ -10763,8 +10763,8 @@ Remove one or more tag bindings from a target.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [Parameters](#parameters)<br> |
-| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /trial-apps/{app_id}/remote-files/upload
@@ -10787,12 +10787,12 @@ Remove one or more tag bindings from a target.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | File uploaded successfully | **application/json**: [FileWithSignedUrl](#filewithsignedurl)<br> |
-| 400 | Bad Request | **application/json**: <br> |
-| 403 | Forbidden | **application/json**: <br> |
-| 404 | Not Found | **application/json**: [RemoteFileNotFoundError](#remotefilenotfounderror)<br> |
-| 413 | Request Entity Too Large | **application/json**: [FileTooLargeError](#filetoolargeerror)<br> |
-| 415 | Unsupported Media Type | **application/json**: [UnsupportedFileTypeError](#unsupportedfiletypeerror)<br> |
-| 502 | Bad Gateway | **application/json**: <br> |
+| 400 | Bad Request | **application/json**: [FileExtensionBlockedError](#fileextensionblockederror)<br>[RemoteFileAccessDeniedError](#remotefileaccessdeniederror)<br>[RemoteFileInvalidUrlError](#remotefileinvalidurlerror)<br>[RemoteFileUrlBlockedError](#remotefileurlblockederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [TrialAppFeatureDisabledError](#trialappfeaturedisablederror)<br>[TrialAppLimitExceededError](#trialapplimitexceedederror)<br>[TrialAppNotAllowedError](#trialappnotallowederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [RemoteFileNotFoundError](#remotefilenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 413 | Request Entity Too Large | **application/json**: [FileTooLargeError](#filetoolargeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 415 | Unsupported Media Type | **application/json**: [UnsupportedFileTypeError](#unsupportedfiletypeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [RemoteFileInvalidResponseError](#remotefileinvalidresponseerror)<br>[RemoteFileUnavailableError](#remotefileunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /trial-apps/{app_id}/site
@@ -10811,8 +10811,8 @@ Returns the site configuration for the application including theme, icons, and t
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [Site](#site)<br> |
-| 403 | Forbidden | **application/json**: <br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 403 | Forbidden | **application/json**: [AppOwnerUnavailableError](#appownerunavailableerror)<br>[AppSiteUnavailableError](#appsiteunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /trial-apps/{app_id}/text-to-audio
@@ -10833,12 +10833,12 @@ Returns the site configuration for the application including theme, icons, and t
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AudioBinaryResponse](#audiobinaryresponse)<br> |
-| 400 | Bad Request | **application/json**: <br> |
-| 403 | Forbidden | **application/json**: <br> |
-| 404 | Not Found | **application/json**: [AgentVersionNotFoundError](#agentversionnotfounderror)<br> |
-| 413 | Request Entity Too Large | **application/json**: [AudioTooLargeError](#audiotoolargeerror)<br> |
-| 415 | Unsupported Media Type | **application/json**: [UnsupportedAudioTypeError](#unsupportedaudiotypeerror)<br> |
-| 500 | Internal Server Error | **application/json**: [InternalServerError](#internalservererror)<br> |
+| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NoAudioUploadedError](#noaudiouploadederror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderNotSupportSpeechToTextError](#providernotsupportspeechtotexterror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[SpeechToTextDisabledError](#speechtotextdisablederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [TrialAppFeatureDisabledError](#trialappfeaturedisablederror)<br>[TrialAppLimitExceededError](#trialapplimitexceedederror)<br>[TrialAppNotAllowedError](#trialappnotallowederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AgentVersionNotFoundError](#agentversionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 413 | Request Entity Too Large | **application/json**: [AudioTooLargeError](#audiotoolargeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 415 | Unsupported Media Type | **application/json**: [UnsupportedAudioTypeError](#unsupportedaudiotypeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [InternalServerError](#internalservererror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /trial-apps/{app_id}/workflows
@@ -10855,8 +10855,8 @@ Returns the site configuration for the application including theme, icons, and t
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [TrialWorkflowResponse](#trialworkflowresponse)<br> |
-| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /trial-apps/{app_id}/workflows/run
@@ -10879,11 +10879,11 @@ Returns the site configuration for the application including theme, icons, and t
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success |  |
-| 400 | Bad Request | **application/json**: <br> |
-| 401 | Unauthorized | **application/json**: [UnauthorizedError](#unauthorizederror)<br> |
-| 403 | Forbidden | **application/json**: <br> |
-| 429 | Too Many Requests | **application/json**: [RateLimitError](#ratelimiterror)<br> |
-| 500 | Internal Server Error | **application/json**: [InternalServerError](#internalservererror)<br> |
+| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NotWorkflowAppError](#notworkflowapperror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [UnauthorizedError](#unauthorizederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [TrialAppFeatureDisabledError](#trialappfeaturedisablederror)<br>[TrialAppLimitExceededError](#trialapplimitexceedederror)<br>[TrialAppNotAllowedError](#trialappnotallowederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [RateLimitError](#ratelimiterror)<br>[ErrorResponse](#errorresponse)<br> |
+| 500 | Internal Server Error | **application/json**: [InternalServerError](#internalservererror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /trial-apps/{app_id}/workflows/tasks/{task_id}/stop
@@ -10901,8 +10901,8 @@ Returns the site configuration for the application including theme, icons, and t
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 400 | Bad Request | **application/json**: [NotWorkflowAppError](#notworkflowapperror)<br> |
-| 403 | Forbidden | **application/json**: <br> |
+| 400 | Bad Request | **application/json**: [NotWorkflowAppError](#notworkflowapperror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [TrialAppFeatureDisabledError](#trialappfeaturedisablederror)<br>[TrialAppLimitExceededError](#trialapplimitexceedederror)<br>[TrialAppNotAllowedError](#trialappnotallowederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /trial-models
@@ -10932,7 +10932,7 @@ Crawl website content
 | ---- | ----------- | ------ |
 | 200 | Website crawl initiated successfully | **application/json**: [WebsiteCrawlResponse](#websitecrawlresponse)<br> |
 | 400 | Invalid crawl parameters | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 500 | Internal Server Error | **application/json**: [CrawlFailedError](#crawlfailederror)<br> |
+| 500 | Internal Server Error | **application/json**: [CrawlFailedError](#crawlfailederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /website/crawl/status/{job_id}
@@ -10952,7 +10952,7 @@ Get website crawl status
 | 200 | Crawl status retrieved successfully | **application/json**: [WebsiteCrawlResponse](#websitecrawlresponse)<br> |
 | 400 | Invalid provider | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Crawl job not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 500 | Internal Server Error | **application/json**: [CrawlFailedError](#crawlfailederror)<br> |
+| 500 | Internal Server Error | **application/json**: [CrawlFailedError](#crawlfailederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workflow-generate
@@ -10969,7 +10969,7 @@ Generate a Dify workflow graph from natural language
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow graph generated successfully | **application/json**: [WorkflowGenerateResponse](#workflowgenerateresponse)<br> |
-| 400 | Invalid request parameters | **application/json**: <br> |
+| 400 | Invalid request parameters | **application/json**: [WorkflowGenerateRejectedResponse](#workflowgeneraterejectedresponse)<br>[CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workflow-generate/stream
@@ -10986,7 +10986,7 @@ Stream a Dify workflow graph (plan then result) via SSE
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Server-Sent Events stream; each data frame matches this plan/result event schema | **application/json**: [WorkflowGenerateStreamEventResponse](#workflowgeneratestreameventresponse)<br> |
-| 400 | Invalid request parameters | **application/json**: <br> |
+| 400 | Invalid request parameters | **application/json**: [WorkflowGenerateRejectedResponse](#workflowgeneraterejectedresponse)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workflow-generate/suggestions
@@ -11083,7 +11083,7 @@ Returns Server-Sent Events stream.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | SSE event stream | **application/json**: [EventStreamResponse](#eventstreamresponse)<br> |
-| 404 | Not Found | **application/json**: [NotFoundError](#notfounderror)<br> |
+| 404 | Not Found | **application/json**: [NotFoundError](#notfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workflow/{workflow_run_id}/pause-details
@@ -11105,7 +11105,7 @@ Returns information about why and where the workflow is paused.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow pause details retrieved successfully | **application/json**: [WorkflowPauseDetailsResponse](#workflowpausedetailsresponse)<br> |
-| 404 | Workflow run not found | **application/json**: [NotFoundError](#notfounderror)<br> |
+| 404 | Workflow run not found | **application/json**: [NotFoundError](#notfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces
@@ -11229,7 +11229,7 @@ Get list of available agent providers
 | ---- | ----------- | ------ |
 | 200 | Snippet imported successfully | **application/json**: [SnippetImportResponse](#snippetimportresponse)<br> |
 | 202 | Import pending confirmation | **application/json**: [SnippetImportResponse](#snippetimportresponse)<br> |
-| 400 | Import failed | **application/json**: <br> |
+| 400 | Import failed | **application/json**: [SnippetImportResponse](#snippetimportresponse)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/customized-snippets/imports/{import_id}/confirm
@@ -11246,7 +11246,7 @@ Get list of available agent providers
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Import confirmed successfully | **application/json**: [SnippetImportResponse](#snippetimportresponse)<br> |
-| 400 | Import failed | **application/json**: <br> |
+| 400 | Import failed | **application/json**: [SnippetImportResponse](#snippetimportresponse)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /workspaces/current/customized-snippets/{snippet_id}
@@ -11606,7 +11606,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Success | **application/json**: [MemberInviteResponse](#memberinviteresponse)<br> |
-| 400 | Invalid email, role, or workspace member limit exceeded | **application/json**: <br> |
+| 400 | Invalid email, role, or workspace member limit exceeded | **application/json**: [MemberInviteErrorResponse](#memberinviteerrorresponse)<br>[InvalidRoleError](#invalidroleerror)<br>[LimitExceededError](#limitexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/members/owner-transfer-check
@@ -11621,8 +11621,8 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [VerificationTokenResponse](#verificationtokenresponse)<br> |
-| 400 | Bad Request | **application/json**: <br> |
-| 429 | Too Many Requests | **application/json**: <br> |
+| 400 | Bad Request | **application/json**: [CannotTransferOwnerToSelfError](#cannottransferownertoselferror)<br>[EmailCodeError](#emailcodeerror)<br>[InvalidEmailError](#invalidemailerror)<br>[InvalidOrExpiredTokenError](#invalidorexpiredtokenerror)<br>[MemberNotInTenantError](#membernotintenanterror)<br>[NotOwnerError](#notownererror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [EmailSendIpLimitError](#emailsendiplimiterror)<br>[OwnerTransferLimitError](#ownertransferlimiterror)<br>[OwnerTransferRateLimitExceededError](#ownertransferratelimitexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/members/send-owner-transfer-confirm-email
@@ -11637,8 +11637,8 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultDataResponse](#simpleresultdataresponse)<br> |
-| 400 | Bad Request | **application/json**: <br> |
-| 429 | Too Many Requests | **application/json**: <br> |
+| 400 | Bad Request | **application/json**: [CannotTransferOwnerToSelfError](#cannottransferownertoselferror)<br>[EmailCodeError](#emailcodeerror)<br>[InvalidEmailError](#invalidemailerror)<br>[InvalidOrExpiredTokenError](#invalidorexpiredtokenerror)<br>[MemberNotInTenantError](#membernotintenanterror)<br>[NotOwnerError](#notownererror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [EmailSendIpLimitError](#emailsendiplimiterror)<br>[OwnerTransferLimitError](#ownertransferlimiterror)<br>[OwnerTransferRateLimitExceededError](#ownertransferratelimitexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /workspaces/current/members/{member_id}
@@ -11653,9 +11653,9 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [MemberActionResponse](#memberactionresponse)<br> |
-| 400 | Bad Request | **application/json**: <br> |
-| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br> |
-| 404 | Not Found | **application/json**: [MemberNotFoundError](#membernotfounderror)<br> |
+| 400 | Bad Request | **application/json**: [CannotOperateSelfError](#cannotoperateselferror)<br>[InvalidRoleError](#invalidroleerror)<br>[RoleAlreadyAssignedError](#rolealreadyassignederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [MemberNotFoundError](#membernotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/members/{member_id}/owner-transfer
@@ -11676,8 +11676,8 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 400 | Bad Request | **application/json**: <br> |
-| 429 | Too Many Requests | **application/json**: <br> |
+| 400 | Bad Request | **application/json**: [CannotTransferOwnerToSelfError](#cannottransferownertoselferror)<br>[EmailCodeError](#emailcodeerror)<br>[InvalidEmailError](#invalidemailerror)<br>[InvalidOrExpiredTokenError](#invalidorexpiredtokenerror)<br>[MemberNotInTenantError](#membernotintenanterror)<br>[NotOwnerError](#notownererror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [EmailSendIpLimitError](#emailsendiplimiterror)<br>[OwnerTransferLimitError](#ownertransferlimiterror)<br>[OwnerTransferRateLimitExceededError](#ownertransferratelimitexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /workspaces/current/members/{member_id}/update-role
@@ -11698,9 +11698,9 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 400 | Bad Request | **application/json**: <br> |
-| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br> |
-| 404 | Not Found | **application/json**: [MemberNotFoundError](#membernotfounderror)<br> |
+| 400 | Bad Request | **application/json**: [CannotOperateSelfError](#cannotoperateselferror)<br>[InvalidRoleError](#invalidroleerror)<br>[RoleAlreadyAssignedError](#rolealreadyassignederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [MemberNotFoundError](#membernotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/model-providers
@@ -12181,7 +12181,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [BinaryFileResponse](#binaryfileresponse)<br> |
-| 400 | Bad Request | **application/json**: [PluginError](#pluginerror)<br> |
+| 400 | Bad Request | **application/json**: [PluginError](#pluginerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/plugin/auto-upgrade/change
@@ -12232,7 +12232,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [PluginDebuggingKeyResponse](#plugindebuggingkeyresponse)<br> |
-| 400 | Bad Request | **application/json**: [PluginError](#pluginerror)<br> |
+| 400 | Bad Request | **application/json**: [PluginError](#pluginerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/plugin/fetch-manifest
@@ -12247,7 +12247,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [PluginManifestResponse](#pluginmanifestresponse)<br> |
-| 400 | Bad Request | **application/json**: [PluginError](#pluginerror)<br> |
+| 400 | Bad Request | **application/json**: [PluginError](#pluginerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/plugin/icon
@@ -12263,7 +12263,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [BinaryFileResponse](#binaryfileresponse)<br> |
-| 400 | Bad Request | **application/json**: [PluginError](#pluginerror)<br> |
+| 400 | Bad Request | **application/json**: [PluginError](#pluginerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/plugin/install/github
@@ -12278,7 +12278,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [PluginInstallTaskStartResponse](#plugininstalltaskstartresponse)<br> |
-| 400 | Bad Request | **application/json**: [PluginError](#pluginerror)<br> |
+| 400 | Bad Request | **application/json**: [PluginError](#pluginerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/plugin/install/marketplace
@@ -12293,7 +12293,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [PluginInstallTaskStartResponse](#plugininstalltaskstartresponse)<br> |
-| 400 | Bad Request | **application/json**: [PluginError](#pluginerror)<br> |
+| 400 | Bad Request | **application/json**: [PluginError](#pluginerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/plugin/install/pkg
@@ -12308,7 +12308,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [PluginInstallTaskStartResponse](#plugininstalltaskstartresponse)<br> |
-| 400 | Bad Request | **application/json**: [PluginError](#pluginerror)<br> |
+| 400 | Bad Request | **application/json**: [PluginError](#pluginerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/plugin/installed-ids
@@ -12323,7 +12323,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [PluginInstalledIdsResponse](#plugininstalledidsresponse)<br> |
-| 400 | Bad Request | **application/json**: [PluginError](#pluginerror)<br> |
+| 400 | Bad Request | **application/json**: [PluginError](#pluginerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/plugin/list
@@ -12339,7 +12339,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [PluginListResponse](#pluginlistresponse)<br> |
-| 400 | Bad Request | **application/json**: [PluginError](#pluginerror)<br> |
+| 400 | Bad Request | **application/json**: [PluginError](#pluginerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/plugin/list/installations/ids
@@ -12354,7 +12354,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [PluginInstallationsResponse](#plugininstallationsresponse)<br> |
-| 400 | Bad Request | **application/json**: [PluginError](#pluginerror)<br> |
+| 400 | Bad Request | **application/json**: [PluginError](#pluginerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/plugin/list/latest-versions
@@ -12369,7 +12369,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [PluginVersionsResponse](#pluginversionsresponse)<br> |
-| 400 | Bad Request | **application/json**: [PluginError](#pluginerror)<br> |
+| 400 | Bad Request | **application/json**: [PluginError](#pluginerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/plugin/marketplace/pkg
@@ -12384,7 +12384,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [PluginManifestResponse](#pluginmanifestresponse)<br> |
-| 400 | Bad Request | **application/json**: [PluginError](#pluginerror)<br> |
+| 400 | Bad Request | **application/json**: [PluginError](#pluginerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/plugin/parameters/dynamic-options
@@ -12404,7 +12404,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [PluginDynamicOptionsResponse](#plugindynamicoptionsresponse)<br> |
-| 400 | Bad Request | **application/json**: [PluginError](#pluginerror)<br> |
+| 400 | Bad Request | **application/json**: [PluginError](#pluginerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/plugin/parameters/dynamic-options-with-credentials
@@ -12421,7 +12421,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [PluginDynamicOptionsResponse](#plugindynamicoptionsresponse)<br> |
-| 400 | Bad Request | **application/json**: [PluginError](#pluginerror)<br> |
+| 400 | Bad Request | **application/json**: [PluginError](#pluginerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/plugin/permission/change
@@ -12474,7 +12474,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [PluginTasksResponse](#plugintasksresponse)<br> |
-| 400 | Bad Request | **application/json**: [PluginError](#pluginerror)<br> |
+| 400 | Bad Request | **application/json**: [PluginError](#pluginerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/plugin/tasks/delete_all
@@ -12483,7 +12483,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SuccessResponse](#successresponse)<br> |
-| 400 | Bad Request | **application/json**: [PluginError](#pluginerror)<br> |
+| 400 | Bad Request | **application/json**: [PluginError](#pluginerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/plugin/tasks/{task_id}
@@ -12498,7 +12498,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [PluginTaskResponse](#plugintaskresponse)<br> |
-| 400 | Bad Request | **application/json**: [PluginError](#pluginerror)<br> |
+| 400 | Bad Request | **application/json**: [PluginError](#pluginerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/plugin/tasks/{task_id}/delete
@@ -12513,7 +12513,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SuccessResponse](#successresponse)<br> |
-| 400 | Bad Request | **application/json**: [PluginError](#pluginerror)<br> |
+| 400 | Bad Request | **application/json**: [PluginError](#pluginerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/plugin/tasks/{task_id}/delete/{identifier}
@@ -12529,7 +12529,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SuccessResponse](#successresponse)<br> |
-| 400 | Bad Request | **application/json**: [PluginError](#pluginerror)<br> |
+| 400 | Bad Request | **application/json**: [PluginError](#pluginerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/plugin/uninstall
@@ -12544,7 +12544,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SuccessResponse](#successresponse)<br> |
-| 400 | Bad Request | **application/json**: [PluginError](#pluginerror)<br> |
+| 400 | Bad Request | **application/json**: [PluginError](#pluginerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/plugin/upgrade/github
@@ -12559,7 +12559,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [PluginInstallTaskStartResponse](#plugininstalltaskstartresponse)<br> |
-| 400 | Bad Request | **application/json**: [PluginError](#pluginerror)<br> |
+| 400 | Bad Request | **application/json**: [PluginError](#pluginerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/plugin/upgrade/marketplace
@@ -12574,7 +12574,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [PluginInstallTaskStartResponse](#plugininstalltaskstartresponse)<br> |
-| 400 | Bad Request | **application/json**: [PluginError](#pluginerror)<br> |
+| 400 | Bad Request | **application/json**: [PluginError](#pluginerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/plugin/upload/bundle
@@ -12597,7 +12597,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [PluginDecodeResponse](#plugindecoderesponse)<br> |
-| 400 | Bad Request | **application/json**: [PluginError](#pluginerror)<br> |
+| 400 | Bad Request | **application/json**: [PluginError](#pluginerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/plugin/upload/pkg
@@ -12612,7 +12612,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [PluginDecodeResponse](#plugindecoderesponse)<br> |
-| 400 | Bad Request | **application/json**: [PluginError](#pluginerror)<br> |
+| 400 | Bad Request | **application/json**: [PluginError](#pluginerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/plugin/{category}/list
@@ -12632,7 +12632,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [PluginCategoryListResponse](#plugincategorylistresponse)<br> |
-| 400 | Bad Request | **application/json**: [PluginError](#pluginerror)<br> |
+| 400 | Bad Request | **application/json**: [PluginError](#pluginerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/rbac/access-policies
@@ -13563,7 +13563,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Skill created | **application/json**: [SkillDetailResponse](#skilldetailresponse)<br> |
-| 400 | Bad Request | **application/json**: [InvalidRequestError](#invalidrequesterror)<br> |
+| 400 | Bad Request | **application/json**: [InvalidRequestError](#invalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/skills/files/upload
@@ -13578,7 +13578,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Skill draft file uploaded | **application/json**: [SkillFileUploadResponse](#skillfileuploadresponse)<br> |
-| 400 | Bad Request | **application/json**: <br> |
+| 400 | Bad Request | **application/json**: [FilenameMissingError](#filenamemissingerror)<br>[NoFileUploadedError](#nofileuploadederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/skills/import
@@ -13589,7 +13589,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Skill imported | **application/json**: [SkillDetailResponse](#skilldetailresponse)<br> |
-| 400 | Bad Request | **application/json**: [InvalidRequestError](#invalidrequesterror)<br> |
+| 400 | Bad Request | **application/json**: [InvalidRequestError](#invalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/skills/tags
@@ -13652,7 +13652,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Skill updated | **application/json**: [SkillResponse](#skillresponse)<br> |
-| 400 | Bad Request | **application/json**: [InvalidRequestError](#invalidrequesterror)<br> |
+| 400 | Bad Request | **application/json**: [InvalidRequestError](#invalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/skills/{skill_id}/assist/messages
@@ -13721,7 +13721,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Draft file operation applied | **application/json**: [SkillDetailResponse](#skilldetailresponse)<br> |
-| 400 | Bad Request | **application/json**: [InvalidRequestError](#invalidrequesterror)<br> |
+| 400 | Bad Request | **application/json**: [InvalidRequestError](#invalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /workspaces/current/skills/{skill_id}/files
@@ -13742,7 +13742,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Draft files replaced | **application/json**: [SkillDetailResponse](#skilldetailresponse)<br> |
-| 400 | Bad Request | **application/json**: [InvalidRequestError](#invalidrequesterror)<br> |
+| 400 | Bad Request | **application/json**: [InvalidRequestError](#invalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/skills/{skill_id}/files/check
@@ -13763,7 +13763,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Draft files checked | **application/json**: [SkillFileCheckResponse](#skillfilecheckresponse)<br> |
-| 400 | Bad Request | **application/json**: [InvalidRequestError](#invalidrequesterror)<br> |
+| 400 | Bad Request | **application/json**: [InvalidRequestError](#invalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/skills/{skill_id}/files/content
@@ -13781,7 +13781,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Skill file content | **application/json**: [BinaryFileResponse](#binaryfileresponse)<br> |
-| 400 | Bad Request | **application/json**: [InvalidRequestError](#invalidrequesterror)<br> |
+| 400 | Bad Request | **application/json**: [InvalidRequestError](#invalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/skills/{skill_id}/files/preview
@@ -13798,7 +13798,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Skill file text preview | **application/json**: [SkillFilePreviewResponse](#skillfilepreviewresponse)<br> |
-| 400 | Bad Request | **application/json**: [InvalidRequestError](#invalidrequesterror)<br> |
+| 400 | Bad Request | **application/json**: [InvalidRequestError](#invalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/skills/{skill_id}/publish
@@ -13926,7 +13926,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [CurrentWorkspaceSummaryResponse](#currentworkspacesummaryresponse)<br> |
-| 409 | Current workspace is archived | **application/json**: [CurrentWorkspaceArchivedError](#currentworkspacearchivederror)<br> |
+| 409 | Current workspace is archived | **application/json**: [CurrentWorkspaceArchivedError](#currentworkspacearchivederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/tool-labels
@@ -14374,7 +14374,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow tool created successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 400 | Bad Request | **application/json**: [WorkflowToolHumanInputNotSupportedError](#workflowtoolhumaninputnotsupportederror)<br> |
+| 400 | Bad Request | **application/json**: [WorkflowToolHumanInputNotSupportedError](#workflowtoolhumaninputnotsupportederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/tool-provider/workflow/delete
@@ -14432,7 +14432,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow tool updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 400 | Bad Request | **application/json**: [WorkflowToolHumanInputNotSupportedError](#workflowtoolhumaninputnotsupportederror)<br> |
+| 400 | Bad Request | **application/json**: [WorkflowToolHumanInputNotSupportedError](#workflowtoolhumaninputnotsupportederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/tool-providers
@@ -14704,7 +14704,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Trigger subscriptions retrieved successfully | **application/json**: [TriggerProviderSubscriptionListResponse](#triggerprovidersubscriptionlistresponse)<br> |
-| 404 | Trigger provider not found | **application/json**: <br> |
+| 404 | Trigger provider not found | **application/json**: [TriggerProviderErrorResponse](#triggerprovidererrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/trigger-provider/{provider}/subscriptions/oauth/authorize
@@ -14721,7 +14721,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Trigger OAuth authorization URL generated successfully | **application/json**: [TriggerOAuthAuthorizeResponse](#triggeroauthauthorizeresponse)<br> |
-| 404 | Not Found | **application/json**: [NotFoundError](#notfounderror)<br> |
+| 404 | Not Found | **application/json**: [NotFoundError](#notfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/trigger-provider/{provider}/subscriptions/verify/{subscription_id}
@@ -14783,7 +14783,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Trigger subscription updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 404 | Not Found | **application/json**: [NotFoundError](#notfounderror)<br> |
+| 404 | Not Found | **application/json**: [NotFoundError](#notfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/triggers
@@ -14830,9 +14830,9 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Logo uploaded | **application/json**: [WorkspaceLogoUploadResponse](#workspacelogouploadresponse)<br> |
-| 400 | Bad Request | **application/json**: <br> |
-| 413 | Request Entity Too Large | **application/json**: [FileTooLargeError](#filetoolargeerror)<br> |
-| 415 | Unsupported Media Type | **application/json**: [UnsupportedFileTypeError](#unsupportedfiletypeerror)<br> |
+| 400 | Bad Request | **application/json**: [FilenameNotExistsError](#filenamenotexistserror)<br>[NoFileUploadedError](#nofileuploadederror)<br>[TooManyFilesError](#toomanyfileserror)<br>[ErrorResponse](#errorresponse)<br> |
+| 413 | Request Entity Too Large | **application/json**: [FileTooLargeError](#filetoolargeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 415 | Unsupported Media Type | **application/json**: [UnsupportedFileTypeError](#unsupportedfiletypeerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/info
@@ -14861,7 +14861,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SwitchWorkspaceResponse](#switchworkspaceresponse)<br> |
-| 403 | Forbidden | **application/json**: [AccountNotLinkTenantError](#accountnotlinktenanterror)<br> |
+| 403 | Forbidden | **application/json**: [AccountNotLinkTenantError](#accountnotlinktenanterror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/{tenant_id}/model-providers/{provider}/{icon_type}/{lang}

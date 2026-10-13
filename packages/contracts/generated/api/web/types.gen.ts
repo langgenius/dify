@@ -1313,10 +1313,11 @@ export type PostAudioToTextErrors = {
     | ProviderNotSupportSpeechToTextError
     | ProviderQuotaExceededError
     | SpeechToTextDisabledError
+    | ErrorResponse
   401: ErrorResponse
-  404: AgentVersionNotFoundError
-  413: AudioTooLargeError
-  415: UnsupportedAudioTypeError
+  404: AgentVersionNotFoundError | ErrorResponse
+  413: AudioTooLargeError | ErrorResponse
+  415: UnsupportedAudioTypeError | ErrorResponse
   500: ErrorResponse
   default: ErrorResponse
 }
@@ -1345,9 +1346,10 @@ export type PostChatMessagesErrors = {
     | NotChatAppError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
+    | ErrorResponse
   401: ErrorResponse
   404: ErrorResponse
-  429: RateLimitError
+  429: RateLimitError | ErrorResponse
   500: ErrorResponse
   default: ErrorResponse
 }
@@ -1370,7 +1372,7 @@ export type PostChatMessagesByTaskIdStopData = {
 }
 
 export type PostChatMessagesByTaskIdStopErrors = {
-  400: NotChatAppError
+  400: NotChatAppError | ErrorResponse
   401: ErrorResponse
   404: ErrorResponse
   500: ErrorResponse
@@ -1403,6 +1405,7 @@ export type PostCompletionMessagesErrors = {
     | NotCompletionAppError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
+    | ErrorResponse
   401: ErrorResponse
   404: ErrorResponse
   500: ErrorResponse
@@ -1429,7 +1432,7 @@ export type PostCompletionMessagesByTaskIdStopData = {
 }
 
 export type PostCompletionMessagesByTaskIdStopErrors = {
-  400: NotCompletionAppError
+  400: NotCompletionAppError | ErrorResponse
   401: ErrorResponse
   404: ErrorResponse
   500: ErrorResponse
@@ -1459,7 +1462,7 @@ export type GetConversationsData = {
 }
 
 export type GetConversationsErrors = {
-  400: NotChatAppError
+  400: NotChatAppError | ErrorResponse
   401: ErrorResponse
   404: ErrorResponse
   500: ErrorResponse
@@ -1484,7 +1487,7 @@ export type DeleteConversationsByCIdData = {
 }
 
 export type DeleteConversationsByCIdErrors = {
-  400: NotChatAppError
+  400: NotChatAppError | ErrorResponse
   401: ErrorResponse
   404: ErrorResponse
   500: ErrorResponse
@@ -1514,7 +1517,7 @@ export type PostConversationsByCIdNameData = {
 }
 
 export type PostConversationsByCIdNameErrors = {
-  400: NotChatAppError
+  400: NotChatAppError | ErrorResponse
   401: ErrorResponse
   404: ErrorResponse
   500: ErrorResponse
@@ -1541,7 +1544,7 @@ export type PatchConversationsByCIdPinData = {
 }
 
 export type PatchConversationsByCIdPinErrors = {
-  400: NotChatAppError
+  400: NotChatAppError | ErrorResponse
   401: ErrorResponse
   404: ErrorResponse
   500: ErrorResponse
@@ -1568,7 +1571,7 @@ export type PatchConversationsByCIdUnpinData = {
 }
 
 export type PatchConversationsByCIdUnpinErrors = {
-  400: NotChatAppError
+  400: NotChatAppError | ErrorResponse
   401: ErrorResponse
   404: ErrorResponse
   500: ErrorResponse
@@ -1594,7 +1597,7 @@ export type PostEmailCodeLoginData = {
 
 export type PostEmailCodeLoginErrors = {
   400: ErrorResponse
-  401: AuthenticationFailedError
+  401: AuthenticationFailedError | ErrorResponse
   404: ErrorResponse
   default: ErrorResponse
 }
@@ -1616,8 +1619,8 @@ export type PostEmailCodeLoginValidityData = {
 }
 
 export type PostEmailCodeLoginValidityErrors = {
-  400: AccountBannedError | EmailCodeError | InvalidEmailError
-  401: AuthenticationFailedError
+  400: AccountBannedError | EmailCodeError | InvalidEmailError | ErrorResponse
+  401: AuthenticationFailedError | ErrorResponse
   404: ErrorResponse
   default: ErrorResponse
 }
@@ -1640,9 +1643,14 @@ export type PostFilesUploadData = {
 }
 
 export type PostFilesUploadErrors = {
-  400: FileExtensionBlockedError | FilenameNotExistsError | NoFileUploadedError | TooManyFilesError
-  413: FileTooLargeError
-  415: UnsupportedFileTypeError
+  400:
+    | FileExtensionBlockedError
+    | FilenameNotExistsError
+    | NoFileUploadedError
+    | TooManyFilesError
+    | ErrorResponse
+  413: FileTooLargeError | ErrorResponse
+  415: UnsupportedFileTypeError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1663,9 +1671,9 @@ export type PostForgotPasswordData = {
 
 export type PostForgotPasswordErrors = {
   400: ErrorResponse
-  401: AuthenticationFailedError
+  401: AuthenticationFailedError | ErrorResponse
   404: ErrorResponse
-  429: EmailSendIpLimitError | PasswordResetRateLimitExceededError
+  429: EmailSendIpLimitError | PasswordResetRateLimitExceededError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1686,8 +1694,8 @@ export type PostForgotPasswordResetsData = {
 }
 
 export type PostForgotPasswordResetsErrors = {
-  400: InvalidOrExpiredTokenError | PasswordMismatchError
-  401: AuthenticationFailedError
+  400: InvalidOrExpiredTokenError | PasswordMismatchError | ErrorResponse
+  401: AuthenticationFailedError | ErrorResponse
   404: ErrorResponse
   default: ErrorResponse
 }
@@ -1710,9 +1718,9 @@ export type PostForgotPasswordValidityData = {
 }
 
 export type PostForgotPasswordValidityErrors = {
-  400: EmailCodeError | InvalidEmailError | InvalidOrExpiredTokenError
+  400: EmailCodeError | InvalidEmailError | InvalidOrExpiredTokenError | ErrorResponse
   401: ErrorResponse
-  429: EmailPasswordResetLimitError
+  429: EmailPasswordResetLimitError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1737,9 +1745,9 @@ export type GetFormHumanInputByFormTokenData = {
 
 export type GetFormHumanInputByFormTokenErrors = {
   403: ErrorResponse
-  404: NotFoundError
-  412: HumanInputFormExpiredError | HumanInputFormSubmittedError
-  429: WebFormRateLimitExceededError
+  404: NotFoundError | ErrorResponse
+  412: HumanInputFormExpiredError | HumanInputFormSubmittedError | ErrorResponse
+  429: WebFormRateLimitExceededError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1763,10 +1771,10 @@ export type PostFormHumanInputByFormTokenData = {
 }
 
 export type PostFormHumanInputByFormTokenErrors = {
-  400: InvalidFormDataError
-  404: NotFoundError
-  412: HumanInputFormExpiredError | HumanInputFormSubmittedError
-  429: WebFormRateLimitExceededError
+  400: InvalidFormDataError | ErrorResponse
+  404: NotFoundError | ErrorResponse
+  412: HumanInputFormExpiredError | HumanInputFormSubmittedError | ErrorResponse
+  429: WebFormRateLimitExceededError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1790,9 +1798,9 @@ export type PostFormHumanInputByFormTokenUploadTokenData = {
 }
 
 export type PostFormHumanInputByFormTokenUploadTokenErrors = {
-  404: NotFoundError
+  404: NotFoundError | ErrorResponse
   412: ErrorResponse
-  429: WebFormRateLimitExceededError
+  429: WebFormRateLimitExceededError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1823,12 +1831,13 @@ export type PostHumanInputFormsFilesErrors = {
     | RemoteFileInvalidUrlError
     | RemoteFileUrlBlockedError
     | TooManyFilesError
-  401: UploadTokenRequiredError
-  403: InvalidUploadTokenError
-  404: RemoteFileNotFoundError
-  413: FileTooLargeError
-  415: UnsupportedFileTypeError
-  502: RemoteFileInvalidResponseError | RemoteFileUnavailableError
+    | ErrorResponse
+  401: UploadTokenRequiredError | ErrorResponse
+  403: InvalidUploadTokenError | ErrorResponse
+  404: RemoteFileNotFoundError | ErrorResponse
+  413: FileTooLargeError | ErrorResponse
+  415: UnsupportedFileTypeError | ErrorResponse
+  502: RemoteFileInvalidResponseError | RemoteFileUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1850,8 +1859,8 @@ export type PostLoginData = {
 }
 
 export type PostLoginErrors = {
-  400: AccountBannedError
-  401: AuthenticationFailedError
+  400: AccountBannedError | ErrorResponse
+  401: AuthenticationFailedError | ErrorResponse
   404: ErrorResponse
   default: ErrorResponse
 }
@@ -1918,7 +1927,7 @@ export type GetMessagesData = {
 }
 
 export type GetMessagesErrors = {
-  400: NotChatAppError
+  400: NotChatAppError | ErrorResponse
   401: ErrorResponse
   404: ErrorResponse
   500: ErrorResponse
@@ -1981,8 +1990,9 @@ export type GetMessagesByMessageIdMoreLikeThisErrors = {
     | NotCompletionAppError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
+    | ErrorResponse
   401: ErrorResponse
-  403: AppMoreLikeThisDisabledError
+  403: AppMoreLikeThisDisabledError | ErrorResponse
   404: ErrorResponse
   500: ErrorResponse
   default: ErrorResponse
@@ -2014,8 +2024,9 @@ export type GetMessagesByMessageIdSuggestedQuestionsErrors = {
     | NotChatAppError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
+    | ErrorResponse
   401: ErrorResponse
-  403: AppSuggestedQuestionsAfterAnswerDisabledError
+  403: AppSuggestedQuestionsAfterAnswerDisabledError | ErrorResponse
   404: ErrorResponse
   500: ErrorResponse
   default: ErrorResponse
@@ -2039,7 +2050,7 @@ export type GetMetaData = {
 }
 
 export type GetMetaErrors = {
-  400: AppUnavailableError
+  400: AppUnavailableError | ErrorResponse
   401: ErrorResponse
   404: ErrorResponse
   500: ErrorResponse
@@ -2062,7 +2073,7 @@ export type GetParametersData = {
 }
 
 export type GetParametersErrors = {
-  400: AgentNotPublishedError | AppUnavailableError
+  400: AgentNotPublishedError | AppUnavailableError | ErrorResponse
   401: ErrorResponse
   404: ErrorResponse
   500: ErrorResponse
@@ -2113,12 +2124,13 @@ export type PostRemoteFilesUploadErrors = {
     | RemoteFileAccessDeniedError
     | RemoteFileInvalidUrlError
     | RemoteFileUrlBlockedError
-  404: RemoteFileNotFoundError
-  413: FileTooLargeError
-  415: UnsupportedFileTypeError
+    | ErrorResponse
+  404: RemoteFileNotFoundError | ErrorResponse
+  413: FileTooLargeError | ErrorResponse
+  415: UnsupportedFileTypeError | ErrorResponse
   422: ErrorResponse
   500: ErrorResponse
-  502: RemoteFileInvalidResponseError | RemoteFileUnavailableError
+  502: RemoteFileInvalidResponseError | RemoteFileUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2142,10 +2154,14 @@ export type GetRemoteFilesByUrlData = {
 }
 
 export type GetRemoteFilesByUrlErrors = {
-  400: RemoteFileAccessDeniedError | RemoteFileInvalidUrlError | RemoteFileUrlBlockedError
-  404: RemoteFileNotFoundError
+  400:
+    | RemoteFileAccessDeniedError
+    | RemoteFileInvalidUrlError
+    | RemoteFileUrlBlockedError
+    | ErrorResponse
+  404: RemoteFileNotFoundError | ErrorResponse
   500: ErrorResponse
-  502: RemoteFileInvalidResponseError | RemoteFileUnavailableError
+  502: RemoteFileInvalidResponseError | RemoteFileUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2169,7 +2185,7 @@ export type GetSavedMessagesData = {
 }
 
 export type GetSavedMessagesErrors = {
-  400: NotCompletionAppError
+  400: NotCompletionAppError | ErrorResponse
   401: ErrorResponse
   404: ErrorResponse
   500: ErrorResponse
@@ -2194,7 +2210,7 @@ export type PostSavedMessagesData = {
 }
 
 export type PostSavedMessagesErrors = {
-  400: NotCompletionAppError
+  400: NotCompletionAppError | ErrorResponse
   401: ErrorResponse
   404: ErrorResponse
   500: ErrorResponse
@@ -2219,7 +2235,7 @@ export type DeleteSavedMessagesByMessageIdData = {
 }
 
 export type DeleteSavedMessagesByMessageIdErrors = {
-  400: NotCompletionAppError
+  400: NotCompletionAppError | ErrorResponse
   401: ErrorResponse
   404: ErrorResponse
   500: ErrorResponse
@@ -2296,9 +2312,10 @@ export type PostTextToAudioErrors = {
     | ProviderNotInitializeError
     | ProviderNotSupportSpeechToTextError
     | ProviderQuotaExceededError
+    | ErrorResponse
   401: ErrorResponse
-  413: AudioTooLargeError
-  415: UnsupportedAudioTypeError
+  413: AudioTooLargeError | ErrorResponse
+  415: UnsupportedAudioTypeError | ErrorResponse
   500: ErrorResponse
   default: ErrorResponse
 }
@@ -2324,7 +2341,7 @@ export type GetWebappAccessModeData = {
 }
 
 export type GetWebappAccessModeErrors = {
-  400: InvalidParamError
+  400: InvalidParamError | ErrorResponse
   404: ErrorResponse
   500: ErrorResponse
   503: ErrorResponse
@@ -2376,8 +2393,8 @@ export type GetWorkflowByTaskIdEventsData = {
 }
 
 export type GetWorkflowByTaskIdEventsErrors = {
-  400: InvalidParamError
-  404: NotFoundError
+  400: InvalidParamError | ErrorResponse
+  404: NotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2405,10 +2422,11 @@ export type PostWorkflowsRunErrors = {
     | NotWorkflowAppError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
+    | ErrorResponse
   401: ErrorResponse
-  403: TriggerWorkflowServiceModeUnavailableError
+  403: TriggerWorkflowServiceModeUnavailableError | ErrorResponse
   404: ErrorResponse
-  429: RateLimitError
+  429: RateLimitError | ErrorResponse
   500: ErrorResponse
   default: ErrorResponse
 }
@@ -2431,7 +2449,7 @@ export type PostWorkflowsTasksByTaskIdStopData = {
 }
 
 export type PostWorkflowsTasksByTaskIdStopErrors = {
-  400: NotWorkflowAppError
+  400: NotWorkflowAppError | ErrorResponse
   401: ErrorResponse
   404: ErrorResponse
   500: ErrorResponse

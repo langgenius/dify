@@ -75,6 +75,16 @@ export type TurnstileVerificationFailedError = ErrorResponse & {
   status: 400
 }
 
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type AuthenticationFailedError = ErrorResponse & {
   code: 'authentication_failed'
   status: 401
@@ -108,16 +118,6 @@ export type EmailCodeLoginServiceUnavailableError = ErrorResponse & {
 export type TurnstileServiceUnavailableError = ErrorResponse & {
   code: 'turnstile_service_unavailable'
   status: 503
-}
-
-export type ErrorResponse = {
-  code: string
-  details?: {
-    [key: string]: unknown
-  }
-  message: string
-  params?: string
-  status: number
 }
 
 export type EmailCodeLoginPayload = {
@@ -154,13 +154,15 @@ export type PostEmailCodeLoginErrors = {
     | NormalizedEmailAlreadyInUseError
     | NotAllowedCreateWorkspaceError
     | TurnstileVerificationFailedError
-  401: AuthenticationFailedError
+    | ErrorResponse
+  401: AuthenticationFailedError | ErrorResponse
   429:
     | EmailCodeLoginLimitError
     | EmailCodeLoginRateLimitExceededError
     | EmailSendIpLimitError
     | PasswordResetRateLimitExceededError
-  503: EmailCodeLoginServiceUnavailableError | TurnstileServiceUnavailableError
+    | ErrorResponse
+  503: EmailCodeLoginServiceUnavailableError | TurnstileServiceUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -194,13 +196,15 @@ export type PostEmailCodeLoginValidityErrors = {
     | NormalizedEmailAlreadyInUseError
     | NotAllowedCreateWorkspaceError
     | TurnstileVerificationFailedError
-  401: AuthenticationFailedError
+    | ErrorResponse
+  401: AuthenticationFailedError | ErrorResponse
   429:
     | EmailCodeLoginLimitError
     | EmailCodeLoginRateLimitExceededError
     | EmailSendIpLimitError
     | PasswordResetRateLimitExceededError
-  503: EmailCodeLoginServiceUnavailableError | TurnstileServiceUnavailableError
+    | ErrorResponse
+  503: EmailCodeLoginServiceUnavailableError | TurnstileServiceUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 

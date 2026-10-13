@@ -36,6 +36,16 @@ export type AppUnavailableError = ErrorResponse & {
   status: 400
 }
 
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type UnauthorizedError = ErrorResponse & {
   code: 'unauthorized'
   status: 401
@@ -49,16 +59,6 @@ export type AppSiteUnavailableError = ErrorResponse & {
 export type AppNotFoundError = ErrorResponse & {
   code: 'app_not_found'
   status: 404
-}
-
-export type ErrorResponse = {
-  code: string
-  details?: {
-    [key: string]: unknown
-  }
-  message: string
-  params?: string
-  status: number
 }
 
 export type AgentAppComposerResponse = {
@@ -1498,10 +1498,10 @@ export type GetTrialAppsByAppIdData = {
 }
 
 export type GetTrialAppsByAppIdErrors = {
-  400: AppUnavailableError
-  401: UnauthorizedError
-  403: AppSiteUnavailableError
-  404: AppNotFoundError
+  400: AppUnavailableError | ErrorResponse
+  401: UnauthorizedError | ErrorResponse
+  403: AppSiteUnavailableError | ErrorResponse
+  404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1524,8 +1524,8 @@ export type GetTrialAppsByAppIdAgentComposerData = {
 }
 
 export type GetTrialAppsByAppIdAgentComposerErrors = {
-  400: AppUnavailableError
-  404: AppNotFoundError
+  400: AppUnavailableError | ErrorResponse
+  404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1551,8 +1551,8 @@ export type GetTrialAppsByAppIdAgentConfigFilesData = {
 }
 
 export type GetTrialAppsByAppIdAgentConfigFilesErrors = {
-  400: AppUnavailableError
-  404: AppNotFoundError
+  400: AppUnavailableError | ErrorResponse
+  404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1579,8 +1579,8 @@ export type GetTrialAppsByAppIdAgentConfigFilesByNameDownloadData = {
 }
 
 export type GetTrialAppsByAppIdAgentConfigFilesByNameDownloadErrors = {
-  400: AppUnavailableError
-  404: AppNotFoundError
+  400: AppUnavailableError | ErrorResponse
+  404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1607,8 +1607,8 @@ export type GetTrialAppsByAppIdAgentConfigFilesByNamePreviewData = {
 }
 
 export type GetTrialAppsByAppIdAgentConfigFilesByNamePreviewErrors = {
-  400: AppUnavailableError
-  404: AppNotFoundError
+  400: AppUnavailableError | ErrorResponse
+  404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1634,8 +1634,8 @@ export type GetTrialAppsByAppIdAgentConfigSkillsData = {
 }
 
 export type GetTrialAppsByAppIdAgentConfigSkillsErrors = {
-  400: AppUnavailableError
-  404: AppNotFoundError
+  400: AppUnavailableError | ErrorResponse
+  404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1662,8 +1662,8 @@ export type GetTrialAppsByAppIdAgentConfigSkillsByNameDownloadData = {
 }
 
 export type GetTrialAppsByAppIdAgentConfigSkillsByNameDownloadErrors = {
-  400: AppUnavailableError
-  404: AppNotFoundError
+  400: AppUnavailableError | ErrorResponse
+  404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1691,8 +1691,8 @@ export type GetTrialAppsByAppIdAgentConfigSkillsByNameFilesContentData = {
 }
 
 export type GetTrialAppsByAppIdAgentConfigSkillsByNameFilesContentErrors = {
-  400: AppUnavailableError
-  404: AppNotFoundError
+  400: AppUnavailableError | ErrorResponse
+  404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1720,8 +1720,8 @@ export type GetTrialAppsByAppIdAgentConfigSkillsByNameFilesDownloadData = {
 }
 
 export type GetTrialAppsByAppIdAgentConfigSkillsByNameFilesDownloadErrors = {
-  400: AppUnavailableError
-  404: AppNotFoundError
+  400: AppUnavailableError | ErrorResponse
+  404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1749,8 +1749,8 @@ export type GetTrialAppsByAppIdAgentConfigSkillsByNameFilesPreviewData = {
 }
 
 export type GetTrialAppsByAppIdAgentConfigSkillsByNameFilesPreviewErrors = {
-  400: AppUnavailableError
-  404: AppNotFoundError
+  400: AppUnavailableError | ErrorResponse
+  404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1777,8 +1777,8 @@ export type GetTrialAppsByAppIdAgentConfigSkillsByNameInspectData = {
 }
 
 export type GetTrialAppsByAppIdAgentConfigSkillsByNameInspectErrors = {
-  400: AppUnavailableError
-  404: AppNotFoundError
+  400: AppUnavailableError | ErrorResponse
+  404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1811,11 +1811,16 @@ export type PostTrialAppsByAppIdAudioToTextErrors = {
     | ProviderNotSupportSpeechToTextError
     | ProviderQuotaExceededError
     | SpeechToTextDisabledError
-  403: TrialAppFeatureDisabledError | TrialAppLimitExceededError | TrialAppNotAllowedError
-  404: AgentVersionNotFoundError
-  413: AudioTooLargeError
-  415: UnsupportedAudioTypeError
-  500: InternalServerError
+    | ErrorResponse
+  403:
+    | TrialAppFeatureDisabledError
+    | TrialAppLimitExceededError
+    | TrialAppNotAllowedError
+    | ErrorResponse
+  404: AgentVersionNotFoundError | ErrorResponse
+  413: AudioTooLargeError | ErrorResponse
+  415: UnsupportedAudioTypeError | ErrorResponse
+  500: InternalServerError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1846,11 +1851,16 @@ export type PostTrialAppsByAppIdChatMessagesErrors = {
     | NotChatAppError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  401: UnauthorizedError
-  403: TrialAppFeatureDisabledError | TrialAppLimitExceededError | TrialAppNotAllowedError
-  404: NotFoundError
-  429: RateLimitError
-  500: InternalServerError
+    | ErrorResponse
+  401: UnauthorizedError | ErrorResponse
+  403:
+    | TrialAppFeatureDisabledError
+    | TrialAppLimitExceededError
+    | TrialAppNotAllowedError
+    | ErrorResponse
+  404: NotFoundError | ErrorResponse
+  429: RateLimitError | ErrorResponse
+  500: InternalServerError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1877,8 +1887,12 @@ export type PostTrialAppsByAppIdChatMessagesByTaskIdStopData = {
 }
 
 export type PostTrialAppsByAppIdChatMessagesByTaskIdStopErrors = {
-  400: NotChatAppError
-  403: TrialAppFeatureDisabledError | TrialAppLimitExceededError | TrialAppNotAllowedError
+  400: NotChatAppError | ErrorResponse
+  403:
+    | TrialAppFeatureDisabledError
+    | TrialAppLimitExceededError
+    | TrialAppNotAllowedError
+    | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1909,11 +1923,16 @@ export type PostTrialAppsByAppIdCompletionMessagesErrors = {
     | NotCompletionAppError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  401: UnauthorizedError
-  403: TrialAppFeatureDisabledError | TrialAppLimitExceededError | TrialAppNotAllowedError
-  404: NotFoundError
-  429: RateLimitError
-  500: InternalServerError
+    | ErrorResponse
+  401: UnauthorizedError | ErrorResponse
+  403:
+    | TrialAppFeatureDisabledError
+    | TrialAppLimitExceededError
+    | TrialAppNotAllowedError
+    | ErrorResponse
+  404: NotFoundError | ErrorResponse
+  429: RateLimitError | ErrorResponse
+  500: InternalServerError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1943,8 +1962,8 @@ export type GetTrialAppsByAppIdDatasetsData = {
 }
 
 export type GetTrialAppsByAppIdDatasetsErrors = {
-  400: NeedAddIdsError
-  404: AppNotFoundError
+  400: NeedAddIdsError | ErrorResponse
+  404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1971,7 +1990,7 @@ export type GetTrialAppsByAppIdExportData = {
 }
 
 export type GetTrialAppsByAppIdExportErrors = {
-  404: RecommendedAppNotFoundError
+  404: RecommendedAppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1998,10 +2017,19 @@ export type PostTrialAppsByAppIdFilesUploadData = {
 }
 
 export type PostTrialAppsByAppIdFilesUploadErrors = {
-  400: FileExtensionBlockedError | FilenameNotExistsError | NoFileUploadedError | TooManyFilesError
-  403: TrialAppFeatureDisabledError | TrialAppLimitExceededError | TrialAppNotAllowedError
-  413: FileTooLargeError
-  415: UnsupportedFileTypeError
+  400:
+    | FileExtensionBlockedError
+    | FilenameNotExistsError
+    | NoFileUploadedError
+    | TooManyFilesError
+    | ErrorResponse
+  403:
+    | TrialAppFeatureDisabledError
+    | TrialAppLimitExceededError
+    | TrialAppNotAllowedError
+    | ErrorResponse
+  413: FileTooLargeError | ErrorResponse
+  415: UnsupportedFileTypeError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2033,14 +2061,16 @@ export type GetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsErrors = {
     | NotChatAppError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  401: UnauthorizedError
+    | ErrorResponse
+  401: UnauthorizedError | ErrorResponse
   403:
     | AppSuggestedQuestionsAfterAnswerDisabledError
     | TrialAppFeatureDisabledError
     | TrialAppLimitExceededError
     | TrialAppNotAllowedError
-  404: NotFoundError
-  500: InternalServerError
+    | ErrorResponse
+  404: NotFoundError | ErrorResponse
+  500: InternalServerError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2064,8 +2094,8 @@ export type GetTrialAppsByAppIdParametersData = {
 }
 
 export type GetTrialAppsByAppIdParametersErrors = {
-  400: AppUnavailableError
-  404: AppNotFoundError
+  400: AppUnavailableError | ErrorResponse
+  404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2094,11 +2124,16 @@ export type PostTrialAppsByAppIdRemoteFilesUploadErrors = {
     | RemoteFileAccessDeniedError
     | RemoteFileInvalidUrlError
     | RemoteFileUrlBlockedError
-  403: TrialAppFeatureDisabledError | TrialAppLimitExceededError | TrialAppNotAllowedError
-  404: RemoteFileNotFoundError
-  413: FileTooLargeError
-  415: UnsupportedFileTypeError
-  502: RemoteFileInvalidResponseError | RemoteFileUnavailableError
+    | ErrorResponse
+  403:
+    | TrialAppFeatureDisabledError
+    | TrialAppLimitExceededError
+    | TrialAppNotAllowedError
+    | ErrorResponse
+  404: RemoteFileNotFoundError | ErrorResponse
+  413: FileTooLargeError | ErrorResponse
+  415: UnsupportedFileTypeError | ErrorResponse
+  502: RemoteFileInvalidResponseError | RemoteFileUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2122,8 +2157,8 @@ export type GetTrialAppsByAppIdSiteData = {
 }
 
 export type GetTrialAppsByAppIdSiteErrors = {
-  403: AppOwnerUnavailableError | AppSiteUnavailableError
-  404: AppNotFoundError
+  403: AppOwnerUnavailableError | AppSiteUnavailableError | ErrorResponse
+  404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2156,11 +2191,16 @@ export type PostTrialAppsByAppIdTextToAudioErrors = {
     | ProviderNotSupportSpeechToTextError
     | ProviderQuotaExceededError
     | SpeechToTextDisabledError
-  403: TrialAppFeatureDisabledError | TrialAppLimitExceededError | TrialAppNotAllowedError
-  404: AgentVersionNotFoundError
-  413: AudioTooLargeError
-  415: UnsupportedAudioTypeError
-  500: InternalServerError
+    | ErrorResponse
+  403:
+    | TrialAppFeatureDisabledError
+    | TrialAppLimitExceededError
+    | TrialAppNotAllowedError
+    | ErrorResponse
+  404: AgentVersionNotFoundError | ErrorResponse
+  413: AudioTooLargeError | ErrorResponse
+  415: UnsupportedAudioTypeError | ErrorResponse
+  500: InternalServerError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2184,8 +2224,8 @@ export type GetTrialAppsByAppIdWorkflowsData = {
 }
 
 export type GetTrialAppsByAppIdWorkflowsErrors = {
-  400: AppUnavailableError
-  404: AppNotFoundError
+  400: AppUnavailableError | ErrorResponse
+  404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2216,10 +2256,15 @@ export type PostTrialAppsByAppIdWorkflowsRunErrors = {
     | NotWorkflowAppError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  401: UnauthorizedError
-  403: TrialAppFeatureDisabledError | TrialAppLimitExceededError | TrialAppNotAllowedError
-  429: RateLimitError
-  500: InternalServerError
+    | ErrorResponse
+  401: UnauthorizedError | ErrorResponse
+  403:
+    | TrialAppFeatureDisabledError
+    | TrialAppLimitExceededError
+    | TrialAppNotAllowedError
+    | ErrorResponse
+  429: RateLimitError | ErrorResponse
+  500: InternalServerError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2246,8 +2291,12 @@ export type PostTrialAppsByAppIdWorkflowsTasksByTaskIdStopData = {
 }
 
 export type PostTrialAppsByAppIdWorkflowsTasksByTaskIdStopErrors = {
-  400: NotWorkflowAppError
-  403: TrialAppFeatureDisabledError | TrialAppLimitExceededError | TrialAppNotAllowedError
+  400: NotWorkflowAppError | ErrorResponse
+  403:
+    | TrialAppFeatureDisabledError
+    | TrialAppLimitExceededError
+    | TrialAppNotAllowedError
+    | ErrorResponse
   default: ErrorResponse
 }
 

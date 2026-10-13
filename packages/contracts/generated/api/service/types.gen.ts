@@ -2826,11 +2826,12 @@ export type PostAudioToTextErrors = {
     | ProviderNotSupportSpeechToTextError
     | ProviderQuotaExceededError
     | SpeechToTextDisabledError
+    | ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
-  404: AgentVersionNotFoundError
-  413: AudioTooLargeError
-  415: UnsupportedAudioTypeError
+  404: AgentVersionNotFoundError | ErrorResponse
+  413: AudioTooLargeError | ErrorResponse
+  415: UnsupportedAudioTypeError | ErrorResponse
   500: ErrorResponse
   default: ErrorResponse
 }
@@ -2859,10 +2860,11 @@ export type PostChatMessagesErrors = {
     | NotChatAppError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
+    | ErrorResponse
   401: ErrorResponse
-  403: WorkflowVersionExecutionNotAllowedError
+  403: WorkflowVersionExecutionNotAllowedError | ErrorResponse
   404: ErrorResponse
-  429: RateLimitError
+  429: RateLimitError | ErrorResponse
   500: ErrorResponse
   default: ErrorResponse
 }
@@ -2885,7 +2887,7 @@ export type PostChatMessagesByTaskIdStopData = {
 }
 
 export type PostChatMessagesByTaskIdStopErrors = {
-  400: NotChatAppError
+  400: NotChatAppError | ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
   default: ErrorResponse
@@ -2916,6 +2918,7 @@ export type PostCompletionMessagesErrors = {
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
+    | ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
   429: ErrorResponse
@@ -2943,7 +2946,7 @@ export type PostCompletionMessagesByTaskIdStopData = {
 }
 
 export type PostCompletionMessagesByTaskIdStopErrors = {
-  400: AppUnavailableError
+  400: AppUnavailableError | ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
   default: ErrorResponse
@@ -2972,7 +2975,7 @@ export type GetConversationsData = {
 }
 
 export type GetConversationsErrors = {
-  400: NotChatAppError
+  400: NotChatAppError | ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
@@ -2997,7 +3000,7 @@ export type DeleteConversationsByConversationIdData = {
 }
 
 export type DeleteConversationsByConversationIdErrors = {
-  400: NotChatAppError
+  400: NotChatAppError | ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
@@ -3024,7 +3027,7 @@ export type PostConversationsByConversationIdNameData = {
 }
 
 export type PostConversationsByConversationIdNameErrors = {
-  400: NotChatAppError
+  400: NotChatAppError | ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
@@ -3056,7 +3059,7 @@ export type GetConversationsByConversationIdVariablesData = {
 }
 
 export type GetConversationsByConversationIdVariablesErrors = {
-  400: NotChatAppError
+  400: NotChatAppError | ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
@@ -3084,7 +3087,7 @@ export type PutConversationsByConversationIdVariablesByVariableIdData = {
 }
 
 export type PutConversationsByConversationIdVariablesByVariableIdErrors = {
-  400: NotChatAppError
+  400: NotChatAppError | ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
@@ -3139,7 +3142,7 @@ export type PostDatasetsErrors = {
   400: ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
-  409: DatasetNameDuplicateError
+  409: DatasetNameDuplicateError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3161,11 +3164,11 @@ export type PostDatasetsPipelineFileUploadData = {
 }
 
 export type PostDatasetsPipelineFileUploadErrors = {
-  400: FilenameNotExistsError | NoFileUploadedError | TooManyFilesError
+  400: FilenameNotExistsError | NoFileUploadedError | TooManyFilesError | ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
-  413: FileTooLargeError
-  415: UnsupportedFileTypeError
+  413: FileTooLargeError | ErrorResponse
+  415: UnsupportedFileTypeError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3408,11 +3411,16 @@ export type PostDatasetsByDatasetIdDocumentCreateByFileData = {
 }
 
 export type PostDatasetsByDatasetIdDocumentCreateByFileErrors = {
-  400: FilenameNotExistsError | NoFileUploadedError | ProviderNotInitializeError | TooManyFilesError
+  400:
+    | FilenameNotExistsError
+    | NoFileUploadedError
+    | ProviderNotInitializeError
+    | TooManyFilesError
+    | ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
-  413: FileTooLargeError
+  413: FileTooLargeError | ErrorResponse
   503: ErrorResponse
   default: ErrorResponse
 }
@@ -3437,7 +3445,7 @@ export type PostDatasetsByDatasetIdDocumentCreateByTextData = {
 }
 
 export type PostDatasetsByDatasetIdDocumentCreateByTextErrors = {
-  400: ProviderNotInitializeError
+  400: ProviderNotInitializeError | ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
@@ -3468,11 +3476,16 @@ export type PostDatasetsByDatasetIdDocumentCreateByFile2Data = {
 }
 
 export type PostDatasetsByDatasetIdDocumentCreateByFile2Errors = {
-  400: FilenameNotExistsError | NoFileUploadedError | ProviderNotInitializeError | TooManyFilesError
+  400:
+    | FilenameNotExistsError
+    | NoFileUploadedError
+    | ProviderNotInitializeError
+    | TooManyFilesError
+    | ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
-  413: FileTooLargeError
+  413: FileTooLargeError | ErrorResponse
   503: ErrorResponse
   default: ErrorResponse
 }
@@ -3497,7 +3510,7 @@ export type PostDatasetsByDatasetIdDocumentCreateByText2Data = {
 }
 
 export type PostDatasetsByDatasetIdDocumentCreateByText2Errors = {
-  400: ProviderNotInitializeError
+  400: ProviderNotInitializeError | ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
@@ -3610,7 +3623,7 @@ export type PatchDatasetsByDatasetIdDocumentsStatusByActionData = {
 }
 
 export type PatchDatasetsByDatasetIdDocumentsStatusByActionErrors = {
-  400: InvalidActionError
+  400: InvalidActionError | ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
@@ -3666,7 +3679,7 @@ export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdData = {
 
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdErrors = {
   401: ErrorResponse
-  403: ArchivedDocumentImmutableError
+  403: ArchivedDocumentImmutableError | ErrorResponse
   404: ErrorResponse
   default: ErrorResponse
 }
@@ -3725,12 +3738,12 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdData = {
 }
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdErrors = {
-  400: FilenameNotExistsError | ProviderNotInitializeError | TooManyFilesError
+  400: FilenameNotExistsError | ProviderNotInitializeError | TooManyFilesError | ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
-  413: FileTooLargeError
-  415: UnsupportedFileTypeError
+  413: FileTooLargeError | ErrorResponse
+  415: UnsupportedFileTypeError | ErrorResponse
   503: ErrorResponse
   default: ErrorResponse
 }
@@ -3788,7 +3801,7 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsData = {
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsErrors = {
-  400: ProviderNotInitializeError
+  400: ProviderNotInitializeError | ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
@@ -3816,7 +3829,7 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsData = {
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsErrors = {
-  400: ErrorMessageResponse | ProviderNotInitializeError
+  400: ErrorMessageResponse | ProviderNotInitializeError | ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
@@ -3904,7 +3917,7 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdData 
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdErrors = {
-  400: ProviderNotInitializeError
+  400: ProviderNotInitializeError | ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
@@ -3966,7 +3979,7 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChild
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksErrors = {
-  400: ProviderNotInitializeError
+  400: ProviderNotInitializeError | ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
@@ -4065,12 +4078,12 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileData = {
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileErrors = {
-  400: FilenameNotExistsError | ProviderNotInitializeError | TooManyFilesError
+  400: FilenameNotExistsError | ProviderNotInitializeError | TooManyFilesError | ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
-  413: FileTooLargeError
-  415: UnsupportedFileTypeError
+  413: FileTooLargeError | ErrorResponse
+  415: UnsupportedFileTypeError | ErrorResponse
   503: ErrorResponse
   default: ErrorResponse
 }
@@ -4096,7 +4109,7 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextData = {
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextErrors = {
-  400: ProviderNotInitializeError
+  400: ProviderNotInitializeError | ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
@@ -4128,12 +4141,12 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Data = {
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Errors = {
-  400: FilenameNotExistsError | ProviderNotInitializeError | TooManyFilesError
+  400: FilenameNotExistsError | ProviderNotInitializeError | TooManyFilesError | ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
-  413: FileTooLargeError
-  415: UnsupportedFileTypeError
+  413: FileTooLargeError | ErrorResponse
+  415: UnsupportedFileTypeError | ErrorResponse
   503: ErrorResponse
   default: ErrorResponse
 }
@@ -4159,7 +4172,7 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Data = {
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Errors = {
-  400: ProviderNotInitializeError
+  400: ProviderNotInitializeError | ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
@@ -4192,6 +4205,7 @@ export type PostDatasetsByDatasetIdHitTestingErrors = {
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
+    | ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
@@ -4441,7 +4455,7 @@ export type PostDatasetsByDatasetIdPipelineRunErrors = {
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
-  500: PipelineRunError
+  500: PipelineRunError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -4470,6 +4484,7 @@ export type PostDatasetsByDatasetIdRetrieveErrors = {
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
+    | ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
@@ -4525,7 +4540,7 @@ export type GetEndUsersByEndUserIdData = {
 export type GetEndUsersByEndUserIdErrors = {
   401: ErrorResponse
   403: ErrorResponse
-  404: EndUserNotFoundError
+  404: EndUserNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -4550,11 +4565,16 @@ export type PostFilesUploadData = {
 }
 
 export type PostFilesUploadErrors = {
-  400: FileExtensionBlockedError | FilenameNotExistsError | NoFileUploadedError | TooManyFilesError
+  400:
+    | FileExtensionBlockedError
+    | FilenameNotExistsError
+    | NoFileUploadedError
+    | TooManyFilesError
+    | ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
-  413: FileTooLargeError
-  415: UnsupportedFileTypeError
+  413: FileTooLargeError | ErrorResponse
+  415: UnsupportedFileTypeError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -4580,8 +4600,8 @@ export type GetFilesByFileIdPreviewData = {
 
 export type GetFilesByFileIdPreviewErrors = {
   401: ErrorResponse
-  403: FileAccessDeniedError
-  404: FileNotFoundError
+  403: FileAccessDeniedError | ErrorResponse
+  404: FileNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -4608,7 +4628,7 @@ export type GetFormHumanInputByFormTokenErrors = {
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
-  412: HumanInputFormExpiredError | HumanInputFormSubmittedError
+  412: HumanInputFormExpiredError | HumanInputFormSubmittedError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -4632,11 +4652,11 @@ export type PostFormHumanInputByFormTokenData = {
 }
 
 export type PostFormHumanInputByFormTokenErrors = {
-  400: InvalidFormDataError
+  400: InvalidFormDataError | ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
-  412: HumanInputFormExpiredError | HumanInputFormSubmittedError
+  412: HumanInputFormExpiredError | HumanInputFormSubmittedError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -4658,7 +4678,7 @@ export type GetInfoData = {
 }
 
 export type GetInfoErrors = {
-  400: AppUnavailableError
+  400: AppUnavailableError | ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
   default: ErrorResponse
@@ -4685,7 +4705,7 @@ export type GetMessagesData = {
 }
 
 export type GetMessagesErrors = {
-  400: NotChatAppError
+  400: NotChatAppError | ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
@@ -4739,7 +4759,7 @@ export type GetMessagesByMessageIdSuggestedData = {
 }
 
 export type GetMessagesByMessageIdSuggestedErrors = {
-  400: NotChatAppError
+  400: NotChatAppError | ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
@@ -4765,7 +4785,7 @@ export type GetMetaData = {
 }
 
 export type GetMetaErrors = {
-  400: AppUnavailableError
+  400: AppUnavailableError | ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
   default: ErrorResponse
@@ -4787,7 +4807,7 @@ export type GetParametersData = {
 }
 
 export type GetParametersErrors = {
-  400: AgentNotPublishedError | AppUnavailableError
+  400: AgentNotPublishedError | AppUnavailableError | ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
   default: ErrorResponse
@@ -4838,10 +4858,11 @@ export type PostTextToAudioErrors = {
     | ProviderNotInitializeError
     | ProviderNotSupportSpeechToTextError
     | ProviderQuotaExceededError
+    | ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
-  413: AudioTooLargeError
-  415: UnsupportedAudioTypeError
+  413: AudioTooLargeError | ErrorResponse
+  415: UnsupportedAudioTypeError | ErrorResponse
   500: ErrorResponse
   default: ErrorResponse
 }
@@ -4868,7 +4889,7 @@ export type GetWorkflowByWorkflowRunIdEventsData = {
 }
 
 export type GetWorkflowByWorkflowRunIdEventsErrors = {
-  400: NotWorkflowAppError
+  400: NotWorkflowAppError | ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
@@ -4930,9 +4951,10 @@ export type PostWorkflowsRunErrors = {
     | NotWorkflowAppError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
+    | ErrorResponse
   401: ErrorResponse
-  403: TriggerWorkflowServiceModeUnavailableError
-  429: RateLimitError
+  403: TriggerWorkflowServiceModeUnavailableError | ErrorResponse
+  429: RateLimitError | ErrorResponse
   500: ErrorResponse
   default: ErrorResponse
 }
@@ -4955,7 +4977,7 @@ export type GetWorkflowsRunByWorkflowRunIdData = {
 }
 
 export type GetWorkflowsRunByWorkflowRunIdErrors = {
-  400: NotWorkflowAppError
+  400: NotWorkflowAppError | ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
@@ -4982,7 +5004,7 @@ export type PostWorkflowsTasksByTaskIdStopData = {
 }
 
 export type PostWorkflowsTasksByTaskIdStopErrors = {
-  400: NotWorkflowAppError
+  400: NotWorkflowAppError | ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
   default: ErrorResponse
@@ -5014,10 +5036,14 @@ export type PostWorkflowsByWorkflowIdRunErrors = {
     | NotWorkflowAppError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
+    | ErrorResponse
   401: ErrorResponse
-  403: TriggerWorkflowServiceModeUnavailableError | WorkflowVersionExecutionNotAllowedError
+  403:
+    | TriggerWorkflowServiceModeUnavailableError
+    | WorkflowVersionExecutionNotAllowedError
+    | ErrorResponse
   404: ErrorResponse
-  429: RateLimitError
+  429: RateLimitError | ErrorResponse
   500: ErrorResponse
   default: ErrorResponse
 }

@@ -22,11 +22,11 @@ Convert audio file to text using speech-to-text service.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AudioToTextResponse](#audiototextresponse)<br> |
-| 400 | Bad Request | **application/json**: <br> |
+| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NoAudioUploadedError](#noaudiouploadederror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderNotSupportSpeechToTextError](#providernotsupportspeechtotexterror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[SpeechToTextDisabledError](#speechtotextdisablederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | Not Found | **application/json**: [AgentVersionNotFoundError](#agentversionnotfounderror)<br> |
-| 413 | Audio file too large | **application/json**: [AudioTooLargeError](#audiotoolargeerror)<br> |
-| 415 | Unsupported audio type | **application/json**: [UnsupportedAudioTypeError](#unsupportedaudiotypeerror)<br> |
+| 404 | Not Found | **application/json**: [AgentVersionNotFoundError](#agentversionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 413 | Audio file too large | **application/json**: [AudioTooLargeError](#audiotoolargeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 415 | Unsupported audio type | **application/json**: [UnsupportedAudioTypeError](#unsupportedaudiotypeerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -44,10 +44,10 @@ Create a chat message for conversational applications.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
-| 400 | Bad Request | **application/json**: <br> |
+| 400 | Bad Request | **application/json**: [AgentNotPublishedError](#agentnotpublishederror)<br>[AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NotChatAppError](#notchatapperror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | App Not Found | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 429 | Too Many Requests | **application/json**: [RateLimitError](#ratelimiterror)<br> |
+| 429 | Too Many Requests | **application/json**: [RateLimitError](#ratelimiterror)<br>[ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -65,7 +65,7 @@ Stop a running chat message task.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 400 | Bad Request | **application/json**: [NotChatAppError](#notchatapperror)<br> |
+| 400 | Bad Request | **application/json**: [NotChatAppError](#notchatapperror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Task Not Found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -85,7 +85,7 @@ Create a completion message for text generation applications.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
-| 400 | Bad Request | **application/json**: <br> |
+| 400 | Bad Request | **application/json**: [AgentNotPublishedError](#agentnotpublishederror)<br>[AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NotCompletionAppError](#notcompletionapperror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | App Not Found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -105,7 +105,7 @@ Stop a running completion message task.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 400 | Bad Request | **application/json**: [NotCompletionAppError](#notcompletionapperror)<br> |
+| 400 | Bad Request | **application/json**: [NotCompletionAppError](#notcompletionapperror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Task Not Found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -128,7 +128,7 @@ Retrieve paginated list of conversations for a chat application.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ConversationInfiniteScrollPagination](#conversationinfinitescrollpagination)<br> |
-| 400 | Bad Request | **application/json**: [NotChatAppError](#notchatapperror)<br> |
+| 400 | Bad Request | **application/json**: [NotChatAppError](#notchatapperror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | App Not Found or Not a Chat App | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -148,7 +148,7 @@ Delete a specific conversation.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 204 | Conversation deleted successfully |  |
-| 400 | Bad Request | **application/json**: [NotChatAppError](#notchatapperror)<br> |
+| 400 | Bad Request | **application/json**: [NotChatAppError](#notchatapperror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Conversation Not Found or Not a Chat App | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -176,7 +176,7 @@ Rename a specific conversation with a custom name or auto-generate one.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Conversation renamed successfully | **application/json**: [SimpleConversation](#simpleconversation)<br> |
-| 400 | Bad Request | **application/json**: [NotChatAppError](#notchatapperror)<br> |
+| 400 | Bad Request | **application/json**: [NotChatAppError](#notchatapperror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Conversation Not Found or Not a Chat App | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -196,7 +196,7 @@ Pin a specific conversation to keep it at the top of the list.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Conversation pinned successfully | **application/json**: [ResultResponse](#resultresponse)<br> |
-| 400 | Bad Request | **application/json**: [NotChatAppError](#notchatapperror)<br> |
+| 400 | Bad Request | **application/json**: [NotChatAppError](#notchatapperror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Conversation Not Found or Not a Chat App | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -216,7 +216,7 @@ Unpin a specific conversation to remove it from the top of the list.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Conversation unpinned successfully | **application/json**: [ResultResponse](#resultresponse)<br> |
-| 400 | Bad Request | **application/json**: [NotChatAppError](#notchatapperror)<br> |
+| 400 | Bad Request | **application/json**: [NotChatAppError](#notchatapperror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Conversation Not Found or Not a Chat App | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -237,7 +237,7 @@ Send email verification code for login
 | ---- | ----------- | ------ |
 | 200 | Email code sent successfully | **application/json**: [SimpleResultDataResponse](#simpleresultdataresponse)<br> |
 | 400 | Bad request - invalid email format | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 401 | Unauthorized | **application/json**: [AuthenticationFailedError](#authenticationfailederror)<br> |
+| 401 | Unauthorized | **application/json**: [AuthenticationFailedError](#authenticationfailederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Account not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -255,8 +255,8 @@ Verify email code and complete login
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Email code verified and login successful | **application/json**: [AccessTokenResultResponse](#accesstokenresultresponse)<br> |
-| 400 | Bad request - invalid code or token | **application/json**: <br> |
-| 401 | Invalid token or expired code | **application/json**: [AuthenticationFailedError](#authenticationfailederror)<br> |
+| 400 | Bad request - invalid code or token | **application/json**: [AccountBannedError](#accountbannederror)<br>[EmailCodeError](#emailcodeerror)<br>[InvalidEmailError](#invalidemailerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Invalid token or expired code | **application/json**: [AuthenticationFailedError](#authenticationfailederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Account not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -292,9 +292,9 @@ Raises:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | File uploaded successfully | **application/json**: [FileResponse](#fileresponse)<br> |
-| 400 | - `no_file_uploaded` : No file was provided in the request. - `too_many_files` : Only one file is allowed per request. - `filename_not_exists_error` : The uploaded file has no filename. - `file_extension_blocked` : The file extension is blocked for security reasons. | **application/json**: <br> |
-| 413 | `file_too_large` : File size exceeded. | **application/json**: [FileTooLargeError](#filetoolargeerror)<br> |
-| 415 | `unsupported_file_type` : File type not allowed. | **application/json**: [UnsupportedFileTypeError](#unsupportedfiletypeerror)<br> |
+| 400 | - `no_file_uploaded` : No file was provided in the request. - `too_many_files` : Only one file is allowed per request. - `filename_not_exists_error` : The uploaded file has no filename. - `file_extension_blocked` : The file extension is blocked for security reasons. | **application/json**: [FileExtensionBlockedError](#fileextensionblockederror)<br>[FilenameNotExistsError](#filenamenotexistserror)<br>[NoFileUploadedError](#nofileuploadederror)<br>[TooManyFilesError](#toomanyfileserror)<br>[ErrorResponse](#errorresponse)<br> |
+| 413 | `file_too_large` : File size exceeded. | **application/json**: [FileTooLargeError](#filetoolargeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 415 | `unsupported_file_type` : File type not allowed. | **application/json**: [UnsupportedFileTypeError](#unsupportedfiletypeerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /forgot-password
@@ -312,9 +312,9 @@ Send password reset email
 | ---- | ----------- | ------ |
 | 200 | Password reset email sent successfully | **application/json**: [SimpleResultDataResponse](#simpleresultdataresponse)<br> |
 | 400 | Bad request - invalid email format | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 401 | Unauthorized | **application/json**: [AuthenticationFailedError](#authenticationfailederror)<br> |
+| 401 | Unauthorized | **application/json**: [AuthenticationFailedError](#authenticationfailederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Account not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 429 | Too many requests - rate limit exceeded | **application/json**: <br> |
+| 429 | Too many requests - rate limit exceeded | **application/json**: [EmailSendIpLimitError](#emailsendiplimiterror)<br>[PasswordResetRateLimitExceededError](#passwordresetratelimitexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /forgot-password/resets
@@ -331,8 +331,8 @@ Reset user password with verification token
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Password reset successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 400 | Bad request - invalid parameters or password mismatch | **application/json**: <br> |
-| 401 | Invalid or expired token | **application/json**: [AuthenticationFailedError](#authenticationfailederror)<br> |
+| 400 | Bad request - invalid parameters or password mismatch | **application/json**: [InvalidOrExpiredTokenError](#invalidorexpiredtokenerror)<br>[PasswordMismatchError](#passwordmismatcherror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Invalid or expired token | **application/json**: [AuthenticationFailedError](#authenticationfailederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Account not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -350,9 +350,9 @@ Verify password reset token validity
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Token is valid | **application/json**: [VerificationTokenResponse](#verificationtokenresponse)<br> |
-| 400 | Bad request - invalid token format | **application/json**: <br> |
+| 400 | Bad request - invalid token format | **application/json**: [EmailCodeError](#emailcodeerror)<br>[InvalidEmailError](#invalidemailerror)<br>[InvalidOrExpiredTokenError](#invalidorexpiredtokenerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Invalid or expired token | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 429 | Too Many Requests | **application/json**: [EmailPasswordResetLimitError](#emailpasswordresetlimiterror)<br> |
+| 429 | Too Many Requests | **application/json**: [EmailPasswordResetLimitError](#emailpasswordresetlimiterror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /form/human_input/{form_token}
@@ -373,9 +373,9 @@ GET /api/form/human_input/<form_token>
 | ---- | ----------- | ------ |
 | 200 | Form retrieved successfully | **application/json**: [HumanInputFormDefinitionResponse](#humaninputformdefinitionresponse)<br> |
 | 403 | Forbidden | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | Form not found | **application/json**: [NotFoundError](#notfounderror)<br> |
-| 412 | Form already submitted or expired | **application/json**: <br> |
-| 429 | Too many requests | **application/json**: [WebFormRateLimitExceededError](#webformratelimitexceedederror)<br> |
+| 404 | Form not found | **application/json**: [NotFoundError](#notfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 412 | Form already submitted or expired | **application/json**: [HumanInputFormExpiredError](#humaninputformexpirederror)<br>[HumanInputFormSubmittedError](#humaninputformsubmittederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too many requests | **application/json**: [WebFormRateLimitExceededError](#webformratelimitexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /form/human_input/{form_token}
@@ -409,10 +409,10 @@ Request body:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Form submitted successfully | **application/json**: [HumanInputFormSubmitResponse](#humaninputformsubmitresponse)<br> |
-| 400 | Bad request - invalid submission data | **application/json**: [InvalidFormDataError](#invalidformdataerror)<br> |
-| 404 | Form not found | **application/json**: [NotFoundError](#notfounderror)<br> |
-| 412 | Form already submitted or expired | **application/json**: <br> |
-| 429 | Too many requests | **application/json**: [WebFormRateLimitExceededError](#webformratelimitexceedederror)<br> |
+| 400 | Bad request - invalid submission data | **application/json**: [InvalidFormDataError](#invalidformdataerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Form not found | **application/json**: [NotFoundError](#notfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 412 | Form already submitted or expired | **application/json**: [HumanInputFormExpiredError](#humaninputformexpirederror)<br>[HumanInputFormSubmittedError](#humaninputformsubmittederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too many requests | **application/json**: [WebFormRateLimitExceededError](#webformratelimitexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /form/human_input/{form_token}/upload-token
@@ -432,9 +432,9 @@ POST /api/form/human_input/<form_token>/upload-token
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Upload token issued successfully | **application/json**: [HumanInputUploadTokenResponse](#humaninputuploadtokenresponse)<br> |
-| 404 | Form not found | **application/json**: [NotFoundError](#notfounderror)<br> |
+| 404 | Form not found | **application/json**: [NotFoundError](#notfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 412 | Form already submitted or expired | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 429 | Too many requests | **application/json**: [WebFormRateLimitExceededError](#webformratelimitexceedederror)<br> |
+| 429 | Too many requests | **application/json**: [WebFormRateLimitExceededError](#webformratelimitexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /human-input-forms/files
@@ -445,13 +445,13 @@ POST /api/form/human_input/<form_token>/upload-token
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | File uploaded successfully | **application/json**: [FileResponse](#fileresponse)<br> |
-| 400 | Bad Request | **application/json**: <br> |
-| 401 | Unauthorized | **application/json**: [UploadTokenRequiredError](#uploadtokenrequirederror)<br> |
-| 403 | Forbidden | **application/json**: [InvalidUploadTokenError](#invaliduploadtokenerror)<br> |
-| 404 | Not Found | **application/json**: [RemoteFileNotFoundError](#remotefilenotfounderror)<br> |
-| 413 | Request Entity Too Large | **application/json**: [FileTooLargeError](#filetoolargeerror)<br> |
-| 415 | Unsupported Media Type | **application/json**: [UnsupportedFileTypeError](#unsupportedfiletypeerror)<br> |
-| 502 | Bad Gateway | **application/json**: <br> |
+| 400 | Bad Request | **application/json**: [FileExtensionBlockedError](#fileextensionblockederror)<br>[FilenameNotExistsError](#filenamenotexistserror)<br>[MalformedUploadTokenError](#malformeduploadtokenerror)<br>[NoFileUploadedError](#nofileuploadederror)<br>[RemoteFileAccessDeniedError](#remotefileaccessdeniederror)<br>[RemoteFileInvalidUrlError](#remotefileinvalidurlerror)<br>[RemoteFileUrlBlockedError](#remotefileurlblockederror)<br>[TooManyFilesError](#toomanyfileserror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Unauthorized | **application/json**: [UploadTokenRequiredError](#uploadtokenrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [InvalidUploadTokenError](#invaliduploadtokenerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [RemoteFileNotFoundError](#remotefilenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 413 | Request Entity Too Large | **application/json**: [FileTooLargeError](#filetoolargeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 415 | Unsupported Media Type | **application/json**: [UnsupportedFileTypeError](#unsupportedfiletypeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [RemoteFileInvalidResponseError](#remotefileinvalidresponseerror)<br>[RemoteFileUnavailableError](#remotefileunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /login
@@ -470,8 +470,8 @@ Authenticate user for web application access
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Authentication successful | **application/json**: [AccessTokenResultResponse](#accesstokenresultresponse)<br> |
-| 400 | Bad request - invalid email or password format | **application/json**: [AccountBannedError](#accountbannederror)<br> |
-| 401 | Authentication failed - email or password mismatch | **application/json**: [AuthenticationFailedError](#authenticationfailederror)<br> |
+| 400 | Bad request - invalid email or password format | **application/json**: [AccountBannedError](#accountbannederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 401 | Authentication failed - email or password mismatch | **application/json**: [AuthenticationFailedError](#authenticationfailederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Account not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -519,7 +519,7 @@ Retrieve paginated list of messages from a conversation in a chat application.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [WebMessageInfiniteScrollPagination](#webmessageinfinitescrollpagination)<br> |
-| 400 | Bad Request | **application/json**: [NotChatAppError](#notchatapperror)<br> |
+| 400 | Bad Request | **application/json**: [NotChatAppError](#notchatapperror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Conversation Not Found or Not a Chat App | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -568,9 +568,9 @@ Generate a new completion similar to an existing message (completion apps only).
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
-| 400 | Bad Request - Not a completion app or feature disabled | **application/json**: <br> |
+| 400 | Bad Request - Not a completion app or feature disabled | **application/json**: [CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NotCompletionAppError](#notcompletionapperror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 403 | Forbidden | **application/json**: [AppMoreLikeThisDisabledError](#appmorelikethisdisablederror)<br> |
+| 403 | Forbidden | **application/json**: [AppMoreLikeThisDisabledError](#appmorelikethisdisablederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Message Not Found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -589,9 +589,9 @@ Get suggested follow-up questions after a message (chat apps only).
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SuggestedQuestionsResponse](#suggestedquestionsresponse)<br> |
-| 400 | Bad Request - Not a chat app or feature disabled | **application/json**: <br> |
+| 400 | Bad Request - Not a chat app or feature disabled | **application/json**: [CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NotChatAppError](#notchatapperror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 403 | Forbidden | **application/json**: [AppSuggestedQuestionsAfterAnswerDisabledError](#appsuggestedquestionsafteranswerdisablederror)<br> |
+| 403 | Forbidden | **application/json**: [AppSuggestedQuestionsAfterAnswerDisabledError](#appsuggestedquestionsafteranswerdisablederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Message Not Found or Conversation Not Found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -606,7 +606,7 @@ Retrieve the metadata for a specific app.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AppMetaResponse](#appmetaresponse)<br> |
-| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br> |
+| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | App Not Found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -622,7 +622,7 @@ Retrieve the parameters for a specific app.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [Parameters](#parameters)<br> |
-| 400 | Bad Request | **application/json**: <br> |
+| 400 | Bad Request | **application/json**: [AgentNotPublishedError](#agentnotpublishederror)<br>[AppUnavailableError](#appunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | App Not Found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -685,13 +685,13 @@ Raises:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Remote file uploaded successfully | **application/json**: [FileWithSignedUrl](#filewithsignedurl)<br> |
-| 400 | Invalid, blocked, or inaccessible remote file URL | **application/json**: <br> |
-| 404 | Remote file not found | **application/json**: [RemoteFileNotFoundError](#remotefilenotfounderror)<br> |
-| 413 | File too large | **application/json**: [FileTooLargeError](#filetoolargeerror)<br> |
-| 415 | Unsupported file type | **application/json**: [UnsupportedFileTypeError](#unsupportedfiletypeerror)<br> |
+| 400 | Invalid, blocked, or inaccessible remote file URL | **application/json**: [FileExtensionBlockedError](#fileextensionblockederror)<br>[RemoteFileAccessDeniedError](#remotefileaccessdeniederror)<br>[RemoteFileInvalidUrlError](#remotefileinvalidurlerror)<br>[RemoteFileUrlBlockedError](#remotefileurlblockederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Remote file not found | **application/json**: [RemoteFileNotFoundError](#remotefilenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 413 | File too large | **application/json**: [FileTooLargeError](#filetoolargeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 415 | Unsupported file type | **application/json**: [UnsupportedFileTypeError](#unsupportedfiletypeerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 422 | Request payload validation failed | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Internal server error | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 502 | Remote file unavailable or returned an invalid response | **application/json**: <br> |
+| 502 | Remote file unavailable or returned an invalid response | **application/json**: [RemoteFileInvalidResponseError](#remotefileinvalidresponseerror)<br>[RemoteFileUnavailableError](#remotefileunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /remote-files/{url}
@@ -723,10 +723,10 @@ Raises:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Remote file information retrieved successfully | **application/json**: [RemoteFileInfo](#remotefileinfo)<br> |
-| 400 | Invalid, blocked, or inaccessible remote file URL | **application/json**: <br> |
-| 404 | Remote file not found | **application/json**: [RemoteFileNotFoundError](#remotefilenotfounderror)<br> |
+| 400 | Invalid, blocked, or inaccessible remote file URL | **application/json**: [RemoteFileAccessDeniedError](#remotefileaccessdeniederror)<br>[RemoteFileInvalidUrlError](#remotefileinvalidurlerror)<br>[RemoteFileUrlBlockedError](#remotefileurlblockederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Remote file not found | **application/json**: [RemoteFileNotFoundError](#remotefilenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 500 | Internal server error | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 502 | Remote file unavailable or returned an invalid response | **application/json**: <br> |
+| 502 | Remote file unavailable or returned an invalid response | **application/json**: [RemoteFileInvalidResponseError](#remotefileinvalidresponseerror)<br>[RemoteFileUnavailableError](#remotefileunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /saved-messages
@@ -744,7 +744,7 @@ Retrieve paginated list of saved messages for a completion application.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SavedMessageInfiniteScrollPagination](#savedmessageinfinitescrollpagination)<br> |
-| 400 | Bad Request - Not a completion app | **application/json**: [NotCompletionAppError](#notcompletionapperror)<br> |
+| 400 | Bad Request - Not a completion app | **application/json**: [NotCompletionAppError](#notcompletionapperror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | App Not Found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -770,7 +770,7 @@ Save a specific message for later reference.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Message saved successfully | **application/json**: [ResultResponse](#resultresponse)<br> |
-| 400 | Bad Request - Not a completion app | **application/json**: [NotCompletionAppError](#notcompletionapperror)<br> |
+| 400 | Bad Request - Not a completion app | **application/json**: [NotCompletionAppError](#notcompletionapperror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Message Not Found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -790,7 +790,7 @@ Remove a message from saved messages.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 204 | Message removed successfully |  |
-| 400 | Bad Request - Not a completion app | **application/json**: [NotCompletionAppError](#notcompletionapperror)<br> |
+| 400 | Bad Request - Not a completion app | **application/json**: [NotCompletionAppError](#notcompletionapperror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Message Not Found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -846,10 +846,10 @@ Convert text to audio using text-to-speech service.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success |  |
-| 400 | Bad Request | **application/json**: <br> |
+| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NoAudioUploadedError](#noaudiouploadederror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderNotSupportSpeechToTextError](#providernotsupportspeechtotexterror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 413 | Request Entity Too Large | **application/json**: [AudioTooLargeError](#audiotoolargeerror)<br> |
-| 415 | Unsupported Media Type | **application/json**: [UnsupportedAudioTypeError](#unsupportedaudiotypeerror)<br> |
+| 413 | Request Entity Too Large | **application/json**: [AudioTooLargeError](#audiotoolargeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 415 | Unsupported Media Type | **application/json**: [UnsupportedAudioTypeError](#unsupportedaudiotypeerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -868,7 +868,7 @@ Retrieve the access mode for a web application (public or restricted).
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AccessModeResponse](#accessmoderesponse)<br> |
-| 400 | Bad Request | **application/json**: [InvalidParamError](#invalidparamerror)<br> |
+| 400 | Bad Request | **application/json**: [InvalidParamError](#invalidparamerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | App Not Found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 503 | Web App Access Service Unavailable | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -910,11 +910,11 @@ Execute a workflow with provided inputs and files.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
-| 400 | Bad Request | **application/json**: <br> |
+| 400 | Bad Request | **application/json**: [CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NotWorkflowAppError](#notworkflowapperror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 403 | Forbidden | **application/json**: [TriggerWorkflowServiceModeUnavailableError](#triggerworkflowservicemodeunavailableerror)<br> |
+| 403 | Forbidden | **application/json**: [TriggerWorkflowServiceModeUnavailableError](#triggerworkflowservicemodeunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | App Not Found | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 429 | Too Many Requests | **application/json**: [RateLimitError](#ratelimiterror)<br> |
+| 429 | Too Many Requests | **application/json**: [RateLimitError](#ratelimiterror)<br>[ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -934,7 +934,7 @@ Stop a running workflow task.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 400 | Bad Request | **application/json**: [NotWorkflowAppError](#notworkflowapperror)<br> |
+| 400 | Bad Request | **application/json**: [NotWorkflowAppError](#notworkflowapperror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Task Not Found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -962,8 +962,8 @@ Returns Server-Sent Events stream.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | SSE event stream | **application/json**: [EventStreamResponse](#eventstreamresponse)<br> |
-| 400 | Bad Request | **application/json**: [InvalidParamError](#invalidparamerror)<br> |
-| 404 | Not Found | **application/json**: [NotFoundError](#notfounderror)<br> |
+| 400 | Bad Request | **application/json**: [InvalidParamError](#invalidparamerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [NotFoundError](#notfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---

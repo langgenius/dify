@@ -296,7 +296,7 @@ export type PostAccountAvatarData = {
 }
 
 export type PostAccountAvatarErrors = {
-  400: AccountNotFoundError
+  400: AccountNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -316,8 +316,8 @@ export type PostAccountChangeEmailData = {
 }
 
 export type PostAccountChangeEmailErrors = {
-  400: AccountNotFoundError | InvalidEmailError | InvalidOrExpiredTokenError
-  429: EmailChangeRateLimitExceededError | EmailSendIpLimitError
+  400: AccountNotFoundError | InvalidEmailError | InvalidOrExpiredTokenError | ErrorResponse
+  429: EmailChangeRateLimitExceededError | EmailSendIpLimitError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -339,7 +339,7 @@ export type PostAccountChangeEmailCheckEmailUniqueData = {
 }
 
 export type PostAccountChangeEmailCheckEmailUniqueErrors = {
-  400: AccountInFreezeError | EmailAlreadyInUseError | EmailDomainSuspendedError
+  400: AccountInFreezeError | EmailAlreadyInUseError | EmailDomainSuspendedError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -367,6 +367,7 @@ export type PostAccountChangeEmailResetErrors = {
     | EmailAlreadyInUseError
     | EmailDomainSuspendedError
     | InvalidOrExpiredTokenError
+    | ErrorResponse
   default: ErrorResponse
 }
 
@@ -388,8 +389,8 @@ export type PostAccountChangeEmailValidityData = {
 }
 
 export type PostAccountChangeEmailValidityErrors = {
-  400: EmailCodeError | InvalidEmailError | InvalidOrExpiredTokenError
-  429: EmailChangeLimitError
+  400: EmailCodeError | InvalidEmailError | InvalidOrExpiredTokenError | ErrorResponse
+  429: EmailChangeLimitError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -411,7 +412,7 @@ export type PostAccountDeleteData = {
 }
 
 export type PostAccountDeleteErrors = {
-  400: InvalidAccountDeletionCodeError
+  400: InvalidAccountDeletionCodeError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -452,8 +453,8 @@ export type GetAccountDeleteVerifyData = {
 }
 
 export type GetAccountDeleteVerifyErrors = {
-  400: AccountNotFoundError
-  429: EmailCodeAccountDeletionRateLimitExceededError
+  400: AccountNotFoundError | ErrorResponse
+  429: EmailCodeAccountDeletionRateLimitExceededError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -495,8 +496,8 @@ export type PostAccountEducationData = {
 }
 
 export type PostAccountEducationErrors = {
-  400: AccountNotFoundError
-  429: EducationActivateLimitError
+  400: AccountNotFoundError | ErrorResponse
+  429: EducationActivateLimitError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -542,8 +543,8 @@ export type GetAccountEducationVerifyData = {
 }
 
 export type GetAccountEducationVerifyErrors = {
-  400: AccountNotFoundError
-  429: EducationVerifyLimitError
+  400: AccountNotFoundError | ErrorResponse
+  429: EducationVerifyLimitError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -570,6 +571,7 @@ export type PostAccountInitErrors = {
     | AccountNotFoundError
     | InvalidInvitationCodeError
     | MissingInvitationCodeError
+    | ErrorResponse
   default: ErrorResponse
 }
 
@@ -609,7 +611,7 @@ export type PostAccountInterfaceLanguageData = {
 }
 
 export type PostAccountInterfaceLanguageErrors = {
-  400: AccountNotFoundError
+  400: AccountNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -631,7 +633,7 @@ export type PostAccountInterfaceThemeData = {
 }
 
 export type PostAccountInterfaceThemeErrors = {
-  400: AccountNotFoundError
+  400: AccountNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -653,7 +655,7 @@ export type PostAccountNameData = {
 }
 
 export type PostAccountNameErrors = {
-  400: AccountNotFoundError
+  400: AccountNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -673,7 +675,11 @@ export type PostAccountPasswordData = {
 }
 
 export type PostAccountPasswordErrors = {
-  400: AccountNotFoundError | CurrentPasswordIncorrectError | InvalidAccountPasswordError
+  400:
+    | AccountNotFoundError
+    | CurrentPasswordIncorrectError
+    | InvalidAccountPasswordError
+    | ErrorResponse
   default: ErrorResponse
 }
 
@@ -694,7 +700,7 @@ export type GetAccountProfileData = {
 }
 
 export type GetAccountProfileErrors = {
-  400: AccountNotFoundError
+  400: AccountNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -714,7 +720,7 @@ export type PatchAccountProfileData = {
 }
 
 export type PatchAccountProfileErrors = {
-  400: AccountNotFoundError
+  400: AccountNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -735,7 +741,7 @@ export type PostAccountTimezoneData = {
 }
 
 export type PostAccountTimezoneErrors = {
-  400: AccountNotFoundError
+  400: AccountNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 

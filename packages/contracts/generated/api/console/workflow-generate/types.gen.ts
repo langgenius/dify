@@ -188,6 +188,7 @@ export type PostWorkflowGenerateErrors = {
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
+    | ErrorResponse
   default: ErrorResponse
 }
 

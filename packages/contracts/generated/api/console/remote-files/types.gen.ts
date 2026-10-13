@@ -39,6 +39,16 @@ export type RemoteFileUrlBlockedError = ErrorResponse & {
   status: 400
 }
 
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type RemoteFileNotFoundError = ErrorResponse & {
   code: 'remote_file_not_found'
   status: 404
@@ -52,16 +62,6 @@ export type FileTooLargeError = ErrorResponse & {
 export type UnsupportedFileTypeError = ErrorResponse & {
   code: 'unsupported_file_type'
   status: 415
-}
-
-export type ErrorResponse = {
-  code: string
-  details?: {
-    [key: string]: unknown
-  }
-  message: string
-  params?: string
-  status: number
 }
 
 export type RemoteFileInvalidResponseError = ErrorResponse & {
@@ -92,12 +92,13 @@ export type PostRemoteFilesUploadErrors = {
     | RemoteFileAccessDeniedError
     | RemoteFileInvalidUrlError
     | RemoteFileUrlBlockedError
-  404: RemoteFileNotFoundError
-  413: FileTooLargeError
-  415: UnsupportedFileTypeError
+    | ErrorResponse
+  404: RemoteFileNotFoundError | ErrorResponse
+  413: FileTooLargeError | ErrorResponse
+  415: UnsupportedFileTypeError | ErrorResponse
   422: ErrorResponse
   500: ErrorResponse
-  502: RemoteFileInvalidResponseError | RemoteFileUnavailableError
+  502: RemoteFileInvalidResponseError | RemoteFileUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -121,10 +122,14 @@ export type GetRemoteFilesByUrlData = {
 }
 
 export type GetRemoteFilesByUrlErrors = {
-  400: RemoteFileAccessDeniedError | RemoteFileInvalidUrlError | RemoteFileUrlBlockedError
-  404: RemoteFileNotFoundError
+  400:
+    | RemoteFileAccessDeniedError
+    | RemoteFileInvalidUrlError
+    | RemoteFileUrlBlockedError
+    | ErrorResponse
+  404: RemoteFileNotFoundError | ErrorResponse
   500: ErrorResponse
-  502: RemoteFileInvalidResponseError | RemoteFileUnavailableError
+  502: RemoteFileInvalidResponseError | RemoteFileUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 

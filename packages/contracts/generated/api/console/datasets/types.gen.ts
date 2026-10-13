@@ -1246,7 +1246,7 @@ export type PostDatasetsData = {
 
 export type PostDatasetsErrors = {
   400: ErrorResponse
-  409: DatasetInUseError | DatasetNameDuplicateError
+  409: DatasetInUseError | DatasetNameDuplicateError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1287,8 +1287,8 @@ export type GetDatasetsApiKeysData = {
 }
 
 export type GetDatasetsApiKeysErrors = {
-  400: MaxKeysExceededError
-  409: AgentNotPublishedError
+  400: MaxKeysExceededError | ErrorResponse
+  409: AgentNotPublishedError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1309,8 +1309,8 @@ export type PostDatasetsApiKeysData = {
 }
 
 export type PostDatasetsApiKeysErrors = {
-  400: MaxKeysExceededError
-  409: AgentNotPublishedError
+  400: MaxKeysExceededError | ErrorResponse
+  409: AgentNotPublishedError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1333,8 +1333,8 @@ export type DeleteDatasetsApiKeysByApiKeyIdData = {
 }
 
 export type DeleteDatasetsApiKeysByApiKeyIdErrors = {
-  400: MaxKeysExceededError
-  409: AgentNotPublishedError
+  400: MaxKeysExceededError | ErrorResponse
+  409: AgentNotPublishedError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1381,7 +1381,7 @@ export type PostDatasetsExternalData = {
 export type PostDatasetsExternalErrors = {
   400: ErrorResponse
   403: ErrorResponse
-  409: DatasetNameDuplicateError
+  409: DatasetNameDuplicateError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1428,7 +1428,7 @@ export type PostDatasetsExternalKnowledgeApiData = {
 
 export type PostDatasetsExternalKnowledgeApiErrors = {
   403: ErrorResponse
-  409: DatasetNameDuplicateError
+  409: DatasetNameDuplicateError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1452,7 +1452,7 @@ export type DeleteDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdData = {
 }
 
 export type DeleteDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdErrors = {
-  409: DatasetNameDuplicateError
+  409: DatasetNameDuplicateError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1477,7 +1477,7 @@ export type GetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdData = {
 
 export type GetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdErrors = {
   404: ErrorResponse
-  409: DatasetNameDuplicateError
+  409: DatasetNameDuplicateError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1502,7 +1502,7 @@ export type PatchDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdData = {
 
 export type PatchDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdErrors = {
   404: ErrorResponse
-  409: DatasetNameDuplicateError
+  409: DatasetNameDuplicateError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1547,10 +1547,10 @@ export type PostDatasetsIndexingEstimateData = {
 }
 
 export type PostDatasetsIndexingEstimateErrors = {
-  400: ProviderNotInitializeError
-  403: DatasetAccessDeniedError
-  404: NotFoundError
-  500: IndexingEstimateError
+  400: ProviderNotInitializeError | ErrorResponse
+  403: DatasetAccessDeniedError | ErrorResponse
+  404: NotFoundError | ErrorResponse
+  500: IndexingEstimateError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1578,7 +1578,8 @@ export type PostDatasetsInitErrors = {
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  403: ArchivedDocumentImmutableError
+    | ErrorResponse
+  403: ArchivedDocumentImmutableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1619,9 +1620,9 @@ export type PostDatasetsNotionIndexingEstimateData = {
 }
 
 export type PostDatasetsNotionIndexingEstimateErrors = {
-  400: ProviderNotInitializeError
-  404: NotFoundError
-  500: IndexingEstimateError
+  400: ProviderNotInitializeError | ErrorResponse
+  404: NotFoundError | ErrorResponse
+  500: IndexingEstimateError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1651,7 +1652,8 @@ export type GetDatasetsProcessRuleErrors = {
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  403: ArchivedDocumentImmutableError
+    | ErrorResponse
+  403: ArchivedDocumentImmutableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1719,7 +1721,7 @@ export type DeleteDatasetsByDatasetIdData = {
 }
 
 export type DeleteDatasetsByDatasetIdErrors = {
-  409: DatasetInUseError | DatasetNameDuplicateError
+  409: DatasetInUseError | DatasetNameDuplicateError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1745,7 +1747,7 @@ export type GetDatasetsByDatasetIdData = {
 export type GetDatasetsByDatasetIdErrors = {
   403: ErrorResponse
   404: ErrorResponse
-  409: DatasetInUseError | DatasetNameDuplicateError
+  409: DatasetInUseError | DatasetNameDuplicateError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1771,7 +1773,7 @@ export type PatchDatasetsByDatasetIdData = {
 export type PatchDatasetsByDatasetIdErrors = {
   403: ErrorResponse
   404: ErrorResponse
-  409: DatasetInUseError | DatasetNameDuplicateError
+  409: DatasetInUseError | DatasetNameDuplicateError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1796,7 +1798,7 @@ export type PostDatasetsByDatasetIdApiKeysByStatusData = {
 }
 
 export type PostDatasetsByDatasetIdApiKeysByStatusErrors = {
-  409: DatasetInUseError | DatasetNameDuplicateError
+  409: DatasetInUseError | DatasetNameDuplicateError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1821,7 +1823,7 @@ export type GetDatasetsByDatasetIdAutoDisableLogsData = {
 
 export type GetDatasetsByDatasetIdAutoDisableLogsErrors = {
   404: ErrorResponse
-  409: DatasetInUseError | DatasetNameDuplicateError
+  409: DatasetInUseError | DatasetNameDuplicateError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1846,10 +1848,10 @@ export type GetDatasetsByDatasetIdBatchByBatchIndexingEstimateData = {
 }
 
 export type GetDatasetsByDatasetIdBatchByBatchIndexingEstimateErrors = {
-  400: DocumentAlreadyFinishedError | ProviderNotInitializeError
-  403: DatasetAccessDeniedError
-  404: NotFoundError
-  500: IndexingEstimateError
+  400: DocumentAlreadyFinishedError | ProviderNotInitializeError | ErrorResponse
+  403: DatasetAccessDeniedError | ErrorResponse
+  404: NotFoundError | ErrorResponse
+  500: IndexingEstimateError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1880,7 +1882,8 @@ export type GetDatasetsByDatasetIdBatchByBatchIndexingStatusErrors = {
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  403: ArchivedDocumentImmutableError
+    | ErrorResponse
+  403: ArchivedDocumentImmutableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1910,7 +1913,8 @@ export type DeleteDatasetsByDatasetIdDocumentsErrors = {
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  403: ArchivedDocumentImmutableError
+    | ErrorResponse
+  403: ArchivedDocumentImmutableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1947,7 +1951,8 @@ export type GetDatasetsByDatasetIdDocumentsErrors = {
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  403: ArchivedDocumentImmutableError
+    | ErrorResponse
+  403: ArchivedDocumentImmutableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1977,7 +1982,8 @@ export type PostDatasetsByDatasetIdDocumentsErrors = {
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  403: ArchivedDocumentImmutableError
+    | ErrorResponse
+  403: ArchivedDocumentImmutableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2007,7 +2013,8 @@ export type PostDatasetsByDatasetIdDocumentsDownloadZipErrors = {
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  403: ArchivedDocumentImmutableError
+    | ErrorResponse
+  403: ArchivedDocumentImmutableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2039,7 +2046,8 @@ export type PostDatasetsByDatasetIdDocumentsGenerateSummaryErrors = {
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  403: ArchivedDocumentImmutableError
+    | ErrorResponse
+  403: ArchivedDocumentImmutableError | ErrorResponse
   404: ErrorResponse
   default: ErrorResponse
 }
@@ -2095,7 +2103,8 @@ export type PatchDatasetsByDatasetIdDocumentsStatusByActionBatchErrors = {
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  403: ArchivedDocumentImmutableError
+    | ErrorResponse
+  403: ArchivedDocumentImmutableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2126,7 +2135,8 @@ export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdErrors = {
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  403: ArchivedDocumentImmutableError
+    | ErrorResponse
+  403: ArchivedDocumentImmutableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2160,7 +2170,8 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdErrors = {
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  403: ArchivedDocumentImmutableError
+    | ErrorResponse
+  403: ArchivedDocumentImmutableError | ErrorResponse
   404: ErrorResponse
   default: ErrorResponse
 }
@@ -2192,7 +2203,8 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadErrors = {
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  403: ArchivedDocumentImmutableError
+    | ErrorResponse
+  403: ArchivedDocumentImmutableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2217,10 +2229,10 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingEstimateData = {
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingEstimateErrors = {
-  400: DocumentAlreadyFinishedError | ProviderNotInitializeError
-  403: DatasetAccessDeniedError
-  404: NotFoundError
-  500: IndexingEstimateError
+  400: DocumentAlreadyFinishedError | ProviderNotInitializeError | ErrorResponse
+  403: DatasetAccessDeniedError | ErrorResponse
+  404: NotFoundError | ErrorResponse
+  500: IndexingEstimateError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2251,7 +2263,8 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingStatusErrors = {
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  403: ArchivedDocumentImmutableError
+    | ErrorResponse
+  403: ArchivedDocumentImmutableError | ErrorResponse
   404: ErrorResponse
   default: ErrorResponse
 }
@@ -2283,7 +2296,8 @@ export type PutDatasetsByDatasetIdDocumentsByDocumentIdMetadataErrors = {
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  403: ArchivedDocumentImmutableError
+    | ErrorResponse
+  403: ArchivedDocumentImmutableError | ErrorResponse
   404: ErrorResponse
   default: ErrorResponse
 }
@@ -2309,8 +2323,8 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdNotionSyncData = {
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdNotionSyncErrors = {
-  403: DatasetAccessDeniedError
-  404: NotFoundError
+  403: DatasetAccessDeniedError | ErrorResponse
+  404: NotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2341,7 +2355,8 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdPipelineExecutionLogError
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  403: ArchivedDocumentImmutableError
+    | ErrorResponse
+  403: ArchivedDocumentImmutableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2372,7 +2387,8 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingPauseErrors =
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  403: ArchivedDocumentImmutableError
+    | ErrorResponse
+  403: ArchivedDocumentImmutableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2403,7 +2419,8 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingResumeErrors 
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  403: ArchivedDocumentImmutableError
+    | ErrorResponse
+  403: ArchivedDocumentImmutableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2435,7 +2452,8 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionError
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  403: ArchivedDocumentImmutableError
+    | ErrorResponse
+  403: ArchivedDocumentImmutableError | ErrorResponse
   404: ErrorResponse
   default: ErrorResponse
 }
@@ -2467,7 +2485,8 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdRenameErrors = {
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  403: ArchivedDocumentImmutableError
+    | ErrorResponse
+  403: ArchivedDocumentImmutableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2492,8 +2511,8 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentData = {
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentErrors = {
-  400: InvalidActionError | ProviderNotInitializeError
-  500: ChildChunkDeleteIndexError | ChildChunkIndexingError
+  400: InvalidActionError | ProviderNotInitializeError | ErrorResponse
+  500: ChildChunkDeleteIndexError | ChildChunkIndexingError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2521,8 +2540,8 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionData = {
 }
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentByActionErrors = {
-  400: InvalidActionError | ProviderNotInitializeError
-  500: ChildChunkDeleteIndexError | ChildChunkIndexingError
+  400: InvalidActionError | ProviderNotInitializeError | ErrorResponse
+  500: ChildChunkDeleteIndexError | ChildChunkIndexingError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2549,8 +2568,8 @@ export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsData = {
 }
 
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsErrors = {
-  400: InvalidActionError | ProviderNotInitializeError
-  500: ChildChunkDeleteIndexError | ChildChunkIndexingError
+  400: InvalidActionError | ProviderNotInitializeError | ErrorResponse
+  500: ChildChunkDeleteIndexError | ChildChunkIndexingError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2582,8 +2601,8 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsData = {
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsErrors = {
-  400: InvalidActionError | ProviderNotInitializeError
-  500: ChildChunkDeleteIndexError | ChildChunkIndexingError
+  400: InvalidActionError | ProviderNotInitializeError | ErrorResponse
+  500: ChildChunkDeleteIndexError | ChildChunkIndexingError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2608,8 +2627,8 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportData 
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBatchImportErrors = {
-  400: InvalidActionError | ProviderNotInitializeError
-  500: ErrorMessageResponse | ChildChunkDeleteIndexError | ChildChunkIndexingError
+  400: InvalidActionError | ProviderNotInitializeError | ErrorResponse
+  500: ErrorMessageResponse | ChildChunkDeleteIndexError | ChildChunkIndexingError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2635,8 +2654,8 @@ export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdDat
 }
 
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdErrors = {
-  400: InvalidActionError | ProviderNotInitializeError
-  500: ChildChunkDeleteIndexError | ChildChunkIndexingError
+  400: InvalidActionError | ProviderNotInitializeError | ErrorResponse
+  500: ChildChunkDeleteIndexError | ChildChunkIndexingError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2662,8 +2681,8 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdData
 }
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdErrors = {
-  400: InvalidActionError | ProviderNotInitializeError
-  500: ChildChunkDeleteIndexError | ChildChunkIndexingError
+  400: InvalidActionError | ProviderNotInitializeError | ErrorResponse
+  500: ChildChunkDeleteIndexError | ChildChunkIndexingError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2693,8 +2712,8 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildC
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksErrors = {
-  400: InvalidActionError | ProviderNotInitializeError
-  500: ChildChunkDeleteIndexError | ChildChunkIndexingError
+  400: InvalidActionError | ProviderNotInitializeError | ErrorResponse
+  500: ChildChunkDeleteIndexError | ChildChunkIndexingError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2720,8 +2739,8 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChil
 }
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksErrors = {
-  400: InvalidActionError | ProviderNotInitializeError
-  500: ChildChunkDeleteIndexError | ChildChunkIndexingError
+  400: InvalidActionError | ProviderNotInitializeError | ErrorResponse
+  500: ChildChunkDeleteIndexError | ChildChunkIndexingError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2747,8 +2766,8 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChild
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksErrors = {
-  400: InvalidActionError | ProviderNotInitializeError
-  500: ChildChunkDeleteIndexError | ChildChunkIndexingError
+  400: InvalidActionError | ProviderNotInitializeError | ErrorResponse
+  500: ChildChunkDeleteIndexError | ChildChunkIndexingError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2777,8 +2796,8 @@ export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChi
 
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdErrors =
   {
-    400: InvalidActionError | ProviderNotInitializeError
-    500: ChildChunkDeleteIndexError | ChildChunkIndexingError
+    400: InvalidActionError | ProviderNotInitializeError | ErrorResponse
+    500: ChildChunkDeleteIndexError | ChildChunkIndexingError | ErrorResponse
     default: ErrorResponse
   }
 
@@ -2808,8 +2827,8 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChil
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdErrors =
   {
-    400: InvalidActionError | ProviderNotInitializeError
-    500: ChildChunkDeleteIndexError | ChildChunkIndexingError
+    400: InvalidActionError | ProviderNotInitializeError | ErrorResponse
+    500: ChildChunkDeleteIndexError | ChildChunkIndexingError | ErrorResponse
     default: ErrorResponse
   }
 
@@ -2841,7 +2860,8 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdSummaryStatusErrors = {
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  403: ArchivedDocumentImmutableError
+    | ErrorResponse
+  403: ArchivedDocumentImmutableError | ErrorResponse
   404: ErrorResponse
   default: ErrorResponse
 }
@@ -2873,7 +2893,8 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdWebsiteSyncErrors = {
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  403: ArchivedDocumentImmutableError
+    | ErrorResponse
+  403: ArchivedDocumentImmutableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2898,7 +2919,7 @@ export type GetDatasetsByDatasetIdErrorDocsData = {
 
 export type GetDatasetsByDatasetIdErrorDocsErrors = {
   404: ErrorResponse
-  409: DatasetInUseError | DatasetNameDuplicateError
+  409: DatasetInUseError | DatasetNameDuplicateError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2924,7 +2945,7 @@ export type PostDatasetsByDatasetIdExternalHitTestingData = {
 export type PostDatasetsByDatasetIdExternalHitTestingErrors = {
   400: ErrorResponse
   404: ErrorResponse
-  409: DatasetNameDuplicateError
+  409: DatasetNameDuplicateError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2953,6 +2974,7 @@ export type PostDatasetsByDatasetIdHitTestingErrors = {
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
+    | ErrorResponse
   404: ErrorResponse
   default: ErrorResponse
 }
@@ -2977,7 +2999,7 @@ export type GetDatasetsByDatasetIdIndexingStatusData = {
 }
 
 export type GetDatasetsByDatasetIdIndexingStatusErrors = {
-  409: DatasetInUseError | DatasetNameDuplicateError
+  409: DatasetInUseError | DatasetNameDuplicateError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3119,8 +3141,8 @@ export type GetDatasetsByDatasetIdNotionSyncData = {
 }
 
 export type GetDatasetsByDatasetIdNotionSyncErrors = {
-  403: DatasetAccessDeniedError
-  404: NotFoundError
+  403: DatasetAccessDeniedError | ErrorResponse
+  404: NotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3146,7 +3168,7 @@ export type GetDatasetsByDatasetIdPermissionPartUsersData = {
 export type GetDatasetsByDatasetIdPermissionPartUsersErrors = {
   403: ErrorResponse
   404: ErrorResponse
-  409: DatasetInUseError | DatasetNameDuplicateError
+  409: DatasetInUseError | DatasetNameDuplicateError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3170,7 +3192,7 @@ export type GetDatasetsByDatasetIdQueriesData = {
 }
 
 export type GetDatasetsByDatasetIdQueriesErrors = {
-  409: DatasetInUseError | DatasetNameDuplicateError
+  409: DatasetInUseError | DatasetNameDuplicateError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3194,7 +3216,7 @@ export type GetDatasetsByDatasetIdRelatedAppsData = {
 }
 
 export type GetDatasetsByDatasetIdRelatedAppsErrors = {
-  409: DatasetInUseError | DatasetNameDuplicateError
+  409: DatasetInUseError | DatasetNameDuplicateError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3224,7 +3246,8 @@ export type PostDatasetsByDatasetIdRetryErrors = {
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  403: ArchivedDocumentImmutableError
+    | ErrorResponse
+  403: ArchivedDocumentImmutableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3248,7 +3271,7 @@ export type GetDatasetsByDatasetIdUseCheckData = {
 }
 
 export type GetDatasetsByDatasetIdUseCheckErrors = {
-  409: DatasetInUseError | DatasetNameDuplicateError
+  409: DatasetInUseError | DatasetNameDuplicateError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3272,8 +3295,8 @@ export type GetDatasetsByResourceIdApiKeysData = {
 }
 
 export type GetDatasetsByResourceIdApiKeysErrors = {
-  400: MaxKeysExceededError
-  409: AgentNotPublishedError
+  400: MaxKeysExceededError | ErrorResponse
+  409: AgentNotPublishedError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3297,8 +3320,8 @@ export type PostDatasetsByResourceIdApiKeysData = {
 }
 
 export type PostDatasetsByResourceIdApiKeysErrors = {
-  400: MaxKeysExceededError
-  409: AgentNotPublishedError
+  400: MaxKeysExceededError | ErrorResponse
+  409: AgentNotPublishedError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3323,8 +3346,8 @@ export type DeleteDatasetsByResourceIdApiKeysByApiKeyIdData = {
 }
 
 export type DeleteDatasetsByResourceIdApiKeysByApiKeyIdErrors = {
-  400: MaxKeysExceededError
-  409: AgentNotPublishedError
+  400: MaxKeysExceededError | ErrorResponse
+  409: AgentNotPublishedError | ErrorResponse
   default: ErrorResponse
 }
 

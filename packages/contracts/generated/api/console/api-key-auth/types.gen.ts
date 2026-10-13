@@ -86,8 +86,8 @@ export type PostApiKeyAuthDataSourceBindingData = {
 }
 
 export type PostApiKeyAuthDataSourceBindingErrors = {
-  400: UnsupportedDataSourceApiKeyAuthProviderError
-  502: DataSourceApiKeyAuthProviderUnavailableError
+  400: UnsupportedDataSourceApiKeyAuthProviderError | ErrorResponse
+  502: DataSourceApiKeyAuthProviderUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 

@@ -2452,7 +2452,7 @@ export type PostAgentData = {
 export type PostAgentErrors = {
   400: ErrorResponse
   403: ErrorResponse
-  404: AgentNotFoundError
+  404: AgentNotFoundError | ErrorResponse
   409: ErrorResponse
   default: ErrorResponse
 }
@@ -2524,7 +2524,7 @@ export type GetAgentByAgentIdData = {
 }
 
 export type GetAgentByAgentIdErrors = {
-  404: AgentNotFoundError
+  404: AgentNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2548,7 +2548,7 @@ export type PutAgentByAgentIdData = {
 export type PutAgentByAgentIdErrors = {
   400: ErrorResponse
   403: ErrorResponse
-  404: AgentNotFoundError
+  404: AgentNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2594,7 +2594,7 @@ export type PostAgentByAgentIdApiEnableData = {
 
 export type PostAgentByAgentIdApiEnableErrors = {
   403: ErrorResponse
-  409: AgentNotPublishedError
+  409: AgentNotPublishedError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2618,8 +2618,8 @@ export type GetAgentByAgentIdApiKeysData = {
 }
 
 export type GetAgentByAgentIdApiKeysErrors = {
-  400: MaxKeysExceededError
-  409: AgentNotPublishedError
+  400: MaxKeysExceededError | ErrorResponse
+  409: AgentNotPublishedError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2643,8 +2643,8 @@ export type PostAgentByAgentIdApiKeysData = {
 }
 
 export type PostAgentByAgentIdApiKeysErrors = {
-  400: MaxKeysExceededError
-  409: AgentNotPublishedError
+  400: MaxKeysExceededError | ErrorResponse
+  409: AgentNotPublishedError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2669,8 +2669,8 @@ export type DeleteAgentByAgentIdApiKeysByApiKeyIdData = {
 }
 
 export type DeleteAgentByAgentIdApiKeysByApiKeyIdErrors = {
-  400: MaxKeysExceededError
-  409: AgentNotPublishedError
+  400: MaxKeysExceededError | ErrorResponse
+  409: AgentNotPublishedError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2706,9 +2706,10 @@ export type PostAgentByAgentIdAudioToTextErrors = {
     | ProviderNotSupportSpeechToTextError
     | ProviderQuotaExceededError
     | SpeechToTextDisabledError
-  404: AgentNotFoundError | AgentVersionNotFoundError
-  413: AudioTooLargeError
-  415: UnsupportedAudioTypeError
+    | ErrorResponse
+  404: AgentNotFoundError | AgentVersionNotFoundError | ErrorResponse
+  413: AudioTooLargeError | ErrorResponse
+  415: UnsupportedAudioTypeError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2738,8 +2739,9 @@ export type PostAgentByAgentIdBuildChatFinalizeErrors = {
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
-  404: AgentNotFoundError
-  429: RateLimitError
+    | ErrorResponse
+  404: AgentNotFoundError | ErrorResponse
+  429: RateLimitError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2763,7 +2765,7 @@ export type DeleteAgentByAgentIdBuildDraftData = {
 }
 
 export type DeleteAgentByAgentIdBuildDraftErrors = {
-  404: AgentBuildSandboxNotFoundError | AgentNotFoundError
+  404: AgentBuildSandboxNotFoundError | AgentNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2787,7 +2789,7 @@ export type GetAgentByAgentIdBuildDraftData = {
 }
 
 export type GetAgentByAgentIdBuildDraftErrors = {
-  404: AgentVersionNotFoundError
+  404: AgentVersionNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2811,8 +2813,8 @@ export type PutAgentByAgentIdBuildDraftData = {
 }
 
 export type PutAgentByAgentIdBuildDraftErrors = {
-  400: AgentSoulLockedError
-  404: AgentNotFoundError | AgentVersionNotFoundError
+  400: AgentSoulLockedError | ErrorResponse
+  404: AgentNotFoundError | AgentVersionNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2836,8 +2838,16 @@ export type PostAgentByAgentIdBuildDraftApplyData = {
 }
 
 export type PostAgentByAgentIdBuildDraftApplyErrors = {
-  400: AgentSoulLockedError | InvalidComposerConfigError | PlaintextSecretNotAllowedError
-  404: AgentBuildSandboxNotFoundError | AgentNotFoundError | AgentVersionNotFoundError
+  400:
+    | AgentSoulLockedError
+    | InvalidComposerConfigError
+    | PlaintextSecretNotAllowedError
+    | ErrorResponse
+  404:
+    | AgentBuildSandboxNotFoundError
+    | AgentNotFoundError
+    | AgentVersionNotFoundError
+    | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2861,7 +2871,11 @@ export type PostAgentByAgentIdBuildDraftCheckoutData = {
 }
 
 export type PostAgentByAgentIdBuildDraftCheckoutErrors = {
-  404: AgentBuildSandboxNotFoundError | AgentNotFoundError | AgentVersionNotFoundError
+  404:
+    | AgentBuildSandboxNotFoundError
+    | AgentNotFoundError
+    | AgentVersionNotFoundError
+    | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2889,7 +2903,7 @@ export type GetAgentByAgentIdChatMessagesData = {
 }
 
 export type GetAgentByAgentIdChatMessagesErrors = {
-  404: AgentNotFoundError
+  404: AgentNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2920,9 +2934,10 @@ export type GetAgentByAgentIdChatMessagesByMessageIdSuggestedQuestionsErrors = {
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
+    | ErrorResponse
   401: ErrorResponse
-  403: AppSuggestedQuestionsAfterAnswerDisabledError
-  404: AgentNotFoundError | AgentVersionNotFoundError
+  403: AppSuggestedQuestionsAfterAnswerDisabledError | ErrorResponse
+  404: AgentNotFoundError | AgentVersionNotFoundError | ErrorResponse
   500: ErrorResponse
   default: ErrorResponse
 }
@@ -2948,7 +2963,7 @@ export type PostAgentByAgentIdChatMessagesByTaskIdStopData = {
 }
 
 export type PostAgentByAgentIdChatMessagesByTaskIdStopErrors = {
-  404: AgentNotFoundError
+  404: AgentNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2972,7 +2987,7 @@ export type GetAgentByAgentIdComposerData = {
 }
 
 export type GetAgentByAgentIdComposerErrors = {
-  404: AgentNotFoundError | AgentVersionNotFoundError
+  404: AgentNotFoundError | AgentVersionNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2996,8 +3011,12 @@ export type PutAgentByAgentIdComposerData = {
 }
 
 export type PutAgentByAgentIdComposerErrors = {
-  400: AgentSoulLockedError | InvalidComposerConfigError | PlaintextSecretNotAllowedError
-  404: AgentNotFoundError | AgentVersionNotFoundError
+  400:
+    | AgentSoulLockedError
+    | InvalidComposerConfigError
+    | PlaintextSecretNotAllowedError
+    | ErrorResponse
+  404: AgentNotFoundError | AgentVersionNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3021,7 +3040,7 @@ export type GetAgentByAgentIdComposerCandidatesData = {
 }
 
 export type GetAgentByAgentIdComposerCandidatesErrors = {
-  404: AgentVersionNotFoundError
+  404: AgentVersionNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3045,8 +3064,12 @@ export type PostAgentByAgentIdComposerValidateData = {
 }
 
 export type PostAgentByAgentIdComposerValidateErrors = {
-  400: AgentSoulLockedError | InvalidComposerConfigError | PlaintextSecretNotAllowedError
-  404: AgentNotFoundError | AgentVersionNotFoundError
+  400:
+    | AgentSoulLockedError
+    | InvalidComposerConfigError
+    | PlaintextSecretNotAllowedError
+    | ErrorResponse
+  404: AgentNotFoundError | AgentVersionNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3073,7 +3096,7 @@ export type GetAgentByAgentIdConfigFilesData = {
 }
 
 export type GetAgentByAgentIdConfigFilesErrors = {
-  404: AgentNotFoundError | AgentVersionNotFoundError
+  404: AgentNotFoundError | AgentVersionNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3100,7 +3123,7 @@ export type PostAgentByAgentIdConfigFilesData = {
 }
 
 export type PostAgentByAgentIdConfigFilesErrors = {
-  404: AgentNotFoundError | AgentVersionNotFoundError
+  404: AgentNotFoundError | AgentVersionNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3128,7 +3151,7 @@ export type DeleteAgentByAgentIdConfigFilesByNameData = {
 }
 
 export type DeleteAgentByAgentIdConfigFilesByNameErrors = {
-  404: AgentNotFoundError | AgentVersionNotFoundError
+  404: AgentNotFoundError | AgentVersionNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3156,7 +3179,7 @@ export type GetAgentByAgentIdConfigFilesByNameDownloadData = {
 }
 
 export type GetAgentByAgentIdConfigFilesByNameDownloadErrors = {
-  404: AgentNotFoundError | AgentVersionNotFoundError
+  404: AgentNotFoundError | AgentVersionNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3184,7 +3207,7 @@ export type GetAgentByAgentIdConfigFilesByNamePreviewData = {
 }
 
 export type GetAgentByAgentIdConfigFilesByNamePreviewErrors = {
-  404: AgentNotFoundError | AgentVersionNotFoundError
+  404: AgentNotFoundError | AgentVersionNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3211,7 +3234,7 @@ export type GetAgentByAgentIdConfigManifestData = {
 }
 
 export type GetAgentByAgentIdConfigManifestErrors = {
-  404: AgentNotFoundError | AgentVersionNotFoundError
+  404: AgentNotFoundError | AgentVersionNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3238,7 +3261,7 @@ export type GetAgentByAgentIdConfigSkillsData = {
 }
 
 export type GetAgentByAgentIdConfigSkillsErrors = {
-  404: AgentNotFoundError | AgentVersionNotFoundError
+  404: AgentNotFoundError | AgentVersionNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3267,7 +3290,7 @@ export type PostAgentByAgentIdConfigSkillsUploadData = {
 }
 
 export type PostAgentByAgentIdConfigSkillsUploadErrors = {
-  404: AgentNotFoundError | AgentVersionNotFoundError
+  404: AgentNotFoundError | AgentVersionNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3295,7 +3318,7 @@ export type DeleteAgentByAgentIdConfigSkillsByNameData = {
 }
 
 export type DeleteAgentByAgentIdConfigSkillsByNameErrors = {
-  404: AgentNotFoundError | AgentVersionNotFoundError
+  404: AgentNotFoundError | AgentVersionNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3323,7 +3346,7 @@ export type GetAgentByAgentIdConfigSkillsByNameDownloadData = {
 }
 
 export type GetAgentByAgentIdConfigSkillsByNameDownloadErrors = {
-  404: AgentNotFoundError | AgentVersionNotFoundError
+  404: AgentNotFoundError | AgentVersionNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3348,7 +3371,7 @@ export type GetAgentByAgentIdConfigSkillsByNameFilesContentData = {
 }
 
 export type GetAgentByAgentIdConfigSkillsByNameFilesContentErrors = {
-  404: AgentNotFoundError | AgentVersionNotFoundError
+  404: AgentNotFoundError | AgentVersionNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3379,7 +3402,7 @@ export type GetAgentByAgentIdConfigSkillsByNameFilesDownloadData = {
 }
 
 export type GetAgentByAgentIdConfigSkillsByNameFilesDownloadErrors = {
-  404: AgentNotFoundError | AgentVersionNotFoundError
+  404: AgentNotFoundError | AgentVersionNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3408,7 +3431,7 @@ export type GetAgentByAgentIdConfigSkillsByNameFilesPreviewData = {
 }
 
 export type GetAgentByAgentIdConfigSkillsByNameFilesPreviewErrors = {
-  404: AgentNotFoundError | AgentVersionNotFoundError
+  404: AgentNotFoundError | AgentVersionNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3436,7 +3459,7 @@ export type GetAgentByAgentIdConfigSkillsByNameInspectData = {
 }
 
 export type GetAgentByAgentIdConfigSkillsByNameInspectErrors = {
-  404: AgentNotFoundError | AgentVersionNotFoundError
+  404: AgentNotFoundError | AgentVersionNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3462,7 +3485,7 @@ export type PostAgentByAgentIdCopyData = {
 export type PostAgentByAgentIdCopyErrors = {
   400: ErrorResponse
   403: ErrorResponse
-  404: AgentNotFoundError
+  404: AgentNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3511,7 +3534,7 @@ export type PostAgentByAgentIdFeaturesData = {
 
 export type PostAgentByAgentIdFeaturesErrors = {
   400: ErrorResponse
-  404: AgentNotFoundError
+  404: AgentNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3535,7 +3558,7 @@ export type PostAgentByAgentIdFeedbacksData = {
 }
 
 export type PostAgentByAgentIdFeedbacksErrors = {
-  404: AgentNotFoundError
+  404: AgentNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3654,7 +3677,7 @@ export type GetAgentByAgentIdMessagesByMessageIdData = {
 }
 
 export type GetAgentByAgentIdMessagesByMessageIdErrors = {
-  404: AgentNotFoundError
+  404: AgentNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3683,8 +3706,9 @@ export type PostAgentByAgentIdPublishErrors = {
     | AgentSoulLockedError
     | InvalidComposerConfigError
     | PlaintextSecretNotAllowedError
+    | ErrorResponse
   403: ErrorResponse
-  404: AgentNotFoundError | AgentVersionNotFoundError
+  404: AgentNotFoundError | AgentVersionNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3708,7 +3732,7 @@ export type GetAgentByAgentIdReferencingWorkflowsData = {
 }
 
 export type GetAgentByAgentIdReferencingWorkflowsErrors = {
-  404: AgentNotFoundError
+  404: AgentNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3735,9 +3759,9 @@ export type GetAgentByAgentIdSandboxData = {
 }
 
 export type GetAgentByAgentIdSandboxErrors = {
-  404: AgentNotFoundError | AppNotFoundError | NoActiveBindingError
-  502: AgentBackendUnreachableError | BindingFileDownloadUnavailableError
-  503: InspectorUnavailableError
+  404: AgentNotFoundError | AppNotFoundError | NoActiveBindingError | ErrorResponse
+  502: AgentBackendUnreachableError | BindingFileDownloadUnavailableError | ErrorResponse
+  503: InspectorUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3765,9 +3789,9 @@ export type GetAgentByAgentIdSandboxFilesData = {
 }
 
 export type GetAgentByAgentIdSandboxFilesErrors = {
-  404: AgentNotFoundError | AppNotFoundError | NoActiveBindingError
-  502: AgentBackendUnreachableError | BindingFileDownloadUnavailableError
-  503: InspectorUnavailableError
+  404: AgentNotFoundError | AppNotFoundError | NoActiveBindingError | ErrorResponse
+  502: AgentBackendUnreachableError | BindingFileDownloadUnavailableError | ErrorResponse
+  503: InspectorUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3791,9 +3815,9 @@ export type PostAgentByAgentIdSandboxFilesDownloadData = {
 }
 
 export type PostAgentByAgentIdSandboxFilesDownloadErrors = {
-  404: AgentNotFoundError | AppNotFoundError | NoActiveBindingError
-  502: AgentBackendUnreachableError | BindingFileDownloadUnavailableError
-  503: InspectorUnavailableError
+  404: AgentNotFoundError | AppNotFoundError | NoActiveBindingError | ErrorResponse
+  502: AgentBackendUnreachableError | BindingFileDownloadUnavailableError | ErrorResponse
+  503: InspectorUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3821,9 +3845,9 @@ export type GetAgentByAgentIdSandboxFilesReadData = {
 }
 
 export type GetAgentByAgentIdSandboxFilesReadErrors = {
-  404: AgentNotFoundError | AppNotFoundError | NoActiveBindingError
-  502: AgentBackendUnreachableError | BindingFileDownloadUnavailableError
-  503: InspectorUnavailableError
+  404: AgentNotFoundError | AppNotFoundError | NoActiveBindingError | ErrorResponse
+  502: AgentBackendUnreachableError | BindingFileDownloadUnavailableError | ErrorResponse
+  503: InspectorUnavailableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3882,10 +3906,11 @@ export type PostAgentByAgentIdTextToAudioErrors = {
     | ProviderNotInitializeError
     | ProviderNotSupportSpeechToTextError
     | ProviderQuotaExceededError
+    | ErrorResponse
   403: ErrorResponse
-  404: AgentNotFoundError
-  413: AudioTooLargeError
-  415: UnsupportedAudioTypeError
+  404: AgentNotFoundError | ErrorResponse
+  413: AudioTooLargeError | ErrorResponse
+  415: UnsupportedAudioTypeError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -3918,9 +3943,10 @@ export type GetAgentByAgentIdTextToAudioVoicesErrors = {
     | ProviderNotInitializeError
     | ProviderNotSupportSpeechToTextError
     | ProviderQuotaExceededError
-  404: AgentNotFoundError
-  413: AudioTooLargeError
-  415: UnsupportedAudioTypeError
+    | ErrorResponse
+  404: AgentNotFoundError | ErrorResponse
+  413: AudioTooLargeError | ErrorResponse
+  415: UnsupportedAudioTypeError | ErrorResponse
   default: ErrorResponse
 }
 

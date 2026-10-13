@@ -850,7 +850,7 @@ export type PostRagPipelineDatasetData = {
 }
 
 export type PostRagPipelineDatasetErrors = {
-  409: DatasetNameDuplicateError
+  409: DatasetNameDuplicateError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1013,7 +1013,7 @@ export type GetRagPipelinesImportsByPipelineIdCheckDependenciesData = {
 }
 
 export type GetRagPipelinesImportsByPipelineIdCheckDependenciesErrors = {
-  404: PipelineNotFoundError
+  404: PipelineNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1084,7 +1084,7 @@ export type PostRagPipelinesByPipelineIdCustomizedPublishData = {
 }
 
 export type PostRagPipelinesByPipelineIdCustomizedPublishErrors = {
-  404: PipelineNotFoundError
+  404: PipelineNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1110,7 +1110,7 @@ export type GetRagPipelinesByPipelineIdExportsData = {
 }
 
 export type GetRagPipelinesByPipelineIdExportsErrors = {
-  404: PipelineNotFoundError
+  404: PipelineNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1137,7 +1137,7 @@ export type GetRagPipelinesByPipelineIdWorkflowRunsData = {
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowRunsErrors = {
-  404: PipelineNotFoundError
+  404: PipelineNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1162,7 +1162,7 @@ export type PostRagPipelinesByPipelineIdWorkflowRunsTasksByTaskIdStopData = {
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowRunsTasksByTaskIdStopErrors = {
-  404: PipelineNotFoundError
+  404: PipelineNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1187,7 +1187,7 @@ export type GetRagPipelinesByPipelineIdWorkflowRunsByRunIdData = {
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowRunsByRunIdErrors = {
-  404: PipelineNotFoundError
+  404: PipelineNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1212,7 +1212,7 @@ export type GetRagPipelinesByPipelineIdWorkflowRunsByRunIdNodeExecutionsData = {
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowRunsByRunIdNodeExecutionsErrors = {
-  404: PipelineNotFoundError
+  404: PipelineNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1242,7 +1242,7 @@ export type GetRagPipelinesByPipelineIdWorkflowsData = {
 
 export type GetRagPipelinesByPipelineIdWorkflowsErrors = {
   403: ErrorResponse
-  404: PipelineNotFoundError
+  404: PipelineNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1266,7 +1266,7 @@ export type GetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsData 
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsErrors = {
-  404: PipelineNotFoundError
+  404: PipelineNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1293,7 +1293,7 @@ export type GetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsByBlo
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeErrors = {
-  404: PipelineNotFoundError
+  404: PipelineNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1317,7 +1317,7 @@ export type GetRagPipelinesByPipelineIdWorkflowsDraftData = {
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsDraftErrors = {
-  404: DraftWorkflowNotExistError | PipelineNotFoundError
+  404: DraftWorkflowNotExistError | PipelineNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1341,8 +1341,8 @@ export type PostRagPipelinesByPipelineIdWorkflowsDraftData = {
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsDraftErrors = {
-  404: PipelineNotFoundError
-  409: DraftWorkflowNotSyncError
+  404: PipelineNotFoundError | ErrorResponse
+  409: DraftWorkflowNotSyncError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1367,7 +1367,7 @@ export type PostRagPipelinesByPipelineIdWorkflowsDraftDatasourceNodesByNodeIdRun
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsDraftDatasourceNodesByNodeIdRunErrors = {
-  404: PipelineNotFoundError
+  404: PipelineNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1391,7 +1391,7 @@ export type PostRagPipelinesByPipelineIdWorkflowsDraftDatasourceVariablesInspect
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsDraftDatasourceVariablesInspectErrors = {
-  404: PipelineNotFoundError
+  404: PipelineNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1415,7 +1415,7 @@ export type GetRagPipelinesByPipelineIdWorkflowsDraftEnvironmentVariablesData = 
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsDraftEnvironmentVariablesErrors = {
-  404: DraftWorkflowNotExistError | PipelineNotFoundError
+  404: DraftWorkflowNotExistError | PipelineNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1440,7 +1440,7 @@ export type PostRagPipelinesByPipelineIdWorkflowsDraftIterationNodesByNodeIdRunD
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsDraftIterationNodesByNodeIdRunErrors = {
-  404: PipelineNotFoundError
+  404: PipelineNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1465,7 +1465,7 @@ export type PostRagPipelinesByPipelineIdWorkflowsDraftLoopNodesByNodeIdRunData =
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsDraftLoopNodesByNodeIdRunErrors = {
-  404: PipelineNotFoundError
+  404: PipelineNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1490,7 +1490,7 @@ export type GetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdLastRunData = 
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdLastRunErrors = {
-  404: PipelineNotFoundError
+  404: PipelineNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1515,7 +1515,7 @@ export type PostRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdRunData = {
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdRunErrors = {
-  404: PipelineNotFoundError
+  404: PipelineNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1540,7 +1540,7 @@ export type DeleteRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesDa
 }
 
 export type DeleteRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesErrors = {
-  404: PipelineNotFoundError
+  404: PipelineNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1565,7 +1565,7 @@ export type GetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesData 
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesErrors = {
-  404: PipelineNotFoundError
+  404: PipelineNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1591,7 +1591,7 @@ export type GetRagPipelinesByPipelineIdWorkflowsDraftPreProcessingParametersData
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsDraftPreProcessingParametersErrors = {
-  404: PipelineNotFoundError
+  404: PipelineNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1617,7 +1617,7 @@ export type GetRagPipelinesByPipelineIdWorkflowsDraftProcessingParametersData = 
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsDraftProcessingParametersErrors = {
-  404: PipelineNotFoundError
+  404: PipelineNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1641,8 +1641,8 @@ export type PostRagPipelinesByPipelineIdWorkflowsDraftRunData = {
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsDraftRunErrors = {
-  404: PipelineNotFoundError
-  429: RateLimitError
+  404: PipelineNotFoundError | ErrorResponse
+  429: RateLimitError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1666,7 +1666,7 @@ export type GetRagPipelinesByPipelineIdWorkflowsDraftSystemVariablesData = {
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsDraftSystemVariablesErrors = {
-  404: PipelineNotFoundError
+  404: PipelineNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1690,7 +1690,7 @@ export type DeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesData = {
 }
 
 export type DeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesErrors = {
-  404: PipelineNotFoundError
+  404: PipelineNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1717,7 +1717,7 @@ export type GetRagPipelinesByPipelineIdWorkflowsDraftVariablesData = {
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsDraftVariablesErrors = {
-  404: DraftWorkflowNotExistError | PipelineNotFoundError
+  404: DraftWorkflowNotExistError | PipelineNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1742,7 +1742,7 @@ export type DeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdDat
 }
 
 export type DeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdErrors = {
-  404: NotFoundError | PipelineNotFoundError
+  404: NotFoundError | PipelineNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1767,7 +1767,7 @@ export type GetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdData =
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdErrors = {
-  404: NotFoundError | PipelineNotFoundError
+  404: NotFoundError | PipelineNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1792,7 +1792,7 @@ export type PatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdData
 }
 
 export type PatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdErrors = {
-  404: NotFoundError | PipelineNotFoundError
+  404: NotFoundError | PipelineNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1817,7 +1817,7 @@ export type PutRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResetD
 }
 
 export type PutRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResetErrors = {
-  404: NotFoundError | PipelineNotFoundError
+  404: NotFoundError | PipelineNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1842,7 +1842,7 @@ export type GetRagPipelinesByPipelineIdWorkflowsPublishData = {
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsPublishErrors = {
-  404: PipelineNotFoundError
+  404: PipelineNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1866,7 +1866,7 @@ export type PostRagPipelinesByPipelineIdWorkflowsPublishData = {
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsPublishErrors = {
-  404: PipelineNotFoundError
+  404: PipelineNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1891,7 +1891,7 @@ export type PostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeI
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewErrors = {
-  404: PipelineNotFoundError
+  404: PipelineNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1919,7 +1919,7 @@ export type PostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeI
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdRunErrors = {
-  404: PipelineNotFoundError
+  404: PipelineNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1945,7 +1945,7 @@ export type GetRagPipelinesByPipelineIdWorkflowsPublishedPreProcessingParameters
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsPublishedPreProcessingParametersErrors = {
-  404: PipelineNotFoundError
+  404: PipelineNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1971,7 +1971,7 @@ export type GetRagPipelinesByPipelineIdWorkflowsPublishedProcessingParametersDat
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsPublishedProcessingParametersErrors = {
-  404: PipelineNotFoundError
+  404: PipelineNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1995,8 +1995,8 @@ export type PostRagPipelinesByPipelineIdWorkflowsPublishedRunData = {
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsPublishedRunErrors = {
-  404: PipelineNotFoundError
-  429: RateLimitError
+  404: PipelineNotFoundError | ErrorResponse
+  429: RateLimitError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2021,7 +2021,7 @@ export type DeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdData = {
 }
 
 export type DeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdErrors = {
-  404: PipelineNotFoundError
+  404: PipelineNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2048,7 +2048,7 @@ export type PatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdData = {
 export type PatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdErrors = {
   400: ErrorResponse
   403: ErrorResponse
-  404: PipelineNotFoundError
+  404: PipelineNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2073,7 +2073,7 @@ export type PostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestoreData = {
 }
 
 export type PostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestoreErrors = {
-  404: PipelineNotFoundError
+  404: PipelineNotFoundError | ErrorResponse
   default: ErrorResponse
 }
 
