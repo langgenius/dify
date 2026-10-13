@@ -394,6 +394,8 @@ class SessionView:
     # Used by reconnecting clients to correlate a terminal projection without
     # replaying the command's conversation payload in SSE.
     last_command_id: str = ""
+    # Detected user-input language. Empty until the worker detects one.
+    reply_language: str = ""
 
 
 @dataclass
