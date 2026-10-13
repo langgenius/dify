@@ -54,6 +54,23 @@ describe('HttpClient integration', () => {
         return
       }
 
+      if (req.url?.startsWith('/error/')) {
+        const status = Number(req.url.split('/').at(-1))
+        res.writeHead(status, {
+          'content-type': 'application/json',
+          'x-request-id': 'req-error',
+          'retry-after': '2',
+        })
+        res.end(JSON.stringify({ code: 'invalid_request', message: 'reported reason' }))
+        return
+      }
+
+      if (req.url === '/error-text') {
+        res.writeHead(502, { 'content-type': 'application/json' })
+        res.end('upstream unavailable')
+        return
+      }
+
       res.writeHead(404, { 'content-type': 'application/json' })
       res.end(JSON.stringify({ message: 'not found' }))
     })()
@@ -133,5 +150,38 @@ describe('HttpClient integration', () => {
     })
 
     expect(Array.from(response.data.values())).toEqual([1, 2, 3, 4])
+  })
+
+  it.each([
+    { responseType: 'json', status: 401, name: 'AuthenticationError' },
+    { responseType: 'stream', status: 401, name: 'AuthenticationError' },
+    { responseType: 'bytes', status: 422, name: 'ValidationError' },
+    { responseType: 'arraybuffer', status: 429, name: 'RateLimitError' },
+  ] as const)('preserves JSON error details for $responseType responses', async (testCase) => {
+    await expect(
+      client.requestRaw({
+        method: 'GET',
+        path: `/error/${testCase.status}`,
+        responseType: testCase.responseType,
+      }),
+    ).rejects.toMatchObject({
+      name: testCase.name,
+      message: 'reported reason',
+      statusCode: testCase.status,
+      requestId: 'req-error',
+      responseBody: { code: 'invalid_request', message: 'reported reason' },
+      ...(testCase.status === 429 ? { retryAfter: 2 } : {}),
+    })
+  })
+
+  it('preserves a malformed JSON error body when a stream was requested', async () => {
+    await expect(
+      client.requestStream({ method: 'GET', path: '/error-text' }),
+    ).rejects.toMatchObject({
+      name: 'APIError',
+      message: 'upstream unavailable',
+      statusCode: 502,
+      responseBody: 'upstream unavailable',
+    })
   })
 })
