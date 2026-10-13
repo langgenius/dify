@@ -33,9 +33,19 @@ from tests.unit_tests.controllers.error_contract import check_response, track_ex
 track_external_apis()
 
 
+def pytest_configure(config: pytest.Config) -> None:
+    config.addinivalue_line(
+        "markers",
+        "allow_error_contract_violations: the test serves contract-violating error responses on purpose",
+    )
+
+
 @pytest.fixture(autouse=True)
-def error_response_contract() -> Iterator[None]:
+def error_response_contract(request: pytest.FixtureRequest) -> Iterator[None]:
     """Fail a test whose served error responses contradict the documented error contract."""
+    if request.node.get_closest_marker("allow_error_contract_violations"):
+        yield
+        return
     violations: list[str] = []
 
     def receiver(sender: Flask, response: Response, **_: object) -> None:
