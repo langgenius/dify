@@ -1,10 +1,15 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { toast } from '@/app/notifications'
 import { checkEmailExisted, resetEmail, sendVerifyCode, verifyEmail } from '@/service/common'
 import { createHttpError } from '@/service/http-error'
 import EmailChangeModal from '../email-change-modal'
 
 const mockLogout = vi.fn()
+
+vi.mock('@/app/notifications', () => ({
+  toast: { error: vi.fn() },
+}))
 
 vi.mock('@/service/common', () => ({
   checkEmailExisted: vi.fn(),
@@ -104,5 +109,71 @@ describe('EmailChangeModal', () => {
     expect(
       screen.queryByText('accountSettings.account.changeEmail.existingEmail'),
     ).not.toBeInTheDocument()
+  })
+
+  it('shows the server message when sending a verification code fails', async () => {
+    vi.mocked(sendVerifyCode).mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 429 }), {
+        code: 'rate_limit_exceeded',
+        message: 'Try again in one minute',
+      }),
+    )
+    const user = userEvent.setup()
+    render(<EmailChangeModal email="old@example.com" onClose={vi.fn()} />)
+
+    await user.click(
+      screen.getByRole('button', { name: 'accountSettings.account.changeEmail.sendVerifyCode' }),
+    )
+
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith(
+        'Error sending verification code: Try again in one minute',
+      ),
+    )
+    expect(verifyEmail).not.toHaveBeenCalled()
+    expect(mockLogout).not.toHaveBeenCalled()
+  })
+
+  it('preserves the verification step after an HTTP error and allows another attempt', async () => {
+    vi.mocked(verifyEmail).mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 400 }), {
+        code: 'invalid_code',
+        message: 'Verification code has expired',
+      }),
+    )
+    const user = userEvent.setup()
+    render(<EmailChangeModal email="old@example.com" onClose={vi.fn()} />)
+
+    await user.click(
+      screen.getByRole('button', { name: 'accountSettings.account.changeEmail.sendVerifyCode' }),
+    )
+    const originCode = await screen.findByRole('textbox', {
+      name: 'accountSettings.account.changeEmail.codeLabel',
+    })
+    await user.type(originCode, '123456{Enter}')
+
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith(
+        'Error verifying email: Verification code has expired',
+      ),
+    )
+    expect(originCode).toBeVisible()
+    expect(
+      screen.queryByRole('textbox', { name: 'accountSettings.account.changeEmail.emailLabel' }),
+    ).not.toBeInTheDocument()
+    expect(resetEmail).not.toHaveBeenCalled()
+
+    await user.type(originCode, '654321{Enter}')
+
+    expect(
+      await screen.findByRole('textbox', {
+        name: 'accountSettings.account.changeEmail.emailLabel',
+      }),
+    ).toBeVisible()
+    expect(verifyEmail).toHaveBeenLastCalledWith({
+      email: 'old@example.com',
+      code: '654321',
+      token: 'email-token',
+    })
   })
 })
