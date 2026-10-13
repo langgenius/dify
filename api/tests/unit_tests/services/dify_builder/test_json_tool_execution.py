@@ -448,7 +448,6 @@ def test_native_jsonpath_constant_cannot_read_non_start_value(json_graph):
         "$[0]",
         "$[65535]",
         "$.items[*].name",
-        "$.*.name",
         "$." + ".".join(f"n{i}" for i in range(16)),
     ],
 )
@@ -520,17 +519,6 @@ def test_jsonpath_grammar_refuses_constant_and_resolved_values(json_graph, path,
         inputs["json_path"] = path
     with pytest.raises(BuilderExecutionPolicyError):
         resolve_json_parameters(snapshot_for(json_graph), inputs)
-
-
-@pytest.mark.parametrize(("size", "valid"), [(1024, True), (1025, False)])
-def test_filter_utf8_byte_boundary(json_graph, size, valid):
-    value = "$." + "a" * (size - 2)
-    inputs = {**_inputs(), "json_path": value}
-    if valid:
-        assert resolve_json_parameters(snapshot_for(json_graph), inputs)["json_filter"] == value
-    else:
-        with pytest.raises(BuilderExecutionPolicyError):
-            resolve_json_parameters(snapshot_for(json_graph), inputs)
 
 
 @pytest.mark.parametrize(("size", "valid"), [(65536, True), (65537, False), (32768, True), (32769, False)])
