@@ -27,8 +27,8 @@
 1. `difyctl describe model_provider --provider <id>` (or `describe tool_provider`) shows `credential_form` and the saved `credentials` (names only).
 2. Ask the human for each form value. Never invent one, never print it, never write it into the working folder.
 3. Pass the values on stdin: `difyctl create model_provider credential --provider <id> --credentials @-` (for tools, `difyctl create tool_provider credential --provider <id> --credentials @-`), then write the JSON object to stdin.
-4. A 422 means the provider rejected the values; nothing was saved. Show the human the message and ask again.
-5. If another credential is already active, the hint offers to replace its values with `set`.
+4. Rejected (model 422, tool 400): nothing saved; show the message, ask again.
+5. Model providers only: if a credential is already active, the hint offers `set` to replace it.
 6. A tool provider whose `credential_types` lacks `api-key` uses OAuth. Ask the human to authorize it in the console.
 
 Self-hosted or OpenAI-compatible models: `create model credential` with `--model`, `--model-type` and `--credentials @-`.

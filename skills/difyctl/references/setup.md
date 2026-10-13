@@ -17,7 +17,7 @@ Log in only this way:
 
 Never run `login` without `--no-wait`. It blocks until the human approves.
 
-A script that already has a token skips login: set `DIFY_SERVER` and `DIFY_TOKEN`.
+A script that already has a token skips login: set `DIFY_SERVER` and `DIFY_TOKEN`. (v1's `DIFY_HOST` is not read.)
 
 `--no-browser` prints the URL instead of opening one; always pass it as an agent. `--insecure` skips TLS verification and allows `http://` (local dev only).
 
@@ -26,7 +26,7 @@ A script that already has a token skips login: set `DIFY_SERVER` and `DIFY_TOKEN
 The token goes to the OS keyring by default. On Linux without a DBus session, difyctl uses a file instead, because the keyring there is lost when the session ends. In a sandbox, a container or a headless VM, the keyring can still be lost between sessions. There:
 
 - Add `--no-keyring` to `login`, so the token goes to a file. Pass it on the `--no-wait` call; `--resume` remembers it.
-- Leave `DIFY_CONFIG_DIR` unset unless the default folder (`~/.config/difyctl`) is lost between sessions. If you set it, put it on every command (`DIFY_CONFIG_DIR=<dir> difyctl ...`): an `export` does not carry over when each command runs in a new shell. The pending login from `--no-wait` lives there too, so `--resume` needs the same value. A `not_logged_in` error names the folder it checked.
+- Leave `DIFY_CONFIG_DIR` unset unless the default folder is lost between sessions (macOS `~/.config/difyctl`, Linux `${XDG_CONFIG_HOME:-~/.config}/difyctl`, Windows `%APPDATA%\difyctl`). If you set it, put it on every command (`DIFY_CONFIG_DIR=<dir> difyctl ...`): an `export` does not carry over when each command runs in a new shell. The pending login from `--no-wait` lives there too, so `--resume` needs the same value. A `not_logged_in` error names the folder it checked.
 
 ## Workspace
 
@@ -34,4 +34,4 @@ The token goes to the OS keyring by default. On Linux without a DBus session, di
 
 ## Files
 
-`DIFY_CONFIG_DIR` moves the login and token files; `DIFY_CACHE_DIR` moves the catalog cache.
+`DIFY_CONFIG_DIR` holds login, tokens and catalog. `DIFY_CACHE_DIR` is unused.

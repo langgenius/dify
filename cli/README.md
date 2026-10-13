@@ -2,6 +2,18 @@
 
 CLI client for the [Dify] platform. Browser device-flow sign-in, then a server-published catalog of operations you discover and call at run time, each one a command. Results are JSON; help and errors are text on a terminal, JSON in a pipe.
 
+## Install
+
+difyctl ships as assets on Dify releases. The installer picks the build from the latest release; set `DIFY_VERSION` to match your Dify server:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/langgenius/dify/main/cli/scripts/install-cli.sh | sh
+```
+
+Windows (PowerShell): `irm https://raw.githubusercontent.com/langgenius/dify/main/cli/scripts/install.ps1 | iex`.
+
+The binary goes to `$HOME/.local/bin` (Windows: `%LOCALAPPDATA%\difyctl\bin`). Every installer accepts `DIFYCTL_INSTALL_DIR` (the bin folder itself) and `DIFYCTL_PREFIX` (the folder above it, so the binary lands in `<prefix>/bin`); `DIFYCTL_INSTALL_DIR` wins when both are set.
+
 ## Install (edge, internal)
 
 Per-commit `edge` builds are published to Cloudflare R2. The installer script lives in this repo; binaries are fetched from R2 via `DIFYCTL_R2_BASE` (shared internally):
@@ -10,15 +22,16 @@ Per-commit `edge` builds are published to Cloudflare R2. The installer script li
 curl -fsSL https://raw.githubusercontent.com/langgenius/dify/main/cli/scripts/install-r2.sh | DIFYCTL_R2_BASE=<BASE> sh
 ```
 
-| Env                     | Default            | Purpose                                                             |
-| ----------------------- | ------------------ | ------------------------------------------------------------------- |
-| `DIFYCTL_R2_BASE`       | — (required)       | R2 public base, e.g. `https://pub-….r2.dev`.                        |
-| `DIFYCTL_CHANNEL`       | `edge`             | Channel to install.                                                 |
-| `DIFYCTL_INSTALL_DIR`   | `$HOME/.local/bin` | Directory the binary is written to (`<dir>/difyctl`).               |
-| `DIFYCTL_VERSION`       | latest             | Pin an exact published version.                                     |
-| `DIFYCTL_COMMIT`        | latest             | Pin by git commit (short or full sha).                              |
-| `DIFYCTL_R2_PREFIX`     | `difyctl`          | R2 key root for the pointer JSONs (`manifest.json` / `index.json`). |
-| `DIFYCTL_R2_BIN_PREFIX` | `difyctl/bin`      | R2 key root for binaries (the lifecycle/TTL target).                |
+| Env                     | Default            | Purpose                                                                                                         |
+| ----------------------- | ------------------ | --------------------------------------------------------------------------------------------------------------- |
+| `DIFYCTL_R2_BASE`       | — (required)       | R2 public base, e.g. `https://pub-….r2.dev`.                                                                    |
+| `DIFYCTL_CHANNEL`       | `edge`             | Channel to install.                                                                                             |
+| `DIFYCTL_INSTALL_DIR`   | `$HOME/.local/bin` | Directory the binary is written to (`<dir>/difyctl`). On Windows the default is `%LOCALAPPDATA%\difyctl\bin`.   |
+| `DIFYCTL_PREFIX`        | `$HOME/.local`     | Used as `<prefix>/bin` when `DIFYCTL_INSTALL_DIR` is unset. On Windows the default is `%LOCALAPPDATA%\difyctl`. |
+| `DIFYCTL_VERSION`       | latest             | Pin an exact published version.                                                                                 |
+| `DIFYCTL_COMMIT`        | latest             | Pin by git commit (short or full sha).                                                                          |
+| `DIFYCTL_R2_PREFIX`     | `difyctl`          | R2 key root for the pointer JSONs (`manifest.json` / `index.json`).                                             |
+| `DIFYCTL_R2_BIN_PREFIX` | `difyctl/bin`      | R2 key root for binaries (the lifecycle/TTL target).                                                            |
 
 By default the channel pointer (latest build) is installed. Set `DIFYCTL_COMMIT` (e.g. `ce4af86`) or `DIFYCTL_VERSION` to install a specific past build — both resolve through the channel's `index.json`:
 
@@ -85,7 +98,7 @@ The same files install through the Vercel skills installer: `npx skills add lang
 
 `get config [key]` prints the whole local config or one key; `set config <key> <value>` and `unset config <key>` change it. The only config key today is `http.timeout` (request timeout in milliseconds).
 
-Tokens use the OS keychain by default, falling back to `tokens.yml` on hosts without one. On Linux without a DBus session (`DBUS_SESSION_BUS_ADDRESS` unset), the keychain would only hold the token until the session ends, so difyctl uses `tokens.yml` there too; `login --no-keyring` chooses the file outright. Config and cache files are written `0600`, their directory `0700`.
+Tokens use the OS keychain by default, falling back to `tokens.yml` in the config folder on hosts without one. On Linux without a DBus session (`DBUS_SESSION_BUS_ADDRESS` unset), the keychain would only hold the token until the session ends, so difyctl uses `tokens.yml` there too; `login --no-keyring` chooses the file outright. The catalog cache is kept in the config folder under `catalog/`; `DIFY_CACHE_DIR` is no longer used. Config and cache files are written `0600`, their directory `0700`.
 
 | Env var             | Effect                                                      |
 | ------------------- | ----------------------------------------------------------- |
@@ -94,7 +107,6 @@ Tokens use the OS keychain by default, falling back to `tokens.yml` on hosts wit
 | `DIFY_WORKSPACE_ID` | Overrides the locally pinned workspace                      |
 | `DIFY_OUTPUT`       | `json` or `text`; overrides the terminal/pipe detection     |
 | `DIFY_CONFIG_DIR`   | Overrides the config directory                              |
-| `DIFY_CACHE_DIR`    | Overrides the catalog cache directory                       |
 
 Resource access tokens can also be passed through `DIFY_TOKEN`. They can list
 their own workspace and discover only apps bound to that token; workspace
@@ -108,7 +120,7 @@ Pass `--stream` on a streaming operation to print every event as one JSON line, 
 difyctl run console_app chat --app-id … --query hello --inputs '{}' --stream
 ```
 
-`--only <event>` filters the streamed events to the named event types; repeat it to keep more than one. Without `--stream`, a streaming operation's events fold into `{status, text, outputs?, message_id?, conversation_id?, error?, hints}`.
+`--only <event>` filters the streamed events to the named event types; repeat it to keep more than one. Without `--stream`, a streaming operation's events fold into `{status, text, outputs?, message_id?, conversation_id?, run_id?, error?, hints}`.
 
 ## Exit codes
 
