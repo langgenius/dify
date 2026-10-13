@@ -9,13 +9,13 @@ from uuid import uuid4
 import pytest
 from flask import Flask
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import HTTPException
 
 import services.errors.base
 import services.errors.workspace
 from controllers.console.auth.error import MemberNotInTenantError
 from controllers.console.workspace.members import MemberCancelInviteApi, MemberUpdateRoleApi, OwnerTransfer
 from extensions.ext_application_services import application_services
+from libs.exception import BaseHTTPException
 from libs.helper import TokenManager
 from machinery.context import RequestContext
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
@@ -166,10 +166,15 @@ class TestMemberCancelInviteApiWithContainers:
                 side_effect=services.errors.workspace.CannotOperateSelfError("x"),
             ),
         ):
-            result, status = method(api, RequestContext("request", None, current_user.id, tenant.id), member.id)
+            with pytest.raises(BaseHTTPException) as exc_info:
+                method(api, RequestContext("request", None, current_user.id, tenant.id), member.id)
 
-        assert status == 400
-        assert result["code"] == "cannot-operate-self"
+        assert exc_info.value.code == 400
+        assert exc_info.value.data == {
+            "code": "cannot-operate-self",
+            "message": exc_info.value.description,
+            "status": 400,
+        }
 
     def test_cancel_no_permission(self, flask_app_with_containers: Flask, db_session_with_containers: Session) -> None:
         api = MemberCancelInviteApi()
@@ -186,10 +191,11 @@ class TestMemberCancelInviteApiWithContainers:
                 side_effect=services.errors.base.NoPermissionError("x"),
             ),
         ):
-            result, status = method(api, RequestContext("request", None, current_user.id, tenant.id), member.id)
+            with pytest.raises(BaseHTTPException) as exc_info:
+                method(api, RequestContext("request", None, current_user.id, tenant.id), member.id)
 
-        assert status == 403
-        assert result["code"] == "forbidden"
+        assert exc_info.value.code == 403
+        assert exc_info.value.data == {"code": "forbidden", "message": exc_info.value.description, "status": 403}  # type: ignore[attr-defined]
 
     def test_cancel_member_not_in_tenant(
         self, flask_app_with_containers: Flask, db_session_with_containers: Session
@@ -208,10 +214,11 @@ class TestMemberCancelInviteApiWithContainers:
                 side_effect=services.errors.workspace.MemberNotInTenantError(),
             ),
         ):
-            result, status = method(api, RequestContext("request", None, current_user.id, tenant.id), member.id)
+            with pytest.raises(BaseHTTPException) as exc_info:
+                method(api, RequestContext("request", None, current_user.id, tenant.id), member.id)
 
-        assert status == 404
-        assert result["code"] == "member-not-found"
+        assert exc_info.value.code == 404
+        assert exc_info.value.data == {"code": "member-not-found", "message": exc_info.value.description, "status": 404}  # type: ignore[attr-defined]
 
 
 class TestMemberUpdateRoleApiWithContainers:
