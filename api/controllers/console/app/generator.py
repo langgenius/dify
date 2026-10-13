@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field, RootModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from controllers.common.fields import SimpleDataResponse
+from controllers.common.fields import ErrorMessageResponse, SimpleDataResponse
 from controllers.common.schema import register_enum_models, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import (
@@ -152,6 +152,13 @@ class WorkflowGenerateErrorResponse(ResponseModel):
     node_id: str | None = None
 
 
+class WorkflowGenerateRejectedResponse(ResponseModel):
+    """400 body when the boundary guard rejects the instruction before generating."""
+
+    error: str
+    errors: list[WorkflowGenerateErrorResponse]
+
+
 class WorkflowGenerateResponse(ResponseModel):
     graph: WorkflowGraph
     message: str = ""
@@ -220,6 +227,8 @@ register_response_schema_models(
     GeneratorResponse,
     SimpleDataResponse,
     WorkflowGenerateResponse,
+    WorkflowGenerateRejectedResponse,
+    ErrorMessageResponse,
     WorkflowGeneratePlanEventResponse,
     WorkflowGenerateResultEventResponse,
     WorkflowGenerateStreamEventResponse,
@@ -330,7 +339,11 @@ class InstructionGenerateApi(Resource):
     @console_ns.doc(description="Generate instruction for workflow nodes or general use")
     @console_ns.expect(console_ns.models[InstructionGeneratePayload.__name__])
     @console_ns.response(200, "Instruction generated successfully", console_ns.models[GeneratorResponse.__name__])
-    @console_ns.response(400, "Invalid request parameters or flow/workflow not found")
+    @console_ns.response(
+        400,
+        "Invalid request parameters or flow/workflow not found",
+        console_ns.models[ErrorMessageResponse.__name__],
+    )
     @console_ns.response(402, "Provider quota exceeded")
     @setup_required
     @login_required
@@ -496,7 +509,9 @@ class WorkflowGenerateApi(Resource):
         "Workflow graph generated successfully",
         console_ns.models[WorkflowGenerateResponse.__name__],
     )
-    @console_ns.response(400, "Invalid request parameters")
+    @console_ns.response(
+        400, "Invalid request parameters", console_ns.models[WorkflowGenerateRejectedResponse.__name__]
+    )
     @console_ns.response(402, "Provider quota exceeded")
     @setup_required
     @login_required
@@ -588,7 +603,9 @@ class WorkflowGenerateStreamApi(Resource):
         "Server-Sent Events stream; each data frame matches this plan/result event schema",
         console_ns.models[WorkflowGenerateStreamEventResponse.__name__],
     )
-    @console_ns.response(400, "Invalid request parameters")
+    @console_ns.response(
+        400, "Invalid request parameters", console_ns.models[WorkflowGenerateRejectedResponse.__name__]
+    )
     @setup_required
     @login_required
     @account_initialization_required

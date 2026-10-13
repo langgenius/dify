@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 from controllers.common.controller_schemas import WorkflowUpdatePayload
+from controllers.common.errors import InvalidArgumentError
 from controllers.common.fields import GeneratedAppResponse, SimpleResultResponse
 from controllers.common.rbac import RBACCheck, Workspace
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
@@ -222,7 +223,7 @@ class SnippetDraftWorkflowApi(Resource):
         except WorkflowHashNotEqualError:
             raise DraftWorkflowNotSync()
         except ValueError as e:
-            return {"message": str(e)}, 400
+            raise InvalidArgumentError(str(e)) from e
 
         return {
             "result": "success",
@@ -311,7 +312,7 @@ class SnippetPublishedWorkflowApi(Resource):
             # This domain validation remains a 400 response, so it cannot escape to
             # the request-session decorator that normally owns rollback-on-error.
             session.rollback()  # guard-ignore: no-new-controller-sqlalchemy -- translated validation response
-            return {"message": str(e)}, 400
+            raise InvalidArgumentError(str(e)) from e
 
         return {
             "result": "success",
@@ -456,7 +457,7 @@ class SnippetWorkflowByIdApi(Resource):
         update_data = req_data.model_dump(exclude_unset=True)
 
         if not update_data:
-            return {"message": "No valid fields to update"}, 400
+            raise InvalidArgumentError("No valid fields to update")
 
         snippet_service = _snippet_service()
         workflow = snippet_service.update_workflow(

@@ -9,18 +9,21 @@ from flask_restx import Resource
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from sqlalchemy.orm import Session
 
+from controllers.common.errors import NoFileUploadedError
 from controllers.common.fields import BinaryFileResponse
 from controllers.common.rbac import RBACCheck, Workspace
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.common.session import with_session
 from controllers.console import console_ns
 from controllers.console.flask_admission import console_account_admission
+from controllers.console.workspace.error import SkillFilenameMissingError, SkillRequestError
 from controllers.console.wraps import (
     RBACPermission,
     edit_permission_required,
 )
 from fields.base import ResponseModel
 from libs import helper
+from libs.exception import RelayedHTTPError
 from libs.helper import dump_response
 from machinery.context import RequestContext
 from services.skill_management_service import (
@@ -286,11 +289,8 @@ register_response_schema_models(
 )
 
 
-def _error_response(exc: SkillManagementServiceError) -> tuple[dict[str, object], int]:
-    body: dict[str, object] = {"code": exc.code, "message": exc.message}
-    if exc.details:
-        body["details"] = exc.details
-    return body, exc.status_code
+def _relayed_error(exc: SkillManagementServiceError) -> RelayedHTTPError:
+    return RelayedHTTPError(status=exc.status_code, error_code=exc.code, message=exc.message, details=exc.details)
 
 
 @console_ns.route("/workspaces/current/skills")
@@ -337,11 +337,11 @@ class WorkspaceSkillsApi(Resource):
             )
             return dump_response(SkillDetailResponse, result), 201
         except ValidationError as exc:
-            return {"code": "invalid_request", "message": str(exc)}, 400
+            raise SkillRequestError(str(exc)) from exc
         except ValueError as exc:
-            return {"code": "invalid_request", "message": str(exc)}, 400
+            raise SkillRequestError(str(exc)) from exc
         except SkillManagementServiceError as exc:
-            return _error_response(exc)
+            raise _relayed_error(exc) from exc
 
 
 @console_ns.route("/workspaces/current/skills/files/upload")
@@ -353,11 +353,11 @@ class WorkspaceSkillFileUploadApi(Resource):
     @with_session
     def post(self, session: Session, request_context: RequestContext):
         if "file" not in request.files:
-            return {"code": "no_file_uploaded", "message": "no file uploaded"}, 400
+            raise NoFileUploadedError("no file uploaded")
 
         file = request.files["file"]
         if not file.filename:
-            return {"code": "filename_missing", "message": "filename is required"}, 400
+            raise SkillFilenameMissingError()
 
         try:
             result = SkillManagementService(session=session).upload_file(
@@ -369,7 +369,7 @@ class WorkspaceSkillFileUploadApi(Resource):
             )
             return dump_response(SkillFileUploadResponse, result), 201
         except SkillManagementServiceError as exc:
-            return _error_response(exc)
+            raise _relayed_error(exc) from exc
 
 
 @console_ns.route("/workspaces/current/skills/tags")
@@ -394,7 +394,7 @@ class WorkspaceSkillImportApi(Resource):
     def post(self, session: Session, request_context: RequestContext):
         upload = request.files.get("file")
         if upload is None:
-            return {"code": "invalid_request", "message": "file is required"}, 400
+            raise SkillRequestError("file is required")
         try:
             payload = SkillImportPayload(content=upload.read(), filename=upload.filename or "skill.zip")
             result = SkillManagementService(session=session).import_skill(
@@ -404,9 +404,9 @@ class WorkspaceSkillImportApi(Resource):
             )
             return dump_response(SkillDetailResponse, result), 201
         except (ValidationError, ValueError) as exc:
-            return {"code": "invalid_request", "message": str(exc)}, 400
+            raise SkillRequestError(str(exc)) from exc
         except SkillManagementServiceError as exc:
-            return _error_response(exc)
+            raise _relayed_error(exc) from exc
 
 
 @console_ns.route("/workspaces/current/skills/<string:skill_id>")
@@ -423,7 +423,7 @@ class WorkspaceSkillApi(Resource):
             )
             return dump_response(SkillDetailResponse, result)
         except SkillManagementServiceError as exc:
-            return _error_response(exc)
+            raise _relayed_error(exc) from exc
 
     @console_ns.expect(console_ns.models[SkillMetadataPayload.__name__])
     @console_ns.response(200, "Skill updated", console_ns.models[SkillResponse.__name__])
@@ -443,11 +443,11 @@ class WorkspaceSkillApi(Resource):
             )
             return dump_response(SkillResponse, result)
         except ValidationError as exc:
-            return {"code": "invalid_request", "message": str(exc)}, 400
+            raise SkillRequestError(str(exc)) from exc
         except ValueError as exc:
-            return {"code": "invalid_request", "message": str(exc)}, 400
+            raise SkillRequestError(str(exc)) from exc
         except SkillManagementServiceError as exc:
-            return _error_response(exc)
+            raise _relayed_error(exc) from exc
 
     @console_ns.expect(console_ns.models[SkillDeletePayload.__name__])
     @console_ns.response(200, "Skill deleted", console_ns.models[SkillDeleteResponse.__name__])
@@ -466,9 +466,9 @@ class WorkspaceSkillApi(Resource):
             )
             return dump_response(SkillDeleteResponse, result)
         except ValidationError as exc:
-            return {"code": "invalid_request", "message": str(exc)}, 400
+            raise SkillRequestError(str(exc)) from exc
         except SkillManagementServiceError as exc:
-            return _error_response(exc)
+            raise _relayed_error(exc) from exc
 
 
 @console_ns.route("/workspaces/current/skills/<string:skill_id>/duplicate")
@@ -488,7 +488,7 @@ class WorkspaceSkillDuplicateApi(Resource):
             )
             return dump_response(SkillDetailResponse, result), 201
         except SkillManagementServiceError as exc:
-            return _error_response(exc)
+            raise _relayed_error(exc) from exc
 
 
 @console_ns.route("/workspaces/current/skills/<string:skill_id>/export")
@@ -510,7 +510,7 @@ class WorkspaceSkillExportApi(Resource):
                 download_name=result.filename,
             )
         except SkillManagementServiceError as exc:
-            return _error_response(exc)
+            raise _relayed_error(exc) from exc
 
 
 @console_ns.route("/workspaces/current/skills/<string:skill_id>/assist/messages")
@@ -535,9 +535,9 @@ class WorkspaceSkillAssistMessageApi(Resource):
                 target_path=payload.target_path,
             )
         except ValidationError as exc:
-            return {"code": "invalid_request", "message": str(exc)}, 400
+            raise SkillRequestError(str(exc)) from exc
         except SkillManagementServiceError as exc:
-            return _error_response(exc)
+            raise _relayed_error(exc) from exc
         return helper.compact_generate_response(response)
 
 
@@ -558,11 +558,11 @@ class WorkspaceSkillFilesCheckApi(Resource):
             )
             return dump_response(SkillFileCheckResponse, result)
         except ValidationError as exc:
-            return {"code": "invalid_request", "message": str(exc)}, 400
+            raise SkillRequestError(str(exc)) from exc
         except ValueError as exc:
-            return {"code": "invalid_request", "message": str(exc)}, 400
+            raise SkillRequestError(str(exc)) from exc
         except SkillManagementServiceError as exc:
-            return _error_response(exc)
+            raise _relayed_error(exc) from exc
 
 
 @console_ns.route("/workspaces/current/skills/<string:skill_id>/files")
@@ -583,11 +583,11 @@ class WorkspaceSkillFilesApi(Resource):
             )
             return dump_response(SkillDetailResponse, result)
         except ValidationError as exc:
-            return {"code": "invalid_request", "message": str(exc)}, 400
+            raise SkillRequestError(str(exc)) from exc
         except ValueError as exc:
-            return {"code": "invalid_request", "message": str(exc)}, 400
+            raise SkillRequestError(str(exc)) from exc
         except SkillManagementServiceError as exc:
-            return _error_response(exc)
+            raise _relayed_error(exc) from exc
 
     @console_ns.expect(console_ns.models[SkillDraftTreePayload.__name__])
     @console_ns.response(200, "Draft files replaced", console_ns.models[SkillDetailResponse.__name__])
@@ -605,11 +605,11 @@ class WorkspaceSkillFilesApi(Resource):
             )
             return dump_response(SkillDetailResponse, result)
         except ValidationError as exc:
-            return {"code": "invalid_request", "message": str(exc)}, 400
+            raise SkillRequestError(str(exc)) from exc
         except ValueError as exc:
-            return {"code": "invalid_request", "message": str(exc)}, 400
+            raise SkillRequestError(str(exc)) from exc
         except SkillManagementServiceError as exc:
-            return _error_response(exc)
+            raise _relayed_error(exc) from exc
 
 
 @console_ns.route("/workspaces/current/skills/<string:skill_id>/files/preview")
@@ -634,11 +634,11 @@ class WorkspaceSkillFilePreviewApi(Resource):
             )
             return dump_response(SkillFilePreviewResponse, result)
         except ValidationError as exc:
-            return {"code": "invalid_request", "message": str(exc)}, 400
+            raise SkillRequestError(str(exc)) from exc
         except ValueError as exc:
-            return {"code": "invalid_request", "message": str(exc)}, 400
+            raise SkillRequestError(str(exc)) from exc
         except SkillManagementServiceError as exc:
-            return _error_response(exc)
+            raise _relayed_error(exc) from exc
 
 
 @console_ns.route("/workspaces/current/skills/<string:skill_id>/files/content")
@@ -668,11 +668,11 @@ class WorkspaceSkillFileContentApi(Resource):
                 download_name=result.filename,
             )
         except ValidationError as exc:
-            return {"code": "invalid_request", "message": str(exc)}, 400
+            raise SkillRequestError(str(exc)) from exc
         except ValueError as exc:
-            return {"code": "invalid_request", "message": str(exc)}, 400
+            raise SkillRequestError(str(exc)) from exc
         except SkillManagementServiceError as exc:
-            return _error_response(exc)
+            raise _relayed_error(exc) from exc
 
 
 @console_ns.route("/workspaces/current/skills/<string:skill_id>/publish")
@@ -695,9 +695,9 @@ class WorkspaceSkillPublishApi(Resource):
             )
             return dump_response(SkillVersionResponse, result)
         except ValidationError as exc:
-            return {"code": "invalid_request", "message": str(exc)}, 400
+            raise SkillRequestError(str(exc)) from exc
         except SkillManagementServiceError as exc:
-            return _error_response(exc)
+            raise _relayed_error(exc) from exc
 
 
 @console_ns.route("/workspaces/current/skills/<string:skill_id>/restore")
@@ -720,9 +720,9 @@ class WorkspaceSkillRestoreApi(Resource):
             )
             return dump_response(SkillDetailResponse, result)
         except ValidationError as exc:
-            return {"code": "invalid_request", "message": str(exc)}, 400
+            raise SkillRequestError(str(exc)) from exc
         except SkillManagementServiceError as exc:
-            return _error_response(exc)
+            raise _relayed_error(exc) from exc
 
 
 @console_ns.route("/workspaces/current/skills/<string:skill_id>/references")
@@ -737,7 +737,7 @@ class WorkspaceSkillReferencesApi(Resource):
             )
             return dump_response(SkillReferenceListResponse, result)
         except SkillManagementServiceError as exc:
-            return _error_response(exc)
+            raise _relayed_error(exc) from exc
 
 
 @console_ns.route("/workspaces/current/skills/<string:skill_id>/versions")
@@ -752,7 +752,7 @@ class WorkspaceSkillVersionsApi(Resource):
             )
             return dump_response(SkillVersionListResponse, result)
         except SkillManagementServiceError as exc:
-            return _error_response(exc)
+            raise _relayed_error(exc) from exc
 
 
 @console_ns.route("/workspaces/current/skills/<string:skill_id>/versions/<string:version_id>")
@@ -769,7 +769,7 @@ class WorkspaceSkillVersionApi(Resource):
             )
             return dump_response(SkillVersionDetailResponse, result)
         except SkillManagementServiceError as exc:
-            return _error_response(exc)
+            raise _relayed_error(exc) from exc
 
     @console_ns.expect(console_ns.models[SkillVersionUpdatePayload.__name__])
     @console_ns.response(200, "Skill version updated", console_ns.models[SkillVersionResponse.__name__])
@@ -787,9 +787,9 @@ class WorkspaceSkillVersionApi(Resource):
             )
             return dump_response(SkillVersionResponse, result)
         except ValidationError as exc:
-            return {"code": "invalid_request", "message": str(exc)}, 400
+            raise SkillRequestError(str(exc)) from exc
         except SkillManagementServiceError as exc:
-            return _error_response(exc)
+            raise _relayed_error(exc) from exc
 
     @console_ns.response(200, "Skill version deleted", console_ns.models[SkillVersionDeleteResponse.__name__])
     @console_account_admission()
@@ -805,7 +805,7 @@ class WorkspaceSkillVersionApi(Resource):
             )
             return dump_response(SkillVersionDeleteResponse, result)
         except SkillManagementServiceError as exc:
-            return _error_response(exc)
+            raise _relayed_error(exc) from exc
 
 
 @console_ns.route("/workspaces/current/agents/<string:agent_id>/skills")
@@ -835,9 +835,9 @@ class WorkspaceAgentSkillBindingsApi(Resource):
             )
             return dump_response(AgentSkillBindingsResponse, result)
         except ValidationError as exc:
-            return {"code": "invalid_request", "message": str(exc)}, 400
+            raise SkillRequestError(str(exc)) from exc
         except SkillManagementServiceError as exc:
-            return _error_response(exc)
+            raise _relayed_error(exc) from exc
 
 
 __all__ = [

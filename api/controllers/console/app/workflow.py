@@ -16,6 +16,7 @@ from pydantic import (
     field_validator,
     model_validator,
 )
+from pydantic.json_schema import SkipJsonSchema
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotFound
 
@@ -286,6 +287,13 @@ class WorkflowOnlineUsersPayload(BaseModel):
         return list(dict.fromkeys(app_id.strip() for app_id in app_ids if app_id.strip()))
 
 
+class WorkflowTriggerRunErrorResponse(ResponseModel):
+    """400 body when a draft trigger run fails; ``error`` is omitted when there is nothing user-facing to say."""
+
+    status: Literal["error"]
+    error: str | SkipJsonSchema[None] = None
+
+
 class PipelineVariableResponse(ResponseModel):
     label: str
     variable: str
@@ -491,6 +499,7 @@ register_schema_models(
 register_response_schema_model(console_ns, WorkflowRunNodeExecutionResponse)
 register_response_schema_models(
     console_ns,
+    WorkflowTriggerRunErrorResponse,
     WorkflowConversationVariableResponse,
     PipelineVariableResponse,
     WorkflowEnvironmentVariableResponse,
@@ -646,13 +655,13 @@ class DraftWorkflowApi(Resource):
         if "application/json" in content_type:
             payload_data = request.get_json(silent=True)
             if not isinstance(payload_data, dict):
-                return {"message": "Invalid JSON data"}, 400
+                raise InvalidArgumentError("Invalid JSON data")
             args_model = SyncDraftWorkflowPayload.model_validate(payload_data)
         elif "text/plain" in content_type:
             try:
                 args_model = SyncDraftWorkflowPayload.model_validate_json(request.data)
             except (ValueError, ValidationError):
-                return {"message": "Invalid JSON data"}, 400
+                raise InvalidArgumentError("Invalid JSON data")
         else:
             abort(415)
 
@@ -1630,7 +1639,7 @@ class WorkflowByIdApi(Resource):
             update_data["marked_comment"] = args.marked_comment
 
         if not update_data:
-            return {"message": "No valid fields to update"}, 400
+            raise InvalidArgumentError("No valid fields to update")
 
         workflow_service = WorkflowService()
         workflow_ref = WorkflowRefService.create_app_workflow_ref(app_model, workflow_id)
@@ -1738,6 +1747,7 @@ class DraftWorkflowTriggerRunApi(Resource):
         "Trigger event received and workflow executed successfully",
         console_ns.models[GeneratedAppResponse.__name__],
     )
+    @console_ns.response(400, "Trigger run failed", console_ns.models[WorkflowTriggerRunErrorResponse.__name__])
     @console_ns.response(403, "Permission denied")
     @console_ns.response(500, "Internal server error")
     @setup_required
@@ -1806,6 +1816,7 @@ class DraftWorkflowTriggerNodeApi(Resource):
         "Trigger event received and node executed successfully",
         console_ns.models[GeneratedAppResponse.__name__],
     )
+    @console_ns.response(400, "Trigger run failed", console_ns.models[WorkflowTriggerRunErrorResponse.__name__])
     @console_ns.response(403, "Permission denied")
     @console_ns.response(500, "Internal server error")
     @setup_required
@@ -1887,6 +1898,7 @@ class DraftWorkflowTriggerRunAllApi(Resource):
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.expect(console_ns.models[DraftWorkflowTriggerRunAllPayload.__name__])
     @console_ns.response(200, "Workflow executed successfully", console_ns.models[GeneratedAppResponse.__name__])
+    @console_ns.response(400, "Trigger run failed", console_ns.models[WorkflowTriggerRunErrorResponse.__name__])
     @console_ns.response(403, "Permission denied")
     @console_ns.response(500, "Internal server error")
     @setup_required

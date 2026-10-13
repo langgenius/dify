@@ -55,6 +55,7 @@ from services.errors.workspace import (
 )
 from services.workspace.contracts import WorkspaceMemberRecord, WorkspaceMemberRole, WorkspaceMemberSummary
 from services.workspace.member_service import WorkspaceMemberQueryService, WorkspaceMemberService
+from tests.unit_tests.controllers.error_body import raised_error
 
 
 class _RecordingWorkspaceMemberQueryService(WorkspaceMemberQueryService):
@@ -204,7 +205,9 @@ def test_member_mutation_maps_errors(
     api = MemberCancelInviteApi() if operation == "remove" else MemberUpdateRoleApi()
     method = api.delete if isinstance(api, MemberCancelInviteApi) else api.put
     with app.test_request_context("/", json={"role": "editor"}):
-        result = unwrap(method)(api, RequestContext("request", None, "actor", "workspace"), "member")
+        result = raised_error(
+            lambda: unwrap(method)(api, RequestContext("request", None, "actor", "workspace"), "member")
+        )
     assert result == ({"code": code, "message": str(error)}, status)
 
 
@@ -231,7 +234,9 @@ def test_update_role_maps_role_errors(app: Flask, services: Mock, error: Excepti
     services.workspaces.members.update_role.side_effect = error
     api = MemberUpdateRoleApi()
     with app.test_request_context("/", json={"role": "editor"}):
-        result = unwrap(api.put)(api, RequestContext("request", None, "actor", "workspace"), "member")
+        result = raised_error(
+            lambda: unwrap(api.put)(api, RequestContext("request", None, "actor", "workspace"), "member")
+        )
     assert result == ({"code": code, "message": message}, 400)
 
 

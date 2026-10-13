@@ -253,6 +253,15 @@ Pydantic model) when it declares one. The response of its status references it; 
 status, and classes that share a code must agree on its status and details; the document fails to build otherwise.
 Statuses that no handler or decorator documents keep the open error body.
 
+Signal errors by raising, not by returning `(body, status)`:
+
+- Raise a `BaseHTTPException` subclass so the body carries `code`, `message` and `status` and the code can be
+  documented. Do not call `flask_restx.abort` with a message or extra fields; it replaces the standard body.
+- Raise `libs.exception.RelayedHTTPError` for a code and status relayed from a downstream service at runtime. It emits
+  the standard body but is never narrowed, since its codes are not known per class.
+- An endpoint that must keep a legacy error body (for example `{"error": message}`) declares it with
+  `@ns.response(status, ..., Model)` so the contract describes what the client receives.
+
 ## Legacy Flask-RESTX Patterns
 
 Avoid adding these patterns to new or migrated endpoints:

@@ -4,12 +4,13 @@ from collections.abc import Generator
 from contextlib import contextmanager
 from uuid import UUID
 
-import flask_restx
 from flask_restx import Resource
+from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 from controllers.common.rbac import AgentBehindApp, DatasetId, PlainApp, RBACCheck
 from controllers.common.schema import register_response_schema_models
 from controllers.console import console_ns
+from controllers.console.error import ApiKeyLimitExceededHTTPError
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import RBACPermission
 from extensions.ext_application_services import application_services
@@ -39,13 +40,13 @@ def api_key_errors() -> Generator[None]:
     try:
         yield
     except (ApiKeyResourceNotFoundError, ApiKeyNotFoundError) as error:
-        flask_restx.abort(404, message=str(error))
+        raise NotFound(str(error)) from error
     except ApiKeyLimitExceededError as error:
-        flask_restx.abort(400, message=str(error), custom="max_keys_exceeded")
+        raise ApiKeyLimitExceededHTTPError(str(error)) from error
     except UnknownDatasetIdsError as error:
-        flask_restx.abort(400, message=str(error))
+        raise BadRequest(str(error)) from error
     except NoPermissionError as error:
-        flask_restx.abort(403, message=str(error))
+        raise Forbidden(str(error)) from error
     except AppApiKeyNotReadyError as error:
         raise AgentAccessNotReadyError from error
 
