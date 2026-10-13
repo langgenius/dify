@@ -339,6 +339,7 @@ jobs:
               "api/tests/unit_tests/core/dify_builder/test_verification.py",
               "api/tests/unit_tests/core/dify_builder/test_handlers_build.py",
               "api/tests/unit_tests/services/dify_builder/test_localize.py",
+              "api/tests/unit_tests/services/dify_builder/test_session_ui_localization.py",
               "api/tests/unit_tests/services/dify_builder/test_template_execution.py",
               "api/tests/unit_tests/services/dify_builder/test_template_presentation.py",
               "api/tests/unit_tests/controllers/console/app/test_workflow_empty_draft.py",

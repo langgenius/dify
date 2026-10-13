@@ -1,4 +1,5 @@
 import dataclasses
+import json
 from collections.abc import Callable, Iterator
 from pathlib import Path
 from types import SimpleNamespace
@@ -49,6 +50,7 @@ def test_session_view_to_dict_projects_only_browser_fields():
     assert d == {
         "session_id": "s1",
         "version": 3,
+        "reply_language": "",
         "canvas_read_only": False,
         "run_status": "waiting_input",
         "interrupted": False,
@@ -79,6 +81,7 @@ def test_public_session_projection_exposes_decision_and_strips_internal_revision
             "session_id": "s1",
             "app_id": "a1",
             "version": 4,
+            "reply_language": "ja",
             "state": "build.goal_analysis",
             "entry_mode": "build",
             "canvas_read_only": False,
@@ -110,6 +113,7 @@ def test_public_session_projection_exposes_decision_and_strips_internal_revision
     assert projected == {
         "session_id": "s1",
         "version": 4,
+        "reply_language": "ja",
         "canvas_read_only": False,
         "run_status": "waiting_input",
         "interrupted": False,
@@ -124,6 +128,33 @@ def test_public_session_projection_exposes_decision_and_strips_internal_revision
         "app_revision": {"current": "new", "conflicted": True},
         "decision": decision,
     }
+
+
+def test_settled_command_finished_sse_exposes_reply_language():
+    view = {
+        "session_id": "s1",
+        "version": 3,
+        "reply_language": "zh-Hans",
+        "run_status": "waiting_input",
+        "phase": "clarify",
+        "actions": [],
+    }
+
+    frames = list(
+        wiring.stream_advance_frames(
+            view,
+            None,
+            False,
+            emit_command_started=False,
+            emit_command_finished_when_settled=True,
+            command_id="command-1",
+        )
+    )
+
+    event = json.loads(frames[0].split("data: ", 1)[1])
+    assert event["event"] == "command_finished"
+    assert event["data"]["reply_language"] == "zh-Hans"
+    assert event["data"]["command_id"] == "command-1"
 
 
 def test_error_map():

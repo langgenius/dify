@@ -31,6 +31,7 @@ from controllers.common.rbac import RBACPermission
 from controllers.console import bp as console_bp
 from controllers.console import wraps as wraps_mod
 from controllers.console.dify_builder_fields import (
+    DifyBuilderCommandFinishedEventData,
     DifyBuilderConfirmRealCallPayload,
     DifyBuilderExecuteRealCallPayload,
     DifyBuilderPrepareRealCallPayload,
@@ -38,6 +39,7 @@ from controllers.console.dify_builder_fields import (
     DifyBuilderRealCallForbiddenResponse,
     DifyBuilderRealCallRefusalReason,
     DifyBuilderRealCallRefusalResponse,
+    DifyBuilderSessionViewResponse,
 )
 from core.dify_builder.contract import ConversationPage, RunStatus
 from core.dify_builder.errors import BusyError, ConflictError, ModelUnavailableError, NotFoundError
@@ -112,15 +114,31 @@ def test_actor_builds_from_current_user_and_tenant():
 
 def test_session_get_returns_json_state(monkeypatch):
     service = MagicMock()
-    service.get_session_view.return_value = _session_view()
+    view = _session_view()
+    view.reply_language = "ja"
+    service.get_session_view.return_value = view
     monkeypatch.setattr(mod, "build_service", lambda: service)
 
     response = unwrap(mod.DifyBuilderSessionApi.get)(object(), "ten-1", _account(), "s1")
 
     assert response["session_id"] == "s1"
+    assert response["reply_language"] == "ja"
     assert response["conversation_last_seq"] == -1
     assert "conversation" not in response
     service.get_session_view.assert_called_once_with("s1", Actor(account_id="acc-1", tenant_id="ten-1"))
+
+
+def test_session_get_and_command_finished_schema_keep_reply_language():
+    view = wiring.session_view_to_dict(_session_view())
+    view["reply_language"] = "zh-Hans"
+
+    get_payload = DifyBuilderSessionViewResponse.model_validate(view).model_dump(mode="json")
+    finished_payload = DifyBuilderCommandFinishedEventData.model_validate(
+        {**view, "command_id": "command-1"}
+    ).model_dump(mode="json")
+
+    assert get_payload["reply_language"] == "zh-Hans"
+    assert finished_payload["reply_language"] == "zh-Hans"
 
 
 def test_session_stream_delegates_to_reconnect_stream(monkeypatch):

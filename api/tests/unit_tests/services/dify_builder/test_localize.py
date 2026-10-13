@@ -78,6 +78,92 @@ def test_localize_translates_catalog_string(monkeypatch):
     assert out[0].payload["tone"] == "success"  # enum untouched
 
 
+def test_localize_current_goal_and_default_recovery_copy(monkeypatch):
+    default_copy = "I filled in sensible defaults. Review the requirements and adjust them if needed."
+    loc, _ = _localizer(monkeypatch, table={"Goal": "目标", default_copy: "我已填入合理的默认值。请检查并调整需求。"})
+
+    items = [
+        ConversationItem(kind="summary", payload={"label": "Goal"}),
+        ConversationItem(kind="assistant_turn", payload={"reply_text": default_copy}),
+    ]
+
+    localized = loc.localize_items(items, "zh-Hans")
+    assert localized[0].payload["label"] == "目标"
+    assert localized[1].payload["reply_text"] == "我已填入合理的默认值。请检查并调整需求。"
+
+
+def test_localize_form_presentation_preserves_field_keys_options_defaults_and_raw_values(monkeypatch):
+    loc, _ = _localizer(
+        monkeypatch,
+        table={
+            "Review the requirements": "检查需求",
+            "Goal": "目标",
+            "Review": "检查",
+        },
+    )
+    item = ConversationItem(
+        kind="form",
+        payload={
+            "variant": "build_requirements",
+            "title": "Review the requirements",
+            "fields": [
+                {
+                    "key": "goal",
+                    "label": "Goal",
+                    "type": "select",
+                    "options": ["Yes", "No"],
+                    "default": "Yes",
+                    "placeholder": "Review",
+                }
+            ],
+            "values": {"goal": "Yes"},
+        },
+    )
+
+    result = loc.localize_items([item], "zh-Hans")[0].payload
+
+    assert result["title"] == "检查需求"
+    assert result["fields"] == [
+        {
+            "key": "goal",
+            "label": "目标",
+            "type": "select",
+            "options": ["Yes", "No"],
+            "default": "Yes",
+            "placeholder": "检查",
+        }
+    ]
+    assert result["values"] == {"goal": "Yes"}
+
+
+@pytest.mark.parametrize(
+    ("language", "translated_goal", "translated_yes"),
+    [("zh-Hans", "目标", "是"), ("ja", "目標", "はい")],
+)
+def test_ui_copy_catalog_is_batched_and_includes_later_gate_and_receipt_literals(
+    monkeypatch, language, translated_goal, translated_yes
+):
+    loc, model = _localizer(monkeypatch, table={"Goal": translated_goal, "Yes": translated_yes})
+
+    copy = loc.localize_ui_copy(language)
+
+    assert copy["Goal"] == translated_goal
+    assert copy["Yes"] == translated_yes
+    assert "Approve plan" in copy
+    assert "What should Builder do next?" in copy
+    assert "No resources selected" in copy
+    assert model.translate_calls == 1
+
+
+def test_ui_copy_catalog_translation_failure_leaves_missing_entries_for_english_fallback(monkeypatch):
+    loc = Localizer(lambda: None)
+
+    copy = loc.localize_ui_copy("ja")
+
+    assert copy.get("Goal", "Goal") == "Goal"
+    assert copy.get("Approve plan", "Approve plan") == "Approve plan"
+
+
 def test_localize_leaves_non_catalog_prose_untouched(monkeypatch):
     loc, _ = _localizer(monkeypatch)
     items = [ConversationItem(kind="assistant_turn", payload={"reply_text": "这是我为你生成的计划"})]
