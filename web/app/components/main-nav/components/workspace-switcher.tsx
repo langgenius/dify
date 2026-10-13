@@ -121,7 +121,7 @@ function WorkspaceSwitchControls({
         />
       </div>
       <CollapsiblePanel>
-        <div className="px-2 pb-2">
+        <div className="px-2 pt-0.5 pb-2">
           <SearchInput
             value={searchText}
             onValueChange={onSearchTextChange}
