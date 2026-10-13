@@ -173,6 +173,32 @@ def test_enable_segments_commits_index_rows_after_loading(
     assert enable_summaries.call_args.kwargs["segment_ids"] == [segment.id]
 
 
+def test_enable_segments_skips_segments_that_are_not_completed(
+    sqlite_session: Session,
+    indexed_segment: tuple[Dataset, Document, DocumentSegment],
+) -> None:
+    """A batch enable must not push a segment that never finished indexing."""
+    dataset, document, segment = indexed_segment
+    segment.status = SegmentStatus.ERROR
+    segment.enabled = False
+    sqlite_session.commit()
+
+    index_processor = MagicMock()
+
+    with (
+        patch("tasks.enable_segments_to_index_task.IndexProcessorFactory") as processor_factory,
+        patch(
+            "services.knowledge.summaries.adapters.SummaryIndexAdapter.enable_summaries_for_segments"
+        ) as enable_summaries,
+        patch("tasks.enable_segments_to_index_task.redis_client.delete"),
+    ):
+        processor_factory.return_value.init_index_processor.return_value = index_processor
+        enable_segments_to_index_task.run([segment.id], dataset.id, document.id)
+
+    index_processor.load.assert_not_called()
+    enable_summaries.assert_not_called()
+
+
 def test_enable_segments_rolls_back_before_error_compensation(
     sqlite_session: Session,
     indexed_segment: tuple[Dataset, Document, DocumentSegment],
