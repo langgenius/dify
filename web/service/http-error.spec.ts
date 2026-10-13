@@ -1,5 +1,6 @@
 import { ORPCError } from '@orpc/client'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { toast } from '@/app/notifications'
 // oxlint-disable-next-line no-restricted-imports -- Exercise the HTTP transport and auth recovery together.
 import { get, post, request, upload } from './base'
 import { consoleClient } from './console'
@@ -194,6 +195,44 @@ describe('HTTP failure contract', () => {
       if (error.name === 'AbortError') expect(caught).toBe(error)
       else expect(caught).toMatchObject({ name: 'NetworkError', cause: error })
     }
+  })
+
+  it('preserves cancellation while reading a 401 body without starting authentication recovery', async () => {
+    const controller = new AbortController()
+    const abortError = new DOMException('Cancelled while reading the response', 'AbortError')
+    let resolveBodyRead: () => void
+    const bodyRead = new Promise<void>((resolve) => {
+      resolveBodyRead = resolve
+    })
+    const initialUrl = window.location.href
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const signal = (input as Request).signal
+      return new Response(
+        new ReadableStream(
+          {
+            start(body) {
+              signal.addEventListener('abort', () => body.error(signal.reason), { once: true })
+            },
+            pull() {
+              resolveBodyRead()
+            },
+          },
+          { highWaterMark: 0 },
+        ),
+        { status: 401 },
+      )
+    })
+
+    const pending = get('/test-errors', { signal: controller.signal }).catch(
+      (error: unknown) => error,
+    )
+    await bodyRead
+    controller.abort(abortError)
+
+    expect(await pending).toBe(abortError)
+    expect(refresh).not.toHaveBeenCalled()
+    expect(toast.error).not.toHaveBeenCalled()
+    expect(window.location.href).toBe(initialUrl)
   })
 
   it('preserves ORPCError through the generated Console client', async () => {

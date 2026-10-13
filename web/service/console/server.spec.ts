@@ -41,6 +41,48 @@ beforeEach(() => {
 })
 
 describe('server console oRPC client', () => {
+  it('preserves cancellation after receiving HTTP error headers', async () => {
+    const controller = new AbortController()
+    const abortError = new DOMException('Cancelled while reading the response', 'AbortError')
+    let resolveBodyRead: () => void
+    const bodyRead = new Promise<void>((resolve) => {
+      resolveBodyRead = resolve
+    })
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async (request: Request) =>
+          new Response(
+            new ReadableStream(
+              {
+                start(body) {
+                  request.signal.addEventListener(
+                    'abort',
+                    () => body.error(request.signal.reason),
+                    { once: true },
+                  )
+                },
+                pull() {
+                  resolveBodyRead()
+                },
+              },
+              { highWaterMark: 0 },
+            ),
+            { status: 403 },
+          ),
+      ),
+    )
+    await import('./server')
+    const { consoleClient } = await import('@/service/console')
+    const pending = consoleClient.systemFeatures
+      .get({}, { signal: controller.signal })
+      .catch((error: unknown) => error)
+    await bodyRead
+    controller.abort(abortError)
+
+    expect(await pending).toBe(abortError)
+  })
+
   it('preserves HTTP status and server error details through the server transport', async () => {
     const { ORPCError } = await import('@orpc/client')
     vi.stubGlobal(
