@@ -432,6 +432,15 @@ jobs:
               },
           }
           json_contract_expected = {
+              "tests.unit_tests.services.dify_builder.test_template_presentation": {
+                  "test_generic_missing_coverage_keeps_workflow_editable": 1,
+                  "test_json_coverage_refusal_uses_only_static_actionable_copy": 10,
+              },
+              "tests.unit_tests.core.dify_builder.test_verification": {
+                  "test_json_native_success_text_remains_data_requiring_review": 2,
+                  "test_json_completion_preserves_required_output_and_revision_gates": 1,
+                  "test_json_noncompletion_blocks_publication": 2,
+              },
               "tests.unit_tests.services.dify_builder.test_execution_policy_service": {
                   "test_historical_restricted_context_tag_and_absence_decode_identically": 1,
                   "test_json_context_digest_covers_qualified_binding": 14,
