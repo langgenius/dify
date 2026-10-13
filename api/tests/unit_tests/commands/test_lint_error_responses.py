@@ -7,7 +7,7 @@ from collections.abc import Callable, Generator
 from contextlib import contextmanager
 
 import pytest
-from flask_restx import abort
+from flask_restx import Namespace, abort
 from pydantic import BaseModel
 
 from dev import lint_error_responses as lint
@@ -184,12 +184,16 @@ def test_names_exceptions_by_their_module_binding_or_queues_an_import() -> None:
     assert imports == {"from controllers.console.app.error import AppNotFoundError"}
 
 
+_sample_ns = Namespace("sample")
+
+
 def _bodies_handler(flag: bool) -> tuple[dict[str, object], int]:
     if flag:
         return {"error": "legacy"}, 400
     if not flag:
         return {"code": "x", "message": "y", "status": 409}, 409
     abort(404, message="gone")
+    _sample_ns.abort(400, message="bad scope")
     return {"result": "ok"}, 200
 
 
@@ -206,6 +210,7 @@ def test_finds_hand_built_error_bodies_and_restx_aborts() -> None:
 
     assert sorted((site.status, site.standard, site.abort) for site in sites) == [
         (400, False, False),
+        (400, False, True),
         (404, False, True),
         (409, True, False),
     ]
