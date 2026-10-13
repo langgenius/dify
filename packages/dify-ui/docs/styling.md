@@ -64,7 +64,21 @@ Use semantic Dify tokens and existing component variants before hard-coded value
 primitive classes. Use an important modifier only for a tightly scoped compatibility override
 after the owning variant, data attribute, and selector structure cannot express the state.
 
+## Scroll padding
+
+An item scrolled into view, by the keyboard or on open, keeps the same inset from the visible edge
+as it has at the ends of the list. Other rows may be clipped there; that shows more content follows.
+
+Padding scrolls away with the content, so a scroll container with vertical padding around its items
+sets matching scroll padding on the same element. Primitives own this pair. A call site adds the
+height of a header or group label that must stay visible with the target item.
+
 ## Focus indicator
+
+`src/internal/focus.ts` owns the outer and inset focus-visible rings and the separated indicator
+for checked controls. Both ring constants include `focus-visible:outline-hidden`; do not repeat
+outline handling at their call sites. A package-wide interaction contract can have a shared style
+owner; visual similarity alone is not a reason to share constants. Keep component-specific selectors local.
 
 Controls own their focus indicator, so callers never write one. That includes every trigger that
 opens a surface (Popover, DropdownMenu, Collapsible, Combobox, Dialog, AlertDialog, Drawer); they
@@ -74,7 +88,10 @@ share one ring. Rows inside a composite defer to its highlight. Parts that only 
 Text controls (Input, Textarea, InputGroup, NumberField, and the Combobox and Autocomplete input
 groups) draw that ring on the visible field. It replaces the hover border, and an invalid field
 keeps its border and fill inside it. Switch, Checkbox, and Radio leave a gap between the control and
-the indicator, because their checked fill is the indicator color.
+the indicator, because their checked fill is the indicator color. `DropdownMenuInputGroup` is the
+exception: Base UI marks `Menu.Input` with `data-highlighted` while the input holds the keyboard
+highlight, so the group draws the ring on that state and drops it once the arrow keys move the
+highlight into the list.
 
 Attach the indicator to the element that visually represents focus. If a visible wrapper contains
 the native focus target, select that descendant state from the wrapper; for example, `SliderThumb`

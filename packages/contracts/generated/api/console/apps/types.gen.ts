@@ -503,8 +503,6 @@ export type MessageFeedbackPayload = {
   rating?: 'dislike' | 'like' | null
 }
 
-export type TextFileResponse = string
-
 export type AppIconPayload = {
   icon?: string | null
   icon_background?: string | null
@@ -5547,34 +5545,6 @@ export type PostAppsByAppIdFeedbacksResponses = {
 
 export type PostAppsByAppIdFeedbacksResponse =
   PostAppsByAppIdFeedbacksResponses[keyof PostAppsByAppIdFeedbacksResponses]
-
-export type GetAppsByAppIdFeedbacksExportData = {
-  body?: never
-  path: {
-    app_id: string
-  }
-  query?: {
-    end_date?: string
-    format?: 'csv' | 'json'
-    from_source?: 'admin' | 'user'
-    has_comment?: boolean
-    rating?: 'dislike' | 'like'
-    start_date?: string
-  }
-  url: '/apps/{app_id}/feedbacks/export'
-}
-
-export type GetAppsByAppIdFeedbacksExportErrors = {
-  400: unknown
-  500: unknown
-}
-
-export type GetAppsByAppIdFeedbacksExportResponses = {
-  200: TextFileResponse
-}
-
-export type GetAppsByAppIdFeedbacksExportResponse =
-  GetAppsByAppIdFeedbacksExportResponses[keyof GetAppsByAppIdFeedbacksExportResponses]
 
 export type PostAppsByAppIdIconData = {
   body: AppIconPayload

@@ -97,19 +97,8 @@ vi.mock('../res-placeholder', () => ({
   default: () => <div>result-placeholder</div>,
 }))
 
-vi.mock('../result', () => ({
-  default: ({
-    current,
-    onApply,
-  }: {
-    current: { modified?: string; prompt?: string }
-    onApply: () => void
-  }) => (
-    <div data-testid="result-panel">
-      <div>{current.modified || current.prompt}</div>
-      <button onClick={onApply}>apply-result</button>
-    </div>
-  ),
+vi.mock('../prompt-res', () => ({
+  default: ({ value }: { value: string }) => <div data-testid="result-panel">{value}</div>,
 }))
 
 describe('GetAutomaticRes', () => {
@@ -239,7 +228,7 @@ describe('GetAutomaticRes', () => {
       expect(screen.getByTestId('result-panel')).toHaveTextContent('generated prompt')
     })
 
-    fireEvent.click(screen.getByText('apply-result'))
+    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)generate\.apply(?=$|:)/ }))
 
     await waitFor(() => {
       expect(screen.getByText(/(?:^|\.)generate\.overwriteTitle(?=$|:)/)).toBeInTheDocument()
@@ -281,7 +270,7 @@ describe('GetAutomaticRes', () => {
       expect(screen.getByTestId('result-panel')).toHaveTextContent('generated prompt')
     })
 
-    fireEvent.click(screen.getByText('apply-result'))
+    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)generate\.apply(?=$|:)/ }))
     const dialog = await screen.findByRole('alertdialog')
 
     fireEvent.click(

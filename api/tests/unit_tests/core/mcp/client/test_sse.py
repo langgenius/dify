@@ -3,17 +3,57 @@ import json
 import queue
 import threading
 import time
-from typing import Any
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import httpx
 import pytest
+from httpx_sse import EventSource, ServerSentEvent
+from sseclient import SSEClient
 
 from core.mcp import types
 from core.mcp.client.sse_client import sse_client
 from core.mcp.error import MCPAuthError, MCPConnectionError
 
-SERVER_NAME = "test_server_for_SSE"
+SSE_ENDPOINT = "event: endpoint\ndata: /messages/?session_id=test-123\n\n"
+
+
+@pytest.fixture
+def install_sse_response(monkeypatch: pytest.MonkeyPatch):
+    def install(response: httpx.Response | Exception) -> list[httpx.Request]:
+        requests: list[httpx.Request] = []
+
+        def handle(request: httpx.Request) -> httpx.Response:
+            requests.append(request)
+            if isinstance(response, Exception):
+                raise response
+            return response
+
+        def client(*, headers: dict[str, str]) -> httpx.Client:
+            return httpx.Client(headers=headers, transport=httpx.MockTransport(handle))
+
+        monkeypatch.setattr("core.mcp.client.sse_client.create_ssrf_proxy_mcp_http_client", client)
+        return requests
+
+    return install
+
+
+@pytest.fixture
+def make_http_client():
+    with contextlib.ExitStack() as stack:
+
+        def make(response: httpx.Response | Exception) -> tuple[httpx.Client, list[httpx.Request]]:
+            requests: list[httpx.Request] = []
+
+            def handle(request: httpx.Request) -> httpx.Response:
+                requests.append(request)
+                if isinstance(response, Exception):
+                    raise response
+                return response
+
+            client = stack.enter_context(httpx.Client(transport=httpx.MockTransport(handle)))
+            return client, requests
+
+        yield make
 
 
 def test_sse_message_id_coercion():
@@ -45,132 +85,42 @@ def test_sse_message_without_id_stays_notification():
     assert msg.root.jsonrpc == "2.0"
 
 
-class MockSSEClient:
-    """Mock SSE client for testing."""
-
-    def __init__(self, url: str, headers: dict[str, Any] | None = None):
-        self.url = url
-        self.headers = headers or {}
-        self.connected = False
-        self.read_queue: queue.Queue = queue.Queue()
-        self.write_queue: queue.Queue = queue.Queue()
-
-    def connect(self):
-        """Simulate connection establishment."""
-        self.connected = True
-
-        # Send endpoint event
-        endpoint_data = "/messages/?session_id=test-session-123"
-        self.read_queue.put(("endpoint", endpoint_data))
-
-        return self.read_queue, self.write_queue
-
-    def send_initialize_response(self):
-        """Send a mock initialize response."""
-        response = {
-            "jsonrpc": "2.0",
-            "id": 1,
-            "result": {
-                "protocolVersion": types.LATEST_PROTOCOL_VERSION,
-                "capabilities": {
-                    "logging": None,
-                    "resources": None,
-                    "tools": None,
-                    "experimental": None,
-                    "prompts": None,
-                },
-                "serverInfo": {"name": SERVER_NAME, "version": "0.1.0"},
-                "instructions": "Test server instructions.",
-            },
-        }
-        self.read_queue.put(("message", json.dumps(response)))
+def test_sse_client_message_id_handling(install_sse_response):
+    """Parse numeric string IDs from actual SSE response bytes."""
+    message_data = {"jsonrpc": "2.0", "id": "456", "result": {"test": "data"}}
+    install_sse_response(
+        httpx.Response(
+            200,
+            headers={"content-type": "text/event-stream"},
+            text=SSE_ENDPOINT + f"event: message\ndata: {json.dumps(message_data)}\n\n",
+        )
+    )
+    with sse_client("http://test.example/sse") as (read_queue, _write_queue):
+        message = read_queue.get(timeout=1)
+        assert isinstance(message, types.SessionMessage)
+        assert isinstance(message.message.root, types.JSONRPCResponse)
+        assert message.message.root.id == 456
 
 
-def test_sse_client_message_id_handling():
-    """Test SSE client properly handles message ID coercion."""
-    mock_client = MockSSEClient("http://test.example/sse")
-    read_queue, write_queue = mock_client.connect()
-
-    # Send a message with string ID that should be coerced to int
-    message_data = {
-        "jsonrpc": "2.0",
-        "id": "456",  # String ID
-        "result": {"test": "data"},
-    }
-    read_queue.put(("message", json.dumps(message_data)))
-    read_queue.get(timeout=1.0)
-    # Get the message from queue
-    event_type, data = read_queue.get(timeout=1.0)
-    assert event_type == "message"
-
-    # Parse the message
-    parsed_message = types.JSONRPCMessage.model_validate_json(data)
-    # Check that it's a JSONRPCResponse and verify the ID
-    assert isinstance(parsed_message.root, types.JSONRPCResponse)
-    assert parsed_message.root.id == 456  # Should be converted to int
+def test_sse_client_connection_validation(install_sse_response):
+    """Accept a same-origin endpoint parsed by the real SSE reader."""
+    requests = install_sse_response(
+        httpx.Response(200, headers={"content-type": "text/event-stream"}, text=SSE_ENDPOINT)
+    )
+    with sse_client("http://test.example/sse") as (read_queue, write_queue):
+        assert isinstance(read_queue, queue.Queue)
+        assert isinstance(write_queue, queue.Queue)
+    assert len(requests) == 1
+    assert str(requests[0].url) == "http://test.example/sse"
 
 
-def test_sse_client_connection_validation():
-    """Test SSE client validates endpoint URLs properly."""
-    test_url = "http://test.example/sse"
-
-    with patch("core.mcp.client.sse_client.create_ssrf_proxy_mcp_http_client") as mock_client_factory:
-        with patch("core.mcp.client.sse_client.ssrf_proxy_sse_connect") as mock_sse_connect:
-            # Mock the HTTP client
-            mock_client = Mock()
-            mock_client_factory.return_value.__enter__.return_value = mock_client
-
-            # Mock the SSE connection
-            mock_event_source = Mock()
-            mock_event_source.response.raise_for_status.return_value = None
-            mock_sse_connect.return_value.__enter__.return_value = mock_event_source
-
-            # Mock SSE events
-            class MockSSEEvent:
-                def __init__(self, event_type: str, data: str):
-                    self.event = event_type
-                    self.data = data
-
-            # Simulate endpoint event
-            endpoint_event = MockSSEEvent("endpoint", "/messages/?session_id=test-123")
-            mock_event_source.iter_sse.return_value = [endpoint_event]
-
-            # Test connection
-            with contextlib.suppress(Exception):
-                with sse_client(test_url) as (read_queue, write_queue):
-                    assert read_queue is not None
-                    assert write_queue is not None
-
-
-def test_sse_client_error_handling():
-    """Test SSE client properly handles various error conditions."""
-    test_url = "http://test.example/sse"
-
-    # Test 401 error handling
-    with patch("core.mcp.client.sse_client.create_ssrf_proxy_mcp_http_client") as mock_client_factory:
-        with patch("core.mcp.client.sse_client.ssrf_proxy_sse_connect") as mock_sse_connect:
-            # Mock 401 HTTP error
-            mock_response = Mock(status_code=401)
-            mock_response.headers = {"WWW-Authenticate": 'Bearer realm="example"'}
-            mock_error = httpx.HTTPStatusError("Unauthorized", request=Mock(), response=mock_response)
-            mock_sse_connect.side_effect = mock_error
-
-            with pytest.raises(MCPAuthError):
-                with sse_client(test_url):
-                    pass
-
-    # Test other HTTP errors
-    with patch("core.mcp.client.sse_client.create_ssrf_proxy_mcp_http_client") as mock_client_factory:
-        with patch("core.mcp.client.sse_client.ssrf_proxy_sse_connect") as mock_sse_connect:
-            # Mock other HTTP error
-            mock_response = Mock(status_code=500)
-            mock_response.headers = {}
-            mock_error = httpx.HTTPStatusError("Server Error", request=Mock(), response=mock_response)
-            mock_sse_connect.side_effect = mock_error
-
-            with pytest.raises(MCPConnectionError):
-                with sse_client(test_url):
-                    pass
+def test_sse_client_error_handling(install_sse_response):
+    """Translate real HTTP status errors to the MCP error contract."""
+    for status, error in ((401, MCPAuthError), (500, MCPConnectionError)):
+        install_sse_response(httpx.Response(status, headers={"WWW-Authenticate": 'Bearer realm="example"'}))
+        with pytest.raises(error):
+            with sse_client("http://test.example/sse"):
+                pytest.fail("An HTTP error must prevent connection establishment")
 
 
 @pytest.mark.parametrize(
@@ -205,36 +155,18 @@ def test_sse_client_wraps_transport_errors(transport_error: httpx.RequestError):
     assert str(transport_error) in str(exc_info.value)
 
 
-def test_sse_client_timeout_configuration():
-    """Test SSE client timeout configuration."""
-    test_url = "http://test.example/sse"
-    custom_timeout = 10.0
-    custom_sse_timeout = 300.0
-    custom_headers = {"Authorization": "Bearer test-token"}
-
-    with patch("core.mcp.client.sse_client.create_ssrf_proxy_mcp_http_client") as mock_client_factory:
-        with patch("core.mcp.client.sse_client.ssrf_proxy_sse_connect") as mock_sse_connect:
-            # Mock successful connection
-            mock_client = Mock()
-            mock_client_factory.return_value.__enter__.return_value = mock_client
-
-            mock_event_source = Mock()
-            mock_event_source.response.raise_for_status.return_value = None
-            mock_event_source.iter_sse.return_value = []
-            mock_sse_connect.return_value.__enter__.return_value = mock_event_source
-
-            with contextlib.suppress(Exception):
-                with sse_client(
-                    test_url, headers=custom_headers, timeout=custom_timeout, sse_read_timeout=custom_sse_timeout
-                ) as (read_queue, write_queue):
-                    # Verify the configuration was passed correctly
-                    mock_client_factory.assert_called_with(headers=custom_headers)
-
-                    # Check that timeout was configured
-                    call_args = mock_sse_connect.call_args
-                    assert call_args is not None
-                    timeout_arg = call_args[1]["timeout"]
-                    assert timeout_arg.read == custom_sse_timeout
+def test_sse_client_timeout_configuration(install_sse_response):
+    """Pass the configured timeouts through the actual HTTP request."""
+    requests = install_sse_response(
+        httpx.Response(200, headers={"content-type": "text/event-stream"}, text=SSE_ENDPOINT)
+    )
+    with sse_client(
+        "http://test.example/sse", headers={"Authorization": "Bearer test-token"}, timeout=10.0, sse_read_timeout=300.0
+    ):
+        assert len(requests) == 1
+        assert requests[0].headers["Authorization"] == "Bearer test-token"
+        assert requests[0].extensions["timeout"]["read"] == 300.0
+        assert requests[0].extensions["timeout"]["connect"] == 10.0
 
 
 def test_sse_transport_endpoint_validation():
@@ -281,54 +213,44 @@ def test_sse_transport_message_parsing():
     assert isinstance(error, Exception)
 
 
-def test_sse_client_queue_cleanup():
-    """Test that SSE client properly cleans up queues on exit."""
-    test_url = "http://test.example/sse"
+def test_sse_client_queue_cleanup(install_sse_response, monkeypatch: pytest.MonkeyPatch):
+    """Closing a connected client signals shutdown on both queues."""
+    from core.mcp.client.sse_client import SSETransport
 
-    read_queue = None
-    write_queue = None
+    writer_finished = threading.Event()
+    original_writer = SSETransport.post_writer
 
-    with patch("core.mcp.client.sse_client.create_ssrf_proxy_mcp_http_client") as mock_client_factory:
-        with patch("core.mcp.client.sse_client.ssrf_proxy_sse_connect") as mock_sse_connect:
-            # Mock connection that raises an exception
-            mock_sse_connect.side_effect = Exception("Connection failed")
+    def post_writer(self: SSETransport, client: httpx.Client, endpoint: str, messages: queue.Queue) -> None:
+        try:
+            original_writer(self, client, endpoint, messages)
+        finally:
+            writer_finished.set()
 
-            with contextlib.suppress(Exception):
-                with sse_client(test_url) as (rq, wq):
-                    read_queue = rq
-                    write_queue = wq
+    monkeypatch.setattr(SSETransport, "post_writer", post_writer)
+    install_sse_response(httpx.Response(200, headers={"content-type": "text/event-stream"}, text=SSE_ENDPOINT))
+    with sse_client("http://test.example/sse") as (read_queue, write_queue):
+        # The finite SSE body first terminates the reader itself.
+        assert read_queue.get(timeout=1) is None
+    assert read_queue.get(timeout=1) is None
+    # The writer consumes shutdown and enqueues its own final sentinel.
+    assert writer_finished.wait(timeout=1)
+    assert write_queue.get(timeout=1) is None
 
-            # Queues should be cleaned up even on exception
-            # Note: In real implementation, cleanup should put None to signal shutdown
 
-
-def test_sse_client_headers_propagation():
-    """Test that custom headers are properly propagated in SSE client."""
-    test_url = "http://test.example/sse"
-    custom_headers = {
+def test_sse_client_headers_propagation(install_sse_response):
+    """Custom headers reach the real SSE GET request."""
+    headers = {
         "Authorization": "Bearer test-token",
         "X-Custom-Header": "test-value",
         "User-Agent": "test-client/1.0",
     }
-
-    with patch("core.mcp.client.sse_client.create_ssrf_proxy_mcp_http_client") as mock_client_factory:
-        with patch("core.mcp.client.sse_client.ssrf_proxy_sse_connect") as mock_sse_connect:
-            # Mock the client factory to capture headers
-            mock_client = Mock()
-            mock_client_factory.return_value.__enter__.return_value = mock_client
-
-            # Mock the SSE connection
-            mock_event_source = Mock()
-            mock_event_source.response.raise_for_status.return_value = None
-            mock_event_source.iter_sse.return_value = []
-            mock_sse_connect.return_value.__enter__.return_value = mock_event_source
-
-            with contextlib.suppress(Exception):
-                with sse_client(test_url, headers=custom_headers):
-                    pass
-
-            # Verify headers were passed to client factory
-            mock_client_factory.assert_called_with(headers=custom_headers)
+    requests = install_sse_response(
+        httpx.Response(200, headers={"content-type": "text/event-stream"}, text=SSE_ENDPOINT)
+    )
+    with sse_client("http://test.example/sse", headers=headers):
+        assert len(requests) == 1
+        for key, value in headers.items():
+            assert requests[0].headers[key] == value
 
 
 def test_sse_client_concurrent_access():
@@ -439,10 +361,7 @@ class TestHandleSSEEvent:
     """Tests for SSETransport._handle_sse_event covering all match branches."""
 
     def _make_sse(self, event_type: str, data: str):
-        sse = Mock()
-        sse.event = event_type
-        sse.data = data
-        return sse
+        return ServerSentEvent(event=event_type, data=data)
 
     def test_message_event_dispatched(self):
         from core.mcp.client.sse_client import SSETransport
@@ -480,8 +399,12 @@ class TestSSEReader:
         read_queue: queue.Queue = queue.Queue()
         status_queue: queue.Queue = queue.Queue()
 
-        event_source = Mock()
-        event_source.iter_sse.side_effect = httpx.ReadError("connection reset")
+        def fail() -> bytes:
+            raise httpx.ReadError("connection reset")
+
+        event_source = EventSource(
+            httpx.Response(200, headers={"content-type": "text/event-stream"}, content=iter(fail, b""))
+        )
 
         transport.sse_reader(event_source, read_queue, status_queue)
 
@@ -497,8 +420,13 @@ class TestSSEReader:
         status_queue: queue.Queue = queue.Queue()
 
         boom = RuntimeError("unexpected!")
-        event_source = Mock()
-        event_source.iter_sse.side_effect = boom
+
+        def fail() -> bytes:
+            raise boom
+
+        event_source = EventSource(
+            httpx.Response(200, headers={"content-type": "text/event-stream"}, content=iter(fail, b""))
+        )
 
         transport.sse_reader(event_source, read_queue, status_queue)
 
@@ -517,21 +445,20 @@ class TestSendMessage:
         msg = types.JSONRPCMessage.model_validate_json(msg_json)
         return types.SessionMessage(msg)
 
-    def test_sends_post_and_raises_for_status(self):
+    def test_sends_post_and_raises_for_status(self, make_http_client):
         from core.mcp.client.sse_client import SSETransport
 
         transport = SSETransport("http://example.com/sse")
 
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_client = Mock()
-        mock_client.post.return_value = mock_response
+        mock_client, requests = make_http_client(httpx.Response(200))
 
         session_msg = self._make_session_message()
         transport._send_message(mock_client, "http://example.com/messages/", session_msg)
 
-        mock_client.post.assert_called_once()
-        mock_response.raise_for_status.assert_called_once()
+        assert len(requests) == 1
+        assert requests[0].method == "POST"
+        assert str(requests[0].url) == "http://example.com/messages/"
+        assert json.loads(requests[0].content) == session_msg.message.model_dump(by_alias=True, exclude_none=True)
 
 
 class TestPostWriter:
@@ -542,21 +469,21 @@ class TestPostWriter:
         msg = types.JSONRPCMessage.model_validate_json(msg_json)
         return types.SessionMessage(msg)
 
-    def test_none_message_exits_loop(self):
+    def test_none_message_exits_loop(self, make_http_client):
         from core.mcp.client.sse_client import SSETransport
 
         transport = SSETransport("http://example.com/sse")
         write_queue: queue.Queue = queue.Queue()
         write_queue.put(None)  # Signal shutdown immediately
 
-        mock_client = Mock()
+        mock_client, _requests = make_http_client(httpx.Response(200))
         transport.post_writer(mock_client, "http://example.com/messages/", write_queue)
 
         # Should put final None sentinel
         sentinel = write_queue.get_nowait()
         assert sentinel is None
 
-    def test_exception_in_message_put_back_to_queue(self):
+    def test_exception_in_message_put_back_to_queue(self, make_http_client):
         from core.mcp.client.sse_client import SSETransport
 
         transport = SSETransport("http://example.com/sse")
@@ -566,14 +493,14 @@ class TestPostWriter:
         write_queue.put(exc)  # Exception goes in first
         write_queue.put(None)  # Then shutdown signal
 
-        mock_client = Mock()
+        mock_client, _requests = make_http_client(httpx.Response(200))
         transport.post_writer(mock_client, "http://example.com/messages/", write_queue)
 
         # The exception should be re-queued, then None from loop exit, then None from finally
         item1 = write_queue.get_nowait()
-        assert isinstance(item1, Exception)
+        assert item1 is exc
 
-    def test_read_error_shuts_down_cleanly(self):
+    def test_read_error_shuts_down_cleanly(self, make_http_client):
         from core.mcp.client.sse_client import SSETransport
 
         transport = SSETransport("http://example.com/sse")
@@ -582,10 +509,7 @@ class TestPostWriter:
         session_msg = self._make_session_message()
         write_queue.put(session_msg)
 
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_client = Mock()
-        mock_client.post.side_effect = httpx.ReadError("connection dropped")
+        mock_client, _requests = make_http_client(httpx.ReadError("connection dropped"))
 
         # post_writer calls _send_message which calls client.post → ReadError propagates
         # The ReadError is raised inside _send_message → propagates out of the while loop
@@ -595,7 +519,7 @@ class TestPostWriter:
         sentinel = write_queue.get_nowait()
         assert sentinel is None
 
-    def test_generic_exception_puts_exc_in_queue(self):
+    def test_generic_exception_puts_exc_in_queue(self, make_http_client):
         from core.mcp.client.sse_client import SSETransport
 
         transport = SSETransport("http://example.com/sse")
@@ -604,35 +528,36 @@ class TestPostWriter:
         session_msg = self._make_session_message()
         write_queue.put(session_msg)
 
-        mock_client = Mock()
         boom = RuntimeError("boom")
-        mock_client.post.side_effect = boom
+        mock_client, _requests = make_http_client(boom)
 
         transport.post_writer(mock_client, "http://example.com/messages/", write_queue)
 
         exc_item = write_queue.get_nowait()
-        assert isinstance(exc_item, Exception)
+        assert exc_item is boom
 
         sentinel = write_queue.get_nowait()
         assert sentinel is None
 
-    def test_queue_empty_timeout_continues_loop(self):
+    def test_queue_empty_timeout_continues_loop(self, make_http_client):
         """Cover the 'except queue.Empty: continue' branch (line 188) in post_writer."""
         from core.mcp.client.sse_client import SSETransport
 
         transport = SSETransport("http://example.com/sse")
         write_queue: queue.Queue = queue.Queue()
 
-        mock_client = Mock()
+        mock_client, _requests = make_http_client(httpx.Response(200))
 
         # Patch queue.Queue.get so it raises Empty first, then returns None (shutdown)
         call_count = {"n": 0}
         original_get = write_queue.get
+        write_queue.put(None)
 
         def patched_get[**P](*args: P.args, **kwargs: P.kwargs):
             call_count["n"] += 1
             if call_count["n"] == 1:
                 raise queue.Empty
+            return original_get(*args, **kwargs)
 
         write_queue.get = patched_get  # type: ignore[method-assign]
 
@@ -684,33 +609,29 @@ class TestWaitForEndpoint:
 class TestSSEClientRuntimeError:
     """Test sse_client context manager handles RuntimeError on close()."""
 
-    def test_runtime_error_on_close_is_suppressed(self):
-        """Ensure RuntimeError raised by event_source.response.close() is caught."""
-        test_url = "http://test.example/sse"
+    def test_runtime_error_on_close_is_suppressed(self, install_sse_response, monkeypatch: pytest.MonkeyPatch):
+        """Suppress only RuntimeError from response.close during final cleanup."""
+        response = httpx.Response(
+            200,
+            headers={"content-type": "text/event-stream"},
+            text=SSE_ENDPOINT,
+            request=httpx.Request("GET", "http://test.example/sse"),
+        )
+        install_sse_response(response)
+        closed: list[bool] = []
 
-        class MockSSEEvent:
-            def __init__(self, event_type: str, data: str):
-                self.event = event_type
-                self.data = data
+        def close() -> None:
+            closed.append(True)
+            raise RuntimeError("already closed")
 
-        endpoint_event = MockSSEEvent("endpoint", "/messages/?session_id=test-123")
-
-        with patch("core.mcp.client.sse_client.create_ssrf_proxy_mcp_http_client") as mock_cf:
-            with patch("core.mcp.client.sse_client.ssrf_proxy_sse_connect") as mock_sc:
-                mock_client = Mock()
-                mock_cf.return_value.__enter__.return_value = mock_client
-
-                mock_es = Mock()
-                mock_es.response.raise_for_status.return_value = None
-                mock_es.iter_sse.return_value = [endpoint_event]
-                # Make close() raise RuntimeError to exercise line 307-308
-                mock_es.response.close.side_effect = RuntimeError("already closed")
-                mock_sc.return_value.__enter__.return_value = mock_es
-
-                # Should NOT raise even though close() raises RuntimeError
-                with contextlib.suppress(Exception):
-                    with sse_client(test_url) as (rq, wq):
-                        pass
+        monkeypatch.setattr(response, "close", close)
+        monkeypatch.setattr(
+            "core.mcp.client.sse_client.ssrf_proxy_sse_connect",
+            lambda *_args, **_kwargs: contextlib.nullcontext(EventSource(response)),
+        )
+        with sse_client("http://test.example/sse") as (read_queue, _write_queue):
+            assert read_queue.get(timeout=1) is None
+        assert closed == [True]
 
 
 class TestStandaloneSendMessage:
@@ -721,40 +642,33 @@ class TestStandaloneSendMessage:
         msg = types.JSONRPCMessage.model_validate_json(msg_json)
         return types.SessionMessage(msg)
 
-    def test_send_message_success(self):
+    def test_send_message_success(self, make_http_client):
         from core.mcp.client.sse_client import send_message
 
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_http_client = Mock()
-        mock_http_client.post.return_value = mock_response
+        mock_http_client, requests = make_http_client(httpx.Response(200))
 
         session_msg = self._make_session_message()
         send_message(mock_http_client, "http://example.com/messages/", session_msg)
 
-        mock_http_client.post.assert_called_once()
-        mock_response.raise_for_status.assert_called_once()
+        assert len(requests) == 1
+        assert requests[0].method == "POST"
+        assert str(requests[0].url) == "http://example.com/messages/"
+        assert json.loads(requests[0].content) == session_msg.message.model_dump(by_alias=True, exclude_none=True)
 
-    def test_send_message_raises_on_http_error(self):
+    def test_send_message_raises_on_http_error(self, make_http_client):
         from core.mcp.client.sse_client import send_message
 
-        mock_http_client = Mock()
-        mock_http_client.post.side_effect = httpx.ConnectError("refused")
+        mock_http_client, _requests = make_http_client(httpx.ConnectError("refused"))
 
         session_msg = self._make_session_message()
 
         with pytest.raises(httpx.ConnectError):
             send_message(mock_http_client, "http://example.com/messages/", session_msg)
 
-    def test_send_message_raises_for_status_failure(self):
+    def test_send_message_raises_for_status_failure(self, make_http_client):
         from core.mcp.client.sse_client import send_message
 
-        mock_response = Mock()
-        mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
-            "Not Found", request=Mock(), response=Mock(status_code=404)
-        )
-        mock_http_client = Mock()
-        mock_http_client.post.return_value = mock_response
+        mock_http_client, _requests = make_http_client(httpx.Response(404))
 
         session_msg = self._make_session_message()
 
@@ -765,20 +679,16 @@ class TestStandaloneSendMessage:
 class TestReadMessages:
     """Tests for the module-level read_messages() generator."""
 
-    def _make_mock_sse_event(self, event_type: str, data: str):
-        ev = Mock()
-        ev.event = event_type
-        ev.data = data
-        return ev
+    def _make_sse_event(self, event_type: str, data: str):
+        return f"event: {event_type}\ndata: {data}\n\n".encode()
 
     def test_valid_message_event_yields_session_message(self):
         from core.mcp.client.sse_client import read_messages
 
         valid_json = '{"jsonrpc": "2.0", "id": 1, "method": "ping"}'
-        mock_sse_event = self._make_mock_sse_event("message", valid_json)
+        mock_sse_event = self._make_sse_event("message", valid_json)
 
-        mock_client = Mock()
-        mock_client.events.return_value = [mock_sse_event]
+        mock_client = SSEClient([mock_sse_event])
 
         results = list(read_messages(mock_client))
         assert len(results) == 1
@@ -787,10 +697,9 @@ class TestReadMessages:
     def test_invalid_json_yields_exception(self):
         from core.mcp.client.sse_client import read_messages
 
-        mock_sse_event = self._make_mock_sse_event("message", "{not valid json}")
+        mock_sse_event = self._make_sse_event("message", "{not valid json}")
 
-        mock_client = Mock()
-        mock_client.events.return_value = [mock_sse_event]
+        mock_client = SSEClient([mock_sse_event])
 
         results = list(read_messages(mock_client))
         assert len(results) == 1
@@ -799,10 +708,9 @@ class TestReadMessages:
     def test_non_message_event_is_skipped(self):
         from core.mcp.client.sse_client import read_messages
 
-        mock_sse_event = self._make_mock_sse_event("endpoint", "/messages/")
+        mock_sse_event = self._make_sse_event("endpoint", "/messages/")
 
-        mock_client = Mock()
-        mock_client.events.return_value = [mock_sse_event]
+        mock_client = SSEClient([mock_sse_event])
 
         results = list(read_messages(mock_client))
         # Non-message events produce no output
@@ -812,8 +720,11 @@ class TestReadMessages:
         from core.mcp.client.sse_client import read_messages
 
         boom = RuntimeError("stream broken")
-        mock_client = Mock()
-        mock_client.events.side_effect = boom
+
+        def fail() -> bytes:
+            raise boom
+
+        mock_client = SSEClient(iter(fail, b""))
 
         results = list(read_messages(mock_client))
         assert len(results) == 1
@@ -824,13 +735,12 @@ class TestReadMessages:
 
         valid_json = '{"jsonrpc": "2.0", "id": 2, "result": {}}'
         events = [
-            self._make_mock_sse_event("endpoint", "/messages/"),
-            self._make_mock_sse_event("message", valid_json),
-            self._make_mock_sse_event("message", "{bad json}"),
+            self._make_sse_event("endpoint", "/messages/"),
+            self._make_sse_event("message", valid_json),
+            self._make_sse_event("message", "{bad json}"),
         ]
 
-        mock_client = Mock()
-        mock_client.events.return_value = events
+        mock_client = SSEClient(events)
 
         results = list(read_messages(mock_client))
         # endpoint is skipped; 1 valid SessionMessage + 1 Exception

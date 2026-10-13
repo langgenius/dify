@@ -56,6 +56,7 @@ from services.knowledge.entities.knowledge_entities import (
     RetrievalModel,
     SummaryIndexSetting,
 )
+from services.rbac import contracts as rbac_contracts
 from services.tag_service import (
     SaveTagPayload,
     TagBindingCreatePayload,
@@ -560,7 +561,7 @@ class DatasetListApi(DatasetApiResource):
                 tenant_id,
                 current_user.id,
                 dataset.id,
-                enterprise_rbac_service.ReplaceMemberBindings(automatic_include_workspace_members=False),
+                rbac_contracts.ReplaceMemberBindings(automatic_include_workspace_members=False),
             )
 
         return _dump_service_dataset_detail(load_dataset_detail(dataset, session=session)), 200

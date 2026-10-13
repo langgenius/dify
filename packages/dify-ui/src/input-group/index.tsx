@@ -1,12 +1,12 @@
 'use client'
 
-import type { Input as BaseInputNS } from '@base-ui/react/input'
 import type { VariantProps } from 'class-variance-authority'
 import type * as React from 'react'
 import { Input as BaseInput } from '@base-ui/react/input'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
-import { resolveClassName } from '../internals/resolve-class-name'
+import { textControlGroupInputClassName } from '../internal/form-control'
+import { resolveClassName } from '../internal/resolve-class-name'
 
 const interactiveElementSelector =
   'button,a[href],[role="button"],[role="link"],select,[tabindex]:not([tabindex="-1"]),input:not([type="hidden"]):not([disabled]),[contenteditable]:not([contenteditable="false"]),textarea:not([disabled])'
@@ -55,22 +55,14 @@ function InputGroup({ className, onMouseDown, ...props }: InputGroupProps) {
   )
 }
 
-type InputGroupInputProps = Omit<BaseInputNS.Props, 'render' | 'size'>
+type InputGroupInputProps = Omit<BaseInput.Props, 'render' | 'size'>
 
 function InputGroupInput({ className, ...props }: InputGroupInputProps) {
   return (
     <BaseInput
       {...props}
       className={(state) =>
-        cn(
-          [
-            'w-0 min-w-0 flex-1 appearance-none rounded-none border-0 bg-transparent px-3 py-1.75 system-sm-regular text-components-input-text-filled caret-primary-600 outline-hidden',
-            'placeholder:text-components-input-text-placeholder',
-            'read-only:cursor-default',
-            'disabled:cursor-not-allowed disabled:text-components-input-text-filled-disabled',
-          ],
-          resolveClassName(className, state),
-        )
+        cn(textControlGroupInputClassName, 'px-3', resolveClassName(className, state))
       }
     />
   )
@@ -91,10 +83,8 @@ const inputGroupAddonVariants = cva(
   },
 )
 
-type InputGroupAddonProps = Omit<React.ComponentPropsWithRef<'div'>, 'className'> &
-  VariantProps<typeof inputGroupAddonVariants> & {
-    className?: string
-  }
+type InputGroupAddonProps = React.ComponentProps<'div'> &
+  VariantProps<typeof inputGroupAddonVariants>
 
 function InputGroupAddon({ align = 'inline-start', className, ...props }: InputGroupAddonProps) {
   return (

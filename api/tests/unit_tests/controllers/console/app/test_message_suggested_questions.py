@@ -17,6 +17,7 @@ import controllers.console.wraps as console_wraps
 from controllers.console.app import message as controller
 from enums import DeploymentEdition
 from extensions.application_services.app import AppServices, build_app_services
+from extensions.application_services.rbac import RBACServices
 from extensions.ext_application_services import _build_oauth_server_service
 from extensions.ext_database import db
 from extensions.ext_redis import RedisClientWrapper
@@ -39,6 +40,7 @@ from models.enums import ConversationFromSource
 from models.model import App, AppMode, AppModelConfig, Conversation, DifySetup, Message
 from models.provider import Provider
 from repositories.app.agent_app_repository import AgentAppRepository
+from repositories.app.console_repository import ConsoleAppRepository
 from repositories.message_repository import MessageRepository
 from repositories.recommended_app_catalog_repository import DatabaseRecommendedAppCatalogRepository
 from services.agent.roster_package_exporter import RosterAgentPackageExporter
@@ -53,6 +55,7 @@ from services.message_suggested_questions_service import (
 from services.recommended_app_package_service import RecommendedAppPackageService
 from tests.unit_tests.config_override import apply_config_overrides
 from tests.unit_tests.model_factories import make_account, make_app, make_conversation, make_message
+from tests.unit_tests.rbac_fakes import RBACDomain
 
 
 @dataclass
@@ -65,6 +68,7 @@ class _Services:
     apps: AppServices
     agent_apps: _Agents
     message_suggested_questions: MessageSuggestedQuestions
+    rbac: RBACServices
 
 
 @dataclass
@@ -108,6 +112,7 @@ def harness(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_engine: Engine,
     sqlite_session_factory: sessionmaker[Session],
+    rbac_domain: RBACDomain,
 ) -> Iterator[_Harness]:
     target = make_app(app_id=str(uuid4()), tenant_id=str(uuid4()))
     account = make_account(account_id=str(uuid4()))
@@ -167,6 +172,8 @@ def harness(
     redis = RedisClientWrapper()
     app_services = build_app_services(
         database_client=sqlite_session_factory,
+        repository=ConsoleAppRepository(session_factory=sqlite_session_factory),
+        rbac_members=rbac_domain.rbac.members,
         oauth=_build_oauth_server_service(database_client=sqlite_session_factory, redis=redis),
         recommended_packages=RecommendedAppPackageService(
             sources=DatabaseRecommendedAppCatalogRepository(sqlite_session_factory, redis=redis),
@@ -181,6 +188,7 @@ def harness(
         app_services,
         _Agents(AgentAppAccessService(references=AgentAppRepository(session_factory=sqlite_session_factory))),
         MessageSuggestedQuestionsService(queries=queries, generator=SuggestedQuestionsGenerator()),
+        rbac_domain.rbac,
     )
     flask_app.extensions["application_services"] = services
     api = ExternalApi(flask_app)

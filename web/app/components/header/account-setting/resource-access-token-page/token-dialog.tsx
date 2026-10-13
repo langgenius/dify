@@ -15,7 +15,6 @@ import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import { candidateKey } from './resource-key'
 import ResourceSelector from './resource-selector'
-import { useInvalidateResourceAccessTokens } from './use-invalidate-resource-access-tokens'
 
 export default function ResourceAccessTokenDialog({
   open,
@@ -46,7 +45,6 @@ export default function ResourceAccessTokenDialog({
     () => new Map(initialResources.map((resource) => [candidateKey(resource), resource])),
   )
   const [createdToken, setCreatedToken] = useState<string | null>(null)
-  const invalidateResourceAccessTokens = useInvalidateResourceAccessTokens()
   const createMutation = useMutation(consoleQuery.resourceAccessTokens.post.mutationOptions())
   const updateMutation = useMutation(
     consoleQuery.resourceAccessTokens.byTokenId.patch.mutationOptions(),
@@ -83,13 +81,7 @@ export default function ResourceAccessTokenDialog({
             token_id: state.row.tokenId,
           },
         },
-        {
-          onSuccess: () => {
-            toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
-            void invalidateResourceAccessTokens()
-            onSaved()
-          },
-        },
+        { onSuccess: onSaved },
       )
       return
     }
@@ -104,7 +96,6 @@ export default function ResourceAccessTokenDialog({
       {
         onSuccess: (result) => {
           toast.success(t(($) => $['resourceAccessToken.created'], { ns: 'accountSettings' }))
-          void invalidateResourceAccessTokens()
           setCreatedToken(result.token)
         },
       },
