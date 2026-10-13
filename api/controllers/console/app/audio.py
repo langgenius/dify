@@ -187,6 +187,7 @@ def _transcribe_audio_to_text(
 @console_ns.route("/apps/<uuid:app_id>/audio-to-text")
 class ChatMessageAudioApi(Resource):
     @error_responses(
+        AgentVersionNotFoundError,
         AppUnavailableError,
         AudioTooLargeError,
         CompletionRequestError,

@@ -32,6 +32,7 @@ from graphon.model_runtime.errors.invoke import InvokeError
 from libs.external_api import error_responses
 from libs.helper import dump_response
 from models.model import App, EndUser
+from services.agent.errors import AgentVersionNotFoundError
 from services.app_ref_service import AppRefService
 from services.audio_service import AudioService
 from services.errors.audio import (
@@ -50,6 +51,7 @@ register_response_schema_models(service_api_ns, AudioBinaryResponse, AudioTransc
 @service_api_ns.route("/audio-to-text")
 class AudioApi(Resource):
     @error_responses(
+        AgentVersionNotFoundError,
         AppUnavailableError,
         AudioTooLargeError,
         CompletionRequestError,
