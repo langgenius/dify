@@ -2,7 +2,7 @@ import type { DifyMock } from '@test/fixtures/dify-mock/server'
 import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { startMock } from '@test/fixtures/dify-mock/server'
+import { FORBIDDEN_HINT, startMock } from '@test/fixtures/dify-mock/server'
 import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test'
 import { Context } from '@/kernel/context'
 import { catalog, CATALOG_PATH } from '@/plugins/catalog'
@@ -15,22 +15,20 @@ let mock: DifyMock
 let dir: string
 
 function writeTimeout(ms: number): void {
-  writeFileSync(join(dir, CONFIG_FILE_NAME), `schema_version: 1\nhttp:\n  timeout: ${ms}\n`)
+  writeFileSync(join(dir, CONFIG_FILE_NAME), `http:\n  timeout: ${ms}\n`)
 }
 beforeEach(async () => {
   mock = await startMock()
   dir = mkdtempSync(join(tmpdir(), 'difyctl-http-'))
   Object.assign(process.env, {
     DIFY_CONFIG_DIR: dir,
-    DIFY_CACHE_DIR: dir,
     DIFY_SERVER: mock.url,
     DIFY_TOKEN: 'dfoa_test',
   })
 })
 afterEach(async () => {
   await mock.stop()
-  for (const k of ['DIFY_CONFIG_DIR', 'DIFY_CACHE_DIR', 'DIFY_SERVER', 'DIFY_TOKEN'])
-    delete process.env[k]
+  for (const k of ['DIFY_CONFIG_DIR', 'DIFY_SERVER', 'DIFY_TOKEN']) delete process.env[k]
 })
 
 const account = () => ({ method: 'GET', path: '/openapi/v1/account' })
@@ -103,6 +101,35 @@ describe('http plugin', () => {
     await expect(h.request(account)).rejects.toMatchObject({ code: 'rate_limited' })
   })
 
+  it('a 401 says to log in again', async () => {
+    const h = await new Context().get(http)
+    mock.setScenario('auth-expired')
+    await expect(h.request(account)).rejects.toMatchObject({ hint: 'run difyctl login' })
+  })
+
+  it("a 403 keeps the server's hint and never says to log in", async () => {
+    const h = await new Context().get(http)
+    mock.setScenario('forbidden')
+    await expect(h.request(account)).rejects.toMatchObject({
+      code: 'access_denied',
+      message: 'you may not do this',
+      hint: FORBIDDEN_HINT,
+    })
+  })
+
+  it('a 403 without a server hint says permission denied', async () => {
+    process.env.DIFY_TOKEN = 'sk-test-resource'
+    const h = await new Context().get(http)
+    mock.setScenario('resource-token')
+    await expect(
+      h.request(() => ({ method: 'GET', path: '/openapi/v1/account' })),
+    ).rejects.toMatchObject({
+      code: 'access_denied',
+      httpStatus: 403,
+      hint: expect.stringMatching(/^permission denied/),
+    })
+  })
+
   it('surfaces 5xx as server_error with the server body and details', async () => {
     const h = await new Context().get(http)
     mock.setScenario('server-5xx')
@@ -166,7 +193,7 @@ describe('http plugin', () => {
     await expect((await new Context().get(http)).request(account)).rejects.toMatchObject({
       code: 'catalog_unavailable',
       message: `failed to fetch the catalog: HTTP 404 from ${CATALOG_PATH}`,
-      hint: expect.stringContaining('refresh cache'),
+      hint: expect.stringContaining('server is reachable'),
     })
   })
 

@@ -138,3 +138,32 @@ it('file names an unnamed download after the op and its content type', async () 
     process.chdir(cwd)
   }
 })
+
+it.each([
+  ['../../escape.txt', 'escape.txt'],
+  ['/etc/passwd', 'passwd'],
+  ['..\\..\\win.txt', 'win.txt'],
+  ['..', `${OP_ID}.txt`],
+  ['dir/', 'dir'],
+])('file keeps only the base name of the server filename %s', async (sent, kept) => {
+  const dir = mkdtempSync(join(tmpdir(), 'difyctl-file-'))
+  const cwd = process.cwd()
+  process.chdir(dir)
+  const here = process.cwd()
+  try {
+    const r = render(
+      'file',
+      new Response('x', {
+        headers: {
+          'content-type': 'text/plain',
+          'content-disposition': `attachment; filename="${sent}"`,
+        },
+      }),
+    )
+    await r.code
+    expect(JSON.parse(r.buf.outBuf())).toMatchObject({ path: join(here, kept) })
+    expect(readFileSync(join(here, kept), 'utf8')).toBe('x')
+  } finally {
+    process.chdir(cwd)
+  }
+})

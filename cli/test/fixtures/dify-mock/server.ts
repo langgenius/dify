@@ -53,6 +53,7 @@ const EMPTY_ERROR_PATH = '/empty-error'
 const BAD_VERIFICATION_URI = 'ftp://elsewhere.example/device'
 const HANG_MS = 30_000
 const OAUTH_PREFIX = '/openapi/v1/oauth/'
+export const FORBIDDEN_HINT = 'ask a workspace owner for the editor role'
 
 const ServerErrorCode = {
   Unauthorized: 'unauthorized',
@@ -71,6 +72,7 @@ const OpId = {
   ChatRun: 'run.console_app.chat',
   AdvancedChatRun: 'run.console_app.advanced_chat',
   FormSubmit: 'submit.run.form',
+  RunEvents: 'get.run.event',
 } as const
 
 const CATALOG_STALE_MESSAGE =
@@ -195,7 +197,13 @@ function streamingRunResponse(
 
 function hitlPauseResponse(appId: string): string {
   return sseChunks([
-    { event: 'workflow_started', data: { id: 'wf-run-hitl-1', workflow_id: 'wf-1' } },
+    {
+      event: 'workflow_started',
+      data: {
+        workflow_run_id: 'wf-run-hitl-1',
+        data: { id: 'wf-run-hitl-1', workflow_id: 'wf-1' },
+      },
+    },
     { event: 'node_started', data: { id: 'n1', title: 'First Node' } },
     {
       event: 'human_input_required',
@@ -435,6 +443,8 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
       return c.json({ code: 'forbidden', message: 'resource_not_authorized', status: 403 }, 403)
     const scenario = getScenario()
     if (scenario === 'auth-expired') return unauthorized()
+    if (scenario === 'forbidden')
+      return errorResponse(ServerErrorCode.Forbidden, 'you may not do this', 403, FORBIDDEN_HINT)
     await next()
   })
 
@@ -747,9 +757,18 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
     return c.json({ result: 'success' })
   })
 
-  app.post('/openapi/v1/apps/:id/human-input-forms/:formToken:submit', (c) => {
-    return c.json({})
-  })
+  // Like the server: the submit names the run to follow, stopping at the next pause.
+  app.post('/openapi/v1/apps/:id/human-input-forms/:formToken:submit', (c) =>
+    c.json({
+      hints: [
+        {
+          summary: 'Follow the run',
+          op: OpId.RunEvents,
+          input: { app_id: c.req.param('id'), task_id: 'wf-run-hitl-1', continue_on_pause: false },
+        },
+      ],
+    }),
+  )
 
   app.get('/openapi/v1/apps/:id/tasks/:task_id/events', (_c) => sseResponse(hitlResumedResponse()))
 

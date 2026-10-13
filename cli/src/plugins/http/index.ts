@@ -41,7 +41,9 @@ const HttpStatus = {
 
 const CATALOG_STALE_CODE = 'catalog_stale'
 const CATALOG_UNAVAILABLE_PREFIX = 'failed to fetch the catalog: '
-const CATALOG_UNAVAILABLE_HINT = 'check the server URL or run difyctl refresh cache'
+// `refresh cache` would only repeat the fetch that failed, so it is not suggested.
+const CATALOG_UNAVAILABLE_HINT =
+  'check that the saved server URL is right and the server is reachable, then retry'
 
 // The catalog fetch is the CLI's first request, so its failure has to name itself:
 // a rejected status for the catalog route, or whatever the network said.
@@ -51,11 +53,15 @@ function catalogFailure(cause: unknown): string {
   return errorMessage(cause)
 }
 
-type StatusMapping = Readonly<{ code: ErrorCodeValue; hint?: string }>
+const PERMISSION_DENIED_HINT = 'permission denied: this account may not do this'
+
+// `hint` replaces the server's hint; `fallbackHint` only fills in when it sent none.
+type StatusMapping = Readonly<{ code: ErrorCodeValue; hint?: string; fallbackHint?: string }>
 
 const STATUS_MAPPINGS: Readonly<Record<number, StatusMapping>> = {
   [HttpStatus.Unauthorized]: { code: ErrorCode.AuthExpired, hint: LOGIN_HINT },
-  [HttpStatus.Forbidden]: { code: ErrorCode.AccessDenied, hint: LOGIN_HINT },
+  // Logging in again does not grant a permission, and `login` revokes the session first.
+  [HttpStatus.Forbidden]: { code: ErrorCode.AccessDenied, fallbackHint: PERMISSION_DENIED_HINT },
   [HttpStatus.TooManyRequests]: { code: ErrorCode.RateLimited },
 }
 
@@ -196,11 +202,11 @@ export const http = definePlugin({
 
       const rawResponse = await res.text()
       const serverError = parseServerErrorBody(rawResponse)
-      const { code, hint } = classifyStatus(res)
+      const { code, hint, fallbackHint } = classifyStatus(res)
       throw new HttpClientError({
         code,
         message: serverError?.message ?? `HTTP ${res.status}`,
-        hint: hint ?? serverError?.hint,
+        hint: hint ?? serverError?.hint ?? fallbackHint,
         httpStatus: res.status,
         method: req.method,
         url: url.toString(),
