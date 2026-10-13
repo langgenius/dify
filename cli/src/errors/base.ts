@@ -123,7 +123,7 @@ export function unknownError(message: string, cause?: unknown): BaseError {
   return new BaseError({ code: ErrorCode.Unknown, message, cause })
 }
 
-export const LOGIN_HINT = `run ${BINARY} login`
+export const LOGIN_HINT = `run ${BINARY} help login`
 
 export function notLoggedInMessage(reason?: string): string {
   return reason === undefined ? 'not logged in' : `not logged in: ${reason}`
