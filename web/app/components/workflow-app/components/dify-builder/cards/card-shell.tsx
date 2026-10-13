@@ -11,6 +11,8 @@ export type DifyBuilderCardStatusState =
   | 'failed'
 
 export type DifyBuilderCardStatus = {
+  className?: string
+  icon?: ReactNode
   label?: string
   state?: DifyBuilderCardStatusState
 }
@@ -79,11 +81,13 @@ export const DifyBuilderCard = ({
                 className={cn(
                   'flex min-w-0 items-center gap-1 system-xs-medium text-text-tertiary lowercase',
                   statusStyle?.color,
+                  status.className,
                 )}
               >
-                {statusStyle && (
-                  <span aria-hidden className={cn('size-3.5 shrink-0', statusStyle.icon)} />
-                )}
+                {status.icon ??
+                  (statusStyle && (
+                    <span aria-hidden className={cn('size-3.5 shrink-0', statusStyle.icon)} />
+                  ))}
                 {status.label && <span className="max-w-24 truncate">{status.label}</span>}
               </span>
             )}
