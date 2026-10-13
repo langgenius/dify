@@ -68,6 +68,204 @@ def test_serialized_native_markers_cannot_disappear():
     assert AppExecutionParams.model_validate_json(params.model_dump_json()).builder_execution == marker
 
 
+@pytest.mark.parametrize("carrier", ["entity", "run_context", "celery_params"])
+def test_json_marker_round_trips_existing_native_carriers(carrier):
+    from tests.unit_tests.services.dify_builder.test_execution_policy_service import _json_context
+
+    marker = _json_context()
+    if carrier == "entity":
+        original = AppGenerateEntity(
+            task_id="task",
+            inputs={"payload": "{}", "json_path": "$.x"},
+            files=[],
+            user_id=marker.actor_id,
+            stream=True,
+            invoke_from=InvokeFrom.DEBUGGER,
+            builder_execution=marker,
+        )
+    elif carrier == "run_context":
+        original = DifyRunContext(
+            tenant_id=marker.tenant_id,
+            app_id=marker.app_id,
+            user_id=marker.actor_id,
+            user_from=UserFrom.ACCOUNT,
+            invoke_from=InvokeFrom.DEBUGGER,
+            builder_execution=marker,
+        )
+    else:
+        original = AppExecutionParams(
+            app_id=marker.app_id,
+            workflow_id=marker.workflow_id,
+            tenant_id=marker.tenant_id,
+            user=_Account(user_id=marker.actor_id),
+            args={},
+            invoke_from=InvokeFrom.DEBUGGER,
+            builder_execution=marker,
+        )
+    restored = type(original).model_validate_json(original.model_dump_json())
+    assert restored.builder_execution == marker
+    assert restored.builder_execution.qualified_tool == marker.qualified_tool
+
+
+def test_json_celery_refuses_before_logging_or_runner(monkeypatch):
+    import tasks.app_generate.workflow_execute_task as module
+    from tests.unit_tests.services.dify_builder.test_execution_policy_service import _json_context
+
+    marker = _json_context()
+    params = AppExecutionParams(
+        app_id=marker.app_id,
+        workflow_id=marker.workflow_id,
+        tenant_id=marker.tenant_id,
+        user=_Account(user_id=marker.actor_id),
+        args={},
+        invoke_from=InvokeFrom.DEBUGGER,
+        builder_execution=marker,
+    )
+    log = MagicMock()
+    runner = MagicMock()
+    monkeypatch.setattr(module.logger, "info", log)
+    monkeypatch.setattr(module, "_AppRunner", runner)
+    with pytest.raises(BuilderExecutionPolicyError, match="unsupported_execution_transport"):
+        module.workflow_based_app_execution_task.run(params.model_dump_json())
+    log.assert_not_called()
+    runner.assert_not_called()
+
+
+@pytest.mark.parametrize("transport", ["celery", "files"])
+def test_json_generate_refuses_unsupported_transport_before_workflow_read(monkeypatch, transport):
+    from services.app_generate_service import AppGenerateService
+    from tests.unit_tests.services.dify_builder.test_execution_policy_service import _json_context
+
+    marker = _json_context()
+    account = Account(name="Owner", email="owner@example.invalid")
+    account.id = marker.actor_id
+    read = MagicMock(side_effect=AssertionError("workflow read forbidden"))
+    admit = MagicMock()
+    monkeypatch.setattr(AppGenerateService, "_get_workflow", read)
+    with pytest.raises(BuilderExecutionPolicyError, match="unsupported_execution_transport"):
+        AppGenerateService.generate(
+            app_model=App(id=marker.app_id, tenant_id=marker.tenant_id, mode="workflow"),
+            user=account,
+            args={"inputs": {}, "files": [{"id": "file"}]} if transport == "files" else {"inputs": {}},
+            invoke_from=InvokeFrom.DEBUGGER,
+            session=MagicMock(),
+            workflow_execution_mode="celery" if transport == "celery" else "in_process",
+            builder_execution=marker,
+            builder_execution_admit=admit,
+        )
+    read.assert_not_called()
+    admit.on_refusal.assert_called_once()
+
+
+@pytest.mark.parametrize("transport", ["missing_issuer", "files", "depth"])
+def test_json_workflow_generator_refuses_before_file_or_graph_effect(monkeypatch, transport):
+    from core.app.apps.workflow.app_generator import WorkflowAppGenerator
+    from tests.unit_tests.services.dify_builder.test_execution_policy_service import _json_context
+
+    marker = _json_context()
+    account = Account(name="Owner", email="owner@example.invalid")
+    account.id = marker.actor_id
+    admit = MagicMock()
+    file_scope = MagicMock(side_effect=AssertionError("file scope forbidden"))
+    monkeypatch.setattr(WorkflowAppGenerator, "_bind_file_access_scope", file_scope)
+    with pytest.raises(BuilderExecutionPolicyError, match="unsupported_execution_transport"):
+        WorkflowAppGenerator().generate(
+            app_model=App(id=marker.app_id, tenant_id=marker.tenant_id, mode="workflow"),
+            workflow=Workflow(id=marker.workflow_id),
+            user=account,
+            args={"inputs": {}, "files": [{"id": "file"}]} if transport == "files" else {"inputs": {}},
+            invoke_from=InvokeFrom.DEBUGGER,
+            streaming=True,
+            call_depth=1 if transport == "depth" else 0,
+            builder_execution=marker,
+            builder_execution_admit=None if transport == "missing_issuer" else admit,
+        )
+    file_scope.assert_not_called()
+    admit.admit_raw.assert_not_called()
+    if transport != "missing_issuer":
+        admit.on_refusal.assert_called_once()
+
+
+def test_json_resume_refuses_before_trace_or_graph_restore():
+    from core.app.apps.workflow.app_generator import WorkflowAppGenerator
+    from tests.unit_tests.services.dify_builder.test_execution_policy_service import _json_context
+
+    marker = _json_context()
+    with pytest.raises(BuilderExecutionPolicyError, match="unsupported_execution_transport"):
+        WorkflowAppGenerator().resume(
+            app_model=App(id=marker.app_id, tenant_id=marker.tenant_id, mode="workflow"),
+            workflow=Workflow(id=marker.workflow_id),
+            user=MagicMock(),
+            application_generate_entity=AppGenerateEntity.model_construct(builder_execution=marker),
+            graph_runtime_state=MagicMock(),
+            workflow_execution_repository=MagicMock(),
+            workflow_node_execution_repository=MagicMock(),
+        )
+
+
+def test_json_factory_refuses_nonissued_recorder_before_ordinary_setup(monkeypatch):
+    import time
+
+    from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY
+    from core.workflow import node_factory
+    from graphon.entities.graph_init_params import GraphInitParams
+    from graphon.runtime import GraphRuntimeState, VariablePool
+    from tests.unit_tests.services.dify_builder.test_execution_policy_service import _json_context
+
+    marker = _json_context()
+    ordinary = MagicMock(side_effect=AssertionError("ordinary setup forbidden"))
+    monkeypatch.setattr(node_factory, "build_dify_model_access", ordinary)
+    params = GraphInitParams(
+        workflow_id=marker.workflow_id,
+        graph_config={"nodes": [], "edges": []},
+        call_depth=0,
+        run_context={
+            DIFY_RUN_CONTEXT_KEY: DifyRunContext(
+                tenant_id=marker.tenant_id,
+                app_id=marker.app_id,
+                user_id=marker.actor_id,
+                user_from=UserFrom.ACCOUNT,
+                invoke_from=InvokeFrom.DEBUGGER,
+                builder_execution=marker,
+            )
+        },
+    )
+    state = GraphRuntimeState(variable_pool=VariablePool(), start_at=time.perf_counter())
+    with pytest.raises(BuilderExecutionPolicyError, match="missing_json_tool_issuer"):
+        node_factory.DifyNodeFactory(params, state, execution_recorder=MagicMock(healthy=True))
+    ordinary.assert_not_called()
+
+
+def test_json_task_resume_refuses_before_snapshot_restore(monkeypatch):
+    import tasks.app_generate.workflow_execute_task as module
+    from tests.unit_tests.services.dify_builder.test_execution_policy_service import _json_context
+
+    marker = _json_context()
+    entity = AppGenerateEntity(
+        task_id="task",
+        inputs={},
+        files=[],
+        user_id=marker.actor_id,
+        stream=True,
+        invoke_from=InvokeFrom.DEBUGGER,
+        builder_execution=marker,
+    )
+    monkeypatch.setattr(module, "db", MagicMock())
+    repository = MagicMock()
+    monkeypatch.setattr(
+        module.DifyAPIRepositoryFactory, "create_api_workflow_run_repository", MagicMock(return_value=repository)
+    )
+    state = MagicMock()
+    state.get_generate_entity.return_value = entity
+    monkeypatch.setattr(module.WorkflowResumptionContext, "loads", lambda _: state)
+    restore = MagicMock(side_effect=AssertionError("restore forbidden"))
+    monkeypatch.setattr(module.GraphRuntimeState, "from_snapshot", restore)
+    with pytest.raises(BuilderExecutionPolicyError, match="unsupported_execution_transport"):
+        module._resume_app_execution({"workflow_run_id": "run"})
+    restore.assert_not_called()
+    repository.resume_workflow_pause.assert_not_called()
+
+
 def test_celery_refuses_marker_before_logging_or_initialization(monkeypatch):
     import tasks.app_generate.workflow_execute_task as module
 

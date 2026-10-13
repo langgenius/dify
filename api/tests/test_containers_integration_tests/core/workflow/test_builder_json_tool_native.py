@@ -23,6 +23,7 @@ from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.tool_manager import ToolManager
 from models.dify_builder import DifyBuilderExecutionRequest, DifyBuilderTestInput
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowRun
+from services.app_generate_service import AppGenerateService
 from services.dify_builder import json_tool_metadata as metadata
 from services.dify_builder.dify_port import WorkflowServiceDifyPort, _BuilderExecutionLaunch
 from services.dify_builder.execution_contracts import (
@@ -40,17 +41,49 @@ from tests.unit_tests.services.dify_builder.test_json_tool_metadata import _inst
 FIXTURE = Path(__file__).parents[3] / "fixtures/workflow/builder_restricted/json_parse.yml"
 
 
-def _configure(owner, *, ensure_ascii: bool, wrapped: bool) -> dict[str, str]:
+def _configure(owner, *, ensure_ascii: bool, wrapped: bool, echo_start: bool = False) -> dict[str, str]:
     factory, _, _, workflow, _, test_input_id = owner
     graph = json.loads(FIXTURE.read_text())
     graph["nodes"][1]["data"]["tool_configurations"]["ensure_ascii"] = (
         {"type": "constant", "value": ensure_ascii} if wrapped else ensure_ascii
     )
+    if echo_start:
+        graph["nodes"][2]["data"]["outputs"].append({"variable": "echo", "value_selector": ["node1", "payload"]})
     inputs = {"payload": '{"greeting":"café"}', "json_path": "$.greeting"}
     with factory.begin() as db:
         db.get(Workflow, workflow.id).graph = json.dumps(graph, ensure_ascii=False)
         db.get(DifyBuilderTestInput, test_input_id).inputs = inputs
     return inputs
+
+
+def test_json_caller_explicit_read_session_closes_before_native_spawn(native_owner, monkeypatch):
+    """Inspect the actual Session passed to generation at its worker-thread handoff."""
+    _, actor, app, _, session_id, test_input_id = native_owner
+    inputs = _configure(native_owner, ensure_ascii=True, wrapped=False)
+    _external_json_transport(monkeypatch, actor.tenant_id)
+    caller_session = None
+    at_spawn = []
+    original_generate = AppGenerateService.generate.__func__
+    original_start = threading.Thread.start
+
+    def capture_generation(cls, *args, **kwargs):
+        nonlocal caller_session
+        caller_session = kwargs["session"]
+        return original_generate(cls, *args, **kwargs)
+
+    def capture_spawn(thread):
+        if getattr(getattr(thread, "_target", None), "__name__", None) == "_generate_worker":
+            assert caller_session is not None
+            at_spawn.append(caller_session.in_transaction())
+        return original_start(thread)
+
+    monkeypatch.setattr(AppGenerateService, "generate", classmethod(capture_generation))
+    monkeypatch.setattr(threading.Thread, "start", capture_spawn)
+    result = WorkflowServiceDifyPort().run_draft(
+        app.id, actor, inputs, lambda _: None, session_id=session_id, test_input_id=test_input_id
+    )
+    assert result.status == "succeeded"
+    assert at_spawn == [False]
 
 
 def _external_json_transport(monkeypatch, tenant_id: str, *, text: str = "café") -> list[dict]:
@@ -208,6 +241,137 @@ def test_json_seal_refuses_cross_owner_and_corrupt_native_proof(native_owner, mo
     assert summary is not None
     assert summary.policy_version == "builder-json-parse-v1"
     assert summary.safety_outcome == "execution_evidence_unknown"
+
+
+@pytest.mark.parametrize("poison", ["none", "changed_start", "missing_start", "extra_output"])
+def test_json_native_end_matches_tool_and_start_selectors_exactly(native_owner, monkeypatch, poison):
+    factory, actor, app, _, session_id, test_input_id = native_owner
+    inputs = _configure(native_owner, ensure_ascii=False, wrapped=True, echo_start=True)
+    calls = _external_json_transport(monkeypatch, actor.tenant_id)
+    original_seal = BuilderExecutionPolicyService.seal
+
+    def poison_then_seal(service, *, request_id, completion):
+        if poison != "none":
+            with factory.begin() as db:
+                request = db.get(DifyBuilderExecutionRequest, request_id)
+                native = db.get(WorkflowRun, request.native_run_id)
+                end = db.scalar(
+                    select(WorkflowNodeExecutionModel).where(
+                        WorkflowNodeExecutionModel.workflow_run_id == native.id,
+                        WorkflowNodeExecutionModel.node_id == "node3",
+                    )
+                )
+                assert end is not None
+                outputs = dict(end.outputs_dict)
+                if poison == "changed_start":
+                    outputs["echo"] = "wrong"
+                elif poison == "missing_start":
+                    outputs.pop("echo")
+                else:
+                    outputs["unexpected"] = "extra"
+                end.outputs = json.dumps(outputs, ensure_ascii=False)
+                native.outputs = json.dumps(outputs, ensure_ascii=False)
+        return original_seal(service, request_id=request_id, completion=completion)
+
+    monkeypatch.setattr(BuilderExecutionPolicyService, "seal", poison_then_seal)
+    result = WorkflowServiceDifyPort().run_draft(
+        app.id, actor, inputs, lambda _: None, session_id=session_id, test_input_id=test_input_id
+    )
+    assert calls == [{"content": inputs["payload"], "json_filter": inputs["json_path"], "ensure_ascii": False}]
+    assert result.verification is not None
+    summary = result.verification.execution_evidence
+    assert summary is not None
+    assert summary.safety_outcome == (
+        "restricted_execution_completed" if poison == "none" else "execution_evidence_unknown"
+    )
+    if poison == "none":
+        with factory() as db:
+            native = db.get(WorkflowRun, summary.native_run_id)
+            assert native.outputs_dict == {"result": "café", "echo": inputs["payload"]}
+
+
+@pytest.mark.parametrize(
+    "poison",
+    [
+        "missing_receipt",
+        "duplicate_receipt",
+        "post_binding_drift",
+        "worker_unseen",
+        "worker_failed",
+        "incomplete_response",
+        "unhealthy_recorder",
+    ],
+)
+def test_json_first_seal_requires_single_trusted_completed_observation(native_owner, monkeypatch, poison):
+    factory, actor, app, _, session_id, test_input_id = native_owner
+    inputs = _configure(native_owner, ensure_ascii=True, wrapped=False)
+    calls = _external_json_transport(monkeypatch, actor.tenant_id)
+    original_seal = BuilderExecutionPolicyService.seal
+
+    def poison_then_seal(service, *, request_id, completion):
+        if poison.endswith("receipt") or poison == "post_binding_drift":
+            with factory.begin() as db:
+                request = db.get(DifyBuilderExecutionRequest, request_id)
+                receipts = list(request.observations)
+                assert len(receipts) == 1
+                if poison == "missing_receipt":
+                    receipts = []
+                elif poison == "duplicate_receipt":
+                    receipts.append(dict(receipts[0]))
+                else:
+                    receipts[0] = {**receipts[0], "post_binding_digest": "0" * 64}
+                request.observations = receipts
+        else:
+            updates = {
+                "worker_unseen": {"worker_finished": False, "worker_exit": "not_observed"},
+                "worker_failed": {"worker_finished": True, "worker_exit": "failed"},
+                "incomplete_response": {"response_completed": False},
+                "unhealthy_recorder": {"recorder_healthy": False},
+            }
+            completion = completion.model_copy(update=updates[poison])
+        return original_seal(service, request_id=request_id, completion=completion)
+
+    monkeypatch.setattr(BuilderExecutionPolicyService, "seal", poison_then_seal)
+    result = WorkflowServiceDifyPort().run_draft(
+        app.id, actor, inputs, lambda _: None, session_id=session_id, test_input_id=test_input_id
+    )
+    assert len(calls) == 1
+    assert result.verification is not None
+    summary = result.verification.execution_evidence
+    assert summary is not None
+    assert summary.safety_outcome == "execution_evidence_unknown"
+    with factory() as db:
+        request = db.scalar(select(DifyBuilderExecutionRequest).where(DifyBuilderExecutionRequest.app_id == app.id))
+        assert request.state == "sealed"
+        assert request.completion_summary["safety_outcome"] == "execution_evidence_unknown"
+
+
+def test_json_unknown_first_seal_cannot_upgrade_after_receipt_repair(native_owner, monkeypatch):
+    factory, actor, app, _, session_id, test_input_id = native_owner
+    inputs = _configure(native_owner, ensure_ascii=True, wrapped=False)
+    _external_json_transport(monkeypatch, actor.tenant_id)
+    original_seal = BuilderExecutionPolicyService.seal
+    captured = {}
+
+    def poison_first_seal(service, *, request_id, completion):
+        captured["completion"] = completion
+        with factory.begin() as db:
+            request = db.get(DifyBuilderExecutionRequest, request_id)
+            captured["receipt"] = dict(request.observations[0])
+            request.observations = []
+        return original_seal(service, request_id=request_id, completion=completion)
+
+    monkeypatch.setattr(BuilderExecutionPolicyService, "seal", poison_first_seal)
+    result = WorkflowServiceDifyPort().run_draft(
+        app.id, actor, inputs, lambda _: None, session_id=session_id, test_input_id=test_input_id
+    )
+    assert result.verification.execution_evidence.safety_outcome == "execution_evidence_unknown"
+    with factory.begin() as db:
+        request = db.scalar(select(DifyBuilderExecutionRequest).where(DifyBuilderExecutionRequest.app_id == app.id))
+        request.observations = [captured["receipt"]]
+        request_id = request.id
+    with pytest.raises(BuilderExecutionPolicyError, match="conflicting_execution_completion"):
+        original_seal(BuilderExecutionPolicyService(factory), request_id=request_id, completion=captured["completion"])
 
 
 def test_concurrent_json_launch_claim_dispatches_at_most_once(native_owner, monkeypatch):
