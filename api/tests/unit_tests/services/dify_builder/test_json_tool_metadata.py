@@ -1,6 +1,7 @@
 """Exact installed JSON declaration; fake only the existing daemon owners."""
 
 import json
+from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -97,6 +98,7 @@ def test_reviewed_normalized_declaration_matches_frozen_digests(monkeypatch):
     assert actual.provider_schema_digest == metadata.PROVIDER_SCHEMA_DIGEST
     assert actual.tool_schema_digest == metadata.TOOL_SCHEMA_DIGEST
     assert actual.qualification_digest == metadata.QUALIFICATION_DIGEST
+    assert actual.qualification_digest == "ee2a3bf69cf28644c0f34b7bcef8281fdc5da29a7b64914a6759583943c13e59"
     assert calls == [
         ("install", TENANT, [metadata.PLUGIN_ID]),
         ("provider", TENANT, metadata.PROVIDER_ID),
@@ -182,5 +184,56 @@ def test_persisted_binding_drift_refuses(monkeypatch):
     _owners(monkeypatch)
     actual = metadata.resolve_installed_json_parse(tenant_id=TENANT)
     expected = _expected(actual).model_copy(update={"installation_id": "other"})
+    with pytest.raises(BuilderExecutionPolicyError, match="json_tool_installation_changed"):
+        metadata.require_same_json_installation(expected, actual)
+
+
+def test_qualified_serverless_installation_persists_its_own_binding(monkeypatch):
+    _owners(monkeypatch, installations=[_installation(runtime_type="serverless")])
+
+    actual = metadata.resolve_installed_json_parse(tenant_id=TENANT)
+
+    assert actual.runtime_type == "serverless"
+    assert actual.qualification_digest == "b3728bbec6b6fcb4c9bd4677fb519994ebd4666c182c542a8acd0c0e5ef89c03"
+    assert actual.qualification_digest != metadata.QUALIFICATION_DIGEST
+    expected = _expected(actual)
+    assert expected.runtime_type == "serverless"
+    assert expected.qualification_digest == actual.qualification_digest
+    metadata.require_same_json_installation(expected, actual)
+
+
+def test_qualified_serverless_binding_preserves_runtime_and_digest(monkeypatch):
+    _owners(monkeypatch)
+    local = metadata.resolve_installed_json_parse(tenant_id=TENANT)
+    serverless = replace(
+        local,
+        runtime_type="serverless",
+        qualification_digest="b3728bbec6b6fcb4c9bd4677fb519994ebd4666c182c542a8acd0c0e5ef89c03",
+    )
+
+    expected = _expected(serverless)
+
+    assert expected.runtime_type == "serverless"
+    assert expected.qualification_digest == serverless.qualification_digest
+    metadata.require_same_json_installation(expected, serverless)
+
+
+@pytest.mark.parametrize(
+    "changed",
+    ["runtime_type", "qualification_digest"],
+)
+def test_cross_variant_expected_binding_drift_refuses(monkeypatch, changed):
+    _owners(monkeypatch)
+    local = metadata.resolve_installed_json_parse(tenant_id=TENANT)
+    expected = _expected(local)
+    serverless = replace(
+        local,
+        runtime_type="serverless",
+        qualification_digest="b3728bbec6b6fcb4c9bd4677fb519994ebd4666c182c542a8acd0c0e5ef89c03",
+    )
+    actual = serverless
+    if changed == "qualification_digest":
+        actual = replace(local, qualification_digest=serverless.qualification_digest)
+
     with pytest.raises(BuilderExecutionPolicyError, match="json_tool_installation_changed"):
         metadata.require_same_json_installation(expected, actual)

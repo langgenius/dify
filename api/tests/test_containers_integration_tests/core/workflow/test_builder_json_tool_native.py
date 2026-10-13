@@ -87,7 +87,12 @@ def test_json_caller_explicit_read_session_closes_before_native_spawn(native_own
 
 
 def _external_json_transport(
-    monkeypatch, tenant_id: str, *, text: str = "café", metadata_calls: list[str] | None = None
+    monkeypatch,
+    tenant_id: str,
+    *,
+    text: str = "café",
+    metadata_calls: list[str] | None = None,
+    runtime_type: str = "local",
 ) -> list[dict]:
     """Return the reviewed declaration from daemon owners and count native calls."""
     provider = _provider()
@@ -98,7 +103,7 @@ def _external_json_transport(
             if metadata_calls is not None:
                 metadata_calls.append("installation")
             assert (actual_tenant, plugin_ids) == (tenant_id, [metadata.PLUGIN_ID])
-            return [_installation(tenant_id=tenant_id)]
+            return [_installation(tenant_id=tenant_id, runtime_type=runtime_type)]
 
     class Manager:
         def fetch_tool_provider(self, actual_tenant, provider_id):
@@ -188,6 +193,58 @@ def test_json_native_port_worker_graphon_run_and_end_seal(native_owner, monkeypa
         assert receipt.native_node_execution_id == nodes[1].node_execution_id
         assert nodes[1].outputs_dict["text"] == "café"
         assert nodes[2].outputs_dict["result"] == "café"
+        assert native.outputs_dict["result"] == "café"
+
+
+def test_serverless_json_native_owned_prepare_run_and_seal(native_owner, monkeypatch):
+    factory, actor, app, _, session_id, test_input_id = native_owner
+    inputs = _configure(native_owner, ensure_ascii=False, wrapped=True)
+    metadata_calls: list[str] = []
+    calls = _external_json_transport(
+        monkeypatch, actor.tenant_id, runtime_type="serverless", metadata_calls=metadata_calls
+    )
+
+    result = WorkflowServiceDifyPort().run_draft(
+        app.id, actor, inputs, lambda _: None, session_id=session_id, test_input_id=test_input_id
+    )
+
+    assert result.execution_refusal is None
+    assert result.status == "succeeded"
+    assert result.verification is not None
+    summary = result.verification.execution_evidence
+    assert summary is not None
+    assert summary.safety_outcome == "restricted_execution_completed"
+    assert summary.sealed is True
+    assert calls == [{"content": inputs["payload"], "json_filter": inputs["json_path"], "ensure_ascii": False}]
+    assert metadata_calls.count("installation") >= 2
+    with factory() as db:
+        request = db.scalar(select(DifyBuilderExecutionRequest).where(DifyBuilderExecutionRequest.app_id == app.id))
+        assert request is not None
+        context = JsonToolExecutionContext.model_validate(request.context)
+        assert context.qualified_tool.runtime_type == "serverless"
+        assert context.qualified_tool.qualification_digest == (
+            "b3728bbec6b6fcb4c9bd4677fb519994ebd4666c182c542a8acd0c0e5ef89c03"
+        )
+        assert (request.state, request.native_run_id) == ("sealed", summary.native_run_id)
+        assert len(request.observations) == 1
+        receipt = BuilderExecutionObservation.model_validate(request.observations[0])
+        assert receipt.kind == "qualified_json_completed"
+        assert receipt.qualification_digest == context.qualified_tool.qualification_digest
+        native = db.get(WorkflowRun, summary.native_run_id)
+        assert native is not None
+        nodes = list(
+            db.scalars(
+                select(WorkflowNodeExecutionModel)
+                .where(WorkflowNodeExecutionModel.workflow_run_id == native.id)
+                .order_by(WorkflowNodeExecutionModel.index)
+            )
+        )
+        assert [(node.index, node.node_id, node.status) for node in nodes] == [
+            (1, "node1", "succeeded"),
+            (2, "node2", "succeeded"),
+            (3, "node3", "succeeded"),
+        ]
+        assert receipt.native_node_execution_id == nodes[1].node_execution_id
         assert native.outputs_dict["result"] == "café"
 
 
