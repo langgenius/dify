@@ -1,5 +1,6 @@
 import type { FileEntity } from '../../file-uploader/types'
 import type { SpeechToTextTarget } from '../../voice-input/types'
+import type { HumanInputFormSubmitData } from '../chat/answer/human-input-content/type'
 import type { ChatConfig, ChatItem, ChatItemInTree, OnSend } from '../types'
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -284,13 +285,16 @@ const ChatWrapper = () => {
   }, [chatList, currentConversationId])
 
   const handleSubmitHumanInputForm = useCallback(
-    async (formToken: string, formData: any) => {
+    async (formToken: string, formData: HumanInputFormSubmitData) => {
       if (!(await prepareHumanInputSubmission())) return
 
-      if (isInstalledApp) await submitHumanInputFormService(formToken, formData)
-      else await submitHumanInputForm(formToken, formData)
+      const form = chatList
+        .flatMap((item) => item.humanInputFormDataList ?? [])
+        .find((item) => item.form_token === formToken)
+      if (isInstalledApp) await submitHumanInputFormService(formToken, formData, form?.form_version)
+      else await submitHumanInputForm(formToken, formData, form?.form_version)
     },
-    [isInstalledApp, prepareHumanInputSubmission],
+    [chatList, isInstalledApp, prepareHumanInputSubmission],
   )
 
   const [collapsed, setCollapsed] = useState(!!currentConversationId)

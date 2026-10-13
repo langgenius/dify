@@ -52,9 +52,9 @@ Docker Compose reads `envs/*.env` files when present, then reads `.env` last so 
 For the available variables and defaults, read the matching `envs/**/*.env.example` template and its service in `docker-compose.yaml`.
 
 Custom worker queue lists set through `CELERY_QUEUES` or `CELERY_WORKER_QUEUES` must include
-`human_input_delivery` to process durable Human Input IM inbox events and
+`human_input_delivery` to process durable Human Input IM inbox events and recover
+unconfirmed Human Input v2 notifications, and
 `human_input_contact_sync` to process manual IM Contact directory synchronization.
-
 
 Human Input IM channels in `WEBHOOK` mode build their Callback URL from `TRIGGER_URL`.
 Set it to the externally reachable HTTPS origin of the API when configuring a remote

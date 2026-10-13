@@ -29,7 +29,6 @@ export const uploadHumanInputV2LocalFile = async ({
   file: File
 }) => {
   try {
-    await transport.requestUploadToken(formToken)
     onProgressCallback(20)
     const uploadedFile = await transport.uploadLocalFile(formToken, file)
     onProgressCallback(100)
@@ -58,7 +57,6 @@ export const uploadHumanInputV2RemoteFile = async ({
   formToken: string
   url: string
 }) => {
-  await transport.requestUploadToken(formToken)
   const uploadedFile = await transport.uploadRemoteFile(formToken, url)
   return {
     id: uploadedFile.id,

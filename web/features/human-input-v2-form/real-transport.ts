@@ -2,7 +2,6 @@ import type { HumanInputV2FormTransport } from './types'
 import { zHumanInputV2FormSubmitRequest } from '@dify/contracts/api/web/zod.gen'
 import { normalizeHumanInputFormInput } from '@/app/components/workflow/nodes/human-input/shared/types'
 import { humanInputV2FormClient } from '@/service/human-input-v2'
-import { createHumanInputV2Error } from './errors'
 
 export const getHumanInputV2Paths = (token: string) => {
   const encodedToken = encodeURIComponent(token)
@@ -13,10 +12,6 @@ export const getHumanInputV2Paths = (token: string) => {
     accessRequest: `${formPath}/access-request`,
     uploadToken: `${formPath}/upload-token`,
   }
-}
-
-const unavailable = async (): Promise<never> => {
-  throw createHumanInputV2Error('unavailable', 'human_input_v2_unavailable', 501)
 }
 
 export const realHumanInputV2FormTransport: HumanInputV2FormTransport = {
@@ -63,8 +58,38 @@ export const realHumanInputV2FormTransport: HumanInputV2FormTransport = {
     )
     return { uploadToken: response.upload_token, expiresAt: response.expires_at * 1000 }
   },
-  // The current upload endpoint validates legacy form tokens only. Keep v2 files
-  // unavailable until a v2 upload contract exists; never send v2 proof to v1.
-  uploadLocalFile: unavailable,
-  uploadRemoteFile: unavailable,
+  async uploadLocalFile(token, file, options) {
+    const grant = await this.requestUploadToken(token, options)
+    const uploaded = await humanInputV2FormClient.uploadFile(
+      {
+        headers: { Authorization: `Bearer ${grant.uploadToken}` },
+        body: { file },
+      },
+      options,
+    )
+    return {
+      id: uploaded.id,
+      name: uploaded.name,
+      mimeType: uploaded.mime_type ?? 'application/octet-stream',
+      size: uploaded.size,
+      url: uploaded.url ?? '',
+    }
+  },
+  async uploadRemoteFile(token, url, options) {
+    const grant = await this.requestUploadToken(token, options)
+    const uploaded = await humanInputV2FormClient.uploadRemoteFile(
+      {
+        headers: { Authorization: `Bearer ${grant.uploadToken}` },
+        body: { url },
+      },
+      options,
+    )
+    return {
+      id: uploaded.id,
+      name: uploaded.name,
+      mimeType: uploaded.mime_type ?? 'application/octet-stream',
+      size: uploaded.size,
+      url: uploaded.url ?? '',
+    }
+  },
 }

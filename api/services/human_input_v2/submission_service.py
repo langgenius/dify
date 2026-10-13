@@ -118,6 +118,49 @@ class HumanInputSubmissionService:
             raise HumanInputFormError(HumanInputFormErrorCode.EXPIRED)
         return form
 
+    def get_public_form(self, *, form_token: str) -> Form:
+        """Read an active email-proof form before any OTP is requested or verified."""
+        token_hash = hashlib.sha256(form_token.encode()).hexdigest()
+        with self._session_factory() as session:
+            delivery = SQLAlchemyDeliveryRepository(session).get_delivery_by_token_hash(token_hash)
+            if (
+                delivery is None
+                or delivery.auth_type != SubmissionAuthType.EMAIL_OTP
+                or not isinstance(delivery.target_snapshot, EmailTargetSnapshot)
+            ):
+                raise HumanInputFormError(HumanInputFormErrorCode.NOT_FOUND)
+            repository = SQLAlchemyFormRepository.for_existing_form(
+                session, tenant_id=delivery.tenant_id, form_id=delivery.form_id
+            )
+            if repository is None:
+                raise HumanInputFormError(HumanInputFormErrorCode.NOT_FOUND)
+            form = repository.get_form_by_id(delivery.form_id)
+            if form is None:
+                raise HumanInputFormError(HumanInputFormErrorCode.NOT_FOUND)
+            recipient = SQLAlchemyRecipientRepository(session, form.tenant_id, form.id).get_recipient(
+                delivery.recipient_id
+            )
+            if recipient is None:
+                raise HumanInputFormError(HumanInputFormErrorCode.NOT_FOUND)
+            match recipient.subject:
+                case EmailRecipientSubject(email):
+                    if email.value != delivery.target_snapshot.email_address:
+                        raise HumanInputFormError(HumanInputFormErrorCode.NOT_FOUND)
+                case ContactRecipientSubject(contact_id):
+                    contact = SQLAlchemyContactRepository(session).get_contacts_by_id(form.tenant_id, contact_id)
+                    if (
+                        contact is None
+                        or contact.type != ContactType.EXTERNAL
+                        or contact.email != delivery.target_snapshot.email_address
+                    ):
+                        raise HumanInputFormError(HumanInputFormErrorCode.NOT_FOUND)
+                case EndUserRecipientSubject():
+                    raise HumanInputFormError(HumanInputFormErrorCode.NOT_FOUND)
+            _ensure_form_waiting(form)
+            if naive_utc_now() >= min(form.expiration_time, form.global_timeout_deadline):
+                raise HumanInputFormError(HumanInputFormErrorCode.EXPIRED)
+            return form
+
     def submit_web_app_form(
         self, *, actor: WebAppFormActor, form_token: str, action: str, inputs: Mapping[str, JsonValue]
     ) -> None:

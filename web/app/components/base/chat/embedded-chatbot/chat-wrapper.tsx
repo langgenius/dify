@@ -347,10 +347,13 @@ const ChatWrapper = () => {
     async (formToken: string, formData: HumanInputFormSubmitData) => {
       if (!(await prepareHumanInputSubmission())) return
 
-      if (isInstalledApp) await submitHumanInputFormService(formToken, formData)
-      else await submitHumanInputForm(formToken, formData)
+      const form = chatList
+        .flatMap((item) => item.humanInputFormDataList ?? [])
+        .find((item) => item.form_token === formToken)
+      if (isInstalledApp) await submitHumanInputFormService(formToken, formData, form?.form_version)
+      else await submitHumanInputForm(formToken, formData, form?.form_version)
     },
-    [isInstalledApp, prepareHumanInputSubmission],
+    [chatList, isInstalledApp, prepareHumanInputSubmission],
   )
 
   const welcome = useMemo(() => {

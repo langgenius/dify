@@ -84,6 +84,12 @@ import {
   zPostFormHumanInputV2PublicByFormTokenUploadTokenPath,
   zPostFormHumanInputV2PublicByFormTokenUploadTokenResponse,
   zPostHumanInputFormsFilesResponse,
+  zPostHumanInputV2FilesBody,
+  zPostHumanInputV2FilesHeaders,
+  zPostHumanInputV2FilesRemoteBody,
+  zPostHumanInputV2FilesRemoteHeaders,
+  zPostHumanInputV2FilesRemoteResponse,
+  zPostHumanInputV2FilesResponse,
   zPostLoginBody,
   zPostLoginResponse,
   zPostLogoutResponse,
@@ -494,8 +500,13 @@ export const uploadToken = {
   post: post14,
 }
 
+/**
+ * Read a public v2 form definition by delivery token without an OTP or login session.
+ */
 export const get2 = oc
   .route({
+    description:
+      'Read a public v2 form definition by delivery token without an OTP or login session.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getFormHumanInputV2PublicByFormToken',
@@ -697,6 +708,65 @@ export const humanInputForms = {
 }
 
 /**
+ * Fetch a remote file using a v2 upload grant.
+ */
+export const post20 = oc
+  .route({
+    description: 'Fetch a remote file using a v2 upload grant.',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postHumanInputV2FilesRemote',
+    path: '/human-input/v2/files/remote',
+    successStatus: 201,
+    tags: ['web'],
+  })
+  .input(
+    z.object({
+      body: zPostHumanInputV2FilesRemoteBody,
+      headers: zPostHumanInputV2FilesRemoteHeaders,
+    }),
+  )
+  .output(zPostHumanInputV2FilesRemoteResponse)
+
+export const remote = {
+  post: post20,
+}
+
+/**
+ * Upload a file or a remote URL using a v2 upload grant.
+ */
+export const post21 = oc
+  .route({
+    description: 'Upload a file or a remote URL using a v2 upload grant.',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postHumanInputV2Files',
+    path: '/human-input/v2/files',
+    successStatus: 201,
+    tags: ['web'],
+  })
+  .input(
+    z.object({
+      body: zPostHumanInputV2FilesBody.optional(),
+      headers: zPostHumanInputV2FilesHeaders,
+    }),
+  )
+  .output(zPostHumanInputV2FilesResponse)
+
+export const files3 = {
+  post: post21,
+  remote,
+}
+
+export const v22 = {
+  files: files3,
+}
+
+export const humanInput2 = {
+  v2: v22,
+}
+
+/**
  * Check login status
  */
 export const get5 = oc
@@ -720,7 +790,7 @@ export const status = {
  *
  * Authenticate user for web application access
  */
-export const post20 = oc
+export const post22 = oc
   .route({
     description: 'Authenticate user for web application access',
     inputStructure: 'detailed',
@@ -734,14 +804,14 @@ export const post20 = oc
   .output(zPostLoginResponse)
 
 export const login = {
-  post: post20,
+  post: post22,
   status,
 }
 
 /**
  * Logout user from web application
  */
-export const post21 = oc
+export const post23 = oc
   .route({
     description: 'Logout user from web application',
     inputStructure: 'detailed',
@@ -753,13 +823,13 @@ export const post21 = oc
   .output(zPostLogoutResponse)
 
 export const logout = {
-  post: post21,
+  post: post23,
 }
 
 /**
  * Submit feedback (like/dislike) for a specific message.
  */
-export const post22 = oc
+export const post24 = oc
   .route({
     description: 'Submit feedback (like/dislike) for a specific message.',
     inputStructure: 'detailed',
@@ -778,7 +848,7 @@ export const post22 = oc
   .output(zPostMessagesByMessageIdFeedbacksResponse)
 
 export const feedbacks = {
-  post: post22,
+  post: post24,
 }
 
 /**
@@ -939,7 +1009,7 @@ export const passport = {
  * FileTooLargeError: File exceeds size limit
  * UnsupportedFileTypeError: File type not supported
  */
-export const post23 = oc
+export const post25 = oc
   .route({
     description:
       'Upload a file from a remote URL\nDownloads a file from the provided remote URL and uploads it\nto the platform storage for use in web applications.\n\nArgs:\n    app_model: The associated application model\n    end_user: The end user making the request\n\nJSON Parameters:\n    url: The remote URL to download the file from (required)\n\nReturns:\n    dict: File information including ID, signed URL, and metadata\n    int: HTTP status code 201 for success\n\nRaises:\n    RemoteFileInvalidUrlError: Remote file URL is invalid\n    RemoteFileUrlBlockedError: Remote file URL is blocked\n    RemoteFileNotFoundError: Remote file does not exist\n    RemoteFileAccessDeniedError: Remote file requires authorization\n    RemoteFileUnavailableError: Remote file is unavailable\n    RemoteFileInvalidResponseError: Remote file response is invalid\n    FileTooLargeError: File exceeds size limit\n    UnsupportedFileTypeError: File type not supported',
@@ -955,7 +1025,7 @@ export const post23 = oc
   .output(zPostRemoteFilesUploadResponse)
 
 export const upload2 = {
-  post: post23,
+  post: post25,
 }
 
 /**
@@ -1037,7 +1107,7 @@ export const get13 = oc
 /**
  * Save a specific message for later reference.
  */
-export const post24 = oc
+export const post26 = oc
   .route({
     description: 'Save a specific message for later reference.',
     inputStructure: 'detailed',
@@ -1051,7 +1121,7 @@ export const post24 = oc
 
 export const savedMessages = {
   get: get13,
-  post: post24,
+  post: post26,
   byMessageId: byMessageId2,
 }
 
@@ -1107,7 +1177,7 @@ export const systemFeatures = {
  *
  * Convert text to audio using text-to-speech service.
  */
-export const post25 = oc
+export const post27 = oc
   .route({
     description: 'Convert text to audio using text-to-speech service.',
     inputStructure: 'detailed',
@@ -1121,7 +1191,7 @@ export const post25 = oc
   .output(zPostTextToAudioResponse)
 
 export const textToAudio = {
-  post: post25,
+  post: post27,
 }
 
 /**
@@ -1204,7 +1274,7 @@ export const workflow = {
  *
  * Execute a workflow with provided inputs and files.
  */
-export const post26 = oc
+export const post28 = oc
   .route({
     description: 'Execute a workflow with provided inputs and files.',
     inputStructure: 'detailed',
@@ -1218,7 +1288,7 @@ export const post26 = oc
   .output(zPostWorkflowsRunResponse)
 
 export const run = {
-  post: post26,
+  post: post28,
 }
 
 /**
@@ -1226,7 +1296,7 @@ export const run = {
  *
  * Stop a running workflow task.
  */
-export const post27 = oc
+export const post29 = oc
   .route({
     description: 'Stop a running workflow task.',
     inputStructure: 'detailed',
@@ -1240,7 +1310,7 @@ export const post27 = oc
   .output(zPostWorkflowsTasksByTaskIdStopResponse)
 
 export const stop3 = {
-  post: post27,
+  post: post29,
 }
 
 export const byTaskId4 = {
@@ -1266,6 +1336,7 @@ export const contract = {
   forgotPassword,
   form,
   humanInputForms,
+  humanInput: humanInput2,
   login,
   logout,
   messages,

@@ -20,6 +20,7 @@ from graphon.variables.segments import Segment, SerializableSegment
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 from models.human_input_v2 import HumanInputForm
+from models.model import App
 
 from .form_repository import (
     Form,
@@ -147,6 +148,24 @@ class SQLAlchemyFormRepository(FormRepository):
                 HumanInputForm.id == form_id,
             )
         )
+
+    @classmethod
+    def for_existing_form(cls, session: Session, *, tenant_id: TenantId, form_id: str) -> Self | None:
+        """Bind the app owner of a tenant/form reference resolved from a delivery.
+
+        Check the owning App when its ID is not yet known to the caller. Bound
+        operations retain the complete tenant/app scope and caller's Session.
+        """
+        app_id = session.scalar(
+            sa.select(HumanInputForm.app_id)
+            .join(App, App.id == HumanInputForm.app_id)
+            .where(
+                HumanInputForm.id == form_id,
+                HumanInputForm.tenant_id == tenant_id,
+                App.tenant_id == tenant_id,
+            )
+        )
+        return cls(session, tenant_id, app_id) if app_id is not None else None
 
     def _query(self) -> sa.Select[tuple[HumanInputForm]]:
         return (

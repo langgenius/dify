@@ -267,7 +267,10 @@ def test_mixed_human_input_versions_preserve_order_and_wire_payloads(sqlite_paus
     assert reasons[2]["form_id"] == "form-1"
     assert "display_in_ui" in reasons[0]
     assert "display_in_ui" not in reasons[2]
-    assert all({"version", "form_version"}.isdisjoint(payload) for payload in [v2, v1, *reasons])
+    assert v2["form_version"] == "2"
+    assert v1["form_version"] == "1"
+    assert reasons[0]["form_version"] == "2"
+    assert reasons[2]["form_version"] == "1"
 
 
 @pytest.mark.parametrize(

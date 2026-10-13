@@ -356,6 +356,13 @@ export const zHumanInputUploadTokenResponse = z.object({
   upload_token: z.string(),
 })
 
+/**
+ * HumanInputV2RemoteUploadPayload
+ */
+export const zHumanInputV2RemoteUploadPayload = z.object({
+  url: z.url().min(1).max(2083),
+})
+
 export const zJsonValue = z
   .union([
     z.string(),
@@ -1652,7 +1659,7 @@ export const zGetFormHumanInputV2PublicByFormTokenPath = z.object({
 })
 
 /**
- * Success
+ * Form definition
  */
 export const zGetFormHumanInputV2PublicByFormTokenResponse = zFormDefinitionResponse
 
@@ -1739,6 +1746,31 @@ export const zPostFormHumanInputByFormTokenUploadTokenResponse = zHumanInputUplo
  * File uploaded successfully
  */
 export const zPostHumanInputFormsFilesResponse = zFileResponse
+
+export const zPostHumanInputV2FilesBody = z.object({
+  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File).optional(),
+  url: z.string().optional(),
+})
+
+export const zPostHumanInputV2FilesHeaders = z.object({
+  Authorization: z.string(),
+})
+
+/**
+ * File uploaded
+ */
+export const zPostHumanInputV2FilesResponse = zFileWithSignedUrl
+
+export const zPostHumanInputV2FilesRemoteBody = zHumanInputV2RemoteUploadPayload
+
+export const zPostHumanInputV2FilesRemoteHeaders = z.object({
+  Authorization: z.string(),
+})
+
+/**
+ * File uploaded
+ */
+export const zPostHumanInputV2FilesRemoteResponse = zFileWithSignedUrl
 
 export const zPostLoginBody = zLoginPayload
 

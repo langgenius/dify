@@ -1,10 +1,16 @@
+import type { ContractRouterClient } from '@orpc/contract'
+import type { JsonifiedClient } from '@orpc/openapi-client'
 import type { IOnCompleted, IOnData, IOnError, IOnMessageReplace, IOtherOptions } from './base'
 import type { FeedbackType } from '@/app/components/base/chat/chat/type'
 import type { ChatConfig } from '@/app/components/base/chat/types'
 import type { LegacyHumanInputFormData as HumanInputFormData } from '@/features/human-input-form/types'
 import type { AccessMode } from '@/models/access-control'
 import type { AppConversationData, AppData, AppMeta, ConversationItem } from '@/models/share'
-import { WEB_APP_SHARE_CODE_HEADER_NAME } from '@/config'
+import type { HumanInputFormData as WorkflowHumanInputFormData } from '@/types/workflow'
+import { form as webFormContract } from '@dify/contracts/api/web/orpc.gen'
+import { createORPCClient } from '@orpc/client'
+import { OpenAPILink } from '@orpc/openapi-client/fetch'
+import { PUBLIC_API_PREFIX, WEB_APP_SHARE_CODE_HEADER_NAME } from '@/config'
 import { consoleClient } from '@/service/console'
 import {
   del as consoleDel,
@@ -15,10 +21,11 @@ import {
   getPublic as get,
   patchPublic as patch,
   postPublic as post,
+  request,
   ssePost,
   upload,
 } from './base'
-import { resolveWebAppAddress } from './webapp-address'
+import { getWebAppPublicApiPath, resolveWebAppAddress } from './webapp-address'
 import { getOrCreateWebAppSessionId, getWebAppAccessToken } from './webapp-auth'
 
 export const AppSourceType = {
@@ -597,12 +604,40 @@ export const uploadHumanInputFormRemoteFileInfo = async (
   ) as Promise<HumanInputFormRemoteFileUploadResponse>
 }
 
+const webAppHumanInputFormContract = {
+  submit: webFormContract.humanInput.v2.byFormToken.post,
+}
+const webAppHumanInputFormClient: JsonifiedClient<
+  ContractRouterClient<typeof webAppHumanInputFormContract>
+> = createORPCClient(
+  new OpenAPILink(webAppHumanInputFormContract, {
+    url: () =>
+      new URL(
+        `${PUBLIC_API_PREFIX}${getWebAppPublicApiPath(resolveWebAppAddress(), '/')}`,
+        window.location.origin,
+      ),
+    fetch: (input, init) =>
+      request<Response>(input.url, init, {
+        isPublicAPI: true,
+        fetchCompat: true,
+        request: input,
+      }),
+  }),
+)
+
 export const submitHumanInputForm = (
   token: string,
   data: {
     inputs: Record<string, unknown>
     action: string
   },
+  formVersion?: WorkflowHumanInputFormData['form_version'],
 ) => {
+  if (formVersion === '2') {
+    return webAppHumanInputFormClient.submit({
+      params: { form_token: token },
+      body: data,
+    })
+  }
   return post(`/form/human_input/${token}`, { body: data })
 }

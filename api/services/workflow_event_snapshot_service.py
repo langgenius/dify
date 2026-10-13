@@ -540,6 +540,7 @@ def _build_human_input_required_events(
             task_id=task_id,
             workflow_run_id=workflow_run_id,
             data=HumanInputRequiredResponse.Data(
+                form_version=reason.form_version,
                 form_id=form_id,
                 node_id=reason.node_id,
                 node_title=reason.node_title,

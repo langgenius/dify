@@ -1134,12 +1134,12 @@ def test_pause_persistence_and_reconnect_preserve_v2_form_and_initiator_only_tok
     required = next(event["data"] for event in events if event["event"] == "human_input_required")
     paused = next(event["data"] for event in events if event["event"] == "workflow_paused")
     expected_token = prepared.form_token.get_secret_value() if isinstance(recipient, Initiator) else None
-    assert "version" not in required
+    assert required["form_version"] == "2"
     assert required["form_token"] == expected_token
     assert required["display_in_ui"] == isinstance(recipient, Initiator)
     assert required["form_content"] == "Please approve"
     assert paused["reasons"][0]["form_token"] == expected_token
-    assert {"version", "form_version"}.isdisjoint(paused["reasons"][0])
+    assert paused["reasons"][0]["form_version"] == "2"
 
     monkeypatch.setattr(
         session_factory, "create_session", Mock(side_effect=AssertionError("Unexpected live form reload"))
@@ -2615,6 +2615,25 @@ def test_public_form_submission_commits_form_and_audit_before_resuming(
     assert duplicate.status_code == 412
     assert duplicate.json["code"] == "human_input_form_submitted"
     assert published == [{"payload": {"workflow_run_id": _RUN}}]
+
+
+def test_reading_public_definition_does_not_authorize_or_consume_submission_proof(
+    context: Context, public_form_approval, monkeypatch
+):
+    from tasks.app_generate.workflow_execute_task import resume_app_execution
+
+    approval = public_form_approval
+    enqueue = Mock()
+    monkeypatch.setattr(resume_app_execution, "apply_async", enqueue)
+    response = approval.client.get(f"/api/form/human-input/v2/public/{approval.token}")
+    assert response.status_code == 200
+    approval.redis.get.assert_not_called()
+    approval.redis.delete.assert_not_called()
+    assert approval.submit(proof=False).status_code == 400
+    with context.sessions() as session:
+        assert session.get(HumanInputForm, approval.form_id).status == HumanInputFormStatus.WAITING
+    enqueue.assert_not_called()
+    assert approval.submit().status_code == 200
 
 
 @pytest.mark.parametrize("scenario", ["missing", "wrong_code", "unknown_challenge"])

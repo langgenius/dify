@@ -1,6 +1,9 @@
 import type { ContractRouterClient } from '@orpc/contract'
 import type { JsonifiedClient } from '@orpc/openapi-client'
-import { public_ as publicHumanInputV2Contract } from '@dify/contracts/api/web/orpc.gen'
+import {
+  humanInput2,
+  public_ as publicHumanInputV2Contract,
+} from '@dify/contracts/api/web/orpc.gen'
 import { createORPCClient } from '@orpc/client'
 import { OpenAPILink } from '@orpc/openapi-client/fetch'
 import { PUBLIC_API_PREFIX } from '@/config'
@@ -10,6 +13,8 @@ const humanInputV2FormContract = {
   requestAccess: publicHumanInputV2Contract.byFormToken.accessRequest.post,
   requestUploadToken: publicHumanInputV2Contract.byFormToken.uploadToken.post,
   submit: publicHumanInputV2Contract.byFormToken.post,
+  uploadFile: humanInput2.v2.files.post,
+  uploadRemoteFile: humanInput2.v2.files.remote.post,
 }
 export const humanInputV2FormClient: JsonifiedClient<
   ContractRouterClient<typeof humanInputV2FormContract>

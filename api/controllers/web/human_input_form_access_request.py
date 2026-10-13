@@ -7,10 +7,9 @@ version when the service implementation is added.
 
 from __future__ import annotations
 
-from http import HTTPStatus
 from typing import override
 
-from flask import abort, request
+from flask import request
 from flask_restx import Resource
 
 from controllers.common.human_input_v2_contracts import (
@@ -23,11 +22,16 @@ from controllers.common.human_input_v2_contracts import (
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console.wraps import model_validate
 from controllers.web import web_ns
+from controllers.web.human_input_file_upload import InvalidUploadTokenForbiddenError
 from core.db.session_factory import session_factory
+from factories.human_input_v2_form_presentation import build_form_presentation
+from libs.datetime_utils import to_utc_timestamp
 from libs.exception import BaseHTTPException
-from libs.helper import extract_remote_ip
+from libs.helper import dump_response, extract_remote_ip
+from services.human_input_file_upload_service import InvalidUploadTokenError
 from services.human_input_v2.email_otp_composition import build_email_otp_service
 from services.human_input_v2.email_otp_service import EmailOtpError, OtpFailure
+from services.human_input_v2.file_upload_service import build_file_upload_service
 from services.human_input_v2.submission_service import (
     HumanInputFormError,
     HumanInputFormErrorCode,
@@ -67,17 +71,44 @@ register_response_schema_models(
 )
 
 
-def _raise_stub_not_implemented() -> None:
-    abort(HTTPStatus.NOT_IMPLEMENTED, "Human Input v2 form stub endpoint is not implemented yet.")
+def _public_form_error_response(error: HumanInputFormError) -> tuple[dict[str, str], int]:
+    code, status = {
+        HumanInputFormErrorCode.NOT_FOUND: (OtpFailure.NOT_FOUND.value, 404),
+        HumanInputFormErrorCode.ALREADY_SUBMITTED: (OtpFailure.SUBMITTED.value, 412),
+        HumanInputFormErrorCode.EXPIRED: (OtpFailure.EXPIRED.value, 412),
+        HumanInputFormErrorCode.WORKFLOW_NOT_ACTIVE: (HumanInputFormErrorCode.WORKFLOW_NOT_ACTIVE.value, 409),
+        HumanInputFormErrorCode.INVALID_INPUT: (HumanInputFormErrorCode.INVALID_INPUT.value, 400),
+    }[error.code]
+    return {"code": code, "message": "The form is unavailable or the submission could not be accepted."}, status
 
 
 @web_ns.route("/form/human-input/v2/public/<string:form_token>")
 class HumanInputV2FormApi(Resource):
     """Read or submit a Human Input v2 form without sharing v1 submission logic."""
 
-    @web_ns.response(200, "Success", web_ns.models[FormDefinitionResponse.__name__])
+    @web_ns.doc(
+        description="Read a public v2 form definition by delivery token without an OTP or login session.",
+        security=[],
+        responses={404: "Form not found", 412: "Form already submitted or expired"},
+    )
+    @web_ns.response(200, "Form definition", web_ns.models[FormDefinitionResponse.__name__])
     def get(self, form_token: str):
-        _raise_stub_not_implemented()
+        service = HumanInputSubmissionService(session_factory=session_factory.get_session_maker())
+        try:
+            form = service.get_public_form(form_token=form_token)
+        except HumanInputFormError as error:
+            return _public_form_error_response(error)
+        presentation = build_form_presentation(form.resolved_form)
+        return dump_response(
+            FormDefinitionResponse,
+            {
+                "form_content": presentation.form_content,
+                "inputs": presentation.inputs,
+                "resolved_default_values": presentation.resolved_default_values,
+                "user_actions": presentation.user_actions,
+                "expiration_time": to_utc_timestamp(min(form.expiration_time, form.global_timeout_deadline)),
+            },
+        )
 
     @web_ns.expect(web_ns.models[HumanInputV2FormSubmitRequest.__name__])
     @web_ns.doc(
@@ -109,14 +140,7 @@ class HumanInputV2FormApi(Resource):
         except EmailOtpError as error:
             raise _EmailOtpHTTPError(error) from None
         except HumanInputFormError as error:
-            code, status = {
-                HumanInputFormErrorCode.NOT_FOUND: (OtpFailure.NOT_FOUND.value, 404),
-                HumanInputFormErrorCode.ALREADY_SUBMITTED: (OtpFailure.SUBMITTED.value, 412),
-                HumanInputFormErrorCode.EXPIRED: (OtpFailure.EXPIRED.value, 412),
-                HumanInputFormErrorCode.WORKFLOW_NOT_ACTIVE: (HumanInputFormErrorCode.WORKFLOW_NOT_ACTIVE.value, 409),
-                HumanInputFormErrorCode.INVALID_INPUT: (HumanInputFormErrorCode.INVALID_INPUT.value, 400),
-            }[error.code]
-            return {"code": code, "message": "The form submission could not be accepted."}, status
+            return _public_form_error_response(error)
         return FormSubmitResponse().model_dump(mode="json")
 
 
@@ -125,8 +149,17 @@ class HumanInputV2FormUploadTokenApi(Resource):
     """Issue an upload token for an active Human Input v2 form."""
 
     @web_ns.response(200, "Success", web_ns.models[FormUploadTokenResponse.__name__])
+    @web_ns.doc(security=[], responses={404: "Form not found", 412: "Already submitted or expired"})
     def post(self, form_token: str):
-        _raise_stub_not_implemented()
+        try:
+            grant = build_file_upload_service().issue_public_upload_token(form_token)
+        except HumanInputFormError as error:
+            return _public_form_error_response(error)
+        except InvalidUploadTokenError as error:
+            raise InvalidUploadTokenForbiddenError() from error
+        return FormUploadTokenResponse(
+            upload_token=grant.upload_token, expires_at=to_utc_timestamp(grant.expires_at)
+        ).model_dump(mode="json")
 
 
 @web_ns.route("/form/human-input/v2/public/<string:form_token>/access-request")

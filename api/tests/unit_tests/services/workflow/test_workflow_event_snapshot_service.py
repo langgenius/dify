@@ -1100,9 +1100,11 @@ def test_build_snapshot_events_preserves_public_form_token(
 
     assert events[-2]["event"] == StreamEvent.HUMAN_INPUT_REQUIRED
     assert events[-2]["data"]["form_token"] == "wtok"
+    assert events[-2]["data"]["form_version"] == "1"
     assert events[-2]["data"]["expiration_time"] == to_utc_timestamp(expiration_time)
     pause_data = events[-1]["data"]
     assert pause_data["reasons"][0]["form_token"] == "wtok"
+    assert pause_data["reasons"][0]["form_version"] == "1"
     assert pause_data["reasons"][0]["expiration_time"] == to_utc_timestamp(expiration_time)
 
 

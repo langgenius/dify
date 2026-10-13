@@ -938,6 +938,7 @@ describe('ChatWrapper', () => {
               id: 'node1',
               form_id: 'form1',
               form_token: 'token1',
+              form_version: '2',
               node_id: 'node1',
               node_title: 'Node 1',
               display_in_ui: true,
@@ -977,63 +978,71 @@ describe('ChatWrapper', () => {
       resolveWorkflowEventsReady(true)
     })
     await waitFor(() => {
-      expect(submitWorkflowForm).toHaveBeenCalled()
+      expect(submitWorkflowForm).toHaveBeenCalledWith('token1', expect.any(Object), '2')
     })
   })
 
-  it('should handle human input form submission for web app', async () => {
-    vi.mocked(useChatWithHistoryContext).mockReturnValue({
-      ...defaultContextValue,
-      isInstalledApp: false,
-    })
+  it.each(['1', '2'] as const)(
+    'submits Web App forms with event version %s',
+    async (formVersion) => {
+      vi.mocked(useChatWithHistoryContext).mockReturnValue({
+        ...defaultContextValue,
+        isInstalledApp: false,
+      })
 
-    vi.mocked(useChat).mockReturnValue({
-      ...defaultChatHookReturn,
-      chatList: [
-        { id: 'q1', content: 'Question' },
-        {
-          id: 'a1',
-          isAnswer: true,
-          content: '',
-          humanInputFormDataList: [
-            {
-              id: 'node1',
-              form_id: 'form1',
-              form_token: 'token-web-1',
-              node_id: 'node1',
-              node_title: 'Node Web 1',
-              display_in_ui: true,
-              form_content: '{{#$output.test#}}',
-              inputs: [
-                {
-                  variable: 'test',
-                  label: 'Test',
-                  type: 'paragraph',
-                  required: true,
-                  output_variable_name: 'test',
-                  default: { type: 'text', value: '' },
-                },
-              ],
-              actions: [{ id: 'run', title: 'Run', button_style: 'primary' }],
-            },
-          ] as unknown as HumanInputFormData[],
-        },
-      ],
-    } as unknown as ChatHookReturn)
+      vi.mocked(useChat).mockReturnValue({
+        ...defaultChatHookReturn,
+        chatList: [
+          { id: 'q1', content: 'Question' },
+          {
+            id: 'a1',
+            isAnswer: true,
+            content: '',
+            humanInputFormDataList: [
+              {
+                id: 'node1',
+                form_id: 'form1',
+                form_token: 'token-web-1',
+                form_version: formVersion,
+                node_id: 'node1',
+                node_title: 'Node Web 1',
+                display_in_ui: true,
+                form_content: '{{#$output.test#}}',
+                inputs: [
+                  {
+                    variable: 'test',
+                    label: 'Test',
+                    type: 'paragraph',
+                    required: true,
+                    output_variable_name: 'test',
+                    default: { type: 'text', value: '' },
+                  },
+                ],
+                actions: [{ id: 'run', title: 'Run', button_style: 'primary' }],
+              },
+            ] as unknown as HumanInputFormData[],
+          },
+        ],
+      } as unknown as ChatHookReturn)
 
-    render(<ChatWrapper />)
-    expect(await screen.findByText('Node Web 1'))!.toBeInTheDocument()
+      render(<ChatWrapper />)
+      expect(await screen.findByText('Node Web 1'))!.toBeInTheDocument()
 
-    const input =
-      screen.getAllByRole('textbox').find((el) => el.closest('.chat-answer-container')) ||
-      screen.getAllByRole('textbox')[0]
-    fireEvent.change(input!, { target: { value: 'web-test' } })
-    fireEvent.click(screen.getByText('Run'))
+      const input =
+        screen.getAllByRole('textbox').find((el) => el.closest('.chat-answer-container')) ||
+        screen.getAllByRole('textbox')[0]
+      fireEvent.change(input!, { target: { value: 'web-test' } })
+      fireEvent.click(screen.getByText('Run'))
 
-    await waitFor(() => {
-      expect(submitHumanInputForm).toHaveBeenCalledWith('token-web-1', expect.any(Object))
-    })
-  })
+      await waitFor(() => {
+        expect(submitHumanInputForm).toHaveBeenCalledWith(
+          'token-web-1',
+          expect.any(Object),
+          formVersion,
+        )
+      })
+    },
+  )
 
   it('should filter opening statement in new conversation with single item', () => {
     vi.mocked(useChat).mockReturnValue({

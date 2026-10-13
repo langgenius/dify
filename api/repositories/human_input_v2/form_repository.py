@@ -93,8 +93,9 @@ class FormSubmissionFailure(StrEnum):
 class FormRepository(Protocol):
     """Form operations scoped to one constructor-bound tenant and app.
 
-    Every read and write includes both owner predicates. Implementations only
-    access HumanInputForm; recipient authorization, file ownership, workflow
+    Every bound read and write includes both owner predicates. Bound operations
+    access HumanInputForm; owner-resolution factories may check its App.
+    Recipient authorization, file ownership, workflow
     state, delivery, and audit orchestration belong to callers. Callers own the
     transaction so form writes can participate in a larger business operation.
 

@@ -361,6 +361,10 @@ export type HumanInputV2FormSubmitRequest = {
   otp_code?: string | null
 }
 
+export type HumanInputV2RemoteUploadPayload = {
+  url: string
+}
+
 export type JsonValue =
   | string
   | number
@@ -1528,6 +1532,11 @@ export type GetFormHumanInputV2PublicByFormTokenData = {
   url: '/form/human-input/v2/public/{form_token}'
 }
 
+export type GetFormHumanInputV2PublicByFormTokenErrors = {
+  404: unknown
+  412: unknown
+}
+
 export type GetFormHumanInputV2PublicByFormTokenResponses = {
   200: FormDefinitionResponse
 }
@@ -1583,6 +1592,11 @@ export type PostFormHumanInputV2PublicByFormTokenUploadTokenData = {
   }
   query?: never
   url: '/form/human-input/v2/public/{form_token}/upload-token'
+}
+
+export type PostFormHumanInputV2PublicByFormTokenUploadTokenErrors = {
+  404: unknown
+  412: unknown
 }
 
 export type PostFormHumanInputV2PublicByFormTokenUploadTokenResponses = {
@@ -1721,6 +1735,59 @@ export type PostHumanInputFormsFilesResponses = {
 
 export type PostHumanInputFormsFilesResponse =
   PostHumanInputFormsFilesResponses[keyof PostHumanInputFormsFilesResponses]
+
+export type PostHumanInputV2FilesData = {
+  body?: {
+    file?: Blob | File
+    url?: string
+  }
+  headers: {
+    Authorization: string
+  }
+  path?: never
+  query?: never
+  url: '/human-input/v2/files'
+}
+
+export type PostHumanInputV2FilesErrors = {
+  400: unknown
+  401: unknown
+  403: unknown
+  404: unknown
+  412: unknown
+}
+
+export type PostHumanInputV2FilesResponses = {
+  201: FileWithSignedUrl
+}
+
+export type PostHumanInputV2FilesResponse =
+  PostHumanInputV2FilesResponses[keyof PostHumanInputV2FilesResponses]
+
+export type PostHumanInputV2FilesRemoteData = {
+  body: HumanInputV2RemoteUploadPayload
+  headers: {
+    Authorization: string
+  }
+  path?: never
+  query?: never
+  url: '/human-input/v2/files/remote'
+}
+
+export type PostHumanInputV2FilesRemoteErrors = {
+  400: unknown
+  401: unknown
+  403: unknown
+  404: unknown
+  412: unknown
+}
+
+export type PostHumanInputV2FilesRemoteResponses = {
+  201: FileWithSignedUrl
+}
+
+export type PostHumanInputV2FilesRemoteResponse =
+  PostHumanInputV2FilesRemoteResponses[keyof PostHumanInputV2FilesRemoteResponses]
 
 export type PostLoginData = {
   body: LoginPayload

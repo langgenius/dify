@@ -315,7 +315,7 @@ def test_waiting_form_crosses_engine_persistence_and_live_response_without_reloa
     assert data["form_content"] == form.resolved_form.legacy_form_content
     assert data["form_token"] == token
     assert data["display_in_ui"] == (token is not None)
-    assert {"version", "form_version"}.isdisjoint(data)
+    assert data["form_version"] == "2"
     assert responses[1].data.reasons[0]["form_token"] == token
     notifications.apply_async.assert_not_called()
 
@@ -541,6 +541,7 @@ def test_dify_projection_serializes_the_runtime_token_without_a_graph_reason(for
     assert data.form_content == form.resolved_form.legacy_form_content
     assert data.resolved_default_values == {"answer": "original"}
     wire_fields = {
+        "form_version",
         "form_id",
         "node_id",
         "node_title",

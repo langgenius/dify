@@ -253,37 +253,48 @@ describe('WorkflowPreview', () => {
     expect(screen.getByTestId('result-panel')).toHaveTextContent(WorkflowRunningStatus.Succeeded)
   })
 
-  it.each([undefined, '2'])('submits paused forms with node version %s', async (version) => {
-    const user = userEvent.setup()
-    const pausedData = createWorkflowRunningData({
-      result: createWorkflowResult({
-        status: WorkflowRunningStatus.Paused,
-        files: [],
-      }),
-      humanInputFormDataList: [createHumanInputFormData({ form_token: 'form-token' })],
-      humanInputFilledFormDataList: [createHumanInputFilledFormData()],
-    })
+  it.each([undefined, '1', '2'] as const)(
+    'submits paused forms with event version %s',
+    async (version) => {
+      const user = userEvent.setup()
+      const pausedData = createWorkflowRunningData({
+        result: createWorkflowResult({
+          status: WorkflowRunningStatus.Paused,
+          files: [],
+        }),
+        humanInputFormDataList: [
+          createHumanInputFormData({ form_token: 'form-token', form_version: version }),
+        ],
+        humanInputFilledFormDataList: [createHumanInputFilledFormData()],
+      })
 
-    renderWorkflowFlowComponent(<WorkflowPreview />, {
-      nodes: [createNode({ id: 'human-node-1', type: 'default', data: { version } })],
-      initialStoreState: {
-        workflowRunningData: pausedData,
-      },
-    })
+      renderWorkflowFlowComponent(<WorkflowPreview />, {
+        nodes: [
+          createNode({
+            id: 'human-node-1',
+            type: 'default',
+            data: { version: version === '2' ? '1' : '2' },
+          }),
+        ],
+        initialStoreState: {
+          workflowRunningData: pausedData,
+        },
+      })
 
-    expect(screen.getByTestId('human-form-list')).toHaveTextContent('1')
-    expect(screen.getByTestId('filled-form-list')).toHaveTextContent('1')
+      expect(screen.getByTestId('human-form-list')).toHaveTextContent('1')
+      expect(screen.getByTestId('filled-form-list')).toHaveTextContent('1')
 
-    await user.click(screen.getByRole('button', { name: 'submit-human-form' }))
-    expect(mockSubmitHumanInputForm).toHaveBeenCalledWith(
-      'form-token',
-      {
-        inputs: { answer: 'ok' },
-        action: 'approve',
-      },
-      version,
-    )
-  })
+      await user.click(screen.getByRole('button', { name: 'submit-human-form' }))
+      expect(mockSubmitHumanInputForm).toHaveBeenCalledWith(
+        'form-token',
+        {
+          inputs: { answer: 'ok' },
+          action: 'approve',
+        },
+        version,
+      )
+    },
+  )
 
   it('should copy successful string output and show a success toast', async () => {
     const user = userEvent.setup()

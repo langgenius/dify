@@ -143,6 +143,7 @@ class WorkflowResponseConverter:
             prepared.form.resolved_form, form_id=prepared.form.id, node_id=node_id
         )
         return HumanInputRequiredResponse.Data(
+            form_version=reason.form_version,
             form_id=reason.form_id,
             node_id=node_id,
             node_title=reason.node_title,
@@ -986,6 +987,7 @@ class WorkflowResponseConverter:
                 task_id=task_id,
                 workflow_run_id=run_id,
                 data=HumanInputRequiredResponse.Data(
+                    form_version=reason.form_version,
                     form_id=reason.form_id,
                     node_id=reason.node_id,
                     node_title=reason.node_title,

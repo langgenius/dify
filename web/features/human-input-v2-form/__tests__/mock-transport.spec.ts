@@ -169,9 +169,6 @@ describe('Human Input v2 transports', () => {
     expect(fetch.mock.calls[2]![0].url).toContain(
       '/form/human-input/v2/public/form-token/upload-token',
     )
-    await expect(
-      realHumanInputV2FormTransport.uploadLocalFile('form-token', new File(['test'], 'test.txt')),
-    ).rejects.toMatchObject({ category: 'unavailable' })
     expect(fetch).toHaveBeenCalledTimes(3)
   })
 

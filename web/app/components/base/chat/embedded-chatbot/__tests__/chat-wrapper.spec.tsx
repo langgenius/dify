@@ -3,6 +3,7 @@ import type { HumanInputFieldValue } from '../../chat/answer/human-input-content
 import type { ChatConfig, ChatItem, ChatItemInTree } from '../../types'
 import type { EmbeddedChatbotContextValue } from '../context'
 import type { ConversationItem } from '@/models/share'
+import type { HumanInputFormData } from '@/types/workflow'
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { InputVarType } from '@/app/components/workflow/types'
 import { AppSourceType, fetchSuggestedQuestions, submitHumanInputForm } from '@/service/share'
@@ -12,6 +13,22 @@ import ChatWrapper from '../chat-wrapper'
 import { useEmbeddedChatbotContext } from '../context'
 
 const mockTrackEvent = vi.hoisted(() => vi.fn())
+
+const createHumanInputForm = (
+  formVersion: HumanInputFormData['form_version'],
+): HumanInputFormData => ({
+  form_version: formVersion,
+  form_id: 'form-id',
+  form_token: 'form-token',
+  node_id: 'human-node',
+  node_title: 'Review',
+  form_content: 'Review',
+  inputs: [],
+  actions: [],
+  resolved_default_values: {},
+  display_in_ui: true,
+  expiration_time: null,
+})
 
 vi.mock('@/app/components/base/amplitude/web-app-event', () => ({
   trackWebAppEvent: mockTrackEvent,
@@ -457,136 +474,172 @@ describe('EmbeddedChatbot chat-wrapper', () => {
   })
 
   describe('Human input submit behavior', () => {
-    it('should submit via installed app service when the app is installed', async () => {
-      let resolveWorkflowEventsReady: (isReady: boolean) => void = () => {}
-      const prepareHumanInputSubmission = vi.fn(
-        () =>
-          new Promise<boolean>((resolve) => {
-            resolveWorkflowEventsReady = resolve
+    it.each([undefined, '1', '2'] as const)(
+      'submits installed app forms with event version %s',
+      async (formVersion) => {
+        let resolveWorkflowEventsReady: (isReady: boolean) => void = () => {}
+        const prepareHumanInputSubmission = vi.fn(
+          () =>
+            new Promise<boolean>((resolve) => {
+              resolveWorkflowEventsReady = resolve
+            }),
+        )
+        vi.mocked(useChat).mockReturnValue(
+          createUseChatReturn({
+            prepareHumanInputSubmission,
+            chatList: [
+              {
+                id: 'answer-1',
+                content: '',
+                isAnswer: true,
+                humanInputFormDataList: [createHumanInputForm(formVersion)],
+              },
+            ],
           }),
-      )
-      vi.mocked(useChat).mockReturnValue(
-        createUseChatReturn({
-          prepareHumanInputSubmission,
-        }),
-      )
-      vi.mocked(useEmbeddedChatbotContext).mockReturnValue(
-        createContextValue({
-          isInstalledApp: true,
-        }),
-      )
+        )
+        vi.mocked(useEmbeddedChatbotContext).mockReturnValue(
+          createContextValue({
+            isInstalledApp: true,
+          }),
+        )
 
-      render(<ChatWrapper />)
-      fireEvent.click(screen.getByRole('button', { name: 'submit human input' }))
+        render(<ChatWrapper />)
+        fireEvent.click(screen.getByRole('button', { name: 'submit human input' }))
 
-      expect(prepareHumanInputSubmission).toHaveBeenCalledOnce()
-      expect(submitHumanInputFormService).not.toHaveBeenCalled()
+        expect(prepareHumanInputSubmission).toHaveBeenCalledOnce()
+        expect(submitHumanInputFormService).not.toHaveBeenCalled()
 
-      await act(async () => {
-        resolveWorkflowEventsReady(true)
-      })
-      await waitFor(() => {
-        expect(submitHumanInputFormService).toHaveBeenCalledWith('form-token', {
-          inputs: { answer: 'ok' },
-          action: 'approve',
+        await act(async () => {
+          resolveWorkflowEventsReady(true)
         })
-      })
-      expect(submitHumanInputForm).not.toHaveBeenCalled()
-    })
-
-    it('should submit via share service and support chat actions in web app mode', async () => {
-      const handleSend = vi.fn()
-      const handleSwitchSibling = vi.fn()
-      const handleStop = vi.fn()
-      vi.mocked(useChat).mockReturnValue(
-        createUseChatReturn({
-          handleSend,
-          handleSwitchSibling,
-          handleStop,
-          chatList: [
-            { id: 'opening-1', isAnswer: true, isOpeningStatement: true, content: 'Welcome' },
-            { id: 'question-1', isAnswer: false, content: 'Question' },
-            { id: 'answer-1', isAnswer: true, content: 'Answer', parentMessageId: 'question-1' },
-          ] as ChatItemInTree[],
-        }),
-      )
-      vi.mocked(useEmbeddedChatbotContext).mockReturnValue(
-        createContextValue({
-          isInstalledApp: false,
-          appSourceType: AppSourceType.tryApp,
-          isMobile: true,
-          inputsForms: [
-            { variable: 'topic', label: 'Topic', required: false, type: InputVarType.textInput },
-          ],
-          currentConversationId: 'conversation-1',
-        }),
-      )
-      mockIsDify.mockReturnValue(true)
-
-      render(<ChatWrapper />)
-
-      expect(screen.getByText('chat count: 3')).toBeInTheDocument()
-      expect(screen.queryByText('inputs form')).not.toBeInTheDocument()
-
-      fireEvent.click(screen.getByRole('button', { name: 'send through chat' }))
-      fireEvent.click(screen.getByRole('button', { name: 'regenerate answer' }))
-      fireEvent.click(screen.getByRole('button', { name: 'switch sibling' }))
-      fireEvent.click(screen.getByRole('button', { name: 'stop responding' }))
-      fireEvent.click(screen.getByRole('button', { name: 'submit human input' }))
-
-      await waitFor(() => {
-        expect(submitHumanInputForm).toHaveBeenCalledWith('form-token', {
-          inputs: { answer: 'ok' },
-          action: 'approve',
-        })
-      })
-      expect(handleSend).toHaveBeenCalledTimes(2)
-      const sendOptions = handleSend.mock.calls[0]?.[2] as {
-        onGetSuggestedQuestions: (responseItemId: string) => void
-      }
-      sendOptions.onGetSuggestedQuestions('resp-1')
-      expect(handleSwitchSibling).toHaveBeenCalledWith(
-        'sibling-2',
-        expect.objectContaining({
-          isPublicAPI: false,
-        }),
-      )
-      const switchOptions = handleSwitchSibling.mock.calls.find(
-        (call) => call[0] === 'sibling-2',
-      )?.[1] as { onGetSuggestedQuestions: (responseItemId: string) => void }
-      switchOptions.onGetSuggestedQuestions('resp-2')
-      expect(fetchSuggestedQuestions).toHaveBeenCalledWith('resp-1', AppSourceType.tryApp, 'app-1')
-      expect(fetchSuggestedQuestions).toHaveBeenCalledWith('resp-2', AppSourceType.tryApp, 'app-1')
-      expect(handleStop).toHaveBeenCalled()
-      expect(screen.queryByRole('img', { name: 'Alice' })).not.toBeInTheDocument()
-      expect(mockTrackEvent).not.toHaveBeenCalled()
-
-      cleanup()
-      vi.mocked(useEmbeddedChatbotContext).mockReturnValue(
-        createContextValue({
-          isMobile: true,
-          currentConversationId: '',
-          inputsForms: [
-            { variable: 'topic', label: 'Topic', required: false, type: InputVarType.textInput },
-          ],
-        }),
-      )
-      vi.mocked(useChat).mockReturnValue(
-        createUseChatReturn({
-          chatList: [
+        await waitFor(() => {
+          expect(submitHumanInputFormService).toHaveBeenCalledWith(
+            'form-token',
             {
-              id: 'opening-mobile',
-              isAnswer: true,
-              isOpeningStatement: true,
-              content: 'Mobile welcome',
+              inputs: { answer: 'ok' },
+              action: 'approve',
             },
-          ],
-        }),
-      )
+            formVersion,
+          )
+        })
+        expect(submitHumanInputForm).not.toHaveBeenCalled()
+      },
+    )
 
-      render(<ChatWrapper />)
-      expect(screen.getByText('inputs form')).toBeInTheDocument()
-    })
+    it.each([undefined, '1', '2'] as const)(
+      'submits Web App forms with event version %s and supports chat actions',
+      async (formVersion) => {
+        const handleSend = vi.fn()
+        const handleSwitchSibling = vi.fn()
+        const handleStop = vi.fn()
+        vi.mocked(useChat).mockReturnValue(
+          createUseChatReturn({
+            handleSend,
+            handleSwitchSibling,
+            handleStop,
+            chatList: [
+              { id: 'opening-1', isAnswer: true, isOpeningStatement: true, content: 'Welcome' },
+              { id: 'question-1', isAnswer: false, content: 'Question' },
+              {
+                id: 'answer-1',
+                isAnswer: true,
+                content: 'Answer',
+                parentMessageId: 'question-1',
+                humanInputFormDataList: [createHumanInputForm(formVersion)],
+              },
+            ] as ChatItemInTree[],
+          }),
+        )
+        vi.mocked(useEmbeddedChatbotContext).mockReturnValue(
+          createContextValue({
+            isInstalledApp: false,
+            appSourceType: AppSourceType.tryApp,
+            isMobile: true,
+            inputsForms: [
+              { variable: 'topic', label: 'Topic', required: false, type: InputVarType.textInput },
+            ],
+            currentConversationId: 'conversation-1',
+          }),
+        )
+        mockIsDify.mockReturnValue(true)
+
+        render(<ChatWrapper />)
+
+        expect(screen.getByText('chat count: 3')).toBeInTheDocument()
+        expect(screen.queryByText('inputs form')).not.toBeInTheDocument()
+
+        fireEvent.click(screen.getByRole('button', { name: 'send through chat' }))
+        fireEvent.click(screen.getByRole('button', { name: 'regenerate answer' }))
+        fireEvent.click(screen.getByRole('button', { name: 'switch sibling' }))
+        fireEvent.click(screen.getByRole('button', { name: 'stop responding' }))
+        fireEvent.click(screen.getByRole('button', { name: 'submit human input' }))
+
+        await waitFor(() => {
+          expect(submitHumanInputForm).toHaveBeenCalledWith(
+            'form-token',
+            {
+              inputs: { answer: 'ok' },
+              action: 'approve',
+            },
+            formVersion,
+          )
+        })
+        expect(handleSend).toHaveBeenCalledTimes(2)
+        const sendOptions = handleSend.mock.calls[0]?.[2] as {
+          onGetSuggestedQuestions: (responseItemId: string) => void
+        }
+        sendOptions.onGetSuggestedQuestions('resp-1')
+        expect(handleSwitchSibling).toHaveBeenCalledWith(
+          'sibling-2',
+          expect.objectContaining({
+            isPublicAPI: false,
+          }),
+        )
+        const switchOptions = handleSwitchSibling.mock.calls.find(
+          (call) => call[0] === 'sibling-2',
+        )?.[1] as { onGetSuggestedQuestions: (responseItemId: string) => void }
+        switchOptions.onGetSuggestedQuestions('resp-2')
+        expect(fetchSuggestedQuestions).toHaveBeenCalledWith(
+          'resp-1',
+          AppSourceType.tryApp,
+          'app-1',
+        )
+        expect(fetchSuggestedQuestions).toHaveBeenCalledWith(
+          'resp-2',
+          AppSourceType.tryApp,
+          'app-1',
+        )
+        expect(handleStop).toHaveBeenCalled()
+        expect(screen.queryByRole('img', { name: 'Alice' })).not.toBeInTheDocument()
+        expect(mockTrackEvent).not.toHaveBeenCalled()
+
+        cleanup()
+        vi.mocked(useEmbeddedChatbotContext).mockReturnValue(
+          createContextValue({
+            isMobile: true,
+            currentConversationId: '',
+            inputsForms: [
+              { variable: 'topic', label: 'Topic', required: false, type: InputVarType.textInput },
+            ],
+          }),
+        )
+        vi.mocked(useChat).mockReturnValue(
+          createUseChatReturn({
+            chatList: [
+              {
+                id: 'opening-mobile',
+                isAnswer: true,
+                isOpeningStatement: true,
+                content: 'Mobile welcome',
+              },
+            ],
+          }),
+        )
+
+        render(<ChatWrapper />)
+        expect(screen.getByText('inputs form')).toBeInTheDocument()
+      },
+    )
 
     it('should not disable sending when a required checkbox is not checked', () => {
       vi.mocked(useEmbeddedChatbotContext).mockReturnValue(

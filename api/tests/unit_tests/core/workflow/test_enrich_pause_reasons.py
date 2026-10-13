@@ -43,7 +43,8 @@ def test_enrich_leaves_non_human_input_reasons_untouched():
     assert "approval_channels" not in out[0]
 
 
-def test_pause_reason_payload_carries_approval_channels_through_factory():
+@pytest.mark.parametrize("form_version", ["1", "2"])
+def test_pause_reason_payload_carries_form_version_and_approval_channels_through_factory(form_version):
     # from_response_data maps fields by hand; this guards approval_channels/form_token
     # (the fields this feature added) against being dropped in that mapping.
     from core.app.entities.task_entities import (
@@ -52,6 +53,7 @@ def test_pause_reason_payload_carries_approval_channels_through_factory():
     )
 
     data = HumanInputRequiredResponse.Data(
+        form_version=form_version,
         form_id="f",
         node_id="n",
         node_title="t",
@@ -64,6 +66,7 @@ def test_pause_reason_payload_carries_approval_channels_through_factory():
 
     assert payload.approval_channels == ["console"]
     assert payload.form_token is None
+    assert payload.model_dump(mode="json")["form_version"] == form_version
 
 
 @pytest.mark.usefixtures("sqlite_session_factory")

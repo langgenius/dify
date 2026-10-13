@@ -345,6 +345,8 @@ Verify password reset token validity
 | 401 | Invalid or expired token |  |
 
 ### [GET] /form/human-input/v2/public/{form_token}
+Read a public v2 form definition by delivery token without an OTP or login session.
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -355,7 +357,9 @@ Verify password reset token validity
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [FormDefinitionResponse](#formdefinitionresponse)<br> |
+| 200 | Form definition | **application/json**: [FormDefinitionResponse](#formdefinitionresponse)<br> |
+| 404 | Form not found |  |
+| 412 | Form already submitted or expired |  |
 
 ### [POST] /form/human-input/v2/public/{form_token}
 Submit a form with inputs, an action, and email verification proof.
@@ -409,6 +413,8 @@ Submit a form with inputs, an action, and email verification proof.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [FormUploadTokenResponse](#formuploadtokenresponse)<br> |
+| 404 | Form not found |  |
+| 412 | Already submitted or expired |  |
 
 ### [GET] /form/human-input/v2/{form_token}
 Read a v2 form using the original EndUser's Web App passport.
@@ -543,6 +549,58 @@ POST /api/form/human_input/<form_token>/upload-token
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | File uploaded successfully | **application/json**: [FileResponse](#fileresponse)<br> |
+
+### [POST] /human-input/v2/files
+Upload a file or a remote URL using a v2 upload grant.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| Authorization | header | Bearer v2 upload grant | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  No | **multipart/form-data**: { **"file"**: binary, **"url"**: string }<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | File uploaded | **application/json**: [FileWithSignedUrl](#filewithsignedurl)<br> |
+| 400 | Invalid upload |  |
+| 401 | Grant required |  |
+| 403 | Invalid grant |  |
+| 404 | Form not found |  |
+| 412 | Form inactive |  |
+
+### [POST] /human-input/v2/files/remote
+Fetch a remote file using a v2 upload grant.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| Authorization | header |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [HumanInputV2RemoteUploadPayload](#humaninputv2remoteuploadpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | File uploaded | **application/json**: [FileWithSignedUrl](#filewithsignedurl)<br> |
+| 400 | Invalid upload |  |
+| 401 | Grant required |  |
+| 403 | Invalid grant |  |
+| 404 | Form not found |  |
+| 412 | Form inactive |  |
 
 ### [POST] /login
 **Authenticate user and login**
@@ -1469,6 +1527,12 @@ Public Human Input v2 submit payload, independent from the v1 form contract.
 | challenge_token | string | OTP challenge token returned by the Human Input v2 access-request endpoint. | No |
 | inputs | object | Submitted form values keyed by output variable name. | Yes |
 | otp_code | string | OTP code required when the current Human Input v2 approver uses email proof. | No |
+
+#### HumanInputV2RemoteUploadPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| url | string (uri) |  | Yes |
 
 #### JSONValue
 
