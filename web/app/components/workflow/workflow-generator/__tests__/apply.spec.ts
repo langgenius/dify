@@ -1,5 +1,6 @@
 import type { GeneratedGraph } from '../types'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { createHttpError } from '@/service/http-error'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { AppModeEnum } from '@/types/app'
 import {
@@ -342,7 +343,7 @@ describe('applyToCurrentApp', () => {
 
   // A 409 from syncWorkflowDraft is the backend's signal that another tab
   // edited the draft between our fetch and sync. The apply layer translates
-  // that Response into a typed error so the caller can show a Reload
+  // that HTTP error into a domain error so the caller can show a Reload
   // affordance instead of a generic "apply failed" toast.
   it('should translate a 409 sync rejection into WorkflowApplyHashCollisionError', async () => {
     mockFetchWorkflowDraft.mockResolvedValue({
@@ -351,9 +352,9 @@ describe('applyToCurrentApp', () => {
       environment_variables: [],
       conversation_variables: [],
     })
-    // ``base.ts`` rejects with the raw Response on non-401 — fake just the
-    // ``status`` field, which is what ``isHashCollisionResponse`` consults.
-    mockSyncWorkflowDraft.mockRejectedValueOnce({ status: 409, code: 'draft_workflow_not_sync' })
+    mockSyncWorkflowDraft.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 409 }), { code: 'draft_workflow_not_sync' }),
+    )
 
     await expect(applyToCurrentApp({ appId: 'app-9', graph: makeGraph() })).rejects.toBeInstanceOf(
       WorkflowApplyHashCollisionError,
@@ -370,13 +371,15 @@ describe('applyToCurrentApp', () => {
       environment_variables: [],
       conversation_variables: [],
     })
-    const original = { status: 500, code: 'internal_server_error' }
+    const original = createHttpError(new Response(null, { status: 500 }), {
+      code: 'internal_server_error',
+    })
     mockSyncWorkflowDraft.mockRejectedValueOnce(original)
 
     await expect(applyToCurrentApp({ appId: 'app-9', graph: makeGraph() })).rejects.toBe(original)
   })
 
-  it('should NOT translate string or null sync rejections', async () => {
+  it('should preserve network failures without treating them as hash collisions', async () => {
     mockFetchWorkflowDraft.mockResolvedValue({
       hash: 'h1',
       features: {},
@@ -384,13 +387,8 @@ describe('applyToCurrentApp', () => {
       conversation_variables: [],
     })
 
-    // String error
-    const strError = 'some string error'
-    mockSyncWorkflowDraft.mockRejectedValueOnce(strError)
-    await expect(applyToCurrentApp({ appId: 'app-9', graph: makeGraph() })).rejects.toBe(strError)
-
-    // Null error
-    mockSyncWorkflowDraft.mockRejectedValueOnce(null)
-    await expect(applyToCurrentApp({ appId: 'app-9', graph: makeGraph() })).rejects.toBeNull()
+    const error = new TypeError('Failed to fetch')
+    mockSyncWorkflowDraft.mockRejectedValueOnce(error)
+    await expect(applyToCurrentApp({ appId: 'app-9', graph: makeGraph() })).rejects.toBe(error)
   })
 })
