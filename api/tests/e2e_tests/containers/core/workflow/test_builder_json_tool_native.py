@@ -36,12 +36,15 @@ from services.dify_builder.execution_policy_service import BuilderExecutionPolic
 from tests.test_containers_integration_tests.core.workflow.test_builder_restricted_native import (
     native_owner as native_owner,  # noqa: PLC0414
 )
+from tests.unit_tests.services.dify_builder.test_json_tool_execution import add_native_editor_metadata
 from tests.unit_tests.services.dify_builder.test_json_tool_metadata import _installation, _provider
 
 FIXTURE = Path(__file__).parents[3] / "fixtures/workflow/builder_restricted/json_parse.yml"
 
 
-def _configure(owner, *, ensure_ascii: bool, wrapped: bool, echo_start: bool = False) -> dict[str, str]:
+def _configure(
+    owner, *, ensure_ascii: bool, wrapped: bool, echo_start: bool = False, editor_metadata: bool = False
+) -> dict[str, str]:
     factory, _, _, workflow, _, test_input_id = owner
     graph = json.loads(FIXTURE.read_text())
     graph["nodes"][1]["data"]["tool_configurations"]["ensure_ascii"] = (
@@ -49,6 +52,8 @@ def _configure(owner, *, ensure_ascii: bool, wrapped: bool, echo_start: bool = F
     )
     if echo_start:
         graph["nodes"][2]["data"]["outputs"].append({"variable": "echo", "value_selector": ["node1", "payload"]})
+    if editor_metadata:
+        add_native_editor_metadata(graph)
     inputs = {"payload": '{"greeting":"café"}', "json_path": "$.greeting"}
     with factory.begin() as db:
         db.get(Workflow, workflow.id).graph = json.dumps(graph, ensure_ascii=False)
@@ -245,6 +250,62 @@ def test_serverless_json_native_owned_prepare_run_and_seal(native_owner, monkeyp
             (3, "node3", "succeeded"),
         ]
         assert receipt.native_node_execution_id == nodes[1].node_execution_id
+        assert native.outputs_dict["result"] == "café"
+
+
+def test_native_editor_metadata_serverless_json_prepare_run_and_seal(native_owner, monkeypatch):
+    factory, actor, app, workflow, session_id, test_input_id = native_owner
+    inputs = _configure(native_owner, ensure_ascii=True, wrapped=True, editor_metadata=True)
+    with factory() as db:
+        saved_graph = db.get(Workflow, workflow.id).graph
+        graph = json.loads(saved_graph)
+        assert graph["nodes"][1]["data"]["is_team_authorization"] is True
+        assert graph["nodes"][1]["data"]["provider_show_name"] == "JSON Process"
+        assert graph["nodes"][2]["data"]["outputs"][0]["value_type"] == "string"
+    calls = _external_json_transport(monkeypatch, actor.tenant_id, runtime_type="serverless")
+
+    result = WorkflowServiceDifyPort().run_draft(
+        app.id, actor, inputs, lambda _: None, session_id=session_id, test_input_id=test_input_id
+    )
+
+    assert result.execution_refusal is None
+    assert result.status == "succeeded"
+    assert result.verification is not None
+    summary = result.verification.execution_evidence
+    assert summary is not None
+    assert summary.safety_outcome == "restricted_execution_completed"
+    assert summary.sealed is True
+    assert calls == [{"content": inputs["payload"], "json_filter": inputs["json_path"], "ensure_ascii": True}]
+    with factory() as db:
+        assert db.get(Workflow, workflow.id).graph == saved_graph
+        request = db.scalar(select(DifyBuilderExecutionRequest).where(DifyBuilderExecutionRequest.app_id == app.id))
+        assert request is not None
+        context = JsonToolExecutionContext.model_validate(request.context)
+        assert context.qualified_tool.runtime_type == "serverless"
+        assert context.qualified_tool.qualification_digest == (
+            "b3728bbec6b6fcb4c9bd4677fb519994ebd4666c182c542a8acd0c0e5ef89c03"
+        )
+        assert (request.state, request.native_run_id) == ("sealed", summary.native_run_id)
+        assert len(request.observations) == 1
+        receipt = BuilderExecutionObservation.model_validate(request.observations[0])
+        assert receipt.kind == "qualified_json_completed"
+        assert receipt.native_node_execution_id is not None
+        native = db.get(WorkflowRun, summary.native_run_id)
+        assert native is not None
+        nodes = list(
+            db.scalars(
+                select(WorkflowNodeExecutionModel)
+                .where(WorkflowNodeExecutionModel.workflow_run_id == native.id)
+                .order_by(WorkflowNodeExecutionModel.index)
+            )
+        )
+        assert [(node.index, node.node_id, node.status) for node in nodes] == [
+            (1, "node1", "succeeded"),
+            (2, "node2", "succeeded"),
+            (3, "node3", "succeeded"),
+        ]
+        assert receipt.native_node_execution_id == nodes[1].node_execution_id
+        assert nodes[1].outputs_dict["text"] == "café"
         assert native.outputs_dict["result"] == "café"
 
 
