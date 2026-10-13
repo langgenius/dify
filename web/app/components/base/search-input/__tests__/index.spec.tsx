@@ -39,6 +39,24 @@ describe('SearchInput', () => {
       expect(ref.current).toBe(screen.getByRole('searchbox', { name: 'common.operation.search' }))
     })
 
+    it('cleans up callback refs when the owner replaces the ref or unmounts', () => {
+      const cleanup = vi.fn()
+      const ref = vi.fn(() => cleanup)
+      const nextRef = createRef<HTMLInputElement>()
+      const { rerender, unmount } = render(
+        <SearchInput ref={ref} value="" onValueChange={() => {}} />,
+      )
+      const input = screen.getByRole('searchbox')
+      expect(ref).toHaveBeenCalledWith(input)
+
+      rerender(<SearchInput ref={nextRef} value="" onValueChange={() => {}} />)
+      expect(cleanup).toHaveBeenCalledOnce()
+      expect(nextRef.current).toBe(input)
+
+      unmount()
+      expect(nextRef.current).toBeNull()
+    })
+
     it('focuses the searchbox when autoFocus is enabled', () => {
       // oxlint-disable-next-line jsx-a11y/no-autofocus
       render(<SearchInput value="" onValueChange={() => {}} autoFocus />)

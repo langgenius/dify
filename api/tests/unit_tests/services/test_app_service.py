@@ -32,7 +32,7 @@ from models.workflow import Workflow, WorkflowType
 from repositories.app.console_repository import ConsoleAppRepository
 from services.agent.errors import AgentAccessNotReadyError, AgentNameConflictError
 from services.app_service import AppListParams, AppResponseView, AppService, CreateAppParams
-from services.enterprise import rbac_service as enterprise_rbac_service
+from services.rbac import contracts as rbac_contracts
 
 
 def _persist_account(session: Session) -> Account:
@@ -384,13 +384,13 @@ class TestCreateAppRBACAccessInitialization:
             account.current_tenant_id,
             account.id,
             agent.id,
-            enterprise_rbac_service.ReplaceMemberBindings(automatic_include_workspace_members=True),
+            rbac_contracts.ReplaceMemberBindings(automatic_include_workspace_members=True),
         )
         seed_task.assert_called_once_with(account.current_tenant_id, account.id, agent_id=agent.id)
         creator_sync.assert_called_once_with(
             account.current_tenant_id,
             account.id,
-            resource_type=enterprise_rbac_service.RBACResourceType.AGENT,
+            resource_type=rbac_contracts.RBACResourceType.AGENT,
             resource_id=agent.id,
         )
         app_creator_sync.assert_not_called()

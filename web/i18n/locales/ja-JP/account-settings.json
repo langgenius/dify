@@ -74,7 +74,6 @@
   "resourceAccessToken.createdTokenDescription": "このアクセストークンを安全な場所に保存してください。後から再表示することはできません。トークンを持つ人は誰でも Difyctl を使って許可されたリソースを見つけ、アクセスできます。紛失した場合は新しいトークンを作成し、古いトークンを無効にしてください。",
   "resourceAccessToken.deleteDescription": "アクセストークンは直ちに無効になります。このトークンを使ったリクエストは拒否され、実行中のタスクが中断または失敗する可能性があります。削除後はトークンを表示・変更できません。",
   "resourceAccessToken.deleteTitle": "アクセストークンを削除しますか？",
-  "resourceAccessToken.deleted": "アクセストークンを削除しました",
   "resourceAccessToken.done": "完了",
   "resourceAccessToken.editTitle": "アクセストークンを編集",
   "resourceAccessToken.empty": "アクセストークンはまだありません",

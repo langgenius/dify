@@ -201,10 +201,10 @@ const FeaturesTrigger = () => {
           releaseNotes: publishParams?.releaseNotes || '',
         })
         if (res) {
-          if (options?.showSuccessToast !== false) {
-            toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
-          }
+          // One toast per publish: a warning from the server replaces the success message.
           if (res.warning) toast.warning(res.warning)
+          else if (options?.showSuccessToast !== false)
+            toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
           updatePublishedWorkflow(appID!)
           updateAppDetail()
           invalidateAppTriggers(appID!)
