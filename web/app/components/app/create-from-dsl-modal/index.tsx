@@ -34,8 +34,8 @@ import { AppModeEnum as AppMode } from '@/types/app'
 import { asyncRunSafe } from '@/utils'
 import { getRedirection } from '@/utils/app-redirection'
 import { trackCreateApp } from '@/utils/create-app-tracking'
+import { getErrorMessage } from '@/utils/error-message'
 import { resolveImportedAppRedirectionTarget } from '@/utils/imported-app-redirection'
-import { getAppTransferErrorMessage } from '../transfer-error'
 import DSLConfirmModal from './dsl-confirm-modal'
 import DSLImportWarningDescription from './dsl-import-warning-description'
 import { CreateFromDSLModalTab } from './types'
@@ -247,7 +247,7 @@ function CreateFromDSLModal({
       toast.error(
         t(($) => $['newApp.appCreateFailed'], { ns: 'app' }),
         {
-          description: getAppTransferErrorMessage(error),
+          description: getErrorMessage(error),
         },
       )
       return
@@ -268,7 +268,7 @@ function CreateFromDSLModal({
       toast.error(
         t(($) => $['newApp.appCreateFailed'], { ns: 'app' }),
         {
-          description: getAppTransferErrorMessage(error),
+          description: getErrorMessage(error),
         },
       )
       return

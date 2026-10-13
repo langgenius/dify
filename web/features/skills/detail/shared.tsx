@@ -17,6 +17,7 @@ import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { toast } from '@/app/notifications'
 import { getFileIconType } from '@/features/agent-v2/file-icon'
 import { consoleClient, consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 import { getSkillErrorCode, getSkillErrorDetailString, isSkillErrorRecord } from '../error'
 
 export const isRecord = isSkillErrorRecord
@@ -1334,12 +1335,8 @@ function getDraftSkillName(parsedSkillMd: ParsedMarkdownContent, displayName: st
   return generatedName || undefined
 }
 
-export function getSkillErrorMessage(error: unknown) {
-  return error instanceof Error ? error.message || undefined : undefined
-}
-
 export function showSkillErrorToast(error: unknown, fallbackMessage: string) {
-  toast.error(getSkillErrorMessage(error) ?? fallbackMessage)
+  toast.error(getErrorMessage(error) ?? fallbackMessage)
 }
 
 export function getSkillCodeLanguage(file: SkillFileResponse | undefined) {

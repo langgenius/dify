@@ -1,4 +1,5 @@
 'use client'
+
 import type { ImportPipelineDSLConfirmResponse, ImportPipelineDSLResponse } from '@/models/pipeline'
 import { useDebounceFn } from 'ahooks'
 import { useCallback, useMemo, useRef, useState } from 'react'
@@ -9,6 +10,7 @@ import { DSLImportMode, DSLImportStatus } from '@/models/app'
 import { useRouter } from '@/next/navigation'
 import { useImportPipelineDSL, useImportPipelineDSLConfirm } from '@/service/use-pipeline'
 import { asyncRunSafe } from '@/utils'
+import { getErrorMessage } from '@/utils/error-message'
 
 export const CreateFromDSLModalTab = {
   FROM_FILE: 'from-file',
@@ -26,17 +28,6 @@ type UseDSLImportOptions = {
 type DSLVersions = {
   importedVersion: string
   systemVersion: string
-}
-const getNonEmptyString = (value: unknown): string | undefined => {
-  if (typeof value !== 'string') return undefined
-
-  const trimmedValue = value.trim()
-  return trimmedValue || undefined
-}
-const getImportErrorMessage = async (error: unknown): Promise<string | undefined> => {
-  if (error instanceof Error) return getNonEmptyString(error.message)
-
-  return undefined
 }
 export const useDSLImport = ({
   activeTab = CreateFromDSLModalTab.FROM_FILE,
@@ -156,7 +147,7 @@ export const useDSLImport = ({
       }
     } catch (error) {
       if (!(error instanceof Error && error.name === 'AbortError'))
-        notifyError(await getImportErrorMessage(error))
+        notifyError(getErrorMessage(error)?.trim() || undefined)
     } finally {
       isCreatingRef.current = false
     }
@@ -192,7 +183,7 @@ export const useDSLImport = ({
       }
     } catch (error) {
       if (!(error instanceof Error && error.name === 'AbortError'))
-        notifyError(await getImportErrorMessage(error))
+        notifyError(getErrorMessage(error)?.trim() || undefined)
     } finally {
       isCreatingRef.current = false
       setIsConfirming(false)
