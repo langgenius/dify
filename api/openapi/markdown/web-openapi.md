@@ -149,7 +149,7 @@ Delete a specific conversation.
 | 400 | Bad Request |
 | 401 | Unauthorized |
 | 403 | Forbidden |
-| 404 | Conversation Not Found or Not a Chat App |
+| 404 | `conversation_not_found`: Conversation does not exist for this user and app. |
 | 500 | Internal Server Error |
 
 ### [POST] /conversations/{c_id}/name
@@ -198,11 +198,11 @@ Pin a specific conversation to keep it at the top of the list.
 | 400 | Bad Request |  |
 | 401 | Unauthorized |  |
 | 403 | Forbidden |  |
-| 404 | Conversation Not Found or Not a Chat App |  |
+| 404 | `conversation_not_found`: Conversation does not exist for this user and app. |  |
 | 500 | Internal Server Error |  |
 
 ### [PATCH] /conversations/{c_id}/unpin
-Unpin a specific conversation to remove it from the top of the list.
+Remove the current user's pin. Succeeds when the conversation is already unpinned.
 
 #### Parameters
 
@@ -218,7 +218,7 @@ Unpin a specific conversation to remove it from the top of the list.
 | 400 | Bad Request |  |
 | 401 | Unauthorized |  |
 | 403 | Forbidden |  |
-| 404 | Conversation Not Found or Not a Chat App |  |
+| 404 | `conversation_not_found`: The app or user is no longer available. |  |
 | 500 | Internal Server Error |  |
 
 ### [POST] /email-code-login

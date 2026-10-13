@@ -57,6 +57,8 @@ class _Services:
 @dataclass(frozen=True)
 class _Harness:
     app: Flask
+    api: ExternalApi
+    repository_factory: sessionmaker[Session]
     target: App
     tenant: Tenant
     end_user: EndUser
@@ -180,6 +182,8 @@ def harness(sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session]
     api.add_resource(ConversationRenameApi, "/conversations/<uuid:conversation_id>/name")
     yield _Harness(
         app,
+        api,
+        query_factory,
         target,
         tenant,
         end_user,

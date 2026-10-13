@@ -25,7 +25,6 @@ from fields.conversation_fields import (
 )
 from libs.helper import dump_response, uuid_value
 from models.model import App, AppMode, EndUser
-from services.conversation_service import ConversationService
 from services.entities.conversation_entities import EndUserConversationRef
 from services.errors.conversation import ConversationNotExistsError, LastConversationNotExistsError
 from services.errors.message import MessageNotExistsError
@@ -110,25 +109,32 @@ class ConversationApi(WebApiResource):
     @web_ns.doc(params={"c_id": {"description": "Conversation UUID", "type": "string", "required": True}})
     @web_ns.doc(
         responses={
-            204: "Conversation deleted successfully",
-            400: "Bad Request",
-            401: "Unauthorized",
-            403: "Forbidden",
-            404: "Conversation Not Found or Not a Chat App",
-            500: "Internal Server Error",
+            HTTPStatus.NO_CONTENT: "Conversation deleted successfully",
+            HTTPStatus.BAD_REQUEST: "Bad Request",
+            HTTPStatus.UNAUTHORIZED: "Unauthorized",
+            HTTPStatus.FORBIDDEN: "Forbidden",
+            HTTPStatus.NOT_FOUND: "`conversation_not_found`: Conversation does not exist for this user and app.",
+            HTTPStatus.INTERNAL_SERVER_ERROR: "Internal Server Error",
         }
     )
-    def delete(self, app_model: App, end_user: EndUser, c_id: UUID):
+    def delete(self, app_model: App, end_user: EndUser, c_id: UUID) -> tuple[str, HTTPStatus]:
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
             raise NotChatAppError()
 
         conversation_id = str(c_id)
         try:
-            ConversationService.delete(app_model, conversation_id, end_user, session=db.session())
-        except ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
-        return "", 204
+            application_services().conversation_commands.delete(
+                ref=EndUserConversationRef(
+                    app_id=app_model.id,
+                    tenant_id=app_model.tenant_id,
+                    end_user_id=end_user.id,
+                    conversation_id=conversation_id,
+                )
+            )
+        except ConversationNotExistsError as error:
+            raise ConversationNotFoundHTTPError() from error
+        return "", HTTPStatus.NO_CONTENT
 
 
 @web_ns.route("/conversations/<uuid:c_id>/name")
@@ -199,16 +205,16 @@ class ConversationPinApi(WebApiResource):
     @web_ns.doc(params={"c_id": {"description": "Conversation UUID", "type": "string", "required": True}})
     @web_ns.doc(
         responses={
-            200: "Conversation pinned successfully",
-            400: "Bad Request",
-            401: "Unauthorized",
-            403: "Forbidden",
-            404: "Conversation Not Found or Not a Chat App",
-            500: "Internal Server Error",
+            HTTPStatus.OK: "Conversation pinned successfully",
+            HTTPStatus.BAD_REQUEST: "Bad Request",
+            HTTPStatus.UNAUTHORIZED: "Unauthorized",
+            HTTPStatus.FORBIDDEN: "Forbidden",
+            HTTPStatus.NOT_FOUND: "`conversation_not_found`: Conversation does not exist for this user and app.",
+            HTTPStatus.INTERNAL_SERVER_ERROR: "Internal Server Error",
         }
     )
-    @web_ns.response(200, "Conversation pinned successfully", web_ns.models[ResultResponse.__name__])
-    def patch(self, app_model: App, end_user: EndUser, c_id: UUID):
+    @web_ns.response(HTTPStatus.OK, "Conversation pinned successfully", web_ns.models[ResultResponse.__name__])
+    def patch(self, app_model: App, end_user: EndUser, c_id: UUID) -> dict[str, object]:
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
             raise NotChatAppError()
@@ -216,9 +222,17 @@ class ConversationPinApi(WebApiResource):
         conversation_id = str(c_id)
 
         try:
-            WebConversationService.pin(app_model, conversation_id, end_user, db.session())
-        except ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+            application_services().conversation_commands.set_pinned(
+                ref=EndUserConversationRef(
+                    app_id=app_model.id,
+                    tenant_id=app_model.tenant_id,
+                    end_user_id=end_user.id,
+                    conversation_id=conversation_id,
+                ),
+                is_pinned=True,
+            )
+        except ConversationNotExistsError as error:
+            raise ConversationNotFoundHTTPError() from error
 
         return ResultResponse(result="success").model_dump(mode="json")
 
@@ -226,25 +240,36 @@ class ConversationPinApi(WebApiResource):
 @web_ns.route("/conversations/<uuid:c_id>/unpin")
 class ConversationUnPinApi(WebApiResource):
     @web_ns.doc("Unpin Conversation")
-    @web_ns.doc(description="Unpin a specific conversation to remove it from the top of the list.")
+    @web_ns.doc(description="Remove the current user's pin. Succeeds when the conversation is already unpinned.")
     @web_ns.doc(params={"c_id": {"description": "Conversation UUID", "type": "string", "required": True}})
     @web_ns.doc(
         responses={
-            200: "Conversation unpinned successfully",
-            400: "Bad Request",
-            401: "Unauthorized",
-            403: "Forbidden",
-            404: "Conversation Not Found or Not a Chat App",
-            500: "Internal Server Error",
+            HTTPStatus.OK: "Conversation unpinned successfully",
+            HTTPStatus.BAD_REQUEST: "Bad Request",
+            HTTPStatus.UNAUTHORIZED: "Unauthorized",
+            HTTPStatus.FORBIDDEN: "Forbidden",
+            HTTPStatus.NOT_FOUND: "`conversation_not_found`: The app or user is no longer available.",
+            HTTPStatus.INTERNAL_SERVER_ERROR: "Internal Server Error",
         }
     )
-    @web_ns.response(200, "Conversation unpinned successfully", web_ns.models[ResultResponse.__name__])
-    def patch(self, app_model: App, end_user: EndUser, c_id: UUID):
+    @web_ns.response(HTTPStatus.OK, "Conversation unpinned successfully", web_ns.models[ResultResponse.__name__])
+    def patch(self, app_model: App, end_user: EndUser, c_id: UUID) -> dict[str, object]:
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
             raise NotChatAppError()
 
         conversation_id = str(c_id)
-        WebConversationService.unpin(app_model, conversation_id, end_user, db.session())
+        try:
+            application_services().conversation_commands.set_pinned(
+                ref=EndUserConversationRef(
+                    app_id=app_model.id,
+                    tenant_id=app_model.tenant_id,
+                    end_user_id=end_user.id,
+                    conversation_id=conversation_id,
+                ),
+                is_pinned=False,
+            )
+        except ConversationNotExistsError as error:
+            raise ConversationNotFoundHTTPError() from error
 
         return ResultResponse(result="success").model_dump(mode="json")

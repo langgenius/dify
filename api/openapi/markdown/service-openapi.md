@@ -637,10 +637,10 @@ Delete a conversation.
 | Code | Description |
 | ---- | ----------- |
 | 204 | Conversation deleted successfully. |
-| 400 | `not_chat_app` : App mode does not match the API route. |
-| 401 | Unauthorized - invalid API token |
-| 403 | Forbidden - token scope, app, dataset, or workspace access denied |
-| 404 | `not_found` : Conversation does not exist. |
+| 400 | Invalid app selection or app mode does not match the API route. |
+| 401 | Invalid API credentials. |
+| 403 | API credential, app or workspace access is unavailable. |
+| 404 | `conversation_not_found`: Conversation does not exist for this user and app. |
 
 ### [POST] /conversations/{conversation_id}/name
 **Rename Conversation**

@@ -236,36 +236,35 @@ class ConversationDetailApi(Resource):
         description="Delete a conversation.",
         tags=["Conversations"],
         responses={
-            204: "Conversation deleted successfully.",
-            400: "`not_chat_app` : App mode does not match the API route.",
-            404: "`not_found` : Conversation does not exist.",
+            HTTPStatus.NO_CONTENT: "Conversation deleted successfully.",
+            HTTPStatus.BAD_REQUEST: "Invalid app selection or app mode does not match the API route.",
+            HTTPStatus.UNAUTHORIZED: "Invalid API credentials.",
+            HTTPStatus.FORBIDDEN: "API credential, app or workspace access is unavailable.",
+            HTTPStatus.NOT_FOUND: "`conversation_not_found`: Conversation does not exist for this user and app.",
         },
     )
     @expect_user_json(service_api_ns)
     @service_api_ns.doc("delete_conversation")
-    @service_api_ns.doc(description="Delete a specific conversation")
     @service_api_ns.doc(params={"conversation_id": "Conversation ID."})
-    @service_api_ns.doc(
-        responses={
-            204: "Conversation deleted successfully",
-            401: "Unauthorized - invalid API token",
-            404: "Conversation not found",
-        }
-    )
-    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON))
-    def delete(self, app_model: App, end_user: EndUser, conversation_id: UUID):
+    @service_api_end_user_admission(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON))
+    def delete(self, context: ServiceApiEndUserContext, conversation_id: UUID) -> tuple[str, HTTPStatus]:
         """Delete a specific conversation."""
-        app_mode = AppMode.value_of(app_model.mode)
+        app_mode = AppMode.value_of(context.app_mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
             raise NotChatAppError()
 
-        conversation_id_str = str(conversation_id)
-
         try:
-            ConversationService.delete(app_model, conversation_id_str, end_user, session=db.session())
-        except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
-        return "", 204
+            application_services().conversation_commands.delete(
+                ref=EndUserConversationRef(
+                    app_id=context.app_id,
+                    tenant_id=context.tenant_id,
+                    end_user_id=context.end_user_id,
+                    conversation_id=str(conversation_id),
+                )
+            )
+        except services.errors.conversation.ConversationNotExistsError as error:
+            raise ConversationNotFoundHTTPError() from error
+        return "", HTTPStatus.NO_CONTENT
 
 
 @service_api_ns.route("/conversations/<uuid:conversation_id>/name")

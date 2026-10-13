@@ -246,10 +246,17 @@ def test_every_conversation_ownership_predicate_protects_reads_and_mutations(
             updated_at=_TIME,
         )
     with pytest.raises(ConversationNotExistsError):
-        repository.delete(installed_app=installation, account_id=_ACCOUNT_ID, conversation_id=conversation_id)
+        repository.delete(
+            ref=InstalledAppConversationRef(
+                installed_app=installation, account_id=_ACCOUNT_ID, conversation_id=conversation_id
+            )
+        )
     with pytest.raises(ConversationNotExistsError):
         repository.set_pinned(
-            installed_app=installation, account_id=_ACCOUNT_ID, conversation_id=conversation_id, is_pinned=True
+            ref=InstalledAppConversationRef(
+                installed_app=installation, account_id=_ACCOUNT_ID, conversation_id=conversation_id
+            ),
+            is_pinned=True,
         )
     with sqlite_session_factory() as session:
         stored = session.get(Conversation, conversation_id)
@@ -294,11 +301,18 @@ def test_all_operations_revalidate_complete_installation_and_actual_app(
             updated_at=_TIME,
         )
     with pytest.raises(InstalledAppNotFoundError):
-        repository.delete(installed_app=installation, account_id=_ACCOUNT_ID, conversation_id=conversation.id)
+        repository.delete(
+            ref=InstalledAppConversationRef(
+                installed_app=installation, account_id=_ACCOUNT_ID, conversation_id=conversation.id
+            )
+        )
     for is_pinned in (True, False):
         with pytest.raises(InstalledAppNotFoundError):
             repository.set_pinned(
-                installed_app=installation, account_id=_ACCOUNT_ID, conversation_id=conversation.id, is_pinned=is_pinned
+                ref=InstalledAppConversationRef(
+                    installed_app=installation, account_id=_ACCOUNT_ID, conversation_id=conversation.id
+                ),
+                is_pinned=is_pinned,
             )
 
 
@@ -394,17 +408,26 @@ def test_pin_and_unpin_are_idempotent_and_preserve_other_owners(
     repository = ConversationRepository(session_factory=sqlite_session_factory)
     for _ in range(2):
         repository.set_pinned(
-            installed_app=installation, account_id=_ACCOUNT_ID, conversation_id=conversation.id, is_pinned=True
+            ref=InstalledAppConversationRef(
+                installed_app=installation, account_id=_ACCOUNT_ID, conversation_id=conversation.id
+            ),
+            is_pinned=True,
         )
     with sqlite_session_factory() as session:
         assert len(session.scalars(select(PinnedConversation)).all()) == 4
 
     for _ in range(2):
         repository.set_pinned(
-            installed_app=installation, account_id=_ACCOUNT_ID, conversation_id=conversation.id, is_pinned=False
+            ref=InstalledAppConversationRef(
+                installed_app=installation, account_id=_ACCOUNT_ID, conversation_id=conversation.id
+            ),
+            is_pinned=False,
         )
     repository.set_pinned(
-        installed_app=installation, account_id=_ACCOUNT_ID, conversation_id=str(uuid4()), is_pinned=False
+        ref=InstalledAppConversationRef(
+            installed_app=installation, account_id=_ACCOUNT_ID, conversation_id=str(uuid4())
+        ),
+        is_pinned=False,
     )
     with sqlite_session_factory() as session:
         remaining = session.scalars(select(PinnedConversation)).all()
@@ -425,10 +448,12 @@ def test_existing_pin_and_unpin_do_not_require_live_conversation(
         _pin(session, installation, missing_id)
     repository = ConversationRepository(session_factory=sqlite_session_factory)
     repository.set_pinned(
-        installed_app=installation, account_id=_ACCOUNT_ID, conversation_id=missing_id, is_pinned=True
+        ref=InstalledAppConversationRef(installed_app=installation, account_id=_ACCOUNT_ID, conversation_id=missing_id),
+        is_pinned=True,
     )
     repository.set_pinned(
-        installed_app=installation, account_id=_ACCOUNT_ID, conversation_id=missing_id, is_pinned=False
+        ref=InstalledAppConversationRef(installed_app=installation, account_id=_ACCOUNT_ID, conversation_id=missing_id),
+        is_pinned=False,
     )
     with sqlite_session_factory() as session:
         assert session.scalars(select(PinnedConversation)).all() == []
@@ -456,7 +481,11 @@ def test_delete_commits_soft_deletion_and_returns_owner_tenant_for_cleanup(
         ]
         session.add_all(workspaces)
     repository = ConversationRepository(session_factory=sqlite_session_factory)
-    deleted = repository.delete(installed_app=installation, account_id=_ACCOUNT_ID, conversation_id=conversation.id)
+    deleted = repository.delete(
+        ref=InstalledAppConversationRef(
+            installed_app=installation, account_id=_ACCOUNT_ID, conversation_id=conversation.id
+        )
+    )
 
     assert deleted.tenant_id == _OWNER_TENANT_ID
     assert deleted.conversation_id == conversation.id
@@ -472,7 +501,11 @@ def test_delete_commits_soft_deletion_and_returns_owner_tenant_for_cleanup(
             assert stored_workspace.retired_at is not None
             assert stored_workspace.active_guard is None
     with pytest.raises(ConversationNotExistsError):
-        repository.delete(installed_app=installation, account_id=_ACCOUNT_ID, conversation_id=conversation.id)
+        repository.delete(
+            ref=InstalledAppConversationRef(
+                installed_app=installation, account_id=_ACCOUNT_ID, conversation_id=conversation.id
+            )
+        )
 
 
 @pytest.mark.parametrize("operation", ["rename", "delete", "pin"])
@@ -503,10 +536,17 @@ def test_failed_commit_rolls_back_mutations_and_propagates_original_error(
                 updated_at=_TIME + timedelta(hours=1),
             )
         elif operation == "delete":
-            repository.delete(installed_app=installation, account_id=_ACCOUNT_ID, conversation_id=conversation.id)
+            repository.delete(
+                ref=InstalledAppConversationRef(
+                    installed_app=installation, account_id=_ACCOUNT_ID, conversation_id=conversation.id
+                )
+            )
         else:
             repository.set_pinned(
-                installed_app=installation, account_id=_ACCOUNT_ID, conversation_id=conversation.id, is_pinned=True
+                ref=InstalledAppConversationRef(
+                    installed_app=installation, account_id=_ACCOUNT_ID, conversation_id=conversation.id
+                ),
+                is_pinned=True,
             )
 
     with pytest.raises(RuntimeError) as error:
@@ -574,5 +614,9 @@ def test_end_user_and_installed_account_refs_never_cross_owner_domains(
             repository.get_name_source(ref=foreign_ref)
         with pytest.raises(ConversationNotExistsError):
             repository.rename(ref=foreign_ref, name="Forbidden", updated_at=_TIME)
+        with pytest.raises(ConversationNotExistsError):
+            repository.delete(ref=foreign_ref)
+        with pytest.raises(ConversationNotExistsError):
+            repository.set_pinned(ref=foreign_ref, is_pinned=True)
     assert repository.get(ref=account_ref).name == "Original name"
     assert repository.get(ref=end_user_ref).name == "End-user conversation"
