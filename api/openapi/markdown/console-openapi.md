@@ -12293,6 +12293,8 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Draft file operation applied | **application/json**: [SkillDetailResponse](#skilldetailresponse)<br> |
+| 404 | Skill not found | **application/json**: [SkillNotFoundResponse](#skillnotfoundresponse)<br> |
+| 409 | Draft changed | **application/json**: [SkillDraftConflictResponse](#skilldraftconflictresponse)<br> |
 
 ### [PUT] /workspaces/current/skills/{skill_id}/files
 #### Parameters
@@ -23416,6 +23418,25 @@ One user message and optional uploaded context for the Skill Authoring assistant
 | updated_by_name | string |  | No |
 | visibility | string |  | Yes |
 
+#### SkillDraftConflictDetails
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| current_file_content | string |  | No |
+| current_file_hash | string |  | No |
+| current_file_path | string |  | No |
+| current_file_updated_at | integer |  | No |
+| current_updated_at | integer |  | Yes |
+| expected_updated_at | integer |  | Yes |
+
+#### SkillDraftConflictResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string |  | Yes |
+| details | [SkillDraftConflictDetails](#skilldraftconflictdetails) |  | Yes |
+| message | string |  | Yes |
+
 #### SkillDraftFileCheckItemPayload
 
 | Name | Type | Description | Required |
@@ -23570,6 +23591,13 @@ How a draft file's content is stored.
 | expected_updated_at | integer |  | No |
 | icon | string |  | No |
 | tags | [ string ] |  | No |
+
+#### SkillNotFoundResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string |  | Yes |
+| message | string |  | Yes |
 
 #### SkillPublishPayload
 
