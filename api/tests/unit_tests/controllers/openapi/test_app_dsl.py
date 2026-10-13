@@ -373,3 +373,61 @@ def test_a_draft_changed_during_the_save_answers_draft_changed(
             cast(_EndpointView, api.post).__handler__(api, _CONTEXT, **kwargs)
 
     assert exc_info.value.code == 409
+
+
+def _raw_dsl(graph: object) -> str:
+    return yaml.safe_dump({"app": {"mode": "workflow", "name": "x"}, "workflow": {"graph": graph}})
+
+
+_MALFORMED_GRAPHS = [
+    pytest.param({"nodes": [{"id": "a", "data": None}], "edges": []}, id="null-data"),
+    pytest.param({"nodes": [{"id": "a", "data": {"type": "start"}}], "edges": 5}, id="scalar-edges"),
+    pytest.param({"nodes": [5, "x"], "edges": []}, id="scalar-nodes"),
+    pytest.param({"nodes": [{"data": {"type": "start"}}], "edges": []}, id="no-id"),
+    pytest.param({"nodes": "start", "edges": []}, id="scalar-node-list"),
+]
+
+
+@pytest.mark.parametrize("graph", _MALFORMED_GRAPHS)
+@pytest.mark.usefixtures("app_query_services", "credentials")
+def test_check_reports_malformed_graphs_as_issues(app: Flask, graph: object) -> None:
+    response = _check(app, DslCheckPayload(yaml_content=_raw_dsl(graph)))
+
+    assert response.valid is False
+    assert {row.code for row in response.issues} == {IssueCode.GRAPH_INVALID}
+
+
+@pytest.mark.parametrize("graph", _MALFORMED_GRAPHS)
+@pytest.mark.usefixtures("credentials")
+def test_import_refuses_malformed_graphs(
+    app_query_services: ControllerTestServices, app: Flask, monkeypatch: pytest.MonkeyPatch, graph: object
+) -> None:
+    import_app = Mock()
+    monkeypatch.setattr(app_query_services.apps.imports, "import_app", import_app)
+
+    api = AppDslImportApi()
+    with app.test_request_context("/openapi/v1/workspaces/workspace-1/apps/imports", method="POST"):
+        with pytest.raises(DslInvalid) as exc_info:
+            cast(_EndpointView, api.post).__handler__(
+                api,
+                _CONTEXT,
+                workspace_id="workspace-1",
+                body=AppDslImportPayload(mode="yaml-content", yaml_content=_raw_dsl(graph)),
+            )
+
+    import_app.assert_not_called()
+    assert {d.type for d in exc_info.value.details or []} == {IssueCode.GRAPH_INVALID}
+
+
+@pytest.mark.parametrize("environment_variables", [5, "KEY", [5], [None]])
+@pytest.mark.usefixtures("app_query_services", "credentials")
+def test_check_refuses_malformed_environment_variables(app: Flask, environment_variables: object) -> None:
+    yaml_content = yaml.safe_dump(
+        {
+            "app": {"mode": "workflow", "name": "x"},
+            "workflow": {"graph": {"nodes": [], "edges": []}, "environment_variables": environment_variables},
+        }
+    )
+
+    with pytest.raises(BadRequest, match="environment_variables"):
+        _check(app, DslCheckPayload(yaml_content=yaml_content))

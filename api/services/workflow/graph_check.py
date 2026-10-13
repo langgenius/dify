@@ -111,11 +111,6 @@ class _Graph:
     mode: AppMode
 
 
-def _raw_data(node: Mapping[str, Any]) -> Mapping[str, Any]:
-    data = node.get("data")
-    return data if isinstance(data, Mapping) else {}
-
-
 def _data_loc(node_id: str, *path: str | int) -> tuple[str | int, ...]:
     return ("nodes", node_id, "data", *path)
 
@@ -143,7 +138,7 @@ def _read_known_node(node_id: str, raw_data: Mapping[str, Any], node_class: type
 
 
 def _read_node(node_id: str, raw: Mapping[str, Any]) -> _Node:
-    raw_data = _raw_data(raw)
+    raw_data: Mapping[str, Any] = raw["data"]
     node_type = str(raw_data.get("type", ""))
     try:
         node_class = resolve_workflow_node_class(
@@ -273,14 +268,44 @@ _CHECKS: Final[tuple[Callable[[_Graph], Iterable[GraphIssue]], ...]] = (
 )
 
 
-def check_graph(graph: Mapping[str, Any], *, mode: AppMode, resources: ResourceCheck | None = None) -> list[GraphIssue]:
+def _shape_issues(graph: Mapping[str, Any]) -> list[GraphIssue]:
+    """The shape every later check reads: a list of nodes, each a mapping with a string id and mapping data,
+    and a list of edge mappings."""
     nodes = graph.get("nodes")
     if not isinstance(nodes, list):
         return [GraphIssue(IssueCode.GRAPH_INVALID, "graph.nodes must be a list", None, ("nodes",))]
-    raw_nodes = {str(n.get("id")): n for n in nodes if isinstance(n, Mapping) and n.get("type") != _CANVAS_NOTE_TYPE}
+    issues: list[GraphIssue] = []
+    for index, node in enumerate(nodes):
+        node_id = node.get("id") if isinstance(node, Mapping) else None
+        if not isinstance(node, Mapping):
+            issues.append(GraphIssue(IssueCode.GRAPH_INVALID, "A node must be a mapping", None, ("nodes", index)))
+        elif not isinstance(node_id, str) or not node_id:
+            issues.append(GraphIssue(IssueCode.GRAPH_INVALID, "A node needs a string id", None, ("nodes", index, "id")))
+        elif not isinstance(node.get("data"), Mapping):
+            issues.append(
+                GraphIssue(IssueCode.GRAPH_INVALID, "The node data must be a mapping", node_id, _data_loc(node_id))
+            )
+    edges = graph.get("edges")
+    if edges is None:
+        return issues
+    if not isinstance(edges, list):
+        return [*issues, GraphIssue(IssueCode.GRAPH_INVALID, "graph.edges must be a list", None, ("edges",))]
+    issues.extend(
+        GraphIssue(IssueCode.GRAPH_INVALID, "An edge must be a mapping", None, ("edges", index))
+        for index, edge in enumerate(edges)
+        if not isinstance(edge, Mapping)
+    )
+    return issues
+
+
+def check_graph(graph: Mapping[str, Any], *, mode: AppMode, resources: ResourceCheck | None = None) -> list[GraphIssue]:
+    shape_issues = _shape_issues(graph)
+    if shape_issues:
+        return shape_issues
+    raw_nodes = {str(n["id"]): n for n in graph["nodes"] if n.get("type") != _CANVAS_NOTE_TYPE}
     view = _Graph(
         nodes={node_id: _read_node(node_id, raw) for node_id, raw in raw_nodes.items()},
-        edges=[e for e in graph.get("edges") or [] if isinstance(e, Mapping)],
+        edges=graph.get("edges") or [],
         mode=mode,
     )
     issues = [issue for check in _CHECKS for issue in check(view)]

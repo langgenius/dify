@@ -115,11 +115,11 @@ def _target_app(session: Session, context: RequestContext, app_id: str | None) -
 
 
 def _environment(workflow: Mapping[str, Any]) -> dict[str, VariableBase]:
+    items = workflow.get("environment_variables") or []
+    if not isinstance(items, list) or not all(isinstance(item, Mapping) for item in items):
+        raise DslNotCheckableError("workflow.environment_variables must be a list of mappings")
     try:
-        variables = [
-            variable_factory.build_environment_variable_from_mapping(item)
-            for item in workflow.get("environment_variables") or []
-        ]
+        variables = [variable_factory.build_environment_variable_from_mapping(item) for item in items]
     except VariableError as error:
         raise DslNotCheckableError(str(error)) from error
     return {variable.name: variable for variable in variables}

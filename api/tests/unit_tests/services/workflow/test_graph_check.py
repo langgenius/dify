@@ -47,6 +47,31 @@ def test_graph_without_nodes() -> None:
     assert _codes({"nodes": "x"}) == [IssueCode.GRAPH_INVALID]
 
 
+@pytest.mark.parametrize(
+    ("graph", "loc"),
+    [
+        ({"nodes": [{"id": "a", "data": None}], "edges": []}, ("nodes", "a", "data")),
+        ({"nodes": [{"id": "a", "data": [1]}], "edges": []}, ("nodes", "a", "data")),
+        ({"nodes": [{"id": "a"}], "edges": []}, ("nodes", "a", "data")),
+        ({"nodes": [5], "edges": []}, ("nodes", 0)),
+        ({"nodes": [START, None], "edges": []}, ("nodes", 1)),
+        ({"nodes": [{"data": {"type": "start"}}], "edges": []}, ("nodes", 0, "id")),
+        ({"nodes": [{"id": {"x": 1}, "data": {"type": "start"}}], "edges": []}, ("nodes", 0, "id")),
+        ({"nodes": [{"id": "", "data": {"type": "start"}}], "edges": []}, ("nodes", 0, "id")),
+        ({"nodes": [START], "edges": 5}, ("edges",)),
+        ({"nodes": [START], "edges": "start->end"}, ("edges",)),
+        ({"nodes": [START], "edges": [{"source": "start", "target": "end"}, 7]}, ("edges", 1)),
+    ],
+)
+def test_malformed_shapes_are_graph_issues_not_errors(graph: Mapping[str, object], loc: tuple[object, ...]) -> None:
+    issues = check_graph(graph, mode=AppMode.WORKFLOW, resources=credential_check("ws-1", {}, cast(Session, Mock())))
+    assert [(i.code, i.loc) for i in issues] == [(IssueCode.GRAPH_INVALID, loc)]
+
+
+def test_missing_edges_are_no_edges() -> None:
+    assert _codes({"nodes": [START]}) == []
+
+
 def test_mode_incompatible_nodes() -> None:
     answer = _node("a", {"type": "answer", "title": "A", "answer": "hi"})
     issues = check_graph({"nodes": [START, answer], "edges": []}, mode=AppMode.WORKFLOW)
