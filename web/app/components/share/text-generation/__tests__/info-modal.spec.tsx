@@ -1,7 +1,7 @@
 import type { SiteInfo } from '@/models/share'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import InfoModal from '../info-modal'
+import { AppInfoDialog } from '../info-modal'
 
 const siteInfo: SiteInfo = {
   title: 'Test App',
@@ -12,17 +12,17 @@ const siteInfo: SiteInfo = {
 
 const renderModal = async (data: SiteInfo | undefined = siteInfo) => {
   const onClose = vi.fn()
-  render(<InfoModal isShow onClose={onClose} data={data} />)
+  render(<AppInfoDialog open onOpenChange={onClose} data={data} />)
   await act(async () => vi.runAllTimers())
   return onClose
 }
 
-describe('InfoModal', () => {
+describe('AppInfoDialog', () => {
   beforeEach(() => vi.useFakeTimers({ shouldAdvanceTime: true }))
   afterEach(() => vi.useRealTimers())
 
   it('does not expose app information while hidden', () => {
-    render(<InfoModal isShow={false} onClose={vi.fn()} data={siteInfo} />)
+    render(<AppInfoDialog open={false} onOpenChange={vi.fn()} data={siteInfo} />)
 
     expect(screen.queryByText('Test App')).not.toBeInTheDocument()
   })
@@ -37,6 +37,14 @@ describe('InfoModal', () => {
     await renderModal({ ...siteInfo, title: '' })
 
     expect(screen.getByRole('dialog', { name: 'common.userProfile.about' })).toBeInTheDocument()
+  })
+
+  it('associates the existing introduction with the dialog', async () => {
+    await renderModal({ ...siteInfo, description: 'Assistant for daily work' })
+
+    expect(screen.getByRole('dialog', { name: 'Test App' })).toHaveAccessibleDescription(
+      'Assistant for daily work',
+    )
   })
 
   it('shows the copyright and custom disclaimer when provided', async () => {
@@ -57,6 +65,6 @@ describe('InfoModal', () => {
 
     fireEvent.click(screen.getByRole('button'))
 
-    expect(onClose).toHaveBeenCalledOnce()
+    expect(onClose).toHaveBeenCalledWith(false, expect.anything())
   })
 })

@@ -22,7 +22,7 @@ import { AccessMode } from '@/models/access-control'
 import { usePathname, useRouter } from '@/next/navigation'
 import { resolveWebAppAddress } from '@/service/webapp-address'
 import { webAppLogout } from '@/service/webapp-auth'
-import InfoModal from './info-modal'
+import { AppInfoDialog } from './info-modal'
 
 type Props = Readonly<
   Pick<DropdownMenuContentProps, 'placement'> & {
@@ -43,12 +43,7 @@ function MenuDropdown({ data, placement, hideLogout }: Props) {
   }
 
   const { theme, setTheme } = useTheme()
-  const [show, setShow] = useState(false)
-  const handleOpenInfoModal = () => {
-    queueMicrotask(() => {
-      setShow(true)
-    })
-  }
+  const [isInfoOpen, setIsInfoOpen] = useState(false)
 
   return (
     <>
@@ -131,7 +126,7 @@ function MenuDropdown({ data, placement, hideLogout }: Props) {
               </span>
             </DropdownMenuLinkItem>
           )}
-          <DropdownMenuItem className="system-md-regular" onClick={handleOpenInfoModal}>
+          <DropdownMenuItem className="system-md-regular" onClick={() => setIsInfoOpen(true)}>
             {t(($) => $['userProfile.about'], { ns: 'common' })}
           </DropdownMenuItem>
           {!(
@@ -145,15 +140,7 @@ function MenuDropdown({ data, placement, hideLogout }: Props) {
           )}
         </DropdownMenuContent>
       </DropdownMenu>
-      {show && (
-        <InfoModal
-          isShow={show}
-          onClose={() => {
-            setShow(false)
-          }}
-          data={data}
-        />
-      )}
+      <AppInfoDialog open={isInfoOpen} onOpenChange={setIsInfoOpen} data={data} />
     </>
   )
 }

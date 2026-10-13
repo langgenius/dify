@@ -1,30 +1,30 @@
 import type { SiteInfo } from '@/models/share'
-import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import * as React from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { appDefaultIconBackground } from '@/config'
 
-type Props = Readonly<{
+type AppInfoDialogProps = Readonly<{
   data?: SiteInfo
-  isShow: boolean
-  onClose: () => void
+  open: boolean
+  onOpenChange: (open: boolean) => void
 }>
 
-const InfoModal = ({ isShow, onClose, data }: Props) => {
+export function AppInfoDialog({ open, onOpenChange, data }: AppInfoDialogProps) {
   const { t } = useTranslation(['common'])
-  const [currentYear] = React.useState(() => new Date().getFullYear())
+  const [currentYear] = useState(() => new Date().getFullYear())
 
   return (
-    <Dialog
-      open={isShow}
-      onOpenChange={(open) => {
-        if (!open) onClose()
-      }}
-    >
-      <DialogContent className="w-full max-w-100 min-w-100 overflow-hidden! border-none p-0! text-left align-middle">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="w-100 min-w-0 border-none p-0! text-left align-middle">
         <DialogClose
           render={
             <IconButton
@@ -37,7 +37,7 @@ const InfoModal = ({ isShow, onClose, data }: Props) => {
           }
         />
 
-        <div className={cn('flex flex-col items-center gap-4 px-4 pt-10 pb-8')}>
+        <div className="flex flex-col items-center gap-4 px-4 pt-10 pb-8">
           <AppIcon
             size="xxl"
             iconType={data?.icon_type}
@@ -49,10 +49,13 @@ const InfoModal = ({ isShow, onClose, data }: Props) => {
             <DialogTitle className="system-xl-semibold text-text-secondary">
               {data?.title || t(($) => $['userProfile.about'], { ns: 'common' })}
             </DialogTitle>
-            <div className="mt-1 system-xl-medium text-text-tertiary">{data?.description}</div>
+            {data?.description && (
+              <DialogDescription className="mt-1 system-xl-medium wrap-break-word text-text-tertiary">
+                {data.description}
+              </DialogDescription>
+            )}
           </div>
           <div className="system-xs-regular text-text-tertiary">
-            {/* copyright */}
             {data?.copyright && (
               <div>
                 Copyright © {currentYear} {data?.copyright}. All Rights Reserved.
@@ -65,5 +68,3 @@ const InfoModal = ({ isShow, onClose, data }: Props) => {
     </Dialog>
   )
 }
-
-export default InfoModal
