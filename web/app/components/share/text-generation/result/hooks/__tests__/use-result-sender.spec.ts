@@ -1,5 +1,10 @@
 import type { TextGenerationTranslate } from '../../../types'
 import type { ResultInputValue } from '../../result-request'
+import type {
+  createWorkflowEventsSubscription,
+  WorkflowEventsHandlers,
+} from '../../workflow-events-subscription'
+import type { createWorkflowStreamHandlers } from '../../workflow-stream-handlers'
 import type { ResultRunStateController } from '../use-result-run-state'
 import type { PromptConfig } from '@/models/debug'
 import type { AppSourceType } from '@/service/share'
@@ -12,6 +17,7 @@ import { useResultSender } from '../use-result-sender'
 
 const {
   buildResultRequestDataMock,
+  createWorkflowEventsSubscriptionMock,
   createWorkflowStreamHandlersMock,
   mockTrackEvent,
   mockWebAppState,
@@ -19,8 +25,10 @@ const {
   sendWorkflowMessageMock,
   sleepMock,
   validateResultRequestMock,
+  workflowEventsSubscription,
 } = vi.hoisted(() => ({
   buildResultRequestDataMock: vi.fn(),
+  createWorkflowEventsSubscriptionMock: vi.fn(),
   createWorkflowStreamHandlersMock: vi.fn(),
   mockTrackEvent: vi.fn(),
   mockWebAppState: {
@@ -32,6 +40,11 @@ const {
   sendWorkflowMessageMock: vi.fn(),
   sleepMock: vi.fn(),
   validateResultRequestMock: vi.fn(),
+  workflowEventsSubscription: {
+    start: vi.fn(),
+    prepare: vi.fn(),
+    dispose: vi.fn(),
+  },
 }))
 
 vi.mock('@/app/components/base/amplitude/web-app-event', () => ({
@@ -67,8 +80,16 @@ vi.mock('../../result-request', () => ({
   validateResultRequest: (...args: unknown[]) => validateResultRequestMock(...args),
 }))
 
-vi.mock('../../workflow-stream-handlers', () => ({
+vi.mock('../../workflow-stream-handlers', async () => ({
+  ...(await vi.importActual<typeof import('../../workflow-stream-handlers')>(
+    '../../workflow-stream-handlers',
+  )),
   createWorkflowStreamHandlers: (...args: unknown[]) => createWorkflowStreamHandlersMock(...args),
+}))
+
+vi.mock('../../workflow-events-subscription', () => ({
+  createWorkflowEventsSubscription: (...args: unknown[]) =>
+    createWorkflowEventsSubscriptionMock(...args),
 }))
 
 type RunStateHarness = {
@@ -92,6 +113,8 @@ type CompletionHandlers = {
   onError: () => void
   onMessageReplace: (messageReplace: { answer: string }) => void
 }
+
+type WorkflowHandlerOptions = Parameters<typeof createWorkflowStreamHandlers>[0]
 
 const createRunStateHarness = (): RunStateHarness => {
   const state: RunStateHarness['state'] = {
@@ -248,6 +271,8 @@ describe('useResultSender', () => {
     validateResultRequestMock.mockReturnValue({ canSend: true })
     buildResultRequestDataMock.mockReturnValue({ inputs: { name: 'Alice' } })
     createWorkflowStreamHandlersMock.mockReturnValue({ onWorkflowFinished: vi.fn() })
+    createWorkflowEventsSubscriptionMock.mockReturnValue(workflowEventsSubscription)
+    workflowEventsSubscription.prepare.mockResolvedValue(true)
     sendCompletionMessageMock.mockResolvedValue(undefined)
     sendWorkflowMessageMock.mockResolvedValue(undefined)
     sleepMock.mockImplementation(() => new Promise<void>(() => {}))
@@ -414,31 +439,137 @@ describe('useResultSender', () => {
     })
   })
 
-  it('should configure workflow handlers for installed apps as non-public', async () => {
-    const harness = createRunStateHarness()
+  it.each([AppSourceTypeEnum.installedApp, AppSourceTypeEnum.tryApp])(
+    'should keep %s workflow handlers on the existing non-public path',
+    async (appSourceType) => {
+      const harness = createRunStateHarness()
 
-    const { result } = renderSender({
-      appSourceType: AppSourceTypeEnum.installedApp,
+      const { result } = renderSender({
+        appSourceType,
+        isWorkflow: true,
+        runState: harness.runState,
+      })
+
+      await act(async () => {
+        expect(await result.current.handleSend()).toBe(true)
+      })
+
+      expect(createWorkflowStreamHandlersMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          isPublicAPI: false,
+        }),
+      )
+      expect(sendWorkflowMessageMock).toHaveBeenCalledWith(
+        { inputs: { name: 'Alice' } },
+        expect.any(Object),
+        appSourceType,
+        'app-1',
+      )
+      expect(mockTrackEvent).not.toHaveBeenCalled()
+      expect(createWorkflowEventsSubscriptionMock).not.toHaveBeenCalled()
+    },
+  )
+
+  it('should keep a paused approval available after the generation timeout has elapsed', async () => {
+    const harness = createRunStateHarness()
+    let expireGenerationTimeout: (() => void) | undefined
+    let markPausedTransportEnded: (() => void) | undefined
+    let isTimedOut: (() => boolean) | undefined
+
+    sleepMock.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          expireGenerationTimeout = resolve
+        }),
+    )
+    createWorkflowStreamHandlersMock.mockImplementation((options: WorkflowHandlerOptions) => {
+      markPausedTransportEnded = options.markEnded
+      isTimedOut = options.isTimedOut
+      return {}
+    })
+    const { result, onCompleted } = renderSender({
       isWorkflow: true,
       runState: harness.runState,
     })
 
     await act(async () => {
-      expect(await result.current.handleSend()).toBe(true)
+      await result.current.handleSend()
+      markPausedTransportEnded?.()
+      expireGenerationTimeout?.()
+      await Promise.resolve()
     })
 
-    expect(createWorkflowStreamHandlersMock).toHaveBeenCalledWith(
+    expect(isTimedOut?.()).toBe(false)
+    expect(harness.runState.resetRunState).not.toHaveBeenCalled()
+    expect(onCompleted).not.toHaveBeenCalled()
+    expect(workflowEventsSubscription.dispose).not.toHaveBeenCalled()
+  })
+
+  it('should release a public workflow subscription before a new run and on unmount', async () => {
+    const harness = createRunStateHarness()
+    let onPaused: ((workflowRunId: string, handlers: WorkflowEventsHandlers) => void) | undefined
+    createWorkflowStreamHandlersMock.mockImplementation((options: WorkflowHandlerOptions) => {
+      onPaused = options.onPaused
+      return { isPublicAPI: options.isPublicAPI }
+    })
+    const { result, unmount } = renderSender({
+      isWorkflow: true,
+      runState: harness.runState,
+    })
+
+    await act(async () => {
+      await result.current.handleSend()
+    })
+    expect(createWorkflowEventsSubscriptionMock).toHaveBeenCalledOnce()
+    const streamHandlers: WorkflowEventsHandlers = { isPublicAPI: true }
+    onPaused?.('run-1', streamHandlers)
+    expect(workflowEventsSubscription.start).toHaveBeenCalledWith(
+      'run-1',
       expect.objectContaining({
-        isPublicAPI: false,
+        isPublicAPI: true,
+        getAbortController: expect.any(Function),
       }),
     )
-    expect(sendWorkflowMessageMock).toHaveBeenCalledWith(
-      { inputs: { name: 'Alice' } },
-      expect.any(Object),
-      AppSourceTypeEnum.installedApp,
-      'app-1',
+    expect(await result.current.prepareHumanInputSubmission()).toBe(true)
+    expect(workflowEventsSubscription.prepare).toHaveBeenCalledOnce()
+
+    harness.runState.isResponding = false
+    await act(async () => {
+      await result.current.handleSend()
+    })
+    expect(workflowEventsSubscription.dispose).toHaveBeenCalledOnce()
+    expect(createWorkflowEventsSubscriptionMock).toHaveBeenCalledTimes(2)
+
+    unmount()
+    expect(workflowEventsSubscription.dispose).toHaveBeenCalledTimes(2)
+  })
+
+  it('releases a stopped public run and lets the user start another run', async () => {
+    const harness = createRunStateHarness()
+    let onAbort: (() => void) | undefined
+    createWorkflowEventsSubscriptionMock.mockImplementation(
+      (options: Parameters<typeof createWorkflowEventsSubscription>[0]) => {
+        onAbort = options?.onAbort
+        return workflowEventsSubscription
+      },
     )
-    expect(mockTrackEvent).not.toHaveBeenCalled()
+    const { result, onCompleted } = renderSender({ isWorkflow: true, runState: harness.runState })
+    await act(async () => {
+      await result.current.handleSend()
+    })
+    await act(async () => {
+      onAbort?.()
+    })
+    expect(harness.runState.isResponding).toBe(false)
+    expect(harness.runState.getWorkflowProcessData()).toMatchObject({
+      status: 'stopped',
+      humanInputFormDataList: [],
+    })
+    expect(onCompleted).toHaveBeenCalledWith('', undefined, false)
+    await act(async () => {
+      expect(await result.current.handleSend()).toBe(true)
+    })
+    expect(sendWorkflowMessageMock).toHaveBeenCalledTimes(2)
   })
 
   it('should stringify non-Error workflow failures', async () => {

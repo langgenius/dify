@@ -40,6 +40,7 @@ type IGenerationItemProps = {
   className?: string
   isError: boolean
   onRetry: () => void
+  prepareHumanInputSubmission?: () => Promise<boolean>
   content: any
   messageId?: string | null
   conversationId?: string
@@ -70,6 +71,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   className,
   isError,
   onRetry,
+  prepareHumanInputSubmission,
   content,
   messageId,
   isLoading,
@@ -187,11 +189,12 @@ const GenerationItem: FC<IGenerationItemProps> = ({
     async (formToken: string, formData: HumanInputFormSubmitData) => {
       if (appSourceType === AppSourceType.installedApp)
         await submitHumanInputFormService(formToken, formData)
-      else if (appSourceType === AppSourceType.webApp)
+      else if (appSourceType === AppSourceType.webApp) {
+        if (prepareHumanInputSubmission && !(await prepareHumanInputSubmission())) return
         await submitWebAppHumanInputForm(formToken, formData)
-      else await submitHumanInputForm(formToken, formData)
+      } else await submitHumanInputForm(formToken, formData)
     },
-    [appSourceType],
+    [appSourceType, prepareHumanInputSubmission],
   )
 
   return (

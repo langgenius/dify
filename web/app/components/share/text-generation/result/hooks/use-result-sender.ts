@@ -11,6 +11,7 @@ import { AppSourceType, sendCompletionMessage, sendWorkflowMessage } from '@/ser
 import { sleep } from '@/utils'
 import { buildResultRequestData, validateResultRequest } from '../result-request'
 import { createWorkflowStreamHandlers } from '../workflow-stream-handlers'
+import { useWebAppWorkflowEvents } from './use-webapp-workflow-events'
 
 type Notify = (payload: { type: 'error' | 'info' | 'warning'; message: string }) => void
 type UseResultSenderOptions = {
@@ -61,6 +62,11 @@ export const useResultSender = ({
 }: UseResultSenderOptions) => {
   const { clearMoreLikeThis } = runState
   const appMode = useWebAppStore((state) => state.appInfo?.mode)
+  const {
+    createStreamHandlers: createWebAppStreamHandlers,
+    prepareHumanInputSubmission,
+    reset: resetWebAppWorkflowEvents,
+  } = useWebAppWorkflowEvents(runState)
 
   const handleSend = useCallback(async () => {
     if (runState.isResponding) {
@@ -90,6 +96,7 @@ export const useResultSender = ({
       visionConfig,
     })
 
+    resetWebAppWorkflowEvents()
     runState.prepareForNewRun()
 
     if (!isPC) {
@@ -118,7 +125,11 @@ export const useResultSender = ({
     })()
 
     if (isWorkflow) {
-      const otherOptions = createWorkflowStreamHandlers({
+      const createStreamHandlers =
+        appSourceType === AppSourceType.webApp
+          ? createWebAppStreamHandlers
+          : createWorkflowStreamHandlers
+      const otherOptions = createStreamHandlers({
         getCompletionRes: runState.getCompletionRes,
         getWorkflowProcessData: runState.getWorkflowProcessData,
         isPublicAPI: appSourceType === AppSourceType.webApp,
@@ -205,6 +216,7 @@ export const useResultSender = ({
     appMode,
     appSourceType,
     completionFiles,
+    createWebAppStreamHandlers,
     inputs,
     isCallBatchAPI,
     isPC,
@@ -214,6 +226,7 @@ export const useResultSender = ({
     onRunStart,
     onShowRes,
     promptConfig,
+    resetWebAppWorkflowEvents,
     runState,
     t,
     taskId,
@@ -241,5 +254,6 @@ export const useResultSender = ({
 
   return {
     handleSend,
+    prepareHumanInputSubmission,
   }
 }

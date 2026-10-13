@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { AppSourceType } from '@/service/share'
 import GenerationItem from '../index'
 
@@ -317,6 +318,46 @@ describe('GenerationItem', () => {
       expect(unusedSubmit).not.toHaveBeenCalled()
       expect(mockSubmitHumanInputFormWorkflow).not.toHaveBeenCalled()
       expect(screen.getByText('workflow-body:LOG')).toBeInTheDocument()
+    },
+  )
+
+  it.each([true, false])(
+    'waits for approval events and submits only when ready is %s',
+    async (ready) => {
+      const user = userEvent.setup()
+      let resolvePreparation: ((ready: boolean) => void) | undefined
+      const prepareHumanInputSubmission = vi.fn(
+        () =>
+          new Promise<boolean>((resolve) => {
+            resolvePreparation = resolve
+          }),
+      )
+      render(
+        <GenerationItem
+          appSourceType={AppSourceType.webApp}
+          content=""
+          isError={false}
+          isWorkflow
+          onRetry={vi.fn()}
+          prepareHumanInputSubmission={prepareHumanInputSubmission}
+          siteInfo={null}
+          workflowProcessData={{ status: WorkflowRunningStatus.Paused, tracing: [], expand: false }}
+        />,
+      )
+      await user.click(screen.getByRole('button', { name: 'submit-human-input' }))
+      expect(prepareHumanInputSubmission).toHaveBeenCalledOnce()
+      expect(mockSubmitWebAppHumanInputForm).not.toHaveBeenCalled()
+      await act(async () => resolvePreparation?.(ready))
+      if (ready) {
+        expect(mockSubmitWebAppHumanInputForm).toHaveBeenCalledExactlyOnceWith('token-1', {
+          inputs: { name: 'dify' },
+          action: 'submit',
+        })
+      } else {
+        expect(mockSubmitWebAppHumanInputForm).not.toHaveBeenCalled()
+      }
+      expect(mockSubmitHumanInputForm).not.toHaveBeenCalled()
+      expect(mockSubmitHumanInputFormWorkflow).not.toHaveBeenCalled()
     },
   )
 
