@@ -1,0 +1,185 @@
+"""Exact installed JSON declaration; fake only the existing daemon owners."""
+
+import json
+from datetime import UTC, datetime
+from pathlib import Path
+
+import pytest
+
+from core.plugin.entities.plugin import PluginInstallation
+from core.plugin.entities.plugin_daemon import PluginToolProviderEntity
+from services.dify_builder import json_tool_metadata as metadata
+from services.dify_builder.execution_contracts import BuilderExecutionPolicyError, QualifiedJsonToolBinding
+
+TENANT = "tenant-1"
+FIXTURE = Path(__file__).parent / "fixtures/json_parse_static_provider.json"
+
+
+def _provider(**changes: object) -> PluginToolProviderEntity:
+    return PluginToolProviderEntity.model_validate(
+        {
+            "provider": metadata.NATIVE_PROVIDER_NAME,
+            "plugin_id": metadata.PLUGIN_ID,
+            "plugin_unique_identifier": metadata.UNIQUE_IDENTIFIER,
+            "declaration": json.loads(FIXTURE.read_text()),
+            **changes,
+        }
+    )
+
+
+def _installation(**changes: object) -> PluginInstallation:
+    now = datetime(2026, 10, 12, tzinfo=UTC)
+    return PluginInstallation.model_validate(
+        {
+            "id": "installation-1",
+            "created_at": now,
+            "updated_at": now,
+            "tenant_id": TENANT,
+            "endpoints_setups": 0,
+            "endpoints_active": 0,
+            "runtime_type": "local",
+            "source": "marketplace",
+            "meta": {},
+            "plugin_id": metadata.PLUGIN_ID,
+            "plugin_unique_identifier": metadata.UNIQUE_IDENTIFIER,
+            "version": metadata.VERSION,
+            "checksum": metadata.CHECKSUM,
+            "declaration": {
+                "version": metadata.VERSION,
+                "author": "langgenius",
+                "name": "json_process",
+                "description": {"en_US": "JSON Process"},
+                "icon": "icon.svg",
+                "label": {"en_US": "JSON Process"},
+                "created_at": now,
+                "resource": {"memory": 1},
+                "plugins": {},
+            },
+            **changes,
+        }
+    )
+
+
+def _owners(monkeypatch, installations=None, provider=None, error=None):
+    calls = []
+
+    class Installer:
+        def fetch_plugin_installation_by_ids(self, tenant_id, plugin_ids):
+            calls.append(("install", tenant_id, plugin_ids))
+            if error:
+                raise error
+            return [_installation()] if installations is None else installations
+
+    class Manager:
+        def fetch_tool_provider(self, tenant_id, provider_id):
+            calls.append(("provider", tenant_id, provider_id))
+            if error:
+                raise error
+            return _provider() if provider is None else provider
+
+    monkeypatch.setattr(metadata, "PluginInstaller", Installer)
+    monkeypatch.setattr(metadata, "PluginToolManager", Manager)
+    return calls
+
+
+def _expected(actual: metadata.InstalledJsonParse) -> QualifiedJsonToolBinding:
+    return QualifiedJsonToolBinding(
+        node_id="node2",
+        **{field: getattr(actual, field) for field in actual.__dataclass_fields__},
+        final_parameters_digest="a" * 64,
+    )
+
+
+def test_reviewed_normalized_declaration_matches_frozen_digests(monkeypatch):
+    calls = _owners(monkeypatch)
+    actual = metadata.resolve_installed_json_parse(tenant_id=TENANT)
+    assert actual.provider_schema_digest == metadata.PROVIDER_SCHEMA_DIGEST
+    assert actual.tool_schema_digest == metadata.TOOL_SCHEMA_DIGEST
+    assert actual.qualification_digest == metadata.QUALIFICATION_DIGEST
+    assert calls == [
+        ("install", TENANT, [metadata.PLUGIN_ID]),
+        ("provider", TENANT, metadata.PROVIDER_ID),
+    ]
+    metadata.require_same_json_installation(_expected(actual), actual)
+
+
+@pytest.mark.parametrize("count", [0, 2])
+def test_zero_or_multiple_installations_refuse(monkeypatch, count):
+    _owners(monkeypatch, installations=[_installation()] * count)
+    with pytest.raises(BuilderExecutionPolicyError, match="installed_json_tool_unavailable"):
+        metadata.resolve_installed_json_parse(tenant_id=TENANT)
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("tenant_id", "other"),
+        ("plugin_id", "other"),
+        ("plugin_unique_identifier", "other"),
+        ("version", "0.0.9"),
+        ("checksum", "f" * 64),
+        ("runtime_type", "serverless"),
+        ("source", "remote"),
+    ],
+)
+def test_installation_identity_or_runtime_drift_refuses(monkeypatch, field, value):
+    _owners(monkeypatch, installations=[_installation(**{field: value})])
+    with pytest.raises(BuilderExecutionPolicyError, match="unsupported_json_tool_installation"):
+        metadata.resolve_installed_json_parse(tenant_id=TENANT)
+
+
+@pytest.mark.parametrize("field", ["provider", "plugin_id", "plugin_unique_identifier"])
+def test_provider_identity_drift_refuses(monkeypatch, field):
+    _owners(monkeypatch, provider=_provider(**{field: "other"}))
+    with pytest.raises(BuilderExecutionPolicyError, match="unsupported_json_tool_installation"):
+        metadata.resolve_installed_json_parse(tenant_id=TENANT)
+
+
+@pytest.mark.parametrize(
+    ("mutation", "value"),
+    [
+        ("credential", [{"name": "secret", "type": "secret-input"}]),
+        ("oauth", {"client_schema": [], "credentials_schema": []}),
+        ("dynamic", True),
+        ("output", {"type": "object"}),
+        ("default", False),
+    ],
+)
+def test_schema_credential_oauth_dynamic_or_default_drift_refuses(monkeypatch, mutation, value):
+    provider = _provider().model_dump(mode="json")
+    declaration = provider["declaration"]
+    if mutation == "credential":
+        declaration["credentials_schema"] = value
+    elif mutation == "oauth":
+        declaration["oauth_schema"] = value
+    elif mutation == "dynamic":
+        declaration["tools"][0]["has_runtime_parameters"] = value
+    elif mutation == "output":
+        declaration["tools"][0]["output_schema"] = value
+    else:
+        declaration["tools"][0]["parameters"][2]["default"] = value
+    _owners(monkeypatch, provider=PluginToolProviderEntity.model_validate(provider))
+    with pytest.raises(BuilderExecutionPolicyError, match="unsupported_json_tool_installation"):
+        metadata.resolve_installed_json_parse(tenant_id=TENANT)
+
+
+def test_transport_failure_is_sanitized(monkeypatch):
+    _owners(monkeypatch, error=RuntimeError("private daemon response"))
+    with pytest.raises(BuilderExecutionPolicyError) as exc:
+        metadata.resolve_installed_json_parse(tenant_id=TENANT)
+    assert "private daemon response" not in str(exc.value)
+
+
+def test_malformed_native_response_is_sanitized(monkeypatch):
+    _owners(monkeypatch, provider={"error": "private validation detail"})
+    with pytest.raises(BuilderExecutionPolicyError) as exc:
+        metadata.resolve_installed_json_parse(tenant_id=TENANT)
+    assert "private validation detail" not in str(exc.value)
+
+
+def test_persisted_binding_drift_refuses(monkeypatch):
+    _owners(monkeypatch)
+    actual = metadata.resolve_installed_json_parse(tenant_id=TENANT)
+    expected = _expected(actual).model_copy(update={"installation_id": "other"})
+    with pytest.raises(BuilderExecutionPolicyError, match="json_tool_installation_changed"):
+        metadata.require_same_json_installation(expected, actual)

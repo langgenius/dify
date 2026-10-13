@@ -2,7 +2,7 @@ import json
 import logging
 import mimetypes
 import time
-from collections.abc import Generator, Mapping
+from collections.abc import Callable, Generator, Mapping
 from os import listdir, path
 from threading import Lock
 from typing import TYPE_CHECKING, Any, Literal, Protocol, cast
@@ -206,6 +206,7 @@ class ToolManager:
         confirmed_guard: ConfirmedToolGuard | None = None,
         draft_tool_workflow_id: str | None = None,
         draft_tool_app_id: str | None = None,
+        json_provider_validator: Callable[[object, object], None] | None = None,
     ) -> BuiltinTool | PluginTool | ApiTool | WorkflowTool | MCPTool:
         """
         get the tool runtime
@@ -226,9 +227,19 @@ class ToolManager:
             ordinary debugger drafts recheck setup at Tool resolution. Published
             children keep delegation even if debugger invocation is inherited.
         :param draft_tool_app_id: actual native app owner for that workflow scope
+        :param json_provider_validator: trusted JSON service callback checking the
+            actual native controller and tool before any credential branch
 
         :return: the tool
         """
+        if json_provider_validator is not None and (
+            confirmed_guard is not None
+            or draft_tool_workflow_id is not None
+            or draft_tool_app_id is not None
+            or credential_id is not None
+            or provider_type != ToolProviderType.BUILT_IN
+        ):
+            raise BuilderExecutionPolicyError("invalid_json_tool_configuration")
         if confirmed_guard is not None:
             return cls._get_confirmed_tool_runtime(
                 confirmed_guard,
@@ -264,7 +275,12 @@ class ToolManager:
                 if not builtin_tool:
                     raise ToolProviderNotFoundError(f"builtin tool {tool_name} not found")
 
-                if not provider_controller.need_credentials:
+                if json_provider_validator is not None:
+                    # The service checks the actual (possibly cached) controller and
+                    # returned tool before native credential selection or validation.
+                    json_provider_validator(provider_controller, builtin_tool)
+
+                if json_provider_validator is not None or not provider_controller.need_credentials:
                     return builtin_tool.fork_tool_runtime(
                         runtime=ToolRuntime(
                             tenant_id=tenant_id,
