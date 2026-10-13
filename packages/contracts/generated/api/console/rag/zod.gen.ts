@@ -3,22 +3,6 @@
 import * as z from 'zod'
 
 /**
- * CustomizedPipelineTemplatePayload
- */
-export const zCustomizedPipelineTemplatePayload = z.object({
-  description: z.string().max(400).optional().default(''),
-  icon_info: z.record(z.string(), z.unknown()).optional(),
-  name: z.string().min(1).max(40),
-})
-
-/**
- * SimpleDataResponse
- */
-export const zSimpleDataResponse = z.object({
-  data: z.string(),
-})
-
-/**
  * ErrorResponse
  *
  * Documented non-2xx body emitted by ``register_external_error_handlers``.
@@ -32,6 +16,22 @@ export const zErrorResponse = z.object({
   message: z.string(),
   params: z.string().optional(),
   status: z.int(),
+})
+
+/**
+ * CustomizedPipelineTemplatePayload
+ */
+export const zCustomizedPipelineTemplatePayload = z.object({
+  description: z.string().max(400).optional().default(''),
+  icon_info: z.record(z.string(), z.unknown()).optional(),
+  name: z.string().min(1).max(40),
+})
+
+/**
+ * SimpleDataResponse
+ */
+export const zSimpleDataResponse = z.object({
+  data: z.string(),
 })
 
 /**

@@ -55,6 +55,7 @@ export type PostInstructionGenerateData = {
 export type PostInstructionGenerateErrors = {
   400: ErrorResponse
   402: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostInstructionGenerateError =
@@ -76,6 +77,7 @@ export type PostInstructionGenerateTemplateData = {
 
 export type PostInstructionGenerateTemplateErrors = {
   400: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostInstructionGenerateTemplateError =

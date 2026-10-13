@@ -37,6 +37,7 @@ export type GetAppPromptTemplatesData = {
 
 export type GetAppPromptTemplatesErrors = {
   400: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetAppPromptTemplatesError =

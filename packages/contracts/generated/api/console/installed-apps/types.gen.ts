@@ -10,6 +10,16 @@ export type InstalledAppListResponse = {
   next_cursor: string | null
 }
 
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type InstalledAppResponse = {
   app: InstalledAppInfoResponse
   app_owner_tenant_id: string
@@ -824,6 +834,12 @@ export type GetInstalledAppsData = {
   url: '/installed-apps'
 }
 
+export type GetInstalledAppsErrors = {
+  default: ErrorResponse
+}
+
+export type GetInstalledAppsError = GetInstalledAppsErrors[keyof GetInstalledAppsErrors]
+
 export type GetInstalledAppsResponses = {
   200: InstalledAppListResponse
 }
@@ -838,6 +854,13 @@ export type GetInstalledAppsByInstalledAppIdData = {
   query?: never
   url: '/installed-apps/{installed_app_id}'
 }
+
+export type GetInstalledAppsByInstalledAppIdErrors = {
+  default: ErrorResponse
+}
+
+export type GetInstalledAppsByInstalledAppIdError =
+  GetInstalledAppsByInstalledAppIdErrors[keyof GetInstalledAppsByInstalledAppIdErrors]
 
 export type GetInstalledAppsByInstalledAppIdResponses = {
   200: InstalledAppResponse
@@ -855,6 +878,13 @@ export type PatchInstalledAppsByInstalledAppIdData = {
   url: '/installed-apps/{installed_app_id}'
 }
 
+export type PatchInstalledAppsByInstalledAppIdErrors = {
+  default: ErrorResponse
+}
+
+export type PatchInstalledAppsByInstalledAppIdError =
+  PatchInstalledAppsByInstalledAppIdErrors[keyof PatchInstalledAppsByInstalledAppIdErrors]
+
 export type PatchInstalledAppsByInstalledAppIdResponses = {
   200: SimpleResultMessageResponse
 }
@@ -871,6 +901,13 @@ export type PostInstalledAppsByInstalledAppIdAudioToTextData = {
   url: '/installed-apps/{installed_app_id}/audio-to-text'
 }
 
+export type PostInstalledAppsByInstalledAppIdAudioToTextErrors = {
+  default: ErrorResponse
+}
+
+export type PostInstalledAppsByInstalledAppIdAudioToTextError =
+  PostInstalledAppsByInstalledAppIdAudioToTextErrors[keyof PostInstalledAppsByInstalledAppIdAudioToTextErrors]
+
 export type PostInstalledAppsByInstalledAppIdAudioToTextResponses = {
   200: AudioTranscriptResponse
 }
@@ -886,6 +923,13 @@ export type PostInstalledAppsByInstalledAppIdChatMessagesData = {
   query?: never
   url: '/installed-apps/{installed_app_id}/chat-messages'
 }
+
+export type PostInstalledAppsByInstalledAppIdChatMessagesErrors = {
+  default: ErrorResponse
+}
+
+export type PostInstalledAppsByInstalledAppIdChatMessagesError =
+  PostInstalledAppsByInstalledAppIdChatMessagesErrors[keyof PostInstalledAppsByInstalledAppIdChatMessagesErrors]
 
 export type PostInstalledAppsByInstalledAppIdChatMessagesResponses = {
   200: {
@@ -906,6 +950,13 @@ export type PostInstalledAppsByInstalledAppIdChatMessagesByTaskIdStopData = {
   url: '/installed-apps/{installed_app_id}/chat-messages/{task_id}/stop'
 }
 
+export type PostInstalledAppsByInstalledAppIdChatMessagesByTaskIdStopErrors = {
+  default: ErrorResponse
+}
+
+export type PostInstalledAppsByInstalledAppIdChatMessagesByTaskIdStopError =
+  PostInstalledAppsByInstalledAppIdChatMessagesByTaskIdStopErrors[keyof PostInstalledAppsByInstalledAppIdChatMessagesByTaskIdStopErrors]
+
 export type PostInstalledAppsByInstalledAppIdChatMessagesByTaskIdStopResponses = {
   200: SimpleResultResponse
 }
@@ -921,6 +972,13 @@ export type PostInstalledAppsByInstalledAppIdCompletionMessagesData = {
   query?: never
   url: '/installed-apps/{installed_app_id}/completion-messages'
 }
+
+export type PostInstalledAppsByInstalledAppIdCompletionMessagesErrors = {
+  default: ErrorResponse
+}
+
+export type PostInstalledAppsByInstalledAppIdCompletionMessagesError =
+  PostInstalledAppsByInstalledAppIdCompletionMessagesErrors[keyof PostInstalledAppsByInstalledAppIdCompletionMessagesErrors]
 
 export type PostInstalledAppsByInstalledAppIdCompletionMessagesResponses = {
   200: {
@@ -940,6 +998,13 @@ export type PostInstalledAppsByInstalledAppIdCompletionMessagesByTaskIdStopData 
   query?: never
   url: '/installed-apps/{installed_app_id}/completion-messages/{task_id}/stop'
 }
+
+export type PostInstalledAppsByInstalledAppIdCompletionMessagesByTaskIdStopErrors = {
+  default: ErrorResponse
+}
+
+export type PostInstalledAppsByInstalledAppIdCompletionMessagesByTaskIdStopError =
+  PostInstalledAppsByInstalledAppIdCompletionMessagesByTaskIdStopErrors[keyof PostInstalledAppsByInstalledAppIdCompletionMessagesByTaskIdStopErrors]
 
 export type PostInstalledAppsByInstalledAppIdCompletionMessagesByTaskIdStopResponses = {
   200: SimpleResultResponse
@@ -961,6 +1026,13 @@ export type GetInstalledAppsByInstalledAppIdConversationsData = {
   url: '/installed-apps/{installed_app_id}/conversations'
 }
 
+export type GetInstalledAppsByInstalledAppIdConversationsErrors = {
+  default: ErrorResponse
+}
+
+export type GetInstalledAppsByInstalledAppIdConversationsError =
+  GetInstalledAppsByInstalledAppIdConversationsErrors[keyof GetInstalledAppsByInstalledAppIdConversationsErrors]
+
 export type GetInstalledAppsByInstalledAppIdConversationsResponses = {
   200: ConversationInfiniteScrollPagination
 }
@@ -977,6 +1049,13 @@ export type DeleteInstalledAppsByInstalledAppIdConversationsByCIdData = {
   query?: never
   url: '/installed-apps/{installed_app_id}/conversations/{c_id}'
 }
+
+export type DeleteInstalledAppsByInstalledAppIdConversationsByCIdErrors = {
+  default: ErrorResponse
+}
+
+export type DeleteInstalledAppsByInstalledAppIdConversationsByCIdError =
+  DeleteInstalledAppsByInstalledAppIdConversationsByCIdErrors[keyof DeleteInstalledAppsByInstalledAppIdConversationsByCIdErrors]
 
 export type DeleteInstalledAppsByInstalledAppIdConversationsByCIdResponses = {
   204: void
@@ -995,6 +1074,13 @@ export type PostInstalledAppsByInstalledAppIdConversationsByCIdNameData = {
   url: '/installed-apps/{installed_app_id}/conversations/{c_id}/name'
 }
 
+export type PostInstalledAppsByInstalledAppIdConversationsByCIdNameErrors = {
+  default: ErrorResponse
+}
+
+export type PostInstalledAppsByInstalledAppIdConversationsByCIdNameError =
+  PostInstalledAppsByInstalledAppIdConversationsByCIdNameErrors[keyof PostInstalledAppsByInstalledAppIdConversationsByCIdNameErrors]
+
 export type PostInstalledAppsByInstalledAppIdConversationsByCIdNameResponses = {
   200: SimpleConversation
 }
@@ -1012,6 +1098,13 @@ export type PatchInstalledAppsByInstalledAppIdConversationsByCIdPinData = {
   url: '/installed-apps/{installed_app_id}/conversations/{c_id}/pin'
 }
 
+export type PatchInstalledAppsByInstalledAppIdConversationsByCIdPinErrors = {
+  default: ErrorResponse
+}
+
+export type PatchInstalledAppsByInstalledAppIdConversationsByCIdPinError =
+  PatchInstalledAppsByInstalledAppIdConversationsByCIdPinErrors[keyof PatchInstalledAppsByInstalledAppIdConversationsByCIdPinErrors]
+
 export type PatchInstalledAppsByInstalledAppIdConversationsByCIdPinResponses = {
   200: ResultResponse
 }
@@ -1028,6 +1121,13 @@ export type PatchInstalledAppsByInstalledAppIdConversationsByCIdUnpinData = {
   query?: never
   url: '/installed-apps/{installed_app_id}/conversations/{c_id}/unpin'
 }
+
+export type PatchInstalledAppsByInstalledAppIdConversationsByCIdUnpinErrors = {
+  default: ErrorResponse
+}
+
+export type PatchInstalledAppsByInstalledAppIdConversationsByCIdUnpinError =
+  PatchInstalledAppsByInstalledAppIdConversationsByCIdUnpinErrors[keyof PatchInstalledAppsByInstalledAppIdConversationsByCIdUnpinErrors]
 
 export type PatchInstalledAppsByInstalledAppIdConversationsByCIdUnpinResponses = {
   200: ResultResponse
@@ -1049,6 +1149,13 @@ export type GetInstalledAppsByInstalledAppIdMessagesData = {
   url: '/installed-apps/{installed_app_id}/messages'
 }
 
+export type GetInstalledAppsByInstalledAppIdMessagesErrors = {
+  default: ErrorResponse
+}
+
+export type GetInstalledAppsByInstalledAppIdMessagesError =
+  GetInstalledAppsByInstalledAppIdMessagesErrors[keyof GetInstalledAppsByInstalledAppIdMessagesErrors]
+
 export type GetInstalledAppsByInstalledAppIdMessagesResponses = {
   200: ExploreMessageInfiniteScrollPagination
 }
@@ -1065,6 +1172,13 @@ export type PostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksData = 
   query?: never
   url: '/installed-apps/{installed_app_id}/messages/{message_id}/feedbacks'
 }
+
+export type PostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksErrors = {
+  default: ErrorResponse
+}
+
+export type PostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksError =
+  PostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksErrors[keyof PostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksErrors]
 
 export type PostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksResponses = {
   200: ResultResponse
@@ -1085,6 +1199,13 @@ export type GetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisData 
   url: '/installed-apps/{installed_app_id}/messages/{message_id}/more-like-this'
 }
 
+export type GetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisErrors = {
+  default: ErrorResponse
+}
+
+export type GetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisError =
+  GetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisErrors[keyof GetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisErrors]
+
 export type GetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisResponses = {
   200: {
     [key: string]: unknown
@@ -1104,6 +1225,13 @@ export type GetInstalledAppsByInstalledAppIdMessagesByMessageIdSuggestedQuestion
   url: '/installed-apps/{installed_app_id}/messages/{message_id}/suggested-questions'
 }
 
+export type GetInstalledAppsByInstalledAppIdMessagesByMessageIdSuggestedQuestionsErrors = {
+  default: ErrorResponse
+}
+
+export type GetInstalledAppsByInstalledAppIdMessagesByMessageIdSuggestedQuestionsError =
+  GetInstalledAppsByInstalledAppIdMessagesByMessageIdSuggestedQuestionsErrors[keyof GetInstalledAppsByInstalledAppIdMessagesByMessageIdSuggestedQuestionsErrors]
+
 export type GetInstalledAppsByInstalledAppIdMessagesByMessageIdSuggestedQuestionsResponses = {
   200: SuggestedQuestionsResponse
 }
@@ -1120,6 +1248,13 @@ export type GetInstalledAppsByInstalledAppIdMetaData = {
   url: '/installed-apps/{installed_app_id}/meta'
 }
 
+export type GetInstalledAppsByInstalledAppIdMetaErrors = {
+  default: ErrorResponse
+}
+
+export type GetInstalledAppsByInstalledAppIdMetaError =
+  GetInstalledAppsByInstalledAppIdMetaErrors[keyof GetInstalledAppsByInstalledAppIdMetaErrors]
+
 export type GetInstalledAppsByInstalledAppIdMetaResponses = {
   200: ExploreAppMetaResponse
 }
@@ -1135,6 +1270,13 @@ export type GetInstalledAppsByInstalledAppIdParametersData = {
   query?: never
   url: '/installed-apps/{installed_app_id}/parameters'
 }
+
+export type GetInstalledAppsByInstalledAppIdParametersErrors = {
+  default: ErrorResponse
+}
+
+export type GetInstalledAppsByInstalledAppIdParametersError =
+  GetInstalledAppsByInstalledAppIdParametersErrors[keyof GetInstalledAppsByInstalledAppIdParametersErrors]
 
 export type GetInstalledAppsByInstalledAppIdParametersResponses = {
   200: Parameters
@@ -1155,6 +1297,13 @@ export type GetInstalledAppsByInstalledAppIdSavedMessagesData = {
   url: '/installed-apps/{installed_app_id}/saved-messages'
 }
 
+export type GetInstalledAppsByInstalledAppIdSavedMessagesErrors = {
+  default: ErrorResponse
+}
+
+export type GetInstalledAppsByInstalledAppIdSavedMessagesError =
+  GetInstalledAppsByInstalledAppIdSavedMessagesErrors[keyof GetInstalledAppsByInstalledAppIdSavedMessagesErrors]
+
 export type GetInstalledAppsByInstalledAppIdSavedMessagesResponses = {
   200: SavedMessageInfiniteScrollPagination
 }
@@ -1170,6 +1319,13 @@ export type PostInstalledAppsByInstalledAppIdSavedMessagesData = {
   query?: never
   url: '/installed-apps/{installed_app_id}/saved-messages'
 }
+
+export type PostInstalledAppsByInstalledAppIdSavedMessagesErrors = {
+  default: ErrorResponse
+}
+
+export type PostInstalledAppsByInstalledAppIdSavedMessagesError =
+  PostInstalledAppsByInstalledAppIdSavedMessagesErrors[keyof PostInstalledAppsByInstalledAppIdSavedMessagesErrors]
 
 export type PostInstalledAppsByInstalledAppIdSavedMessagesResponses = {
   200: ResultResponse
@@ -1188,6 +1344,13 @@ export type DeleteInstalledAppsByInstalledAppIdSavedMessagesByMessageIdData = {
   url: '/installed-apps/{installed_app_id}/saved-messages/{message_id}'
 }
 
+export type DeleteInstalledAppsByInstalledAppIdSavedMessagesByMessageIdErrors = {
+  default: ErrorResponse
+}
+
+export type DeleteInstalledAppsByInstalledAppIdSavedMessagesByMessageIdError =
+  DeleteInstalledAppsByInstalledAppIdSavedMessagesByMessageIdErrors[keyof DeleteInstalledAppsByInstalledAppIdSavedMessagesByMessageIdErrors]
+
 export type DeleteInstalledAppsByInstalledAppIdSavedMessagesByMessageIdResponses = {
   204: void
 }
@@ -1204,6 +1367,13 @@ export type PostInstalledAppsByInstalledAppIdTextToAudioData = {
   url: '/installed-apps/{installed_app_id}/text-to-audio'
 }
 
+export type PostInstalledAppsByInstalledAppIdTextToAudioErrors = {
+  default: ErrorResponse
+}
+
+export type PostInstalledAppsByInstalledAppIdTextToAudioError =
+  PostInstalledAppsByInstalledAppIdTextToAudioErrors[keyof PostInstalledAppsByInstalledAppIdTextToAudioErrors]
+
 export type PostInstalledAppsByInstalledAppIdTextToAudioResponses = {
   200: AudioBinaryResponse
 }
@@ -1219,6 +1389,13 @@ export type PostInstalledAppsByInstalledAppIdWorkflowsRunData = {
   query?: never
   url: '/installed-apps/{installed_app_id}/workflows/run'
 }
+
+export type PostInstalledAppsByInstalledAppIdWorkflowsRunErrors = {
+  default: ErrorResponse
+}
+
+export type PostInstalledAppsByInstalledAppIdWorkflowsRunError =
+  PostInstalledAppsByInstalledAppIdWorkflowsRunErrors[keyof PostInstalledAppsByInstalledAppIdWorkflowsRunErrors]
 
 export type PostInstalledAppsByInstalledAppIdWorkflowsRunResponses = {
   200: {
@@ -1238,6 +1415,13 @@ export type PostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopData = {
   query?: never
   url: '/installed-apps/{installed_app_id}/workflows/tasks/{task_id}/stop'
 }
+
+export type PostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopErrors = {
+  default: ErrorResponse
+}
+
+export type PostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopError =
+  PostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopErrors[keyof PostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopErrors]
 
 export type PostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopResponses = {
   200: SimpleResultResponse

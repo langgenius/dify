@@ -55,6 +55,7 @@ export type PostForgotPasswordData = {
 
 export type PostForgotPasswordErrors = {
   400: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostForgotPasswordError = PostForgotPasswordErrors[keyof PostForgotPasswordErrors]
@@ -75,6 +76,7 @@ export type PostForgotPasswordResetsData = {
 
 export type PostForgotPasswordResetsErrors = {
   400: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostForgotPasswordResetsError =
@@ -96,6 +98,7 @@ export type PostForgotPasswordValidityData = {
 
 export type PostForgotPasswordValidityErrors = {
   400: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostForgotPasswordValidityError =

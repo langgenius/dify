@@ -15,6 +15,16 @@ export type SimpleResultDataResponse = {
   result: string
 }
 
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type EmailCodeLoginPayload = {
   code: string
   email: string
@@ -35,6 +45,12 @@ export type PostEmailCodeLoginData = {
   url: '/email-code-login'
 }
 
+export type PostEmailCodeLoginErrors = {
+  default: ErrorResponse
+}
+
+export type PostEmailCodeLoginError = PostEmailCodeLoginErrors[keyof PostEmailCodeLoginErrors]
+
 export type PostEmailCodeLoginResponses = {
   200: SimpleResultDataResponse
 }
@@ -48,6 +64,13 @@ export type PostEmailCodeLoginValidityData = {
   query?: never
   url: '/email-code-login/validity'
 }
+
+export type PostEmailCodeLoginValidityErrors = {
+  default: ErrorResponse
+}
+
+export type PostEmailCodeLoginValidityError =
+  PostEmailCodeLoginValidityErrors[keyof PostEmailCodeLoginValidityErrors]
 
 export type PostEmailCodeLoginValidityResponses = {
   200: SimpleResultResponse

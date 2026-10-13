@@ -16,12 +16,28 @@ export type SimpleResultOptionalDataResponse = {
   result: string
 }
 
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type PostLoginData = {
   body: LoginPayload
   path?: never
   query?: never
   url: '/login'
 }
+
+export type PostLoginErrors = {
+  default: ErrorResponse
+}
+
+export type PostLoginError = PostLoginErrors[keyof PostLoginErrors]
 
 export type PostLoginResponses = {
   200: SimpleResultOptionalDataResponse

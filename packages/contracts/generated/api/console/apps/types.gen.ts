@@ -12,6 +12,16 @@ export type AppPagination = {
   total: number
 }
 
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type CreateAppPayload = {
   description?: string | null
   icon?: string | null
@@ -50,16 +60,6 @@ export type AppDetailWithSite = {
   updated_by: string | null
   use_icon_as_answer_icon: boolean
   workflow: WorkflowPartial | null
-}
-
-export type ErrorResponse = {
-  code: string
-  details?: {
-    [key: string]: unknown
-  }
-  message: string
-  params?: string
-  status: number
 }
 
 export type AppImportPayload = {
@@ -4203,6 +4203,12 @@ export type GetAppsData = {
   url: '/apps'
 }
 
+export type GetAppsErrors = {
+  default: ErrorResponse
+}
+
+export type GetAppsError = GetAppsErrors[keyof GetAppsErrors]
+
 export type GetAppsResponses = {
   200: AppPagination
 }
@@ -4219,6 +4225,7 @@ export type PostAppsData = {
 export type PostAppsErrors = {
   400: ErrorResponse
   403: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostAppsError = PostAppsErrors[keyof PostAppsErrors]
@@ -4251,6 +4258,7 @@ export type PostAppsImportsErrors = {
   403: ErrorResponse
   409: ErrorResponse
   413: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostAppsImportsError = PostAppsImportsErrors[keyof PostAppsImportsErrors]
@@ -4271,6 +4279,13 @@ export type GetAppsImportsByAppIdCheckDependenciesData = {
   url: '/apps/imports/{app_id}/check-dependencies'
 }
 
+export type GetAppsImportsByAppIdCheckDependenciesErrors = {
+  default: ErrorResponse
+}
+
+export type GetAppsImportsByAppIdCheckDependenciesError =
+  GetAppsImportsByAppIdCheckDependenciesErrors[keyof GetAppsImportsByAppIdCheckDependenciesErrors]
+
 export type GetAppsImportsByAppIdCheckDependenciesResponses = {
   200: CheckDependenciesResult
 }
@@ -4289,6 +4304,7 @@ export type PostAppsImportsByImportIdConfirmData = {
 
 export type PostAppsImportsByImportIdConfirmErrors = {
   400: Import | ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostAppsImportsByImportIdConfirmError =
@@ -4309,6 +4325,12 @@ export type GetAppsRecentData = {
   }
   url: '/apps/recent'
 }
+
+export type GetAppsRecentErrors = {
+  default: ErrorResponse
+}
+
+export type GetAppsRecentError = GetAppsRecentErrors[keyof GetAppsRecentErrors]
 
 export type GetAppsRecentResponses = {
   200: RecentAppListResponse
@@ -4341,6 +4363,12 @@ export type GetAppsStarredData = {
   url: '/apps/starred'
 }
 
+export type GetAppsStarredErrors = {
+  default: ErrorResponse
+}
+
+export type GetAppsStarredError = GetAppsStarredErrors[keyof GetAppsStarredErrors]
+
 export type GetAppsStarredResponses = {
   200: AppPagination
 }
@@ -4353,6 +4381,13 @@ export type PostAppsWorkflowsOnlineUsersData = {
   query?: never
   url: '/apps/workflows/online-users'
 }
+
+export type PostAppsWorkflowsOnlineUsersErrors = {
+  default: ErrorResponse
+}
+
+export type PostAppsWorkflowsOnlineUsersError =
+  PostAppsWorkflowsOnlineUsersErrors[keyof PostAppsWorkflowsOnlineUsersErrors]
 
 export type PostAppsWorkflowsOnlineUsersResponses = {
   200: WorkflowOnlineUsersResponse
@@ -4372,6 +4407,7 @@ export type DeleteAppsByAppIdData = {
 
 export type DeleteAppsByAppIdErrors = {
   403: ErrorResponse
+  default: ErrorResponse
 }
 
 export type DeleteAppsByAppIdError = DeleteAppsByAppIdErrors[keyof DeleteAppsByAppIdErrors]
@@ -4391,6 +4427,12 @@ export type GetAppsByAppIdData = {
   url: '/apps/{app_id}'
 }
 
+export type GetAppsByAppIdErrors = {
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdError = GetAppsByAppIdErrors[keyof GetAppsByAppIdErrors]
+
 export type GetAppsByAppIdResponses = {
   200: AppDetailWithSite
 }
@@ -4409,6 +4451,7 @@ export type PutAppsByAppIdData = {
 export type PutAppsByAppIdErrors = {
   400: ErrorResponse
   403: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PutAppsByAppIdError = PutAppsByAppIdErrors[keyof PutAppsByAppIdErrors]
@@ -4433,6 +4476,13 @@ export type GetAppsByAppIdAdvancedChatWorkflowRunsData = {
   url: '/apps/{app_id}/advanced-chat/workflow-runs'
 }
 
+export type GetAppsByAppIdAdvancedChatWorkflowRunsErrors = {
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdAdvancedChatWorkflowRunsError =
+  GetAppsByAppIdAdvancedChatWorkflowRunsErrors[keyof GetAppsByAppIdAdvancedChatWorkflowRunsErrors]
+
 export type GetAppsByAppIdAdvancedChatWorkflowRunsResponses = {
   200: AdvancedChatWorkflowRunPaginationResponse
 }
@@ -4453,6 +4503,13 @@ export type GetAppsByAppIdAdvancedChatWorkflowRunsCountData = {
   url: '/apps/{app_id}/advanced-chat/workflow-runs/count'
 }
 
+export type GetAppsByAppIdAdvancedChatWorkflowRunsCountErrors = {
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdAdvancedChatWorkflowRunsCountError =
+  GetAppsByAppIdAdvancedChatWorkflowRunsCountErrors[keyof GetAppsByAppIdAdvancedChatWorkflowRunsCountErrors]
+
 export type GetAppsByAppIdAdvancedChatWorkflowRunsCountResponses = {
   200: WorkflowRunCountResponse
 }
@@ -4470,6 +4527,13 @@ export type PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdForm
   url: '/apps/{app_id}/advanced-chat/workflows/draft/human-input/nodes/{node_id}/form/preview'
 }
 
+export type PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormPreviewErrors = {
+  default: ErrorResponse
+}
+
+export type PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormPreviewError =
+  PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormPreviewErrors[keyof PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormPreviewErrors]
+
 export type PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormPreviewResponses = {
   200: HumanInputFormPreviewResponse
 }
@@ -4486,6 +4550,13 @@ export type PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdForm
   query?: never
   url: '/apps/{app_id}/advanced-chat/workflows/draft/human-input/nodes/{node_id}/form/run'
 }
+
+export type PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormRunErrors = {
+  default: ErrorResponse
+}
+
+export type PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormRunError =
+  PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormRunErrors[keyof PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormRunErrors]
 
 export type PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormRunResponses = {
   200: HumanInputFormSubmitResponse
@@ -4507,6 +4578,7 @@ export type PostAppsByAppIdAdvancedChatWorkflowsDraftIterationNodesByNodeIdRunDa
 export type PostAppsByAppIdAdvancedChatWorkflowsDraftIterationNodesByNodeIdRunErrors = {
   403: ErrorResponse
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostAppsByAppIdAdvancedChatWorkflowsDraftIterationNodesByNodeIdRunError =
@@ -4532,6 +4604,7 @@ export type PostAppsByAppIdAdvancedChatWorkflowsDraftLoopNodesByNodeIdRunData = 
 export type PostAppsByAppIdAdvancedChatWorkflowsDraftLoopNodesByNodeIdRunErrors = {
   403: ErrorResponse
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostAppsByAppIdAdvancedChatWorkflowsDraftLoopNodesByNodeIdRunError =
@@ -4556,6 +4629,7 @@ export type PostAppsByAppIdAdvancedChatWorkflowsDraftRunData = {
 export type PostAppsByAppIdAdvancedChatWorkflowsDraftRunErrors = {
   400: ErrorResponse
   403: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostAppsByAppIdAdvancedChatWorkflowsDraftRunError =
@@ -4581,6 +4655,13 @@ export type GetAppsByAppIdAgentConfigFilesData = {
   url: '/apps/{app_id}/agent/config/files'
 }
 
+export type GetAppsByAppIdAgentConfigFilesErrors = {
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdAgentConfigFilesError =
+  GetAppsByAppIdAgentConfigFilesErrors[keyof GetAppsByAppIdAgentConfigFilesErrors]
+
 export type GetAppsByAppIdAgentConfigFilesResponses = {
   200: AgentConfigFileListResponse
 }
@@ -4600,6 +4681,13 @@ export type PostAppsByAppIdAgentConfigFilesData = {
   }
   url: '/apps/{app_id}/agent/config/files'
 }
+
+export type PostAppsByAppIdAgentConfigFilesErrors = {
+  default: ErrorResponse
+}
+
+export type PostAppsByAppIdAgentConfigFilesError =
+  PostAppsByAppIdAgentConfigFilesErrors[keyof PostAppsByAppIdAgentConfigFilesErrors]
 
 export type PostAppsByAppIdAgentConfigFilesResponses = {
   201: AgentConfigFileUploadResponse
@@ -4622,6 +4710,13 @@ export type DeleteAppsByAppIdAgentConfigFilesByNameData = {
   url: '/apps/{app_id}/agent/config/files/{name}'
 }
 
+export type DeleteAppsByAppIdAgentConfigFilesByNameErrors = {
+  default: ErrorResponse
+}
+
+export type DeleteAppsByAppIdAgentConfigFilesByNameError =
+  DeleteAppsByAppIdAgentConfigFilesByNameErrors[keyof DeleteAppsByAppIdAgentConfigFilesByNameErrors]
+
 export type DeleteAppsByAppIdAgentConfigFilesByNameResponses = {
   200: AgentConfigDeleteResponse
 }
@@ -4642,6 +4737,13 @@ export type GetAppsByAppIdAgentConfigFilesByNameDownloadData = {
   }
   url: '/apps/{app_id}/agent/config/files/{name}/download'
 }
+
+export type GetAppsByAppIdAgentConfigFilesByNameDownloadErrors = {
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdAgentConfigFilesByNameDownloadError =
+  GetAppsByAppIdAgentConfigFilesByNameDownloadErrors[keyof GetAppsByAppIdAgentConfigFilesByNameDownloadErrors]
 
 export type GetAppsByAppIdAgentConfigFilesByNameDownloadResponses = {
   200: AgentConfigDownloadResponse
@@ -4664,6 +4766,13 @@ export type GetAppsByAppIdAgentConfigFilesByNamePreviewData = {
   url: '/apps/{app_id}/agent/config/files/{name}/preview'
 }
 
+export type GetAppsByAppIdAgentConfigFilesByNamePreviewErrors = {
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdAgentConfigFilesByNamePreviewError =
+  GetAppsByAppIdAgentConfigFilesByNamePreviewErrors[keyof GetAppsByAppIdAgentConfigFilesByNamePreviewErrors]
+
 export type GetAppsByAppIdAgentConfigFilesByNamePreviewResponses = {
   200: AgentConfigFilePreviewResponse
 }
@@ -4684,6 +4793,13 @@ export type GetAppsByAppIdAgentConfigManifestData = {
   url: '/apps/{app_id}/agent/config/manifest'
 }
 
+export type GetAppsByAppIdAgentConfigManifestErrors = {
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdAgentConfigManifestError =
+  GetAppsByAppIdAgentConfigManifestErrors[keyof GetAppsByAppIdAgentConfigManifestErrors]
+
 export type GetAppsByAppIdAgentConfigManifestResponses = {
   200: AgentConfigManifestResponse
 }
@@ -4703,6 +4819,13 @@ export type GetAppsByAppIdAgentConfigSkillsData = {
   }
   url: '/apps/{app_id}/agent/config/skills'
 }
+
+export type GetAppsByAppIdAgentConfigSkillsErrors = {
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdAgentConfigSkillsError =
+  GetAppsByAppIdAgentConfigSkillsErrors[keyof GetAppsByAppIdAgentConfigSkillsErrors]
 
 export type GetAppsByAppIdAgentConfigSkillsResponses = {
   200: AgentConfigSkillListResponse
@@ -4726,6 +4849,13 @@ export type PostAppsByAppIdAgentConfigSkillsUploadData = {
   url: '/apps/{app_id}/agent/config/skills/upload'
 }
 
+export type PostAppsByAppIdAgentConfigSkillsUploadErrors = {
+  default: ErrorResponse
+}
+
+export type PostAppsByAppIdAgentConfigSkillsUploadError =
+  PostAppsByAppIdAgentConfigSkillsUploadErrors[keyof PostAppsByAppIdAgentConfigSkillsUploadErrors]
+
 export type PostAppsByAppIdAgentConfigSkillsUploadResponses = {
   201: AgentConfigSkillUploadResponse
 }
@@ -4746,6 +4876,13 @@ export type DeleteAppsByAppIdAgentConfigSkillsByNameData = {
   }
   url: '/apps/{app_id}/agent/config/skills/{name}'
 }
+
+export type DeleteAppsByAppIdAgentConfigSkillsByNameErrors = {
+  default: ErrorResponse
+}
+
+export type DeleteAppsByAppIdAgentConfigSkillsByNameError =
+  DeleteAppsByAppIdAgentConfigSkillsByNameErrors[keyof DeleteAppsByAppIdAgentConfigSkillsByNameErrors]
 
 export type DeleteAppsByAppIdAgentConfigSkillsByNameResponses = {
   200: AgentConfigDeleteResponse
@@ -4768,6 +4905,13 @@ export type GetAppsByAppIdAgentConfigSkillsByNameDownloadData = {
   url: '/apps/{app_id}/agent/config/skills/{name}/download'
 }
 
+export type GetAppsByAppIdAgentConfigSkillsByNameDownloadErrors = {
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdAgentConfigSkillsByNameDownloadError =
+  GetAppsByAppIdAgentConfigSkillsByNameDownloadErrors[keyof GetAppsByAppIdAgentConfigSkillsByNameDownloadErrors]
+
 export type GetAppsByAppIdAgentConfigSkillsByNameDownloadResponses = {
   200: AgentConfigDownloadResponse
 }
@@ -4784,6 +4928,13 @@ export type GetAppsByAppIdAgentConfigSkillsByNameFilesContentData = {
   query?: never
   url: '/apps/{app_id}/agent/config/skills/{name}/files/content'
 }
+
+export type GetAppsByAppIdAgentConfigSkillsByNameFilesContentErrors = {
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdAgentConfigSkillsByNameFilesContentError =
+  GetAppsByAppIdAgentConfigSkillsByNameFilesContentErrors[keyof GetAppsByAppIdAgentConfigSkillsByNameFilesContentErrors]
 
 export type GetAppsByAppIdAgentConfigSkillsByNameFilesContentResponses = {
   200: {
@@ -4809,6 +4960,13 @@ export type GetAppsByAppIdAgentConfigSkillsByNameFilesDownloadData = {
   url: '/apps/{app_id}/agent/config/skills/{name}/files/download'
 }
 
+export type GetAppsByAppIdAgentConfigSkillsByNameFilesDownloadErrors = {
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdAgentConfigSkillsByNameFilesDownloadError =
+  GetAppsByAppIdAgentConfigSkillsByNameFilesDownloadErrors[keyof GetAppsByAppIdAgentConfigSkillsByNameFilesDownloadErrors]
+
 export type GetAppsByAppIdAgentConfigSkillsByNameFilesDownloadResponses = {
   200: AgentConfigDownloadResponse
 }
@@ -4831,6 +4989,13 @@ export type GetAppsByAppIdAgentConfigSkillsByNameFilesPreviewData = {
   url: '/apps/{app_id}/agent/config/skills/{name}/files/preview'
 }
 
+export type GetAppsByAppIdAgentConfigSkillsByNameFilesPreviewErrors = {
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdAgentConfigSkillsByNameFilesPreviewError =
+  GetAppsByAppIdAgentConfigSkillsByNameFilesPreviewErrors[keyof GetAppsByAppIdAgentConfigSkillsByNameFilesPreviewErrors]
+
 export type GetAppsByAppIdAgentConfigSkillsByNameFilesPreviewResponses = {
   200: AgentConfigSkillFilePreviewResponse
 }
@@ -4851,6 +5016,13 @@ export type GetAppsByAppIdAgentConfigSkillsByNameInspectData = {
   }
   url: '/apps/{app_id}/agent/config/skills/{name}/inspect'
 }
+
+export type GetAppsByAppIdAgentConfigSkillsByNameInspectErrors = {
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdAgentConfigSkillsByNameInspectError =
+  GetAppsByAppIdAgentConfigSkillsByNameInspectErrors[keyof GetAppsByAppIdAgentConfigSkillsByNameInspectErrors]
 
 export type GetAppsByAppIdAgentConfigSkillsByNameInspectResponses = {
   200: AgentConfigSkillInspectResponse
@@ -4873,6 +5045,7 @@ export type GetAppsByAppIdAgentLogsData = {
 
 export type GetAppsByAppIdAgentLogsErrors = {
   400: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetAppsByAppIdAgentLogsError =
@@ -4897,6 +5070,7 @@ export type PostAppsByAppIdAnnotationReplyByActionData = {
 
 export type PostAppsByAppIdAnnotationReplyByActionErrors = {
   403: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostAppsByAppIdAnnotationReplyByActionError =
@@ -4922,6 +5096,7 @@ export type GetAppsByAppIdAnnotationReplyByActionStatusByJobIdData = {
 
 export type GetAppsByAppIdAnnotationReplyByActionStatusByJobIdErrors = {
   403: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetAppsByAppIdAnnotationReplyByActionStatusByJobIdError =
@@ -4945,6 +5120,7 @@ export type GetAppsByAppIdAnnotationSettingData = {
 
 export type GetAppsByAppIdAnnotationSettingErrors = {
   403: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetAppsByAppIdAnnotationSettingError =
@@ -4969,6 +5145,7 @@ export type PostAppsByAppIdAnnotationSettingsByAnnotationSettingIdData = {
 
 export type PostAppsByAppIdAnnotationSettingsByAnnotationSettingIdErrors = {
   403: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostAppsByAppIdAnnotationSettingsByAnnotationSettingIdError =
@@ -4989,6 +5166,13 @@ export type DeleteAppsByAppIdAnnotationsData = {
   query?: never
   url: '/apps/{app_id}/annotations'
 }
+
+export type DeleteAppsByAppIdAnnotationsErrors = {
+  default: ErrorResponse
+}
+
+export type DeleteAppsByAppIdAnnotationsError =
+  DeleteAppsByAppIdAnnotationsErrors[keyof DeleteAppsByAppIdAnnotationsErrors]
 
 export type DeleteAppsByAppIdAnnotationsResponses = {
   204: void
@@ -5012,6 +5196,7 @@ export type GetAppsByAppIdAnnotationsData = {
 
 export type GetAppsByAppIdAnnotationsErrors = {
   403: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetAppsByAppIdAnnotationsError =
@@ -5035,6 +5220,7 @@ export type PostAppsByAppIdAnnotationsData = {
 
 export type PostAppsByAppIdAnnotationsErrors = {
   403: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostAppsByAppIdAnnotationsError =
@@ -5061,6 +5247,7 @@ export type PostAppsByAppIdAnnotationsBatchImportErrors = {
   403: ErrorResponse
   413: ErrorResponse
   429: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostAppsByAppIdAnnotationsBatchImportError =
@@ -5085,6 +5272,7 @@ export type GetAppsByAppIdAnnotationsBatchImportStatusByJobIdData = {
 
 export type GetAppsByAppIdAnnotationsBatchImportStatusByJobIdErrors = {
   403: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetAppsByAppIdAnnotationsBatchImportStatusByJobIdError =
@@ -5106,6 +5294,13 @@ export type GetAppsByAppIdAnnotationsCountData = {
   url: '/apps/{app_id}/annotations/count'
 }
 
+export type GetAppsByAppIdAnnotationsCountErrors = {
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdAnnotationsCountError =
+  GetAppsByAppIdAnnotationsCountErrors[keyof GetAppsByAppIdAnnotationsCountErrors]
+
 export type GetAppsByAppIdAnnotationsCountResponses = {
   200: AnnotationCountResponse
 }
@@ -5124,6 +5319,7 @@ export type GetAppsByAppIdAnnotationsExportData = {
 
 export type GetAppsByAppIdAnnotationsExportErrors = {
   403: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetAppsByAppIdAnnotationsExportError =
@@ -5146,6 +5342,13 @@ export type DeleteAppsByAppIdAnnotationsByAnnotationIdData = {
   url: '/apps/{app_id}/annotations/{annotation_id}'
 }
 
+export type DeleteAppsByAppIdAnnotationsByAnnotationIdErrors = {
+  default: ErrorResponse
+}
+
+export type DeleteAppsByAppIdAnnotationsByAnnotationIdError =
+  DeleteAppsByAppIdAnnotationsByAnnotationIdErrors[keyof DeleteAppsByAppIdAnnotationsByAnnotationIdErrors]
+
 export type DeleteAppsByAppIdAnnotationsByAnnotationIdResponses = {
   204: void
 }
@@ -5165,6 +5368,7 @@ export type PostAppsByAppIdAnnotationsByAnnotationIdData = {
 
 export type PostAppsByAppIdAnnotationsByAnnotationIdErrors = {
   403: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostAppsByAppIdAnnotationsByAnnotationIdError =
@@ -5193,6 +5397,7 @@ export type GetAppsByAppIdAnnotationsByAnnotationIdHitHistoriesData = {
 
 export type GetAppsByAppIdAnnotationsByAnnotationIdHitHistoriesErrors = {
   403: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetAppsByAppIdAnnotationsByAnnotationIdHitHistoriesError =
@@ -5216,6 +5421,7 @@ export type PostAppsByAppIdApiEnableData = {
 
 export type PostAppsByAppIdApiEnableErrors = {
   403: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostAppsByAppIdApiEnableError =
@@ -5242,6 +5448,7 @@ export type PostAppsByAppIdAudioToTextData = {
 export type PostAppsByAppIdAudioToTextErrors = {
   400: ErrorResponse
   413: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostAppsByAppIdAudioToTextError =
@@ -5273,6 +5480,7 @@ export type GetAppsByAppIdChatConversationsData = {
 
 export type GetAppsByAppIdChatConversationsErrors = {
   403: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetAppsByAppIdChatConversationsError =
@@ -5298,6 +5506,7 @@ export type DeleteAppsByAppIdChatConversationsByConversationIdData = {
 export type DeleteAppsByAppIdChatConversationsByConversationIdErrors = {
   403: ErrorResponse
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type DeleteAppsByAppIdChatConversationsByConversationIdError =
@@ -5323,6 +5532,7 @@ export type GetAppsByAppIdChatConversationsByConversationIdData = {
 export type GetAppsByAppIdChatConversationsByConversationIdErrors = {
   403: ErrorResponse
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetAppsByAppIdChatConversationsByConversationIdError =
@@ -5350,6 +5560,7 @@ export type GetAppsByAppIdChatMessagesData = {
 
 export type GetAppsByAppIdChatMessagesErrors = {
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetAppsByAppIdChatMessagesError =
@@ -5378,6 +5589,7 @@ export type GetAppsByAppIdChatMessagesByMessageIdSuggestedQuestionsErrors = {
   403: ErrorResponse
   404: ErrorResponse
   500: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetAppsByAppIdChatMessagesByMessageIdSuggestedQuestionsError =
@@ -5399,6 +5611,13 @@ export type PostAppsByAppIdChatMessagesByTaskIdStopData = {
   query?: never
   url: '/apps/{app_id}/chat-messages/{task_id}/stop'
 }
+
+export type PostAppsByAppIdChatMessagesByTaskIdStopErrors = {
+  default: ErrorResponse
+}
+
+export type PostAppsByAppIdChatMessagesByTaskIdStopError =
+  PostAppsByAppIdChatMessagesByTaskIdStopErrors[keyof PostAppsByAppIdChatMessagesByTaskIdStopErrors]
 
 export type PostAppsByAppIdChatMessagesByTaskIdStopResponses = {
   200: SimpleResultResponse
@@ -5425,6 +5644,7 @@ export type GetAppsByAppIdCompletionConversationsData = {
 
 export type GetAppsByAppIdCompletionConversationsErrors = {
   403: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetAppsByAppIdCompletionConversationsError =
@@ -5450,6 +5670,7 @@ export type DeleteAppsByAppIdCompletionConversationsByConversationIdData = {
 export type DeleteAppsByAppIdCompletionConversationsByConversationIdErrors = {
   403: ErrorResponse
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type DeleteAppsByAppIdCompletionConversationsByConversationIdError =
@@ -5475,6 +5696,7 @@ export type GetAppsByAppIdCompletionConversationsByConversationIdData = {
 export type GetAppsByAppIdCompletionConversationsByConversationIdErrors = {
   403: ErrorResponse
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetAppsByAppIdCompletionConversationsByConversationIdError =
@@ -5499,6 +5721,7 @@ export type PostAppsByAppIdCompletionMessagesData = {
 export type PostAppsByAppIdCompletionMessagesErrors = {
   400: ErrorResponse
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostAppsByAppIdCompletionMessagesError =
@@ -5523,6 +5746,13 @@ export type PostAppsByAppIdCompletionMessagesByTaskIdStopData = {
   url: '/apps/{app_id}/completion-messages/{task_id}/stop'
 }
 
+export type PostAppsByAppIdCompletionMessagesByTaskIdStopErrors = {
+  default: ErrorResponse
+}
+
+export type PostAppsByAppIdCompletionMessagesByTaskIdStopError =
+  PostAppsByAppIdCompletionMessagesByTaskIdStopErrors[keyof PostAppsByAppIdCompletionMessagesByTaskIdStopErrors]
+
 export type PostAppsByAppIdCompletionMessagesByTaskIdStopResponses = {
   200: SimpleResultResponse
 }
@@ -5540,6 +5770,13 @@ export type GetAppsByAppIdConversationVariablesData = {
   }
   url: '/apps/{app_id}/conversation-variables'
 }
+
+export type GetAppsByAppIdConversationVariablesErrors = {
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdConversationVariablesError =
+  GetAppsByAppIdConversationVariablesErrors[keyof GetAppsByAppIdConversationVariablesErrors]
 
 export type GetAppsByAppIdConversationVariablesResponses = {
   200: PaginatedConversationVariableResponse
@@ -5560,6 +5797,7 @@ export type PostAppsByAppIdConvertToWorkflowData = {
 export type PostAppsByAppIdConvertToWorkflowErrors = {
   400: ErrorResponse
   403: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostAppsByAppIdConvertToWorkflowError =
@@ -5583,6 +5821,7 @@ export type PostAppsByAppIdCopyData = {
 
 export type PostAppsByAppIdCopyErrors = {
   403: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostAppsByAppIdCopyError = PostAppsByAppIdCopyErrors[keyof PostAppsByAppIdCopyErrors]
@@ -5611,6 +5850,7 @@ export type GetAppsByAppIdExportData = {
 
 export type GetAppsByAppIdExportErrors = {
   403: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetAppsByAppIdExportError = GetAppsByAppIdExportErrors[keyof GetAppsByAppIdExportErrors]
@@ -5634,6 +5874,7 @@ export type PostAppsByAppIdFeedbacksData = {
 export type PostAppsByAppIdFeedbacksErrors = {
   403: ErrorResponse
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostAppsByAppIdFeedbacksError =
@@ -5657,6 +5898,7 @@ export type PostAppsByAppIdIconData = {
 
 export type PostAppsByAppIdIconErrors = {
   403: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostAppsByAppIdIconError = PostAppsByAppIdIconErrors[keyof PostAppsByAppIdIconErrors]
@@ -5680,6 +5922,7 @@ export type GetAppsByAppIdMessagesByMessageIdData = {
 
 export type GetAppsByAppIdMessagesByMessageIdErrors = {
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetAppsByAppIdMessagesByMessageIdError =
@@ -5704,6 +5947,7 @@ export type PostAppsByAppIdModelConfigData = {
 export type PostAppsByAppIdModelConfigErrors = {
   400: ErrorResponse
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostAppsByAppIdModelConfigError =
@@ -5725,6 +5969,12 @@ export type PostAppsByAppIdNameData = {
   url: '/apps/{app_id}/name'
 }
 
+export type PostAppsByAppIdNameErrors = {
+  default: ErrorResponse
+}
+
+export type PostAppsByAppIdNameError = PostAppsByAppIdNameErrors[keyof PostAppsByAppIdNameErrors]
+
 export type PostAppsByAppIdNameResponses = {
   200: AppDetail
 }
@@ -5741,6 +5991,13 @@ export type PostAppsByAppIdPublishToCreatorsPlatformData = {
   url: '/apps/{app_id}/publish-to-creators-platform'
 }
 
+export type PostAppsByAppIdPublishToCreatorsPlatformErrors = {
+  default: ErrorResponse
+}
+
+export type PostAppsByAppIdPublishToCreatorsPlatformError =
+  PostAppsByAppIdPublishToCreatorsPlatformErrors[keyof PostAppsByAppIdPublishToCreatorsPlatformErrors]
+
 export type PostAppsByAppIdPublishToCreatorsPlatformResponses = {
   200: RedirectUrlResponse
 }
@@ -5756,6 +6013,12 @@ export type GetAppsByAppIdServerData = {
   query?: never
   url: '/apps/{app_id}/server'
 }
+
+export type GetAppsByAppIdServerErrors = {
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdServerError = GetAppsByAppIdServerErrors[keyof GetAppsByAppIdServerErrors]
 
 export type GetAppsByAppIdServerResponses = {
   200: AppMcpServerResponse
@@ -5776,6 +6039,7 @@ export type PostAppsByAppIdServerData = {
 export type PostAppsByAppIdServerErrors = {
   403: ErrorResponse
   409: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostAppsByAppIdServerError =
@@ -5800,6 +6064,7 @@ export type PutAppsByAppIdServerData = {
 export type PutAppsByAppIdServerErrors = {
   403: ErrorResponse
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PutAppsByAppIdServerError = PutAppsByAppIdServerErrors[keyof PutAppsByAppIdServerErrors]
@@ -5823,6 +6088,7 @@ export type PostAppsByAppIdServerRefreshData = {
 export type PostAppsByAppIdServerRefreshErrors = {
   403: ErrorResponse
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostAppsByAppIdServerRefreshError =
@@ -5847,6 +6113,7 @@ export type PostAppsByAppIdSiteData = {
 export type PostAppsByAppIdSiteErrors = {
   403: ErrorResponse
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostAppsByAppIdSiteError = PostAppsByAppIdSiteErrors[keyof PostAppsByAppIdSiteErrors]
@@ -5869,6 +6136,7 @@ export type PostAppsByAppIdSiteEnableData = {
 
 export type PostAppsByAppIdSiteEnableErrors = {
   403: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostAppsByAppIdSiteEnableError =
@@ -5893,6 +6161,7 @@ export type PostAppsByAppIdSiteAccessTokenResetData = {
 export type PostAppsByAppIdSiteAccessTokenResetErrors = {
   403: ErrorResponse
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostAppsByAppIdSiteAccessTokenResetError =
@@ -5916,6 +6185,7 @@ export type DeleteAppsByAppIdStarData = {
 
 export type DeleteAppsByAppIdStarErrors = {
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type DeleteAppsByAppIdStarError =
@@ -5939,6 +6209,7 @@ export type PostAppsByAppIdStarData = {
 
 export type PostAppsByAppIdStarErrors = {
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostAppsByAppIdStarError = PostAppsByAppIdStarErrors[keyof PostAppsByAppIdStarErrors]
@@ -5962,6 +6233,13 @@ export type GetAppsByAppIdStatisticsAverageResponseTimeData = {
   url: '/apps/{app_id}/statistics/average-response-time'
 }
 
+export type GetAppsByAppIdStatisticsAverageResponseTimeErrors = {
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdStatisticsAverageResponseTimeError =
+  GetAppsByAppIdStatisticsAverageResponseTimeErrors[keyof GetAppsByAppIdStatisticsAverageResponseTimeErrors]
+
 export type GetAppsByAppIdStatisticsAverageResponseTimeResponses = {
   200: AverageResponseTimeStatisticResponse
 }
@@ -5980,6 +6258,13 @@ export type GetAppsByAppIdStatisticsAverageSessionInteractionsData = {
   }
   url: '/apps/{app_id}/statistics/average-session-interactions'
 }
+
+export type GetAppsByAppIdStatisticsAverageSessionInteractionsErrors = {
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdStatisticsAverageSessionInteractionsError =
+  GetAppsByAppIdStatisticsAverageSessionInteractionsErrors[keyof GetAppsByAppIdStatisticsAverageSessionInteractionsErrors]
 
 export type GetAppsByAppIdStatisticsAverageSessionInteractionsResponses = {
   200: AverageSessionInteractionStatisticResponse
@@ -6000,6 +6285,13 @@ export type GetAppsByAppIdStatisticsDailyConversationsData = {
   url: '/apps/{app_id}/statistics/daily-conversations'
 }
 
+export type GetAppsByAppIdStatisticsDailyConversationsErrors = {
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdStatisticsDailyConversationsError =
+  GetAppsByAppIdStatisticsDailyConversationsErrors[keyof GetAppsByAppIdStatisticsDailyConversationsErrors]
+
 export type GetAppsByAppIdStatisticsDailyConversationsResponses = {
   200: DailyConversationStatisticResponse
 }
@@ -6018,6 +6310,13 @@ export type GetAppsByAppIdStatisticsDailyEndUsersData = {
   }
   url: '/apps/{app_id}/statistics/daily-end-users'
 }
+
+export type GetAppsByAppIdStatisticsDailyEndUsersErrors = {
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdStatisticsDailyEndUsersError =
+  GetAppsByAppIdStatisticsDailyEndUsersErrors[keyof GetAppsByAppIdStatisticsDailyEndUsersErrors]
 
 export type GetAppsByAppIdStatisticsDailyEndUsersResponses = {
   200: DailyTerminalStatisticResponse
@@ -6038,6 +6337,13 @@ export type GetAppsByAppIdStatisticsDailyMessagesData = {
   url: '/apps/{app_id}/statistics/daily-messages'
 }
 
+export type GetAppsByAppIdStatisticsDailyMessagesErrors = {
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdStatisticsDailyMessagesError =
+  GetAppsByAppIdStatisticsDailyMessagesErrors[keyof GetAppsByAppIdStatisticsDailyMessagesErrors]
+
 export type GetAppsByAppIdStatisticsDailyMessagesResponses = {
   200: DailyMessageStatisticResponse
 }
@@ -6056,6 +6362,13 @@ export type GetAppsByAppIdStatisticsTokenCostsData = {
   }
   url: '/apps/{app_id}/statistics/token-costs'
 }
+
+export type GetAppsByAppIdStatisticsTokenCostsErrors = {
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdStatisticsTokenCostsError =
+  GetAppsByAppIdStatisticsTokenCostsErrors[keyof GetAppsByAppIdStatisticsTokenCostsErrors]
 
 export type GetAppsByAppIdStatisticsTokenCostsResponses = {
   200: DailyTokenCostStatisticResponse
@@ -6076,6 +6389,13 @@ export type GetAppsByAppIdStatisticsTokensPerSecondData = {
   url: '/apps/{app_id}/statistics/tokens-per-second'
 }
 
+export type GetAppsByAppIdStatisticsTokensPerSecondErrors = {
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdStatisticsTokensPerSecondError =
+  GetAppsByAppIdStatisticsTokensPerSecondErrors[keyof GetAppsByAppIdStatisticsTokensPerSecondErrors]
+
 export type GetAppsByAppIdStatisticsTokensPerSecondResponses = {
   200: TokensPerSecondStatisticResponse
 }
@@ -6095,6 +6415,13 @@ export type GetAppsByAppIdStatisticsUserSatisfactionRateData = {
   url: '/apps/{app_id}/statistics/user-satisfaction-rate'
 }
 
+export type GetAppsByAppIdStatisticsUserSatisfactionRateErrors = {
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdStatisticsUserSatisfactionRateError =
+  GetAppsByAppIdStatisticsUserSatisfactionRateErrors[keyof GetAppsByAppIdStatisticsUserSatisfactionRateErrors]
+
 export type GetAppsByAppIdStatisticsUserSatisfactionRateResponses = {
   200: UserSatisfactionRateStatisticResponse
 }
@@ -6113,6 +6440,7 @@ export type PostAppsByAppIdTextToAudioData = {
 
 export type PostAppsByAppIdTextToAudioErrors = {
   400: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostAppsByAppIdTextToAudioError =
@@ -6140,6 +6468,7 @@ export type GetAppsByAppIdTextToAudioVoicesData = {
 
 export type GetAppsByAppIdTextToAudioVoicesErrors = {
   400: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetAppsByAppIdTextToAudioVoicesError =
@@ -6161,6 +6490,12 @@ export type GetAppsByAppIdTraceData = {
   url: '/apps/{app_id}/trace'
 }
 
+export type GetAppsByAppIdTraceErrors = {
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdTraceError = GetAppsByAppIdTraceErrors[keyof GetAppsByAppIdTraceErrors]
+
 export type GetAppsByAppIdTraceResponses = {
   200: AppTraceResponse
 }
@@ -6179,6 +6514,7 @@ export type PostAppsByAppIdTraceData = {
 
 export type PostAppsByAppIdTraceErrors = {
   403: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostAppsByAppIdTraceError = PostAppsByAppIdTraceErrors[keyof PostAppsByAppIdTraceErrors]
@@ -6206,6 +6542,7 @@ export type DeleteAppsByAppIdTraceConfigErrors = {
   403: ErrorResponse
   404: ErrorResponse
   500: ErrorResponse
+  default: ErrorResponse
 }
 
 export type DeleteAppsByAppIdTraceConfigError =
@@ -6233,6 +6570,7 @@ export type GetAppsByAppIdTraceConfigErrors = {
   400: ErrorResponse
   404: ErrorResponse
   500: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetAppsByAppIdTraceConfigError =
@@ -6259,6 +6597,7 @@ export type PatchAppsByAppIdTraceConfigErrors = {
   403: ErrorResponse
   404: ErrorResponse
   500: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PatchAppsByAppIdTraceConfigError =
@@ -6286,6 +6625,7 @@ export type PostAppsByAppIdTraceConfigErrors = {
   404: ErrorResponse
   409: ErrorResponse
   500: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostAppsByAppIdTraceConfigError =
@@ -6307,6 +6647,13 @@ export type PostAppsByAppIdTriggerEnableData = {
   url: '/apps/{app_id}/trigger-enable'
 }
 
+export type PostAppsByAppIdTriggerEnableErrors = {
+  default: ErrorResponse
+}
+
+export type PostAppsByAppIdTriggerEnableError =
+  PostAppsByAppIdTriggerEnableErrors[keyof PostAppsByAppIdTriggerEnableErrors]
+
 export type PostAppsByAppIdTriggerEnableResponses = {
   200: WorkflowTriggerResponse
 }
@@ -6322,6 +6669,13 @@ export type GetAppsByAppIdTriggersData = {
   query?: never
   url: '/apps/{app_id}/triggers'
 }
+
+export type GetAppsByAppIdTriggersErrors = {
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdTriggersError =
+  GetAppsByAppIdTriggersErrors[keyof GetAppsByAppIdTriggersErrors]
 
 export type GetAppsByAppIdTriggersResponses = {
   200: WorkflowTriggerListResponse
@@ -6356,6 +6710,13 @@ export type GetAppsByAppIdWorkflowAppLogsData = {
   url: '/apps/{app_id}/workflow-app-logs'
 }
 
+export type GetAppsByAppIdWorkflowAppLogsErrors = {
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdWorkflowAppLogsError =
+  GetAppsByAppIdWorkflowAppLogsErrors[keyof GetAppsByAppIdWorkflowAppLogsErrors]
+
 export type GetAppsByAppIdWorkflowAppLogsResponses = {
   200: WorkflowAppLogPaginationResponse
 }
@@ -6377,6 +6738,13 @@ export type GetAppsByAppIdWorkflowRunsData = {
   url: '/apps/{app_id}/workflow-runs'
 }
 
+export type GetAppsByAppIdWorkflowRunsErrors = {
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdWorkflowRunsError =
+  GetAppsByAppIdWorkflowRunsErrors[keyof GetAppsByAppIdWorkflowRunsErrors]
+
 export type GetAppsByAppIdWorkflowRunsResponses = {
   200: WorkflowRunPaginationResponse
 }
@@ -6396,6 +6764,13 @@ export type GetAppsByAppIdWorkflowRunsCountData = {
   }
   url: '/apps/{app_id}/workflow-runs/count'
 }
+
+export type GetAppsByAppIdWorkflowRunsCountErrors = {
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdWorkflowRunsCountError =
+  GetAppsByAppIdWorkflowRunsCountErrors[keyof GetAppsByAppIdWorkflowRunsCountErrors]
 
 export type GetAppsByAppIdWorkflowRunsCountResponses = {
   200: WorkflowRunCountResponse
@@ -6417,6 +6792,7 @@ export type PostAppsByAppIdWorkflowRunsTasksByTaskIdStopData = {
 export type PostAppsByAppIdWorkflowRunsTasksByTaskIdStopErrors = {
   403: ErrorResponse
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostAppsByAppIdWorkflowRunsTasksByTaskIdStopError =
@@ -6441,6 +6817,7 @@ export type GetAppsByAppIdWorkflowRunsByRunIdData = {
 
 export type GetAppsByAppIdWorkflowRunsByRunIdErrors = {
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetAppsByAppIdWorkflowRunsByRunIdError =
@@ -6465,6 +6842,7 @@ export type GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsData = {
 
 export type GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsErrors = {
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetAppsByAppIdWorkflowRunsByRunIdNodeExecutionsError =
@@ -6491,6 +6869,13 @@ export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFi
   url: '/apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/sandbox/files'
 }
 
+export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesErrors = {
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesError =
+  GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesErrors[keyof GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesErrors]
+
 export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesResponses = {
   200: SandboxListResponse
 }
@@ -6508,6 +6893,14 @@ export type PostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxF
   query?: never
   url: '/apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/sandbox/files/download'
 }
+
+export type PostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesDownloadErrors =
+  {
+    default: ErrorResponse
+  }
+
+export type PostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesDownloadError =
+  PostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesDownloadErrors[keyof PostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesDownloadErrors]
 
 export type PostAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesDownloadResponses =
   {
@@ -6531,6 +6924,13 @@ export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFi
   url: '/apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/sandbox/files/read'
 }
 
+export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesReadErrors = {
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesReadError =
+  GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesReadErrors[keyof GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesReadErrors]
+
 export type GetAppsByAppIdWorkflowRunsByWorkflowRunIdAgentNodesByNodeIdSandboxFilesReadResponses = {
   200: SandboxReadResponse
 }
@@ -6546,6 +6946,13 @@ export type GetAppsByAppIdWorkflowCommentsData = {
   query?: never
   url: '/apps/{app_id}/workflow/comments'
 }
+
+export type GetAppsByAppIdWorkflowCommentsErrors = {
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdWorkflowCommentsError =
+  GetAppsByAppIdWorkflowCommentsErrors[keyof GetAppsByAppIdWorkflowCommentsErrors]
 
 export type GetAppsByAppIdWorkflowCommentsResponses = {
   200: WorkflowCommentBasicList
@@ -6563,6 +6970,13 @@ export type PostAppsByAppIdWorkflowCommentsData = {
   url: '/apps/{app_id}/workflow/comments'
 }
 
+export type PostAppsByAppIdWorkflowCommentsErrors = {
+  default: ErrorResponse
+}
+
+export type PostAppsByAppIdWorkflowCommentsError =
+  PostAppsByAppIdWorkflowCommentsErrors[keyof PostAppsByAppIdWorkflowCommentsErrors]
+
 export type PostAppsByAppIdWorkflowCommentsResponses = {
   201: WorkflowCommentCreate
 }
@@ -6578,6 +6992,13 @@ export type GetAppsByAppIdWorkflowCommentsMentionUsersData = {
   query?: never
   url: '/apps/{app_id}/workflow/comments/mention-users'
 }
+
+export type GetAppsByAppIdWorkflowCommentsMentionUsersErrors = {
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdWorkflowCommentsMentionUsersError =
+  GetAppsByAppIdWorkflowCommentsMentionUsersErrors[keyof GetAppsByAppIdWorkflowCommentsMentionUsersErrors]
 
 export type GetAppsByAppIdWorkflowCommentsMentionUsersResponses = {
   200: WorkflowCommentMentionUsersPayload
@@ -6596,6 +7017,13 @@ export type DeleteAppsByAppIdWorkflowCommentsByCommentIdData = {
   url: '/apps/{app_id}/workflow/comments/{comment_id}'
 }
 
+export type DeleteAppsByAppIdWorkflowCommentsByCommentIdErrors = {
+  default: ErrorResponse
+}
+
+export type DeleteAppsByAppIdWorkflowCommentsByCommentIdError =
+  DeleteAppsByAppIdWorkflowCommentsByCommentIdErrors[keyof DeleteAppsByAppIdWorkflowCommentsByCommentIdErrors]
+
 export type DeleteAppsByAppIdWorkflowCommentsByCommentIdResponses = {
   204: void
 }
@@ -6612,6 +7040,13 @@ export type GetAppsByAppIdWorkflowCommentsByCommentIdData = {
   query?: never
   url: '/apps/{app_id}/workflow/comments/{comment_id}'
 }
+
+export type GetAppsByAppIdWorkflowCommentsByCommentIdErrors = {
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdWorkflowCommentsByCommentIdError =
+  GetAppsByAppIdWorkflowCommentsByCommentIdErrors[keyof GetAppsByAppIdWorkflowCommentsByCommentIdErrors]
 
 export type GetAppsByAppIdWorkflowCommentsByCommentIdResponses = {
   200: WorkflowCommentDetail
@@ -6630,6 +7065,13 @@ export type PutAppsByAppIdWorkflowCommentsByCommentIdData = {
   url: '/apps/{app_id}/workflow/comments/{comment_id}'
 }
 
+export type PutAppsByAppIdWorkflowCommentsByCommentIdErrors = {
+  default: ErrorResponse
+}
+
+export type PutAppsByAppIdWorkflowCommentsByCommentIdError =
+  PutAppsByAppIdWorkflowCommentsByCommentIdErrors[keyof PutAppsByAppIdWorkflowCommentsByCommentIdErrors]
+
 export type PutAppsByAppIdWorkflowCommentsByCommentIdResponses = {
   200: WorkflowCommentUpdate
 }
@@ -6646,6 +7088,13 @@ export type PostAppsByAppIdWorkflowCommentsByCommentIdRepliesData = {
   query?: never
   url: '/apps/{app_id}/workflow/comments/{comment_id}/replies'
 }
+
+export type PostAppsByAppIdWorkflowCommentsByCommentIdRepliesErrors = {
+  default: ErrorResponse
+}
+
+export type PostAppsByAppIdWorkflowCommentsByCommentIdRepliesError =
+  PostAppsByAppIdWorkflowCommentsByCommentIdRepliesErrors[keyof PostAppsByAppIdWorkflowCommentsByCommentIdRepliesErrors]
 
 export type PostAppsByAppIdWorkflowCommentsByCommentIdRepliesResponses = {
   201: WorkflowCommentReplyCreate
@@ -6665,6 +7114,13 @@ export type DeleteAppsByAppIdWorkflowCommentsByCommentIdRepliesByReplyIdData = {
   url: '/apps/{app_id}/workflow/comments/{comment_id}/replies/{reply_id}'
 }
 
+export type DeleteAppsByAppIdWorkflowCommentsByCommentIdRepliesByReplyIdErrors = {
+  default: ErrorResponse
+}
+
+export type DeleteAppsByAppIdWorkflowCommentsByCommentIdRepliesByReplyIdError =
+  DeleteAppsByAppIdWorkflowCommentsByCommentIdRepliesByReplyIdErrors[keyof DeleteAppsByAppIdWorkflowCommentsByCommentIdRepliesByReplyIdErrors]
+
 export type DeleteAppsByAppIdWorkflowCommentsByCommentIdRepliesByReplyIdResponses = {
   204: void
 }
@@ -6683,6 +7139,13 @@ export type PutAppsByAppIdWorkflowCommentsByCommentIdRepliesByReplyIdData = {
   url: '/apps/{app_id}/workflow/comments/{comment_id}/replies/{reply_id}'
 }
 
+export type PutAppsByAppIdWorkflowCommentsByCommentIdRepliesByReplyIdErrors = {
+  default: ErrorResponse
+}
+
+export type PutAppsByAppIdWorkflowCommentsByCommentIdRepliesByReplyIdError =
+  PutAppsByAppIdWorkflowCommentsByCommentIdRepliesByReplyIdErrors[keyof PutAppsByAppIdWorkflowCommentsByCommentIdRepliesByReplyIdErrors]
+
 export type PutAppsByAppIdWorkflowCommentsByCommentIdRepliesByReplyIdResponses = {
   200: WorkflowCommentReplyUpdate
 }
@@ -6699,6 +7162,13 @@ export type PostAppsByAppIdWorkflowCommentsByCommentIdResolveData = {
   query?: never
   url: '/apps/{app_id}/workflow/comments/{comment_id}/resolve'
 }
+
+export type PostAppsByAppIdWorkflowCommentsByCommentIdResolveErrors = {
+  default: ErrorResponse
+}
+
+export type PostAppsByAppIdWorkflowCommentsByCommentIdResolveError =
+  PostAppsByAppIdWorkflowCommentsByCommentIdResolveErrors[keyof PostAppsByAppIdWorkflowCommentsByCommentIdResolveErrors]
 
 export type PostAppsByAppIdWorkflowCommentsByCommentIdResolveResponses = {
   200: WorkflowCommentResolve
@@ -6719,6 +7189,13 @@ export type GetAppsByAppIdWorkflowStatisticsAverageAppInteractionsData = {
   url: '/apps/{app_id}/workflow/statistics/average-app-interactions'
 }
 
+export type GetAppsByAppIdWorkflowStatisticsAverageAppInteractionsErrors = {
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdWorkflowStatisticsAverageAppInteractionsError =
+  GetAppsByAppIdWorkflowStatisticsAverageAppInteractionsErrors[keyof GetAppsByAppIdWorkflowStatisticsAverageAppInteractionsErrors]
+
 export type GetAppsByAppIdWorkflowStatisticsAverageAppInteractionsResponses = {
   200: WorkflowAverageAppInteractionStatisticResponse
 }
@@ -6737,6 +7214,13 @@ export type GetAppsByAppIdWorkflowStatisticsDailyConversationsData = {
   }
   url: '/apps/{app_id}/workflow/statistics/daily-conversations'
 }
+
+export type GetAppsByAppIdWorkflowStatisticsDailyConversationsErrors = {
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdWorkflowStatisticsDailyConversationsError =
+  GetAppsByAppIdWorkflowStatisticsDailyConversationsErrors[keyof GetAppsByAppIdWorkflowStatisticsDailyConversationsErrors]
 
 export type GetAppsByAppIdWorkflowStatisticsDailyConversationsResponses = {
   200: WorkflowDailyRunsStatisticResponse
@@ -6757,6 +7241,13 @@ export type GetAppsByAppIdWorkflowStatisticsDailyTerminalsData = {
   url: '/apps/{app_id}/workflow/statistics/daily-terminals'
 }
 
+export type GetAppsByAppIdWorkflowStatisticsDailyTerminalsErrors = {
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdWorkflowStatisticsDailyTerminalsError =
+  GetAppsByAppIdWorkflowStatisticsDailyTerminalsErrors[keyof GetAppsByAppIdWorkflowStatisticsDailyTerminalsErrors]
+
 export type GetAppsByAppIdWorkflowStatisticsDailyTerminalsResponses = {
   200: WorkflowDailyTerminalsStatisticResponse
 }
@@ -6775,6 +7266,13 @@ export type GetAppsByAppIdWorkflowStatisticsTokenCostsData = {
   }
   url: '/apps/{app_id}/workflow/statistics/token-costs'
 }
+
+export type GetAppsByAppIdWorkflowStatisticsTokenCostsErrors = {
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdWorkflowStatisticsTokenCostsError =
+  GetAppsByAppIdWorkflowStatisticsTokenCostsErrors[keyof GetAppsByAppIdWorkflowStatisticsTokenCostsErrors]
 
 export type GetAppsByAppIdWorkflowStatisticsTokenCostsResponses = {
   200: WorkflowDailyTokenCostStatisticResponse
@@ -6797,6 +7295,13 @@ export type GetAppsByAppIdWorkflowsData = {
   url: '/apps/{app_id}/workflows'
 }
 
+export type GetAppsByAppIdWorkflowsErrors = {
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdWorkflowsError =
+  GetAppsByAppIdWorkflowsErrors[keyof GetAppsByAppIdWorkflowsErrors]
+
 export type GetAppsByAppIdWorkflowsResponses = {
   200: WorkflowPaginationResponse
 }
@@ -6812,6 +7317,13 @@ export type GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsData = {
   query?: never
   url: '/apps/{app_id}/workflows/default-workflow-block-configs'
 }
+
+export type GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsErrors = {
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsError =
+  GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsErrors[keyof GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsErrors]
 
 export type GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsResponses = {
   200: DefaultBlockConfigsResponse
@@ -6834,6 +7346,7 @@ export type GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeData = 
 
 export type GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeErrors = {
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeError =
@@ -6857,6 +7370,7 @@ export type GetAppsByAppIdWorkflowsDraftData = {
 
 export type GetAppsByAppIdWorkflowsDraftErrors = {
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetAppsByAppIdWorkflowsDraftError =
@@ -6881,6 +7395,7 @@ export type PostAppsByAppIdWorkflowsDraftData = {
 export type PostAppsByAppIdWorkflowsDraftErrors = {
   400: ErrorResponse
   403: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostAppsByAppIdWorkflowsDraftError =
@@ -6904,6 +7419,7 @@ export type GetAppsByAppIdWorkflowsDraftConversationVariablesData = {
 
 export type GetAppsByAppIdWorkflowsDraftConversationVariablesErrors = {
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetAppsByAppIdWorkflowsDraftConversationVariablesError =
@@ -6925,6 +7441,13 @@ export type PostAppsByAppIdWorkflowsDraftConversationVariablesData = {
   url: '/apps/{app_id}/workflows/draft/conversation-variables'
 }
 
+export type PostAppsByAppIdWorkflowsDraftConversationVariablesErrors = {
+  default: ErrorResponse
+}
+
+export type PostAppsByAppIdWorkflowsDraftConversationVariablesError =
+  PostAppsByAppIdWorkflowsDraftConversationVariablesErrors[keyof PostAppsByAppIdWorkflowsDraftConversationVariablesErrors]
+
 export type PostAppsByAppIdWorkflowsDraftConversationVariablesResponses = {
   200: SimpleResultResponse
 }
@@ -6943,6 +7466,7 @@ export type GetAppsByAppIdWorkflowsDraftEnvironmentVariablesData = {
 
 export type GetAppsByAppIdWorkflowsDraftEnvironmentVariablesErrors = {
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetAppsByAppIdWorkflowsDraftEnvironmentVariablesError =
@@ -6964,6 +7488,13 @@ export type PostAppsByAppIdWorkflowsDraftEnvironmentVariablesData = {
   url: '/apps/{app_id}/workflows/draft/environment-variables'
 }
 
+export type PostAppsByAppIdWorkflowsDraftEnvironmentVariablesErrors = {
+  default: ErrorResponse
+}
+
+export type PostAppsByAppIdWorkflowsDraftEnvironmentVariablesError =
+  PostAppsByAppIdWorkflowsDraftEnvironmentVariablesErrors[keyof PostAppsByAppIdWorkflowsDraftEnvironmentVariablesErrors]
+
 export type PostAppsByAppIdWorkflowsDraftEnvironmentVariablesResponses = {
   200: SimpleResultResponse
 }
@@ -6979,6 +7510,13 @@ export type PostAppsByAppIdWorkflowsDraftFeaturesData = {
   query?: never
   url: '/apps/{app_id}/workflows/draft/features'
 }
+
+export type PostAppsByAppIdWorkflowsDraftFeaturesErrors = {
+  default: ErrorResponse
+}
+
+export type PostAppsByAppIdWorkflowsDraftFeaturesError =
+  PostAppsByAppIdWorkflowsDraftFeaturesErrors[keyof PostAppsByAppIdWorkflowsDraftFeaturesErrors]
 
 export type PostAppsByAppIdWorkflowsDraftFeaturesResponses = {
   200: SimpleResultResponse
@@ -6997,6 +7535,13 @@ export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdDeliveryTestData
   url: '/apps/{app_id}/workflows/draft/human-input/nodes/{node_id}/delivery-test'
 }
 
+export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdDeliveryTestErrors = {
+  default: ErrorResponse
+}
+
+export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdDeliveryTestError =
+  PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdDeliveryTestErrors[keyof PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdDeliveryTestErrors]
+
 export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdDeliveryTestResponses = {
   200: EmptyObjectResponse
 }
@@ -7014,6 +7559,13 @@ export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormPreviewData 
   url: '/apps/{app_id}/workflows/draft/human-input/nodes/{node_id}/form/preview'
 }
 
+export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormPreviewErrors = {
+  default: ErrorResponse
+}
+
+export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormPreviewError =
+  PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormPreviewErrors[keyof PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormPreviewErrors]
+
 export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormPreviewResponses = {
   200: HumanInputFormPreviewResponse
 }
@@ -7030,6 +7582,13 @@ export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormRunData = {
   query?: never
   url: '/apps/{app_id}/workflows/draft/human-input/nodes/{node_id}/form/run'
 }
+
+export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormRunErrors = {
+  default: ErrorResponse
+}
+
+export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormRunError =
+  PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormRunErrors[keyof PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormRunErrors]
 
 export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormRunResponses = {
   200: HumanInputFormSubmitResponse
@@ -7051,6 +7610,7 @@ export type PostAppsByAppIdWorkflowsDraftIterationNodesByNodeIdRunData = {
 export type PostAppsByAppIdWorkflowsDraftIterationNodesByNodeIdRunErrors = {
   403: ErrorResponse
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostAppsByAppIdWorkflowsDraftIterationNodesByNodeIdRunError =
@@ -7076,6 +7636,7 @@ export type PostAppsByAppIdWorkflowsDraftLoopNodesByNodeIdRunData = {
 export type PostAppsByAppIdWorkflowsDraftLoopNodesByNodeIdRunErrors = {
   403: ErrorResponse
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostAppsByAppIdWorkflowsDraftLoopNodesByNodeIdRunError =
@@ -7100,6 +7661,13 @@ export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerData = {
   url: '/apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer'
 }
 
+export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerErrors = {
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerError =
+  GetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerErrors[keyof GetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerErrors]
+
 export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerResponses = {
   200: WorkflowAgentComposerResponse
 }
@@ -7116,6 +7684,13 @@ export type PutAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerData = {
   query?: never
   url: '/apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer'
 }
+
+export type PutAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerErrors = {
+  default: ErrorResponse
+}
+
+export type PutAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerError =
+  PutAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerErrors[keyof PutAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerErrors]
 
 export type PutAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerResponses = {
   200: WorkflowAgentComposerResponse
@@ -7134,6 +7709,13 @@ export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesData
   url: '/apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/candidates'
 }
 
+export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesErrors = {
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesError =
+  GetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesErrors[keyof GetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesErrors]
+
 export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesResponses = {
   200: AgentComposerCandidatesResponse
 }
@@ -7150,6 +7732,13 @@ export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRoste
   query?: never
   url: '/apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/copy-from-roster'
 }
+
+export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRosterErrors = {
+  default: ErrorResponse
+}
+
+export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRosterError =
+  PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRosterErrors[keyof PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRosterErrors]
 
 export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRosterResponses = {
   200: WorkflowAgentComposerResponse
@@ -7168,6 +7757,13 @@ export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerImpactData = 
   url: '/apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/impact'
 }
 
+export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerImpactErrors = {
+  default: ErrorResponse
+}
+
+export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerImpactError =
+  PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerImpactErrors[keyof PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerImpactErrors]
+
 export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerImpactResponses = {
   200: AgentComposerImpactResponse
 }
@@ -7185,6 +7781,13 @@ export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRosterD
   url: '/apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/save-to-roster'
 }
 
+export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRosterErrors = {
+  default: ErrorResponse
+}
+
+export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRosterError =
+  PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRosterErrors[keyof PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRosterErrors]
+
 export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRosterResponses = {
   200: WorkflowAgentComposerResponse
 }
@@ -7201,6 +7804,13 @@ export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerValidateData 
   query?: never
   url: '/apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/validate'
 }
+
+export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerValidateErrors = {
+  default: ErrorResponse
+}
+
+export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerValidateError =
+  PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerValidateErrors[keyof PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerValidateErrors]
 
 export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerValidateResponses = {
   200: AgentComposerValidateResponse
@@ -7222,6 +7832,7 @@ export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdLastRunData = {
 export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdLastRunErrors = {
   403: ErrorResponse
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdLastRunError =
@@ -7247,6 +7858,7 @@ export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdRunData = {
 export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdRunErrors = {
   403: ErrorResponse
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdRunError =
@@ -7272,6 +7884,7 @@ export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdTriggerRunData = {
 export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdTriggerRunErrors = {
   403: ErrorResponse
   500: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdTriggerRunError =
@@ -7294,6 +7907,13 @@ export type DeleteAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesData = {
   url: '/apps/{app_id}/workflows/draft/nodes/{node_id}/variables'
 }
 
+export type DeleteAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesErrors = {
+  default: ErrorResponse
+}
+
+export type DeleteAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesError =
+  DeleteAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesErrors[keyof DeleteAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesErrors]
+
 export type DeleteAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesResponses = {
   204: void
 }
@@ -7310,6 +7930,13 @@ export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesData = {
   query?: never
   url: '/apps/{app_id}/workflows/draft/nodes/{node_id}/variables'
 }
+
+export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesErrors = {
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesError =
+  GetAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesErrors[keyof GetAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesErrors]
 
 export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesResponses = {
   200: WorkflowDraftVariableListResponse
@@ -7329,6 +7956,7 @@ export type PostAppsByAppIdWorkflowsDraftRunData = {
 
 export type PostAppsByAppIdWorkflowsDraftRunErrors = {
   403: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostAppsByAppIdWorkflowsDraftRunError =
@@ -7353,6 +7981,7 @@ export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsData = {
 
 export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsErrors = {
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsError =
@@ -7377,6 +8006,7 @@ export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEventsData = {
 
 export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEventsErrors = {
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsEventsError =
@@ -7402,6 +8032,7 @@ export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdData = {
 
 export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdErrors = {
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdError =
@@ -7428,6 +8059,7 @@ export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdByOutputNa
 
 export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewErrors = {
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewError =
@@ -7450,6 +8082,13 @@ export type GetAppsByAppIdWorkflowsDraftSystemVariablesData = {
   url: '/apps/{app_id}/workflows/draft/system-variables'
 }
 
+export type GetAppsByAppIdWorkflowsDraftSystemVariablesErrors = {
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdWorkflowsDraftSystemVariablesError =
+  GetAppsByAppIdWorkflowsDraftSystemVariablesErrors[keyof GetAppsByAppIdWorkflowsDraftSystemVariablesErrors]
+
 export type GetAppsByAppIdWorkflowsDraftSystemVariablesResponses = {
   200: WorkflowDraftVariableListResponse
 }
@@ -7469,6 +8108,7 @@ export type PostAppsByAppIdWorkflowsDraftTriggerRunData = {
 export type PostAppsByAppIdWorkflowsDraftTriggerRunErrors = {
   403: ErrorResponse
   500: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostAppsByAppIdWorkflowsDraftTriggerRunError =
@@ -7493,6 +8133,7 @@ export type PostAppsByAppIdWorkflowsDraftTriggerRunAllData = {
 export type PostAppsByAppIdWorkflowsDraftTriggerRunAllErrors = {
   403: ErrorResponse
   500: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostAppsByAppIdWorkflowsDraftTriggerRunAllError =
@@ -7514,6 +8155,13 @@ export type DeleteAppsByAppIdWorkflowsDraftVariablesData = {
   url: '/apps/{app_id}/workflows/draft/variables'
 }
 
+export type DeleteAppsByAppIdWorkflowsDraftVariablesErrors = {
+  default: ErrorResponse
+}
+
+export type DeleteAppsByAppIdWorkflowsDraftVariablesError =
+  DeleteAppsByAppIdWorkflowsDraftVariablesErrors[keyof DeleteAppsByAppIdWorkflowsDraftVariablesErrors]
+
 export type DeleteAppsByAppIdWorkflowsDraftVariablesResponses = {
   204: void
 }
@@ -7532,6 +8180,13 @@ export type GetAppsByAppIdWorkflowsDraftVariablesData = {
   }
   url: '/apps/{app_id}/workflows/draft/variables'
 }
+
+export type GetAppsByAppIdWorkflowsDraftVariablesErrors = {
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdWorkflowsDraftVariablesError =
+  GetAppsByAppIdWorkflowsDraftVariablesErrors[keyof GetAppsByAppIdWorkflowsDraftVariablesErrors]
 
 export type GetAppsByAppIdWorkflowsDraftVariablesResponses = {
   200: WorkflowDraftVariableListWithoutValueResponse
@@ -7552,6 +8207,7 @@ export type DeleteAppsByAppIdWorkflowsDraftVariablesByVariableIdData = {
 
 export type DeleteAppsByAppIdWorkflowsDraftVariablesByVariableIdErrors = {
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type DeleteAppsByAppIdWorkflowsDraftVariablesByVariableIdError =
@@ -7576,6 +8232,7 @@ export type GetAppsByAppIdWorkflowsDraftVariablesByVariableIdData = {
 
 export type GetAppsByAppIdWorkflowsDraftVariablesByVariableIdErrors = {
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetAppsByAppIdWorkflowsDraftVariablesByVariableIdError =
@@ -7600,6 +8257,7 @@ export type PatchAppsByAppIdWorkflowsDraftVariablesByVariableIdData = {
 
 export type PatchAppsByAppIdWorkflowsDraftVariablesByVariableIdErrors = {
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PatchAppsByAppIdWorkflowsDraftVariablesByVariableIdError =
@@ -7624,6 +8282,7 @@ export type PutAppsByAppIdWorkflowsDraftVariablesByVariableIdResetData = {
 
 export type PutAppsByAppIdWorkflowsDraftVariablesByVariableIdResetErrors = {
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PutAppsByAppIdWorkflowsDraftVariablesByVariableIdResetError =
@@ -7646,6 +8305,13 @@ export type GetAppsByAppIdWorkflowsPublishData = {
   url: '/apps/{app_id}/workflows/publish'
 }
 
+export type GetAppsByAppIdWorkflowsPublishErrors = {
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdWorkflowsPublishError =
+  GetAppsByAppIdWorkflowsPublishErrors[keyof GetAppsByAppIdWorkflowsPublishErrors]
+
 export type GetAppsByAppIdWorkflowsPublishResponses = {
   200: WorkflowResponse
 }
@@ -7661,6 +8327,13 @@ export type PostAppsByAppIdWorkflowsPublishData = {
   query?: never
   url: '/apps/{app_id}/workflows/publish'
 }
+
+export type PostAppsByAppIdWorkflowsPublishErrors = {
+  default: ErrorResponse
+}
+
+export type PostAppsByAppIdWorkflowsPublishError =
+  PostAppsByAppIdWorkflowsPublishErrors[keyof PostAppsByAppIdWorkflowsPublishErrors]
 
 export type PostAppsByAppIdWorkflowsPublishResponses = {
   200: WorkflowPublishResponse
@@ -7681,6 +8354,7 @@ export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsData = {
 
 export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsErrors = {
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsError =
@@ -7705,6 +8379,7 @@ export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEventsData = {
 
 export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEventsErrors = {
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsEventsError =
@@ -7730,6 +8405,7 @@ export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdData =
 
 export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdErrors = {
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdError =
@@ -7758,6 +8434,7 @@ export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdByOutp
 export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewErrors =
   {
     404: ErrorResponse
+    default: ErrorResponse
   }
 
 export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsByNodeIdByOutputNamePreviewError =
@@ -7782,6 +8459,13 @@ export type GetAppsByAppIdWorkflowsTriggersWebhookData = {
   url: '/apps/{app_id}/workflows/triggers/webhook'
 }
 
+export type GetAppsByAppIdWorkflowsTriggersWebhookErrors = {
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdWorkflowsTriggersWebhookError =
+  GetAppsByAppIdWorkflowsTriggersWebhookErrors[keyof GetAppsByAppIdWorkflowsTriggersWebhookErrors]
+
 export type GetAppsByAppIdWorkflowsTriggersWebhookResponses = {
   200: WebhookTriggerResponse
 }
@@ -7798,6 +8482,13 @@ export type DeleteAppsByAppIdWorkflowsByWorkflowIdData = {
   query?: never
   url: '/apps/{app_id}/workflows/{workflow_id}'
 }
+
+export type DeleteAppsByAppIdWorkflowsByWorkflowIdErrors = {
+  default: ErrorResponse
+}
+
+export type DeleteAppsByAppIdWorkflowsByWorkflowIdError =
+  DeleteAppsByAppIdWorkflowsByWorkflowIdErrors[keyof DeleteAppsByAppIdWorkflowsByWorkflowIdErrors]
 
 export type DeleteAppsByAppIdWorkflowsByWorkflowIdResponses = {
   204: void
@@ -7819,6 +8510,7 @@ export type PatchAppsByAppIdWorkflowsByWorkflowIdData = {
 export type PatchAppsByAppIdWorkflowsByWorkflowIdErrors = {
   403: ErrorResponse
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PatchAppsByAppIdWorkflowsByWorkflowIdError =
@@ -7844,6 +8536,7 @@ export type PostAppsByAppIdWorkflowsByWorkflowIdRestoreData = {
 export type PostAppsByAppIdWorkflowsByWorkflowIdRestoreErrors = {
   400: ErrorResponse
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostAppsByAppIdWorkflowsByWorkflowIdRestoreError =
@@ -7865,6 +8558,13 @@ export type GetAppsByResourceIdApiKeysData = {
   url: '/apps/{resource_id}/api-keys'
 }
 
+export type GetAppsByResourceIdApiKeysErrors = {
+  default: ErrorResponse
+}
+
+export type GetAppsByResourceIdApiKeysError =
+  GetAppsByResourceIdApiKeysErrors[keyof GetAppsByResourceIdApiKeysErrors]
+
 export type GetAppsByResourceIdApiKeysResponses = {
   200: ApiKeyList
 }
@@ -7883,6 +8583,7 @@ export type PostAppsByResourceIdApiKeysData = {
 
 export type PostAppsByResourceIdApiKeysErrors = {
   400: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostAppsByResourceIdApiKeysError =
@@ -7904,6 +8605,13 @@ export type DeleteAppsByResourceIdApiKeysByApiKeyIdData = {
   query?: never
   url: '/apps/{resource_id}/api-keys/{api_key_id}'
 }
+
+export type DeleteAppsByResourceIdApiKeysByApiKeyIdErrors = {
+  default: ErrorResponse
+}
+
+export type DeleteAppsByResourceIdApiKeysByApiKeyIdError =
+  DeleteAppsByResourceIdApiKeysByApiKeyIdErrors[keyof DeleteAppsByResourceIdApiKeysByApiKeyIdErrors]
 
 export type DeleteAppsByResourceIdApiKeysByApiKeyIdResponses = {
   204: void

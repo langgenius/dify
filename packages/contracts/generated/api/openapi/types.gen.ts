@@ -573,6 +573,12 @@ export type GetCatalogData = {
   url: '/_catalog'
 }
 
+export type GetCatalogErrors = {
+  default: ErrorBody
+}
+
+export type GetCatalogError = GetCatalogErrors[keyof GetCatalogErrors]
+
 export type GetCatalogResponses = {
   200: {
     [key: string]: unknown
@@ -1035,6 +1041,13 @@ export type PostOauthDeviceApproveData = {
   url: '/oauth/device/approve'
 }
 
+export type PostOauthDeviceApproveErrors = {
+  default: ErrorBody
+}
+
+export type PostOauthDeviceApproveError =
+  PostOauthDeviceApproveErrors[keyof PostOauthDeviceApproveErrors]
+
 export type PostOauthDeviceApproveResponses = {
   200: DeviceMutateResponse
 }
@@ -1049,6 +1062,12 @@ export type PostOauthDeviceCodeData = {
   url: '/oauth/device/code'
 }
 
+export type PostOauthDeviceCodeErrors = {
+  default: ErrorBody
+}
+
+export type PostOauthDeviceCodeError = PostOauthDeviceCodeErrors[keyof PostOauthDeviceCodeErrors]
+
 export type PostOauthDeviceCodeResponses = {
   200: DeviceCodeResponse
 }
@@ -1062,6 +1081,12 @@ export type PostOauthDeviceDenyData = {
   query?: never
   url: '/oauth/device/deny'
 }
+
+export type PostOauthDeviceDenyErrors = {
+  default: ErrorBody
+}
+
+export type PostOauthDeviceDenyError = PostOauthDeviceDenyErrors[keyof PostOauthDeviceDenyErrors]
 
 export type PostOauthDeviceDenyResponses = {
   200: DeviceMutateResponse
@@ -1079,6 +1104,12 @@ export type GetOauthDeviceLookupData = {
   url: '/oauth/device/lookup'
 }
 
+export type GetOauthDeviceLookupErrors = {
+  default: ErrorBody
+}
+
+export type GetOauthDeviceLookupError = GetOauthDeviceLookupErrors[keyof GetOauthDeviceLookupErrors]
+
 export type GetOauthDeviceLookupResponses = {
   200: DeviceLookupResponse
 }
@@ -1092,6 +1123,12 @@ export type PostOauthDeviceTokenData = {
   query?: never
   url: '/oauth/device/token'
 }
+
+export type PostOauthDeviceTokenErrors = {
+  default: ErrorBody
+}
+
+export type PostOauthDeviceTokenError = PostOauthDeviceTokenErrors[keyof PostOauthDeviceTokenErrors]
 
 export type PostOauthDeviceTokenResponses = {
   200: DeviceTokenResponse

@@ -159,6 +159,7 @@ export type PostWorkflowGenerateData = {
 export type PostWorkflowGenerateErrors = {
   400: ErrorResponse
   402: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostWorkflowGenerateError = PostWorkflowGenerateErrors[keyof PostWorkflowGenerateErrors]
@@ -179,6 +180,7 @@ export type PostWorkflowGenerateStreamData = {
 
 export type PostWorkflowGenerateStreamErrors = {
   400: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostWorkflowGenerateStreamError =
@@ -200,6 +202,7 @@ export type PostWorkflowGenerateSuggestionsData = {
 
 export type PostWorkflowGenerateSuggestionsErrors = {
   400: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostWorkflowGenerateSuggestionsError =

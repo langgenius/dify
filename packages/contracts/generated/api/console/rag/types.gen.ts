@@ -4,6 +4,16 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/console/api` | (string & {})
 }
 
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type CustomizedPipelineTemplatePayload = {
   description?: string
   icon_info?: {
@@ -14,16 +24,6 @@ export type CustomizedPipelineTemplatePayload = {
 
 export type SimpleDataResponse = {
   data: string
-}
-
-export type ErrorResponse = {
-  code: string
-  details?: {
-    [key: string]: unknown
-  }
-  message: string
-  params?: string
-  status: number
 }
 
 export type RagPipelineDatasetImportPayload = {
@@ -751,6 +751,13 @@ export type DeleteRagPipelineCustomizedTemplatesByTemplateIdData = {
   url: '/rag/pipeline/customized/templates/{template_id}'
 }
 
+export type DeleteRagPipelineCustomizedTemplatesByTemplateIdErrors = {
+  default: ErrorResponse
+}
+
+export type DeleteRagPipelineCustomizedTemplatesByTemplateIdError =
+  DeleteRagPipelineCustomizedTemplatesByTemplateIdErrors[keyof DeleteRagPipelineCustomizedTemplatesByTemplateIdErrors]
+
 export type DeleteRagPipelineCustomizedTemplatesByTemplateIdResponses = {
   204: void
 }
@@ -766,6 +773,13 @@ export type PatchRagPipelineCustomizedTemplatesByTemplateIdData = {
   query?: never
   url: '/rag/pipeline/customized/templates/{template_id}'
 }
+
+export type PatchRagPipelineCustomizedTemplatesByTemplateIdErrors = {
+  default: ErrorResponse
+}
+
+export type PatchRagPipelineCustomizedTemplatesByTemplateIdError =
+  PatchRagPipelineCustomizedTemplatesByTemplateIdErrors[keyof PatchRagPipelineCustomizedTemplatesByTemplateIdErrors]
 
 export type PatchRagPipelineCustomizedTemplatesByTemplateIdResponses = {
   204: void
@@ -785,6 +799,7 @@ export type PostRagPipelineCustomizedTemplatesByTemplateIdData = {
 
 export type PostRagPipelineCustomizedTemplatesByTemplateIdErrors = {
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostRagPipelineCustomizedTemplatesByTemplateIdError =
@@ -804,6 +819,13 @@ export type PostRagPipelineDatasetData = {
   url: '/rag/pipeline/dataset'
 }
 
+export type PostRagPipelineDatasetErrors = {
+  default: ErrorResponse
+}
+
+export type PostRagPipelineDatasetError =
+  PostRagPipelineDatasetErrors[keyof PostRagPipelineDatasetErrors]
+
 export type PostRagPipelineDatasetResponses = {
   201: RagPipelineImportResponse
 }
@@ -817,6 +839,13 @@ export type PostRagPipelineEmptyDatasetData = {
   query?: never
   url: '/rag/pipeline/empty-dataset'
 }
+
+export type PostRagPipelineEmptyDatasetErrors = {
+  default: ErrorResponse
+}
+
+export type PostRagPipelineEmptyDatasetError =
+  PostRagPipelineEmptyDatasetErrors[keyof PostRagPipelineEmptyDatasetErrors]
 
 export type PostRagPipelineEmptyDatasetResponses = {
   201: DatasetDetailResponse
@@ -834,6 +863,13 @@ export type GetRagPipelineTemplatesData = {
   }
   url: '/rag/pipeline/templates'
 }
+
+export type GetRagPipelineTemplatesErrors = {
+  default: ErrorResponse
+}
+
+export type GetRagPipelineTemplatesError =
+  GetRagPipelineTemplatesErrors[keyof GetRagPipelineTemplatesErrors]
 
 export type GetRagPipelineTemplatesResponses = {
   200: PipelineTemplateListResponse
@@ -855,6 +891,7 @@ export type GetRagPipelineTemplatesByTemplateIdData = {
 
 export type GetRagPipelineTemplatesByTemplateIdErrors = {
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetRagPipelineTemplatesByTemplateIdError =
@@ -874,6 +911,13 @@ export type GetRagPipelinesDatasourcePluginsData = {
   url: '/rag/pipelines/datasource-plugins'
 }
 
+export type GetRagPipelinesDatasourcePluginsErrors = {
+  default: ErrorResponse
+}
+
+export type GetRagPipelinesDatasourcePluginsError =
+  GetRagPipelinesDatasourcePluginsErrors[keyof GetRagPipelinesDatasourcePluginsErrors]
+
 export type GetRagPipelinesDatasourcePluginsResponses = {
   200: RagPipelineDatasourceListResponse
 }
@@ -890,6 +934,7 @@ export type PostRagPipelinesImportsData = {
 
 export type PostRagPipelinesImportsErrors = {
   400: RagPipelineImportResponse | ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostRagPipelinesImportsError =
@@ -914,6 +959,7 @@ export type PostRagPipelinesImportsByImportIdConfirmData = {
 
 export type PostRagPipelinesImportsByImportIdConfirmErrors = {
   400: RagPipelineImportResponse | ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostRagPipelinesImportsByImportIdConfirmError =
@@ -935,6 +981,13 @@ export type GetRagPipelinesImportsByPipelineIdCheckDependenciesData = {
   url: '/rag/pipelines/imports/{pipeline_id}/check-dependencies'
 }
 
+export type GetRagPipelinesImportsByPipelineIdCheckDependenciesErrors = {
+  default: ErrorResponse
+}
+
+export type GetRagPipelinesImportsByPipelineIdCheckDependenciesError =
+  GetRagPipelinesImportsByPipelineIdCheckDependenciesErrors[keyof GetRagPipelinesImportsByPipelineIdCheckDependenciesErrors]
+
 export type GetRagPipelinesImportsByPipelineIdCheckDependenciesResponses = {
   200: RagPipelineImportCheckDependenciesResponse
 }
@@ -950,6 +1003,13 @@ export type GetRagPipelinesRecommendedPluginsData = {
   }
   url: '/rag/pipelines/recommended-plugins'
 }
+
+export type GetRagPipelinesRecommendedPluginsErrors = {
+  default: ErrorResponse
+}
+
+export type GetRagPipelinesRecommendedPluginsError =
+  GetRagPipelinesRecommendedPluginsErrors[keyof GetRagPipelinesRecommendedPluginsErrors]
 
 export type GetRagPipelinesRecommendedPluginsResponses = {
   200: RagPipelineOpaqueResponse
@@ -969,6 +1029,7 @@ export type PostRagPipelinesTransformDatasetsByDatasetIdData = {
 
 export type PostRagPipelinesTransformDatasetsByDatasetIdErrors = {
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostRagPipelinesTransformDatasetsByDatasetIdError =
@@ -992,6 +1053,7 @@ export type PostRagPipelinesByPipelineIdCustomizedPublishData = {
 
 export type PostRagPipelinesByPipelineIdCustomizedPublishErrors = {
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostRagPipelinesByPipelineIdCustomizedPublishError =
@@ -1015,6 +1077,13 @@ export type GetRagPipelinesByPipelineIdExportsData = {
   url: '/rag/pipelines/{pipeline_id}/exports'
 }
 
+export type GetRagPipelinesByPipelineIdExportsErrors = {
+  default: ErrorResponse
+}
+
+export type GetRagPipelinesByPipelineIdExportsError =
+  GetRagPipelinesByPipelineIdExportsErrors[keyof GetRagPipelinesByPipelineIdExportsErrors]
+
 export type GetRagPipelinesByPipelineIdExportsResponses = {
   200: SimpleDataResponse
 }
@@ -1034,6 +1103,13 @@ export type GetRagPipelinesByPipelineIdWorkflowRunsData = {
   url: '/rag/pipelines/{pipeline_id}/workflow-runs'
 }
 
+export type GetRagPipelinesByPipelineIdWorkflowRunsErrors = {
+  default: ErrorResponse
+}
+
+export type GetRagPipelinesByPipelineIdWorkflowRunsError =
+  GetRagPipelinesByPipelineIdWorkflowRunsErrors[keyof GetRagPipelinesByPipelineIdWorkflowRunsErrors]
+
 export type GetRagPipelinesByPipelineIdWorkflowRunsResponses = {
   200: WorkflowRunPaginationResponse
 }
@@ -1050,6 +1126,13 @@ export type PostRagPipelinesByPipelineIdWorkflowRunsTasksByTaskIdStopData = {
   query?: never
   url: '/rag/pipelines/{pipeline_id}/workflow-runs/tasks/{task_id}/stop'
 }
+
+export type PostRagPipelinesByPipelineIdWorkflowRunsTasksByTaskIdStopErrors = {
+  default: ErrorResponse
+}
+
+export type PostRagPipelinesByPipelineIdWorkflowRunsTasksByTaskIdStopError =
+  PostRagPipelinesByPipelineIdWorkflowRunsTasksByTaskIdStopErrors[keyof PostRagPipelinesByPipelineIdWorkflowRunsTasksByTaskIdStopErrors]
 
 export type PostRagPipelinesByPipelineIdWorkflowRunsTasksByTaskIdStopResponses = {
   200: SimpleResultResponse
@@ -1068,6 +1151,13 @@ export type GetRagPipelinesByPipelineIdWorkflowRunsByRunIdData = {
   url: '/rag/pipelines/{pipeline_id}/workflow-runs/{run_id}'
 }
 
+export type GetRagPipelinesByPipelineIdWorkflowRunsByRunIdErrors = {
+  default: ErrorResponse
+}
+
+export type GetRagPipelinesByPipelineIdWorkflowRunsByRunIdError =
+  GetRagPipelinesByPipelineIdWorkflowRunsByRunIdErrors[keyof GetRagPipelinesByPipelineIdWorkflowRunsByRunIdErrors]
+
 export type GetRagPipelinesByPipelineIdWorkflowRunsByRunIdResponses = {
   200: WorkflowRunDetailResponse
 }
@@ -1084,6 +1174,13 @@ export type GetRagPipelinesByPipelineIdWorkflowRunsByRunIdNodeExecutionsData = {
   query?: never
   url: '/rag/pipelines/{pipeline_id}/workflow-runs/{run_id}/node-executions'
 }
+
+export type GetRagPipelinesByPipelineIdWorkflowRunsByRunIdNodeExecutionsErrors = {
+  default: ErrorResponse
+}
+
+export type GetRagPipelinesByPipelineIdWorkflowRunsByRunIdNodeExecutionsError =
+  GetRagPipelinesByPipelineIdWorkflowRunsByRunIdNodeExecutionsErrors[keyof GetRagPipelinesByPipelineIdWorkflowRunsByRunIdNodeExecutionsErrors]
 
 export type GetRagPipelinesByPipelineIdWorkflowRunsByRunIdNodeExecutionsResponses = {
   200: WorkflowRunNodeExecutionListResponse
@@ -1108,6 +1205,7 @@ export type GetRagPipelinesByPipelineIdWorkflowsData = {
 
 export type GetRagPipelinesByPipelineIdWorkflowsErrors = {
   403: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsError =
@@ -1129,6 +1227,13 @@ export type GetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsData 
   url: '/rag/pipelines/{pipeline_id}/workflows/default-workflow-block-configs'
 }
 
+export type GetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsErrors = {
+  default: ErrorResponse
+}
+
+export type GetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsError =
+  GetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsErrors[keyof GetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsErrors]
+
 export type GetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsResponses = {
   200: DefaultBlockConfigsResponse
 }
@@ -1148,6 +1253,13 @@ export type GetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsByBlo
   url: '/rag/pipelines/{pipeline_id}/workflows/default-workflow-block-configs/{block_type}'
 }
 
+export type GetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeErrors = {
+  default: ErrorResponse
+}
+
+export type GetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeError =
+  GetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeErrors[keyof GetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeErrors]
+
 export type GetRagPipelinesByPipelineIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeResponses = {
   200: DefaultBlockConfigResponse
 }
@@ -1166,6 +1278,7 @@ export type GetRagPipelinesByPipelineIdWorkflowsDraftData = {
 
 export type GetRagPipelinesByPipelineIdWorkflowsDraftErrors = {
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetRagPipelinesByPipelineIdWorkflowsDraftError =
@@ -1187,6 +1300,13 @@ export type PostRagPipelinesByPipelineIdWorkflowsDraftData = {
   url: '/rag/pipelines/{pipeline_id}/workflows/draft'
 }
 
+export type PostRagPipelinesByPipelineIdWorkflowsDraftErrors = {
+  default: ErrorResponse
+}
+
+export type PostRagPipelinesByPipelineIdWorkflowsDraftError =
+  PostRagPipelinesByPipelineIdWorkflowsDraftErrors[keyof PostRagPipelinesByPipelineIdWorkflowsDraftErrors]
+
 export type PostRagPipelinesByPipelineIdWorkflowsDraftResponses = {
   200: RagPipelineWorkflowSyncResponse
 }
@@ -1204,6 +1324,13 @@ export type PostRagPipelinesByPipelineIdWorkflowsDraftDatasourceNodesByNodeIdRun
   url: '/rag/pipelines/{pipeline_id}/workflows/draft/datasource/nodes/{node_id}/run'
 }
 
+export type PostRagPipelinesByPipelineIdWorkflowsDraftDatasourceNodesByNodeIdRunErrors = {
+  default: ErrorResponse
+}
+
+export type PostRagPipelinesByPipelineIdWorkflowsDraftDatasourceNodesByNodeIdRunError =
+  PostRagPipelinesByPipelineIdWorkflowsDraftDatasourceNodesByNodeIdRunErrors[keyof PostRagPipelinesByPipelineIdWorkflowsDraftDatasourceNodesByNodeIdRunErrors]
+
 export type PostRagPipelinesByPipelineIdWorkflowsDraftDatasourceNodesByNodeIdRunResponses = {
   200: RagPipelineOpaqueResponse
 }
@@ -1220,6 +1347,13 @@ export type PostRagPipelinesByPipelineIdWorkflowsDraftDatasourceVariablesInspect
   url: '/rag/pipelines/{pipeline_id}/workflows/draft/datasource/variables-inspect'
 }
 
+export type PostRagPipelinesByPipelineIdWorkflowsDraftDatasourceVariablesInspectErrors = {
+  default: ErrorResponse
+}
+
+export type PostRagPipelinesByPipelineIdWorkflowsDraftDatasourceVariablesInspectError =
+  PostRagPipelinesByPipelineIdWorkflowsDraftDatasourceVariablesInspectErrors[keyof PostRagPipelinesByPipelineIdWorkflowsDraftDatasourceVariablesInspectErrors]
+
 export type PostRagPipelinesByPipelineIdWorkflowsDraftDatasourceVariablesInspectResponses = {
   200: WorkflowRunNodeExecutionResponse
 }
@@ -1235,6 +1369,13 @@ export type GetRagPipelinesByPipelineIdWorkflowsDraftEnvironmentVariablesData = 
   query?: never
   url: '/rag/pipelines/{pipeline_id}/workflows/draft/environment-variables'
 }
+
+export type GetRagPipelinesByPipelineIdWorkflowsDraftEnvironmentVariablesErrors = {
+  default: ErrorResponse
+}
+
+export type GetRagPipelinesByPipelineIdWorkflowsDraftEnvironmentVariablesError =
+  GetRagPipelinesByPipelineIdWorkflowsDraftEnvironmentVariablesErrors[keyof GetRagPipelinesByPipelineIdWorkflowsDraftEnvironmentVariablesErrors]
 
 export type GetRagPipelinesByPipelineIdWorkflowsDraftEnvironmentVariablesResponses = {
   200: EnvironmentVariableListResponse
@@ -1253,6 +1394,13 @@ export type PostRagPipelinesByPipelineIdWorkflowsDraftIterationNodesByNodeIdRunD
   url: '/rag/pipelines/{pipeline_id}/workflows/draft/iteration/nodes/{node_id}/run'
 }
 
+export type PostRagPipelinesByPipelineIdWorkflowsDraftIterationNodesByNodeIdRunErrors = {
+  default: ErrorResponse
+}
+
+export type PostRagPipelinesByPipelineIdWorkflowsDraftIterationNodesByNodeIdRunError =
+  PostRagPipelinesByPipelineIdWorkflowsDraftIterationNodesByNodeIdRunErrors[keyof PostRagPipelinesByPipelineIdWorkflowsDraftIterationNodesByNodeIdRunErrors]
+
 export type PostRagPipelinesByPipelineIdWorkflowsDraftIterationNodesByNodeIdRunResponses = {
   200: RagPipelineOpaqueResponse
 }
@@ -1269,6 +1417,13 @@ export type PostRagPipelinesByPipelineIdWorkflowsDraftLoopNodesByNodeIdRunData =
   query?: never
   url: '/rag/pipelines/{pipeline_id}/workflows/draft/loop/nodes/{node_id}/run'
 }
+
+export type PostRagPipelinesByPipelineIdWorkflowsDraftLoopNodesByNodeIdRunErrors = {
+  default: ErrorResponse
+}
+
+export type PostRagPipelinesByPipelineIdWorkflowsDraftLoopNodesByNodeIdRunError =
+  PostRagPipelinesByPipelineIdWorkflowsDraftLoopNodesByNodeIdRunErrors[keyof PostRagPipelinesByPipelineIdWorkflowsDraftLoopNodesByNodeIdRunErrors]
 
 export type PostRagPipelinesByPipelineIdWorkflowsDraftLoopNodesByNodeIdRunResponses = {
   200: RagPipelineOpaqueResponse
@@ -1287,6 +1442,13 @@ export type GetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdLastRunData = 
   url: '/rag/pipelines/{pipeline_id}/workflows/draft/nodes/{node_id}/last-run'
 }
 
+export type GetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdLastRunErrors = {
+  default: ErrorResponse
+}
+
+export type GetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdLastRunError =
+  GetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdLastRunErrors[keyof GetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdLastRunErrors]
+
 export type GetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdLastRunResponses = {
   200: WorkflowRunNodeExecutionResponse
 }
@@ -1303,6 +1465,13 @@ export type PostRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdRunData = {
   query?: never
   url: '/rag/pipelines/{pipeline_id}/workflows/draft/nodes/{node_id}/run'
 }
+
+export type PostRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdRunErrors = {
+  default: ErrorResponse
+}
+
+export type PostRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdRunError =
+  PostRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdRunErrors[keyof PostRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdRunErrors]
 
 export type PostRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdRunResponses = {
   200: WorkflowRunNodeExecutionResponse
@@ -1321,6 +1490,13 @@ export type DeleteRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesDa
   url: '/rag/pipelines/{pipeline_id}/workflows/draft/nodes/{node_id}/variables'
 }
 
+export type DeleteRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesErrors = {
+  default: ErrorResponse
+}
+
+export type DeleteRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesError =
+  DeleteRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesErrors[keyof DeleteRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesErrors]
+
 export type DeleteRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesResponses = {
   204: void
 }
@@ -1337,6 +1513,13 @@ export type GetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesData 
   query?: never
   url: '/rag/pipelines/{pipeline_id}/workflows/draft/nodes/{node_id}/variables'
 }
+
+export type GetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesErrors = {
+  default: ErrorResponse
+}
+
+export type GetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesError =
+  GetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesErrors[keyof GetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesErrors]
 
 export type GetRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdVariablesResponses = {
   200: WorkflowDraftVariableListResponse
@@ -1356,6 +1539,13 @@ export type GetRagPipelinesByPipelineIdWorkflowsDraftPreProcessingParametersData
   url: '/rag/pipelines/{pipeline_id}/workflows/draft/pre-processing/parameters'
 }
 
+export type GetRagPipelinesByPipelineIdWorkflowsDraftPreProcessingParametersErrors = {
+  default: ErrorResponse
+}
+
+export type GetRagPipelinesByPipelineIdWorkflowsDraftPreProcessingParametersError =
+  GetRagPipelinesByPipelineIdWorkflowsDraftPreProcessingParametersErrors[keyof GetRagPipelinesByPipelineIdWorkflowsDraftPreProcessingParametersErrors]
+
 export type GetRagPipelinesByPipelineIdWorkflowsDraftPreProcessingParametersResponses = {
   200: RagPipelineStepParametersResponse
 }
@@ -1374,6 +1564,13 @@ export type GetRagPipelinesByPipelineIdWorkflowsDraftProcessingParametersData = 
   url: '/rag/pipelines/{pipeline_id}/workflows/draft/processing/parameters'
 }
 
+export type GetRagPipelinesByPipelineIdWorkflowsDraftProcessingParametersErrors = {
+  default: ErrorResponse
+}
+
+export type GetRagPipelinesByPipelineIdWorkflowsDraftProcessingParametersError =
+  GetRagPipelinesByPipelineIdWorkflowsDraftProcessingParametersErrors[keyof GetRagPipelinesByPipelineIdWorkflowsDraftProcessingParametersErrors]
+
 export type GetRagPipelinesByPipelineIdWorkflowsDraftProcessingParametersResponses = {
   200: RagPipelineStepParametersResponse
 }
@@ -1389,6 +1586,13 @@ export type PostRagPipelinesByPipelineIdWorkflowsDraftRunData = {
   query?: never
   url: '/rag/pipelines/{pipeline_id}/workflows/draft/run'
 }
+
+export type PostRagPipelinesByPipelineIdWorkflowsDraftRunErrors = {
+  default: ErrorResponse
+}
+
+export type PostRagPipelinesByPipelineIdWorkflowsDraftRunError =
+  PostRagPipelinesByPipelineIdWorkflowsDraftRunErrors[keyof PostRagPipelinesByPipelineIdWorkflowsDraftRunErrors]
 
 export type PostRagPipelinesByPipelineIdWorkflowsDraftRunResponses = {
   200: RagPipelineOpaqueResponse
@@ -1406,6 +1610,13 @@ export type GetRagPipelinesByPipelineIdWorkflowsDraftSystemVariablesData = {
   url: '/rag/pipelines/{pipeline_id}/workflows/draft/system-variables'
 }
 
+export type GetRagPipelinesByPipelineIdWorkflowsDraftSystemVariablesErrors = {
+  default: ErrorResponse
+}
+
+export type GetRagPipelinesByPipelineIdWorkflowsDraftSystemVariablesError =
+  GetRagPipelinesByPipelineIdWorkflowsDraftSystemVariablesErrors[keyof GetRagPipelinesByPipelineIdWorkflowsDraftSystemVariablesErrors]
+
 export type GetRagPipelinesByPipelineIdWorkflowsDraftSystemVariablesResponses = {
   200: WorkflowDraftVariableListResponse
 }
@@ -1421,6 +1632,13 @@ export type DeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesData = {
   query?: never
   url: '/rag/pipelines/{pipeline_id}/workflows/draft/variables'
 }
+
+export type DeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesErrors = {
+  default: ErrorResponse
+}
+
+export type DeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesError =
+  DeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesErrors[keyof DeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesErrors]
 
 export type DeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesResponses = {
   204: void
@@ -1441,6 +1659,13 @@ export type GetRagPipelinesByPipelineIdWorkflowsDraftVariablesData = {
   url: '/rag/pipelines/{pipeline_id}/workflows/draft/variables'
 }
 
+export type GetRagPipelinesByPipelineIdWorkflowsDraftVariablesErrors = {
+  default: ErrorResponse
+}
+
+export type GetRagPipelinesByPipelineIdWorkflowsDraftVariablesError =
+  GetRagPipelinesByPipelineIdWorkflowsDraftVariablesErrors[keyof GetRagPipelinesByPipelineIdWorkflowsDraftVariablesErrors]
+
 export type GetRagPipelinesByPipelineIdWorkflowsDraftVariablesResponses = {
   200: WorkflowDraftVariableListWithoutValueResponse
 }
@@ -1457,6 +1682,13 @@ export type DeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdDat
   query?: never
   url: '/rag/pipelines/{pipeline_id}/workflows/draft/variables/{variable_id}'
 }
+
+export type DeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdErrors = {
+  default: ErrorResponse
+}
+
+export type DeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdError =
+  DeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdErrors[keyof DeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdErrors]
 
 export type DeleteRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponses = {
   204: void
@@ -1475,6 +1707,13 @@ export type GetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdData =
   url: '/rag/pipelines/{pipeline_id}/workflows/draft/variables/{variable_id}'
 }
 
+export type GetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdErrors = {
+  default: ErrorResponse
+}
+
+export type GetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdError =
+  GetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdErrors[keyof GetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdErrors]
+
 export type GetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponses = {
   200: WorkflowDraftVariableResponse
 }
@@ -1491,6 +1730,13 @@ export type PatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdData
   query?: never
   url: '/rag/pipelines/{pipeline_id}/workflows/draft/variables/{variable_id}'
 }
+
+export type PatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdErrors = {
+  default: ErrorResponse
+}
+
+export type PatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdError =
+  PatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdErrors[keyof PatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdErrors]
 
 export type PatchRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponses = {
   200: WorkflowDraftVariableResponse
@@ -1509,6 +1755,13 @@ export type PutRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResetD
   url: '/rag/pipelines/{pipeline_id}/workflows/draft/variables/{variable_id}/reset'
 }
 
+export type PutRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResetErrors = {
+  default: ErrorResponse
+}
+
+export type PutRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResetError =
+  PutRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResetErrors[keyof PutRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResetErrors]
+
 export type PutRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResetResponses = {
   200: WorkflowDraftVariableResponse
   204: void
@@ -1526,6 +1779,13 @@ export type GetRagPipelinesByPipelineIdWorkflowsPublishData = {
   url: '/rag/pipelines/{pipeline_id}/workflows/publish'
 }
 
+export type GetRagPipelinesByPipelineIdWorkflowsPublishErrors = {
+  default: ErrorResponse
+}
+
+export type GetRagPipelinesByPipelineIdWorkflowsPublishError =
+  GetRagPipelinesByPipelineIdWorkflowsPublishErrors[keyof GetRagPipelinesByPipelineIdWorkflowsPublishErrors]
+
 export type GetRagPipelinesByPipelineIdWorkflowsPublishResponses = {
   200: WorkflowResponse
 }
@@ -1541,6 +1801,13 @@ export type PostRagPipelinesByPipelineIdWorkflowsPublishData = {
   query?: never
   url: '/rag/pipelines/{pipeline_id}/workflows/publish'
 }
+
+export type PostRagPipelinesByPipelineIdWorkflowsPublishErrors = {
+  default: ErrorResponse
+}
+
+export type PostRagPipelinesByPipelineIdWorkflowsPublishError =
+  PostRagPipelinesByPipelineIdWorkflowsPublishErrors[keyof PostRagPipelinesByPipelineIdWorkflowsPublishErrors]
 
 export type PostRagPipelinesByPipelineIdWorkflowsPublishResponses = {
   200: RagPipelineWorkflowPublishResponse
@@ -1558,6 +1825,13 @@ export type PostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeI
   query?: never
   url: '/rag/pipelines/{pipeline_id}/workflows/published/datasource/nodes/{node_id}/preview'
 }
+
+export type PostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewErrors = {
+  default: ErrorResponse
+}
+
+export type PostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewError =
+  PostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewErrors[keyof PostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewErrors]
 
 export type PostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewResponses =
   {
@@ -1579,6 +1853,13 @@ export type PostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeI
   url: '/rag/pipelines/{pipeline_id}/workflows/published/datasource/nodes/{node_id}/run'
 }
 
+export type PostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdRunErrors = {
+  default: ErrorResponse
+}
+
+export type PostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdRunError =
+  PostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdRunErrors[keyof PostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdRunErrors]
+
 export type PostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdRunResponses = {
   200: RagPipelineOpaqueResponse
 }
@@ -1596,6 +1877,13 @@ export type GetRagPipelinesByPipelineIdWorkflowsPublishedPreProcessingParameters
   }
   url: '/rag/pipelines/{pipeline_id}/workflows/published/pre-processing/parameters'
 }
+
+export type GetRagPipelinesByPipelineIdWorkflowsPublishedPreProcessingParametersErrors = {
+  default: ErrorResponse
+}
+
+export type GetRagPipelinesByPipelineIdWorkflowsPublishedPreProcessingParametersError =
+  GetRagPipelinesByPipelineIdWorkflowsPublishedPreProcessingParametersErrors[keyof GetRagPipelinesByPipelineIdWorkflowsPublishedPreProcessingParametersErrors]
 
 export type GetRagPipelinesByPipelineIdWorkflowsPublishedPreProcessingParametersResponses = {
   200: RagPipelineStepParametersResponse
@@ -1615,6 +1903,13 @@ export type GetRagPipelinesByPipelineIdWorkflowsPublishedProcessingParametersDat
   url: '/rag/pipelines/{pipeline_id}/workflows/published/processing/parameters'
 }
 
+export type GetRagPipelinesByPipelineIdWorkflowsPublishedProcessingParametersErrors = {
+  default: ErrorResponse
+}
+
+export type GetRagPipelinesByPipelineIdWorkflowsPublishedProcessingParametersError =
+  GetRagPipelinesByPipelineIdWorkflowsPublishedProcessingParametersErrors[keyof GetRagPipelinesByPipelineIdWorkflowsPublishedProcessingParametersErrors]
+
 export type GetRagPipelinesByPipelineIdWorkflowsPublishedProcessingParametersResponses = {
   200: RagPipelineStepParametersResponse
 }
@@ -1630,6 +1925,13 @@ export type PostRagPipelinesByPipelineIdWorkflowsPublishedRunData = {
   query?: never
   url: '/rag/pipelines/{pipeline_id}/workflows/published/run'
 }
+
+export type PostRagPipelinesByPipelineIdWorkflowsPublishedRunErrors = {
+  default: ErrorResponse
+}
+
+export type PostRagPipelinesByPipelineIdWorkflowsPublishedRunError =
+  PostRagPipelinesByPipelineIdWorkflowsPublishedRunErrors[keyof PostRagPipelinesByPipelineIdWorkflowsPublishedRunErrors]
 
 export type PostRagPipelinesByPipelineIdWorkflowsPublishedRunResponses = {
   200: RagPipelineOpaqueResponse
@@ -1647,6 +1949,13 @@ export type DeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdData = {
   query?: never
   url: '/rag/pipelines/{pipeline_id}/workflows/{workflow_id}'
 }
+
+export type DeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdErrors = {
+  default: ErrorResponse
+}
+
+export type DeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdError =
+  DeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdErrors[keyof DeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdErrors]
 
 export type DeleteRagPipelinesByPipelineIdWorkflowsByWorkflowIdResponses = {
   204: void
@@ -1669,6 +1978,7 @@ export type PatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdErrors = {
   400: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PatchRagPipelinesByPipelineIdWorkflowsByWorkflowIdError =
@@ -1690,6 +2000,13 @@ export type PostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestoreData = {
   query?: never
   url: '/rag/pipelines/{pipeline_id}/workflows/{workflow_id}/restore'
 }
+
+export type PostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestoreErrors = {
+  default: ErrorResponse
+}
+
+export type PostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestoreError =
+  PostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestoreErrors[keyof PostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestoreErrors]
 
 export type PostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestoreResponses = {
   200: RagPipelineWorkflowSyncResponse

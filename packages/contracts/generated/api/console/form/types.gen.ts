@@ -8,6 +8,16 @@ export type ConsoleHumanInputFormDefinitionResponse = {
   [key: string]: unknown
 }
 
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type HumanInputFormSubmitPayload = {
   action: string
   form_inputs: {
@@ -31,6 +41,13 @@ export type GetFormHumanInputByFormTokenData = {
   url: '/form/human_input/{form_token}'
 }
 
+export type GetFormHumanInputByFormTokenErrors = {
+  default: ErrorResponse
+}
+
+export type GetFormHumanInputByFormTokenError =
+  GetFormHumanInputByFormTokenErrors[keyof GetFormHumanInputByFormTokenErrors]
+
 export type GetFormHumanInputByFormTokenResponses = {
   200: ConsoleHumanInputFormDefinitionResponse
 }
@@ -46,6 +63,13 @@ export type PostFormHumanInputByFormTokenData = {
   query?: never
   url: '/form/human_input/{form_token}'
 }
+
+export type PostFormHumanInputByFormTokenErrors = {
+  default: ErrorResponse
+}
+
+export type PostFormHumanInputByFormTokenError =
+  PostFormHumanInputByFormTokenErrors[keyof PostFormHumanInputByFormTokenErrors]
 
 export type PostFormHumanInputByFormTokenResponses = {
   200: ConsoleHumanInputFormSubmitResponse

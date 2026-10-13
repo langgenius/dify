@@ -9,6 +9,16 @@ export type WorkflowRunArchiveListResponse = {
   summary: WorkflowRunArchiveSummaryResponse
 }
 
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type WorkflowRunArchiveDownloadPayload = {
   month: number
   year: number
@@ -58,6 +68,13 @@ export type GetWorkflowRunArchivesData = {
   url: '/workflow-run-archives'
 }
 
+export type GetWorkflowRunArchivesErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkflowRunArchivesError =
+  GetWorkflowRunArchivesErrors[keyof GetWorkflowRunArchivesErrors]
+
 export type GetWorkflowRunArchivesResponses = {
   200: WorkflowRunArchiveListResponse
 }
@@ -71,6 +88,13 @@ export type PostWorkflowRunArchivesDownloadsData = {
   query?: never
   url: '/workflow-run-archives/downloads'
 }
+
+export type PostWorkflowRunArchivesDownloadsErrors = {
+  default: ErrorResponse
+}
+
+export type PostWorkflowRunArchivesDownloadsError =
+  PostWorkflowRunArchivesDownloadsErrors[keyof PostWorkflowRunArchivesDownloadsErrors]
 
 export type PostWorkflowRunArchivesDownloadsResponses = {
   202: WorkflowRunArchiveDownloadTaskResponse
@@ -87,6 +111,13 @@ export type GetWorkflowRunArchivesDownloadsByDownloadIdData = {
   query?: never
   url: '/workflow-run-archives/downloads/{download_id}'
 }
+
+export type GetWorkflowRunArchivesDownloadsByDownloadIdErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkflowRunArchivesDownloadsByDownloadIdError =
+  GetWorkflowRunArchivesDownloadsByDownloadIdErrors[keyof GetWorkflowRunArchivesDownloadsByDownloadIdErrors]
 
 export type GetWorkflowRunArchivesDownloadsByDownloadIdResponses = {
   200: WorkflowRunArchiveDownloadTaskResponse

@@ -2449,6 +2449,12 @@ export type GetRootData = {
   url: '/'
 }
 
+export type GetRootErrors = {
+  default: ErrorResponse
+}
+
+export type GetRootError = GetRootErrors[keyof GetRootErrors]
+
 export type GetRootResponses = {
   200: IndexInfoResponse
 }
@@ -2468,6 +2474,7 @@ export type GetAppFeedbacksData = {
 export type GetAppFeedbacksErrors = {
   401: ErrorResponse
   403: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetAppFeedbacksError = GetAppFeedbacksErrors[keyof GetAppFeedbacksErrors]
@@ -2490,6 +2497,7 @@ export type PostAppsAnnotationReplyByActionData = {
 export type PostAppsAnnotationReplyByActionErrors = {
   401: ErrorResponse
   403: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostAppsAnnotationReplyByActionError =
@@ -2516,6 +2524,7 @@ export type GetAppsAnnotationReplyByActionStatusByJobIdErrors = {
   400: ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetAppsAnnotationReplyByActionStatusByJobIdError =
@@ -2542,6 +2551,7 @@ export type GetAppsAnnotationsData = {
 export type GetAppsAnnotationsErrors = {
   401: ErrorResponse
   403: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetAppsAnnotationsError = GetAppsAnnotationsErrors[keyof GetAppsAnnotationsErrors]
@@ -2563,6 +2573,7 @@ export type PostAppsAnnotationsData = {
 export type PostAppsAnnotationsErrors = {
   401: ErrorResponse
   403: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostAppsAnnotationsError = PostAppsAnnotationsErrors[keyof PostAppsAnnotationsErrors]
@@ -2587,6 +2598,7 @@ export type DeleteAppsAnnotationsByAnnotationIdErrors = {
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type DeleteAppsAnnotationsByAnnotationIdError =
@@ -2612,6 +2624,7 @@ export type PutAppsAnnotationsByAnnotationIdErrors = {
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PutAppsAnnotationsByAnnotationIdError =
@@ -2641,6 +2654,7 @@ export type PostAudioToTextErrors = {
   413: ErrorResponse
   415: ErrorResponse
   500: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostAudioToTextError = PostAudioToTextErrors[keyof PostAudioToTextErrors]
@@ -2665,6 +2679,7 @@ export type PostChatMessagesErrors = {
   404: ErrorResponse
   429: ErrorResponse
   500: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostChatMessagesError = PostChatMessagesErrors[keyof PostChatMessagesErrors]
@@ -2688,6 +2703,7 @@ export type PostChatMessagesByTaskIdStopErrors = {
   400: ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostChatMessagesByTaskIdStopError =
@@ -2713,6 +2729,7 @@ export type PostCompletionMessagesErrors = {
   403: ErrorResponse
   429: ErrorResponse
   500: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostCompletionMessagesError =
@@ -2738,6 +2755,7 @@ export type PostCompletionMessagesByTaskIdStopErrors = {
   400: ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostCompletionMessagesByTaskIdStopError =
@@ -2767,6 +2785,7 @@ export type GetConversationsErrors = {
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetConversationsError = GetConversationsErrors[keyof GetConversationsErrors]
@@ -2791,6 +2810,7 @@ export type DeleteConversationsByConversationIdErrors = {
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type DeleteConversationsByConversationIdError =
@@ -2817,6 +2837,7 @@ export type PostConversationsByConversationIdNameErrors = {
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostConversationsByConversationIdNameError =
@@ -2848,6 +2869,7 @@ export type GetConversationsByConversationIdVariablesErrors = {
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetConversationsByConversationIdVariablesError =
@@ -2875,6 +2897,7 @@ export type PutConversationsByConversationIdVariablesByVariableIdErrors = {
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PutConversationsByConversationIdVariablesByVariableIdError =
@@ -2903,6 +2926,7 @@ export type GetDatasetsData = {
 export type GetDatasetsErrors = {
   401: ErrorResponse
   403: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetDatasetsError = GetDatasetsErrors[keyof GetDatasetsErrors]
@@ -2925,6 +2949,7 @@ export type PostDatasetsErrors = {
   401: ErrorResponse
   403: ErrorResponse
   409: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostDatasetsError = PostDatasetsErrors[keyof PostDatasetsErrors]
@@ -2950,6 +2975,7 @@ export type PostDatasetsPipelineFileUploadErrors = {
   403: ErrorResponse
   413: ErrorResponse
   415: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostDatasetsPipelineFileUploadError =
@@ -2973,6 +2999,7 @@ export type DeleteDatasetsTagsErrors = {
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type DeleteDatasetsTagsError = DeleteDatasetsTagsErrors[keyof DeleteDatasetsTagsErrors]
@@ -2994,6 +3021,7 @@ export type GetDatasetsTagsData = {
 export type GetDatasetsTagsErrors = {
   401: ErrorResponse
   403: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetDatasetsTagsError = GetDatasetsTagsErrors[keyof GetDatasetsTagsErrors]
@@ -3016,6 +3044,7 @@ export type PatchDatasetsTagsErrors = {
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PatchDatasetsTagsError = PatchDatasetsTagsErrors[keyof PatchDatasetsTagsErrors]
@@ -3037,6 +3066,7 @@ export type PostDatasetsTagsErrors = {
   400: ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostDatasetsTagsError = PostDatasetsTagsErrors[keyof PostDatasetsTagsErrors]
@@ -3058,6 +3088,7 @@ export type PostDatasetsTagsBindingErrors = {
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostDatasetsTagsBindingError =
@@ -3081,6 +3112,7 @@ export type PostDatasetsTagsUnbindingErrors = {
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostDatasetsTagsUnbindingError =
@@ -3106,6 +3138,7 @@ export type DeleteDatasetsByDatasetIdErrors = {
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type DeleteDatasetsByDatasetIdError =
@@ -3131,6 +3164,7 @@ export type GetDatasetsByDatasetIdErrors = {
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetDatasetsByDatasetIdError =
@@ -3157,6 +3191,7 @@ export type PatchDatasetsByDatasetIdErrors = {
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PatchDatasetsByDatasetIdError =
@@ -3188,6 +3223,7 @@ export type PostDatasetsByDatasetIdDocumentCreateByFileErrors = {
   404: ErrorResponse
   413: ErrorResponse
   503: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostDatasetsByDatasetIdDocumentCreateByFileError =
@@ -3215,6 +3251,7 @@ export type PostDatasetsByDatasetIdDocumentCreateByTextErrors = {
   403: ErrorResponse
   404: ErrorResponse
   503: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostDatasetsByDatasetIdDocumentCreateByTextError =
@@ -3246,6 +3283,7 @@ export type PostDatasetsByDatasetIdDocumentCreateByFile2Errors = {
   404: ErrorResponse
   413: ErrorResponse
   503: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostDatasetsByDatasetIdDocumentCreateByFile2Error =
@@ -3273,6 +3311,7 @@ export type PostDatasetsByDatasetIdDocumentCreateByText2Errors = {
   403: ErrorResponse
   404: ErrorResponse
   503: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostDatasetsByDatasetIdDocumentCreateByText2Error =
@@ -3303,6 +3342,7 @@ export type GetDatasetsByDatasetIdDocumentsErrors = {
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetDatasetsByDatasetIdDocumentsError =
@@ -3328,6 +3368,7 @@ export type PostDatasetsByDatasetIdDocumentsDownloadZipErrors = {
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostDatasetsByDatasetIdDocumentsDownloadZipError =
@@ -3354,6 +3395,7 @@ export type PostDatasetsByDatasetIdDocumentsMetadataErrors = {
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostDatasetsByDatasetIdDocumentsMetadataError =
@@ -3381,6 +3423,7 @@ export type PatchDatasetsByDatasetIdDocumentsStatusByActionErrors = {
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PatchDatasetsByDatasetIdDocumentsStatusByActionError =
@@ -3407,6 +3450,7 @@ export type GetDatasetsByDatasetIdDocumentsByBatchIndexingStatusErrors = {
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetDatasetsByDatasetIdDocumentsByBatchIndexingStatusError =
@@ -3433,6 +3477,7 @@ export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdErrors = {
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdError =
@@ -3462,6 +3507,7 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdErrors = {
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdError =
@@ -3495,6 +3541,7 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdErrors = {
   413: ErrorResponse
   415: ErrorResponse
   503: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdError =
@@ -3521,6 +3568,7 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadErrors = {
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadError =
@@ -3553,6 +3601,7 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsErrors = {
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsError =
@@ -3581,6 +3630,7 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsErrors = {
   403: ErrorResponse
   404: ErrorResponse
   503: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsError =
@@ -3609,6 +3659,7 @@ export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdErr
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdError =
@@ -3637,6 +3688,7 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdErrors
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdError =
@@ -3666,6 +3718,7 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdError
   403: ErrorResponse
   404: ErrorResponse
   503: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdError =
@@ -3697,6 +3750,7 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildC
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksError =
@@ -3726,6 +3780,7 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChild
   403: ErrorResponse
   404: ErrorResponse
   503: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksError =
@@ -3757,6 +3812,7 @@ export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChi
     401: ErrorResponse
     403: ErrorResponse
     404: ErrorResponse
+    default: ErrorResponse
   }
 
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdError =
@@ -3790,6 +3846,7 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChil
     403: ErrorResponse
     404: ErrorResponse
     503: ErrorResponse
+    default: ErrorResponse
   }
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdError =
@@ -3824,6 +3881,7 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileErrors = {
   413: ErrorResponse
   415: ErrorResponse
   503: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileError =
@@ -3852,6 +3910,7 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextErrors = {
   403: ErrorResponse
   404: ErrorResponse
   503: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextError =
@@ -3885,6 +3944,7 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Errors = {
   413: ErrorResponse
   415: ErrorResponse
   503: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Error =
@@ -3912,6 +3972,7 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Errors = {
   403: ErrorResponse
   404: ErrorResponse
   503: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Error =
@@ -3939,6 +4000,7 @@ export type PostDatasetsByDatasetIdHitTestingErrors = {
   403: ErrorResponse
   404: ErrorResponse
   500: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostDatasetsByDatasetIdHitTestingError =
@@ -3964,6 +4026,7 @@ export type GetDatasetsByDatasetIdMetadataErrors = {
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetDatasetsByDatasetIdMetadataError =
@@ -3990,6 +4053,7 @@ export type PostDatasetsByDatasetIdMetadataErrors = {
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostDatasetsByDatasetIdMetadataError =
@@ -4015,6 +4079,7 @@ export type GetDatasetsByDatasetIdMetadataBuiltInErrors = {
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetDatasetsByDatasetIdMetadataBuiltInError =
@@ -4041,6 +4106,7 @@ export type PostDatasetsByDatasetIdMetadataBuiltInByActionErrors = {
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostDatasetsByDatasetIdMetadataBuiltInByActionError =
@@ -4067,6 +4133,7 @@ export type DeleteDatasetsByDatasetIdMetadataByMetadataIdErrors = {
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type DeleteDatasetsByDatasetIdMetadataByMetadataIdError =
@@ -4094,6 +4161,7 @@ export type PatchDatasetsByDatasetIdMetadataByMetadataIdErrors = {
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PatchDatasetsByDatasetIdMetadataByMetadataIdError =
@@ -4122,6 +4190,7 @@ export type GetDatasetsByDatasetIdPipelineDatasourcePluginsErrors = {
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetDatasetsByDatasetIdPipelineDatasourcePluginsError =
@@ -4149,6 +4218,7 @@ export type PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunErrors = {
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunError =
@@ -4176,6 +4246,7 @@ export type PostDatasetsByDatasetIdPipelineRunErrors = {
   403: ErrorResponse
   404: ErrorResponse
   500: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostDatasetsByDatasetIdPipelineRunError =
@@ -4203,6 +4274,7 @@ export type PostDatasetsByDatasetIdRetrieveErrors = {
   403: ErrorResponse
   404: ErrorResponse
   500: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostDatasetsByDatasetIdRetrieveError =
@@ -4228,6 +4300,7 @@ export type GetDatasetsByDatasetIdTagsErrors = {
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetDatasetsByDatasetIdTagsError =
@@ -4253,6 +4326,7 @@ export type GetEndUsersByEndUserIdErrors = {
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetEndUsersByEndUserIdError =
@@ -4281,6 +4355,7 @@ export type PostFilesUploadErrors = {
   403: ErrorResponse
   413: ErrorResponse
   415: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostFilesUploadError = PostFilesUploadErrors[keyof PostFilesUploadErrors]
@@ -4307,6 +4382,7 @@ export type GetFilesByFileIdPreviewErrors = {
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetFilesByFileIdPreviewError =
@@ -4333,6 +4409,7 @@ export type GetFormHumanInputByFormTokenErrors = {
   403: ErrorResponse
   404: ErrorResponse
   412: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetFormHumanInputByFormTokenError =
@@ -4360,6 +4437,7 @@ export type PostFormHumanInputByFormTokenErrors = {
   403: ErrorResponse
   404: ErrorResponse
   412: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostFormHumanInputByFormTokenError =
@@ -4383,6 +4461,7 @@ export type GetInfoErrors = {
   400: ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetInfoError = GetInfoErrors[keyof GetInfoErrors]
@@ -4410,6 +4489,7 @@ export type GetMessagesErrors = {
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetMessagesError = GetMessagesErrors[keyof GetMessagesErrors]
@@ -4434,6 +4514,7 @@ export type PostMessagesByMessageIdFeedbacksErrors = {
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostMessagesByMessageIdFeedbacksError =
@@ -4463,6 +4544,7 @@ export type GetMessagesByMessageIdSuggestedErrors = {
   403: ErrorResponse
   404: ErrorResponse
   500: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetMessagesByMessageIdSuggestedError =
@@ -4486,6 +4568,7 @@ export type GetMetaErrors = {
   400: ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetMetaError = GetMetaErrors[keyof GetMetaErrors]
@@ -4507,6 +4590,7 @@ export type GetParametersErrors = {
   400: ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetParametersError = GetParametersErrors[keyof GetParametersErrors]
@@ -4527,6 +4611,7 @@ export type GetSiteData = {
 export type GetSiteErrors = {
   401: ErrorResponse
   403: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetSiteError = GetSiteErrors[keyof GetSiteErrors]
@@ -4549,6 +4634,7 @@ export type PostTextToAudioErrors = {
   401: ErrorResponse
   403: ErrorResponse
   500: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostTextToAudioError = PostTextToAudioErrors[keyof PostTextToAudioErrors]
@@ -4577,6 +4663,7 @@ export type GetWorkflowByWorkflowRunIdEventsErrors = {
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetWorkflowByWorkflowRunIdEventsError =
@@ -4609,6 +4696,7 @@ export type GetWorkflowsLogsErrors = {
   400: ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetWorkflowsLogsError = GetWorkflowsLogsErrors[keyof GetWorkflowsLogsErrors]
@@ -4632,6 +4720,7 @@ export type PostWorkflowsRunErrors = {
   403: ErrorResponse
   429: ErrorResponse
   500: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostWorkflowsRunError = PostWorkflowsRunErrors[keyof PostWorkflowsRunErrors]
@@ -4656,6 +4745,7 @@ export type GetWorkflowsRunByWorkflowRunIdErrors = {
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetWorkflowsRunByWorkflowRunIdError =
@@ -4681,6 +4771,7 @@ export type PostWorkflowsTasksByTaskIdStopErrors = {
   400: ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostWorkflowsTasksByTaskIdStopError =
@@ -4709,6 +4800,7 @@ export type PostWorkflowsByWorkflowIdRunErrors = {
   404: ErrorResponse
   429: ErrorResponse
   500: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostWorkflowsByWorkflowIdRunError =
@@ -4732,6 +4824,7 @@ export type GetWorkspacesCurrentModelsModelTypesByModelTypeData = {
 
 export type GetWorkspacesCurrentModelsModelTypesByModelTypeErrors = {
   401: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetWorkspacesCurrentModelsModelTypesByModelTypeError =

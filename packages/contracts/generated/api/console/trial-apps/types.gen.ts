@@ -31,6 +31,16 @@ export type TrialAppDetailResponse = {
   workflow?: TrialWorkflowPartialResponse | null
 }
 
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type AgentAppComposerResponse = {
   active_config_is_published: boolean
   active_config_snapshot?: AgentConfigSnapshotSummaryResponse | null
@@ -133,16 +143,6 @@ export type TrialDatasetListResponse = {
 
 export type AppExportResponse = {
   data: string
-}
-
-export type ErrorResponse = {
-  code: string
-  details?: {
-    [key: string]: unknown
-  }
-  message: string
-  params?: string
-  status: number
 }
 
 export type FileResponse = {
@@ -1302,6 +1302,12 @@ export type GetTrialAppsByAppIdData = {
   url: '/trial-apps/{app_id}'
 }
 
+export type GetTrialAppsByAppIdErrors = {
+  default: ErrorResponse
+}
+
+export type GetTrialAppsByAppIdError = GetTrialAppsByAppIdErrors[keyof GetTrialAppsByAppIdErrors]
+
 export type GetTrialAppsByAppIdResponses = {
   200: TrialAppDetailResponse
 }
@@ -1317,6 +1323,13 @@ export type GetTrialAppsByAppIdAgentComposerData = {
   query?: never
   url: '/trial-apps/{app_id}/agent-composer'
 }
+
+export type GetTrialAppsByAppIdAgentComposerErrors = {
+  default: ErrorResponse
+}
+
+export type GetTrialAppsByAppIdAgentComposerError =
+  GetTrialAppsByAppIdAgentComposerErrors[keyof GetTrialAppsByAppIdAgentComposerErrors]
 
 export type GetTrialAppsByAppIdAgentComposerResponses = {
   200: AgentAppComposerResponse
@@ -1335,6 +1348,13 @@ export type GetTrialAppsByAppIdAgentConfigFilesData = {
   }
   url: '/trial-apps/{app_id}/agent/config/files'
 }
+
+export type GetTrialAppsByAppIdAgentConfigFilesErrors = {
+  default: ErrorResponse
+}
+
+export type GetTrialAppsByAppIdAgentConfigFilesError =
+  GetTrialAppsByAppIdAgentConfigFilesErrors[keyof GetTrialAppsByAppIdAgentConfigFilesErrors]
 
 export type GetTrialAppsByAppIdAgentConfigFilesResponses = {
   200: AgentConfigFileListResponse
@@ -1355,6 +1375,13 @@ export type GetTrialAppsByAppIdAgentConfigFilesByNameDownloadData = {
   url: '/trial-apps/{app_id}/agent/config/files/{name}/download'
 }
 
+export type GetTrialAppsByAppIdAgentConfigFilesByNameDownloadErrors = {
+  default: ErrorResponse
+}
+
+export type GetTrialAppsByAppIdAgentConfigFilesByNameDownloadError =
+  GetTrialAppsByAppIdAgentConfigFilesByNameDownloadErrors[keyof GetTrialAppsByAppIdAgentConfigFilesByNameDownloadErrors]
+
 export type GetTrialAppsByAppIdAgentConfigFilesByNameDownloadResponses = {
   200: AgentConfigDownloadResponse
 }
@@ -1374,6 +1401,13 @@ export type GetTrialAppsByAppIdAgentConfigFilesByNamePreviewData = {
   url: '/trial-apps/{app_id}/agent/config/files/{name}/preview'
 }
 
+export type GetTrialAppsByAppIdAgentConfigFilesByNamePreviewErrors = {
+  default: ErrorResponse
+}
+
+export type GetTrialAppsByAppIdAgentConfigFilesByNamePreviewError =
+  GetTrialAppsByAppIdAgentConfigFilesByNamePreviewErrors[keyof GetTrialAppsByAppIdAgentConfigFilesByNamePreviewErrors]
+
 export type GetTrialAppsByAppIdAgentConfigFilesByNamePreviewResponses = {
   200: AgentConfigFilePreviewResponse
 }
@@ -1391,6 +1425,13 @@ export type GetTrialAppsByAppIdAgentConfigSkillsData = {
   }
   url: '/trial-apps/{app_id}/agent/config/skills'
 }
+
+export type GetTrialAppsByAppIdAgentConfigSkillsErrors = {
+  default: ErrorResponse
+}
+
+export type GetTrialAppsByAppIdAgentConfigSkillsError =
+  GetTrialAppsByAppIdAgentConfigSkillsErrors[keyof GetTrialAppsByAppIdAgentConfigSkillsErrors]
 
 export type GetTrialAppsByAppIdAgentConfigSkillsResponses = {
   200: AgentConfigSkillListResponse
@@ -1410,6 +1451,13 @@ export type GetTrialAppsByAppIdAgentConfigSkillsByNameDownloadData = {
   }
   url: '/trial-apps/{app_id}/agent/config/skills/{name}/download'
 }
+
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameDownloadErrors = {
+  default: ErrorResponse
+}
+
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameDownloadError =
+  GetTrialAppsByAppIdAgentConfigSkillsByNameDownloadErrors[keyof GetTrialAppsByAppIdAgentConfigSkillsByNameDownloadErrors]
 
 export type GetTrialAppsByAppIdAgentConfigSkillsByNameDownloadResponses = {
   200: AgentConfigDownloadResponse
@@ -1431,6 +1479,13 @@ export type GetTrialAppsByAppIdAgentConfigSkillsByNameFilesContentData = {
   url: '/trial-apps/{app_id}/agent/config/skills/{name}/files/content'
 }
 
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameFilesContentErrors = {
+  default: ErrorResponse
+}
+
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameFilesContentError =
+  GetTrialAppsByAppIdAgentConfigSkillsByNameFilesContentErrors[keyof GetTrialAppsByAppIdAgentConfigSkillsByNameFilesContentErrors]
+
 export type GetTrialAppsByAppIdAgentConfigSkillsByNameFilesContentResponses = {
   200: Blob | File
 }
@@ -1450,6 +1505,13 @@ export type GetTrialAppsByAppIdAgentConfigSkillsByNameFilesDownloadData = {
   }
   url: '/trial-apps/{app_id}/agent/config/skills/{name}/files/download'
 }
+
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameFilesDownloadErrors = {
+  default: ErrorResponse
+}
+
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameFilesDownloadError =
+  GetTrialAppsByAppIdAgentConfigSkillsByNameFilesDownloadErrors[keyof GetTrialAppsByAppIdAgentConfigSkillsByNameFilesDownloadErrors]
 
 export type GetTrialAppsByAppIdAgentConfigSkillsByNameFilesDownloadResponses = {
   200: AgentConfigDownloadResponse
@@ -1471,6 +1533,13 @@ export type GetTrialAppsByAppIdAgentConfigSkillsByNameFilesPreviewData = {
   url: '/trial-apps/{app_id}/agent/config/skills/{name}/files/preview'
 }
 
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameFilesPreviewErrors = {
+  default: ErrorResponse
+}
+
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameFilesPreviewError =
+  GetTrialAppsByAppIdAgentConfigSkillsByNameFilesPreviewErrors[keyof GetTrialAppsByAppIdAgentConfigSkillsByNameFilesPreviewErrors]
+
 export type GetTrialAppsByAppIdAgentConfigSkillsByNameFilesPreviewResponses = {
   200: AgentConfigSkillFilePreviewResponse
 }
@@ -1490,6 +1559,13 @@ export type GetTrialAppsByAppIdAgentConfigSkillsByNameInspectData = {
   url: '/trial-apps/{app_id}/agent/config/skills/{name}/inspect'
 }
 
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameInspectErrors = {
+  default: ErrorResponse
+}
+
+export type GetTrialAppsByAppIdAgentConfigSkillsByNameInspectError =
+  GetTrialAppsByAppIdAgentConfigSkillsByNameInspectErrors[keyof GetTrialAppsByAppIdAgentConfigSkillsByNameInspectErrors]
+
 export type GetTrialAppsByAppIdAgentConfigSkillsByNameInspectResponses = {
   200: AgentConfigSkillInspectResponse
 }
@@ -1506,6 +1582,13 @@ export type PostTrialAppsByAppIdAudioToTextData = {
   url: '/trial-apps/{app_id}/audio-to-text'
 }
 
+export type PostTrialAppsByAppIdAudioToTextErrors = {
+  default: ErrorResponse
+}
+
+export type PostTrialAppsByAppIdAudioToTextError =
+  PostTrialAppsByAppIdAudioToTextErrors[keyof PostTrialAppsByAppIdAudioToTextErrors]
+
 export type PostTrialAppsByAppIdAudioToTextResponses = {
   200: AudioTranscriptResponse
 }
@@ -1521,6 +1604,13 @@ export type PostTrialAppsByAppIdChatMessagesData = {
   query?: never
   url: '/trial-apps/{app_id}/chat-messages'
 }
+
+export type PostTrialAppsByAppIdChatMessagesErrors = {
+  default: ErrorResponse
+}
+
+export type PostTrialAppsByAppIdChatMessagesError =
+  PostTrialAppsByAppIdChatMessagesErrors[keyof PostTrialAppsByAppIdChatMessagesErrors]
 
 export type PostTrialAppsByAppIdChatMessagesResponses = {
   200: {
@@ -1541,6 +1631,13 @@ export type PostTrialAppsByAppIdChatMessagesByTaskIdStopData = {
   url: '/trial-apps/{app_id}/chat-messages/{task_id}/stop'
 }
 
+export type PostTrialAppsByAppIdChatMessagesByTaskIdStopErrors = {
+  default: ErrorResponse
+}
+
+export type PostTrialAppsByAppIdChatMessagesByTaskIdStopError =
+  PostTrialAppsByAppIdChatMessagesByTaskIdStopErrors[keyof PostTrialAppsByAppIdChatMessagesByTaskIdStopErrors]
+
 export type PostTrialAppsByAppIdChatMessagesByTaskIdStopResponses = {
   200: SimpleResultResponse
 }
@@ -1556,6 +1653,13 @@ export type PostTrialAppsByAppIdCompletionMessagesData = {
   query?: never
   url: '/trial-apps/{app_id}/completion-messages'
 }
+
+export type PostTrialAppsByAppIdCompletionMessagesErrors = {
+  default: ErrorResponse
+}
+
+export type PostTrialAppsByAppIdCompletionMessagesError =
+  PostTrialAppsByAppIdCompletionMessagesErrors[keyof PostTrialAppsByAppIdCompletionMessagesErrors]
 
 export type PostTrialAppsByAppIdCompletionMessagesResponses = {
   200: {
@@ -1579,6 +1683,13 @@ export type GetTrialAppsByAppIdDatasetsData = {
   url: '/trial-apps/{app_id}/datasets'
 }
 
+export type GetTrialAppsByAppIdDatasetsErrors = {
+  default: ErrorResponse
+}
+
+export type GetTrialAppsByAppIdDatasetsError =
+  GetTrialAppsByAppIdDatasetsErrors[keyof GetTrialAppsByAppIdDatasetsErrors]
+
 export type GetTrialAppsByAppIdDatasetsResponses = {
   200: TrialDatasetListResponse
 }
@@ -1600,6 +1711,7 @@ export type GetTrialAppsByAppIdExportData = {
 
 export type GetTrialAppsByAppIdExportErrors = {
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetTrialAppsByAppIdExportError =
@@ -1624,6 +1736,13 @@ export type PostTrialAppsByAppIdFilesUploadData = {
   url: '/trial-apps/{app_id}/files/upload'
 }
 
+export type PostTrialAppsByAppIdFilesUploadErrors = {
+  default: ErrorResponse
+}
+
+export type PostTrialAppsByAppIdFilesUploadError =
+  PostTrialAppsByAppIdFilesUploadErrors[keyof PostTrialAppsByAppIdFilesUploadErrors]
+
 export type PostTrialAppsByAppIdFilesUploadResponses = {
   201: FileResponse
 }
@@ -1641,6 +1760,13 @@ export type GetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsData = {
   url: '/trial-apps/{app_id}/messages/{message_id}/suggested-questions'
 }
 
+export type GetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsErrors = {
+  default: ErrorResponse
+}
+
+export type GetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsError =
+  GetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsErrors[keyof GetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsErrors]
+
 export type GetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsResponses = {
   200: SuggestedQuestionsResponse
 }
@@ -1656,6 +1782,13 @@ export type GetTrialAppsByAppIdParametersData = {
   query?: never
   url: '/trial-apps/{app_id}/parameters'
 }
+
+export type GetTrialAppsByAppIdParametersErrors = {
+  default: ErrorResponse
+}
+
+export type GetTrialAppsByAppIdParametersError =
+  GetTrialAppsByAppIdParametersErrors[keyof GetTrialAppsByAppIdParametersErrors]
 
 export type GetTrialAppsByAppIdParametersResponses = {
   200: Parameters
@@ -1673,6 +1806,13 @@ export type PostTrialAppsByAppIdRemoteFilesUploadData = {
   url: '/trial-apps/{app_id}/remote-files/upload'
 }
 
+export type PostTrialAppsByAppIdRemoteFilesUploadErrors = {
+  default: ErrorResponse
+}
+
+export type PostTrialAppsByAppIdRemoteFilesUploadError =
+  PostTrialAppsByAppIdRemoteFilesUploadErrors[keyof PostTrialAppsByAppIdRemoteFilesUploadErrors]
+
 export type PostTrialAppsByAppIdRemoteFilesUploadResponses = {
   201: FileWithSignedUrl
 }
@@ -1688,6 +1828,13 @@ export type GetTrialAppsByAppIdSiteData = {
   query?: never
   url: '/trial-apps/{app_id}/site'
 }
+
+export type GetTrialAppsByAppIdSiteErrors = {
+  default: ErrorResponse
+}
+
+export type GetTrialAppsByAppIdSiteError =
+  GetTrialAppsByAppIdSiteErrors[keyof GetTrialAppsByAppIdSiteErrors]
 
 export type GetTrialAppsByAppIdSiteResponses = {
   200: Site
@@ -1705,6 +1852,13 @@ export type PostTrialAppsByAppIdTextToAudioData = {
   url: '/trial-apps/{app_id}/text-to-audio'
 }
 
+export type PostTrialAppsByAppIdTextToAudioErrors = {
+  default: ErrorResponse
+}
+
+export type PostTrialAppsByAppIdTextToAudioError =
+  PostTrialAppsByAppIdTextToAudioErrors[keyof PostTrialAppsByAppIdTextToAudioErrors]
+
 export type PostTrialAppsByAppIdTextToAudioResponses = {
   200: AudioBinaryResponse
 }
@@ -1721,6 +1875,13 @@ export type GetTrialAppsByAppIdWorkflowsData = {
   url: '/trial-apps/{app_id}/workflows'
 }
 
+export type GetTrialAppsByAppIdWorkflowsErrors = {
+  default: ErrorResponse
+}
+
+export type GetTrialAppsByAppIdWorkflowsError =
+  GetTrialAppsByAppIdWorkflowsErrors[keyof GetTrialAppsByAppIdWorkflowsErrors]
+
 export type GetTrialAppsByAppIdWorkflowsResponses = {
   200: TrialWorkflowResponse
 }
@@ -1736,6 +1897,13 @@ export type PostTrialAppsByAppIdWorkflowsRunData = {
   query?: never
   url: '/trial-apps/{app_id}/workflows/run'
 }
+
+export type PostTrialAppsByAppIdWorkflowsRunErrors = {
+  default: ErrorResponse
+}
+
+export type PostTrialAppsByAppIdWorkflowsRunError =
+  PostTrialAppsByAppIdWorkflowsRunErrors[keyof PostTrialAppsByAppIdWorkflowsRunErrors]
 
 export type PostTrialAppsByAppIdWorkflowsRunResponses = {
   200: {
@@ -1755,6 +1923,13 @@ export type PostTrialAppsByAppIdWorkflowsTasksByTaskIdStopData = {
   query?: never
   url: '/trial-apps/{app_id}/workflows/tasks/{task_id}/stop'
 }
+
+export type PostTrialAppsByAppIdWorkflowsTasksByTaskIdStopErrors = {
+  default: ErrorResponse
+}
+
+export type PostTrialAppsByAppIdWorkflowsTasksByTaskIdStopError =
+  PostTrialAppsByAppIdWorkflowsTasksByTaskIdStopErrors[keyof PostTrialAppsByAppIdWorkflowsTasksByTaskIdStopErrors]
 
 export type PostTrialAppsByAppIdWorkflowsTasksByTaskIdStopResponses = {
   200: SimpleResultResponse

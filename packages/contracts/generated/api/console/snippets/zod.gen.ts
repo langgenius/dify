@@ -3,13 +3,6 @@
 import * as z from 'zod'
 
 /**
- * SimpleResultResponse
- */
-export const zSimpleResultResponse = z.object({
-  result: z.string(),
-})
-
-/**
  * ErrorResponse
  *
  * Documented non-2xx body emitted by ``register_external_error_handlers``.
@@ -23,6 +16,13 @@ export const zErrorResponse = z.object({
   message: z.string(),
   params: z.string().optional(),
   status: z.int(),
+})
+
+/**
+ * SimpleResultResponse
+ */
+export const zSimpleResultResponse = z.object({
+  result: z.string(),
 })
 
 /**

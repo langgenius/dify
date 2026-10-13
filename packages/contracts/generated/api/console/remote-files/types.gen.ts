@@ -49,6 +49,7 @@ export type PostRemoteFilesUploadErrors = {
   422: ErrorResponse
   500: ErrorResponse
   502: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostRemoteFilesUploadError =
@@ -75,6 +76,7 @@ export type GetRemoteFilesByUrlErrors = {
   404: ErrorResponse
   500: ErrorResponse
   502: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetRemoteFilesByUrlError = GetRemoteFilesByUrlErrors[keyof GetRemoteFilesByUrlErrors]

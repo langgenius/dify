@@ -1065,6 +1065,7 @@ export type PostAudioToTextErrors = {
   413: ErrorResponse
   415: ErrorResponse
   500: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostAudioToTextError = PostAudioToTextErrors[keyof PostAudioToTextErrors]
@@ -1088,6 +1089,7 @@ export type PostChatMessagesErrors = {
   403: ErrorResponse
   404: ErrorResponse
   500: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostChatMessagesError = PostChatMessagesErrors[keyof PostChatMessagesErrors]
@@ -1113,6 +1115,7 @@ export type PostChatMessagesByTaskIdStopErrors = {
   403: ErrorResponse
   404: ErrorResponse
   500: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostChatMessagesByTaskIdStopError =
@@ -1138,6 +1141,7 @@ export type PostCompletionMessagesErrors = {
   403: ErrorResponse
   404: ErrorResponse
   500: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostCompletionMessagesError =
@@ -1165,6 +1169,7 @@ export type PostCompletionMessagesByTaskIdStopErrors = {
   403: ErrorResponse
   404: ErrorResponse
   500: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostCompletionMessagesByTaskIdStopError =
@@ -1195,6 +1200,7 @@ export type GetConversationsErrors = {
   403: ErrorResponse
   404: ErrorResponse
   500: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetConversationsError = GetConversationsErrors[keyof GetConversationsErrors]
@@ -1220,6 +1226,7 @@ export type DeleteConversationsByCIdErrors = {
   403: ErrorResponse
   404: ErrorResponse
   500: ErrorResponse
+  default: ErrorResponse
 }
 
 export type DeleteConversationsByCIdError =
@@ -1250,6 +1257,7 @@ export type PostConversationsByCIdNameErrors = {
   403: ErrorResponse
   404: ErrorResponse
   500: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostConversationsByCIdNameError =
@@ -1277,6 +1285,7 @@ export type PatchConversationsByCIdPinErrors = {
   403: ErrorResponse
   404: ErrorResponse
   500: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PatchConversationsByCIdPinError =
@@ -1304,6 +1313,7 @@ export type PatchConversationsByCIdUnpinErrors = {
   403: ErrorResponse
   404: ErrorResponse
   500: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PatchConversationsByCIdUnpinError =
@@ -1326,6 +1336,7 @@ export type PostEmailCodeLoginData = {
 export type PostEmailCodeLoginErrors = {
   400: ErrorResponse
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostEmailCodeLoginError = PostEmailCodeLoginErrors[keyof PostEmailCodeLoginErrors]
@@ -1348,6 +1359,7 @@ export type PostEmailCodeLoginValidityErrors = {
   400: ErrorResponse
   401: ErrorResponse
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostEmailCodeLoginValidityError =
@@ -1371,6 +1383,7 @@ export type PostFilesUploadErrors = {
   400: ErrorResponse
   413: ErrorResponse
   415: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostFilesUploadError = PostFilesUploadErrors[keyof PostFilesUploadErrors]
@@ -1392,6 +1405,7 @@ export type PostForgotPasswordErrors = {
   400: ErrorResponse
   404: ErrorResponse
   429: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostForgotPasswordError = PostForgotPasswordErrors[keyof PostForgotPasswordErrors]
@@ -1414,6 +1428,7 @@ export type PostForgotPasswordResetsErrors = {
   400: ErrorResponse
   401: ErrorResponse
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostForgotPasswordResetsError =
@@ -1436,6 +1451,7 @@ export type PostForgotPasswordValidityData = {
 export type PostForgotPasswordValidityErrors = {
   400: ErrorResponse
   401: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostForgotPasswordValidityError =
@@ -1462,6 +1478,7 @@ export type GetFormHumanInputByFormTokenErrors = {
   404: ErrorResponse
   412: ErrorResponse
   429: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetFormHumanInputByFormTokenError =
@@ -1488,6 +1505,7 @@ export type PostFormHumanInputByFormTokenErrors = {
   404: ErrorResponse
   412: ErrorResponse
   429: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostFormHumanInputByFormTokenError =
@@ -1513,6 +1531,7 @@ export type PostFormHumanInputByFormTokenUploadTokenErrors = {
   404: ErrorResponse
   412: ErrorResponse
   429: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostFormHumanInputByFormTokenUploadTokenError =
@@ -1531,6 +1550,13 @@ export type PostHumanInputFormsFilesData = {
   query?: never
   url: '/human-input-forms/files'
 }
+
+export type PostHumanInputFormsFilesErrors = {
+  default: ErrorResponse
+}
+
+export type PostHumanInputFormsFilesError =
+  PostHumanInputFormsFilesErrors[keyof PostHumanInputFormsFilesErrors]
 
 export type PostHumanInputFormsFilesResponses = {
   201: FileResponse
@@ -1551,6 +1577,7 @@ export type PostLoginErrors = {
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostLoginError = PostLoginErrors[keyof PostLoginErrors]
@@ -1573,6 +1600,7 @@ export type GetLoginStatusData = {
 
 export type GetLoginStatusErrors = {
   401: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetLoginStatusError = GetLoginStatusErrors[keyof GetLoginStatusErrors]
@@ -1589,6 +1617,12 @@ export type PostLogoutData = {
   query?: never
   url: '/logout'
 }
+
+export type PostLogoutErrors = {
+  default: ErrorResponse
+}
+
+export type PostLogoutError = PostLogoutErrors[keyof PostLogoutErrors]
 
 export type PostLogoutResponses = {
   200: SimpleResultResponse
@@ -1613,6 +1647,7 @@ export type GetMessagesErrors = {
   403: ErrorResponse
   404: ErrorResponse
   500: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetMessagesError = GetMessagesErrors[keyof GetMessagesErrors]
@@ -1641,6 +1676,7 @@ export type PostMessagesByMessageIdFeedbacksErrors = {
   403: ErrorResponse
   404: ErrorResponse
   500: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostMessagesByMessageIdFeedbacksError =
@@ -1670,6 +1706,7 @@ export type GetMessagesByMessageIdMoreLikeThisErrors = {
   403: ErrorResponse
   404: ErrorResponse
   500: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetMessagesByMessageIdMoreLikeThisError =
@@ -1697,6 +1734,7 @@ export type GetMessagesByMessageIdSuggestedQuestionsErrors = {
   403: ErrorResponse
   404: ErrorResponse
   500: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetMessagesByMessageIdSuggestedQuestionsError =
@@ -1722,6 +1760,7 @@ export type GetMetaErrors = {
   403: ErrorResponse
   404: ErrorResponse
   500: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetMetaError = GetMetaErrors[keyof GetMetaErrors]
@@ -1745,6 +1784,7 @@ export type GetParametersErrors = {
   403: ErrorResponse
   404: ErrorResponse
   500: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetParametersError = GetParametersErrors[keyof GetParametersErrors]
@@ -1767,6 +1807,7 @@ export type GetPassportData = {
 export type GetPassportErrors = {
   401: ErrorResponse
   404: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetPassportError = GetPassportErrors[keyof GetPassportErrors]
@@ -1792,6 +1833,7 @@ export type PostRemoteFilesUploadErrors = {
   422: ErrorResponse
   500: ErrorResponse
   502: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostRemoteFilesUploadError =
@@ -1818,6 +1860,7 @@ export type GetRemoteFilesByUrlErrors = {
   404: ErrorResponse
   500: ErrorResponse
   502: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetRemoteFilesByUrlError = GetRemoteFilesByUrlErrors[keyof GetRemoteFilesByUrlErrors]
@@ -1845,6 +1888,7 @@ export type GetSavedMessagesErrors = {
   403: ErrorResponse
   404: ErrorResponse
   500: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetSavedMessagesError = GetSavedMessagesErrors[keyof GetSavedMessagesErrors]
@@ -1870,6 +1914,7 @@ export type PostSavedMessagesErrors = {
   403: ErrorResponse
   404: ErrorResponse
   500: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostSavedMessagesError = PostSavedMessagesErrors[keyof PostSavedMessagesErrors]
@@ -1895,6 +1940,7 @@ export type DeleteSavedMessagesByMessageIdErrors = {
   403: ErrorResponse
   404: ErrorResponse
   500: ErrorResponse
+  default: ErrorResponse
 }
 
 export type DeleteSavedMessagesByMessageIdError =
@@ -1920,6 +1966,7 @@ export type GetSiteErrors = {
   403: ErrorResponse
   404: ErrorResponse
   500: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetSiteError = GetSiteErrors[keyof GetSiteErrors]
@@ -1939,6 +1986,7 @@ export type GetSystemFeaturesData = {
 
 export type GetSystemFeaturesErrors = {
   500: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetSystemFeaturesError = GetSystemFeaturesErrors[keyof GetSystemFeaturesErrors]
@@ -1961,6 +2009,7 @@ export type PostTextToAudioErrors = {
   401: ErrorResponse
   403: ErrorResponse
   500: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostTextToAudioError = PostTextToAudioErrors[keyof PostTextToAudioErrors]
@@ -1988,6 +2037,7 @@ export type GetWebappAccessModeErrors = {
   404: ErrorResponse
   500: ErrorResponse
   503: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetWebappAccessModeError = GetWebappAccessModeErrors[keyof GetWebappAccessModeErrors]
@@ -2013,6 +2063,7 @@ export type GetWebappPermissionErrors = {
   401: ErrorResponse
   500: ErrorResponse
   503: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetWebappPermissionError = GetWebappPermissionErrors[keyof GetWebappPermissionErrors]
@@ -2032,6 +2083,13 @@ export type GetWorkflowByTaskIdEventsData = {
   query?: never
   url: '/workflow/{task_id}/events'
 }
+
+export type GetWorkflowByTaskIdEventsErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkflowByTaskIdEventsError =
+  GetWorkflowByTaskIdEventsErrors[keyof GetWorkflowByTaskIdEventsErrors]
 
 export type GetWorkflowByTaskIdEventsResponses = {
   200: EventStreamResponse
@@ -2053,6 +2111,7 @@ export type PostWorkflowsRunErrors = {
   403: ErrorResponse
   404: ErrorResponse
   500: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostWorkflowsRunError = PostWorkflowsRunErrors[keyof PostWorkflowsRunErrors]
@@ -2078,6 +2137,7 @@ export type PostWorkflowsTasksByTaskIdStopErrors = {
   403: ErrorResponse
   404: ErrorResponse
   500: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostWorkflowsTasksByTaskIdStopError =

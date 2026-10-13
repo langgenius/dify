@@ -8,6 +8,16 @@ export type AvatarUrlResponse = {
   avatar_url: string
 }
 
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type AccountAvatarPayload = {
   avatar: string
 }
@@ -171,6 +181,12 @@ export type GetAccountAvatarData = {
   url: '/account/avatar'
 }
 
+export type GetAccountAvatarErrors = {
+  default: ErrorResponse
+}
+
+export type GetAccountAvatarError = GetAccountAvatarErrors[keyof GetAccountAvatarErrors]
+
 export type GetAccountAvatarResponses = {
   200: AvatarUrlResponse
 }
@@ -184,6 +200,12 @@ export type PostAccountAvatarData = {
   url: '/account/avatar'
 }
 
+export type PostAccountAvatarErrors = {
+  default: ErrorResponse
+}
+
+export type PostAccountAvatarError = PostAccountAvatarErrors[keyof PostAccountAvatarErrors]
+
 export type PostAccountAvatarResponses = {
   200: AccountResponse
 }
@@ -196,6 +218,13 @@ export type PostAccountChangeEmailData = {
   query?: never
   url: '/account/change-email'
 }
+
+export type PostAccountChangeEmailErrors = {
+  default: ErrorResponse
+}
+
+export type PostAccountChangeEmailError =
+  PostAccountChangeEmailErrors[keyof PostAccountChangeEmailErrors]
 
 export type PostAccountChangeEmailResponses = {
   200: SimpleResultDataResponse
@@ -211,6 +240,13 @@ export type PostAccountChangeEmailCheckEmailUniqueData = {
   url: '/account/change-email/check-email-unique'
 }
 
+export type PostAccountChangeEmailCheckEmailUniqueErrors = {
+  default: ErrorResponse
+}
+
+export type PostAccountChangeEmailCheckEmailUniqueError =
+  PostAccountChangeEmailCheckEmailUniqueErrors[keyof PostAccountChangeEmailCheckEmailUniqueErrors]
+
 export type PostAccountChangeEmailCheckEmailUniqueResponses = {
   200: SimpleResultResponse
 }
@@ -224,6 +260,13 @@ export type PostAccountChangeEmailResetData = {
   query?: never
   url: '/account/change-email/reset'
 }
+
+export type PostAccountChangeEmailResetErrors = {
+  default: ErrorResponse
+}
+
+export type PostAccountChangeEmailResetError =
+  PostAccountChangeEmailResetErrors[keyof PostAccountChangeEmailResetErrors]
 
 export type PostAccountChangeEmailResetResponses = {
   200: AccountResponse
@@ -239,6 +282,13 @@ export type PostAccountChangeEmailValidityData = {
   url: '/account/change-email/validity'
 }
 
+export type PostAccountChangeEmailValidityErrors = {
+  default: ErrorResponse
+}
+
+export type PostAccountChangeEmailValidityError =
+  PostAccountChangeEmailValidityErrors[keyof PostAccountChangeEmailValidityErrors]
+
 export type PostAccountChangeEmailValidityResponses = {
   200: VerificationTokenResponse
 }
@@ -253,6 +303,12 @@ export type PostAccountDeleteData = {
   url: '/account/delete'
 }
 
+export type PostAccountDeleteErrors = {
+  default: ErrorResponse
+}
+
+export type PostAccountDeleteError = PostAccountDeleteErrors[keyof PostAccountDeleteErrors]
+
 export type PostAccountDeleteResponses = {
   200: SimpleResultResponse
 }
@@ -265,6 +321,13 @@ export type PostAccountDeleteFeedbackData = {
   query?: never
   url: '/account/delete/feedback'
 }
+
+export type PostAccountDeleteFeedbackErrors = {
+  default: ErrorResponse
+}
+
+export type PostAccountDeleteFeedbackError =
+  PostAccountDeleteFeedbackErrors[keyof PostAccountDeleteFeedbackErrors]
 
 export type PostAccountDeleteFeedbackResponses = {
   200: SimpleResultResponse
@@ -280,6 +343,13 @@ export type GetAccountDeleteVerifyData = {
   url: '/account/delete/verify'
 }
 
+export type GetAccountDeleteVerifyErrors = {
+  default: ErrorResponse
+}
+
+export type GetAccountDeleteVerifyError =
+  GetAccountDeleteVerifyErrors[keyof GetAccountDeleteVerifyErrors]
+
 export type GetAccountDeleteVerifyResponses = {
   200: SimpleResultDataResponse
 }
@@ -294,6 +364,12 @@ export type GetAccountEducationData = {
   url: '/account/education'
 }
 
+export type GetAccountEducationErrors = {
+  default: ErrorResponse
+}
+
+export type GetAccountEducationError = GetAccountEducationErrors[keyof GetAccountEducationErrors]
+
 export type GetAccountEducationResponses = {
   200: EducationStatusResponse
 }
@@ -307,6 +383,12 @@ export type PostAccountEducationData = {
   query?: never
   url: '/account/education'
 }
+
+export type PostAccountEducationErrors = {
+  default: ErrorResponse
+}
+
+export type PostAccountEducationError = PostAccountEducationErrors[keyof PostAccountEducationErrors]
 
 export type PostAccountEducationResponses = {
   200: EducationActivateResponse
@@ -326,6 +408,13 @@ export type GetAccountEducationAutocompleteData = {
   url: '/account/education/autocomplete'
 }
 
+export type GetAccountEducationAutocompleteErrors = {
+  default: ErrorResponse
+}
+
+export type GetAccountEducationAutocompleteError =
+  GetAccountEducationAutocompleteErrors[keyof GetAccountEducationAutocompleteErrors]
+
 export type GetAccountEducationAutocompleteResponses = {
   200: EducationAutocompleteResponse
 }
@@ -339,6 +428,13 @@ export type GetAccountEducationVerifyData = {
   query?: never
   url: '/account/education/verify'
 }
+
+export type GetAccountEducationVerifyErrors = {
+  default: ErrorResponse
+}
+
+export type GetAccountEducationVerifyError =
+  GetAccountEducationVerifyErrors[keyof GetAccountEducationVerifyErrors]
 
 export type GetAccountEducationVerifyResponses = {
   200: EducationVerifyResponse
@@ -354,6 +450,12 @@ export type PostAccountInitData = {
   url: '/account/init'
 }
 
+export type PostAccountInitErrors = {
+  default: ErrorResponse
+}
+
+export type PostAccountInitError = PostAccountInitErrors[keyof PostAccountInitErrors]
+
 export type PostAccountInitResponses = {
   200: SimpleResultResponse
 }
@@ -366,6 +468,12 @@ export type GetAccountIntegratesData = {
   query?: never
   url: '/account/integrates'
 }
+
+export type GetAccountIntegratesErrors = {
+  default: ErrorResponse
+}
+
+export type GetAccountIntegratesError = GetAccountIntegratesErrors[keyof GetAccountIntegratesErrors]
 
 export type GetAccountIntegratesResponses = {
   200: AccountIntegrateListResponse
@@ -381,6 +489,13 @@ export type PostAccountInterfaceLanguageData = {
   url: '/account/interface-language'
 }
 
+export type PostAccountInterfaceLanguageErrors = {
+  default: ErrorResponse
+}
+
+export type PostAccountInterfaceLanguageError =
+  PostAccountInterfaceLanguageErrors[keyof PostAccountInterfaceLanguageErrors]
+
 export type PostAccountInterfaceLanguageResponses = {
   200: AccountResponse
 }
@@ -394,6 +509,13 @@ export type PostAccountInterfaceThemeData = {
   query?: never
   url: '/account/interface-theme'
 }
+
+export type PostAccountInterfaceThemeErrors = {
+  default: ErrorResponse
+}
+
+export type PostAccountInterfaceThemeError =
+  PostAccountInterfaceThemeErrors[keyof PostAccountInterfaceThemeErrors]
 
 export type PostAccountInterfaceThemeResponses = {
   200: AccountResponse
@@ -409,6 +531,12 @@ export type PostAccountNameData = {
   url: '/account/name'
 }
 
+export type PostAccountNameErrors = {
+  default: ErrorResponse
+}
+
+export type PostAccountNameError = PostAccountNameErrors[keyof PostAccountNameErrors]
+
 export type PostAccountNameResponses = {
   200: AccountResponse
 }
@@ -421,6 +549,12 @@ export type PostAccountPasswordData = {
   query?: never
   url: '/account/password'
 }
+
+export type PostAccountPasswordErrors = {
+  default: ErrorResponse
+}
+
+export type PostAccountPasswordError = PostAccountPasswordErrors[keyof PostAccountPasswordErrors]
 
 export type PostAccountPasswordResponses = {
   200: AccountResponse
@@ -436,6 +570,12 @@ export type GetAccountProfileData = {
   url: '/account/profile'
 }
 
+export type GetAccountProfileErrors = {
+  default: ErrorResponse
+}
+
+export type GetAccountProfileError = GetAccountProfileErrors[keyof GetAccountProfileErrors]
+
 export type GetAccountProfileResponses = {
   200: AccountResponse
 }
@@ -448,6 +588,12 @@ export type PatchAccountProfileData = {
   query?: never
   url: '/account/profile'
 }
+
+export type PatchAccountProfileErrors = {
+  default: ErrorResponse
+}
+
+export type PatchAccountProfileError = PatchAccountProfileErrors[keyof PatchAccountProfileErrors]
 
 export type PatchAccountProfileResponses = {
   200: AccountResponse
@@ -462,6 +608,12 @@ export type PostAccountTimezoneData = {
   query?: never
   url: '/account/timezone'
 }
+
+export type PostAccountTimezoneErrors = {
+  default: ErrorResponse
+}
+
+export type PostAccountTimezoneError = PostAccountTimezoneErrors[keyof PostAccountTimezoneErrors]
 
 export type PostAccountTimezoneResponses = {
   200: AccountResponse

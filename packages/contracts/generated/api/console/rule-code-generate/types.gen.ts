@@ -44,6 +44,7 @@ export type PostRuleCodeGenerateData = {
 export type PostRuleCodeGenerateErrors = {
   400: ErrorResponse
   402: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostRuleCodeGenerateError = PostRuleCodeGenerateErrors[keyof PostRuleCodeGenerateErrors]

@@ -43,6 +43,7 @@ export type PostRuleGenerateData = {
 export type PostRuleGenerateErrors = {
   400: ErrorResponse
   402: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostRuleGenerateError = PostRuleGenerateErrors[keyof PostRuleGenerateErrors]

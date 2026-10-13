@@ -3,21 +3,6 @@
 import * as z from 'zod'
 
 /**
- * RecommendedAppDetailResponse
- */
-export const zRecommendedAppDetailResponse = z.object({
-  can_trial: z.boolean(),
-  export_data: z.string(),
-  icon: z.string().nullish(),
-  icon_background: z.string().nullish(),
-  id: z.string(),
-  mode: z.string(),
-  name: z.string(),
-  package_url: z.string().nullish(),
-  version_id: z.string().nullish(),
-})
-
-/**
  * ErrorResponse
  *
  * Documented non-2xx body emitted by ``register_external_error_handlers``.
@@ -31,6 +16,21 @@ export const zErrorResponse = z.object({
   message: z.string(),
   params: z.string().optional(),
   status: z.int(),
+})
+
+/**
+ * RecommendedAppDetailResponse
+ */
+export const zRecommendedAppDetailResponse = z.object({
+  can_trial: z.boolean(),
+  export_data: z.string(),
+  icon: z.string().nullish(),
+  icon_background: z.string().nullish(),
+  id: z.string(),
+  mode: z.string(),
+  name: z.string(),
+  package_url: z.string().nullish(),
+  version_id: z.string().nullish(),
 })
 
 /**

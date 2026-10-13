@@ -17,9 +17,10 @@ Machine-readable catalog of every op on this surface
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success |  |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [GET] /_health
 #### Responses
@@ -342,6 +343,7 @@ Upload a file to use as an input variable when running the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Approved | **application/json**: [DeviceMutateResponse](#devicemutateresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [POST] /oauth/device/code
 #### Request Body
@@ -355,6 +357,7 @@ Upload a file to use as an input variable when running the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Device code created | **application/json**: [DeviceCodeResponse](#devicecoderesponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [POST] /oauth/device/deny
 #### Request Body
@@ -368,6 +371,7 @@ Upload a file to use as an input variable when running the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Denied | **application/json**: [DeviceMutateResponse](#devicemutateresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [GET] /oauth/device/lookup
 #### Parameters
@@ -381,6 +385,7 @@ Upload a file to use as an input variable when running the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Device lookup result | **application/json**: [DeviceLookupResponse](#devicelookupresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [POST] /oauth/device/token
 #### Request Body
@@ -394,6 +399,7 @@ Upload a file to use as an input variable when running the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Device token | **application/json**: [DeviceTokenResponse](#devicetokenresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [GET] /permitted-external-apps
 #### Parameters

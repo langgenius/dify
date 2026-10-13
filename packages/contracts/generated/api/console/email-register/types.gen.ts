@@ -17,6 +17,16 @@ export type EmailRegisterResetResponse = {
   result: string
 }
 
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type EmailRegisterSendPayload = {
   email: string
   language?: string | null
@@ -52,6 +62,12 @@ export type PostEmailRegisterData = {
   url: '/email-register'
 }
 
+export type PostEmailRegisterErrors = {
+  default: ErrorResponse
+}
+
+export type PostEmailRegisterError = PostEmailRegisterErrors[keyof PostEmailRegisterErrors]
+
 export type PostEmailRegisterResponses = {
   200: EmailRegisterResetResponse
 }
@@ -64,6 +80,13 @@ export type PostEmailRegisterSendEmailData = {
   query?: never
   url: '/email-register/send-email'
 }
+
+export type PostEmailRegisterSendEmailErrors = {
+  default: ErrorResponse
+}
+
+export type PostEmailRegisterSendEmailError =
+  PostEmailRegisterSendEmailErrors[keyof PostEmailRegisterSendEmailErrors]
 
 export type PostEmailRegisterSendEmailResponses = {
   200: SimpleResultDataResponse
@@ -78,6 +101,13 @@ export type PostEmailRegisterValidityData = {
   query?: never
   url: '/email-register/validity'
 }
+
+export type PostEmailRegisterValidityErrors = {
+  default: ErrorResponse
+}
+
+export type PostEmailRegisterValidityError =
+  PostEmailRegisterValidityErrors[keyof PostEmailRegisterValidityErrors]
 
 export type PostEmailRegisterValidityResponses = {
   200: VerificationTokenResponse

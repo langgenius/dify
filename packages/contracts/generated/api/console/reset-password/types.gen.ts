@@ -14,12 +14,28 @@ export type SimpleResultDataResponse = {
   result: string
 }
 
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type PostResetPasswordData = {
   body: EmailPayload
   path?: never
   query?: never
   url: '/reset-password'
 }
+
+export type PostResetPasswordErrors = {
+  default: ErrorResponse
+}
+
+export type PostResetPasswordError = PostResetPasswordErrors[keyof PostResetPasswordErrors]
 
 export type PostResetPasswordResponses = {
   200: SimpleResultDataResponse

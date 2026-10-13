@@ -32,6 +32,7 @@ export type PostRefreshTokenData = {
 
 export type PostRefreshTokenErrors = {
   401: SimpleResultMessageResponse | ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostRefreshTokenError = PostRefreshTokenErrors[keyof PostRefreshTokenErrors]

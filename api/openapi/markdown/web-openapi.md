@@ -28,6 +28,7 @@ Convert audio file to text using speech-to-text service.
 | 413 | Audio file too large | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 415 | Unsupported audio type | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /chat-messages
 Create a chat message for conversational applications.
@@ -48,6 +49,7 @@ Create a chat message for conversational applications.
 | 403 | Forbidden | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | App Not Found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /chat-messages/{task_id}/stop
 Stop a running chat message task.
@@ -68,6 +70,7 @@ Stop a running chat message task.
 | 403 | Forbidden | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Task Not Found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /completion-messages
 Create a completion message for text generation applications.
@@ -88,6 +91,7 @@ Create a completion message for text generation applications.
 | 403 | Forbidden | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | App Not Found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /completion-messages/{task_id}/stop
 Stop a running completion message task.
@@ -108,6 +112,7 @@ Stop a running completion message task.
 | 403 | Forbidden | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Task Not Found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /conversations
 Retrieve paginated list of conversations for a chat application.
@@ -131,6 +136,7 @@ Retrieve paginated list of conversations for a chat application.
 | 403 | Forbidden | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | App Not Found or Not a Chat App | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /conversations/{c_id}
 Delete a specific conversation.
@@ -151,6 +157,7 @@ Delete a specific conversation.
 | 403 | Forbidden | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Conversation Not Found or Not a Chat App | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /conversations/{c_id}/name
 Rename a specific conversation with a custom name or auto-generate one.
@@ -179,6 +186,7 @@ Rename a specific conversation with a custom name or auto-generate one.
 | 403 | Forbidden | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Conversation Not Found or Not a Chat App | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /conversations/{c_id}/pin
 Pin a specific conversation to keep it at the top of the list.
@@ -199,6 +207,7 @@ Pin a specific conversation to keep it at the top of the list.
 | 403 | Forbidden | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Conversation Not Found or Not a Chat App | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /conversations/{c_id}/unpin
 Unpin a specific conversation to remove it from the top of the list.
@@ -219,6 +228,7 @@ Unpin a specific conversation to remove it from the top of the list.
 | 403 | Forbidden | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Conversation Not Found or Not a Chat App | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /email-code-login
 Send email verification code for login
@@ -236,6 +246,7 @@ Send email verification code for login
 | 200 | Email code sent successfully | **application/json**: [SimpleResultDataResponse](#simpleresultdataresponse)<br> |
 | 400 | Bad request - invalid email format | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Account not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /email-code-login/validity
 Verify email code and complete login
@@ -254,6 +265,7 @@ Verify email code and complete login
 | 400 | Bad request - invalid code or token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 401 | Invalid token or expired code | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Account not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /files/upload
 **Upload a file for use in web applications**
@@ -290,6 +302,7 @@ Raises:
 | 400 | - `no_file_uploaded` : No file was provided in the request. - `too_many_files` : Only one file is allowed per request. - `filename_not_exists_error` : The uploaded file has no filename. - `file_extension_blocked` : The file extension is blocked for security reasons. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 413 | `file_too_large` : File size exceeded. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 415 | `unsupported_file_type` : File type not allowed. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /forgot-password
 Send password reset email
@@ -308,6 +321,7 @@ Send password reset email
 | 400 | Bad request - invalid email format | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Account not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 429 | Too many requests - rate limit exceeded | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /forgot-password/resets
 Reset user password with verification token
@@ -326,6 +340,7 @@ Reset user password with verification token
 | 400 | Bad request - invalid parameters or password mismatch | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 401 | Invalid or expired token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Account not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /forgot-password/validity
 Verify password reset token validity
@@ -343,6 +358,7 @@ Verify password reset token validity
 | 200 | Token is valid | **application/json**: [VerificationTokenResponse](#verificationtokenresponse)<br> |
 | 400 | Bad request - invalid token format | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 401 | Invalid or expired token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /form/human_input/{form_token}
 **Get human input form definition by token**
@@ -365,6 +381,7 @@ GET /api/form/human_input/<form_token>
 | 404 | Form not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 412 | Form already submitted or expired | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 429 | Too many requests | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /form/human_input/{form_token}
 **Submit human input form by token**
@@ -401,6 +418,7 @@ Request body:
 | 404 | Form not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 412 | Form already submitted or expired | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 429 | Too many requests | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /form/human_input/{form_token}/upload-token
 **Issue an upload token for a human input form**
@@ -422,6 +440,7 @@ POST /api/form/human_input/<form_token>/upload-token
 | 404 | Form not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 412 | Form already submitted or expired | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 429 | Too many requests | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /human-input-forms/files
 **Upload one local file or remote URL file for a HITL human input form**
@@ -431,6 +450,7 @@ POST /api/form/human_input/<form_token>/upload-token
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | File uploaded successfully | **application/json**: [FileResponse](#fileresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /login
 **Authenticate user and login**
@@ -452,6 +472,7 @@ Authenticate user for web application access
 | 401 | Authentication failed - email or password mismatch | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Account banned or login disabled | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Account not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /login/status
 Check login status
@@ -469,6 +490,7 @@ Check login status
 | ---- | ----------- | ------ |
 | 200 | Login status | **application/json**: [LoginStatusResponse](#loginstatusresponse)<br> |
 | 401 | Login status | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /logout
 Logout user from web application
@@ -478,6 +500,7 @@ Logout user from web application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Logout successful | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /messages
 Retrieve paginated list of messages from a conversation in a chat application.
@@ -500,6 +523,7 @@ Retrieve paginated list of messages from a conversation in a chat application.
 | 403 | Forbidden | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Conversation Not Found or Not a Chat App | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /messages/{message_id}/feedbacks
 Submit feedback (like/dislike) for a specific message.
@@ -528,6 +552,7 @@ Submit feedback (like/dislike) for a specific message.
 | 403 | Forbidden | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Message Not Found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /messages/{message_id}/more-like-this
 Generate a new completion similar to an existing message (completion apps only).
@@ -549,6 +574,7 @@ Generate a new completion similar to an existing message (completion apps only).
 | 403 | Forbidden | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Message Not Found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /messages/{message_id}/suggested-questions
 Get suggested follow-up questions after a message (chat apps only).
@@ -569,6 +595,7 @@ Get suggested follow-up questions after a message (chat apps only).
 | 403 | Forbidden | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Message Not Found or Conversation Not Found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /meta
 **Get app meta**
@@ -585,6 +612,7 @@ Retrieve the metadata for a specific app.
 | 403 | Forbidden | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | App Not Found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /parameters
 **Retrieve app parameters**
@@ -601,6 +629,7 @@ Retrieve the parameters for a specific app.
 | 403 | Forbidden | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | App Not Found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /passport
 Get authentication passport for web application access
@@ -618,6 +647,7 @@ Get authentication passport for web application access
 | 200 | Passport retrieved successfully | **application/json**: [PassportAccessTokenResponse](#passportaccesstokenresponse)<br> |
 | 401 | Unauthorized - missing app code or invalid authentication | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Application or user not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /remote-files/upload
 **Upload a file from a remote URL**
@@ -665,6 +695,7 @@ Raises:
 | 422 | Request payload validation failed | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Internal server error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 502 | Remote file unavailable or returned an invalid response | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /remote-files/{url}
 **Get information about a remote file**
@@ -699,6 +730,7 @@ Raises:
 | 404 | Remote file not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Internal server error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 502 | Remote file unavailable or returned an invalid response | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /saved-messages
 Retrieve paginated list of saved messages for a completion application.
@@ -720,6 +752,7 @@ Retrieve paginated list of saved messages for a completion application.
 | 403 | Forbidden | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | App Not Found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /saved-messages
 Save a specific message for later reference.
@@ -746,6 +779,7 @@ Save a specific message for later reference.
 | 403 | Forbidden | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Message Not Found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /saved-messages/{message_id}
 Remove a message from saved messages.
@@ -766,6 +800,7 @@ Remove a message from saved messages.
 | 403 | Forbidden | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Message Not Found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /site
 **Retrieve app site info**
@@ -782,6 +817,7 @@ Retrieve app site information and configuration.
 | 403 | Forbidden | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | App Not Found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /system-features
 **Get the non-sensitive bootstrap snapshot exposed before authentication**
@@ -798,6 +834,7 @@ Authentication configuration must be available before the authentication flow ca
 | ---- | ----------- | ------ |
 | 200 | System features retrieved successfully | **application/json**: [SystemFeatureModel](#systemfeaturemodel)<br> |
 | 500 | Internal server error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /text-to-audio
 **Convert text to audio**
@@ -819,6 +856,7 @@ Convert text to audio using text-to-speech service.
 | 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /webapp/access-mode
 Retrieve the access mode for a web application (public or restricted).
@@ -839,6 +877,7 @@ Retrieve the access mode for a web application (public or restricted).
 | 404 | App Not Found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 503 | Web App Access Service Unavailable | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /webapp/permission
 Check if user has permission to access a web application.
@@ -858,6 +897,7 @@ Check if user has permission to access a web application.
 | 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 503 | Web App Access Service Unavailable | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workflows/run
 **Run workflow**
@@ -880,6 +920,7 @@ Execute a workflow with provided inputs and files.
 | 403 | Forbidden | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | App Not Found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workflows/tasks/{task_id}/stop
 **Stop workflow task**
@@ -902,6 +943,7 @@ Stop a running workflow task.
 | 403 | Forbidden | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Task Not Found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
 ## default
@@ -925,6 +967,7 @@ Returns Server-Sent Events stream.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | SSE event stream | **application/json**: [EventStreamResponse](#eventstreamresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
 ### Schemas

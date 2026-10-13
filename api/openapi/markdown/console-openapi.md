@@ -26,6 +26,7 @@ Get account avatar url
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AvatarUrlResponse](#avatarurlresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### ~~[POST] /account/avatar~~
 
@@ -44,6 +45,7 @@ Deprecated. Use PATCH /account/profile instead.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AccountResponse](#accountresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /account/change-email
 #### Request Body
@@ -57,6 +59,7 @@ Deprecated. Use PATCH /account/profile instead.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultDataResponse](#simpleresultdataresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /account/change-email/check-email-unique
 #### Request Body
@@ -70,6 +73,7 @@ Deprecated. Use PATCH /account/profile instead.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /account/change-email/reset
 #### Request Body
@@ -83,6 +87,7 @@ Deprecated. Use PATCH /account/profile instead.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AccountResponse](#accountresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /account/change-email/validity
 #### Request Body
@@ -96,6 +101,7 @@ Deprecated. Use PATCH /account/profile instead.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [VerificationTokenResponse](#verificationtokenresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /account/delete
 #### Request Body
@@ -109,6 +115,7 @@ Deprecated. Use PATCH /account/profile instead.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /account/delete/feedback
 #### Request Body
@@ -122,6 +129,7 @@ Deprecated. Use PATCH /account/profile instead.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /account/delete/verify
 #### Responses
@@ -129,6 +137,7 @@ Deprecated. Use PATCH /account/profile instead.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultDataResponse](#simpleresultdataresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /account/education
 #### Responses
@@ -136,6 +145,7 @@ Deprecated. Use PATCH /account/profile instead.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [EducationStatusResponse](#educationstatusresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /account/education
 #### Request Body
@@ -149,6 +159,7 @@ Deprecated. Use PATCH /account/profile instead.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [EducationActivateResponse](#educationactivateresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /account/education/autocomplete
 #### Parameters
@@ -164,6 +175,7 @@ Deprecated. Use PATCH /account/profile instead.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [EducationAutocompleteResponse](#educationautocompleteresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /account/education/verify
 #### Responses
@@ -171,6 +183,7 @@ Deprecated. Use PATCH /account/profile instead.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [EducationVerifyResponse](#educationverifyresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /account/init
 #### Request Body
@@ -184,6 +197,7 @@ Deprecated. Use PATCH /account/profile instead.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /account/integrates
 #### Responses
@@ -191,6 +205,7 @@ Deprecated. Use PATCH /account/profile instead.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AccountIntegrateListResponse](#accountintegratelistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### ~~[POST] /account/interface-language~~
 
@@ -209,6 +224,7 @@ Deprecated. Use PATCH /account/profile instead.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AccountResponse](#accountresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### ~~[POST] /account/interface-theme~~
 
@@ -227,6 +243,7 @@ Deprecated. Use PATCH /account/profile instead.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AccountResponse](#accountresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### ~~[POST] /account/name~~
 
@@ -245,6 +262,7 @@ Deprecated. Use PATCH /account/profile instead.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AccountResponse](#accountresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /account/password
 #### Request Body
@@ -258,6 +276,7 @@ Deprecated. Use PATCH /account/profile instead.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AccountResponse](#accountresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /account/profile
 #### Responses
@@ -265,6 +284,7 @@ Deprecated. Use PATCH /account/profile instead.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AccountResponse](#accountresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /account/profile
 #### Request Body
@@ -278,6 +298,7 @@ Deprecated. Use PATCH /account/profile instead.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AccountResponse](#accountresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### ~~[POST] /account/timezone~~
 
@@ -296,6 +317,7 @@ Deprecated. Use PATCH /account/profile instead.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AccountResponse](#accountresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /activate
 **Accept an invitation without letting an existing session act for another account**
@@ -317,6 +339,7 @@ invitation before the token is consumed or tenant membership is changed.
 | ---- | ----------- | ------ |
 | 200 | Account activated successfully | **application/json**: [ActivationResponse](#activationresponse)<br> |
 | 400 | Already activated or invalid token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /activate/check
 Check if activation token is valid
@@ -334,6 +357,7 @@ Check if activation token is valid
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ActivationCheckResponse](#activationcheckresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent
 #### Parameters
@@ -356,6 +380,7 @@ Check if activation token is valid
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent app list | **application/json**: [AgentAppPagination](#agentapppagination)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent
 #### Request Body
@@ -372,6 +397,7 @@ Check if activation token is valid
 | 400 | Invalid request parameters | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 409 | Agent name already exists | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/invite-options
 #### Parameters
@@ -388,6 +414,7 @@ Check if activation token is valid
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent invite options | **application/json**: [AgentInviteOptionsResponse](#agentinviteoptionsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /agent/{agent_id}
 #### Parameters
@@ -402,6 +429,7 @@ Check if activation token is valid
 | ---- | ----------- | ------ |
 | 204 | Agent app deleted successfully |  |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}
 #### Parameters
@@ -415,6 +443,7 @@ Check if activation token is valid
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent app detail | **application/json**: [AgentAppDetailWithSite](#agentappdetailwithsite)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /agent/{agent_id}
 #### Parameters
@@ -436,6 +465,7 @@ Check if activation token is valid
 | 200 | Agent app updated successfully | **application/json**: [AgentAppDetailWithSite](#agentappdetailwithsite)<br> |
 | 400 | Invalid request parameters | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/api-access
 #### Parameters
@@ -449,6 +479,7 @@ Check if activation token is valid
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent service API access | **application/json**: [AgentApiAccessResponse](#agentapiaccessresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/api-enable
 #### Parameters
@@ -469,6 +500,7 @@ Check if activation token is valid
 | ---- | ----------- | ------ |
 | 200 | Agent service API status updated | **application/json**: [AgentApiAccessResponse](#agentapiaccessresponse)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/api-keys
 #### Parameters
@@ -482,6 +514,7 @@ Check if activation token is valid
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent service API keys | **application/json**: [ApiKeyList](#apikeylist)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/api-keys
 #### Parameters
@@ -496,6 +529,7 @@ Check if activation token is valid
 | ---- | ----------- | ------ |
 | 201 | Agent service API key created | **application/json**: [ApiKeyItem](#apikeyitem)<br> |
 | 400 | Maximum keys exceeded | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /agent/{agent_id}/api-keys/{api_key_id}
 #### Parameters
@@ -507,9 +541,10 @@ Check if activation token is valid
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 204 | Agent service API key deleted |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Agent service API key deleted |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/audio-to-text
 Transcribe audio using the current Agent debug configuration
@@ -534,6 +569,7 @@ Transcribe audio using the current Agent debug configuration
 | 400 | Bad request - Speech to text disabled or unsupported audio | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Agent or build draft not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 413 | Audio file too large | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/build-chat/finalize
 Run a build-draft Agent App turn that asks the agent to push config updates
@@ -551,6 +587,7 @@ Run a build-draft Agent App turn that asks the agent to push config updates
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 | 400 | Invalid request parameters | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Agent, build draft, or conversation not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /agent/{agent_id}/build-draft
 #### Parameters
@@ -564,6 +601,7 @@ Run a build-draft Agent App turn that asks the agent to push config updates
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent build draft discarded | **application/json**: [AgentSimpleResultResponse](#agentsimpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/build-draft
 #### Parameters
@@ -578,6 +616,7 @@ Run a build-draft Agent App turn that asks the agent to push config updates
 | ---- | ----------- | ------ |
 | 200 | Agent build draft | **application/json**: [AgentBuildDraftResponse](#agentbuilddraftresponse)<br> |
 | 404 | Agent build draft not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /agent/{agent_id}/build-draft
 #### Parameters
@@ -597,6 +636,7 @@ Run a build-draft Agent App turn that asks the agent to push config updates
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent build draft saved | **application/json**: [AgentBuildDraftResponse](#agentbuilddraftresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/build-draft/apply
 #### Parameters
@@ -610,6 +650,7 @@ Run a build-draft Agent App turn that asks the agent to push config updates
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent build draft applied | **application/json**: [AgentBuildDraftApplyResponse](#agentbuilddraftapplyresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/build-draft/checkout
 #### Parameters
@@ -629,6 +670,7 @@ Run a build-draft Agent App turn that asks the agent to push config updates
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent build draft checked out | **application/json**: [AgentBuildDraftResponse](#agentbuilddraftresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/chat-messages
 Get Agent App chat messages for a conversation with pagination
@@ -648,6 +690,7 @@ Get Agent App chat messages for a conversation with pagination
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [MessageInfiniteScrollPaginationResponse](#messageinfinitescrollpaginationresponse)<br> |
 | 404 | Agent or conversation not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/chat-messages/{message_id}/suggested-questions
 Get suggested questions for an Agent App message
@@ -669,6 +712,7 @@ Get suggested questions for an Agent App message
 | 403 | Insufficient permissions or suggested questions disabled | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Agent, message, or conversation not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Unexpected server error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/chat-messages/{task_id}/stop
 Stop a running Agent App chat message generation
@@ -685,6 +729,7 @@ Stop a running Agent App chat message generation
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Task stopped successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/composer
 #### Parameters
@@ -698,6 +743,7 @@ Stop a running Agent App chat message generation
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent app composer state | **application/json**: [AgentAppComposerResponse](#agentappcomposerresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /agent/{agent_id}/composer
 #### Parameters
@@ -717,6 +763,7 @@ Stop a running Agent App chat message generation
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent app composer saved | **application/json**: [AgentAppComposerResponse](#agentappcomposerresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/composer/candidates
 #### Parameters
@@ -730,6 +777,7 @@ Stop a running Agent App chat message generation
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent app composer candidates | **application/json**: [AgentComposerCandidatesResponse](#agentcomposercandidatesresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/composer/validate
 #### Parameters
@@ -749,6 +797,7 @@ Stop a running Agent App chat message generation
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent app composer validation result | **application/json**: [AgentComposerValidateResponse](#agentcomposervalidateresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/config/files
 #### Parameters
@@ -764,6 +813,7 @@ Stop a running Agent App chat message generation
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Config files | **application/json**: [AgentConfigFileListResponse](#agentconfigfilelistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/config/files
 #### Parameters
@@ -785,6 +835,7 @@ Stop a running Agent App chat message generation
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Uploaded config file | **application/json**: [AgentConfigFileUploadResponse](#agentconfigfileuploadresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /agent/{agent_id}/config/files/{name}
 #### Parameters
@@ -801,6 +852,7 @@ Stop a running Agent App chat message generation
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Config file deleted | **application/json**: [AgentConfigDeleteResponse](#agentconfigdeleteresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/config/files/{name}/download
 #### Parameters
@@ -817,6 +869,7 @@ Stop a running Agent App chat message generation
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Config file download URL | **application/json**: [AgentConfigDownloadResponse](#agentconfigdownloadresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/config/files/{name}/preview
 #### Parameters
@@ -833,6 +886,7 @@ Stop a running Agent App chat message generation
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Preview | **application/json**: [AgentConfigFilePreviewResponse](#agentconfigfilepreviewresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/config/manifest
 #### Parameters
@@ -848,6 +902,7 @@ Stop a running Agent App chat message generation
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent config manifest | **application/json**: [AgentConfigManifestResponse](#agentconfigmanifestresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/config/skills
 #### Parameters
@@ -863,6 +918,7 @@ Stop a running Agent App chat message generation
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Config skills | **application/json**: [AgentConfigSkillListResponse](#agentconfigskilllistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/config/skills/upload
 #### Parameters
@@ -884,6 +940,7 @@ Stop a running Agent App chat message generation
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Uploaded config skill | **application/json**: [AgentConfigSkillUploadResponse](#agentconfigskilluploadresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /agent/{agent_id}/config/skills/{name}
 #### Parameters
@@ -900,6 +957,7 @@ Stop a running Agent App chat message generation
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Config skill deleted | **application/json**: [AgentConfigDeleteResponse](#agentconfigdeleteresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/config/skills/{name}/download
 #### Parameters
@@ -916,6 +974,7 @@ Stop a running Agent App chat message generation
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Config skill download URL | **application/json**: [AgentConfigDownloadResponse](#agentconfigdownloadresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/config/skills/{name}/files/content
 #### Parameters
@@ -927,9 +986,10 @@ Stop a running Agent App chat message generation
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/config/skills/{name}/files/download
 #### Parameters
@@ -947,6 +1007,7 @@ Stop a running Agent App chat message generation
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Config skill file download URL | **application/json**: [AgentConfigDownloadResponse](#agentconfigdownloadresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/config/skills/{name}/files/preview
 #### Parameters
@@ -964,6 +1025,7 @@ Stop a running Agent App chat message generation
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Config skill file preview | **application/json**: [AgentConfigSkillFilePreviewResponse](#agentconfigskillfilepreviewresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/config/skills/{name}/inspect
 #### Parameters
@@ -980,6 +1042,7 @@ Stop a running Agent App chat message generation
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Config skill inspect view | **application/json**: [AgentConfigSkillInspectResponse](#agentconfigskillinspectresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/copy
 #### Parameters
@@ -1001,6 +1064,7 @@ Stop a running Agent App chat message generation
 | 201 | Agent app copied successfully | **application/json**: [AgentAppDetailWithSite](#agentappdetailwithsite)<br> |
 | 400 | Invalid request parameters | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/debug-conversation/refresh
 #### Parameters
@@ -1015,6 +1079,7 @@ Stop a running Agent App chat message generation
 | ---- | ----------- | ------ |
 | 200 | Agent debug conversation refreshed | **application/json**: [AgentDebugConversationRefreshResponse](#agentdebugconversationrefreshresponse)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/features
 Update an Agent App's presentation features (opener, follow-up, citations, ...)
@@ -1038,6 +1103,7 @@ Update an Agent App's presentation features (opener, follow-up, citations, ...)
 | 200 | Features updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 | 400 | Invalid configuration | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Agent not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/feedbacks
 Create or update Agent App message feedback
@@ -1060,6 +1126,7 @@ Create or update Agent App message feedback
 | ---- | ----------- | ------ |
 | 200 | Feedback updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 | 404 | Agent or message not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/log-sources
 #### Parameters
@@ -1073,6 +1140,7 @@ Create or update Agent App message feedback
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent log sources | **application/json**: [AgentLogSourceListResponse](#agentlogsourcelistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/logs
 #### Parameters
@@ -1097,6 +1165,7 @@ Create or update Agent App message feedback
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent logs | **application/json**: [AgentLogListResponse](#agentloglistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/logs/{conversation_id}/messages
 #### Parameters
@@ -1122,6 +1191,7 @@ Create or update Agent App message feedback
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent log messages | **application/json**: [AgentLogMessageListResponse](#agentlogmessagelistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/messages/{message_id}
 Get Agent App message details by ID
@@ -1139,6 +1209,7 @@ Get Agent App message details by ID
 | ---- | ----------- | ------ |
 | 200 | Message retrieved successfully | **application/json**: [MessageDetailResponse](#messagedetailresponse)<br> |
 | 404 | Agent or message not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/publish
 #### Parameters
@@ -1159,6 +1230,7 @@ Get Agent App message details by ID
 | ---- | ----------- | ------ |
 | 200 | Agent draft published | **application/json**: [AgentPublishResponse](#agentpublishresponse)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/referencing-workflows
 List workflow apps that reference this Agent App's bound Agent (read-only)
@@ -1175,6 +1247,7 @@ List workflow apps that reference this Agent App's bound Agent (read-only)
 | ---- | ----------- | ------ |
 | 200 | Referencing workflows listed successfully | **application/json**: [AgentReferencingWorkflowsResponse](#agentreferencingworkflowsresponse)<br> |
 | 404 | Agent not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/sandbox
 Get basic information for an Agent App conversation sandbox
@@ -1192,6 +1265,7 @@ Get basic information for an Agent App conversation sandbox
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Sandbox information returned | **application/json**: [SandboxInfoResponse](#sandboxinforesponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/sandbox/files
 List a directory in an Agent App conversation sandbox
@@ -1210,6 +1284,7 @@ List a directory in an Agent App conversation sandbox
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Listing returned | **application/json**: [SandboxListResponse](#sandboxlistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/sandbox/files/download
 Create a ToolFile from one Agent App Binding file and return its download URL
@@ -1231,6 +1306,7 @@ Create a ToolFile from one Agent App Binding file and return its download URL
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Download URL returned | **application/json**: [SandboxDownloadResponse](#sandboxdownloadresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/sandbox/files/read
 Read a text/binary preview file in an Agent App conversation sandbox
@@ -1249,6 +1325,7 @@ Read a text/binary preview file in an Agent App conversation sandbox
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Preview returned | **application/json**: [SandboxReadResponse](#sandboxreadresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/statistics/summary
 #### Parameters
@@ -1265,6 +1342,7 @@ Read a text/binary preview file in an Agent App conversation sandbox
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent monitoring summary and chart data | **application/json**: [AgentStatisticSummaryEnvelopeResponse](#agentstatisticsummaryenveloperesponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/text-to-audio
 Preview an Agent TTS voice or read an Agent chat message
@@ -1289,6 +1367,7 @@ Preview an Agent TTS voice or read an Agent chat message
 | 400 | Invalid text or voice | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Agent not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/text-to-audio/voices
 Get available TTS voices for an Agent and language
@@ -1307,6 +1386,7 @@ Get available TTS voices for an Agent and language
 | 200 | TTS voices retrieved successfully | **application/json**: [TextToSpeechVoiceListResponse](#texttospeechvoicelistresponse)<br> |
 | 400 | Invalid language parameter | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Agent not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/versions
 #### Parameters
@@ -1320,6 +1400,7 @@ Get available TTS voices for an Agent and language
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent versions | **application/json**: [AgentConfigSnapshotListResponse](#agentconfigsnapshotlistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/versions/{version_id}
 #### Parameters
@@ -1334,6 +1415,7 @@ Get available TTS voices for an Agent and language
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent version detail | **application/json**: [AgentConfigSnapshotDetailResponse](#agentconfigsnapshotdetailresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/versions/{version_id}/restore
 #### Parameters
@@ -1348,6 +1430,7 @@ Get available TTS voices for an Agent and language
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent version restored | **application/json**: [AgentConfigSnapshotRestoreResponse](#agentconfigsnapshotrestoreresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /all-workspaces
 #### Parameters
@@ -1362,6 +1445,7 @@ Get available TTS voices for an Agent and language
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [WorkspacePaginationResponse](#workspacepaginationresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /api-based-extension
 Get all API-based extensions for current tenant
@@ -1371,6 +1455,7 @@ Get all API-based extensions for current tenant
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [APIBasedExtensionListResponse](#apibasedextensionlistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /api-based-extension
 Create a new API-based extension
@@ -1386,6 +1471,7 @@ Create a new API-based extension
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Extension created successfully | **application/json**: [APIBasedExtensionResponse](#apibasedextensionresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /api-based-extension/{id}
 Delete API-based extension
@@ -1398,9 +1484,10 @@ Delete API-based extension
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 204 | Extension deleted successfully |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Extension deleted successfully |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /api-based-extension/{id}
 Get API-based extension by ID
@@ -1416,6 +1503,7 @@ Get API-based extension by ID
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [APIBasedExtensionResponse](#apibasedextensionresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /api-based-extension/{id}
 Update API-based extension
@@ -1437,6 +1525,7 @@ Update API-based extension
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Extension updated successfully | **application/json**: [APIBasedExtensionResponse](#apibasedextensionresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /api-key-auth/data-source
 #### Responses
@@ -1444,6 +1533,7 @@ Update API-based extension
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ApiKeyAuthDataSourceListResponse](#apikeyauthdatasourcelistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /api-key-auth/data-source/binding
 #### Request Body
@@ -1457,6 +1547,7 @@ Update API-based extension
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /api-key-auth/data-source/{binding_id}
 #### Parameters
@@ -1467,9 +1558,10 @@ Update API-based extension
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 204 | Binding deleted successfully |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Binding deleted successfully |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /app-dsl-version
 **Get current app DSL version for workflow clipboard compatibility**
@@ -1481,6 +1573,7 @@ Get current app DSL version
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AppDslVersionResponse](#appdslversionresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /app/prompt-templates
 Get advanced prompt templates based on app mode and model configuration
@@ -1500,6 +1593,7 @@ Get advanced prompt templates based on app mode and model configuration
 | ---- | ----------- | ------ |
 | 200 | Prompt templates retrieved successfully | **application/json**: [AdvancedPromptTemplateResponse](#advancedprompttemplateresponse)<br> |
 | 400 | Invalid request parameters | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps
 Get list of applications with pagination and filtering
@@ -1523,6 +1617,7 @@ Get list of applications with pagination and filtering
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AppPagination](#apppagination)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps
 Create a new application
@@ -1540,6 +1635,7 @@ Create a new application
 | 201 | App created successfully | **application/json**: [AppDetailWithSite](#appdetailwithsite)<br> |
 | 400 | Invalid request parameters | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/imports
 #### Request Body
@@ -1558,6 +1654,7 @@ Create a new application
 | 403 | Insufficient import permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 409 | Agent name conflict | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 413 | Roster Agent package exceeds the size limit | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/imports/{app_id}/check-dependencies
 #### Parameters
@@ -1571,6 +1668,7 @@ Create a new application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Dependencies checked | **application/json**: [CheckDependenciesResult](#checkdependenciesresult)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/imports/{import_id}/confirm
 #### Parameters
@@ -1585,6 +1683,7 @@ Create a new application
 | ---- | ----------- | ------ |
 | 200 | Import confirmed | **application/json**: [Import](#import)<br> |
 | 400 | Import failed | **application/json**: <br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/recent
 Get recently modified apps for the home Continue Work section
@@ -1600,6 +1699,7 @@ Get recently modified apps for the home Continue Work section
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [RecentAppListResponse](#recentapplistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/starred
 Get applications starred by the current account
@@ -1623,6 +1723,7 @@ Get applications starred by the current account
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AppPagination](#apppagination)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/workflows/online-users
 Get workflow online users
@@ -1638,6 +1739,7 @@ Get workflow online users
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow online users retrieved successfully | **application/json**: [WorkflowOnlineUsersResponse](#workflowonlineusersresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /apps/{app_id}
 Delete application
@@ -1654,6 +1756,7 @@ Delete application
 | ---- | ----------- | ------ |
 | 204 | App deleted successfully |  |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}
 Get application details
@@ -1669,6 +1772,7 @@ Get application details
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AppDetailWithSite](#appdetailwithsite)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /apps/{app_id}
 Update application details
@@ -1692,6 +1796,7 @@ Update application details
 | 200 | App updated successfully | **application/json**: [AppDetailWithSite](#appdetailwithsite)<br> |
 | 400 | Invalid request parameters | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/advanced-chat/workflow-runs
 **Get advanced chat app workflow run list**
@@ -1713,6 +1818,7 @@ Get advanced chat workflow run list
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow runs retrieved successfully | **application/json**: [AdvancedChatWorkflowRunPaginationResponse](#advancedchatworkflowrunpaginationresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/advanced-chat/workflow-runs/count
 **Get advanced chat workflow runs count statistics**
@@ -1731,6 +1837,7 @@ Get advanced chat workflow run list
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow runs count retrieved successfully | **application/json**: [WorkflowRunCountResponse](#workflowruncountresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/advanced-chat/workflows/draft/human-input/nodes/{node_id}/form/preview
 **Preview human input form content and placeholders**
@@ -1755,6 +1862,7 @@ Get human input form preview for advanced chat workflow
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Human input form preview | **application/json**: [HumanInputFormPreviewResponse](#humaninputformpreviewresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/advanced-chat/workflows/draft/human-input/nodes/{node_id}/form/run
 **Submit human input form preview**
@@ -1779,6 +1887,7 @@ Submit human input form preview for advanced chat workflow
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Human input form submission result | **application/json**: [HumanInputFormSubmitResponse](#humaninputformsubmitresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/advanced-chat/workflows/draft/iteration/nodes/{node_id}/run
 **Run draft workflow iteration node**
@@ -1805,6 +1914,7 @@ Run draft workflow iteration node for advanced chat
 | 200 | Iteration node run started successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Node not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/advanced-chat/workflows/draft/loop/nodes/{node_id}/run
 **Run draft workflow loop node**
@@ -1831,6 +1941,7 @@ Run draft workflow loop node for advanced chat
 | 200 | Loop node run started successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Node not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/advanced-chat/workflows/draft/run
 **Run draft workflow**
@@ -1856,6 +1967,7 @@ Run draft workflow for advanced chat application
 | 200 | Workflow run started successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
 | 400 | Invalid request parameters | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/agent/config/files
 #### Parameters
@@ -1872,6 +1984,7 @@ Run draft workflow for advanced chat application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Config files | **application/json**: [AgentConfigFileListResponse](#agentconfigfilelistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/agent/config/files
 #### Parameters
@@ -1894,6 +2007,7 @@ Run draft workflow for advanced chat application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Uploaded config file | **application/json**: [AgentConfigFileUploadResponse](#agentconfigfileuploadresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /apps/{app_id}/agent/config/files/{name}
 #### Parameters
@@ -1911,6 +2025,7 @@ Run draft workflow for advanced chat application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Config file deleted | **application/json**: [AgentConfigDeleteResponse](#agentconfigdeleteresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/agent/config/files/{name}/download
 #### Parameters
@@ -1928,6 +2043,7 @@ Run draft workflow for advanced chat application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Config file download URL | **application/json**: [AgentConfigDownloadResponse](#agentconfigdownloadresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/agent/config/files/{name}/preview
 #### Parameters
@@ -1945,6 +2061,7 @@ Run draft workflow for advanced chat application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Preview | **application/json**: [AgentConfigFilePreviewResponse](#agentconfigfilepreviewresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/agent/config/manifest
 #### Parameters
@@ -1961,6 +2078,7 @@ Run draft workflow for advanced chat application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent config manifest | **application/json**: [AgentConfigManifestResponse](#agentconfigmanifestresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/agent/config/skills
 #### Parameters
@@ -1977,6 +2095,7 @@ Run draft workflow for advanced chat application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Config skills | **application/json**: [AgentConfigSkillListResponse](#agentconfigskilllistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/agent/config/skills/upload
 #### Parameters
@@ -1999,6 +2118,7 @@ Run draft workflow for advanced chat application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Uploaded config skill | **application/json**: [AgentConfigSkillUploadResponse](#agentconfigskilluploadresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /apps/{app_id}/agent/config/skills/{name}
 #### Parameters
@@ -2016,6 +2136,7 @@ Run draft workflow for advanced chat application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Config skill deleted | **application/json**: [AgentConfigDeleteResponse](#agentconfigdeleteresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/agent/config/skills/{name}/download
 #### Parameters
@@ -2033,6 +2154,7 @@ Run draft workflow for advanced chat application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Config skill download URL | **application/json**: [AgentConfigDownloadResponse](#agentconfigdownloadresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/agent/config/skills/{name}/files/content
 #### Parameters
@@ -2044,9 +2166,10 @@ Run draft workflow for advanced chat application
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/agent/config/skills/{name}/files/download
 #### Parameters
@@ -2065,6 +2188,7 @@ Run draft workflow for advanced chat application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Config skill file download URL | **application/json**: [AgentConfigDownloadResponse](#agentconfigdownloadresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/agent/config/skills/{name}/files/preview
 #### Parameters
@@ -2083,6 +2207,7 @@ Run draft workflow for advanced chat application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Config skill file preview | **application/json**: [AgentConfigSkillFilePreviewResponse](#agentconfigskillfilepreviewresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/agent/config/skills/{name}/inspect
 #### Parameters
@@ -2100,6 +2225,7 @@ Run draft workflow for advanced chat application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Config skill inspect view | **application/json**: [AgentConfigSkillInspectResponse](#agentconfigskillinspectresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/agent/logs
 **Get agent logs**
@@ -2120,6 +2246,7 @@ Get agent execution logs for an application
 | ---- | ----------- | ------ |
 | 200 | Agent logs retrieved successfully | **application/json**: [AgentLogResponse](#agentlogresponse)<br> |
 | 400 | Invalid request parameters | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/annotation-reply/{action}
 Enable or disable annotation reply for an app
@@ -2143,6 +2270,7 @@ Enable or disable annotation reply for an app
 | ---- | ----------- | ------ |
 | 200 | Action completed successfully | **application/json**: [AnnotationJobStatusResponse](#annotationjobstatusresponse)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/annotation-reply/{action}/status/{job_id}
 Get status of annotation reply action job
@@ -2161,6 +2289,7 @@ Get status of annotation reply action job
 | ---- | ----------- | ------ |
 | 200 | Job status retrieved successfully | **application/json**: [AnnotationJobStatusDetailResponse](#annotationjobstatusdetailresponse)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/annotation-setting
 Get annotation settings for an app
@@ -2177,6 +2306,7 @@ Get annotation settings for an app
 | ---- | ----------- | ------ |
 | 200 | Annotation settings retrieved successfully | **application/json**: [AnnotationSettingResponse](#annotationsettingresponse)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/annotation-settings/{annotation_setting_id}
 Update annotation settings for an app
@@ -2200,6 +2330,7 @@ Update annotation settings for an app
 | ---- | ----------- | ------ |
 | 200 | Settings updated successfully | **application/json**: [AnnotationSettingResponse](#annotationsettingresponse)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /apps/{app_id}/annotations
 #### Parameters
@@ -2210,9 +2341,10 @@ Update annotation settings for an app
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 204 | Annotations deleted successfully |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Annotations deleted successfully |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/annotations
 Get annotations for an app with pagination
@@ -2232,6 +2364,7 @@ Get annotations for an app with pagination
 | ---- | ----------- | ------ |
 | 200 | Annotations retrieved successfully | **application/json**: [AnnotationList](#annotationlist)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/annotations
 Create a new annotation for an app
@@ -2254,6 +2387,7 @@ Create a new annotation for an app
 | ---- | ----------- | ------ |
 | 201 | Annotation created successfully | **application/json**: [Annotation](#annotation)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/annotations/batch-import
 Batch import annotations from CSV file with rate limiting and security checks
@@ -2273,6 +2407,7 @@ Batch import annotations from CSV file with rate limiting and security checks
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 413 | File too large | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 429 | Too many requests or concurrent imports | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/annotations/batch-import-status/{job_id}
 Get status of batch import job
@@ -2290,6 +2425,7 @@ Get status of batch import job
 | ---- | ----------- | ------ |
 | 200 | Job status retrieved successfully | **application/json**: [AnnotationJobStatusDetailResponse](#annotationjobstatusdetailresponse)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/annotations/count
 Get count of message annotations for the app
@@ -2305,6 +2441,7 @@ Get count of message annotations for the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Annotation count retrieved successfully | **application/json**: [AnnotationCountResponse](#annotationcountresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/annotations/export
 Export all annotations for an app with CSV injection protection
@@ -2321,6 +2458,7 @@ Export all annotations for an app with CSV injection protection
 | ---- | ----------- | ------ |
 | 200 | Annotations exported successfully | **application/json**: [AnnotationExportList](#annotationexportlist)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /apps/{app_id}/annotations/{annotation_id}
 #### Parameters
@@ -2332,9 +2470,10 @@ Export all annotations for an app with CSV injection protection
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 204 | Annotation deleted successfully |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Annotation deleted successfully |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/annotations/{annotation_id}
 Update or delete an annotation
@@ -2359,6 +2498,7 @@ Update or delete an annotation
 | 200 | Annotation updated successfully | **application/json**: [Annotation](#annotation)<br> |
 | 204 | Annotation deleted successfully |  |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/annotations/{annotation_id}/hit-histories
 Get hit histories for an annotation
@@ -2378,6 +2518,7 @@ Get hit histories for an annotation
 | ---- | ----------- | ------ |
 | 200 | Hit histories retrieved successfully | **application/json**: [AnnotationHitHistoryList](#annotationhithistorylist)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/api-enable
 Enable or disable app API
@@ -2400,6 +2541,7 @@ Enable or disable app API
 | ---- | ----------- | ------ |
 | 200 | API status updated successfully | **application/json**: [AppDetail](#appdetail)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/audio-to-text
 Transcript audio to text for chat messages
@@ -2423,6 +2565,7 @@ Transcript audio to text for chat messages
 | 200 | Audio transcription successful | **application/json**: [AudioTranscriptResponse](#audiotranscriptresponse)<br> |
 | 400 | Bad request - No audio uploaded or unsupported type | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 413 | Audio file too large | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/chat-conversations
 Get chat conversations with pagination, filtering and summary
@@ -2446,6 +2589,7 @@ Get chat conversations with pagination, filtering and summary
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ConversationWithSummaryPagination](#conversationwithsummarypagination)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /apps/{app_id}/chat-conversations/{conversation_id}
 Delete a chat conversation
@@ -2464,6 +2608,7 @@ Delete a chat conversation
 | 204 | Conversation deleted successfully |  |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Conversation not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/chat-conversations/{conversation_id}
 Get chat conversation details
@@ -2482,6 +2627,7 @@ Get chat conversation details
 | 200 | Success | **application/json**: [ConversationDetail](#conversationdetail)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Conversation not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/chat-messages
 Get chat messages for a conversation with pagination
@@ -2501,6 +2647,7 @@ Get chat messages for a conversation with pagination
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [MessageInfiniteScrollPaginationResponse](#messageinfinitescrollpaginationresponse)<br> |
 | 404 | Conversation not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/chat-messages/{message_id}/suggested-questions
 Get suggested questions for a message
@@ -2522,6 +2669,7 @@ Get suggested questions for a message
 | 403 | Insufficient permissions or suggested questions disabled | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | App, message, or conversation not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Unexpected server error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/chat-messages/{task_id}/stop
 Stop a running chat message generation
@@ -2538,6 +2686,7 @@ Stop a running chat message generation
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Task stopped successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/completion-conversations
 Get completion conversations with pagination and filtering
@@ -2560,6 +2709,7 @@ Get completion conversations with pagination and filtering
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ConversationPagination](#conversationpagination)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /apps/{app_id}/completion-conversations/{conversation_id}
 Delete a completion conversation
@@ -2578,6 +2728,7 @@ Delete a completion conversation
 | 204 | Conversation deleted successfully |  |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Conversation not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/completion-conversations/{conversation_id}
 Get completion conversation details with messages
@@ -2596,6 +2747,7 @@ Get completion conversation details with messages
 | 200 | Success | **application/json**: [ConversationMessageDetail](#conversationmessagedetail)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Conversation not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/completion-messages
 Generate completion message for debugging
@@ -2619,6 +2771,7 @@ Generate completion message for debugging
 | 200 | Completion generated successfully |  |
 | 400 | Invalid request parameters | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | App not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/completion-messages/{task_id}/stop
 Stop a running completion message generation
@@ -2635,6 +2788,7 @@ Stop a running completion message generation
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Task stopped successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/conversation-variables
 Get conversation variables for an application
@@ -2651,6 +2805,7 @@ Get conversation variables for an application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Conversation variables retrieved successfully | **application/json**: [PaginatedConversationVariableResponse](#paginatedconversationvariableresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/convert-to-workflow
 **Convert basic mode of chatbot app to workflow mode**
@@ -2678,6 +2833,7 @@ Convert Completion App to Workflow App
 | 200 | Application converted to workflow successfully | **application/json**: [NewAppResponse](#newappresponse)<br> |
 | 400 | Application cannot be converted | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/copy
 Create a copy of an existing application
@@ -2701,6 +2857,7 @@ Create a copy of an existing application
 | 201 | App copied successfully | **application/json**: [AppDetailWithSite](#appdetailwithsite)<br> |
 | 202 | App copy requires confirmation | **application/json**: [AppImportResponse](#appimportresponse)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/export
 Export application configuration as DSL
@@ -2721,6 +2878,7 @@ Export application configuration as DSL
 | ---- | ----------- | ------ |
 | 200 | App exported successfully | **application/json**: [AppExportResponse](#appexportresponse)<br>**application/zip**: binary<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/feedbacks
 Create or update message feedback (like/dislike)
@@ -2744,6 +2902,7 @@ Create or update message feedback (like/dislike)
 | 200 | Feedback updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Message not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/icon
 Update application icon
@@ -2766,6 +2925,7 @@ Update application icon
 | ---- | ----------- | ------ |
 | 200 | Icon updated successfully | **application/json**: [AppDetail](#appdetail)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/messages/{message_id}
 Get message details by ID
@@ -2783,6 +2943,7 @@ Get message details by ID
 | ---- | ----------- | ------ |
 | 200 | Message retrieved successfully | **application/json**: [MessageDetailResponse](#messagedetailresponse)<br> |
 | 404 | Message not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/model-config
 **Modify the app model config and dataset joins in one request transaction**
@@ -2808,6 +2969,7 @@ Update application model configuration
 | 200 | Model configuration updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 | 400 | Invalid configuration | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | App not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/name
 Check if app name is available
@@ -2829,6 +2991,7 @@ Check if app name is available
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Name availability checked | **application/json**: [AppDetail](#appdetail)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/publish-to-creators-platform
 #### Parameters
@@ -2842,6 +3005,7 @@ Check if app name is available
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [RedirectUrlResponse](#redirecturlresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/server
 Get MCP server configuration for an application
@@ -2857,6 +3021,7 @@ Get MCP server configuration for an application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | MCP server configuration retrieved successfully | **application/json**: [AppMCPServerResponse](#appmcpserverresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/server
 Create MCP server configuration for an application
@@ -2880,6 +3045,7 @@ Create MCP server configuration for an application
 | 201 | MCP server configuration created successfully | **application/json**: [AppMCPServerResponse](#appmcpserverresponse)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 409 | MCP server already exists for this app | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /apps/{app_id}/server
 Update MCP server configuration for an application
@@ -2903,6 +3069,7 @@ Update MCP server configuration for an application
 | 200 | MCP server configuration updated successfully | **application/json**: [AppMCPServerResponse](#appmcpserverresponse)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Server not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/server/refresh
 Refresh MCP server configuration and regenerate server code
@@ -2920,6 +3087,7 @@ Refresh MCP server configuration and regenerate server code
 | 200 | MCP server refreshed successfully | **application/json**: [AppMCPServerResponse](#appmcpserverresponse)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Server not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/site
 Update application site configuration
@@ -2943,6 +3111,7 @@ Update application site configuration
 | 200 | Site configuration updated successfully | **application/json**: [AppSiteResponse](#appsiteresponse)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | App not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/site-enable
 Enable or disable app site
@@ -2965,6 +3134,7 @@ Enable or disable app site
 | ---- | ----------- | ------ |
 | 200 | Site status updated successfully | **application/json**: [AppDetail](#appdetail)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/site/access-token-reset
 Reset access token for application site
@@ -2982,6 +3152,7 @@ Reset access token for application site
 | 200 | Access token reset successfully | **application/json**: [AppSiteResponse](#appsiteresponse)<br> |
 | 403 | Insufficient permissions (admin/owner required) | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | App or site not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /apps/{app_id}/star
 Remove the current account's star from an application
@@ -2998,6 +3169,7 @@ Remove the current account's star from an application
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 | 404 | App not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/star
 Star an application for the current account
@@ -3014,6 +3186,7 @@ Star an application for the current account
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 | 404 | App not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/statistics/average-response-time
 Get average response time statistics for an application
@@ -3031,6 +3204,7 @@ Get average response time statistics for an application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Average response time statistics retrieved successfully | **application/json**: [AverageResponseTimeStatisticResponse](#averageresponsetimestatisticresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/statistics/average-session-interactions
 Get average session interaction statistics for an application
@@ -3048,6 +3222,7 @@ Get average session interaction statistics for an application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Average session interaction statistics retrieved successfully | **application/json**: [AverageSessionInteractionStatisticResponse](#averagesessioninteractionstatisticresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/statistics/daily-conversations
 Get daily conversation statistics for an application
@@ -3065,6 +3240,7 @@ Get daily conversation statistics for an application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Daily conversation statistics retrieved successfully | **application/json**: [DailyConversationStatisticResponse](#dailyconversationstatisticresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/statistics/daily-end-users
 Get daily terminal/end-user statistics for an application
@@ -3082,6 +3258,7 @@ Get daily terminal/end-user statistics for an application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Daily terminal statistics retrieved successfully | **application/json**: [DailyTerminalStatisticResponse](#dailyterminalstatisticresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/statistics/daily-messages
 Get daily message statistics for an application
@@ -3099,6 +3276,7 @@ Get daily message statistics for an application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Daily message statistics retrieved successfully | **application/json**: [DailyMessageStatisticResponse](#dailymessagestatisticresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/statistics/token-costs
 Get daily token cost statistics for an application
@@ -3116,6 +3294,7 @@ Get daily token cost statistics for an application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Daily token cost statistics retrieved successfully | **application/json**: [DailyTokenCostStatisticResponse](#dailytokencoststatisticresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/statistics/tokens-per-second
 Get tokens per second statistics for an application
@@ -3133,6 +3312,7 @@ Get tokens per second statistics for an application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Tokens per second statistics retrieved successfully | **application/json**: [TokensPerSecondStatisticResponse](#tokenspersecondstatisticresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/statistics/user-satisfaction-rate
 Get user satisfaction rate statistics for an application
@@ -3150,6 +3330,7 @@ Get user satisfaction rate statistics for an application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | User satisfaction rate statistics retrieved successfully | **application/json**: [UserSatisfactionRateStatisticResponse](#usersatisfactionratestatisticresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/text-to-audio
 Convert text to speech for chat messages
@@ -3172,6 +3353,7 @@ Convert text to speech for chat messages
 | ---- | ----------- | ------ |
 | 200 | Text to speech conversion successful |  |
 | 400 | Bad request - Invalid parameters | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/text-to-audio/voices
 Get available TTS voices for a specific language
@@ -3189,6 +3371,7 @@ Get available TTS voices for a specific language
 | ---- | ----------- | ------ |
 | 200 | TTS voices retrieved successfully | **application/json**: [TextToSpeechVoiceListResponse](#texttospeechvoicelistresponse)<br> |
 | 400 | Invalid language parameter | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/trace
 Get app tracing configuration
@@ -3204,6 +3387,7 @@ Get app tracing configuration
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Trace configuration retrieved successfully | **application/json**: [AppTraceResponse](#apptraceresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/trace
 Update app tracing configuration
@@ -3226,6 +3410,7 @@ Update app tracing configuration
 | ---- | ----------- | ------ |
 | 200 | Trace configuration updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /apps/{app_id}/trace-config
 **Delete an existing trace app configuration**
@@ -3248,6 +3433,7 @@ Delete an existing tracing configuration for an application
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Application or tracing configuration not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Tracing configuration processing failed | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/trace-config
 Get tracing configuration for an application
@@ -3267,6 +3453,7 @@ Get tracing configuration for an application
 | 400 | Invalid request parameters or unsupported tracing provider | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Application not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Tracing configuration processing failed | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /apps/{app_id}/trace-config
 **Update an existing trace app configuration**
@@ -3294,6 +3481,7 @@ Update an existing tracing configuration for an application
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Application or tracing configuration not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Tracing configuration processing failed | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/trace-config
 **Create a new trace app configuration**
@@ -3322,6 +3510,7 @@ Create a new tracing configuration for an application
 | 404 | Application not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 409 | Tracing configuration already exists | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Tracing configuration processing failed | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/trigger-enable
 **Update app trigger (enable/disable)**
@@ -3343,6 +3532,7 @@ Create a new tracing configuration for an application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [WorkflowTriggerResponse](#workflowtriggerresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/triggers
 **Get app triggers list**
@@ -3358,6 +3548,7 @@ Create a new tracing configuration for an application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [WorkflowTriggerListResponse](#workflowtriggerlistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflow-app-logs
 **Get workflow app logs**
@@ -3384,6 +3575,7 @@ Get workflow application execution logs
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow app logs retrieved successfully | **application/json**: [WorkflowAppLogPaginationResponse](#workflowapplogpaginationresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflow-runs
 **Get workflow run list**
@@ -3403,6 +3595,7 @@ Get workflow application execution logs
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow runs retrieved successfully | **application/json**: [WorkflowRunPaginationResponse](#workflowrunpaginationresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflow-runs/count
 **Get workflow runs count statistics**
@@ -3421,6 +3614,7 @@ Get workflow application execution logs
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow runs count retrieved successfully | **application/json**: [WorkflowRunCountResponse](#workflowruncountresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflow-runs/tasks/{task_id}/stop
 **Stop workflow task**
@@ -3441,6 +3635,7 @@ Stop running workflow task
 | 200 | Task stopped successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Task not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflow-runs/{run_id}
 **Get workflow run detail**
@@ -3458,6 +3653,7 @@ Stop running workflow task
 | ---- | ----------- | ------ |
 | 200 | Workflow run detail retrieved successfully | **application/json**: [WorkflowRunDetailResponse](#workflowrundetailresponse)<br> |
 | 404 | Workflow run not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflow-runs/{run_id}/node-executions
 **Get workflow run node execution list**
@@ -3475,6 +3671,7 @@ Stop running workflow task
 | ---- | ----------- | ------ |
 | 200 | Node executions retrieved successfully | **application/json**: [WorkflowRunNodeExecutionListResponse](#workflowrunnodeexecutionlistresponse)<br> |
 | 404 | Workflow run not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/sandbox/files
 List a directory in a workflow Agent node sandbox
@@ -3494,6 +3691,7 @@ List a directory in a workflow Agent node sandbox
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Listing returned | **application/json**: [SandboxListResponse](#sandboxlistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/sandbox/files/download
 Create a ToolFile from one workflow Agent Binding file and return its download URL
@@ -3517,6 +3715,7 @@ Create a ToolFile from one workflow Agent Binding file and return its download U
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Download URL returned | **application/json**: [SandboxDownloadResponse](#sandboxdownloadresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflow-runs/{workflow_run_id}/agent-nodes/{node_id}/sandbox/files/read
 Read a text/binary preview file in a workflow Agent node sandbox
@@ -3536,6 +3735,7 @@ Read a text/binary preview file in a workflow Agent node sandbox
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Preview returned | **application/json**: [SandboxReadResponse](#sandboxreadresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflow/comments
 **Get all comments for a workflow**
@@ -3551,6 +3751,7 @@ Read a text/binary preview file in a workflow Agent node sandbox
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Comments retrieved successfully | **application/json**: [WorkflowCommentBasicList](#workflowcommentbasiclist)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflow/comments
 **Create a new workflow comment**
@@ -3572,6 +3773,7 @@ Read a text/binary preview file in a workflow Agent node sandbox
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Comment created successfully | **application/json**: [WorkflowCommentCreate](#workflowcommentcreate)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflow/comments/mention-users
 **Get all users in current tenant for mentions**
@@ -3587,6 +3789,7 @@ Read a text/binary preview file in a workflow Agent node sandbox
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Mentionable users retrieved successfully | **application/json**: [WorkflowCommentMentionUsersPayload](#workflowcommentmentionuserspayload)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /apps/{app_id}/workflow/comments/{comment_id}
 **Delete a workflow comment**
@@ -3600,9 +3803,10 @@ Read a text/binary preview file in a workflow Agent node sandbox
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 204 | Comment deleted successfully |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Comment deleted successfully |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflow/comments/{comment_id}
 **Get a specific workflow comment**
@@ -3619,6 +3823,7 @@ Read a text/binary preview file in a workflow Agent node sandbox
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Comment retrieved successfully | **application/json**: [WorkflowCommentDetail](#workflowcommentdetail)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /apps/{app_id}/workflow/comments/{comment_id}
 **Update a workflow comment**
@@ -3641,6 +3846,7 @@ Read a text/binary preview file in a workflow Agent node sandbox
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Comment updated successfully | **application/json**: [WorkflowCommentUpdate](#workflowcommentupdate)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflow/comments/{comment_id}/replies
 **Add a reply to a workflow comment**
@@ -3663,6 +3869,7 @@ Read a text/binary preview file in a workflow Agent node sandbox
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Reply created successfully | **application/json**: [WorkflowCommentReplyCreate](#workflowcommentreplycreate)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /apps/{app_id}/workflow/comments/{comment_id}/replies/{reply_id}
 **Delete a comment reply**
@@ -3677,9 +3884,10 @@ Read a text/binary preview file in a workflow Agent node sandbox
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 204 | Reply deleted successfully |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Reply deleted successfully |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /apps/{app_id}/workflow/comments/{comment_id}/replies/{reply_id}
 **Update a comment reply**
@@ -3703,6 +3911,7 @@ Read a text/binary preview file in a workflow Agent node sandbox
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Reply updated successfully | **application/json**: [WorkflowCommentReplyUpdate](#workflowcommentreplyupdate)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflow/comments/{comment_id}/resolve
 **Resolve a workflow comment**
@@ -3719,6 +3928,7 @@ Read a text/binary preview file in a workflow Agent node sandbox
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Comment resolved successfully | **application/json**: [WorkflowCommentResolve](#workflowcommentresolve)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflow/statistics/average-app-interactions
 Get workflow average app interaction statistics
@@ -3736,6 +3946,7 @@ Get workflow average app interaction statistics
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Average app interaction statistics retrieved successfully | **application/json**: [WorkflowAverageAppInteractionStatisticResponse](#workflowaverageappinteractionstatisticresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflow/statistics/daily-conversations
 Get workflow daily runs statistics
@@ -3753,6 +3964,7 @@ Get workflow daily runs statistics
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Daily runs statistics retrieved successfully | **application/json**: [WorkflowDailyRunsStatisticResponse](#workflowdailyrunsstatisticresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflow/statistics/daily-terminals
 Get workflow daily terminals statistics
@@ -3770,6 +3982,7 @@ Get workflow daily terminals statistics
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Daily terminals statistics retrieved successfully | **application/json**: [WorkflowDailyTerminalsStatisticResponse](#workflowdailyterminalsstatisticresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflow/statistics/token-costs
 Get workflow daily token cost statistics
@@ -3787,6 +4000,7 @@ Get workflow daily token cost statistics
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Daily token cost statistics retrieved successfully | **application/json**: [WorkflowDailyTokenCostStatisticResponse](#workflowdailytokencoststatisticresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows
 **Get published workflows**
@@ -3808,6 +4022,7 @@ Get all published workflows for an application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Published workflows retrieved successfully | **application/json**: [WorkflowPaginationResponse](#workflowpaginationresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/default-workflow-block-configs
 **Get default block config**
@@ -3825,6 +4040,7 @@ Get default block configurations for workflow
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Default block configurations retrieved successfully | **application/json**: [DefaultBlockConfigsResponse](#defaultblockconfigsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/default-workflow-block-configs/{block_type}
 **Get default block config**
@@ -3845,6 +4061,7 @@ Get default block configuration by type
 | ---- | ----------- | ------ |
 | 200 | Default block configuration retrieved successfully | **application/json**: [DefaultBlockConfigResponse](#defaultblockconfigresponse)<br> |
 | 404 | Block type not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/draft
 **Get draft workflow**
@@ -3863,6 +4080,7 @@ Get draft workflow for an application
 | ---- | ----------- | ------ |
 | 200 | Draft workflow retrieved successfully | **application/json**: [WorkflowResponse](#workflowresponse)<br> |
 | 404 | Draft workflow not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft
 **Sync draft workflow**
@@ -3888,6 +4106,7 @@ Sync draft workflow configuration
 | 200 | Draft workflow synced successfully | **application/json**: [SyncDraftWorkflowResponse](#syncdraftworkflowresponse)<br> |
 | 400 | Invalid workflow configuration | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/draft/conversation-variables
 Get conversation variables for workflow
@@ -3904,6 +4123,7 @@ Get conversation variables for workflow
 | ---- | ----------- | ------ |
 | 200 | Conversation variables retrieved successfully | **application/json**: [WorkflowDraftVariableListResponse](#workflowdraftvariablelistresponse)<br> |
 | 404 | Draft workflow not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/conversation-variables
 Update conversation variables for workflow draft
@@ -3925,6 +4145,7 @@ Update conversation variables for workflow draft
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Conversation variables updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/draft/environment-variables
 **Get draft workflow**
@@ -3943,6 +4164,7 @@ Get environment variables for workflow
 | ---- | ----------- | ------ |
 | 200 | Environment variables retrieved successfully | **application/json**: [EnvironmentVariableListResponse](#environmentvariablelistresponse)<br> |
 | 404 | Draft workflow not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/environment-variables
 Update environment variables for workflow draft
@@ -3964,6 +4186,7 @@ Update environment variables for workflow draft
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Environment variables updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/features
 Update draft workflow features
@@ -3985,6 +4208,7 @@ Update draft workflow features
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow features updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/human-input/nodes/{node_id}/delivery-test
 **Test human input delivery**
@@ -4009,6 +4233,7 @@ Test human input delivery for workflow
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Human input delivery test result | **application/json**: [EmptyObjectResponse](#emptyobjectresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/human-input/nodes/{node_id}/form/preview
 **Preview human input form content and placeholders**
@@ -4033,6 +4258,7 @@ Get human input form preview for workflow
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Human input form preview | **application/json**: [HumanInputFormPreviewResponse](#humaninputformpreviewresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/human-input/nodes/{node_id}/form/run
 **Submit human input form preview**
@@ -4057,6 +4283,7 @@ Submit human input form preview for workflow
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Human input form submission result | **application/json**: [HumanInputFormSubmitResponse](#humaninputformsubmitresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/iteration/nodes/{node_id}/run
 **Run draft workflow iteration node**
@@ -4081,6 +4308,7 @@ Submit human input form preview for workflow
 | 200 | Workflow iteration node run started successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Node not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/loop/nodes/{node_id}/run
 **Run draft workflow loop node**
@@ -4105,6 +4333,7 @@ Submit human input form preview for workflow
 | 200 | Workflow loop node run started successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Node not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer
 #### Parameters
@@ -4120,6 +4349,7 @@ Submit human input form preview for workflow
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow agent composer state | **application/json**: [WorkflowAgentComposerResponse](#workflowagentcomposerresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer
 #### Parameters
@@ -4140,6 +4370,7 @@ Submit human input form preview for workflow
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow agent composer saved | **application/json**: [WorkflowAgentComposerResponse](#workflowagentcomposerresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/candidates
 #### Parameters
@@ -4154,6 +4385,7 @@ Submit human input form preview for workflow
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow agent composer candidates | **application/json**: [AgentComposerCandidatesResponse](#agentcomposercandidatesresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/copy-from-roster
 #### Parameters
@@ -4174,6 +4406,7 @@ Submit human input form preview for workflow
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow roster agent copied to inline agent | **application/json**: [WorkflowAgentComposerResponse](#workflowagentcomposerresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/impact
 #### Parameters
@@ -4194,6 +4427,7 @@ Submit human input form preview for workflow
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow agent composer impact | **application/json**: [AgentComposerImpactResponse](#agentcomposerimpactresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/save-to-roster
 #### Parameters
@@ -4214,6 +4448,7 @@ Submit human input form preview for workflow
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow agent composer saved to roster | **application/json**: [WorkflowAgentComposerResponse](#workflowagentcomposerresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/validate
 #### Parameters
@@ -4234,6 +4469,7 @@ Submit human input form preview for workflow
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow agent composer validation result | **application/json**: [AgentComposerValidateResponse](#agentcomposervalidateresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/draft/nodes/{node_id}/last-run
 Get last run result for draft workflow node
@@ -4252,6 +4488,7 @@ Get last run result for draft workflow node
 | 200 | Node last run retrieved successfully | **application/json**: [WorkflowRunNodeExecutionResponse](#workflowrunnodeexecutionresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Node last run not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/nodes/{node_id}/run
 **Run draft workflow node**
@@ -4276,6 +4513,7 @@ Get last run result for draft workflow node
 | 200 | Node run started successfully | **application/json**: [WorkflowRunNodeExecutionResponse](#workflowrunnodeexecutionresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Node not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/nodes/{node_id}/trigger/run
 **Poll for trigger events and execute single node when event arrives**
@@ -4294,6 +4532,7 @@ Get last run result for draft workflow node
 | 200 | Trigger event received and node executed successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Internal server error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /apps/{app_id}/workflows/draft/nodes/{node_id}/variables
 Delete all variables for a specific node
@@ -4307,9 +4546,10 @@ Delete all variables for a specific node
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 204 | Node variables deleted successfully |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Node variables deleted successfully |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/draft/nodes/{node_id}/variables
 Get variables for a specific node
@@ -4326,6 +4566,7 @@ Get variables for a specific node
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Node variables retrieved successfully | **application/json**: [WorkflowDraftVariableListResponse](#workflowdraftvariablelistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/run
 **Run draft workflow**
@@ -4348,6 +4589,7 @@ Get variables for a specific node
 | ---- | ----------- | ------ |
 | 200 | Draft workflow run started successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/draft/runs/{run_id}/node-outputs
 Snapshot of every node's declared outputs for a draft workflow run.
@@ -4365,6 +4607,7 @@ Snapshot of every node's declared outputs for a draft workflow run.
 | ---- | ----------- | ------ |
 | 200 | Workflow run node outputs | **application/json**: [WorkflowRunSnapshotView](#workflowrunsnapshotview)<br> |
 | 404 | Workflow run not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/draft/runs/{run_id}/node-outputs/events
 Server-Sent Events stream of inspector deltas for a draft workflow run.
@@ -4382,6 +4625,7 @@ Server-Sent Events stream of inspector deltas for a draft workflow run.
 | ---- | ----------- | ------ |
 | 200 | Workflow run node output event stream | **application/json**: [EventStreamResponse](#eventstreamresponse)<br> |
 | 404 | Workflow run not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/draft/runs/{run_id}/node-outputs/{node_id}
 One node's declared outputs for a draft workflow run.
@@ -4400,6 +4644,7 @@ One node's declared outputs for a draft workflow run.
 | ---- | ----------- | ------ |
 | 200 | Workflow run node output detail | **application/json**: [NodeOutputsView](#nodeoutputsview)<br> |
 | 404 | Workflow run / node not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/draft/runs/{run_id}/node-outputs/{node_id}/{output_name}/preview
 Full value for one declared output, including signed download URL for files.
@@ -4419,6 +4664,7 @@ Full value for one declared output, including signed download URL for files.
 | ---- | ----------- | ------ |
 | 200 | Workflow run node output preview | **application/json**: [OutputPreviewView](#outputpreviewview)<br> |
 | 404 | Workflow run / node / output not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/draft/system-variables
 Get system variables for workflow
@@ -4434,6 +4680,7 @@ Get system variables for workflow
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | System variables retrieved successfully | **application/json**: [WorkflowDraftVariableListResponse](#workflowdraftvariablelistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/trigger/run
 **Poll for trigger events and execute full workflow when event arrives**
@@ -4457,6 +4704,7 @@ Get system variables for workflow
 | 200 | Trigger event received and workflow executed successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Internal server error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/trigger/run-all
 **Full workflow debug when the start node is a trigger**
@@ -4480,6 +4728,7 @@ Get system variables for workflow
 | 200 | Workflow executed successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Internal server error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /apps/{app_id}/workflows/draft/variables
 Delete all draft workflow variables
@@ -4492,9 +4741,10 @@ Delete all draft workflow variables
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 204 | Workflow variables deleted successfully |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Workflow variables deleted successfully |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/draft/variables
 **Get draft workflow**
@@ -4514,6 +4764,7 @@ Get draft workflow variables
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow variables retrieved successfully | **application/json**: [WorkflowDraftVariableListWithoutValueResponse](#workflowdraftvariablelistwithoutvalueresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /apps/{app_id}/workflows/draft/variables/{variable_id}
 Delete a workflow variable
@@ -4531,6 +4782,7 @@ Delete a workflow variable
 | ---- | ----------- | ------ |
 | 204 | Variable deleted successfully |  |
 | 404 | Variable not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/draft/variables/{variable_id}
 Get a specific workflow variable
@@ -4548,6 +4800,7 @@ Get a specific workflow variable
 | ---- | ----------- | ------ |
 | 200 | Variable retrieved successfully | **application/json**: [WorkflowDraftVariableResponse](#workflowdraftvariableresponse)<br> |
 | 404 | Variable not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /apps/{app_id}/workflows/draft/variables/{variable_id}
 Update a workflow variable
@@ -4571,6 +4824,7 @@ Update a workflow variable
 | ---- | ----------- | ------ |
 | 200 | Variable updated successfully | **application/json**: [WorkflowDraftVariableResponse](#workflowdraftvariableresponse)<br> |
 | 404 | Variable not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /apps/{app_id}/workflows/draft/variables/{variable_id}/reset
 Reset a workflow variable to its default value
@@ -4589,6 +4843,7 @@ Reset a workflow variable to its default value
 | 200 | Variable reset successfully | **application/json**: [WorkflowDraftVariableResponse](#workflowdraftvariableresponse)<br> |
 | 204 | Variable reset (no content) |  |
 | 404 | Variable not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/publish
 **Get published workflow**
@@ -4606,6 +4861,7 @@ Get published workflow for an application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Published workflow retrieved successfully, or null if not found | **application/json**: [WorkflowResponse](#workflowresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/publish
 **Publish workflow**
@@ -4627,6 +4883,7 @@ Get published workflow for an application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow published successfully | **application/json**: [WorkflowPublishResponse](#workflowpublishresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/published/runs/{run_id}/node-outputs
 Snapshot of every node's declared outputs for a published workflow run.
@@ -4644,6 +4901,7 @@ Snapshot of every node's declared outputs for a published workflow run.
 | ---- | ----------- | ------ |
 | 200 | Workflow run node outputs | **application/json**: [WorkflowRunSnapshotView](#workflowrunsnapshotview)<br> |
 | 404 | Workflow run not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/published/runs/{run_id}/node-outputs/events
 Server-Sent Events stream of inspector deltas for a published workflow run.
@@ -4661,6 +4919,7 @@ Server-Sent Events stream of inspector deltas for a published workflow run.
 | ---- | ----------- | ------ |
 | 200 | Workflow run node output event stream | **application/json**: [EventStreamResponse](#eventstreamresponse)<br> |
 | 404 | Workflow run not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/published/runs/{run_id}/node-outputs/{node_id}
 One node's declared outputs for a published workflow run.
@@ -4679,6 +4938,7 @@ One node's declared outputs for a published workflow run.
 | ---- | ----------- | ------ |
 | 200 | Workflow run node output detail | **application/json**: [NodeOutputsView](#nodeoutputsview)<br> |
 | 404 | Workflow run / node not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/published/runs/{run_id}/node-outputs/{node_id}/{output_name}/preview
 Full value for one declared output of a published run.
@@ -4698,6 +4958,7 @@ Full value for one declared output of a published run.
 | ---- | ----------- | ------ |
 | 200 | Workflow run node output preview | **application/json**: [OutputPreviewView](#outputpreviewview)<br> |
 | 404 | Workflow run / node / output not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/triggers/webhook
 **Get webhook trigger for a node**
@@ -4714,6 +4975,7 @@ Full value for one declared output of a published run.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [WebhookTriggerResponse](#webhooktriggerresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /apps/{app_id}/workflows/{workflow_id}
 **Delete workflow**
@@ -4727,9 +4989,10 @@ Full value for one declared output of a published run.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 204 | Workflow deleted successfully |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Workflow deleted successfully |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /apps/{app_id}/workflows/{workflow_id}
 **Update workflow attributes**
@@ -4756,6 +5019,7 @@ Update workflow by ID
 | 200 | Workflow updated successfully | **application/json**: [WorkflowResponse](#workflowresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Workflow not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/{workflow_id}/restore
 Restore a published workflow version into the draft workflow
@@ -4774,6 +5038,7 @@ Restore a published workflow version into the draft workflow
 | 200 | Workflow restored successfully | **application/json**: [WorkflowRestoreResponse](#workflowrestoreresponse)<br> |
 | 400 | Source workflow must be published | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Workflow not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{resource_id}/api-keys
 Get all API keys for an app
@@ -4789,6 +5054,7 @@ Get all API keys for an app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | API keys retrieved successfully | **application/json**: [ApiKeyList](#apikeylist)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{resource_id}/api-keys
 Create a new API key for an app
@@ -4805,6 +5071,7 @@ Create a new API key for an app
 | ---- | ----------- | ------ |
 | 201 | API key created successfully | **application/json**: [ApiKeyItem](#apikeyitem)<br> |
 | 400 | Maximum keys exceeded | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /apps/{resource_id}/api-keys/{api_key_id}
 Delete an API key for an app
@@ -4818,9 +5085,10 @@ Delete an API key for an app
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 204 | API key deleted successfully |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | API key deleted successfully |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /auth/plugin/datasource/default-list
 #### Responses
@@ -4828,6 +5096,7 @@ Delete an API key for an app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Default datasource credentials retrieved successfully | **application/json**: [DatasourceProviderAuthListResponse](#datasourceproviderauthlistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /auth/plugin/datasource/list
 #### Responses
@@ -4835,6 +5104,7 @@ Delete an API key for an app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Datasource credentials retrieved successfully | **application/json**: [DatasourceProviderAuthListResponse](#datasourceproviderauthlistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /auth/plugin/datasource/{provider_id}
 #### Parameters
@@ -4848,6 +5118,7 @@ Delete an API key for an app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Datasource credentials retrieved successfully | **application/json**: [DatasourceCredentialListResponse](#datasourcecredentiallistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /auth/plugin/datasource/{provider_id}
 #### Parameters
@@ -4867,6 +5138,7 @@ Delete an API key for an app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Datasource credential created successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /auth/plugin/datasource/{provider_id}/custom-client
 #### Parameters
@@ -4880,6 +5152,7 @@ Delete an API key for an app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /auth/plugin/datasource/{provider_id}/custom-client
 #### Parameters
@@ -4899,6 +5172,7 @@ Delete an API key for an app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Datasource OAuth custom client saved successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /auth/plugin/datasource/{provider_id}/default
 #### Parameters
@@ -4918,6 +5192,7 @@ Delete an API key for an app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /auth/plugin/datasource/{provider_id}/delete
 #### Parameters
@@ -4937,6 +5212,7 @@ Delete an API key for an app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /auth/plugin/datasource/{provider_id}/update
 #### Parameters
@@ -4956,6 +5232,7 @@ Delete an API key for an app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Datasource credential updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /auth/plugin/datasource/{provider_id}/update-name
 #### Parameters
@@ -4975,6 +5252,7 @@ Delete an API key for an app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /billing/invoices
 #### Responses
@@ -4985,6 +5263,7 @@ Delete an API key for an app
 | 403 | Forbidden | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 502 | Billing operation failed | **application/json**: <br> |
 | 503 | Billing unavailable | **application/json**: <br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /billing/subscription
 #### Parameters
@@ -5003,6 +5282,7 @@ Delete an API key for an app
 | 422 | Invalid subscription query | **application/json**: <br> |
 | 502 | Billing operation failed | **application/json**: <br> |
 | 503 | Billing unavailable | **application/json**: <br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /code-based-extension
 Get code-based extension data by module name
@@ -5018,6 +5298,7 @@ Get code-based extension data by module name
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [CodeBasedExtensionResponse](#codebasedextensionresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /compliance/download
 Get compliance document download link
@@ -5037,6 +5318,7 @@ Get compliance document download link
 | 429 | Compliance download rate limit exceeded | **application/json**: <br> |
 | 502 | Compliance download failed | **application/json**: <br> |
 | 503 | Billing unavailable | **application/json**: <br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /data-source/integrates
 #### Responses
@@ -5044,6 +5326,7 @@ Get compliance document download link
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [DataSourceIntegrateListResponse](#datasourceintegratelistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /data-source/integrates/{binding_id}/{action}
 #### Parameters
@@ -5058,6 +5341,7 @@ Get compliance document download link
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets
 Get list of datasets
@@ -5078,6 +5362,7 @@ Get list of datasets
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Datasets retrieved successfully | **application/json**: [DatasetListResponse](#datasetlistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets
 Create a new dataset
@@ -5094,6 +5379,7 @@ Create a new dataset
 | ---- | ----------- | ------ |
 | 201 | Dataset created successfully | **application/json**: [DatasetDetailWithPartialMembersResponse](#datasetdetailwithpartialmembersresponse)<br> |
 | 400 | Invalid request parameters | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/api-base-info
 Get dataset API base information
@@ -5103,6 +5389,7 @@ Get dataset API base information
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | API base info retrieved successfully | **application/json**: [ApiBaseUrlResponse](#apibaseurlresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/api-keys
 Get dataset API keys
@@ -5112,6 +5399,7 @@ Get dataset API keys
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | API keys retrieved successfully | **application/json**: [ApiKeyList](#apikeylist)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/api-keys
 #### Request Body
@@ -5126,6 +5414,7 @@ Get dataset API keys
 | ---- | ----------- | ------ |
 | 200 | API key created successfully | **application/json**: [ApiKeyItem](#apikeyitem)<br> |
 | 400 | Maximum keys exceeded | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /datasets/api-keys/{api_key_id}
 Delete dataset API key
@@ -5138,9 +5427,10 @@ Delete dataset API key
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 204 | API key deleted successfully |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | API key deleted successfully |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/batch_import_status/{job_id}
 #### Parameters
@@ -5154,6 +5444,7 @@ Delete dataset API key
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Batch import status | **application/json**: [SegmentBatchImportStatusResponse](#segmentbatchimportstatusresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/external
 Create external knowledge dataset
@@ -5171,6 +5462,7 @@ Create external knowledge dataset
 | 201 | External dataset created successfully | **application/json**: [DatasetDetailResponse](#datasetdetailresponse)<br> |
 | 400 | Invalid parameters | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/external-knowledge-api
 Get external knowledge API templates
@@ -5188,6 +5480,7 @@ Get external knowledge API templates
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | External API templates retrieved successfully | **application/json**: [ExternalKnowledgeApiListResponse](#externalknowledgeapilistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/external-knowledge-api
 Create external knowledge API template
@@ -5204,6 +5497,7 @@ Create external knowledge API template
 | ---- | ----------- | ------ |
 | 201 | External API template created successfully | **application/json**: [ExternalKnowledgeApiResponse](#externalknowledgeapiresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /datasets/external-knowledge-api/{external_knowledge_api_id}
 #### Parameters
@@ -5214,9 +5508,10 @@ Create external knowledge API template
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 204 | External knowledge API deleted successfully |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | External knowledge API deleted successfully |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/external-knowledge-api/{external_knowledge_api_id}
 Get external knowledge API template details
@@ -5233,6 +5528,7 @@ Get external knowledge API template details
 | ---- | ----------- | ------ |
 | 200 | External API template retrieved successfully | **application/json**: [ExternalKnowledgeApiResponse](#externalknowledgeapiresponse)<br> |
 | 404 | Template not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /datasets/external-knowledge-api/{external_knowledge_api_id}
 Update external knowledge API template
@@ -5255,6 +5551,7 @@ Update external knowledge API template
 | ---- | ----------- | ------ |
 | 200 | External API template updated successfully | **application/json**: [ExternalKnowledgeApiResponse](#externalknowledgeapiresponse)<br> |
 | 404 | Template not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/external-knowledge-api/{external_knowledge_api_id}/use-check
 Check if external knowledge API is being used
@@ -5270,6 +5567,7 @@ Check if external knowledge API is being used
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Usage check completed successfully | **application/json**: [UsageCountResponse](#usagecountresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/indexing-estimate
 Estimate dataset indexing cost
@@ -5285,6 +5583,7 @@ Estimate dataset indexing cost
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Indexing estimate calculated successfully | **application/json**: [IndexingEstimateResponse](#indexingestimateresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/init
 Initialize dataset with documents
@@ -5301,6 +5600,7 @@ Initialize dataset with documents
 | ---- | ----------- | ------ |
 | 200 | Dataset initialized successfully | **application/json**: [DatasetAndDocumentResponse](#datasetanddocumentresponse)<br> |
 | 400 | Invalid request parameters | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/metadata/built-in
 #### Responses
@@ -5308,6 +5608,7 @@ Initialize dataset with documents
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Built-in fields retrieved successfully | **application/json**: [DatasetMetadataBuiltInFieldsResponse](#datasetmetadatabuiltinfieldsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/notion-indexing-estimate
 #### Request Body
@@ -5321,6 +5622,7 @@ Initialize dataset with documents
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [IndexingEstimate](#indexingestimate)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/process-rule
 Get dataset document processing rules
@@ -5336,6 +5638,7 @@ Get dataset document processing rules
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Process rules retrieved successfully | **application/json**: [ProcessRuleResponse](#processruleresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/retrieval-setting
 Get dataset retrieval settings
@@ -5345,6 +5648,7 @@ Get dataset retrieval settings
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Retrieval settings retrieved successfully | **application/json**: [RetrievalSettingResponse](#retrievalsettingresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/retrieval-setting/{vector_type}
 Get mock dataset retrieval settings by vector type
@@ -5360,6 +5664,7 @@ Get mock dataset retrieval settings by vector type
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Mock retrieval settings retrieved successfully | **application/json**: [RetrievalSettingResponse](#retrievalsettingresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /datasets/{dataset_id}
 #### Parameters
@@ -5370,9 +5675,10 @@ Get mock dataset retrieval settings by vector type
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 204 | Dataset deleted successfully |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Dataset deleted successfully |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}
 Get dataset details
@@ -5390,6 +5696,7 @@ Get dataset details
 | 200 | Dataset retrieved successfully | **application/json**: [DatasetDetailWithPartialMembersResponse](#datasetdetailwithpartialmembersresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Dataset not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /datasets/{dataset_id}
 Update dataset details
@@ -5413,6 +5720,7 @@ Update dataset details
 | 200 | Dataset updated successfully | **application/json**: [DatasetDetailWithPartialMembersResponse](#datasetdetailwithpartialmembersresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Dataset not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/api-keys/{status}
 #### Parameters
@@ -5427,6 +5735,7 @@ Update dataset details
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/auto-disable-logs
 Get dataset auto disable logs
@@ -5443,6 +5752,7 @@ Get dataset auto disable logs
 | ---- | ----------- | ------ |
 | 200 | Auto disable logs retrieved successfully | **application/json**: [AutoDisableLogsResponse](#autodisablelogsresponse)<br> |
 | 404 | Dataset not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/batch/{batch}/indexing-estimate
 #### Parameters
@@ -5457,6 +5767,7 @@ Get dataset auto disable logs
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Indexing estimate calculated successfully | **application/json**: [IndexingEstimateResponse](#indexingestimateresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/batch/{batch}/indexing-status
 #### Parameters
@@ -5471,6 +5782,7 @@ Get dataset auto disable logs
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Indexing status retrieved successfully | **application/json**: [DocumentStatusListResponse](#documentstatuslistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /datasets/{dataset_id}/documents
 #### Parameters
@@ -5481,9 +5793,10 @@ Get dataset auto disable logs
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 204 | Documents deleted successfully |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Documents deleted successfully |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/documents
 Get documents in a dataset
@@ -5505,6 +5818,7 @@ Get documents in a dataset
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Documents retrieved successfully | **application/json**: [DocumentWithSegmentsListResponse](#documentwithsegmentslistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/documents
 #### Parameters
@@ -5524,6 +5838,7 @@ Get documents in a dataset
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Documents created successfully | **application/json**: [DatasetAndDocumentResponse](#datasetanddocumentresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/documents/download-zip
 **Stream a ZIP archive containing the requested uploaded documents**
@@ -5544,9 +5859,10 @@ Download selected dataset documents as a single ZIP archive (upload-file only)
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | ZIP archive downloaded successfully |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | ZIP archive downloaded successfully |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/documents/generate-summary
 **Generate summary index for specified documents**
@@ -5576,6 +5892,7 @@ then asynchronously generates summary indexes for the provided documents.
 | 400 | Invalid request or dataset configuration | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Dataset not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/documents/metadata
 #### Parameters
@@ -5596,6 +5913,7 @@ then asynchronously generates summary indexes for the provided documents.
 | ---- | ----------- | ------ |
 | 204 | Documents metadata updated successfully |  |
 | 404 | Dataset, document, or metadata not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /datasets/{dataset_id}/documents/status/{action}/batch
 #### Parameters
@@ -5610,6 +5928,7 @@ then asynchronously generates summary indexes for the provided documents.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /datasets/{dataset_id}/documents/{document_id}
 #### Parameters
@@ -5621,9 +5940,10 @@ then asynchronously generates summary indexes for the provided documents.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 204 | Document deleted successfully |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Document deleted successfully |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/documents/{document_id}
 Get document details
@@ -5642,6 +5962,7 @@ Get document details
 | ---- | ----------- | ------ |
 | 200 | Document retrieved successfully | **application/json**: [DocumentDetailResponse](#documentdetailresponse)<br> |
 | 404 | Document not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/documents/{document_id}/download
 Get a signed download URL for a dataset document's original uploaded file
@@ -5658,6 +5979,7 @@ Get a signed download URL for a dataset document's original uploaded file
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Download URL generated successfully | **application/json**: [UrlResponse](#urlresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/documents/{document_id}/indexing-estimate
 Estimate document indexing cost
@@ -5676,6 +5998,7 @@ Estimate document indexing cost
 | 200 | Indexing estimate calculated successfully | **application/json**: [IndexingEstimateResponse](#indexingestimateresponse)<br> |
 | 400 | Document already finished | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Document not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/documents/{document_id}/indexing-status
 Get document indexing status
@@ -5693,6 +6016,7 @@ Get document indexing status
 | ---- | ----------- | ------ |
 | 200 | Indexing status retrieved successfully | **application/json**: [DocumentStatusResponse](#documentstatusresponse)<br> |
 | 404 | Document not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /datasets/{dataset_id}/documents/{document_id}/metadata
 Update document metadata
@@ -5717,6 +6041,7 @@ Update document metadata
 | 200 | Document metadata updated successfully | **application/json**: [SimpleResultMessageResponse](#simpleresultmessageresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Document not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/documents/{document_id}/notion/sync
 #### Parameters
@@ -5731,6 +6056,7 @@ Update document metadata
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/documents/{document_id}/pipeline-execution-log
 #### Parameters
@@ -5745,6 +6071,7 @@ Update document metadata
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Pipeline execution log retrieved successfully | **application/json**: [DocumentPipelineExecutionLogResponse](#documentpipelineexecutionlogresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /datasets/{dataset_id}/documents/{document_id}/processing/pause
 **pause document**
@@ -5758,9 +6085,10 @@ Update document metadata
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 204 | Document paused successfully |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Document paused successfully |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /datasets/{dataset_id}/documents/{document_id}/processing/resume
 **recover document**
@@ -5774,9 +6102,10 @@ Update document metadata
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 204 | Document resumed successfully |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Document resumed successfully |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /datasets/{dataset_id}/documents/{document_id}/processing/{action}
 Update document processing status (pause/resume)
@@ -5796,6 +6125,7 @@ Update document processing status (pause/resume)
 | 200 | Processing status updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 | 400 | Invalid action | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Document not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/documents/{document_id}/rename
 #### Parameters
@@ -5816,6 +6146,7 @@ Update document processing status (pause/resume)
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Document renamed successfully | **application/json**: [DocumentResponse](#documentresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/documents/{document_id}/segment
 #### Parameters
@@ -5836,6 +6167,7 @@ Update document processing status (pause/resume)
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Segment created successfully | **application/json**: [SegmentDetailResponse](#segmentdetailresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /datasets/{dataset_id}/documents/{document_id}/segment/{action}
 #### Parameters
@@ -5852,6 +6184,7 @@ Update document processing status (pause/resume)
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /datasets/{dataset_id}/documents/{document_id}/segments
 #### Parameters
@@ -5864,9 +6197,10 @@ Update document processing status (pause/resume)
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 204 | Segments deleted successfully |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Segments deleted successfully |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/documents/{document_id}/segments
 #### Parameters
@@ -5887,6 +6221,7 @@ Update document processing status (pause/resume)
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Segments retrieved successfully | **application/json**: [ConsoleSegmentListResponse](#consolesegmentlistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/documents/{document_id}/segments/batch_import
 #### Parameters
@@ -5907,6 +6242,7 @@ Update document processing status (pause/resume)
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Batch import started | **application/json**: [SegmentBatchImportStatusResponse](#segmentbatchimportstatusresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}
 #### Parameters
@@ -5919,9 +6255,10 @@ Update document processing status (pause/resume)
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 204 | Segment deleted successfully |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Segment deleted successfully |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}
 #### Parameters
@@ -5943,6 +6280,7 @@ Update document processing status (pause/resume)
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Segment updated successfully | **application/json**: [SegmentDetailResponse](#segmentdetailresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks
 #### Parameters
@@ -5961,6 +6299,7 @@ Update document processing status (pause/resume)
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Child chunks retrieved successfully | **application/json**: [ChildChunkListResponse](#childchunklistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks
 #### Parameters
@@ -5982,6 +6321,7 @@ Update document processing status (pause/resume)
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Child chunks updated successfully | **application/json**: [ChildChunkBatchUpdateResponse](#childchunkbatchupdateresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks
 #### Parameters
@@ -6003,6 +6343,7 @@ Update document processing status (pause/resume)
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Child chunk created successfully | **application/json**: [ChildChunkDetailResponse](#childchunkdetailresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks/{child_chunk_id}
 #### Parameters
@@ -6016,9 +6357,10 @@ Update document processing status (pause/resume)
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 204 | Child chunk deleted successfully |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Child chunk deleted successfully |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks/{child_chunk_id}
 #### Parameters
@@ -6041,6 +6383,7 @@ Update document processing status (pause/resume)
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Child chunk updated successfully | **application/json**: [ChildChunkDetailResponse](#childchunkdetailresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/documents/{document_id}/summary-status
 **Get summary index generation status for a document**
@@ -6069,6 +6412,7 @@ Returns:
 | ---- | ----------- | ------ |
 | 200 | Summary status retrieved successfully | **application/json**: [DocumentSummaryStatusResponse](#documentsummarystatusresponse)<br> |
 | 404 | Document not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/documents/{document_id}/website-sync
 **sync website document**
@@ -6085,6 +6429,7 @@ Returns:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/error-docs
 Get dataset error documents
@@ -6101,6 +6446,7 @@ Get dataset error documents
 | ---- | ----------- | ------ |
 | 200 | Error documents retrieved successfully | **application/json**: [ErrorDocsResponse](#errordocsresponse)<br> |
 | 404 | Dataset not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/external-hit-testing
 Test external knowledge retrieval for dataset
@@ -6124,6 +6470,7 @@ Test external knowledge retrieval for dataset
 | 200 | External hit testing completed successfully | **application/json**: [ExternalHitTestingResponse](#externalhittestingresponse)<br> |
 | 400 | Invalid parameters | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Dataset not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/hit-testing
 Test dataset knowledge retrieval
@@ -6147,6 +6494,7 @@ Test dataset knowledge retrieval
 | 200 | Hit testing completed successfully | **application/json**: [HitTestingResponse](#hittestingresponse)<br> |
 | 400 | Invalid parameters | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Dataset not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/indexing-status
 Get dataset indexing status
@@ -6162,6 +6510,7 @@ Get dataset indexing status
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Indexing status retrieved successfully | **application/json**: [DocumentStatusListResponse](#documentstatuslistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/metadata
 #### Parameters
@@ -6175,6 +6524,7 @@ Get dataset indexing status
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Metadata retrieved successfully | **application/json**: [DatasetMetadataListResponse](#datasetmetadatalistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/metadata
 #### Parameters
@@ -6194,6 +6544,7 @@ Get dataset indexing status
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Metadata created successfully | **application/json**: [DatasetMetadataResponse](#datasetmetadataresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/metadata/built-in/{action}
 #### Parameters
@@ -6205,9 +6556,10 @@ Get dataset indexing status
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 204 | Action completed successfully |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Action completed successfully |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /datasets/{dataset_id}/metadata/{metadata_id}
 #### Parameters
@@ -6219,9 +6571,10 @@ Get dataset indexing status
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 204 | Metadata deleted successfully |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Metadata deleted successfully |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /datasets/{dataset_id}/metadata/{metadata_id}
 #### Parameters
@@ -6242,6 +6595,7 @@ Get dataset indexing status
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Metadata updated successfully | **application/json**: [DatasetMetadataResponse](#datasetmetadataresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/notion/sync
 #### Parameters
@@ -6255,6 +6609,7 @@ Get dataset indexing status
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/permission-part-users
 Get dataset permission user list
@@ -6272,6 +6627,7 @@ Get dataset permission user list
 | 200 | Permission users retrieved successfully | **application/json**: [PartialMemberListResponse](#partialmemberlistresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Dataset not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/queries
 Get dataset query history
@@ -6287,6 +6643,7 @@ Get dataset query history
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Query history retrieved successfully | **application/json**: [DatasetQueryListResponse](#datasetquerylistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/related-apps
 Get applications related to dataset
@@ -6302,6 +6659,7 @@ Get applications related to dataset
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Related apps retrieved successfully | **application/json**: [RelatedAppListResponse](#relatedapplistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/retry
 **retry document**
@@ -6320,9 +6678,10 @@ Get applications related to dataset
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 204 | Documents retry started successfully |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Documents retry started successfully |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/use-check
 Check if dataset is in use
@@ -6338,6 +6697,7 @@ Check if dataset is in use
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Dataset use status retrieved successfully | **application/json**: [UsageCheckResponse](#usagecheckresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{resource_id}/api-keys
 Get all API keys for a dataset
@@ -6353,6 +6713,7 @@ Get all API keys for a dataset
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | API keys retrieved successfully | **application/json**: [ApiKeyList](#apikeylist)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{resource_id}/api-keys
 Create a new API key for a dataset
@@ -6369,6 +6730,7 @@ Create a new API key for a dataset
 | ---- | ----------- | ------ |
 | 201 | API key created successfully | **application/json**: [ApiKeyItem](#apikeyitem)<br> |
 | 400 | Maximum keys exceeded | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /datasets/{resource_id}/api-keys/{api_key_id}
 Delete an API key for a dataset
@@ -6382,9 +6744,10 @@ Delete an API key for a dataset
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 204 | API key deleted successfully |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | API key deleted successfully |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /email-code-login
 #### Request Body
@@ -6398,6 +6761,7 @@ Delete an API key for a dataset
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultDataResponse](#simpleresultdataresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /email-code-login/validity
 #### Request Body
@@ -6411,6 +6775,7 @@ Delete an API key for a dataset
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /email-register
 #### Request Body
@@ -6424,6 +6789,7 @@ Delete an API key for a dataset
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [EmailRegisterResetResponse](#emailregisterresetresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /email-register/send-email
 #### Request Body
@@ -6437,6 +6803,7 @@ Delete an API key for a dataset
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultDataResponse](#simpleresultdataresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /email-register/validity
 #### Request Body
@@ -6450,6 +6817,7 @@ Delete an API key for a dataset
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [VerificationTokenResponse](#verificationtokenresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /explore/apps
 #### Parameters
@@ -6463,6 +6831,7 @@ Delete an API key for a dataset
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [RecommendedAppListResponse](#recommendedapplistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /explore/apps/learn-dify
 #### Parameters
@@ -6476,6 +6845,7 @@ Delete an API key for a dataset
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [LearnDifyAppListResponse](#learndifyapplistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /explore/apps/{app_id}
 #### Parameters
@@ -6490,6 +6860,7 @@ Delete an API key for a dataset
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [RecommendedAppDetailResponse](#recommendedappdetailresponse)<br> |
 | 404 | Recommended app not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /features
 **Get current workspace features**
@@ -6501,6 +6872,7 @@ Get feature availability and limits for the current workspace
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [FeatureModel](#featuremodel)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /features/vector-space
 **Get vector-space usage and limit for current tenant**
@@ -6510,6 +6882,7 @@ Get feature availability and limits for the current workspace
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [VectorSpaceLimitationModel](#vectorspacelimitationmodel)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /files/support-type
 #### Responses
@@ -6517,6 +6890,7 @@ Get feature availability and limits for the current workspace
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AllowedExtensionsResponse](#allowedextensionsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /files/upload
 #### Responses
@@ -6524,6 +6898,7 @@ Get feature availability and limits for the current workspace
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [UploadConfig](#uploadconfig)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /files/upload
 #### Request Body
@@ -6537,6 +6912,7 @@ Get feature availability and limits for the current workspace
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | File uploaded successfully | **application/json**: [FileResponse](#fileresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /files/{file_id}/preview
 #### Parameters
@@ -6550,6 +6926,7 @@ Get feature availability and limits for the current workspace
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [TextContentResponse](#textcontentresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /forgot-password
 Send password reset email
@@ -6566,6 +6943,7 @@ Send password reset email
 | ---- | ----------- | ------ |
 | 200 | Email sent successfully | **application/json**: [ForgotPasswordEmailResponse](#forgotpasswordemailresponse)<br> |
 | 400 | Invalid email or rate limit exceeded | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /forgot-password/resets
 Reset password with verification token
@@ -6582,6 +6960,7 @@ Reset password with verification token
 | ---- | ----------- | ------ |
 | 200 | Password reset successfully | **application/json**: [ForgotPasswordResetResponse](#forgotpasswordresetresponse)<br> |
 | 400 | Invalid token or password mismatch | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /forgot-password/validity
 Verify password reset code
@@ -6598,6 +6977,7 @@ Verify password reset code
 | ---- | ----------- | ------ |
 | 200 | Code verified successfully | **application/json**: [ForgotPasswordCheckResponse](#forgotpasswordcheckresponse)<br> |
 | 400 | Invalid code or token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /form/human_input/{form_token}
 **Get human input form definition by form token**
@@ -6615,6 +6995,7 @@ GET /console/api/form/human_input/<form_token>
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ConsoleHumanInputFormDefinitionResponse](#consolehumaninputformdefinitionresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /form/human_input/{form_token}
 **Submit human input form by form token**
@@ -6646,6 +7027,7 @@ Request body:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ConsoleHumanInputFormSubmitResponse](#consolehumaninputformsubmitresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /installed-apps
 #### Parameters
@@ -6662,6 +7044,7 @@ Request body:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [InstalledAppListResponse](#installedapplistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /installed-apps/{installed_app_id}
 #### Parameters
@@ -6675,6 +7058,7 @@ Request body:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [InstalledAppResponse](#installedappresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /installed-apps/{installed_app_id}
 #### Parameters
@@ -6694,6 +7078,7 @@ Request body:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultMessageResponse](#simpleresultmessageresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /installed-apps/{installed_app_id}/audio-to-text
 #### Parameters
@@ -6707,6 +7092,7 @@ Request body:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AudioTranscriptResponse](#audiotranscriptresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /installed-apps/{installed_app_id}/chat-messages
 #### Parameters
@@ -6723,9 +7109,10 @@ Request body:
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /installed-apps/{installed_app_id}/chat-messages/{task_id}/stop
 #### Parameters
@@ -6740,6 +7127,7 @@ Request body:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /installed-apps/{installed_app_id}/completion-messages
 #### Parameters
@@ -6756,9 +7144,10 @@ Request body:
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /installed-apps/{installed_app_id}/completion-messages/{task_id}/stop
 #### Parameters
@@ -6773,6 +7162,7 @@ Request body:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /installed-apps/{installed_app_id}/conversations
 #### Parameters
@@ -6789,6 +7179,7 @@ Request body:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ConversationInfiniteScrollPagination](#conversationinfinitescrollpagination)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /installed-apps/{installed_app_id}/conversations/{c_id}
 #### Parameters
@@ -6800,9 +7191,10 @@ Request body:
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 204 | Conversation deleted successfully |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Conversation deleted successfully |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /installed-apps/{installed_app_id}/conversations/{c_id}/name
 #### Parameters
@@ -6823,6 +7215,7 @@ Request body:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Conversation renamed successfully | **application/json**: [SimpleConversation](#simpleconversation)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /installed-apps/{installed_app_id}/conversations/{c_id}/pin
 #### Parameters
@@ -6837,6 +7230,7 @@ Request body:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ResultResponse](#resultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /installed-apps/{installed_app_id}/conversations/{c_id}/unpin
 #### Parameters
@@ -6851,6 +7245,7 @@ Request body:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ResultResponse](#resultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /installed-apps/{installed_app_id}/messages
 #### Parameters
@@ -6867,6 +7262,7 @@ Request body:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ExploreMessageInfiniteScrollPagination](#exploremessageinfinitescrollpagination)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /installed-apps/{installed_app_id}/messages/{message_id}/feedbacks
 #### Parameters
@@ -6887,6 +7283,7 @@ Request body:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Feedback submitted successfully | **application/json**: [ResultResponse](#resultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /installed-apps/{installed_app_id}/messages/{message_id}/more-like-this
 #### Parameters
@@ -6899,9 +7296,10 @@ Request body:
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /installed-apps/{installed_app_id}/messages/{message_id}/suggested-questions
 #### Parameters
@@ -6916,6 +7314,7 @@ Request body:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SuggestedQuestionsResponse](#suggestedquestionsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /installed-apps/{installed_app_id}/meta
 **Get app meta**
@@ -6931,6 +7330,7 @@ Request body:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ExploreAppMetaResponse](#exploreappmetaresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /installed-apps/{installed_app_id}/parameters
 **Retrieve app parameters**
@@ -6946,6 +7346,7 @@ Request body:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [Parameters](#parameters)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /installed-apps/{installed_app_id}/saved-messages
 #### Parameters
@@ -6961,6 +7362,7 @@ Request body:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SavedMessageInfiniteScrollPagination](#savedmessageinfinitescrollpagination)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /installed-apps/{installed_app_id}/saved-messages
 #### Parameters
@@ -6980,6 +7382,7 @@ Request body:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ResultResponse](#resultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /installed-apps/{installed_app_id}/saved-messages/{message_id}
 #### Parameters
@@ -6991,9 +7394,10 @@ Request body:
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 204 | Saved message deleted successfully |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Saved message deleted successfully |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /installed-apps/{installed_app_id}/text-to-audio
 #### Parameters
@@ -7013,6 +7417,7 @@ Request body:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AudioBinaryResponse](#audiobinaryresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /installed-apps/{installed_app_id}/workflows/run
 **Run workflow**
@@ -7031,9 +7436,10 @@ Request body:
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /installed-apps/{installed_app_id}/workflows/tasks/{task_id}/stop
 **Stop workflow task**
@@ -7050,6 +7456,7 @@ Request body:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /instruction-generate
 Generate instruction for workflow nodes or general use
@@ -7067,6 +7474,7 @@ Generate instruction for workflow nodes or general use
 | 200 | Instruction generated successfully | **application/json**: [GeneratorResponse](#generatorresponse)<br> |
 | 400 | Invalid request parameters or flow/workflow not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 402 | Provider quota exceeded | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /instruction-generate/template
 Get instruction generation template
@@ -7083,6 +7491,7 @@ Get instruction generation template
 | ---- | ----------- | ------ |
 | 200 | Template retrieved successfully | **application/json**: [SimpleDataResponse](#simpledataresponse)<br> |
 | 400 | Invalid request parameters | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /login
 **Authenticate user and login**
@@ -7098,6 +7507,7 @@ Get instruction generation template
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultOptionalDataResponse](#simpleresultoptionaldataresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /logout
 #### Responses
@@ -7105,6 +7515,7 @@ Get instruction generation template
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /mcp/oauth/callback
 #### Parameters
@@ -7116,9 +7527,10 @@ Get instruction generation template
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 302 | Redirect to OAuth callback page |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 302 | Redirect to OAuth callback page |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /notification
 Return the active in-product notification for the current user in the requested language (defaults to English when omitted). Unavailable translations fall back to English, then the first available content. The notification is NOT marked as seen here; call POST /notification/dismiss when the user explicitly closes the modal.
@@ -7135,6 +7547,7 @@ Return the active in-product notification for the current user in the requested 
 | ---- | ----------- | ------ |
 | 200 | Success — inspect should_show to decide whether to render the modal | **application/json**: [NotificationResponse](#notificationresponse)<br> |
 | 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /notification/dismiss
 Mark a notification as dismissed for the current user.
@@ -7151,6 +7564,7 @@ Mark a notification as dismissed for the current user.
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 | 401 | Unauthorized | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /notion/pages/{page_id}/{page_type}/preview
 #### Parameters
@@ -7166,6 +7580,7 @@ Mark a notification as dismissed for the current user.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [TextContentResponse](#textcontentresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /notion/pre-import/pages
 #### Parameters
@@ -7180,6 +7595,7 @@ Mark a notification as dismissed for the current user.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [NotionIntegrateInfoListResponse](#notionintegrateinfolistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /oauth/authorize/{provider}
 Handle OAuth callback and complete login process
@@ -7198,6 +7614,7 @@ Handle OAuth callback and complete login process
 | ---- | ----------- | ------ |
 | 302 | Redirect to console with access token | **application/json**: [RedirectResponse](#redirectresponse)<br> |
 | 400 | OAuth process failed | **application/json**: <br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /oauth/data-source/binding/{provider}
 Bind OAuth data source with authorization code
@@ -7215,6 +7632,7 @@ Bind OAuth data source with authorization code
 | ---- | ----------- | ------ |
 | 200 | Data source binding success | **application/json**: [OAuthDataSourceBindingResponse](#oauthdatasourcebindingresponse)<br> |
 | 400 | Invalid provider or code | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /oauth/data-source/callback/{provider}
 Handle OAuth callback from data source provider
@@ -7233,6 +7651,7 @@ Handle OAuth callback from data source provider
 | ---- | ----------- | ------ |
 | 302 | Redirect to console with result | **application/json**: [RedirectResponse](#redirectresponse)<br> |
 | 400 | Invalid provider | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /oauth/data-source/{provider}
 Get OAuth authorization URL for data source provider
@@ -7250,6 +7669,7 @@ Get OAuth authorization URL for data source provider
 | 200 | Authorization URL or internal setup success | **application/json**: [OAuthDataSourceResponse](#oauthdatasourceresponse)<br> |
 | 400 | Invalid provider | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Admin privileges required | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /oauth/data-source/{provider}/{binding_id}/sync
 Sync data from OAuth data source
@@ -7267,6 +7687,7 @@ Sync data from OAuth data source
 | ---- | ----------- | ------ |
 | 200 | Data source sync success | **application/json**: [OAuthDataSourceSyncResponse](#oauthdatasourcesyncresponse)<br> |
 | 400 | Invalid provider or sync failed | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /oauth/login/{provider}
 Initiate OAuth login process
@@ -7287,6 +7708,7 @@ Initiate OAuth login process
 | ---- | ----------- | ------ |
 | 302 | Redirect to OAuth authorization URL | **application/json**: [RedirectResponse](#redirectresponse)<br> |
 | 400 | Invalid provider | **application/json**: <br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /oauth/plugin/{provider_id}/datasource/callback
 #### Parameters
@@ -7301,9 +7723,10 @@ Initiate OAuth login process
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 302 | Redirect to OAuth callback page |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 302 | Redirect to OAuth callback page |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /oauth/plugin/{provider_id}/datasource/get-authorization-url
 #### Parameters
@@ -7319,6 +7742,7 @@ Initiate OAuth login process
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Datasource OAuth authorization URL generated successfully | **application/json**: [PluginOAuthAuthorizationUrlResponse](#pluginoauthauthorizationurlresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /oauth/plugin/{provider}/tool/authorization-url
 #### Parameters
@@ -7333,6 +7757,7 @@ Initiate OAuth login process
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Tool OAuth authorization URL generated successfully | **application/json**: [PluginOAuthAuthorizationUrlResponse](#pluginoauthauthorizationurlresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /oauth/plugin/{provider}/tool/callback
 #### Parameters
@@ -7343,9 +7768,10 @@ Initiate OAuth login process
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 302 | Redirect to OAuth callback page |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 302 | Redirect to OAuth callback page |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /oauth/plugin/{provider}/trigger/callback
 **Handle OAuth callback for trigger provider**
@@ -7358,9 +7784,10 @@ Initiate OAuth login process
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 302 | Redirect to OAuth callback page |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 302 | Redirect to OAuth callback page |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /oauth/provider
 #### Request Body
@@ -7374,6 +7801,7 @@ Initiate OAuth login process
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [OAuthProviderAppResponse](#oauthproviderappresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /oauth/provider/account
 #### Request Body
@@ -7387,6 +7815,7 @@ Initiate OAuth login process
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [OAuthProviderAccountResponse](#oauthprovideraccountresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /oauth/provider/authorize
 #### Request Body
@@ -7400,6 +7829,7 @@ Initiate OAuth login process
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [OAuthProviderAuthorizeResponse](#oauthproviderauthorizeresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /oauth/provider/token
 #### Request Body
@@ -7413,6 +7843,7 @@ Initiate OAuth login process
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [OAuthProviderTokenResponse](#oauthprovidertokenresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /onboarding/step-by-step-tour/state
 Get account-level Step-by-step Tour state
@@ -7422,6 +7853,7 @@ Get account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [StepByStepTourStateResponse](#stepbysteptourstateresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /onboarding/step-by-step-tour/state
 Update account-level Step-by-step Tour state
@@ -7437,6 +7869,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [StepByStepTourStateResponse](#stepbysteptourstateresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /rag/pipeline/customized/templates/{template_id}
 #### Parameters
@@ -7447,9 +7880,10 @@ Update account-level Step-by-step Tour state
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 204 | Pipeline template deleted |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Pipeline template deleted |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /rag/pipeline/customized/templates/{template_id}
 #### Parameters
@@ -7466,9 +7900,10 @@ Update account-level Step-by-step Tour state
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 204 | Pipeline template updated |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Pipeline template updated |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /rag/pipeline/customized/templates/{template_id}
 #### Parameters
@@ -7483,6 +7918,7 @@ Update account-level Step-by-step Tour state
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleDataResponse](#simpledataresponse)<br> |
 | 404 | Customized pipeline template not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /rag/pipeline/dataset
 #### Request Body
@@ -7496,6 +7932,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | RAG pipeline dataset import started | **application/json**: [RagPipelineImportResponse](#ragpipelineimportresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /rag/pipeline/empty-dataset
 #### Responses
@@ -7503,6 +7940,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | RAG pipeline dataset created | **application/json**: [DatasetDetailResponse](#datasetdetailresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /rag/pipeline/templates
 #### Parameters
@@ -7517,6 +7955,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Pipeline templates | **application/json**: [PipelineTemplateListResponse](#pipelinetemplatelistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /rag/pipeline/templates/{template_id}
 #### Parameters
@@ -7532,6 +7971,7 @@ Update account-level Step-by-step Tour state
 | ---- | ----------- | ------ |
 | 200 | Pipeline template | **application/json**: [PipelineTemplateDetailResponse](#pipelinetemplatedetailresponse)<br> |
 | 404 | Pipeline template not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /rag/pipelines/datasource-plugins
 #### Responses
@@ -7539,6 +7979,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [RagPipelineDatasourceListResponse](#ragpipelinedatasourcelistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /rag/pipelines/imports
 #### Request Body
@@ -7554,6 +7995,7 @@ Update account-level Step-by-step Tour state
 | 200 | Import completed | **application/json**: [RagPipelineImportResponse](#ragpipelineimportresponse)<br> |
 | 202 | Import pending confirmation | **application/json**: [RagPipelineImportResponse](#ragpipelineimportresponse)<br> |
 | 400 | Import failed | **application/json**: <br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /rag/pipelines/imports/{import_id}/confirm
 #### Parameters
@@ -7568,6 +8010,7 @@ Update account-level Step-by-step Tour state
 | ---- | ----------- | ------ |
 | 200 | Import confirmed | **application/json**: [RagPipelineImportResponse](#ragpipelineimportresponse)<br> |
 | 400 | Import failed | **application/json**: <br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /rag/pipelines/imports/{pipeline_id}/check-dependencies
 #### Parameters
@@ -7581,6 +8024,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Dependencies checked | **application/json**: [RagPipelineImportCheckDependenciesResponse](#ragpipelineimportcheckdependenciesresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /rag/pipelines/recommended-plugins
 #### Parameters
@@ -7594,6 +8038,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [RagPipelineOpaqueResponse](#ragpipelineopaqueresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /rag/pipelines/transform/datasets/{dataset_id}
 #### Parameters
@@ -7608,6 +8053,7 @@ Update account-level Step-by-step Tour state
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [RagPipelineOpaqueResponse](#ragpipelineopaqueresponse)<br> |
 | 404 | Dataset or pipeline not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /rag/pipelines/{pipeline_id}/customized/publish
 #### Parameters
@@ -7628,6 +8074,7 @@ Update account-level Step-by-step Tour state
 | ---- | ----------- | ------ |
 | 204 | Pipeline template published |  |
 | 404 | Pipeline, workflow, or dataset not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /rag/pipelines/{pipeline_id}/exports
 #### Parameters
@@ -7642,6 +8089,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Pipeline exported | **application/json**: [SimpleDataResponse](#simpledataresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /rag/pipelines/{pipeline_id}/workflow-runs
 **Get workflow run list**
@@ -7659,6 +8107,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow runs retrieved successfully | **application/json**: [WorkflowRunPaginationResponse](#workflowrunpaginationresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /rag/pipelines/{pipeline_id}/workflow-runs/tasks/{task_id}/stop
 **Stop workflow task**
@@ -7675,6 +8124,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Task stopped successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /rag/pipelines/{pipeline_id}/workflow-runs/{run_id}
 **Get workflow run detail**
@@ -7691,6 +8141,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow run detail retrieved successfully | **application/json**: [WorkflowRunDetailResponse](#workflowrundetailresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /rag/pipelines/{pipeline_id}/workflow-runs/{run_id}/node-executions
 **Get workflow run node execution list**
@@ -7707,6 +8158,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Node executions retrieved successfully | **application/json**: [WorkflowRunNodeExecutionListResponse](#workflowrunnodeexecutionlistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /rag/pipelines/{pipeline_id}/workflows
 **Get published workflows**
@@ -7727,6 +8179,7 @@ Update account-level Step-by-step Tour state
 | ---- | ----------- | ------ |
 | 200 | Published workflows retrieved successfully | **application/json**: [WorkflowPaginationResponse](#workflowpaginationresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /rag/pipelines/{pipeline_id}/workflows/default-workflow-block-configs
 **Get default block config**
@@ -7742,6 +8195,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Default block configs retrieved successfully | **application/json**: [DefaultBlockConfigsResponse](#defaultblockconfigsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /rag/pipelines/{pipeline_id}/workflows/default-workflow-block-configs/{block_type}
 **Get default block config**
@@ -7759,6 +8213,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Default block config retrieved successfully | **application/json**: [DefaultBlockConfigResponse](#defaultblockconfigresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /rag/pipelines/{pipeline_id}/workflows/draft
 **Get draft rag pipeline's workflow**
@@ -7775,6 +8230,7 @@ Update account-level Step-by-step Tour state
 | ---- | ----------- | ------ |
 | 200 | Draft workflow retrieved successfully | **application/json**: [WorkflowResponse](#workflowresponse)<br> |
 | 404 | Draft workflow not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /rag/pipelines/{pipeline_id}/workflows/draft
 **Sync draft workflow**
@@ -7796,6 +8252,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [RagPipelineWorkflowSyncResponse](#ragpipelineworkflowsyncresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /rag/pipelines/{pipeline_id}/workflows/draft/datasource/nodes/{node_id}/run
 **Run rag pipeline datasource**
@@ -7818,6 +8275,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [RagPipelineOpaqueResponse](#ragpipelineopaqueresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /rag/pipelines/{pipeline_id}/workflows/draft/datasource/variables-inspect
 **Set datasource variables**
@@ -7839,6 +8297,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Datasource variables set successfully | **application/json**: [WorkflowRunNodeExecutionResponse](#workflowrunnodeexecutionresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /rag/pipelines/{pipeline_id}/workflows/draft/environment-variables
 **Get draft workflow**
@@ -7854,6 +8313,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Environment variables retrieved successfully | **application/json**: [EnvironmentVariableListResponse](#environmentvariablelistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /rag/pipelines/{pipeline_id}/workflows/draft/iteration/nodes/{node_id}/run
 **Run draft workflow iteration node**
@@ -7876,6 +8336,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [RagPipelineOpaqueResponse](#ragpipelineopaqueresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /rag/pipelines/{pipeline_id}/workflows/draft/loop/nodes/{node_id}/run
 **Run draft workflow loop node**
@@ -7898,6 +8359,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [RagPipelineOpaqueResponse](#ragpipelineopaqueresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /rag/pipelines/{pipeline_id}/workflows/draft/nodes/{node_id}/last-run
 #### Parameters
@@ -7912,6 +8374,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Node last run retrieved successfully | **application/json**: [WorkflowRunNodeExecutionResponse](#workflowrunnodeexecutionresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /rag/pipelines/{pipeline_id}/workflows/draft/nodes/{node_id}/run
 **Run draft workflow node**
@@ -7934,6 +8397,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Node run started successfully | **application/json**: [WorkflowRunNodeExecutionResponse](#workflowrunnodeexecutionresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /rag/pipelines/{pipeline_id}/workflows/draft/nodes/{node_id}/variables
 #### Parameters
@@ -7945,9 +8409,10 @@ Update account-level Step-by-step Tour state
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 204 | Node variables deleted successfully |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Node variables deleted successfully |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /rag/pipelines/{pipeline_id}/workflows/draft/nodes/{node_id}/variables
 #### Parameters
@@ -7962,6 +8427,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Node variables retrieved successfully | **application/json**: [WorkflowDraftVariableListResponse](#workflowdraftvariablelistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /rag/pipelines/{pipeline_id}/workflows/draft/pre-processing/parameters
 **Get first step parameters of rag pipeline**
@@ -7978,6 +8444,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [RagPipelineStepParametersResponse](#ragpipelinestepparametersresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /rag/pipelines/{pipeline_id}/workflows/draft/processing/parameters
 **Get second step parameters of rag pipeline**
@@ -7994,6 +8461,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [RagPipelineStepParametersResponse](#ragpipelinestepparametersresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /rag/pipelines/{pipeline_id}/workflows/draft/run
 **Run draft workflow**
@@ -8015,6 +8483,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [RagPipelineOpaqueResponse](#ragpipelineopaqueresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /rag/pipelines/{pipeline_id}/workflows/draft/system-variables
 #### Parameters
@@ -8028,6 +8497,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | System variables retrieved successfully | **application/json**: [WorkflowDraftVariableListResponse](#workflowdraftvariablelistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /rag/pipelines/{pipeline_id}/workflows/draft/variables
 #### Parameters
@@ -8038,9 +8508,10 @@ Update account-level Step-by-step Tour state
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 204 | Workflow variables deleted successfully |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Workflow variables deleted successfully |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /rag/pipelines/{pipeline_id}/workflows/draft/variables
 **Get draft workflow**
@@ -8058,6 +8529,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow variables retrieved successfully | **application/json**: [WorkflowDraftVariableListWithoutValueResponse](#workflowdraftvariablelistwithoutvalueresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /rag/pipelines/{pipeline_id}/workflows/draft/variables/{variable_id}
 #### Parameters
@@ -8069,9 +8541,10 @@ Update account-level Step-by-step Tour state
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 204 | Variable deleted successfully |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Variable deleted successfully |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /rag/pipelines/{pipeline_id}/workflows/draft/variables/{variable_id}
 #### Parameters
@@ -8086,6 +8559,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Variable retrieved successfully | **application/json**: [WorkflowDraftVariableResponse](#workflowdraftvariableresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /rag/pipelines/{pipeline_id}/workflows/draft/variables/{variable_id}
 #### Parameters
@@ -8106,6 +8580,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Variable updated successfully | **application/json**: [WorkflowDraftVariableResponse](#workflowdraftvariableresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /rag/pipelines/{pipeline_id}/workflows/draft/variables/{variable_id}/reset
 #### Parameters
@@ -8121,6 +8596,7 @@ Update account-level Step-by-step Tour state
 | ---- | ----------- | ------ |
 | 200 | Variable reset successfully | **application/json**: [WorkflowDraftVariableResponse](#workflowdraftvariableresponse)<br> |
 | 204 | Variable reset (no content) |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /rag/pipelines/{pipeline_id}/workflows/publish
 **Get published pipeline**
@@ -8136,6 +8612,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Published workflow retrieved successfully, or null if not exist | **application/json**: [WorkflowResponse](#workflowresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /rag/pipelines/{pipeline_id}/workflows/publish
 **Publish workflow**
@@ -8151,6 +8628,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [RagPipelineWorkflowPublishResponse](#ragpipelineworkflowpublishresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /rag/pipelines/{pipeline_id}/workflows/published/datasource/nodes/{node_id}/preview
 **Run datasource content preview**
@@ -8170,9 +8648,10 @@ Update account-level Step-by-step Tour state
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /rag/pipelines/{pipeline_id}/workflows/published/datasource/nodes/{node_id}/run
 **Run rag pipeline datasource**
@@ -8195,6 +8674,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [RagPipelineOpaqueResponse](#ragpipelineopaqueresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /rag/pipelines/{pipeline_id}/workflows/published/pre-processing/parameters
 **Get first step parameters of rag pipeline**
@@ -8211,6 +8691,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [RagPipelineStepParametersResponse](#ragpipelinestepparametersresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /rag/pipelines/{pipeline_id}/workflows/published/processing/parameters
 **Get second step parameters of rag pipeline**
@@ -8227,6 +8708,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [RagPipelineStepParametersResponse](#ragpipelinestepparametersresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /rag/pipelines/{pipeline_id}/workflows/published/run
 **Run published workflow**
@@ -8248,6 +8730,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [RagPipelineOpaqueResponse](#ragpipelineopaqueresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /rag/pipelines/{pipeline_id}/workflows/{workflow_id}
 **Delete a published workflow version that is not currently active on the pipeline**
@@ -8261,9 +8744,10 @@ Update account-level Step-by-step Tour state
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 204 | Workflow deleted successfully |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Workflow deleted successfully |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /rag/pipelines/{pipeline_id}/workflows/{workflow_id}
 **Update workflow attributes**
@@ -8289,6 +8773,7 @@ Update account-level Step-by-step Tour state
 | 400 | No valid fields to update | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Workflow not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /rag/pipelines/{pipeline_id}/workflows/{workflow_id}/restore
 #### Parameters
@@ -8303,6 +8788,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [RagPipelineWorkflowSyncResponse](#ragpipelineworkflowsyncresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /refresh-token
 #### Responses
@@ -8311,6 +8797,7 @@ Update account-level Step-by-step Tour state
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 | 401 | Unauthorized | **application/json**: <br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /remote-files/upload
 #### Request Body
@@ -8331,6 +8818,7 @@ Update account-level Step-by-step Tour state
 | 422 | Request payload validation failed | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Internal server error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 502 | Remote file unavailable or returned an invalid response | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /remote-files/{url}
 #### Parameters
@@ -8348,6 +8836,7 @@ Update account-level Step-by-step Tour state
 | 404 | Remote file not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | Internal server error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 502 | Remote file unavailable or returned an invalid response | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /reset-password
 #### Request Body
@@ -8361,6 +8850,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultDataResponse](#simpleresultdataresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /resource-access-tokens
 #### Parameters
@@ -8376,6 +8866,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Resource access tokens | **application/json**: [ResourceAccessTokenListResponse](#resourceaccesstokenlistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /resource-access-tokens
 #### Request Body
@@ -8389,6 +8880,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Resource access token created | **application/json**: [ResourceAccessTokenCreateResponse](#resourceaccesstokencreateresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /resource-access-tokens/{token_id}
 #### Parameters
@@ -8408,6 +8900,7 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Resource access token updated | **application/json**: [ResourceAccessTokenListResponse](#resourceaccesstokenlistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /resource-access-tokens/{token_id}/relations/{relation_id}
 #### Parameters
@@ -8419,9 +8912,10 @@ Update account-level Step-by-step Tour state
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 204 | Resource access token relation deleted |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Resource access token relation deleted |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /rule-code-generate
 Generate code rules using LLM
@@ -8439,6 +8933,7 @@ Generate code rules using LLM
 | 200 | Code rules generated successfully | **application/json**: [GeneratorResponse](#generatorresponse)<br> |
 | 400 | Invalid request parameters | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 402 | Provider quota exceeded | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /rule-generate
 Generate rule configuration using LLM
@@ -8456,6 +8951,7 @@ Generate rule configuration using LLM
 | 200 | Rule configuration generated successfully | **application/json**: [GeneratorResponse](#generatorresponse)<br> |
 | 400 | Invalid request parameters | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 402 | Provider quota exceeded | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /rule-structured-output-generate
 Generate structured output rules using LLM
@@ -8473,6 +8969,7 @@ Generate structured output rules using LLM
 | 200 | Structured output generated successfully | **application/json**: [GeneratorResponse](#generatorresponse)<br> |
 | 400 | Invalid request parameters | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 402 | Provider quota exceeded | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /snippets/{snippet_id}/workflow-runs
 **List workflow runs for snippet**
@@ -8490,6 +8987,7 @@ Generate structured output rules using LLM
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow runs retrieved successfully | **application/json**: [WorkflowRunPaginationResponse](#workflowrunpaginationresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /snippets/{snippet_id}/workflow-runs/tasks/{task_id}/stop
 **Stop a running snippet workflow task**
@@ -8510,6 +9008,7 @@ command channel for backward compatibility.
 | ---- | ----------- | ------ |
 | 200 | Task stopped successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 | 404 | Snippet not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /snippets/{snippet_id}/workflow-runs/{run_id}
 **Get workflow run detail for snippet**
@@ -8527,6 +9026,7 @@ command channel for backward compatibility.
 | ---- | ----------- | ------ |
 | 200 | Workflow run detail retrieved successfully | **application/json**: [WorkflowRunDetailResponse](#workflowrundetailresponse)<br> |
 | 404 | Workflow run not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /snippets/{snippet_id}/workflow-runs/{run_id}/node-executions
 **List node executions for a workflow run**
@@ -8543,6 +9043,7 @@ command channel for backward compatibility.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Node executions retrieved successfully | **application/json**: [WorkflowRunNodeExecutionListResponse](#workflowrunnodeexecutionlistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /snippets/{snippet_id}/workflows
 **Get all published workflow versions for snippet**
@@ -8562,6 +9063,7 @@ Get all published workflows for a snippet
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Published workflows retrieved successfully | **application/json**: [SnippetWorkflowPaginationResponse](#snippetworkflowpaginationresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /snippets/{snippet_id}/workflows/default-workflow-block-configs
 **Get default block configurations for snippet workflow**
@@ -8577,6 +9079,7 @@ Get all published workflows for a snippet
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Default block configs retrieved successfully | **application/json**: [DefaultBlockConfigsResponse](#defaultblockconfigsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /snippets/{snippet_id}/workflows/draft
 **Get draft workflow for snippet**
@@ -8593,6 +9096,7 @@ Get all published workflows for a snippet
 | ---- | ----------- | ------ |
 | 200 | Draft workflow retrieved successfully | **application/json**: [SnippetWorkflowResponse](#snippetworkflowresponse)<br> |
 | 404 | Snippet or draft workflow not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /snippets/{snippet_id}/workflows/draft
 **Sync draft workflow for snippet**
@@ -8615,6 +9119,7 @@ Get all published workflows for a snippet
 | ---- | ----------- | ------ |
 | 200 | Draft workflow synced successfully | **application/json**: [WorkflowRestoreResponse](#workflowrestoreresponse)<br> |
 | 400 | Hash mismatch | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /snippets/{snippet_id}/workflows/draft/config
 **Get snippet draft workflow configuration limits**
@@ -8630,6 +9135,7 @@ Get all published workflows for a snippet
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Draft config retrieved successfully | **application/json**: [SnippetDraftConfigResponse](#snippetdraftconfigresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /snippets/{snippet_id}/workflows/draft/conversation-variables
 Conversation variables are not used in snippet workflows; returns an empty list for API parity
@@ -8645,6 +9151,7 @@ Conversation variables are not used in snippet workflows; returns an empty list 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Conversation variables retrieved successfully | **application/json**: [WorkflowDraftVariableListResponse](#workflowdraftvariablelistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /snippets/{snippet_id}/workflows/draft/environment-variables
 Get environment variables from snippet draft workflow graph
@@ -8661,6 +9168,7 @@ Get environment variables from snippet draft workflow graph
 | ---- | ----------- | ------ |
 | 200 | Environment variables retrieved successfully | **application/json**: [EnvironmentVariableListResponse](#environmentvariablelistresponse)<br> |
 | 404 | Draft workflow not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /snippets/{snippet_id}/workflows/draft/iteration/nodes/{node_id}/run
 **Run a draft workflow iteration node for snippet**
@@ -8688,6 +9196,7 @@ Returns an SSE event stream with iteration progress and results.
 | ---- | ----------- | ------ |
 | 200 | Iteration node run started successfully (SSE stream) | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
 | 404 | Snippet or draft workflow not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /snippets/{snippet_id}/workflows/draft/loop/nodes/{node_id}/run
 **Run a draft workflow loop node for snippet**
@@ -8715,6 +9224,7 @@ Returns an SSE event stream with loop progress and results.
 | ---- | ----------- | ------ |
 | 200 | Loop node run started successfully (SSE stream) | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
 | 404 | Snippet or draft workflow not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer
 #### Parameters
@@ -8730,6 +9240,7 @@ Returns an SSE event stream with loop progress and results.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Snippet agent composer state | **application/json**: [WorkflowAgentComposerResponse](#workflowagentcomposerresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer
 #### Parameters
@@ -8750,6 +9261,7 @@ Returns an SSE event stream with loop progress and results.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Snippet agent composer saved | **application/json**: [WorkflowAgentComposerResponse](#workflowagentcomposerresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer/candidates
 #### Parameters
@@ -8764,6 +9276,7 @@ Returns an SSE event stream with loop progress and results.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Snippet agent composer candidates | **application/json**: [AgentComposerCandidatesResponse](#agentcomposercandidatesresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer/copy-from-roster
 #### Parameters
@@ -8784,6 +9297,7 @@ Returns an SSE event stream with loop progress and results.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Roster agent copied into snippet | **application/json**: [WorkflowAgentComposerResponse](#workflowagentcomposerresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer/impact
 #### Parameters
@@ -8804,6 +9318,7 @@ Returns an SSE event stream with loop progress and results.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Snippet agent composer impact | **application/json**: [AgentComposerImpactResponse](#agentcomposerimpactresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer/save-to-roster
 #### Parameters
@@ -8824,6 +9339,7 @@ Returns an SSE event stream with loop progress and results.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Snippet agent saved to roster | **application/json**: [WorkflowAgentComposerResponse](#workflowagentcomposerresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer/validate
 #### Parameters
@@ -8844,6 +9360,7 @@ Returns an SSE event stream with loop progress and results.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Snippet agent composer validation | **application/json**: [AgentComposerValidateResponse](#agentcomposervalidateresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/last-run
 **Get the last run result for a specific node in snippet draft workflow**
@@ -8865,6 +9382,7 @@ including status, inputs, outputs, and timing information.
 | ---- | ----------- | ------ |
 | 200 | Node last run retrieved successfully | **application/json**: [WorkflowRunNodeExecutionResponse](#workflowrunnodeexecutionresponse)<br> |
 | 404 | Snippet, draft workflow, or node last run not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/run
 **Run a single node in snippet draft workflow**
@@ -8892,6 +9410,7 @@ Returns the node execution result including status, outputs, and timing.
 | ---- | ----------- | ------ |
 | 200 | Node run completed successfully | **application/json**: [WorkflowRunNodeExecutionResponse](#workflowrunnodeexecutionresponse)<br> |
 | 404 | Snippet or draft workflow not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/variables
 Delete all variables for a specific node (snippet draft workflow)
@@ -8905,9 +9424,10 @@ Delete all variables for a specific node (snippet draft workflow)
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 204 | Node variables deleted successfully |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Node variables deleted successfully |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/variables
 Get variables for a specific node (snippet draft workflow)
@@ -8924,6 +9444,7 @@ Get variables for a specific node (snippet draft workflow)
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Node variables retrieved successfully | **application/json**: [WorkflowDraftVariableListResponse](#workflowdraftvariablelistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /snippets/{snippet_id}/workflows/draft/run
 **Run draft workflow for snippet**
@@ -8949,6 +9470,7 @@ and returns an SSE event stream with execution progress and results.
 | ---- | ----------- | ------ |
 | 200 | Draft workflow run started successfully (SSE stream) | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
 | 404 | Snippet or draft workflow not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /snippets/{snippet_id}/workflows/draft/system-variables
 System variables are not used in snippet workflows; returns an empty list for API parity
@@ -8964,6 +9486,7 @@ System variables are not used in snippet workflows; returns an empty list for AP
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | System variables retrieved successfully | **application/json**: [WorkflowDraftVariableListResponse](#workflowdraftvariablelistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /snippets/{snippet_id}/workflows/draft/variables
 Delete all draft workflow variables for the current user (snippet scope)
@@ -8976,9 +9499,10 @@ Delete all draft workflow variables for the current user (snippet scope)
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 204 | Workflow variables deleted successfully |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Workflow variables deleted successfully |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /snippets/{snippet_id}/workflows/draft/variables
 List draft workflow variables without values (paginated, snippet scope)
@@ -8996,6 +9520,7 @@ List draft workflow variables without values (paginated, snippet scope)
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow variables retrieved successfully | **application/json**: [WorkflowDraftVariableListWithoutValueResponse](#workflowdraftvariablelistwithoutvalueresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /snippets/{snippet_id}/workflows/draft/variables/{variable_id}
 Delete a draft workflow variable (snippet scope)
@@ -9013,6 +9538,7 @@ Delete a draft workflow variable (snippet scope)
 | ---- | ----------- | ------ |
 | 204 | Variable deleted successfully |  |
 | 404 | Variable not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /snippets/{snippet_id}/workflows/draft/variables/{variable_id}
 Get a specific draft workflow variable (snippet scope)
@@ -9030,6 +9556,7 @@ Get a specific draft workflow variable (snippet scope)
 | ---- | ----------- | ------ |
 | 200 | Variable retrieved successfully | **application/json**: [WorkflowDraftVariableResponse](#workflowdraftvariableresponse)<br> |
 | 404 | Variable not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /snippets/{snippet_id}/workflows/draft/variables/{variable_id}
 Update a draft workflow variable (snippet scope)
@@ -9053,6 +9580,7 @@ Update a draft workflow variable (snippet scope)
 | ---- | ----------- | ------ |
 | 200 | Variable updated successfully | **application/json**: [WorkflowDraftVariableResponse](#workflowdraftvariableresponse)<br> |
 | 404 | Variable not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /snippets/{snippet_id}/workflows/draft/variables/{variable_id}/reset
 Reset a draft workflow variable to its default value (snippet scope)
@@ -9071,6 +9599,7 @@ Reset a draft workflow variable to its default value (snippet scope)
 | 200 | Variable reset successfully | **application/json**: [WorkflowDraftVariableResponse](#workflowdraftvariableresponse)<br> |
 | 204 | Variable reset (no content) |  |
 | 404 | Variable not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /snippets/{snippet_id}/workflows/publish
 **Get published workflow for snippet**
@@ -9087,6 +9616,7 @@ Reset a draft workflow variable to its default value (snippet scope)
 | ---- | ----------- | ------ |
 | 200 | Published workflow retrieved successfully | **application/json**: [SnippetWorkflowResponse](#snippetworkflowresponse)<br> |
 | 404 | Snippet not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /snippets/{snippet_id}/workflows/publish
 **Publish snippet workflow**
@@ -9109,6 +9639,7 @@ Reset a draft workflow variable to its default value (snippet scope)
 | ---- | ----------- | ------ |
 | 200 | Workflow published successfully | **application/json**: [WorkflowPublishResponse](#workflowpublishresponse)<br> |
 | 400 | No draft workflow found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /snippets/{snippet_id}/workflows/{workflow_id}
 **Delete a published snippet workflow version**
@@ -9127,6 +9658,7 @@ Reset a draft workflow variable to its default value (snippet scope)
 | 204 | Workflow deleted successfully |  |
 | 400 | Workflow is in use | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Workflow not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /snippets/{snippet_id}/workflows/{workflow_id}
 **Update a published snippet workflow version's display metadata**
@@ -9153,6 +9685,7 @@ Update published snippet workflow attributes
 | 200 | Workflow updated successfully | **application/json**: [SnippetWorkflowResponse](#snippetworkflowresponse)<br> |
 | 400 | No valid fields to update | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Workflow not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /snippets/{snippet_id}/workflows/{workflow_id}/restore
 **Restore a published snippet workflow version into the draft workflow**
@@ -9171,6 +9704,7 @@ Update published snippet workflow attributes
 | 200 | Workflow restored successfully | **application/json**: [WorkflowRestoreResponse](#workflowrestoreresponse)<br> |
 | 400 | Source workflow must be published | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Workflow not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /spec/schema-definitions
 **Get system JSON Schema definitions specification**
@@ -9182,6 +9716,7 @@ Used for frontend component type mapping
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SchemaDefinitionsResponse](#schemadefinitionsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /system-features
 **Get the non-sensitive bootstrap snapshot exposed before authentication**
@@ -9195,6 +9730,7 @@ Authenticated license detail is served separately by SystemFeatureLicenseApi.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SystemFeatureModel](#systemfeaturemodel)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /system-features/license
 **Get full license detail (status, expiry, workspace/seat usage)**
@@ -9208,6 +9744,7 @@ system-features endpoint.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [LicenseModel](#licensemodel)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /tag-bindings
 #### Request Body
@@ -9221,6 +9758,7 @@ system-features endpoint.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /tag-bindings/remove
 Remove one or more tag bindings from a target.
@@ -9236,6 +9774,7 @@ Remove one or more tag bindings from a target.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /tags
 #### Parameters
@@ -9250,6 +9789,7 @@ Remove one or more tag bindings from a target.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [TagListResponse](#taglistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /tags
 #### Request Body
@@ -9263,6 +9803,7 @@ Remove one or more tag bindings from a target.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [TagResponse](#tagresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /tags/{tag_id}
 #### Parameters
@@ -9273,9 +9814,10 @@ Remove one or more tag bindings from a target.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 204 | Tag deleted successfully |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Tag deleted successfully |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /tags/{tag_id}
 #### Parameters
@@ -9295,6 +9837,7 @@ Remove one or more tag bindings from a target.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [TagResponse](#tagresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /trial-apps/{app_id}
 **Get app detail using the viewer's workspace for tool configuration**
@@ -9310,6 +9853,7 @@ Remove one or more tag bindings from a target.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [TrialAppDetailResponse](#trialappdetailresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /trial-apps/{app_id}/agent-composer
 #### Parameters
@@ -9323,6 +9867,7 @@ Remove one or more tag bindings from a target.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Published Agent configuration | **application/json**: [AgentAppComposerResponse](#agentappcomposerresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /trial-apps/{app_id}/agent/config/files
 #### Parameters
@@ -9337,6 +9882,7 @@ Remove one or more tag bindings from a target.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Published template resource | **application/json**: [AgentConfigFileListResponse](#agentconfigfilelistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /trial-apps/{app_id}/agent/config/files/{name}/download
 #### Parameters
@@ -9352,6 +9898,7 @@ Remove one or more tag bindings from a target.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Published template resource | **application/json**: [AgentConfigDownloadResponse](#agentconfigdownloadresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /trial-apps/{app_id}/agent/config/files/{name}/preview
 #### Parameters
@@ -9367,6 +9914,7 @@ Remove one or more tag bindings from a target.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Published template resource | **application/json**: [AgentConfigFilePreviewResponse](#agentconfigfilepreviewresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /trial-apps/{app_id}/agent/config/skills
 #### Parameters
@@ -9381,6 +9929,7 @@ Remove one or more tag bindings from a target.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Published template resource | **application/json**: [AgentConfigSkillListResponse](#agentconfigskilllistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /trial-apps/{app_id}/agent/config/skills/{name}/download
 #### Parameters
@@ -9396,6 +9945,7 @@ Remove one or more tag bindings from a target.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Published template resource | **application/json**: [AgentConfigDownloadResponse](#agentconfigdownloadresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /trial-apps/{app_id}/agent/config/skills/{name}/files/content
 #### Parameters
@@ -9412,6 +9962,7 @@ Remove one or more tag bindings from a target.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Published template resource | **application/octet-stream**: binary<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /trial-apps/{app_id}/agent/config/skills/{name}/files/download
 #### Parameters
@@ -9428,6 +9979,7 @@ Remove one or more tag bindings from a target.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Published template resource | **application/json**: [AgentConfigDownloadResponse](#agentconfigdownloadresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /trial-apps/{app_id}/agent/config/skills/{name}/files/preview
 #### Parameters
@@ -9444,6 +9996,7 @@ Remove one or more tag bindings from a target.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Published template resource | **application/json**: [AgentConfigSkillFilePreviewResponse](#agentconfigskillfilepreviewresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /trial-apps/{app_id}/agent/config/skills/{name}/inspect
 #### Parameters
@@ -9459,6 +10012,7 @@ Remove one or more tag bindings from a target.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Published template resource | **application/json**: [AgentConfigSkillInspectResponse](#agentconfigskillinspectresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /trial-apps/{app_id}/audio-to-text
 #### Parameters
@@ -9472,6 +10026,7 @@ Remove one or more tag bindings from a target.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AudioTranscriptResponse](#audiotranscriptresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /trial-apps/{app_id}/chat-messages
 #### Parameters
@@ -9488,9 +10043,10 @@ Remove one or more tag bindings from a target.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /trial-apps/{app_id}/chat-messages/{task_id}/stop
 #### Parameters
@@ -9505,6 +10061,7 @@ Remove one or more tag bindings from a target.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /trial-apps/{app_id}/completion-messages
 #### Parameters
@@ -9521,9 +10078,10 @@ Remove one or more tag bindings from a target.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /trial-apps/{app_id}/datasets
 #### Parameters
@@ -9540,6 +10098,7 @@ Remove one or more tag bindings from a target.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [TrialDatasetListResponse](#trialdatasetlistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /trial-apps/{app_id}/export
 #### Parameters
@@ -9556,6 +10115,7 @@ Remove one or more tag bindings from a target.
 | ---- | ----------- | ------ |
 | 200 | Published Agent template export | **application/json**: [AppExportResponse](#appexportresponse)<br>**application/zip**: binary<br> |
 | 404 | Published template unavailable | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /trial-apps/{app_id}/files/upload
 **Upload a file into the tenant that owns the trial app**
@@ -9577,6 +10137,7 @@ Remove one or more tag bindings from a target.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | File uploaded successfully | **application/json**: [FileResponse](#fileresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /trial-apps/{app_id}/messages/{message_id}/suggested-questions
 #### Parameters
@@ -9591,6 +10152,7 @@ Remove one or more tag bindings from a target.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SuggestedQuestionsResponse](#suggestedquestionsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /trial-apps/{app_id}/parameters
 **Retrieve app parameters**
@@ -9606,6 +10168,7 @@ Remove one or more tag bindings from a target.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [Parameters](#parameters)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /trial-apps/{app_id}/remote-files/upload
 **Upload a remote file into the tenant that owns the trial app**
@@ -9627,6 +10190,7 @@ Remove one or more tag bindings from a target.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | File uploaded successfully | **application/json**: [FileWithSignedUrl](#filewithsignedurl)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /trial-apps/{app_id}/site
 **Retrieve app site info**
@@ -9644,6 +10208,7 @@ Returns the site configuration for the application including theme, icons, and t
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [Site](#site)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /trial-apps/{app_id}/text-to-audio
 #### Parameters
@@ -9663,6 +10228,7 @@ Returns the site configuration for the application including theme, icons, and t
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AudioBinaryResponse](#audiobinaryresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /trial-apps/{app_id}/workflows
 **Get a detached workflow definition after catalog preview admission**
@@ -9678,6 +10244,7 @@ Returns the site configuration for the application including theme, icons, and t
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [TrialWorkflowResponse](#trialworkflowresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /trial-apps/{app_id}/workflows/run
 **Run workflow**
@@ -9696,9 +10263,10 @@ Returns the site configuration for the application including theme, icons, and t
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /trial-apps/{app_id}/workflows/tasks/{task_id}/stop
 **Stop workflow task**
@@ -9715,6 +10283,7 @@ Returns the site configuration for the application including theme, icons, and t
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /trial-models
 **Get hosted credit provider configuration for the current workspace**
@@ -9726,6 +10295,7 @@ Get hosted credit model provider configuration for the current workspace
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [TrialModelsResponse](#trialmodelsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /website/crawl
 Crawl website content
@@ -9742,6 +10312,7 @@ Crawl website content
 | ---- | ----------- | ------ |
 | 200 | Website crawl initiated successfully | **application/json**: [WebsiteCrawlResponse](#websitecrawlresponse)<br> |
 | 400 | Invalid crawl parameters | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /website/crawl/status/{job_id}
 Get website crawl status
@@ -9760,6 +10331,7 @@ Get website crawl status
 | 200 | Crawl status retrieved successfully | **application/json**: [WebsiteCrawlResponse](#websitecrawlresponse)<br> |
 | 400 | Invalid provider | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Crawl job not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workflow-generate
 Generate a Dify workflow graph from natural language
@@ -9777,6 +10349,7 @@ Generate a Dify workflow graph from natural language
 | 200 | Workflow graph generated successfully | **application/json**: [WorkflowGenerateResponse](#workflowgenerateresponse)<br> |
 | 400 | Invalid request parameters | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 402 | Provider quota exceeded | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workflow-generate/stream
 Stream a Dify workflow graph (plan then result) via SSE
@@ -9793,6 +10366,7 @@ Stream a Dify workflow graph (plan then result) via SSE
 | ---- | ----------- | ------ |
 | 200 | Server-Sent Events stream; each data frame matches this plan/result event schema | **application/json**: [WorkflowGenerateStreamEventResponse](#workflowgeneratestreameventresponse)<br> |
 | 400 | Invalid request parameters | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workflow-generate/suggestions
 Suggest example workflow-generator instructions for the tenant
@@ -9809,6 +10383,7 @@ Suggest example workflow-generator instructions for the tenant
 | ---- | ----------- | ------ |
 | 200 | Suggestions generated successfully | **application/json**: [WorkflowInstructionSuggestionsResponse](#workflowinstructionsuggestionsresponse)<br> |
 | 400 | Invalid request parameters | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workflow-run-archives
 List monthly workflow-run archive metadata for the current workspace
@@ -9818,6 +10393,7 @@ List monthly workflow-run archive metadata for the current workspace
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [WorkflowRunArchiveListResponse](#workflowrunarchivelistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workflow-run-archives/downloads
 Create or return a temporary workflow-run archive download task
@@ -9833,6 +10409,7 @@ Create or return a temporary workflow-run archive download task
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 202 | Download task accepted | **application/json**: [WorkflowRunArchiveDownloadTaskResponse](#workflowrunarchivedownloadtaskresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workflow-run-archives/downloads/{download_id}
 Get a temporary workflow-run archive download task
@@ -9848,6 +10425,7 @@ Get a temporary workflow-run archive download task
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [WorkflowRunArchiveDownloadTaskResponse](#workflowrunarchivedownloadtaskresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workflow-run-archives/downloads/{download_id}/file
 Redirect to a prepared workflow-run archive ZIP file
@@ -9864,6 +10442,7 @@ Redirect to a prepared workflow-run archive ZIP file
 | ---- | ----------- | ------ |
 | 302 | Redirect to pre-signed archive storage URL | **application/json**: [RedirectResponse](#redirectresponse)<br> |
 | 409 | Download task is not ready | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workflow/{workflow_run_id}/events
 **Get workflow execution events stream after resume**
@@ -9883,6 +10462,7 @@ Returns Server-Sent Events stream.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | SSE event stream | **application/json**: [EventStreamResponse](#eventstreamresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workflow/{workflow_run_id}/pause-details
 **Get workflow pause details**
@@ -9904,6 +10484,7 @@ Returns information about why and where the workflow is paused.
 | ---- | ----------- | ------ |
 | 200 | Workflow pause details retrieved successfully | **application/json**: [WorkflowPauseDetailsResponse](#workflowpausedetailsresponse)<br> |
 | 404 | Workflow run not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces
 #### Responses
@@ -9911,6 +10492,7 @@ Returns information about why and where the workflow is paused.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [TenantListResponse](#tenantlistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/agent-provider/{provider_name}
 Get specific agent provider details
@@ -9926,6 +10508,7 @@ Get specific agent provider details
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AgentProviderResponse](#agentproviderresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/agent-providers
 Get list of available agent providers
@@ -9935,6 +10518,7 @@ Get list of available agent providers
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AgentProviderListResponse](#agentproviderlistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/agents/{agent_id}/skills
 #### Parameters
@@ -9948,6 +10532,7 @@ Get list of available agent providers
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Skill bindings | **application/json**: [AgentSkillBindingsResponse](#agentskillbindingsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /workspaces/current/agents/{agent_id}/skills
 #### Parameters
@@ -9967,6 +10552,7 @@ Get list of available agent providers
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Skill bindings replaced | **application/json**: [AgentSkillBindingsResponse](#agentskillbindingsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/customized-snippets
 **List customized snippets with pagination and search**
@@ -9987,6 +10573,7 @@ Get list of available agent providers
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Snippets retrieved successfully | **application/json**: [SnippetPaginationResponse](#snippetpaginationresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/customized-snippets
 **Create a new customized snippet**
@@ -10003,6 +10590,7 @@ Get list of available agent providers
 | ---- | ----------- | ------ |
 | 201 | Snippet created successfully | **application/json**: [SnippetResponse](#snippetresponse)<br> |
 | 400 | Invalid request | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/customized-snippets/imports
 **Import snippet from DSL**
@@ -10020,6 +10608,7 @@ Get list of available agent providers
 | 200 | Snippet imported successfully | **application/json**: [SnippetImportResponse](#snippetimportresponse)<br> |
 | 202 | Import pending confirmation | **application/json**: [SnippetImportResponse](#snippetimportresponse)<br> |
 | 400 | Import failed | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/customized-snippets/imports/{import_id}/confirm
 **Confirm a pending snippet import**
@@ -10036,6 +10625,7 @@ Get list of available agent providers
 | ---- | ----------- | ------ |
 | 200 | Import confirmed successfully | **application/json**: [SnippetImportResponse](#snippetimportresponse)<br> |
 | 400 | Import failed | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /workspaces/current/customized-snippets/{snippet_id}
 **Delete customized snippet**
@@ -10052,6 +10642,7 @@ Get list of available agent providers
 | ---- | ----------- | ------ |
 | 204 | Snippet deleted successfully |  |
 | 404 | Snippet not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/customized-snippets/{snippet_id}
 **Get customized snippet details**
@@ -10068,6 +10659,7 @@ Get list of available agent providers
 | ---- | ----------- | ------ |
 | 200 | Snippet retrieved successfully | **application/json**: [SnippetResponse](#snippetresponse)<br> |
 | 404 | Snippet not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /workspaces/current/customized-snippets/{snippet_id}
 **Update customized snippet**
@@ -10091,6 +10683,7 @@ Get list of available agent providers
 | 200 | Snippet updated successfully | **application/json**: [SnippetResponse](#snippetresponse)<br> |
 | 400 | Invalid request | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Snippet not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/customized-snippets/{snippet_id}/check-dependencies
 **Check dependencies for a snippet**
@@ -10107,6 +10700,7 @@ Get list of available agent providers
 | ---- | ----------- | ------ |
 | 200 | Dependencies checked successfully | **application/json**: [SnippetDependencyCheckResponse](#snippetdependencycheckresponse)<br> |
 | 404 | Snippet not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/customized-snippets/{snippet_id}/export
 **Export snippet as DSL**
@@ -10127,6 +10721,7 @@ Export snippet configuration as DSL
 | ---- | ----------- | ------ |
 | 200 | Snippet exported successfully | **application/json**: [TextFileResponse](#textfileresponse)<br> |
 | 404 | Snippet not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/customized-snippets/{snippet_id}/use-count/increment
 **Increment snippet use count when it is inserted into a workflow**
@@ -10145,6 +10740,7 @@ Increment snippet use count by 1
 | ---- | ----------- | ------ |
 | 200 | Use count incremented successfully | **application/json**: [SnippetUseCountResponse](#snippetusecountresponse)<br> |
 | 404 | Snippet not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/dataset-operators
 #### Responses
@@ -10152,6 +10748,7 @@ Increment snippet use count by 1
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AccountWithRoleListResponse](#accountwithrolelistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/default-model
 #### Parameters
@@ -10165,6 +10762,7 @@ Increment snippet use count by 1
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Default model retrieved successfully | **application/json**: [DefaultModelDataResponse](#defaultmodeldataresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/default-model
 #### Request Body
@@ -10178,6 +10776,7 @@ Increment snippet use count by 1
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/endpoints
 Create a new plugin endpoint
@@ -10194,6 +10793,7 @@ Create a new plugin endpoint
 | ---- | ----------- | ------ |
 | 200 | Endpoint created successfully | **application/json**: [EndpointMutationResponse](#endpointmutationresponse)<br> |
 | 403 | Admin privileges required | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### ~~[POST] /workspaces/current/endpoints/create~~
 
@@ -10213,6 +10813,7 @@ Deprecated legacy alias for creating a plugin endpoint. Use POST /workspaces/cur
 | ---- | ----------- | ------ |
 | 200 | Endpoint created successfully | **application/json**: [EndpointMutationResponse](#endpointmutationresponse)<br> |
 | 403 | Admin privileges required | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### ~~[POST] /workspaces/current/endpoints/delete~~
 
@@ -10232,6 +10833,7 @@ Deprecated legacy alias for deleting a plugin endpoint. Use DELETE /workspaces/c
 | ---- | ----------- | ------ |
 | 200 | Endpoint deleted successfully | **application/json**: [EndpointMutationResponse](#endpointmutationresponse)<br> |
 | 403 | Admin privileges required | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/endpoints/disable
 Disable a plugin endpoint
@@ -10248,6 +10850,7 @@ Disable a plugin endpoint
 | ---- | ----------- | ------ |
 | 200 | Endpoint disabled successfully | **application/json**: [EndpointMutationResponse](#endpointmutationresponse)<br> |
 | 403 | Admin privileges required | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/endpoints/enable
 Enable a plugin endpoint
@@ -10264,6 +10867,7 @@ Enable a plugin endpoint
 | ---- | ----------- | ------ |
 | 200 | Endpoint enabled successfully | **application/json**: [EndpointMutationResponse](#endpointmutationresponse)<br> |
 | 403 | Admin privileges required | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/endpoints/list
 List plugin endpoints with pagination
@@ -10280,6 +10884,7 @@ List plugin endpoints with pagination
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [EndpointListResponse](#endpointlistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/endpoints/list/plugin
 List endpoints for a specific plugin
@@ -10297,6 +10902,7 @@ List endpoints for a specific plugin
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [EndpointListResponse](#endpointlistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### ~~[POST] /workspaces/current/endpoints/update~~
 
@@ -10316,6 +10922,7 @@ Deprecated legacy alias for updating a plugin endpoint. Use PATCH /workspaces/cu
 | ---- | ----------- | ------ |
 | 200 | Endpoint updated successfully | **application/json**: [EndpointMutationResponse](#endpointmutationresponse)<br> |
 | 403 | Admin privileges required | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /workspaces/current/endpoints/{id}
 Delete a plugin endpoint
@@ -10332,6 +10939,7 @@ Delete a plugin endpoint
 | ---- | ----------- | ------ |
 | 200 | Endpoint deleted successfully | **application/json**: [EndpointMutationResponse](#endpointmutationresponse)<br> |
 | 403 | Admin privileges required | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /workspaces/current/endpoints/{id}
 Update a plugin endpoint
@@ -10354,6 +10962,7 @@ Update a plugin endpoint
 | ---- | ----------- | ------ |
 | 200 | Endpoint updated successfully | **application/json**: [EndpointMutationResponse](#endpointmutationresponse)<br> |
 | 403 | Admin privileges required | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/members
 #### Responses
@@ -10361,6 +10970,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AccountWithRoleListResponse](#accountwithrolelistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/members/invite-email
 #### Request Body
@@ -10375,6 +10985,7 @@ Update a plugin endpoint
 | ---- | ----------- | ------ |
 | 201 | Success | **application/json**: [MemberInviteResponse](#memberinviteresponse)<br> |
 | 400 | Invalid email, role, or workspace member limit exceeded | **application/json**: <br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/members/owner-transfer-check
 #### Request Body
@@ -10388,6 +10999,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [VerificationTokenResponse](#verificationtokenresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/members/send-owner-transfer-confirm-email
 #### Request Body
@@ -10401,6 +11013,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultDataResponse](#simpleresultdataresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /workspaces/current/members/{member_id}
 #### Parameters
@@ -10414,6 +11027,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [MemberActionResponse](#memberactionresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/members/{member_id}/owner-transfer
 #### Parameters
@@ -10433,6 +11047,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /workspaces/current/members/{member_id}/update-role
 #### Parameters
@@ -10452,6 +11067,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/model-providers
 #### Parameters
@@ -10465,6 +11081,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Model providers retrieved successfully | **application/json**: [ModelProviderListResponse](#modelproviderlistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/model-providers/credits
 #### Responses
@@ -10472,6 +11089,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Model provider credits retrieved successfully | **application/json**: [ModelProviderCreditsResponse](#modelprovidercreditsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/model-providers/summary
 #### Responses
@@ -10479,6 +11097,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Model provider summaries retrieved successfully | **application/json**: [ModelProviderSummaryListResponse](#modelprovidersummarylistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### ~~[GET] /workspaces/current/model-providers/{provider}/checkout-url~~
 
@@ -10495,6 +11114,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Model provider checkout URL retrieved successfully | **application/json**: [ModelProviderPaymentCheckoutUrlResponse](#modelproviderpaymentcheckouturlresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /workspaces/current/model-providers/{provider}/credentials
 #### Parameters
@@ -10511,9 +11131,10 @@ Update a plugin endpoint
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 204 | Credential deleted successfully |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Credential deleted successfully |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/model-providers/{provider}/credentials
 #### Parameters
@@ -10528,6 +11149,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Provider credentials retrieved successfully | **application/json**: [ProviderCredentialsResponse](#providercredentialsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/model-providers/{provider}/credentials
 #### Parameters
@@ -10547,6 +11169,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Credential created successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /workspaces/current/model-providers/{provider}/credentials
 #### Parameters
@@ -10566,6 +11189,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Credential updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/model-providers/{provider}/credentials/switch
 #### Parameters
@@ -10585,6 +11209,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/model-providers/{provider}/credentials/validate
 #### Parameters
@@ -10604,6 +11229,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Provider credentials validated successfully | **application/json**: [ValidationResultResponse](#validationresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /workspaces/current/model-providers/{provider}/models
 #### Parameters
@@ -10616,9 +11242,10 @@ Update a plugin endpoint
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 204 | Model deleted successfully |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Model deleted successfully |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/model-providers/{provider}/models
 #### Parameters
@@ -10632,6 +11259,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Provider models retrieved successfully | **application/json**: [ProviderModelListResponse](#providermodellistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/model-providers/{provider}/models
 #### Parameters
@@ -10651,6 +11279,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Model updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /workspaces/current/model-providers/{provider}/models/credentials
 #### Parameters
@@ -10664,9 +11293,10 @@ Update a plugin endpoint
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 204 | Credential deleted successfully |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Credential deleted successfully |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/model-providers/{provider}/models/credentials
 #### Parameters
@@ -10684,6 +11314,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Model credentials retrieved successfully | **application/json**: [ModelCredentialResponse](#modelcredentialresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/model-providers/{provider}/models/credentials
 #### Parameters
@@ -10703,6 +11334,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Model credential created successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /workspaces/current/model-providers/{provider}/models/credentials
 #### Parameters
@@ -10722,6 +11354,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Model credential updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/model-providers/{provider}/models/credentials/switch
 #### Parameters
@@ -10741,6 +11374,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/model-providers/{provider}/models/credentials/validate
 #### Parameters
@@ -10760,6 +11394,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Model credentials validated successfully | **application/json**: [ValidationResultResponse](#validationresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /workspaces/current/model-providers/{provider}/models/disable
 #### Parameters
@@ -10779,6 +11414,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /workspaces/current/model-providers/{provider}/models/enable
 #### Parameters
@@ -10798,6 +11434,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/model-providers/{provider}/models/load-balancing-configs/credentials-validate
 #### Parameters
@@ -10817,6 +11454,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Credential validation result | **application/json**: [LoadBalancingCredentialValidateResponse](#loadbalancingcredentialvalidateresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/model-providers/{provider}/models/load-balancing-configs/{config_id}/credentials-validate
 #### Parameters
@@ -10837,6 +11475,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Credential validation result | **application/json**: [LoadBalancingCredentialValidateResponse](#loadbalancingcredentialvalidateresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/model-providers/{provider}/models/parameter-rules
 #### Parameters
@@ -10851,6 +11490,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Model parameter rules retrieved successfully | **application/json**: [ModelParameterRuleListResponse](#modelparameterrulelistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/model-providers/{provider}/preferred-provider-type
 #### Parameters
@@ -10870,6 +11510,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/models/model-types/{model_type}
 #### Parameters
@@ -10883,6 +11524,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Available models retrieved successfully | **application/json**: [AvailableModelListResponse](#availablemodellistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/permission
 #### Responses
@@ -10890,6 +11532,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [WorkspacePermissionResponse](#workspacepermissionresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/plugin/asset
 #### Parameters
@@ -10904,6 +11547,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [BinaryFileResponse](#binaryfileresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/plugin/auto-upgrade/change
 #### Request Body
@@ -10917,6 +11561,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [PluginAutoUpgradeChangeResponse](#pluginautoupgradechangeresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/plugin/auto-upgrade/exclude
 #### Request Body
@@ -10930,6 +11575,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SuccessResponse](#successresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/plugin/auto-upgrade/fetch
 #### Parameters
@@ -10943,6 +11589,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [PluginAutoUpgradeFetchResponse](#pluginautoupgradefetchresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/plugin/debugging-key
 #### Responses
@@ -10950,6 +11597,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [PluginDebuggingKeyResponse](#plugindebuggingkeyresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/plugin/fetch-manifest
 #### Parameters
@@ -10963,6 +11611,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [PluginManifestResponse](#pluginmanifestresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/plugin/icon
 #### Parameters
@@ -10977,6 +11626,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [BinaryFileResponse](#binaryfileresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/plugin/install/github
 #### Request Body
@@ -10990,6 +11640,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [PluginInstallTaskStartResponse](#plugininstalltaskstartresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/plugin/install/marketplace
 #### Request Body
@@ -11003,6 +11654,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [PluginInstallTaskStartResponse](#plugininstalltaskstartresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/plugin/install/pkg
 #### Request Body
@@ -11016,6 +11668,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [PluginInstallTaskStartResponse](#plugininstalltaskstartresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/plugin/installed-ids
 #### Parameters
@@ -11029,6 +11682,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [PluginInstalledIdsResponse](#plugininstalledidsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/plugin/list
 #### Parameters
@@ -11043,6 +11697,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [PluginListResponse](#pluginlistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/plugin/list/installations/ids
 #### Request Body
@@ -11056,6 +11711,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [PluginInstallationsResponse](#plugininstallationsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/plugin/list/latest-versions
 #### Request Body
@@ -11069,6 +11725,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [PluginVersionsResponse](#pluginversionsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/plugin/marketplace/pkg
 #### Parameters
@@ -11082,6 +11739,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [PluginManifestResponse](#pluginmanifestresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/plugin/parameters/dynamic-options
 #### Parameters
@@ -11100,6 +11758,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [PluginDynamicOptionsResponse](#plugindynamicoptionsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/plugin/parameters/dynamic-options-with-credentials
 **Fetch dynamic options using credentials directly (for edit mode)**
@@ -11115,6 +11774,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [PluginDynamicOptionsResponse](#plugindynamicoptionsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/plugin/permission/change
 #### Request Body
@@ -11128,6 +11788,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SuccessResponse](#successresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/plugin/permission/fetch
 #### Responses
@@ -11135,6 +11796,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [PluginPermissionResponse](#pluginpermissionresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/plugin/readme
 #### Parameters
@@ -11149,6 +11811,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [PluginReadmeResponse](#pluginreadmeresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/plugin/tasks
 #### Parameters
@@ -11163,6 +11826,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [PluginTasksResponse](#plugintasksresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/plugin/tasks/delete_all
 #### Responses
@@ -11170,6 +11834,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SuccessResponse](#successresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/plugin/tasks/{task_id}
 #### Parameters
@@ -11183,6 +11848,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [PluginTaskResponse](#plugintaskresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/plugin/tasks/{task_id}/delete
 #### Parameters
@@ -11196,6 +11862,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SuccessResponse](#successresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/plugin/tasks/{task_id}/delete/{identifier}
 #### Parameters
@@ -11210,6 +11877,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SuccessResponse](#successresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/plugin/uninstall
 #### Request Body
@@ -11223,6 +11891,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SuccessResponse](#successresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/plugin/upgrade/github
 #### Request Body
@@ -11236,6 +11905,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [PluginInstallTaskStartResponse](#plugininstalltaskstartresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/plugin/upgrade/marketplace
 #### Request Body
@@ -11249,6 +11919,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [PluginInstallTaskStartResponse](#plugininstalltaskstartresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/plugin/upload/bundle
 #### Responses
@@ -11256,6 +11927,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [PluginBundleUploadResponse](#pluginbundleuploadresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/plugin/upload/github
 #### Request Body
@@ -11269,6 +11941,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [PluginDecodeResponse](#plugindecoderesponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/plugin/upload/pkg
 #### Request Body
@@ -11282,6 +11955,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [PluginDecodeResponse](#plugindecoderesponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/plugin/{category}/list
 #### Parameters
@@ -11300,6 +11974,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [PluginCategoryListResponse](#plugincategorylistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/rbac/access-policies
 #### Responses
@@ -11307,6 +11982,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [_AccessPolicyList](#_accesspolicylist)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/rbac/access-policies
 #### Request Body
@@ -11320,6 +11996,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Policy created | **application/json**: [AccessPolicy](#accesspolicy)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /workspaces/current/rbac/access-policies/{policy_id}
 #### Parameters
@@ -11333,6 +12010,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/rbac/access-policies/{policy_id}
 #### Parameters
@@ -11346,6 +12024,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AccessPolicy](#accesspolicy)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /workspaces/current/rbac/access-policies/{policy_id}
 #### Parameters
@@ -11365,6 +12044,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AccessPolicy](#accesspolicy)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/rbac/access-policies/{policy_id}/copy
 #### Parameters
@@ -11378,6 +12058,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Policy copied | **application/json**: [AccessPolicy](#accesspolicy)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /workspaces/current/rbac/access-policy-bindings/{binding_id}/lock
 #### Parameters
@@ -11391,6 +12072,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AccessPolicyBindingState](#accesspolicybindingstate)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /workspaces/current/rbac/access-policy-bindings/{binding_id}/unlock
 #### Parameters
@@ -11404,6 +12086,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AccessPolicyBindingState](#accesspolicybindingstate)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /workspaces/current/rbac/agents/{agent_id}/access-policies/{policy_id}/member-bindings
 #### Parameters
@@ -11424,6 +12107,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/rbac/agents/{agent_id}/access-policies/{policy_id}/member-bindings
 #### Parameters
@@ -11438,6 +12122,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [MemberBindingsResponse](#memberbindingsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/rbac/agents/{agent_id}/access-policies/{policy_id}/role-bindings
 #### Parameters
@@ -11452,6 +12137,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [RoleBindingsResponse](#rolebindingsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/rbac/agents/{agent_id}/access-policy
 #### Parameters
@@ -11466,6 +12152,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AgentAccessMatrix](#agentaccessmatrix)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/rbac/agents/{agent_id}/user-access-policies
 #### Parameters
@@ -11483,6 +12170,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ResourceUserAccessPoliciesResponse](#resourceuseraccesspoliciesresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /workspaces/current/rbac/agents/{agent_id}/users/{target_account_id}/access-policies
 #### Parameters
@@ -11503,6 +12191,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ReplaceUserAccessPoliciesResponse](#replaceuseraccesspoliciesresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/rbac/agents/{agent_id}/whitelist
 #### Parameters
@@ -11516,6 +12205,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ResourceWhitelist](#resourcewhitelist)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /workspaces/current/rbac/agents/{agent_id}/whitelist
 #### Parameters
@@ -11535,6 +12225,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ResourceWhitelist](#resourcewhitelist)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/rbac/agents/{agent_id}/whitelist_config
 #### Parameters
@@ -11548,6 +12239,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ResourceWhitelistConfig](#resourcewhitelistconfig)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /workspaces/current/rbac/apps/{app_id}/access-policies/{policy_id}/member-bindings
 #### Parameters
@@ -11568,6 +12260,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/rbac/apps/{app_id}/access-policies/{policy_id}/member-bindings
 #### Parameters
@@ -11582,6 +12275,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [MemberBindingsResponse](#memberbindingsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/rbac/apps/{app_id}/access-policies/{policy_id}/role-bindings
 #### Parameters
@@ -11596,6 +12290,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [RoleBindingsResponse](#rolebindingsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/rbac/apps/{app_id}/access-policy
 #### Parameters
@@ -11610,6 +12305,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AppAccessMatrix](#appaccessmatrix)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/rbac/apps/{app_id}/user-access-policies
 #### Parameters
@@ -11627,6 +12323,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ResourceUserAccessPoliciesResponse](#resourceuseraccesspoliciesresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /workspaces/current/rbac/apps/{app_id}/users/{target_account_id}/access-policies
 #### Parameters
@@ -11647,6 +12344,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ReplaceUserAccessPoliciesResponse](#replaceuseraccesspoliciesresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/rbac/apps/{app_id}/whitelist
 #### Parameters
@@ -11660,6 +12358,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ResourceWhitelist](#resourcewhitelist)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /workspaces/current/rbac/apps/{app_id}/whitelist
 #### Parameters
@@ -11679,6 +12378,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ResourceWhitelist](#resourcewhitelist)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/rbac/apps/{app_id}/whitelist_config
 #### Parameters
@@ -11692,6 +12392,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ResourceWhitelistConfig](#resourcewhitelistconfig)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /workspaces/current/rbac/datasets/{dataset_id}/access-policies/{policy_id}/member-bindings
 #### Parameters
@@ -11712,6 +12413,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/rbac/datasets/{dataset_id}/access-policies/{policy_id}/member-bindings
 #### Parameters
@@ -11726,6 +12428,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [MemberBindingsResponse](#memberbindingsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/rbac/datasets/{dataset_id}/access-policies/{policy_id}/role-bindings
 #### Parameters
@@ -11740,6 +12443,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [RoleBindingsResponse](#rolebindingsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/rbac/datasets/{dataset_id}/access-policy
 #### Parameters
@@ -11754,6 +12458,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [DatasetAccessMatrix](#datasetaccessmatrix)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/rbac/datasets/{dataset_id}/user-access-policies
 #### Parameters
@@ -11771,6 +12476,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ResourceUserAccessPoliciesResponse](#resourceuseraccesspoliciesresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /workspaces/current/rbac/datasets/{dataset_id}/users/{target_account_id}/access-policies
 #### Parameters
@@ -11791,6 +12497,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ReplaceUserAccessPoliciesResponse](#replaceuseraccesspoliciesresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/rbac/datasets/{dataset_id}/whitelist
 #### Parameters
@@ -11804,6 +12511,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ResourceWhitelist](#resourcewhitelist)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /workspaces/current/rbac/datasets/{dataset_id}/whitelist
 #### Parameters
@@ -11823,6 +12531,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ResourceWhitelist](#resourcewhitelist)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/rbac/datasets/{dataset_id}/whitelist_config
 #### Parameters
@@ -11836,6 +12545,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ResourceWhitelistConfig](#resourcewhitelistconfig)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/rbac/members/{member_id}/rbac-roles
 #### Parameters
@@ -11849,6 +12559,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [MemberRolesResponse](#memberrolesresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /workspaces/current/rbac/members/{member_id}/rbac-roles
 #### Parameters
@@ -11868,6 +12579,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [MemberRolesResponse](#memberrolesresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/rbac/my-permissions
 #### Responses
@@ -11875,6 +12587,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [MyPermissionsResponse](#mypermissionsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/rbac/role-permissions/catalog
 #### Responses
@@ -11882,6 +12595,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [PermissionCatalogResponse](#permissioncatalogresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/rbac/role-permissions/catalog/agent
 #### Responses
@@ -11889,6 +12603,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [PermissionCatalogResponse](#permissioncatalogresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/rbac/role-permissions/catalog/app
 #### Responses
@@ -11896,6 +12611,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [PermissionCatalogResponse](#permissioncatalogresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/rbac/role-permissions/catalog/dataset
 #### Responses
@@ -11903,6 +12619,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [PermissionCatalogResponse](#permissioncatalogresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/rbac/roles
 #### Responses
@@ -11910,6 +12627,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [_RBACRoleList](#_rbacrolelist)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/rbac/roles
 #### Responses
@@ -11917,6 +12635,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Role created | **application/json**: [RBACRole](#rbacrole)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /workspaces/current/rbac/roles/{role_id}
 #### Parameters
@@ -11930,6 +12649,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/rbac/roles/{role_id}
 #### Parameters
@@ -11943,6 +12663,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [RBACRole](#rbacrole)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /workspaces/current/rbac/roles/{role_id}
 #### Parameters
@@ -11956,6 +12677,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [RBACRole](#rbacrole)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/rbac/roles/{role_id}/copy
 #### Parameters
@@ -11969,6 +12691,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Role copied | **application/json**: [RBACRole](#rbacrole)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/rbac/roles/{role_id}/members
 #### Parameters
@@ -11982,6 +12705,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [_MembersInRoleList](#_membersinrolelist)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /workspaces/current/rbac/workspace/agents/access-policies/{policy_id}/bindings
 #### Parameters
@@ -12001,6 +12725,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AccessMatrixItem](#accessmatrixitem)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/rbac/workspace/agents/access-policies/{policy_id}/member-bindings
 #### Parameters
@@ -12014,6 +12739,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [MemberBindingsResponse](#memberbindingsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/rbac/workspace/agents/access-policies/{policy_id}/role-bindings
 #### Parameters
@@ -12027,6 +12753,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [RoleBindingsResponse](#rolebindingsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/rbac/workspace/agents/access-policy
 #### Responses
@@ -12034,6 +12761,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [WorkspaceAccessMatrix](#workspaceaccessmatrix)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /workspaces/current/rbac/workspace/apps/access-policies/{policy_id}/bindings
 #### Parameters
@@ -12053,6 +12781,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AccessMatrixItem](#accessmatrixitem)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/rbac/workspace/apps/access-policies/{policy_id}/member-bindings
 #### Parameters
@@ -12066,6 +12795,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [MemberBindingsResponse](#memberbindingsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/rbac/workspace/apps/access-policies/{policy_id}/role-bindings
 #### Parameters
@@ -12079,6 +12809,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [RoleBindingsResponse](#rolebindingsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/rbac/workspace/apps/access-policy
 #### Responses
@@ -12086,6 +12817,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [WorkspaceAccessMatrix](#workspaceaccessmatrix)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /workspaces/current/rbac/workspace/datasets/access-policies/{policy_id}/bindings
 #### Parameters
@@ -12105,6 +12837,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [AccessMatrixItem](#accessmatrixitem)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/rbac/workspace/datasets/access-policies/{policy_id}/member-bindings
 #### Parameters
@@ -12118,6 +12851,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [MemberBindingsResponse](#memberbindingsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/rbac/workspace/datasets/access-policies/{policy_id}/role-bindings
 #### Parameters
@@ -12131,6 +12865,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [RoleBindingsResponse](#rolebindingsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/rbac/workspace/datasets/access-policy
 #### Responses
@@ -12138,6 +12873,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [WorkspaceAccessMatrix](#workspaceaccessmatrix)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/skills
 #### Parameters
@@ -12154,6 +12890,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workspace skills | **application/json**: [SkillListResponse](#skilllistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/skills
 #### Request Body
@@ -12167,6 +12904,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Skill created | **application/json**: [SkillDetailResponse](#skilldetailresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/skills/files/upload
 #### Request Body
@@ -12180,6 +12918,7 @@ Update a plugin endpoint
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Skill draft file uploaded | **application/json**: [SkillFileUploadResponse](#skillfileuploadresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/skills/import
 Import a Skill zip package from multipart form field `file`.
@@ -12189,6 +12928,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Skill imported | **application/json**: [SkillDetailResponse](#skilldetailresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/skills/tags
 #### Responses
@@ -12196,6 +12936,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workspace Skill tags | **application/json**: [SkillTagListResponse](#skilltaglistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /workspaces/current/skills/{skill_id}
 #### Parameters
@@ -12215,6 +12956,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Skill deleted | **application/json**: [SkillDeleteResponse](#skilldeleteresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/skills/{skill_id}
 #### Parameters
@@ -12228,6 +12970,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Skill detail | **application/json**: [SkillDetailResponse](#skilldetailresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /workspaces/current/skills/{skill_id}
 #### Parameters
@@ -12247,6 +12990,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Skill updated | **application/json**: [SkillResponse](#skillresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/skills/{skill_id}/assist/messages
 #### Parameters
@@ -12263,9 +13007,10 @@ Import a Skill zip package from multipart form field `file`.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Skill Authoring assistant event stream |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Skill Authoring assistant event stream |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/skills/{skill_id}/duplicate
 #### Parameters
@@ -12279,6 +13024,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Skill duplicated | **application/json**: [SkillDetailResponse](#skilldetailresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/skills/{skill_id}/export
 #### Parameters
@@ -12289,9 +13035,10 @@ Import a Skill zip package from multipart form field `file`.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Draft Skill zip archive |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Draft Skill zip archive |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /workspaces/current/skills/{skill_id}/files
 #### Parameters
@@ -12311,6 +13058,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Draft file operation applied | **application/json**: [SkillDetailResponse](#skilldetailresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /workspaces/current/skills/{skill_id}/files
 #### Parameters
@@ -12330,6 +13078,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Draft files replaced | **application/json**: [SkillDetailResponse](#skilldetailresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/skills/{skill_id}/files/check
 #### Parameters
@@ -12349,6 +13098,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Draft files checked | **application/json**: [SkillFileCheckResponse](#skillfilecheckresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/skills/{skill_id}/files/content
 #### Parameters
@@ -12365,6 +13115,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Skill file content | **application/json**: [BinaryFileResponse](#binaryfileresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/skills/{skill_id}/files/preview
 #### Parameters
@@ -12380,6 +13131,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Skill file text preview | **application/json**: [SkillFilePreviewResponse](#skillfilepreviewresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/skills/{skill_id}/publish
 #### Parameters
@@ -12399,6 +13151,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Skill published | **application/json**: [SkillVersionResponse](#skillversionresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/skills/{skill_id}/references
 #### Parameters
@@ -12412,6 +13165,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Skill references | **application/json**: [SkillReferenceListResponse](#skillreferencelistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/skills/{skill_id}/restore
 #### Parameters
@@ -12431,6 +13185,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Skill version restored to draft | **application/json**: [SkillDetailResponse](#skilldetailresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/skills/{skill_id}/versions
 #### Parameters
@@ -12444,6 +13199,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Skill versions | **application/json**: [SkillVersionListResponse](#skillversionlistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /workspaces/current/skills/{skill_id}/versions/{version_id}
 #### Parameters
@@ -12458,6 +13214,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Skill version deleted | **application/json**: [SkillVersionDeleteResponse](#skillversiondeleteresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/skills/{skill_id}/versions/{version_id}
 #### Parameters
@@ -12472,6 +13229,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Skill version detail | **application/json**: [SkillVersionDetailResponse](#skillversiondetailresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /workspaces/current/skills/{skill_id}/versions/{version_id}
 #### Parameters
@@ -12492,6 +13250,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Skill version updated | **application/json**: [SkillVersionResponse](#skillversionresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/summary
 #### Responses
@@ -12500,6 +13259,7 @@ Import a Skill zip package from multipart form field `file`.
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [CurrentWorkspaceSummaryResponse](#currentworkspacesummaryresponse)<br> |
 | 409 | Current workspace is archived | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/tool-labels
 #### Responses
@@ -12507,6 +13267,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Tool labels retrieved successfully | **application/json**: [ToolLabelListResponse](#toollabellistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/tool-provider/api/add
 #### Request Body
@@ -12520,6 +13281,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | API provider added successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/tool-provider/api/delete
 #### Request Body
@@ -12533,6 +13295,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | API provider deleted successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/tool-provider/api/get
 #### Parameters
@@ -12546,6 +13309,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | API provider retrieved successfully | **application/json**: [ApiProviderDetailResponse](#apiproviderdetailresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/tool-provider/api/remote
 #### Parameters
@@ -12559,6 +13323,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Remote API provider schema retrieved successfully | **application/json**: [ApiProviderRemoteSchemaResponse](#apiproviderremoteschemaresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/tool-provider/api/schema
 #### Request Body
@@ -12572,6 +13337,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | API schema parsed successfully | **application/json**: [ApiSchemaParseResponse](#apischemaparseresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/tool-provider/api/test/pre
 #### Request Body
@@ -12585,6 +13351,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | API tool test preview completed successfully | **application/json**: [ApiToolPreviewResponse](#apitoolpreviewresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/tool-provider/api/tools
 #### Parameters
@@ -12598,6 +13365,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | API provider tools retrieved successfully | **application/json**: [ToolApiListResponse](#toolapilistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/tool-provider/api/update
 #### Request Body
@@ -12611,6 +13379,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | API provider updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/tool-provider/builtin/{provider}/add
 #### Parameters
@@ -12630,6 +13399,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Builtin provider added successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/tool-provider/builtin/{provider}/credential/info
 #### Parameters
@@ -12644,6 +13414,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Builtin provider credential info retrieved successfully | **application/json**: [ToolProviderCredentialInfoApiEntity](#toolprovidercredentialinfoapientity)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/tool-provider/builtin/{provider}/credential/schema/{credential_type}
 #### Parameters
@@ -12658,6 +13429,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Builtin provider credential schema retrieved successfully | **application/json**: [ProviderConfigListResponse](#providerconfiglistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/tool-provider/builtin/{provider}/credentials
 #### Parameters
@@ -12672,6 +13444,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Builtin provider credentials retrieved successfully | **application/json**: [ToolProviderCredentialListResponse](#toolprovidercredentiallistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/tool-provider/builtin/{provider}/default-credential
 #### Parameters
@@ -12691,6 +13464,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Default credential set successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/tool-provider/builtin/{provider}/delete
 #### Parameters
@@ -12710,6 +13484,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Builtin provider credential deleted successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/tool-provider/builtin/{provider}/icon
 #### Parameters
@@ -12720,9 +13495,10 @@ Import a Skill zip package from multipart form field `file`.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Builtin provider icon |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Builtin provider icon |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/tool-provider/builtin/{provider}/info
 #### Parameters
@@ -12736,6 +13512,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Builtin provider info retrieved successfully | **application/json**: [ToolProviderApiEntityResponse](#toolproviderapientityresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/tool-provider/builtin/{provider}/oauth/client-schema
 #### Parameters
@@ -12749,6 +13526,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Builtin provider OAuth client schema retrieved successfully | **application/json**: [BuiltinProviderOAuthClientSchemaResponse](#builtinprovideroauthclientschemaresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /workspaces/current/tool-provider/builtin/{provider}/oauth/custom-client
 #### Parameters
@@ -12762,6 +13540,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Custom OAuth client deleted successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/tool-provider/builtin/{provider}/oauth/custom-client
 #### Parameters
@@ -12772,9 +13551,10 @@ Import a Skill zip package from multipart form field `file`.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Custom OAuth client retrieved successfully |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Custom OAuth client retrieved successfully |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/tool-provider/builtin/{provider}/oauth/custom-client
 #### Parameters
@@ -12794,6 +13574,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Custom OAuth client saved successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/tool-provider/builtin/{provider}/tools
 #### Parameters
@@ -12807,6 +13588,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Builtin provider tools retrieved successfully | **application/json**: [ToolApiListResponse](#toolapilistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/tool-provider/builtin/{provider}/update
 #### Parameters
@@ -12826,6 +13608,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Builtin provider updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /workspaces/current/tool-provider/mcp
 #### Request Body
@@ -12839,6 +13622,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/tool-provider/mcp
 #### Request Body
@@ -12852,6 +13636,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | MCP provider created successfully | **application/json**: [ToolProviderApiEntityResponse](#toolproviderapientityresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /workspaces/current/tool-provider/mcp
 #### Request Body
@@ -12865,6 +13650,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | MCP provider updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/tool-provider/mcp/auth
 #### Request Body
@@ -12878,6 +13664,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | MCP provider authorized successfully | **application/json**: [MCPAuthResponse](#mcpauthresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/tool-provider/mcp/tools/{provider_id}
 #### Parameters
@@ -12891,6 +13678,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | MCP provider retrieved successfully | **application/json**: [ToolProviderApiEntityResponse](#toolproviderapientityresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/tool-provider/mcp/update/{provider_id}
 #### Parameters
@@ -12904,6 +13692,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | MCP provider tools refreshed successfully | **application/json**: [ToolProviderApiEntityResponse](#toolproviderapientityresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/tool-provider/workflow/create
 #### Request Body
@@ -12917,6 +13706,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow tool created successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/tool-provider/workflow/delete
 #### Request Body
@@ -12930,6 +13720,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow tool deleted successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/tool-provider/workflow/get
 #### Parameters
@@ -12944,6 +13735,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow tool retrieved successfully | **application/json**: [WorkflowToolDetailResponse](#workflowtooldetailresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/tool-provider/workflow/tools
 #### Parameters
@@ -12957,6 +13749,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow provider tools retrieved successfully | **application/json**: [ToolApiListResponse](#toolapilistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/tool-provider/workflow/update
 #### Request Body
@@ -12970,6 +13763,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow tool updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/tool-providers
 #### Parameters
@@ -12983,6 +13777,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Tool providers retrieved successfully | **application/json**: [ToolProviderListResponse](#toolproviderlistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/tools/api
 #### Responses
@@ -12990,6 +13785,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | API tools retrieved successfully | **application/json**: [ToolProviderListResponse](#toolproviderlistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/tools/builtin
 #### Responses
@@ -12997,6 +13793,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Builtin tools retrieved successfully | **application/json**: [ToolProviderListResponse](#toolproviderlistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/tools/mcp
 #### Responses
@@ -13004,6 +13801,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | MCP tools retrieved successfully | **application/json**: [ToolProviderListResponse](#toolproviderlistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/tools/workflow
 #### Responses
@@ -13011,6 +13809,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow tools retrieved successfully | **application/json**: [ToolProviderListResponse](#toolproviderlistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/trigger-provider/{provider}/icon
 #### Parameters
@@ -13021,9 +13820,10 @@ Import a Skill zip package from multipart form field `file`.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Trigger provider icon |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Trigger provider icon |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/trigger-provider/{provider}/info
 **Get info for a trigger provider**
@@ -13039,6 +13839,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Trigger provider retrieved successfully | **application/json**: [TriggerProviderApiEntity](#triggerproviderapientity)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /workspaces/current/trigger-provider/{provider}/oauth/client
 **Remove custom OAuth client configuration**
@@ -13054,6 +13855,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Trigger OAuth client deleted successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/trigger-provider/{provider}/oauth/client
 **Get OAuth client configuration for a provider**
@@ -13069,6 +13871,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Trigger OAuth client retrieved successfully | **application/json**: [TriggerOAuthClientResponse](#triggeroauthclientresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/trigger-provider/{provider}/oauth/client
 **Configure custom OAuth client for a provider**
@@ -13090,6 +13893,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Trigger OAuth client saved successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/trigger-provider/{provider}/subscriptions/builder/build/{subscription_builder_id}
 **Build a subscription instance for a trigger provider**
@@ -13112,6 +13916,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Trigger subscription builder built successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/trigger-provider/{provider}/subscriptions/builder/create
 **Add a new subscription instance for a trigger provider**
@@ -13133,6 +13938,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Trigger subscription builder created successfully | **application/json**: [TriggerSubscriptionBuilderCreateResponse](#triggersubscriptionbuildercreateresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/trigger-provider/{provider}/subscriptions/builder/logs/{subscription_builder_id}
 **Get the request logs for a subscription instance for a trigger provider**
@@ -13149,6 +13955,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Trigger subscription builder logs retrieved successfully | **application/json**: [TriggerSubscriptionBuilderLogsResponse](#triggersubscriptionbuilderlogsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/trigger-provider/{provider}/subscriptions/builder/update/{subscription_builder_id}
 **Update a subscription instance for a trigger provider**
@@ -13171,6 +13978,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Trigger subscription builder updated successfully | **application/json**: [SubscriptionBuilderApiEntity](#subscriptionbuilderapientity)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/trigger-provider/{provider}/subscriptions/builder/verify-and-update/{subscription_builder_id}
 **Verify and update a subscription instance for a trigger provider**
@@ -13193,6 +14001,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Trigger subscription builder verified successfully | **application/json**: [TriggerVerificationResponse](#triggerverificationresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/trigger-provider/{provider}/subscriptions/builder/{subscription_builder_id}
 **Get a subscription instance for a trigger provider**
@@ -13209,6 +14018,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Trigger subscription builder retrieved successfully | **application/json**: [SubscriptionBuilderApiEntity](#subscriptionbuilderapientity)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/trigger-provider/{provider}/subscriptions/list
 **List all trigger subscriptions for the current tenant's provider**
@@ -13225,6 +14035,7 @@ Import a Skill zip package from multipart form field `file`.
 | ---- | ----------- | ------ |
 | 200 | Trigger subscriptions retrieved successfully | **application/json**: [TriggerProviderSubscriptionListResponse](#triggerprovidersubscriptionlistresponse)<br> |
 | 404 | Trigger provider not found | **application/json**: <br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/trigger-provider/{provider}/subscriptions/oauth/authorize
 **Initiate OAuth authorization flow for a trigger provider**
@@ -13240,6 +14051,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Trigger OAuth authorization URL generated successfully | **application/json**: [TriggerOAuthAuthorizeResponse](#triggeroauthauthorizeresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/trigger-provider/{provider}/subscriptions/verify/{subscription_id}
 **Verify credentials for an existing subscription (edit mode only)**
@@ -13262,6 +14074,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Trigger subscription verified successfully | **application/json**: [TriggerVerificationResponse](#triggerverificationresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/trigger-provider/{subscription_id}/subscriptions/delete
 **Delete a subscription instance**
@@ -13277,6 +14090,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/trigger-provider/{subscription_id}/subscriptions/update
 **Update a subscription instance**
@@ -13298,6 +14112,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Trigger subscription updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/triggers
 **List all trigger providers for the current tenant**
@@ -13307,6 +14122,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Trigger providers retrieved successfully | **application/json**: [TriggerProviderListResponse](#triggerproviderlistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/custom-config
 #### Responses
@@ -13314,6 +14130,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [WorkspaceCustomConfigResponse](#workspacecustomconfigresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/custom-config
 #### Request Body
@@ -13327,6 +14144,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [WorkspaceTenantResultResponse](#workspacetenantresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/custom-config/webapp-logo/upload
 #### Request Body
@@ -13340,6 +14158,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Logo uploaded | **application/json**: [WorkspaceLogoUploadResponse](#workspacelogouploadresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/info
 #### Request Body
@@ -13353,6 +14172,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [WorkspaceTenantResultResponse](#workspacetenantresultresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/switch
 #### Request Body
@@ -13366,6 +14186,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SwitchWorkspaceResponse](#switchworkspaceresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/{tenant_id}/model-providers/{provider}/{icon_type}/{lang}
 #### Parameters
@@ -13379,9 +14200,10 @@ Import a Skill zip package from multipart form field `file`.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Model provider icon |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Model provider icon |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
 ## default
@@ -13401,6 +14223,7 @@ Default namespace
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [BannerListResponse](#bannerlistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
 ### Schemas

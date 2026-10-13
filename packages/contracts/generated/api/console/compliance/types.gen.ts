@@ -56,6 +56,7 @@ export type GetComplianceDownloadErrors = {
   429: ComplianceRateLimitErrorResponse | ErrorResponse
   502: BillingOperationFailedErrorResponse | ErrorResponse
   503: BillingUnavailableErrorResponse | ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetComplianceDownloadError =

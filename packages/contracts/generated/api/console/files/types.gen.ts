@@ -8,6 +8,16 @@ export type AllowedExtensionsResponse = {
   allowed_extensions: Array<string>
 }
 
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type UploadConfig = {
   attachment_image_file_size_limit: number
   audio_file_size_limit: number
@@ -52,6 +62,12 @@ export type GetFilesSupportTypeData = {
   url: '/files/support-type'
 }
 
+export type GetFilesSupportTypeErrors = {
+  default: ErrorResponse
+}
+
+export type GetFilesSupportTypeError = GetFilesSupportTypeErrors[keyof GetFilesSupportTypeErrors]
+
 export type GetFilesSupportTypeResponses = {
   200: AllowedExtensionsResponse
 }
@@ -65,6 +81,12 @@ export type GetFilesUploadData = {
   query?: never
   url: '/files/upload'
 }
+
+export type GetFilesUploadErrors = {
+  default: ErrorResponse
+}
+
+export type GetFilesUploadError = GetFilesUploadErrors[keyof GetFilesUploadErrors]
 
 export type GetFilesUploadResponses = {
   200: UploadConfig
@@ -82,6 +104,12 @@ export type PostFilesUploadData = {
   url: '/files/upload'
 }
 
+export type PostFilesUploadErrors = {
+  default: ErrorResponse
+}
+
+export type PostFilesUploadError = PostFilesUploadErrors[keyof PostFilesUploadErrors]
+
 export type PostFilesUploadResponses = {
   201: FileResponse
 }
@@ -96,6 +124,13 @@ export type GetFilesByFileIdPreviewData = {
   query?: never
   url: '/files/{file_id}/preview'
 }
+
+export type GetFilesByFileIdPreviewErrors = {
+  default: ErrorResponse
+}
+
+export type GetFilesByFileIdPreviewError =
+  GetFilesByFileIdPreviewErrors[keyof GetFilesByFileIdPreviewErrors]
 
 export type GetFilesByFileIdPreviewResponses = {
   200: TextContentResponse

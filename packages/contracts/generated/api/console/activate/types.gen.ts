@@ -49,6 +49,7 @@ export type PostActivateData = {
 
 export type PostActivateErrors = {
   400: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostActivateError = PostActivateErrors[keyof PostActivateErrors]
@@ -69,6 +70,12 @@ export type GetActivateCheckData = {
   }
   url: '/activate/check'
 }
+
+export type GetActivateCheckErrors = {
+  default: ErrorResponse
+}
+
+export type GetActivateCheckError = GetActivateCheckErrors[keyof GetActivateCheckErrors]
 
 export type GetActivateCheckResponses = {
   200: ActivationCheckResponse

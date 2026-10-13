@@ -8,6 +8,16 @@ export type ApiKeyAuthDataSourceListResponse = {
   sources: Array<ApiKeyAuthDataSourceItem>
 }
 
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type ApiKeyAuthBindingPayload = {
   category: string
   credentials: ApiKeyAuthCredentialsPayload
@@ -44,6 +54,13 @@ export type GetApiKeyAuthDataSourceData = {
   url: '/api-key-auth/data-source'
 }
 
+export type GetApiKeyAuthDataSourceErrors = {
+  default: ErrorResponse
+}
+
+export type GetApiKeyAuthDataSourceError =
+  GetApiKeyAuthDataSourceErrors[keyof GetApiKeyAuthDataSourceErrors]
+
 export type GetApiKeyAuthDataSourceResponses = {
   200: ApiKeyAuthDataSourceListResponse
 }
@@ -57,6 +74,13 @@ export type PostApiKeyAuthDataSourceBindingData = {
   query?: never
   url: '/api-key-auth/data-source/binding'
 }
+
+export type PostApiKeyAuthDataSourceBindingErrors = {
+  default: ErrorResponse
+}
+
+export type PostApiKeyAuthDataSourceBindingError =
+  PostApiKeyAuthDataSourceBindingErrors[keyof PostApiKeyAuthDataSourceBindingErrors]
 
 export type PostApiKeyAuthDataSourceBindingResponses = {
   200: SimpleResultResponse
@@ -73,6 +97,13 @@ export type DeleteApiKeyAuthDataSourceByBindingIdData = {
   query?: never
   url: '/api-key-auth/data-source/{binding_id}'
 }
+
+export type DeleteApiKeyAuthDataSourceByBindingIdErrors = {
+  default: ErrorResponse
+}
+
+export type DeleteApiKeyAuthDataSourceByBindingIdError =
+  DeleteApiKeyAuthDataSourceByBindingIdErrors[keyof DeleteApiKeyAuthDataSourceByBindingIdErrors]
 
 export type DeleteApiKeyAuthDataSourceByBindingIdResponses = {
   204: void

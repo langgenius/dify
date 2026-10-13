@@ -20,6 +20,7 @@ Service operations
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [IndexInfoResponse](#indexinforesponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### ~~[POST] /datasets/{dataset_id}/document/create_by_text~~
 
@@ -51,6 +52,7 @@ Deprecated legacy alias for creating a new document by providing text content. U
 | 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | `not_found` : Knowledge base not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### ~~[POST] /datasets/{dataset_id}/documents/{document_id}/update_by_text~~
 
@@ -82,6 +84,7 @@ Deprecated legacy alias for updating an existing document by providing text cont
 | 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Document not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
 ## default
@@ -105,6 +108,7 @@ Retrieve a paginated list of all feedback submitted for messages in this applica
 | 200 | A list of application feedbacks. | **application/json**: [AppFeedbackListResponse](#appfeedbacklistresponse)<br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /messages/{message_id}/feedbacks
 **Submit Message Feedback**
@@ -132,6 +136,7 @@ Submit feedback for a message. End users can rate messages as `like` or `dislike
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | `not_found` : Message does not exist. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
 ## default
@@ -160,6 +165,7 @@ Enables or disables the annotation reply feature. Requires embedding model confi
 | 200 | Annotation reply settings task initiated. | **application/json**: [AnnotationJobStatusResponse](#annotationjobstatusresponse)<br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/annotation-reply/{action}/status/{job_id}
 **Get Annotation Reply Job Status**
@@ -181,6 +187,7 @@ Retrieves the status of an asynchronous annotation reply configuration job start
 | 400 | `invalid_param` : The specified job does not exist. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/annotations
 **List Annotations**
@@ -202,6 +209,7 @@ Retrieves a paginated list of annotations for the application. Supports keyword 
 | 200 | Successfully retrieved annotation list. | **application/json**: [AnnotationList](#annotationlist)<br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/annotations
 **Create Annotation**
@@ -221,6 +229,7 @@ Creates a new annotation. Annotations provide predefined question-answer pairs t
 | 201 | Annotation created successfully. | **application/json**: [Annotation](#annotation)<br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /apps/annotations/{annotation_id}
 **Delete Annotation**
@@ -241,6 +250,7 @@ Deletes an annotation and its associated hit history.
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | `forbidden` : Insufficient permissions to edit annotations. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | `not_found` : Annotation does not exist. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /apps/annotations/{annotation_id}
 **Update Annotation**
@@ -267,6 +277,7 @@ Updates the question and answer of an existing annotation.
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | `forbidden` : Insufficient permissions to edit annotations. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | `not_found` : Annotation does not exist. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
 ## default
@@ -293,6 +304,7 @@ Convert audio file to text. Supported MIME types: `audio/mp3`, `audio/mpga`, `au
 | 413 | `audio_too_large` : Audio file size exceeded the limit. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 415 | `unsupported_audio_type` : Audio type is not allowed. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | `internal_server_error` : Internal server error. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /text-to-audio
 **Convert Text to Audio**
@@ -314,6 +326,7 @@ Convert text to speech.
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | `internal_server_error` : Internal server error. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
 ## default
@@ -340,6 +353,7 @@ Send a request to the chat application.
 | 404 | `not_found` : Conversation does not exist. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 429 | - `too_many_requests` : Too many concurrent requests for this app. - `rate_limit_error` : The Dify Cloud workflow execution quota for this workspace has been reached. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | `internal_server_error` : Internal server error. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /chat-messages/{task_id}/stop
 **Stop Chat Message Generation**
@@ -366,6 +380,7 @@ Stops a chat message generation task. Only supported in `streaming` mode.
 | 400 | `not_chat_app` : App mode does not match the API route. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /messages/{message_id}/suggested
 **Get Next Suggested Questions**
@@ -389,6 +404,7 @@ Get next questions suggestions for the current message.
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | `not_found` : Message does not exist. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | `internal_server_error` : Internal server error. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workflow/{workflow_run_id}/events
 **Stream Workflow Events**
@@ -413,6 +429,7 @@ Resume the Server-Sent Events stream for a workflow run after a pause or a dropp
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | `not_found` : Workflow run not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workflows/logs
 **List Workflow Logs**
@@ -440,6 +457,7 @@ Retrieve paginated workflow execution logs with filtering options.
 | 400 | Bad request - invalid query parameters | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workflows/run/{workflow_run_id}
 **Get Workflow Run Detail**
@@ -461,6 +479,7 @@ Retrieve the current execution results of a workflow task based on the workflow 
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | `not_found` : Workflow run not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
 ## default
@@ -487,6 +506,7 @@ Send a request to the chat application.
 | 404 | `not_found` : Conversation does not exist. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 429 | - `too_many_requests` : Too many concurrent requests for this app. - `rate_limit_error` : The Dify Cloud workflow execution quota for this workspace has been reached. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | `internal_server_error` : Internal server error. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /chat-messages/{task_id}/stop
 **Stop Chat Message Generation**
@@ -513,6 +533,7 @@ Stops a chat message generation task. Only supported in `streaming` mode.
 | 400 | `not_chat_app` : App mode does not match the API route. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /messages/{message_id}/suggested
 **Get Next Suggested Questions**
@@ -536,6 +557,7 @@ Get next questions suggestions for the current message.
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | `not_found` : Message does not exist. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | `internal_server_error` : Internal server error. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
 ## default
@@ -561,6 +583,7 @@ Send a request to the text generation application.
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 429 | `too_many_requests` : Too many concurrent requests for this app. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | `internal_server_error` : Internal server error. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /completion-messages/{task_id}/stop
 **Stop Completion Message Generation**
@@ -587,6 +610,7 @@ Stops a completion message generation task. Only supported in `streaming` mode.
 | 400 | `app_unavailable` : App unavailable or misconfigured. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
 ## default
@@ -614,6 +638,7 @@ Retrieve the conversation list for the current user, ordered by most recently ac
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | `not_found` : Last conversation does not exist (invalid `last_id`). | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /conversations/{conversation_id}
 **Delete Conversation**
@@ -641,6 +666,7 @@ Delete a conversation.
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | `not_found` : Conversation does not exist. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /conversations/{conversation_id}/name
 **Rename Conversation**
@@ -668,6 +694,7 @@ Rename a conversation or auto-generate a name. The conversation name is used for
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | `not_found` : Conversation does not exist. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /conversations/{conversation_id}/variables
 **List Conversation Variables**
@@ -693,6 +720,7 @@ Retrieve variables from a specific conversation.
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | `not_found` : Conversation does not exist. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /conversations/{conversation_id}/variables/{variable_id}
 **Update Conversation Variable**
@@ -721,6 +749,7 @@ Update the value of a specific conversation variable. The value must match the e
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | - `not_found` : Conversation does not exist. - `not_found` : Conversation variable does not exist. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /messages
 **List Conversation Messages**
@@ -745,6 +774,7 @@ Returns historical chat records in a scrolling load format, with the first page 
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | - `not_found` : Conversation does not exist. - `not_found` : First message does not exist. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
 ## default
@@ -771,6 +801,7 @@ Returns a paginated list of knowledge bases. Supports filtering by keyword and t
 | 200 | List of knowledge bases. | **application/json**: [DatasetListResponse](#datasetlistresponse)<br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets
 **Create an Empty Knowledge Base**
@@ -792,6 +823,7 @@ Create a new empty knowledge base. After creation, use [Create Document by Text]
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 409 | `dataset_name_duplicate` : The dataset name already exists. Please modify your dataset name. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /datasets/{dataset_id}
 **Delete Knowledge Base**
@@ -812,6 +844,7 @@ Permanently delete a knowledge base and all its documents.
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | `not_found` : Dataset not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}
 **Get Knowledge Base**
@@ -832,6 +865,7 @@ Retrieve detailed information about a specific knowledge base, including its emb
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | `forbidden` : Insufficient permissions to access this knowledge base. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | `not_found` : Dataset not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /datasets/{dataset_id}
 **Update Knowledge Base**
@@ -859,6 +893,7 @@ Update the name, description, permissions, or retrieval settings of an existing 
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | `forbidden` : Insufficient permissions to access this knowledge base. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | `not_found` : Dataset not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### ~~[POST] /datasets/{dataset_id}/hit-testing~~
 
@@ -890,6 +925,7 @@ Performs a search query against a knowledge base to retrieve the most relevant c
 | 403 | `forbidden` : Insufficient permissions. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | `not_found` : Knowledge base not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | `internal_server_error` : An internal error occurred during retrieval. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/retrieve
 **Retrieve Chunks from a Knowledge Base / Test Retrieval**
@@ -918,6 +954,7 @@ Performs a search query against a knowledge base to retrieve the most relevant c
 | 403 | `forbidden` : Insufficient permissions. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | `not_found` : Knowledge base not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | `internal_server_error` : An internal error occurred during retrieval. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
 ## default
@@ -943,6 +980,7 @@ Upload a file for use in a knowledge pipeline. Accepts a single file via `multip
 | 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 413 | `file_too_large` : File size exceeded. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 415 | `unsupported_file_type` : File type not allowed. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/pipeline/datasource-plugins
 **List Datasource Plugins**
@@ -965,6 +1003,7 @@ List the datasource nodes configured in the knowledge pipeline. Each node includ
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | `not_found` : Dataset not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/pipeline/datasource/nodes/{node_id}/run
 **Run Datasource Node**
@@ -993,6 +1032,7 @@ Execute a single datasource node within the knowledge pipeline. Returns a stream
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | `not_found` : Dataset not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/pipeline/run
 **Run Pipeline**
@@ -1021,6 +1061,7 @@ Execute the full knowledge pipeline for a knowledge base. Published runs are que
 | 403 | `forbidden` : Forbidden. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | `not_found` : Dataset not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | `pipeline_run_error` : Pipeline execution failed. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
 ## default
@@ -1044,6 +1085,7 @@ Permanently delete a knowledge base tag. Does not delete the knowledge bases tha
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Tag not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/tags
 **List Knowledge Tags**
@@ -1057,6 +1099,7 @@ Returns the list of all knowledge base tags in the workspace.
 | 200 | List of tags. | **application/json**: [KnowledgeTagListResponse](#knowledgetaglistresponse)<br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /datasets/tags
 **Update Knowledge Tag**
@@ -1078,6 +1121,7 @@ Rename an existing knowledge base tag.
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Tag not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/tags
 **Create Knowledge Tag**
@@ -1098,6 +1142,7 @@ Create a new tag for organizing knowledge bases.
 | 400 | Bad request - tag name already exists | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/tags/binding
 **Create Tag Binding**
@@ -1118,6 +1163,7 @@ Bind one or more tags to a knowledge base. A knowledge base can have multiple ta
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Dataset not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/tags/unbinding
 **Delete Tag Binding**
@@ -1138,6 +1184,7 @@ Remove one or more tags from a knowledge base.
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Dataset not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/tags
 **Get Knowledge Base Tags**
@@ -1158,6 +1205,7 @@ Returns the list of tags bound to a specific knowledge base.
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | `not_found` : Knowledge base not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
 ## default
@@ -1190,6 +1238,7 @@ Create a document by uploading a file. Supports common document formats (PDF, TX
 | 404 | `not_found` : Knowledge base not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 413 | `file_too_large` : File size exceeded. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/document/create-by-text
 **Create Document by Text**
@@ -1218,6 +1267,7 @@ Create a document from raw text content. The document is processed asynchronousl
 | 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | `not_found` : Knowledge base not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### ~~[POST] /datasets/{dataset_id}/document/create_by_file~~
 
@@ -1250,6 +1300,7 @@ Create a document by uploading a file. Supports common document formats (PDF, TX
 | 404 | `not_found` : Knowledge base not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 413 | `file_too_large` : File size exceeded. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/documents
 **List Documents**
@@ -1274,6 +1325,7 @@ Returns a paginated list of documents in the knowledge base. Supports filtering 
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | `not_found` : Knowledge base not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/documents/download-zip
 **Download Documents as ZIP**
@@ -1300,6 +1352,7 @@ Download multiple uploaded-file documents as a single ZIP archive. Accepts up to
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | `forbidden` : Insufficient permissions. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | `not_found` : Document or dataset not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /datasets/{dataset_id}/documents/status/{action}
 **Update Document Status in Batch**
@@ -1328,6 +1381,7 @@ Enable, disable, archive, or unarchive multiple documents at once.
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | `forbidden` : Insufficient permissions. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | `not_found` : Knowledge base not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/documents/{batch}/indexing-status
 **Get Document Indexing Status**
@@ -1349,6 +1403,7 @@ Check the indexing progress of documents in a batch. Returns the current process
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | `not_found` : Knowledge base not found. / Documents not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /datasets/{dataset_id}/documents/{document_id}
 **Delete Document**
@@ -1370,6 +1425,7 @@ Permanently delete a document and all its chunks from the knowledge base.
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | `archived_document_immutable` : The archived document is not editable. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | `not_found` : Document Not Exists. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/documents/{document_id}
 **Get Document**
@@ -1393,6 +1449,7 @@ Retrieve detailed information about a specific document, including its indexing 
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | `forbidden` : No permission. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | `not_found` : Document not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /datasets/{dataset_id}/documents/{document_id}
 **Update Document by File**
@@ -1424,6 +1481,7 @@ Update an existing document by uploading a new file. Re-triggers indexing — us
 | 413 | `file_too_large` : File size exceeded. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 415 | Unsupported file type | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/documents/{document_id}/download
 **Download Document**
@@ -1445,6 +1503,7 @@ Get a signed download URL for a document's original uploaded file.
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | `forbidden` : No permission to access this document. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | `not_found` : Document not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### ~~[POST] /datasets/{dataset_id}/documents/{document_id}/update-by-file~~
 
@@ -1479,6 +1538,7 @@ Update an existing document by uploading a new file. Re-triggers indexing — us
 | 413 | `file_too_large` : File size exceeded. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 415 | Unsupported file type | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/documents/{document_id}/update-by-text
 **Update Document by Text**
@@ -1508,6 +1568,7 @@ Update an existing document's text content, name, or processing configuration. R
 | 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Document not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### ~~[POST] /datasets/{dataset_id}/documents/{document_id}/update_by_file~~
 
@@ -1542,6 +1603,7 @@ Update an existing document by uploading a new file. Re-triggers indexing — us
 | 413 | `file_too_large` : File size exceeded. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 415 | Unsupported file type | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
 ## default
@@ -1572,6 +1634,7 @@ Update metadata values for multiple documents at once. Each document in the requ
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Dataset, document, or metadata not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/metadata
 **List Metadata Fields**
@@ -1592,6 +1655,7 @@ Returns the list of all metadata fields (both custom and built-in) for the knowl
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Dataset not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/metadata
 **Create Metadata Field**
@@ -1619,6 +1683,7 @@ Create a custom metadata field for the knowledge base. Metadata fields can be us
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Dataset not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/metadata/built-in
 **Get Built-in Metadata Fields**
@@ -1639,6 +1704,7 @@ Returns the list of built-in metadata fields provided by the system (e.g., docum
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | `not_found` : Knowledge base not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/metadata/built-in/{action}
 **Update Built-in Metadata Field**
@@ -1660,6 +1726,7 @@ Enable or disable built-in metadata fields for the knowledge base.
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Dataset not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /datasets/{dataset_id}/metadata/{metadata_id}
 **Delete Metadata Field**
@@ -1681,6 +1748,7 @@ Permanently delete a custom metadata field. Documents using this field will lose
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Dataset or metadata not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /datasets/{dataset_id}/metadata/{metadata_id}
 **Update Metadata Field**
@@ -1709,6 +1777,7 @@ Rename a custom metadata field.
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Dataset or metadata not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
 ## default
@@ -1738,6 +1807,7 @@ Returns a paginated list of chunks within a document. Supports filtering by keyw
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Dataset or document not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/documents/{document_id}/segments
 **Create Chunks**
@@ -1767,6 +1837,7 @@ Create one or more chunks within a document. Each chunk can include optional key
 | 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | `not_found` : Document is not completed or is disabled. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}
 **Delete Chunk**
@@ -1790,6 +1861,7 @@ Permanently delete a chunk from the document.
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Dataset, document, or segment not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}
 **Get Chunk**
@@ -1813,6 +1885,7 @@ Retrieve detailed information about a specific chunk, including its content, key
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Dataset, document, or segment not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}
 **Update Chunk**
@@ -1843,6 +1916,7 @@ Update a chunk's content, keywords, or answer. Re-triggers indexing for the modi
 | 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Dataset, document, or segment not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks
 **List Child Chunks**
@@ -1868,6 +1942,7 @@ Returns a paginated list of child chunks under a specific parent chunk.
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Dataset, document, or segment not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks
 **Create Child Chunk**
@@ -1898,6 +1973,7 @@ Create a child chunk under the specified segment.
 | 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Dataset, document, or segment not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks/{child_chunk_id}
 **Delete Child Chunk**
@@ -1922,6 +1998,7 @@ Permanently delete a child chunk from its parent chunk.
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Dataset, document, segment, or child chunk not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks/{child_chunk_id}
 **Update Child Chunk**
@@ -1953,6 +2030,7 @@ Update the content of an existing child chunk.
 | 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Dataset, document, segment, or child chunk not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 503 | `service_unavailable` : Vector space usage could not be verified. Returned on the Dify Cloud Sandbox plan only; retry the request later. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
 ## default
@@ -1976,6 +2054,7 @@ Retrieve an end user by ID. Useful when other APIs return an end-user ID (e.g., 
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | `end_user_not_found` : End user not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
 ## default
@@ -2001,6 +2080,7 @@ Upload a file for use when sending messages, enabling multimodal understanding o
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 413 | `file_too_large` : File size exceeded. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 415 | `unsupported_file_type` : File type not allowed. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /files/{file_id}/preview
 **Download File**
@@ -2023,6 +2103,7 @@ Preview or download uploaded files previously uploaded via the [Upload File](/ap
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | `file_access_denied` : Access to the requested file is denied. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | `file_not_found` : The requested file was not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
 ## default
@@ -2047,6 +2128,7 @@ Retrieve a paused Human Input form's contents using the `form_token` from a `hum
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | `not_found` : Form not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 412 | - `human_input_form_submitted` : Form already submitted. Forms are one-shot; the first response wins regardless of which user submits it. - `human_input_form_expired` : The form's expiration time passed before submission arrived. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /form/human_input/{form_token}
 **Submit Human Input Form**
@@ -2075,6 +2157,7 @@ Submit the recipient's response to a paused Human Input form. The workflow resum
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | `not_found` : Form not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 412 | - `human_input_form_submitted` : Form already submitted. Forms are one-shot; the first response wins regardless of which user submits it. - `human_input_form_expired` : The form's expiration time passed before submission arrived. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
 ## default
@@ -2092,6 +2175,7 @@ Retrieve basic information about this application, including name, description, 
 | 400 | `app_unavailable` : App unavailable or misconfigured. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /meta
 **Get App Meta**
@@ -2106,6 +2190,7 @@ Retrieve metadata about this application, including tool icons and other configu
 | 400 | `app_unavailable` : App unavailable or misconfigured. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /parameters
 **Get App Parameters**
@@ -2120,6 +2205,7 @@ Retrieve the application's input form configuration, including feature switches,
 | 400 | `app_unavailable` : App unavailable or misconfigured. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /site
 **Get App WebApp Settings**
@@ -2133,6 +2219,7 @@ Retrieve the WebApp settings of this application, including site configuration, 
 | 200 | WebApp settings of the application. | **application/json**: [Site](#site)<br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | `forbidden` : Site not found for this application or the workspace has been archived. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
 ## default
@@ -2160,6 +2247,7 @@ Resume the Server-Sent Events stream for a workflow run after a pause or a dropp
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | `not_found` : Workflow run not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workflows/logs
 **List Workflow Logs**
@@ -2187,6 +2275,7 @@ Retrieve paginated workflow execution logs with filtering options.
 | 400 | Bad request - invalid query parameters | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workflows/run
 **Run Workflow**
@@ -2209,6 +2298,7 @@ Execute a workflow. Cannot be executed without a published workflow.
 | 403 | - `forbidden` : Token scope, app, or workspace access denied. - `trigger_workflow_service_mode_unavailable` : Trigger-entry workflows cannot be invoked through Web App, Service API, OpenAPI, or MCP. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 429 | - `too_many_requests` : Too many concurrent requests for this app. - `rate_limit_error` : The Dify Cloud workflow execution quota for this workspace has been reached. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | `internal_server_error` : Internal server error. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workflows/run/{workflow_run_id}
 **Get Workflow Run Detail**
@@ -2230,6 +2320,7 @@ Retrieve the current execution results of a workflow task based on the workflow 
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | `not_found` : Workflow run not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workflows/tasks/{task_id}/stop
 **Stop Workflow Task**
@@ -2256,6 +2347,7 @@ Stop a running workflow task. Only supported in `streaming` mode.
 | 400 | - `not_workflow_app` : App mode does not match the API route. - `invalid_param` : Required parameter missing or invalid. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workflows/{workflow_id}/run
 **Run Workflow by ID**
@@ -2285,6 +2377,7 @@ Execute a specific workflow version identified by its ID. Useful for running a p
 | 404 | `not_found` : Workflow not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 429 | - `too_many_requests` : Too many concurrent requests for this app. - `rate_limit_error` : The Dify Cloud workflow execution quota for this workspace has been reached. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 500 | `internal_server_error` : Internal server error. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
 ## default
@@ -2306,6 +2399,7 @@ Retrieve the list of available models by type. Primarily used to query `text-emb
 | ---- | ----------- | ------ |
 | 200 | Available models for the specified type. | **application/json**: [ProviderWithModelsListResponse](#providerwithmodelslistresponse)<br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
 ### Schemas

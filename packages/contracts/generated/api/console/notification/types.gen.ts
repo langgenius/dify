@@ -48,6 +48,7 @@ export type GetNotificationData = {
 
 export type GetNotificationErrors = {
   401: ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetNotificationError = GetNotificationErrors[keyof GetNotificationErrors]
@@ -67,6 +68,7 @@ export type PostNotificationDismissData = {
 
 export type PostNotificationDismissErrors = {
   401: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostNotificationDismissError =

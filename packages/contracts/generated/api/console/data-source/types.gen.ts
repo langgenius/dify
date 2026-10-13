@@ -8,6 +8,16 @@ export type DataSourceIntegrateListResponse = {
   data: Array<DataSourceIntegrateResponse>
 }
 
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type SimpleResultResponse = {
   result: string
 }
@@ -53,6 +63,13 @@ export type GetDataSourceIntegratesData = {
   url: '/data-source/integrates'
 }
 
+export type GetDataSourceIntegratesErrors = {
+  default: ErrorResponse
+}
+
+export type GetDataSourceIntegratesError =
+  GetDataSourceIntegratesErrors[keyof GetDataSourceIntegratesErrors]
+
 export type GetDataSourceIntegratesResponses = {
   200: DataSourceIntegrateListResponse
 }
@@ -69,6 +86,13 @@ export type PatchDataSourceIntegratesByBindingIdByActionData = {
   query?: never
   url: '/data-source/integrates/{binding_id}/{action}'
 }
+
+export type PatchDataSourceIntegratesByBindingIdByActionErrors = {
+  default: ErrorResponse
+}
+
+export type PatchDataSourceIntegratesByBindingIdByActionError =
+  PatchDataSourceIntegratesByBindingIdByActionErrors[keyof PatchDataSourceIntegratesByBindingIdByActionErrors]
 
 export type PatchDataSourceIntegratesByBindingIdByActionResponses = {
   200: SimpleResultResponse

@@ -42,6 +42,7 @@ export type PostRuleStructuredOutputGenerateData = {
 export type PostRuleStructuredOutputGenerateErrors = {
   400: ErrorResponse
   402: ErrorResponse
+  default: ErrorResponse
 }
 
 export type PostRuleStructuredOutputGenerateError =
