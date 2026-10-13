@@ -22,13 +22,33 @@ from core.app.llm.quota import (
 )
 from core.credit_usage import CreditUsageAppType
 from core.entities.model_entities import ModelStatus
-from core.entities.provider_entities import ProviderQuotaType, QuotaUnit
+from core.entities.provider_entities import ProviderQuotaType, QuotaConfiguration, QuotaUnit, SystemConfiguration
 from core.errors.error import QuotaExceededError
+from core.model_manager import ModelInstance
+from core.plugin.impl.model_runtime_factory import create_plugin_model_runtime
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.model_providers.base.text_embedding_model import TextEmbeddingModel
 from models import TenantCreditPool
 from models.enums import ProviderQuotaType as ModelProviderQuotaType
 from models.provider import Provider, ProviderType
+from services.credit_pool_service import CreditPoolReservation, CreditPoolReservationState
+from tests.unit_tests.core.model_fixtures import make_model_config
+
+
+def _model_instance(model_type: ModelType) -> ModelInstance:
+    """Construct a real model instance for the deprecated quota wrapper boundary."""
+    model_name = "gpt-4o" if model_type == ModelType.LLM else "text-embedding-3-small"
+    config = make_model_config(provider="openai", model=model_name, mode="chat")
+    bundle = config.provider_model_bundle
+    bundle.configuration.tenant_id = "tenant-id"
+    if model_type == ModelType.TEXT_EMBEDDING:
+        bundle.configuration.provider.supported_model_types = [ModelType.TEXT_EMBEDDING]
+        bundle.model_type_instance = TextEmbeddingModel(
+            provider_schema=bundle.configuration.provider,
+            model_runtime=create_plugin_model_runtime(tenant_id="tenant-id"),
+        )
+    return ModelInstance(provider_model_bundle=bundle, model=model_name, credentials={})
 
 
 @contextmanager
@@ -107,14 +127,23 @@ def test_ensure_llm_quota_available_for_model_ignores_custom_provider_configurat
 
 
 def test_reserve_llm_quota_uses_exact_credit_pool_reservation() -> None:
-    credit_reservation = MagicMock()
+    credit_reservation = CreditPoolReservation(
+        tenant_id="tenant-id",
+        pool_type="trial",
+        amount=9,
+        request_id="11111111-1111-5111-8111-111111111111",
+        reservation_id=None,
+    )
     provider_configuration = SimpleNamespace(
         using_provider_type=ProviderType.SYSTEM,
         get_provider_model=MagicMock(return_value=SimpleNamespace(status=ModelStatus.ACTIVE)),
-        system_configuration=SimpleNamespace(
+        system_configuration=SystemConfiguration(
+            enabled=True,
             current_quota_type=ProviderQuotaType.TRIAL,
             quota_configurations=[
-                SimpleNamespace(
+                QuotaConfiguration(
+                    quota_used=0,
+                    is_valid=True,
                     quota_type=ProviderQuotaType.TRIAL,
                     quota_unit=QuotaUnit.CREDITS,
                     quota_limit=100,
@@ -157,19 +186,27 @@ def test_reserve_llm_quota_uses_exact_credit_pool_reservation() -> None:
             "created_by": CreditUsageCreatedBy.APP.value,
         },
     )
-    credit_reservation.commit.assert_called_once_with()
-    credit_reservation.release.assert_not_called()
+    assert credit_reservation.state == CreditPoolReservationState.COMMITTED
 
 
 def test_reserve_llm_quota_generates_request_id_when_not_supplied() -> None:
-    credit_reservation = MagicMock()
+    credit_reservation = CreditPoolReservation(
+        tenant_id="tenant-id",
+        pool_type="trial",
+        amount=1,
+        request_id="11111111-1111-5111-8111-111111111111",
+        reservation_id=None,
+    )
     provider_configuration = SimpleNamespace(
         using_provider_type=ProviderType.SYSTEM,
         get_provider_model=MagicMock(return_value=SimpleNamespace(status=ModelStatus.ACTIVE)),
-        system_configuration=SimpleNamespace(
+        system_configuration=SystemConfiguration(
+            enabled=True,
             current_quota_type=ProviderQuotaType.TRIAL,
             quota_configurations=[
-                SimpleNamespace(
+                QuotaConfiguration(
+                    quota_used=0,
+                    is_valid=True,
                     quota_type=ProviderQuotaType.TRIAL,
                     quota_unit=QuotaUnit.TIMES,
                     quota_limit=100,
@@ -188,17 +225,27 @@ def test_reserve_llm_quota_generates_request_id_when_not_supplied() -> None:
 
     generated_request_id = reserve.call_args.kwargs["request_id"]
     assert str(UUID(generated_request_id)) == generated_request_id
+    assert credit_reservation.state == CreditPoolReservationState.RESERVED
 
 
 def test_reserve_non_llm_quota_uses_model_type_and_credit_pool_reservation() -> None:
-    credit_reservation = MagicMock()
+    credit_reservation = CreditPoolReservation(
+        tenant_id="tenant-id",
+        pool_type="trial",
+        amount=3,
+        request_id="11111111-1111-5111-8111-111111111111",
+        reservation_id=None,
+    )
     provider_configuration = SimpleNamespace(
         using_provider_type=ProviderType.SYSTEM,
         get_provider_model=MagicMock(return_value=SimpleNamespace(status=ModelStatus.ACTIVE)),
-        system_configuration=SimpleNamespace(
+        system_configuration=SystemConfiguration(
+            enabled=True,
             current_quota_type=ProviderQuotaType.TRIAL,
             quota_configurations=[
-                SimpleNamespace(
+                QuotaConfiguration(
+                    quota_used=0,
+                    is_valid=True,
                     quota_type=ProviderQuotaType.TRIAL,
                     quota_unit=QuotaUnit.CREDITS,
                     quota_limit=100,
@@ -241,17 +288,20 @@ def test_reserve_non_llm_quota_uses_model_type_and_credit_pool_reservation() -> 
             "created_by": "unknown",
         },
     )
-    credit_reservation.commit.assert_called_once_with()
+    assert credit_reservation.state == CreditPoolReservationState.COMMITTED
 
 
 def test_reserve_non_llm_quota_rejects_free_token_settlement() -> None:
     provider_configuration = SimpleNamespace(
         using_provider_type=ProviderType.SYSTEM,
         get_provider_model=MagicMock(return_value=SimpleNamespace(status=ModelStatus.ACTIVE)),
-        system_configuration=SimpleNamespace(
+        system_configuration=SystemConfiguration(
+            enabled=True,
             current_quota_type=ProviderQuotaType.FREE,
             quota_configurations=[
-                SimpleNamespace(
+                QuotaConfiguration(
+                    quota_used=0,
+                    is_valid=True,
                     quota_type=ProviderQuotaType.FREE,
                     quota_unit=QuotaUnit.TOKENS,
                     quota_limit=100,
@@ -278,10 +328,13 @@ def test_reserve_llm_quota_requires_accurate_usage_for_free_tokens() -> None:
     provider_configuration = SimpleNamespace(
         using_provider_type=ProviderType.SYSTEM,
         get_provider_model=MagicMock(return_value=SimpleNamespace(status=ModelStatus.ACTIVE)),
-        system_configuration=SimpleNamespace(
+        system_configuration=SystemConfiguration(
+            enabled=True,
             current_quota_type=ProviderQuotaType.FREE,
             quota_configurations=[
-                SimpleNamespace(
+                QuotaConfiguration(
+                    quota_used=0,
+                    is_valid=True,
                     quota_type=ProviderQuotaType.FREE,
                     quota_unit=QuotaUnit.TOKENS,
                     quota_limit=100,
@@ -308,10 +361,13 @@ def test_reserve_llm_quota_rejects_token_based_credit_pool() -> None:
     provider_configuration = SimpleNamespace(
         using_provider_type=ProviderType.SYSTEM,
         get_provider_model=MagicMock(return_value=SimpleNamespace(status=ModelStatus.ACTIVE)),
-        system_configuration=SimpleNamespace(
+        system_configuration=SystemConfiguration(
+            enabled=True,
             current_quota_type=ProviderQuotaType.TRIAL,
             quota_configurations=[
-                SimpleNamespace(
+                QuotaConfiguration(
+                    quota_used=0,
+                    is_valid=True,
                     quota_type=ProviderQuotaType.TRIAL,
                     quota_unit=QuotaUnit.TOKENS,
                     quota_limit=100,
@@ -338,10 +394,13 @@ def test_deduct_llm_quota_for_model_uses_identity_based_trial_billing() -> None:
     usage.total_tokens = 42
     provider_configuration = SimpleNamespace(
         using_provider_type=ProviderType.SYSTEM,
-        system_configuration=SimpleNamespace(
+        system_configuration=SystemConfiguration(
+            enabled=True,
             current_quota_type=ProviderQuotaType.TRIAL,
             quota_configurations=[
-                SimpleNamespace(
+                QuotaConfiguration(
+                    quota_used=0,
+                    is_valid=True,
                     quota_type=ProviderQuotaType.TRIAL,
                     quota_unit=QuotaUnit.TOKENS,
                     quota_limit=100,
@@ -382,10 +441,13 @@ def test_deduct_llm_quota_for_model_caps_trial_pool_when_usage_exceeds_remaining
     usage.total_tokens = 3
     provider_configuration = SimpleNamespace(
         using_provider_type=ProviderType.SYSTEM,
-        system_configuration=SimpleNamespace(
+        system_configuration=SystemConfiguration(
+            enabled=True,
             current_quota_type=ProviderQuotaType.TRIAL,
             quota_configurations=[
-                SimpleNamespace(
+                QuotaConfiguration(
+                    quota_used=0,
+                    is_valid=True,
                     quota_type=ProviderQuotaType.TRIAL,
                     quota_unit=QuotaUnit.TOKENS,
                     quota_limit=100,
@@ -431,10 +493,13 @@ def test_deduct_llm_quota_for_model_returns_for_unbounded_quota() -> None:
     usage.total_tokens = 42
     provider_configuration = SimpleNamespace(
         using_provider_type=ProviderType.SYSTEM,
-        system_configuration=SimpleNamespace(
+        system_configuration=SystemConfiguration(
+            enabled=True,
             current_quota_type=ProviderQuotaType.TRIAL,
             quota_configurations=[
-                SimpleNamespace(
+                QuotaConfiguration(
+                    quota_used=0,
+                    is_valid=True,
                     quota_type=ProviderQuotaType.TRIAL,
                     quota_unit=QuotaUnit.TOKENS,
                     quota_limit=-1,
@@ -463,10 +528,13 @@ def test_deduct_llm_quota_for_model_uses_credit_configuration() -> None:
     usage = LLMUsage.empty_usage()
     provider_configuration = SimpleNamespace(
         using_provider_type=ProviderType.SYSTEM,
-        system_configuration=SimpleNamespace(
+        system_configuration=SystemConfiguration(
+            enabled=True,
             current_quota_type=ProviderQuotaType.TRIAL,
             quota_configurations=[
-                SimpleNamespace(
+                QuotaConfiguration(
+                    quota_used=0,
+                    is_valid=True,
                     quota_type=ProviderQuotaType.TRIAL,
                     quota_unit=QuotaUnit.CREDITS,
                     quota_limit=100,
@@ -508,10 +576,13 @@ def test_deduct_llm_quota_for_model_uses_single_charge_for_times_quota() -> None
     usage = LLMUsage.empty_usage()
     provider_configuration = SimpleNamespace(
         using_provider_type=ProviderType.SYSTEM,
-        system_configuration=SimpleNamespace(
+        system_configuration=SystemConfiguration(
+            enabled=True,
             current_quota_type=ProviderQuotaType.TRIAL,
             quota_configurations=[
-                SimpleNamespace(
+                QuotaConfiguration(
+                    quota_used=0,
+                    is_valid=True,
                     quota_type=ProviderQuotaType.TRIAL,
                     quota_unit=QuotaUnit.TIMES,
                     quota_limit=100,
@@ -552,10 +623,13 @@ def test_deduct_llm_quota_for_model_uses_paid_billing_pool() -> None:
     usage.total_tokens = 5
     provider_configuration = SimpleNamespace(
         using_provider_type=ProviderType.SYSTEM,
-        system_configuration=SimpleNamespace(
+        system_configuration=SystemConfiguration(
+            enabled=True,
             current_quota_type=ProviderQuotaType.PAID,
             quota_configurations=[
-                SimpleNamespace(
+                QuotaConfiguration(
+                    quota_used=0,
+                    is_valid=True,
                     quota_type=ProviderQuotaType.PAID,
                     quota_unit=QuotaUnit.TOKENS,
                     quota_limit=100,
@@ -597,10 +671,13 @@ def test_deduct_llm_quota_for_model_updates_free_quota_usage() -> None:
     usage.total_tokens = 3
     provider_configuration = SimpleNamespace(
         using_provider_type=ProviderType.SYSTEM,
-        system_configuration=SimpleNamespace(
+        system_configuration=SystemConfiguration(
+            enabled=True,
             current_quota_type=ProviderQuotaType.FREE,
             quota_configurations=[
-                SimpleNamespace(
+                QuotaConfiguration(
+                    quota_used=0,
+                    is_valid=True,
                     quota_type=ProviderQuotaType.FREE,
                     quota_unit=QuotaUnit.TOKENS,
                     quota_limit=100,
@@ -708,10 +785,13 @@ def test_deduct_llm_quota_for_model_caps_free_quota_and_raises_when_usage_exceed
     usage.total_tokens = 3
     provider_configuration = SimpleNamespace(
         using_provider_type=ProviderType.SYSTEM,
-        system_configuration=SimpleNamespace(
+        system_configuration=SystemConfiguration(
+            enabled=True,
             current_quota_type=ProviderQuotaType.FREE,
             quota_configurations=[
-                SimpleNamespace(
+                QuotaConfiguration(
+                    quota_used=0,
+                    is_valid=True,
                     quota_type=ProviderQuotaType.FREE,
                     quota_unit=QuotaUnit.TOKENS,
                     quota_limit=100,
@@ -761,10 +841,14 @@ def test_deduct_llm_quota_for_model_ignores_unknown_quota_type() -> None:
     usage.total_tokens = 2
     provider_configuration = SimpleNamespace(
         using_provider_type=ProviderType.SYSTEM,
-        system_configuration=SimpleNamespace(
+        # Bypass validation only to exercise defensive handling of an invalid quota type.
+        system_configuration=SystemConfiguration.model_construct(
+            enabled=True,
             current_quota_type="unexpected",
             quota_configurations=[
-                SimpleNamespace(
+                QuotaConfiguration.model_construct(
+                    quota_used=0,
+                    is_valid=True,
                     quota_type="unexpected",
                     quota_unit=QuotaUnit.TOKENS,
                     quota_limit=100,
@@ -794,7 +878,8 @@ def test_deduct_llm_quota_for_model_ignores_custom_provider_configuration() -> N
     usage.total_tokens = 2
     provider_configuration = SimpleNamespace(
         using_provider_type=ProviderType.CUSTOM,
-        system_configuration=SimpleNamespace(
+        system_configuration=SystemConfiguration(
+            enabled=True,
             current_quota_type=ProviderQuotaType.TRIAL,
             quota_configurations=[],
         ),
@@ -817,12 +902,7 @@ def test_deduct_llm_quota_for_model_ignores_custom_provider_configuration() -> N
 
 
 def test_ensure_llm_quota_available_wrapper_warns_and_delegates() -> None:
-    model_instance = SimpleNamespace(
-        provider="openai",
-        model_name="gpt-4o",
-        provider_model_bundle=SimpleNamespace(configuration=SimpleNamespace(tenant_id="tenant-id")),
-        model_type_instance=SimpleNamespace(model_type=ModelType.LLM),
-    )
+    model_instance = _model_instance(ModelType.LLM)
 
     with (
         pytest.deprecated_call(match="ensure_llm_quota_available\\(model_instance=.*deprecated"),
@@ -838,12 +918,7 @@ def test_ensure_llm_quota_available_wrapper_warns_and_delegates() -> None:
 
 
 def test_ensure_llm_quota_available_wrapper_rejects_non_llm_model_instances() -> None:
-    model_instance = SimpleNamespace(
-        provider="openai",
-        model_name="gpt-4o",
-        provider_model_bundle=SimpleNamespace(configuration=SimpleNamespace(tenant_id="tenant-id")),
-        model_type_instance=SimpleNamespace(model_type=ModelType.TEXT_EMBEDDING),
-    )
+    model_instance = _model_instance(ModelType.TEXT_EMBEDDING)
 
     with (
         pytest.deprecated_call(match="ensure_llm_quota_available\\(model_instance=.*deprecated"),
@@ -855,12 +930,7 @@ def test_ensure_llm_quota_available_wrapper_rejects_non_llm_model_instances() ->
 def test_deduct_llm_quota_wrapper_warns_and_delegates() -> None:
     usage = LLMUsage.empty_usage()
     usage.total_tokens = 7
-    model_instance = SimpleNamespace(
-        provider="openai",
-        model_name="gpt-4o",
-        model_type_instance=SimpleNamespace(model_type=ModelType.LLM),
-        provider_model_bundle=SimpleNamespace(configuration=SimpleNamespace()),
-    )
+    model_instance = _model_instance(ModelType.LLM)
 
     with (
         pytest.deprecated_call(match="deduct_llm_quota\\(tenant_id=.*deprecated"),
@@ -882,12 +952,7 @@ def test_deduct_llm_quota_wrapper_warns_and_delegates() -> None:
 
 def test_deduct_llm_quota_wrapper_rejects_non_llm_model_instances() -> None:
     usage = LLMUsage.empty_usage()
-    model_instance = SimpleNamespace(
-        provider="openai",
-        model_name="gpt-4o",
-        model_type_instance=SimpleNamespace(model_type=ModelType.TEXT_EMBEDDING),
-        provider_model_bundle=SimpleNamespace(configuration=SimpleNamespace()),
-    )
+    model_instance = _model_instance(ModelType.TEXT_EMBEDDING)
 
     with (
         pytest.deprecated_call(match="deduct_llm_quota\\(tenant_id=.*deprecated"),
