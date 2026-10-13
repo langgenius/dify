@@ -1,7 +1,7 @@
 'use client'
 import type { ProcessingTaskEvent } from './services/processing-task-events'
-import { ORPCError } from '@orpc/client'
 import { useEffect, useLayoutEffect, useRef } from 'react'
+import { getHttpErrorStatus } from '@/service/http-error'
 import { taskVersionIsAfter } from './document-model'
 import { streamProcessingTaskEvents } from './services/processing-task-events'
 
@@ -24,10 +24,6 @@ function waitForTaskEventReconnect(signal: AbortSignal, delay: number) {
       resolve()
     }
   })
-}
-
-function responseStatus(error: unknown): number | undefined {
-  return error instanceof ORPCError ? error.status : undefined
 }
 
 export function TaskEventObserver({
@@ -103,7 +99,7 @@ export function TaskEventObserver({
           }
         } catch (error) {
           if (controller.signal.aborted) return
-          if (responseStatus(error) === 403) {
+          if (getHttpErrorStatus(error) === 403) {
             if (taskVersionIsAfter(latestTaskVersionRef.current, streamTaskVersionRef.current))
               streamTaskVersionRef.current = latestTaskVersionRef.current
             onPermissionDenied(taskId, streamTaskVersionRef.current)

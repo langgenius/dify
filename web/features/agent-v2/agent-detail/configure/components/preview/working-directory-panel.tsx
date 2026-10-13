@@ -21,6 +21,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { getFileIconType } from '@/features/agent-v2/file-icon'
 import { consoleClient, consoleQuery } from '@/service/console'
+import { isNotFoundError } from '@/service/http-error'
 import { downloadUrl } from '@/utils/download'
 import { AgentSkillDetailDialog } from '../orchestrate/skills/detail-dialog'
 import {
@@ -229,8 +230,6 @@ async function isNoActiveBindingError(error: unknown) {
   return error.code === 'no_active_binding'
 }
 
-const isNotFoundResponse = (error: unknown) => error instanceof ORPCError && error.status === 404
-
 export function AgentWorkingDirectoryPanel({
   source,
   onOpenChange,
@@ -398,7 +397,7 @@ export function AgentWorkingDirectoryPanel({
       try {
         return await fileReadQueryOptions.queryFn(context)
       } catch (error) {
-        if (isNotFoundResponse(error)) {
+        if (isNotFoundError(error)) {
           return {
             binary: false,
             path: selectedWorkingDirectoryFile?.id ?? '',

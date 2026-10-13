@@ -657,7 +657,13 @@ export const Filterable: Story = {
     // A filterable submenu focuses its own input and keeps its own query.
     await userEvent.clear(input)
     await userEvent.type(input, 'share')
-    await userEvent.keyboard('{ArrowDown}{ArrowRight}')
+    await userEvent.keyboard('{ArrowDown}')
+    await waitFor(async () => {
+      await expect(body.getByRole('menuitem', { name: 'Share with' })).toHaveAttribute(
+        'data-highlighted',
+      )
+    })
+    await userEvent.keyboard('{ArrowRight}')
     const submenuInput = await body.findByRole('searchbox', { name: 'Filter teams' })
     await waitFor(async () => {
       await expect(submenuInput).toHaveFocus()
@@ -672,26 +678,51 @@ export const Filterable: Story = {
     })
     await expect(input).toHaveValue('share')
     await userEvent.keyboard('{ArrowRight}')
-    await userEvent.type(await body.findByRole('searchbox', { name: 'Filter teams' }), 'eng')
+    const reopenedSubmenuInput = await body.findByRole('searchbox', { name: 'Filter teams' })
+    await waitFor(async () => {
+      await expect(reopenedSubmenuInput).toHaveFocus()
+    })
+    await userEvent.type(reopenedSubmenuInput, 'eng')
     await expect(body.getByRole('menuitem', { name: 'Engineering team' })).toBeInTheDocument()
     await expect(body.queryByRole('menuitem', { name: 'Everyone' })).not.toBeInTheDocument()
-    await userEvent.keyboard('{ArrowDown}{Enter}')
+    await userEvent.keyboard('{ArrowDown}')
+    await waitFor(async () => {
+      await expect(body.getByRole('menuitem', { name: 'Engineering team' })).toHaveAttribute(
+        'data-highlighted',
+      )
+    })
+    await userEvent.keyboard('{Enter}')
     await expect(canvas.getByRole('status', { name: 'Last action' })).toHaveTextContent(
       'Share with Engineering team',
     )
     await expect(trigger).toHaveAttribute('aria-expanded', 'false')
+    await waitFor(async () => {
+      await expect(input).not.toBeInTheDocument()
+    })
 
     await userEvent.click(trigger)
     const reopenedInput = await body.findByRole('searchbox', { name: 'Filter actions' })
+    await waitFor(async () => {
+      await expect(reopenedInput).toHaveFocus()
+    })
     await userEvent.type(reopenedInput, 'zzz')
     await expect(await body.findByText('No actions match')).toHaveAttribute('role', 'status')
 
     await userEvent.clear(reopenedInput)
     await userEvent.type(reopenedInput, 'rename')
-    await userEvent.keyboard('{ArrowDown}{Enter}')
+    await userEvent.keyboard('{ArrowDown}')
+    await waitFor(async () => {
+      await expect(body.getByRole('menuitem', { name: 'Rename workspace' })).toHaveAttribute(
+        'data-highlighted',
+      )
+    })
+    await userEvent.keyboard('{Enter}')
     await expect(canvas.getByRole('status', { name: 'Last action' })).toHaveTextContent(
       'Rename workspace',
     )
+    await waitFor(async () => {
+      await expect(reopenedInput).not.toBeInTheDocument()
+    })
 
     await userEvent.click(trigger)
     const finalInput = await body.findByRole('searchbox', { name: 'Filter actions' })
