@@ -345,6 +345,9 @@ Upload a file to use as an input variable when running the app
 | 200 | Approved | **application/json**: [DeviceMutateResponse](#devicemutateresponse)<br> |
 | 400 | Bad Request | **application/json**: [AccountNotInitializedError](#accountnotinitializederror)<br> |
 | 401 | Unauthorized | **application/json**: <br> |
+| 404 | Unknown or expired user code | **application/json**: <br> |
+| 409 | Already resolved, in progress, or state lost | **application/json**: <br> |
+| 503 | Approval outcome unknown | **application/json**: <br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [POST] /oauth/device/code
@@ -359,6 +362,7 @@ Upload a file to use as an input variable when running the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Device code created | **application/json**: [DeviceCodeResponse](#devicecoderesponse)<br> |
+| 400 | Unsupported client | **application/json**: <br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [POST] /oauth/device/deny
@@ -375,6 +379,9 @@ Upload a file to use as an input variable when running the app
 | 200 | Denied | **application/json**: [DeviceMutateResponse](#devicemutateresponse)<br> |
 | 400 | Bad Request | **application/json**: [AccountNotInitializedError](#accountnotinitializederror)<br> |
 | 401 | Unauthorized | **application/json**: <br> |
+| 404 | Unknown or expired user code | **application/json**: <br> |
+| 409 | Already resolved, in progress, or state lost | **application/json**: <br> |
+| 503 | Approval outcome unknown | **application/json**: <br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [GET] /oauth/device/lookup
@@ -403,6 +410,7 @@ Upload a file to use as an input variable when running the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Device token | **application/json**: [DeviceTokenResponse](#devicetokenresponse)<br> |
+| 400 | Authorization pending, polling too fast, expired, or denied | **application/json**: <br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [GET] /permitted-external-apps
@@ -824,6 +832,15 @@ Enum representing the deployment edition of the platform.
 | interval | integer |  | Yes |
 | user_code | string |  | Yes |
 | verification_uri | string |  | Yes |
+
+#### DeviceFlowErrorResponse
+
+RFC 8628-style device-flow error. These routes keep the OAuth ``{"error": code}`` shape
+instead of ``ErrorBody`` because device clients parse it.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| error | string, <br>**Available values:** "access_denied", "already_resolved", "approval_outcome_unknown", "approve_in_progress", "authorization_pending", "expired_or_unknown", "expired_token", "slow_down", "state_lost", "unsupported_client" | *Enum:* `"access_denied"`, `"already_resolved"`, `"approval_outcome_unknown"`, `"approve_in_progress"`, `"authorization_pending"`, `"expired_or_unknown"`, `"expired_token"`, `"slow_down"`, `"state_lost"`, `"unsupported_client"` | Yes |
 
 #### DeviceLookupQuery
 

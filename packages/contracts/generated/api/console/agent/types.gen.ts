@@ -2977,7 +2977,7 @@ export type GetAgentByAgentIdChatMessagesByMessageIdSuggestedQuestionsErrors = {
     | ProviderQuotaExceededError
   401: NotInitValidatedError | NotSetupError
   403: AppSuggestedQuestionsAfterAnswerDisabledError
-  404: AgentNotFoundError
+  404: AgentNotFoundError | AgentVersionNotFoundError
   500: ErrorResponse
   default: ErrorResponse
 }

@@ -804,7 +804,7 @@ Get suggested questions for an Agent App message
 | 400 | App or model provider unavailable, or generation failed | **application/json**: <br> |
 | 401 | Account authentication required | **application/json**: <br> |
 | 403 | Insufficient permissions or suggested questions disabled | **application/json**: [AppSuggestedQuestionsAfterAnswerDisabledError](#appsuggestedquestionsafteranswerdisablederror)<br> |
-| 404 | Agent, message, or conversation not found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br> |
+| 404 | Agent, message, or conversation not found | **application/json**: <br> |
 | 500 | Unexpected server error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 

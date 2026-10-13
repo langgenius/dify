@@ -186,6 +186,20 @@ export type DeviceCodeResponse = {
   verification_uri: string
 }
 
+export type DeviceFlowErrorResponse = {
+  error:
+    | 'access_denied'
+    | 'already_resolved'
+    | 'approval_outcome_unknown'
+    | 'approve_in_progress'
+    | 'authorization_pending'
+    | 'expired_or_unknown'
+    | 'expired_token'
+    | 'slow_down'
+    | 'state_lost'
+    | 'unsupported_client'
+}
+
 export type DeviceLookupQuery = {
   user_code: string
 }
@@ -1059,6 +1073,9 @@ export type PostOauthDeviceApproveData = {
 export type PostOauthDeviceApproveErrors = {
   400: AccountNotInitializedError
   401: NotInitValidatedError | NotSetupError
+  404: DeviceFlowErrorResponse | ErrorBody
+  409: DeviceFlowErrorResponse | ErrorBody
+  503: DeviceFlowErrorResponse | ErrorBody
   default: ErrorBody
 }
 
@@ -1080,6 +1097,7 @@ export type PostOauthDeviceCodeData = {
 }
 
 export type PostOauthDeviceCodeErrors = {
+  400: DeviceFlowErrorResponse | ErrorBody
   default: ErrorBody
 }
 
@@ -1102,6 +1120,9 @@ export type PostOauthDeviceDenyData = {
 export type PostOauthDeviceDenyErrors = {
   400: AccountNotInitializedError
   401: NotInitValidatedError | NotSetupError
+  404: DeviceFlowErrorResponse | ErrorBody
+  409: DeviceFlowErrorResponse | ErrorBody
+  503: DeviceFlowErrorResponse | ErrorBody
   default: ErrorBody
 }
 
@@ -1144,6 +1165,7 @@ export type PostOauthDeviceTokenData = {
 }
 
 export type PostOauthDeviceTokenErrors = {
+  400: DeviceFlowErrorResponse | ErrorBody
   default: ErrorBody
 }
 
