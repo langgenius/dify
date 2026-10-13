@@ -67,7 +67,12 @@ def test_worker_refreshes_ui_copy_for_new_language_before_context_commit():
     session, working = repo.get_session(seeded.id)
     working.reply_language = "ja"
     env = Env(dify=FakeDifyPort(), agent=StubAgent(), repo=repo, now=lambda: datetime.min)
-    env.prepare_ui_copy = lambda language: {"Approve plan": "プランを承認"} if language == "ja" else {}
+
+    def prepare(context: DifyBuilderContext) -> None:
+        context.ui_copy_language = context.reply_language
+        context.ui_copy = {"Approve plan": "プランを承認"}
+
+    env.prepare_ui_copy = prepare
 
     Runner(env, {})._commit(session, session.current_state, working, [], settled=True)
 
@@ -85,7 +90,7 @@ def test_confirmed_worker_commit_skips_ui_copy_translation():
     env = Env(dify=FakeDifyPort(), agent=StubAgent(), repo=repo, now=lambda: datetime.min)
     env.suppress_model_calls = True
     calls: list[str] = []
-    env.prepare_ui_copy = lambda language: calls.append(language) or {}
+    env.prepare_ui_copy = lambda context: calls.append(context.reply_language)
 
     Runner(env, {})._commit(session, session.current_state, working, [], settled=True)
 
@@ -143,6 +148,45 @@ def test_view_uses_english_when_ui_copy_is_missing_or_from_another_language(copy
     assert view.actions[0].label == "Approve plan"
     assert view.decision is not None
     assert view.decision.title == "Is this workflow plan ready to apply?"
+
+
+def test_view_rejects_invalid_or_oversized_persisted_translation():
+    context = _context("ja", {"Approve plan": "x" * 4097, "Submit": "", "raw user value": "translated"})
+    service, session = _service_with_session(PcState.BUILD_PLAN_APPROVAL, context)
+
+    view = service.get_session_view(session.id, _actor())
+
+    assert view.actions[0].label == "Approve plan"
+    assert view.decision is not None
+    assert view.decision.submit is not None
+    assert view.decision.submit.label == "Submit"
+
+
+def test_recovery_and_checkpoint_view_localizes_copy_without_changing_action_ids():
+    source_message = "Only node settings changed since you left — continue or restart."
+    context = _context(
+        "ja",
+        {
+            "Continue": "続行",
+            "Restart from current draft": "現在の下書きから再開",
+            "Restore point": "復元ポイント",
+            source_message: "離れている間にノード設定のみ変更されました。続行するか再開してください。",
+        },
+    )
+    context.recovery_class = "config_only"
+    context.checkpoint_id = "checkpoint-1"
+    service, session = _service_with_session(PcState.BUILD_PLAN_APPROVAL, context)
+
+    view = service.get_session_view(session.id, _actor())
+
+    assert [(action.id, action.label) for action in view.actions] == [
+        ("recovery_continue", "続行"),
+        ("restart", "現在の下書きから再開"),
+    ]
+    assert view.recovery is not None
+    assert view.recovery.message == "離れている間にノード設定のみ変更されました。続行するか再開してください。"
+    assert view.checkpoint is not None
+    assert (view.checkpoint.checkpoint_id, view.checkpoint.label) == ("checkpoint-1", "復元ポイント")
 
 
 def test_get_session_view_preserves_historical_form_card_after_language_change():
@@ -205,6 +249,38 @@ def test_choice_receipt_localizes_question_and_answer_but_preserves_selected_opt
         "fields": [],
         "submitted_data": {"option_id": "approve_plan"},
     }
+
+
+@pytest.mark.parametrize(
+    ("selected_ids", "answer"),
+    [(["resource-goal"], "Goal"), ([], "リソースは選択されていません")],
+)
+def test_resource_receipt_localizes_fixed_copy_but_preserves_resource_names(selected_ids, answer):
+    context = _context(
+        "ja",
+        {
+            "Which resources should Builder use?": "Builder はどのリソースを使いますか？",
+            "No resources selected": "リソースは選択されていません",
+            "Goal": "目標",
+        },
+    )
+    card = ConversationItem(
+        seq=0,
+        kind="resource_select",
+        payload={
+            "title": "Which resources should Builder use?",
+            "recommended": [{"id": "resource-goal", "label": "Goal"}],
+        },
+    )
+    service, session = _service_with_session(PcState.BUILD_RESOURCE_RECOMMENDATION, context, [card])
+    action = Action(kind="confirm_resources", payload={"resource_ids": selected_ids}, base_version=1)
+
+    service._prepare_action(session.id, _actor(), action)
+
+    assert action.interaction_response is not None
+    assert action.interaction_response["question"] == "Builder はどのリソースを使いますか？"
+    assert action.interaction_response["answer"] == answer
+    assert action.interaction_response["submitted_data"] == {"resource_ids": selected_ids}
 
 
 def test_form_receipt_localizes_boolean_display_but_preserves_literal_yes_and_raw_values():

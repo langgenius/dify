@@ -131,6 +131,10 @@ class Env:
     # MUST NOT raise: the engine does not guard this call, so the service-layer
     # implementation is responsible for swallowing its own errors and returning a safe fallback.
     localize_items: Callable[[list["ConversationItem"], str], list["ConversationItem"]] | None = None
+    # Prepares bounded, persisted UI copy in the context before a normal CAS.
+    # The service-layer callback must swallow model failures and leave source
+    # English for missing translations. Confirmed outcomes never call it.
+    prepare_ui_copy: Callable[[DifyBuilderContext], None] | None = None
     # Renames the session's app to a model-proposed title (spec N1) and returns
     # the name actually stored, or "" if nothing changed -- the engine records
     # that on the context, so it never claims a name the database does not have.
@@ -344,6 +348,8 @@ class Runner:
         settled: bool,
     ) -> None:
         at_version = session.version + 1
+        if self._env.prepare_ui_copy is not None and context.reply_language and not self._env.suppress_model_calls:
+            self._env.prepare_ui_copy(context)
         if self._env.localize_items is not None and context.reply_language and not self._env.suppress_model_calls:
             pending_localization = [
                 item

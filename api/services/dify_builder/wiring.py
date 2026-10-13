@@ -189,6 +189,7 @@ def _public_session_view(view: dict[str, Any], *, include_last_command_id: bool)
     projected: dict[str, object] = {
         "session_id": view.get("session_id", ""),
         "version": view.get("version", 0),
+        "reply_language": view.get("reply_language", ""),
         "canvas_read_only": view.get("canvas_read_only", False),
         "run_status": view.get("run_status", "failed"),
         "interrupted": view.get("interrupted", False),
