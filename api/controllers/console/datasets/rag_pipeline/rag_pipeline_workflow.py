@@ -231,7 +231,7 @@ class DraftRagPipelineApi(Resource):
         # return workflow, if not found, return 404
         return dump_response(WorkflowResponse, WorkflowResponseSource(workflow, session=session))
 
-    @error_responses(DraftWorkflowNotSync, InvalidArgumentError)
+    @error_responses(DraftWorkflowNotSync)
     @setup_required
     @login_required
     @account_initialization_required
@@ -766,7 +766,6 @@ class RagPipelineDraftWorkflowRestoreApi(Resource):
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/<string:workflow_id>")
 class RagPipelineByIdApi(Resource):
-    @error_responses(InvalidArgumentError)
     @console_ns.response(200, "Workflow updated successfully", console_ns.models[WorkflowResponse.__name__])
     @console_ns.response(400, "No valid fields to update")
     @console_ns.response(403, "Permission denied")

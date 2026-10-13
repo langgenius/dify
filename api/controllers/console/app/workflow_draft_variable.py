@@ -276,7 +276,6 @@ def validate_node_id(node_id: str) -> None:
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/variables")
 class NodeVariableCollectionApi(Resource):
-    @error_responses(InvalidArgumentError)
     @console_ns.doc("get_node_variables")
     @console_ns.doc(description="Get variables for a specific node")
     @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
@@ -297,7 +296,6 @@ class NodeVariableCollectionApi(Resource):
 
         return dump_response(WorkflowDraftVariableListResponse, node_vars)
 
-    @error_responses(InvalidArgumentError)
     @console_ns.doc("delete_node_variables")
     @console_ns.doc(description="Delete all variables for a specific node")
     @console_ns.response(204, "Node variables deleted successfully")
@@ -340,7 +338,7 @@ class VariableApi(Resource):
         )
         return dump_response(WorkflowDraftVariableResponse, variable)
 
-    @error_responses(InvalidArgumentError, NotFoundError)
+    @error_responses(NotFoundError)
     @console_ns.doc("update_variable")
     @console_ns.doc(description="Update a workflow variable")
     @console_ns.expect(console_ns.models[WorkflowDraftVariableUpdatePayload.__name__])

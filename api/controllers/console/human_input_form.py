@@ -165,7 +165,7 @@ class ConsoleHumanInputFormApi(Resource):
 class ConsoleWorkflowEventsApi(Resource):
     """Console API for getting workflow execution events after resume."""
 
-    @error_responses(InvalidArgumentError, NotFoundError)
+    @error_responses(NotFoundError)
     @console_ns.response(200, "SSE event stream", console_ns.models[EventStreamResponse.__name__])
     @account_initialization_required
     @login_required

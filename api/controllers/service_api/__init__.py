@@ -1,7 +1,7 @@
 from flask import Blueprint
 from flask_restx import Namespace
 
-from controllers.common.errors import register_permission_error_handler
+from controllers.common.errors import InvalidArgumentError, register_permission_error_handler
 from libs.external_api import ExternalApi
 
 bp = Blueprint("service_api", __name__, url_prefix="/v1")
@@ -14,6 +14,8 @@ api = ExternalApi(
     register_default_root=False,
 )
 register_permission_error_handler(api)
+# ``invalid_param`` is what the surface's ValueError handler already emits on any operation.
+api.document_generic_errors(InvalidArgumentError)
 
 service_api_ns = Namespace("service_api", description="Service operations", path="/")
 

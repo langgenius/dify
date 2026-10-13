@@ -128,7 +128,6 @@ class LoginApi(Resource):
 # TODO: remove in the future. frontend should redirect to login page by catching 401 status
 @web_ns.route("/login/status")
 class LoginStatusApi(Resource):
-    @error_responses(WebAppAccessServiceUnavailableError, WebAppNotFoundError)
     @web_anonymous_admission()
     @web_ns.doc("web_app_login_status")
     @web_ns.doc(description="Check login status")

@@ -20,7 +20,6 @@ from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.encryption import FieldEncryption
-from libs.external_api import document_errors
 from libs.login import current_account_with_tenant
 from models import Account
 from models.account import AccountStatus
@@ -123,7 +122,7 @@ def account_initialization_required[R](view: Callable[..., R]) -> Callable[..., 
 
         return view(*args, **kwargs)
 
-    return document_errors(decorated, AccountNotInitializedError)
+    return decorated
 
 
 def only_edition_cloud[**P, R](view: Callable[P, R]) -> Callable[P, R]:
@@ -319,7 +318,7 @@ def setup_required[R](view: Callable[..., R]) -> Callable[..., R]:
 
         return view(*args, **kwargs)
 
-    return document_errors(decorated, NotSetupError, NotInitValidateError)
+    return decorated
 
 
 def enterprise_license_required[**P, R](view: Callable[P, R]) -> Callable[P, R]:
@@ -334,7 +333,7 @@ def enterprise_license_required[**P, R](view: Callable[P, R]) -> Callable[P, R]:
 
         return view(*args, **kwargs)
 
-    return document_errors(decorated, UnauthorizedAndForceLogout)
+    return decorated
 
 
 def email_password_login_enabled[**P, R](view: Callable[P, R]) -> Callable[P, R]:

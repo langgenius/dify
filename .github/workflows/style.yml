@@ -81,8 +81,11 @@ jobs:
         if: inputs.run-python-style
         run: uv run --project api --dev python api/dev/lint_response_contracts.py --fail-on-mismatch
 
-      - name: Run API Error Linter
+      # Advisory: static inference cannot see dynamic dispatch, so its gaps are hints, not
+      # failures. The controller error contract tests gate what each operation documents.
+      - name: Run API Error Linter (advisory)
         if: inputs.run-python-style
+        continue-on-error: true
         run: uv run --project api --dev python api/dev/lint_error_responses.py
 
       - name: Run No New Getattr Guard

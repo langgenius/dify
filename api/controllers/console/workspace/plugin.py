@@ -610,7 +610,7 @@ class PluginListApi(Resource):
 
 @console_ns.route("/workspaces/current/plugin/<string:category>/list")
 class PluginCategoryListApi(Resource):
-    @error_responses(InvalidArgumentError, PluginOperationError)
+    @error_responses(PluginOperationError)
     @console_ns.doc(params=query_params_from_model(PluginCategoryListQuery))
     @console_ns.response(200, "Success", console_ns.models[PluginCategoryListResponse.__name__])
     @setup_required

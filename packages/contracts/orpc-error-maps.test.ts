@@ -26,12 +26,20 @@ describe('generated oRPC error maps', () => {
     ['service', serviceContract],
     ['web', webContract],
   ])('gives every documented %s error a status and a body schema', (_name, contract) => {
-    const entries = errorEntries(contract)
-    const incomplete = entries
+    const incomplete = errorEntries(contract)
       .filter(([, entry]) => typeof entry.status !== 'number' || entry.data === undefined)
       .map(([name]) => name)
 
-    expect(entries.length).toBeGreaterThan(0)
     expect(incomplete).toEqual([])
+  })
+
+  // /openapi/v1 documents no per-operation business errors yet: its guards raise only
+  // errors the surfaces treat as generic, which the open default error covers.
+  it.each([
+    ['console', consoleRouterContract],
+    ['service', serviceContract],
+    ['web', webContract],
+  ])('declares business errors on %s operations', (_name, contract) => {
+    expect(errorEntries(contract).length).toBeGreaterThan(0)
   })
 })

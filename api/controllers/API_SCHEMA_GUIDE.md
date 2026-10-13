@@ -228,36 +228,39 @@ not provide, such as returning a non-dict payload, intentionally excluding field
 
 Every 4xx/5xx response is documented with the surface's error body: `ErrorResponse` (`code`, `message`, `status`,
 optional `params`/`details`) on Console, Web and Service API, and `ErrorBody` on `/openapi/v1`. Every operation also
-documents a `default` error response with that open body: generic errors (authentication, validation, rate limits,
-unexpected failures) can answer any operation and clients handle them centrally, so no operation lists them.
-Responses that declare their own error schema keep it.
+documents a `default` error response with that open body. Responses that declare their own error schema keep it.
 
-Document business errors so clients can branch on `code`:
+Errors come in two kinds, told apart by how the client handles them, not by their shape:
 
-- A handler lists what it and its callees raise with `@error_responses(SomeError, ...)` from `libs.external_api`.
-- A view decorator documents its own errors on the wrapper it returns: `return document_errors(decorated, SomeError)`.
-  Guards in a Resource's `method_decorators` are documented on the class with `document_errors(ResourceClass, ...)`.
-- List only business errors: `HTTPException` subclasses that declare an `error_code`. Werkzeug exceptions and
-  exceptions with a dedicated handler (`ValueError`, `NoPermissionError`, and others registered through
-  `ExternalApi.document_error_handler`) are generic and covered by `default`; listing them is an error, and so is
-  listing a `BaseHTTPException` subclass that keeps the placeholder `error_code`.
-- Record an error raised only from an unreachable branch, such as an `except` for a service error the call never
-  raises, as `@error_responses(..., unreachable=(SomeError,))`. It stays undocumented.
-- View decorators must keep `__apidoc__` from the view they wrap (`functools.wraps` does, unless `updated=()`; then
-  add `"__apidoc__"` to `assigned`), or the errors documented below them are lost.
+- **Generic** errors can answer any operation and the client handles them centrally: authentication, bootstrap state
+  (`not_setup`, `account_not_initialized`), forced logout, validation (`invalid_param`), rate limits, unexpected
+  failures. The `default` error covers them and no operation lists them. Werkzeug exceptions and exceptions with a
+  dedicated handler (`ValueError`, `NoPermissionError`, and others registered through
+  `ExternalApi.document_error_handler`) are generic by construction; business-shaped errors that the client still
+  handles centrally are declared once, where the surface is built, with `api.document_generic_errors(...)`
+  (see `controllers/console/__init__.py`). An operation that documents a generic error gets nothing for it.
+- **Business** errors name an outcome the caller branches on for that operation: `HTTPException` subclasses that
+  declare an `error_code`. They are listed per operation so clients can narrow on `code`.
 
-`make api-error-lint` (`api/dev/lint_error_responses.py`) checks these declarations against what each Console, Web and
-Service API operation statically raises, and CI runs it. `--fix` adds what handlers are missing to their
-`@error_responses`; `make lint` runs it with `--fix`. Undocumented errors raised by a decorator are reported against the
-decorator and fixed there. Stale entries are warnings; `--fix --prune` removes them. Inference cannot see instance
-calls, signals or other dynamic dispatch, so add errors raised that way by hand. `--report-unproduced` lists declared
-error statuses nothing inferred produces; it is a review aid (services that raise HTTP exceptions are invisible to it),
-not a CI check.
+A handler lists what it and its callees raise with `@error_responses(SomeError, ...)` from `libs.external_api`. A
+view decorator documents its own errors on the wrapper it returns: `return document_errors(decorated, SomeError)`.
+Guards in a Resource's `method_decorators` are documented on the class with `document_errors(ResourceClass, ...)`.
+Listing a Werkzeug exception, a handled exception, or a `BaseHTTPException` subclass that keeps the placeholder
+`error_code` is an error. Record an error raised only from an unreachable branch as
+`@error_responses(..., unreachable=(SomeError,))`; it stays undocumented. View decorators must keep `__apidoc__` from
+the view they wrap (`functools.wraps` does, unless `updated=()`; then add `"__apidoc__"` to `assigned`).
 
-Controller unit tests also check every 4xx/5xx JSON response an `ExternalApi` serves against that API's generated
-document (`tests/unit_tests/controllers/error_contract.py`): the body must be the standard error body, unless the
-status declares its own model, and its `code` must be one the operation documents for that status or one of the
-surface's generic codes. This covers the dynamic paths static inference cannot follow, on every path a test exercises.
+The gate is runtime, not static: controller unit tests check every 4xx/5xx JSON response an `ExternalApi` serves
+against that API's generated document (`tests/unit_tests/controllers/error_contract.py`). The body must be the
+standard error body, unless the status declares its own model, and its `code` must be one the operation documents for
+that status or one of the surface's generic codes (`ExternalApi.implicit_error_codes`). A new business error without
+a declaration fails there on every path a test exercises.
+
+`make api-error-lint` (`api/dev/lint_error_responses.py`) is advisory: it infers what each Console, Web and Service
+API operation statically raises and suggests `@error_responses` entries; `ERROR_LINT_ARGS=--fix` applies them, and
+`--fix --prune` also removes entries it cannot infer, so review a prune before keeping it. CI runs it without failing
+the build. Inference cannot see instance calls, signals or other dynamic dispatch, so hand-declared entries it reports
+as stale may be right. `--report-unproduced` lists declared error statuses nothing inferred produces.
 
 Each documented code is one shared component, `{Code}Error` (`draft_workflow_not_sync` documents as
 `DraftWorkflowNotSyncError`): the error body with `code` and `status` fixed, plus the class's `details_model` (a
@@ -277,6 +280,8 @@ Signal errors by raising, not by returning `(body, status)`:
   class, so listing it in `error_responses` adds nothing to the document.
 - An endpoint that must keep a legacy error body (for example `{"error": message}`) declares it with
   `@ns.response(status, ..., Model)` so the contract describes what the client receives.
+- Renaming an `error_code` changes the wire contract: clients branch on it, and the Service API list is published.
+  Treat it as a breaking change.
 
 ## Legacy Flask-RESTX Patterns
 

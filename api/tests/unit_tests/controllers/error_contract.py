@@ -168,6 +168,12 @@ def violation(api: ExternalApi, response: Response) -> str | None:
     if not documented and not _documents_business_errors(api):
         return None
     generic = api.implicit_error_codes(response.status_code)
+    if not _documents_business_errors(api):
+        # A test harness mounts a surface's resources on a fresh ExternalApi that declares none
+        # of the surface's generic errors (``document_generic_errors``); admit what the
+        # documented surfaces treat as generic, since the resources under test are theirs.
+        for surface in _module_apis(_DOCUMENTED_APIS):
+            generic |= surface.implicit_error_codes(response.status_code)
     if body["code"] not in documented | generic:
         return (
             f"{where}: code {body['code']!r} is not documented for this status "

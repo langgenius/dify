@@ -161,7 +161,6 @@ def validate_node_id(node_id: str) -> NoReturn | None:
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/nodes/<string:node_id>/variables")
 class RagPipelineNodeVariableCollectionApi(Resource):
-    @error_responses(InvalidArgumentError)
     @console_ns.response(
         200,
         "Node variables retrieved successfully",
@@ -178,7 +177,6 @@ class RagPipelineNodeVariableCollectionApi(Resource):
 
         return dump_response(WorkflowDraftVariableListResponse, node_vars)
 
-    @error_responses(InvalidArgumentError)
     @console_ns.response(204, "Node variables deleted successfully")
     @_api_prerequisite
     def delete(self, current_user: Account, pipeline: Pipeline, node_id: str):
@@ -214,7 +212,7 @@ class RagPipelineVariableApi(Resource):
         )
         return dump_response(WorkflowDraftVariableResponse, variable)
 
-    @error_responses(InvalidArgumentError, NotFoundError)
+    @error_responses(NotFoundError)
     @console_ns.response(
         200,
         "Variable updated successfully",

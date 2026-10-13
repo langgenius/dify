@@ -123,7 +123,7 @@ class AppMeta(WebApiResource):
 
 @web_ns.route("/webapp/access-mode")
 class AppAccessMode(Resource):
-    @error_responses(InvalidArgumentError, WebAppAccessServiceUnavailableError, WebAppNotFoundError)
+    @error_responses(InvalidArgumentError)
     @web_ns.doc("Get App Access Mode")
     @web_ns.doc(description="Retrieve the access mode for a web application (public or restricted).")
     @web_ns.doc(params=query_params_from_model(AppAccessModeQuery))
@@ -155,7 +155,6 @@ class AppAccessMode(Resource):
 
 @web_ns.route("/webapp/permission")
 class AppWebAuthPermission(Resource):
-    @error_responses(WebAppAccessServiceUnavailableError, WebAppAuthRequiredError)
     @web_ns.doc("Check App Permission")
     @web_ns.doc(description="Check if user has permission to access a web application.")
     @web_ns.doc(params=query_params_from_model(AppPermissionQuery))

@@ -289,12 +289,15 @@ def attach_error_response_schema(
     document: dict[str, object],
     model: type[BaseModel],
     resolve_error: Callable[[type[Exception]], tuple[int, str]],
+    is_generic: Callable[[type[Exception]], bool] = lambda exception: False,
 ) -> dict[str, object]:
     """Give every 4xx/5xx response the surface's error body and document business errors by code.
 
     Every operation gets a ``default`` error response with the open error body: generic
     errors (authentication, validation, rate limits, unexpected failures) can answer any
-    operation and clients handle them centrally, so no operation lists them.
+    operation and clients handle them centrally, so no operation lists them. ``is_generic``
+    names the surface's own generic errors (see ``ExternalApi.document_generic_errors``);
+    an operation that documents one gets nothing for it beyond the ``default`` error.
 
     Each business error an operation documents with ``error_responses`` is one shared
     ``{Code}Error`` component: the error body with ``code`` and ``status`` fixed, plus the
@@ -328,6 +331,9 @@ def attach_error_response_schema(
             components_by_status: dict[str, set[str]] = {}
             for exception_name in exception_names:
                 exception = pkgutil.resolve_name(exception_name)
+                if is_generic(exception):
+                    # Covered by the operation's open ``default`` error.
+                    continue
                 if issubclass(exception, RelayedHTTPError):
                     # Its status and code come from a downstream service at runtime; the open
                     # ``default`` error already documents it. The marker lets checks that compare
@@ -555,6 +561,7 @@ class ExternalApi(Api):
     ):
         self._error_body_formatter = error_body_formatter
         self._handled_errors: dict[type[Exception], tuple[int, str]] = dict(_SHARED_HANDLED_ERRORS)
+        self._generic_errors: list[type[Exception]] = []
         self._register_default_root = register_default_root
         install_swagger_compatibility()
         kwargs.setdefault("authorizations", self._authorizations)
@@ -577,11 +584,36 @@ class ExternalApi(Api):
         """A surface overrides this to rewrite its finished OpenAPI document (see
         ``DocumentFinisher`` in ``flask_restx_compat``); overrides must call ``super()``.
         The default documents ``error_response_model`` on error responses."""
-        return attach_error_response_schema(document, self.error_response_model, self.resolve_error)
+        return attach_error_response_schema(
+            document, self.error_response_model, self.resolve_error, self.is_generic_error
+        )
 
     def document_error_handler(self, exception: type[Exception], *, status: int, code: str) -> None:
         """Record what a surface-specific handler for ``exception`` emits, for ``error_responses``."""
         self._handled_errors[exception] = (status, code)
+
+    def document_generic_errors(self, *exceptions: type[Exception]) -> None:
+        """Declare business-shaped errors this surface's clients handle centrally.
+
+        A generic error is one any operation may answer with and no caller branches on
+        per operation: a missing setup step, an uninitialized account, a revoked
+        license, a malformed argument. It is covered by every operation's open
+        ``default`` error and admitted by ``implicit_error_codes``; an operation that
+        documents it gets no per-operation entry for it. Register them once, where the
+        surface is built, so the decision is visible in one place.
+        """
+        for exception in exceptions:
+            if not is_business_error(exception):
+                raise ValueError(f"{exception.__name__} is generic already; only business-shaped errors are declared")
+            if keeps_placeholder_error_code(exception):
+                raise ValueError(f"{exception.__name__} must declare an error_code to be documented as generic")
+            self.resolve_error(exception)
+            if exception not in self._generic_errors:
+                self._generic_errors.append(exception)
+
+    def is_generic_error(self, exception: type[Exception]) -> bool:
+        """Whether this surface documents ``exception`` as generic (see ``document_generic_errors``)."""
+        return any(issubclass(exception, generic) for generic in self._generic_errors)
 
     def resolve_error(self, exception: type[Exception]) -> tuple[int, str]:
         """The (status, ``code``) this surface emits for ``exception``.
@@ -611,6 +643,10 @@ class ExternalApi(Api):
         """
         codes = set(_framework_error_codes().get(status, ()))
         codes.update(code for handled_status, code in self._handled_errors.values() if handled_status == status)
+        for exception in self._generic_errors:
+            generic_status, code = self.resolve_error(exception)
+            if generic_status == status:
+                codes.add(code)
         if status == 500:
             # Unhandled exceptions reach the catch-all handler.
             codes.add("unknown")

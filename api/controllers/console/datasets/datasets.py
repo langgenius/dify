@@ -527,13 +527,7 @@ class DatasetQueryApi(Resource):
 
 @console_ns.route("/datasets/indexing-estimate")
 class DatasetIndexingEstimateApi(Resource):
-    @error_responses(
-        DatasetAccessDeniedRequestError,
-        IndexingEstimateError,
-        InvalidArgumentError,
-        NotFoundError,
-        ProviderNotInitializeError,
-    )
+    @error_responses(DatasetAccessDeniedRequestError, IndexingEstimateError, NotFoundError, ProviderNotInitializeError)
     @console_ns.doc("estimate_dataset_indexing")
     @console_ns.doc(description="Estimate dataset indexing cost")
     @console_ns.response(

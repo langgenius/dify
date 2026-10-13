@@ -469,7 +469,6 @@ class DocumentIndexingEstimateApi(Resource):
         DatasetAccessDeniedRequestError,
         DocumentAlreadyFinishedError,
         IndexingEstimateError,
-        InvalidArgumentError,
         NotFoundError,
         ProviderNotInitializeError,
     )
@@ -519,7 +518,6 @@ class DocumentBatchIndexingEstimateApi(Resource):
         DatasetAccessDeniedRequestError,
         DocumentAlreadyFinishedError,
         IndexingEstimateError,
-        InvalidArgumentError,
         NotFoundError,
         ProviderNotInitializeError,
     )

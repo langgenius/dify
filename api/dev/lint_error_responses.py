@@ -695,7 +695,7 @@ def lint(apis: Mapping[str, Any], analyzer: RaiseAnalyzer, *, collect_unproduced
         def business(exceptions: Iterable[type], where: str, api: Any = api) -> set[type]:
             documentable = set()
             for exception in exceptions:
-                if not is_business_error(exception):
+                if not is_business_error(exception) or api.is_generic_error(exception):
                     continue
                 if issubclass(exception, RelayedHTTPError):
                     # Documented to keep the operation's codes open; it has no static status.

@@ -1,6 +1,13 @@
 from flask import Blueprint
 from flask_restx import Namespace
 
+from controllers.console.error import NotInitValidateError, NotSetupError
+from controllers.web.error import (
+    WebAppAccessServiceUnavailableError,
+    WebAppAuthAccessDeniedError,
+    WebAppAuthRequiredError,
+    WebAppNotFoundError,
+)
 from libs.external_api import ExternalApi
 
 bp = Blueprint("web", __name__, url_prefix="/api")
@@ -10,6 +17,16 @@ api = ExternalApi(
     version="1.0",
     title="Web API",
     description="Public APIs for web applications including file uploads, chat interactions, and app management",
+)
+# The passport guard on every Web API resource raises these; the web client answers them
+# centrally (sign-in redirect, access-denied and not-found pages), so no operation lists them.
+api.document_generic_errors(
+    NotSetupError,
+    NotInitValidateError,
+    WebAppNotFoundError,
+    WebAppAuthRequiredError,
+    WebAppAuthAccessDeniedError,
+    WebAppAccessServiceUnavailableError,
 )
 
 # Create namespace

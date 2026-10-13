@@ -631,7 +631,7 @@ class DraftWorkflowApi(Resource):
         )
         return response
 
-    @error_responses(DraftWorkflowNotSync, InvalidArgumentError)
+    @error_responses(DraftWorkflowNotSync)
     @setup_required
     @login_required
     @account_initialization_required
@@ -1616,7 +1616,6 @@ class DraftWorkflowRestoreApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/<string:workflow_id>")
 class WorkflowByIdApi(Resource):
-    @error_responses(InvalidArgumentError)
     @console_ns.doc("update_workflow_by_id")
     @console_ns.doc(description="Update workflow by ID")
     @console_ns.doc(params={"app_id": "Application ID", "workflow_id": "Workflow ID"})

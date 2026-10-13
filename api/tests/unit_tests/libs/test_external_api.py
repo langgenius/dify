@@ -639,3 +639,43 @@ def test_keeps_placeholder_error_code_spots_undeclared_business_errors():
     assert not keeps_placeholder_error_code(_ItemMissingError)
     assert not keeps_placeholder_error_code(RelayedHTTPError)
     assert not keeps_placeholder_error_code(NotFound)
+
+
+class _BootstrapMissingError(BaseHTTPException):
+    error_code = "bootstrap_missing"
+    description = "Bootstrap has not run."
+    code = 401
+
+
+def test_generic_errors_are_implicit_codes_and_never_listed():
+    api = ExternalApi(Blueprint("generic_errors", __name__))
+    api.document_generic_errors(_BootstrapMissingError)
+
+    document = _documented_operation(api, _BootstrapMissingError, _DocumentedError)
+
+    assert api.is_generic_error(_BootstrapMissingError)
+    assert not api.is_generic_error(_DocumentedError)
+    assert "bootstrap_missing" in api.implicit_error_codes(401)
+    assert "bootstrap_missing" not in api.implicit_error_codes(400)
+    # The operation keeps its real business errors and documents nothing for the generic one.
+    assert _error_options(document, "400") == ["DocumentedError"]
+    assert "BootstrapMissingError" not in document["components"]["schemas"]
+    assert _error_options(document, "401") == ["WrapperDeniedError"]
+
+
+@pytest.mark.parametrize("exception", [ValueError, NotFound])
+def test_document_generic_errors_takes_business_shaped_errors_only(exception: type[Exception]):
+    api = ExternalApi(Blueprint("generic_shape", __name__))
+
+    with pytest.raises(ValueError, match="generic already"):
+        api.document_generic_errors(exception)
+
+
+def test_document_generic_errors_requires_an_error_code():
+    class _Placeholder(BaseHTTPException):
+        code = 401
+
+    api = ExternalApi(Blueprint("generic_placeholder", __name__))
+
+    with pytest.raises(ValueError, match="must declare an error_code"):
+        api.document_generic_errors(_Placeholder)
