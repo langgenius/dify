@@ -5820,7 +5820,7 @@ export type PostAppsByAppIdAudioToTextErrors = {
     | ProviderQuotaExceededError
     | SpeechToTextDisabledError
   401: NotInitValidatedError | NotSetupError
-  404: AppNotFoundError
+  404: AgentVersionNotFoundError | AppNotFoundError
   413: AudioTooLargeError
   415: UnsupportedAudioTypeError
   default: ErrorResponse
@@ -8308,7 +8308,7 @@ export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerData = {
 export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerErrors = {
   400: AccountNotInitializedError
   401: NotInitValidatedError | NotSetupError
-  404: AgentVersionNotFoundError | AppNotFoundError
+  404: AgentNotFoundError | AgentVersionNotFoundError | AppNotFoundError
   default: ErrorResponse
 }
 

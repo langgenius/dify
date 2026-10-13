@@ -107,18 +107,6 @@ export const zAgentApiStatusPayload = z.object({
 })
 
 /**
- * MaxKeysExceededError
- *
- * The API key limit has been reached.
- */
-export const zMaxKeysExceededError = zErrorResponse.and(
-  z.object({
-    code: z.literal('max_keys_exceeded'),
-    status: z.literal(400).optional(),
-  }),
-)
-
-/**
  * AgentNotPublishedError
  *
  * Publish the Agent before enabling Web App or API access.
@@ -127,6 +115,18 @@ export const zAgentNotPublishedError = zErrorResponse.and(
   z.object({
     code: z.literal('agent_not_published'),
     status: z.literal(409).optional(),
+  }),
+)
+
+/**
+ * MaxKeysExceededError
+ *
+ * The API key limit has been reached.
+ */
+export const zMaxKeysExceededError = zErrorResponse.and(
+  z.object({
+    code: z.literal('max_keys_exceeded'),
+    status: z.literal(400).optional(),
   }),
 )
 

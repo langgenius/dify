@@ -42,6 +42,11 @@ export type AgentThought = {
   tool_labels: JsonValue
 }
 
+export type AgentVersionNotFoundError = ErrorResponse & {
+  code: 'agent_version_not_found_error'
+  status?: 404
+}
+
 export type AppAccessModeQuery = {
   appCode?: string | null
   appId?: string | null
@@ -351,6 +356,11 @@ export type HumanInputFormDefinitionResponse = {
   user_actions: Array<UserActionConfig>
 }
 
+export type HumanInputFormExpiredError = ErrorResponse & {
+  code: 'human_input_form_expired'
+  status?: 412
+}
+
 export type HumanInputFormSubmissionData = {
   action_id: string
   action_text: string
@@ -373,6 +383,11 @@ export type HumanInputFormSubmitResponse = {
   [key: string]: unknown
 }
 
+export type HumanInputFormSubmittedError = ErrorResponse & {
+  code: 'human_input_form_submitted'
+  status?: 412
+}
+
 export type HumanInputUploadTokenResponse = {
   expires_at: number
   upload_token: string
@@ -380,6 +395,11 @@ export type HumanInputUploadTokenResponse = {
 
 export type InvalidEmailError = ErrorResponse & {
   code: 'invalid_email'
+  status?: 400
+}
+
+export type InvalidFormDataError = ErrorResponse & {
+  code: 'invalid_form_data'
   status?: 400
 }
 
@@ -1324,7 +1344,7 @@ export type PostAudioToTextErrors = {
     | ProviderQuotaExceededError
     | SpeechToTextDisabledError
   401: WebAppAccessDeniedError | WebSsoAuthRequiredError
-  404: AppNotFoundError
+  404: AgentVersionNotFoundError | AppNotFoundError
   413: AudioTooLargeError
   415: UnsupportedAudioTypeError
   500: ErrorResponse
@@ -1761,7 +1781,7 @@ export type GetFormHumanInputByFormTokenData = {
 export type GetFormHumanInputByFormTokenErrors = {
   403: ErrorResponse
   404: NotFoundError
-  412: ErrorResponse
+  412: HumanInputFormExpiredError | HumanInputFormSubmittedError
   429: WebFormRateLimitExceededError
   default: ErrorResponse
 }
@@ -1786,9 +1806,9 @@ export type PostFormHumanInputByFormTokenData = {
 }
 
 export type PostFormHumanInputByFormTokenErrors = {
-  400: ErrorResponse
+  400: InvalidFormDataError
   404: NotFoundError
-  412: ErrorResponse
+  412: HumanInputFormExpiredError | HumanInputFormSubmittedError
   429: WebFormRateLimitExceededError
   default: ErrorResponse
 }

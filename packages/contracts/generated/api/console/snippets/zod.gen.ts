@@ -147,6 +147,18 @@ export const zSnippetLoopNodeRunPayload = z.object({
 })
 
 /**
+ * AgentNotFoundError
+ *
+ * Agent not found.
+ */
+export const zAgentNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('agent_not_found_error'),
+    status: z.literal(404).optional(),
+  }),
+)
+
+/**
  * AgentVersionNotFoundError
  *
  * Agent config version not found.
@@ -191,18 +203,6 @@ export const zPlaintextSecretNotAllowedError = zErrorResponse.and(
   z.object({
     code: z.literal('plaintext_secret_not_allowed_error'),
     status: z.literal(400).optional(),
-  }),
-)
-
-/**
- * AgentNotFoundError
- *
- * Agent not found.
- */
-export const zAgentNotFoundError = zErrorResponse.and(
-  z.object({
-    code: z.literal('agent_not_found_error'),
-    status: z.literal(404).optional(),
   }),
 )
 

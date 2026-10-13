@@ -70,6 +70,18 @@ export const zNotFoundError = zErrorResponse.and(
 )
 
 /**
+ * HumanInputFormSubmittedError
+ *
+ * This form has already been submitted by another user, form_id={form_id}
+ */
+export const zHumanInputFormSubmittedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('human_input_form_submitted'),
+    status: z.literal(412).optional(),
+  }),
+)
+
+/**
  * HumanInputFormSubmitPayload
  */
 export const zHumanInputFormSubmitPayload = z.object({
@@ -82,6 +94,26 @@ export const zHumanInputFormSubmitPayload = z.object({
  * ConsoleHumanInputFormSubmitResponse
  */
 export const zConsoleHumanInputFormSubmitResponse = z.record(z.string(), z.unknown())
+
+/**
+ * InvalidFormDataError
+ */
+export const zInvalidFormDataError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_form_data'),
+    status: z.literal(400).optional(),
+  }),
+)
+
+/**
+ * HumanInputFormExpiredError
+ */
+export const zHumanInputFormExpiredError = zErrorResponse.and(
+  z.object({
+    code: z.literal('human_input_form_expired'),
+    status: z.literal(412).optional(),
+  }),
+)
 
 export const zGetFormHumanInputByFormTokenPath = z.object({
   form_token: z.string(),

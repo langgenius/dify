@@ -1113,6 +1113,18 @@ export const zAgentNotPublishedError = zErrorResponse.and(
 )
 
 /**
+ * AgentVersionNotFoundError
+ *
+ * Agent config version not found.
+ */
+export const zAgentVersionNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('agent_version_not_found_error'),
+    status: z.literal(404).optional(),
+  }),
+)
+
+/**
  * AppUnavailableError
  *
  * App unavailable, please check your app configurations.
@@ -1425,9 +1437,31 @@ export const zHitTestingResponse = z.object({
 })
 
 /**
+ * HumanInputFormExpiredError
+ */
+export const zHumanInputFormExpiredError = zErrorResponse.and(
+  z.object({
+    code: z.literal('human_input_form_expired'),
+    status: z.literal(412).optional(),
+  }),
+)
+
+/**
  * HumanInputFormSubmitResponse
  */
 export const zHumanInputFormSubmitResponse = z.record(z.string(), z.never())
+
+/**
+ * HumanInputFormSubmittedError
+ *
+ * This form has already been submitted by another user, form_id={form_id}
+ */
+export const zHumanInputFormSubmittedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('human_input_form_submitted'),
+    status: z.literal(412).optional(),
+  }),
+)
 
 /**
  * I18nObject
@@ -1456,6 +1490,16 @@ export const zIndexInfoResponse = z.object({
 export const zInvalidActionError = zErrorResponse.and(
   z.object({
     code: z.literal('invalid_action'),
+    status: z.literal(400).optional(),
+  }),
+)
+
+/**
+ * InvalidFormDataError
+ */
+export const zInvalidFormDataError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_form_data'),
     status: z.literal(400).optional(),
   }),
 )

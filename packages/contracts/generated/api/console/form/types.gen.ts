@@ -28,6 +28,11 @@ export type NotFoundError = ErrorResponse & {
   status?: 404
 }
 
+export type HumanInputFormSubmittedError = ErrorResponse & {
+  code: 'human_input_form_submitted'
+  status?: 412
+}
+
 export type ErrorResponse = {
   code: string
   details?: {
@@ -52,6 +57,16 @@ export type ConsoleHumanInputFormSubmitResponse = {
   [key: string]: unknown
 }
 
+export type InvalidFormDataError = ErrorResponse & {
+  code: 'invalid_form_data'
+  status?: 400
+}
+
+export type HumanInputFormExpiredError = ErrorResponse & {
+  code: 'human_input_form_expired'
+  status?: 412
+}
+
 export type GetFormHumanInputByFormTokenData = {
   body?: never
   path: {
@@ -65,6 +80,7 @@ export type GetFormHumanInputByFormTokenErrors = {
   400: AccountNotInitializedError
   401: NotInitValidatedError | NotSetupError
   404: NotFoundError
+  412: HumanInputFormSubmittedError
   default: ErrorResponse
 }
 
@@ -88,8 +104,9 @@ export type PostFormHumanInputByFormTokenData = {
 }
 
 export type PostFormHumanInputByFormTokenErrors = {
-  400: AccountNotInitializedError
+  400: AccountNotInitializedError | InvalidFormDataError
   404: NotFoundError
+  412: HumanInputFormExpiredError | HumanInputFormSubmittedError
   default: ErrorResponse
 }
 

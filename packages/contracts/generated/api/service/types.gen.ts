@@ -24,6 +24,11 @@ export type AgentThought = {
   tool_labels: JsonValue
 }
 
+export type AgentVersionNotFoundError = ErrorResponse & {
+  code: 'agent_version_not_found_error'
+  status?: 404
+}
+
 export type Annotation = {
   answer?: string | null
   created_at?: number | null
@@ -1267,6 +1272,11 @@ export type HumanInputFormDefinitionResponse = {
   user_actions: Array<UserActionConfig>
 }
 
+export type HumanInputFormExpiredError = ErrorResponse & {
+  code: 'human_input_form_expired'
+  status?: 412
+}
+
 export type HumanInputFormSubmissionData = {
   action_id: string
   action_text: string
@@ -1297,6 +1307,11 @@ export type HumanInputFormSubmitResponse = {
   [key: string]: never
 }
 
+export type HumanInputFormSubmittedError = ErrorResponse & {
+  code: 'human_input_form_submitted'
+  status?: 412
+}
+
 export type I18nObject = {
   en_US: string
   zh_Hans?: string | null
@@ -1310,6 +1325,11 @@ export type IndexInfoResponse = {
 
 export type InvalidActionError = ErrorResponse & {
   code: 'invalid_action'
+  status?: 400
+}
+
+export type InvalidFormDataError = ErrorResponse & {
+  code: 'invalid_form_data'
   status?: 400
 }
 
@@ -2808,6 +2828,7 @@ export type PostAudioToTextErrors = {
     | SpeechToTextDisabledError
   401: ErrorResponse
   403: ErrorResponse
+  404: AgentVersionNotFoundError
   413: AudioTooLargeError
   415: UnsupportedAudioTypeError
   500: ErrorResponse
@@ -4587,7 +4608,7 @@ export type GetFormHumanInputByFormTokenErrors = {
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
-  412: ErrorResponse
+  412: HumanInputFormExpiredError | HumanInputFormSubmittedError
   default: ErrorResponse
 }
 
@@ -4611,11 +4632,11 @@ export type PostFormHumanInputByFormTokenData = {
 }
 
 export type PostFormHumanInputByFormTokenErrors = {
-  400: ErrorResponse
+  400: InvalidFormDataError
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse
-  412: ErrorResponse
+  412: HumanInputFormExpiredError | HumanInputFormSubmittedError
   default: ErrorResponse
 }
 

@@ -211,6 +211,18 @@ export const zAgentNotPublishedError = zErrorResponse.and(
 )
 
 /**
+ * AgentVersionNotFoundError
+ *
+ * Agent config version not found.
+ */
+export const zAgentVersionNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('agent_version_not_found_error'),
+    status: z.literal(404).optional(),
+  }),
+)
+
+/**
  * AppMoreLikeThisDisabledError
  *
  * The 'More like this' feature is disabled. Please refresh your page.
@@ -485,9 +497,31 @@ export const zHumanInputFileUploadFormPayload = z.object({
 })
 
 /**
+ * HumanInputFormExpiredError
+ */
+export const zHumanInputFormExpiredError = zErrorResponse.and(
+  z.object({
+    code: z.literal('human_input_form_expired'),
+    status: z.literal(412).optional(),
+  }),
+)
+
+/**
  * HumanInputFormSubmitResponse
  */
 export const zHumanInputFormSubmitResponse = z.record(z.string(), z.unknown())
+
+/**
+ * HumanInputFormSubmittedError
+ *
+ * This form has already been submitted by another user, form_id={form_id}
+ */
+export const zHumanInputFormSubmittedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('human_input_form_submitted'),
+    status: z.literal(412).optional(),
+  }),
+)
 
 /**
  * HumanInputUploadTokenResponse
@@ -505,6 +539,16 @@ export const zHumanInputUploadTokenResponse = z.object({
 export const zInvalidEmailError = zErrorResponse.and(
   z.object({
     code: z.literal('invalid_email'),
+    status: z.literal(400).optional(),
+  }),
+)
+
+/**
+ * InvalidFormDataError
+ */
+export const zInvalidFormDataError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_form_data'),
     status: z.literal(400).optional(),
   }),
 )

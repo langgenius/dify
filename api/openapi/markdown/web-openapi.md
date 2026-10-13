@@ -24,7 +24,7 @@ Convert audio file to text using speech-to-text service.
 | 200 | Success | **application/json**: [AudioToTextResponse](#audiototextresponse)<br> |
 | 400 | Bad Request | **application/json**: <br> |
 | 401 | Unauthorized | **application/json**: <br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Not Found | **application/json**: <br> |
 | 413 | Audio file too large | **application/json**: [AudioTooLargeError](#audiotoolargeerror)<br> |
 | 415 | Unsupported audio type | **application/json**: [UnsupportedAudioTypeError](#unsupportedaudiotypeerror)<br> |
 | 500 | Internal Server Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -387,7 +387,7 @@ GET /api/form/human_input/<form_token>
 | 200 | Form retrieved successfully | **application/json**: [HumanInputFormDefinitionResponse](#humaninputformdefinitionresponse)<br> |
 | 403 | Forbidden | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Form not found | **application/json**: [NotFoundError](#notfounderror)<br> |
-| 412 | Form already submitted or expired | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 412 | Form already submitted or expired | **application/json**: <br> |
 | 429 | Too many requests | **application/json**: [WebFormRateLimitExceededError](#webformratelimitexceedederror)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -422,9 +422,9 @@ Request body:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Form submitted successfully | **application/json**: [HumanInputFormSubmitResponse](#humaninputformsubmitresponse)<br> |
-| 400 | Bad request - invalid submission data | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | Bad request - invalid submission data | **application/json**: [InvalidFormDataError](#invalidformdataerror)<br> |
 | 404 | Form not found | **application/json**: [NotFoundError](#notfounderror)<br> |
-| 412 | Form already submitted or expired | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 412 | Form already submitted or expired | **application/json**: <br> |
 | 429 | Too many requests | **application/json**: [WebFormRateLimitExceededError](#webformratelimitexceedederror)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -1057,6 +1057,14 @@ Agent has not been published. Please publish the Agent before using the web app.
 | tool_input | string |  | No |
 | tool_labels | [JSONValue](#jsonvalue) | Labels for tools used. | Yes |
 
+#### AgentVersionNotFoundError
+
+Agent config version not found.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AgentVersionNotFoundError |  | Agent config version not found. |  |
+
 #### AppAccessModeQuery
 
 | Name | Type | Description | Required |
@@ -1457,6 +1465,12 @@ Parsed multipart form fields for HITL uploads.
 | site | [WebAppSiteResponse](#webappsiteresponse) |  | No |
 | user_actions | [ [UserActionConfig](#useractionconfig) ] |  | Yes |
 
+#### HumanInputFormExpiredError
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| HumanInputFormExpiredError |  |  |  |
+
 #### HumanInputFormSubmissionData
 
 | Name | Type | Description | Required |
@@ -1480,6 +1494,14 @@ Parsed multipart form fields for HITL uploads.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 
+#### HumanInputFormSubmittedError
+
+This form has already been submitted by another user, form_id={form_id}
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| HumanInputFormSubmittedError |  | This form has already been submitted by another user, form_id={form_id} |  |
+
 #### HumanInputUploadTokenResponse
 
 | Name | Type | Description | Required |
@@ -1494,6 +1516,12 @@ The email address is not valid.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | InvalidEmailError |  | The email address is not valid. |  |
+
+#### InvalidFormDataError
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| InvalidFormDataError |  |  |  |
 
 #### InvalidOrExpiredTokenError
 

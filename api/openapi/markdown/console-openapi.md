@@ -566,6 +566,7 @@ Check if activation token is valid
 | 400 | Bad Request | **application/json**: [AccountNotInitializedError](#accountnotinitializederror)<br> |
 | 401 | Unauthorized | **application/json**: <br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [AgentNotPublishedError](#agentnotpublishederror)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/api-keys
@@ -783,7 +784,7 @@ Get Agent App chat messages for a conversation with pagination
 | 200 | Success | **application/json**: [MessageInfiniteScrollPaginationResponse](#messageinfinitescrollpaginationresponse)<br> |
 | 400 | Bad Request | **application/json**: [AccountNotInitializedError](#accountnotinitializederror)<br> |
 | 401 | Unauthorized | **application/json**: <br> |
-| 404 | Agent or conversation not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Agent or conversation not found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/chat-messages/{message_id}/suggested-questions
@@ -825,6 +826,7 @@ Stop a running Agent App chat message generation
 | 200 | Task stopped successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 | 400 | Bad Request | **application/json**: [AccountNotInitializedError](#accountnotinitializederror)<br> |
 | 401 | Unauthorized | **application/json**: <br> |
+| 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/composer
@@ -1282,7 +1284,7 @@ Create or update Agent App message feedback
 | 200 | Feedback updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 | 400 | Bad Request | **application/json**: [AccountNotInitializedError](#accountnotinitializederror)<br> |
 | 401 | Unauthorized | **application/json**: <br> |
-| 404 | Agent or message not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Agent or message not found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/log-sources
@@ -1373,7 +1375,7 @@ Get Agent App message details by ID
 | 200 | Message retrieved successfully | **application/json**: [MessageDetailResponse](#messagedetailresponse)<br> |
 | 400 | Bad Request | **application/json**: [AccountNotInitializedError](#accountnotinitializederror)<br> |
 | 401 | Unauthorized | **application/json**: <br> |
-| 404 | Agent or message not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Agent or message not found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/publish
@@ -1559,7 +1561,7 @@ Preview an Agent TTS voice or read an Agent chat message
 | 400 | Invalid text or voice | **application/json**: <br> |
 | 401 | Unauthorized | **application/json**: <br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 404 | Agent not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Agent not found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br> |
 | 413 | Request Entity Too Large | **application/json**: [AudioTooLargeError](#audiotoolargeerror)<br> |
 | 415 | Unsupported Media Type | **application/json**: [UnsupportedAudioTypeError](#unsupportedaudiotypeerror)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -1581,7 +1583,7 @@ Get available TTS voices for an Agent and language
 | 200 | TTS voices retrieved successfully | **application/json**: [TextToSpeechVoiceListResponse](#texttospeechvoicelistresponse)<br> |
 | 400 | Invalid language parameter | **application/json**: <br> |
 | 401 | Unauthorized | **application/json**: <br> |
-| 404 | Agent not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Agent not found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br> |
 | 413 | Request Entity Too Large | **application/json**: [AudioTooLargeError](#audiotoolargeerror)<br> |
 | 415 | Unsupported Media Type | **application/json**: [UnsupportedAudioTypeError](#unsupportedaudiotypeerror)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -2901,7 +2903,7 @@ Transcript audio to text for chat messages
 | 200 | Audio transcription successful | **application/json**: [AudioTranscriptResponse](#audiotranscriptresponse)<br> |
 | 400 | Bad request - No audio uploaded or unsupported type | **application/json**: <br> |
 | 401 | Unauthorized | **application/json**: <br> |
-| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br> |
+| 404 | Not Found | **application/json**: <br> |
 | 413 | Audio file too large | **application/json**: [AudioTooLargeError](#audiotoolargeerror)<br> |
 | 415 | Unsupported Media Type | **application/json**: [UnsupportedAudioTypeError](#unsupportedaudiotypeerror)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -7961,6 +7963,7 @@ GET /console/api/form/human_input/<form_token>
 | 400 | Bad Request | **application/json**: [AccountNotInitializedError](#accountnotinitializederror)<br> |
 | 401 | Unauthorized | **application/json**: <br> |
 | 404 | Not Found | **application/json**: [NotFoundError](#notfounderror)<br> |
+| 412 | Precondition Failed | **application/json**: [HumanInputFormSubmittedError](#humaninputformsubmittederror)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /form/human_input/{form_token}
@@ -7993,8 +7996,9 @@ Request body:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [ConsoleHumanInputFormSubmitResponse](#consolehumaninputformsubmitresponse)<br> |
-| 400 | Bad Request | **application/json**: [AccountNotInitializedError](#accountnotinitializederror)<br> |
+| 400 | Bad Request | **application/json**: <br> |
 | 404 | Not Found | **application/json**: [NotFoundError](#notfounderror)<br> |
+| 412 | Precondition Failed | **application/json**: <br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /installed-apps
@@ -10568,7 +10572,7 @@ Returns an SSE event stream with loop progress and results.
 | 200 | Snippet agent composer state | **application/json**: [WorkflowAgentComposerResponse](#workflowagentcomposerresponse)<br> |
 | 400 | Bad Request | **application/json**: [AccountNotInitializedError](#accountnotinitializederror)<br> |
 | 401 | Unauthorized | **application/json**: <br> |
-| 404 | Not Found | **application/json**: [AgentVersionNotFoundError](#agentversionnotfounderror)<br> |
+| 404 | Not Found | **application/json**: <br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer
@@ -23344,6 +23348,12 @@ Enum class for form type.
 | node_title | string |  | Yes |
 | resolved_default_values | object |  | No |
 
+#### HumanInputFormExpiredError
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| HumanInputFormExpiredError |  |  |  |
+
 #### HumanInputFormPreviewPayload
 
 | Name | Type | Description | Required |
@@ -23389,6 +23399,14 @@ Enum class for form type.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | HumanInputFormSubmitResponse | object |  |  |
+
+#### HumanInputFormSubmittedError
+
+This form has already been submitted by another user, form_id={form_id}
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| HumanInputFormSubmittedError |  | This form has already been submitted by another user, form_id={form_id} |  |
 
 #### HumanInputPauseTypeResponse
 
@@ -23675,6 +23693,12 @@ The email address is not valid.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | InvalidEmailError |  | The email address is not valid. |  |
+
+#### InvalidFormDataError
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| InvalidFormDataError |  |  |  |
 
 #### InvalidInvitationCodeError
 

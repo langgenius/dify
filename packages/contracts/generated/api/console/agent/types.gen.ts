@@ -136,6 +136,11 @@ export type AgentApiStatusPayload = {
   enable_api: boolean
 }
 
+export type AgentNotPublishedError = ErrorResponse & {
+  code: 'agent_not_published'
+  status?: 409
+}
+
 export type ApiKeyList = {
   data: Array<ApiKeyItem>
 }
@@ -143,11 +148,6 @@ export type ApiKeyList = {
 export type MaxKeysExceededError = ErrorResponse & {
   code: 'max_keys_exceeded'
   status?: 400
-}
-
-export type AgentNotPublishedError = ErrorResponse & {
-  code: 'agent_not_published'
-  status?: 409
 }
 
 export type ApiKeyItem = {
@@ -2628,6 +2628,7 @@ export type PostAgentByAgentIdApiEnableErrors = {
   400: AccountNotInitializedError
   401: NotInitValidatedError | NotSetupError
   403: ErrorResponse
+  409: AgentNotPublishedError
   default: ErrorResponse
 }
 
@@ -2943,7 +2944,7 @@ export type GetAgentByAgentIdChatMessagesData = {
 export type GetAgentByAgentIdChatMessagesErrors = {
   400: AccountNotInitializedError
   401: NotInitValidatedError | NotSetupError
-  404: ErrorResponse
+  404: AgentNotFoundError
   default: ErrorResponse
 }
 
@@ -3005,6 +3006,7 @@ export type PostAgentByAgentIdChatMessagesByTaskIdStopData = {
 export type PostAgentByAgentIdChatMessagesByTaskIdStopErrors = {
   400: AccountNotInitializedError
   401: NotInitValidatedError | NotSetupError
+  404: AgentNotFoundError
   default: ErrorResponse
 }
 
@@ -3639,7 +3641,7 @@ export type PostAgentByAgentIdFeedbacksData = {
 export type PostAgentByAgentIdFeedbacksErrors = {
   400: AccountNotInitializedError
   401: NotInitValidatedError | NotSetupError
-  404: ErrorResponse
+  404: AgentNotFoundError
   default: ErrorResponse
 }
 
@@ -3766,7 +3768,7 @@ export type GetAgentByAgentIdMessagesByMessageIdData = {
 export type GetAgentByAgentIdMessagesByMessageIdErrors = {
   400: AccountNotInitializedError
   401: NotInitValidatedError | NotSetupError
-  404: ErrorResponse
+  404: AgentNotFoundError
   default: ErrorResponse
 }
 
@@ -4011,7 +4013,7 @@ export type PostAgentByAgentIdTextToAudioErrors = {
     | ProviderQuotaExceededError
   401: NotInitValidatedError | NotSetupError
   403: ErrorResponse
-  404: ErrorResponse
+  404: AgentNotFoundError
   413: AudioTooLargeError
   415: UnsupportedAudioTypeError
   default: ErrorResponse
@@ -4048,7 +4050,7 @@ export type GetAgentByAgentIdTextToAudioVoicesErrors = {
     | ProviderNotSupportSpeechToTextError
     | ProviderQuotaExceededError
   401: NotInitValidatedError | NotSetupError
-  404: ErrorResponse
+  404: AgentNotFoundError
   413: AudioTooLargeError
   415: UnsupportedAudioTypeError
   default: ErrorResponse

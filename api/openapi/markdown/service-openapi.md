@@ -302,6 +302,7 @@ Convert audio file to text. Supported MIME types: `audio/mp3`, `audio/mpga`, `au
 | 400 | - `app_unavailable` : App unavailable or misconfigured. - `speech_to_text_disabled` : Speech-to-text is disabled for this app. - `provider_not_support_speech_to_text` : Model provider does not support speech-to-text. - `provider_not_initialize` : No valid model provider credentials found. - `provider_quota_exceeded` : Model provider quota exhausted. - `model_currently_not_support` : Current model does not support this operation. - `completion_request_error` : Speech recognition request failed. | **application/json**: <br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AgentVersionNotFoundError](#agentversionnotfounderror)<br> |
 | 413 | `audio_too_large` : Audio file size exceeded the limit. | **application/json**: [AudioTooLargeError](#audiotoolargeerror)<br> |
 | 415 | `unsupported_audio_type` : Audio type is not allowed. | **application/json**: [UnsupportedAudioTypeError](#unsupportedaudiotypeerror)<br> |
 | 500 | `internal_server_error` : Internal server error. | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -2130,7 +2131,7 @@ Retrieve a paused Human Input form's contents using the `form_token` from a `hum
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | `not_found` : Form not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 412 | - `human_input_form_submitted` : Form already submitted. Forms are one-shot; the first response wins regardless of which user submits it. - `human_input_form_expired` : The form's expiration time passed before submission arrived. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 412 | - `human_input_form_submitted` : Form already submitted. Forms are one-shot; the first response wins regardless of which user submits it. - `human_input_form_expired` : The form's expiration time passed before submission arrived. | **application/json**: <br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /form/human_input/{form_token}
@@ -2155,11 +2156,11 @@ Submit the recipient's response to a paused Human Input form. The workflow resum
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Form submitted successfully. The response body is an empty object. | **application/json**: [HumanInputFormSubmitResponse](#humaninputformsubmitresponse)<br> |
-| 400 | - `bad_request` : Form recipient type is invalid. - `invalid_form_data` : Submission failed validation against the form definition. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | - `bad_request` : Form recipient type is invalid. - `invalid_form_data` : Submission failed validation against the form definition. | **application/json**: [InvalidFormDataError](#invalidformdataerror)<br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | `not_found` : Form not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 412 | - `human_input_form_submitted` : Form already submitted. Forms are one-shot; the first response wins regardless of which user submits it. - `human_input_form_expired` : The form's expiration time passed before submission arrived. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 412 | - `human_input_form_submitted` : Form already submitted. Forms are one-shot; the first response wins regardless of which user submits it. - `human_input_form_expired` : The form's expiration time passed before submission arrived. | **application/json**: <br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ---
@@ -2431,6 +2432,14 @@ Agent has not been published. Please publish the Agent before using the API.
 | tool | string |  | No |
 | tool_input | string |  | No |
 | tool_labels | [JSONValue](#jsonvalue) | Labels for tools used. | Yes |
+
+#### AgentVersionNotFoundError
+
+Agent config version not found.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AgentVersionNotFoundError |  | Agent config version not found. |  |
 
 #### Annotation
 
@@ -3726,6 +3735,12 @@ The specified filename does not exist.
 | resolved_default_values | object |  | Yes |
 | user_actions | [ [UserActionConfig](#useractionconfig) ] |  | Yes |
 
+#### HumanInputFormExpiredError
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| HumanInputFormExpiredError |  |  |  |
+
 #### HumanInputFormSubmissionData
 
 | Name | Type | Description | Required |
@@ -3757,6 +3772,14 @@ The specified filename does not exist.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 
+#### HumanInputFormSubmittedError
+
+This form has already been submitted by another user, form_id={form_id}
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| HumanInputFormSubmittedError |  | This form has already been submitted by another user, form_id={form_id} |  |
+
 #### I18nObject
 
 Model class for i18n object.
@@ -3781,6 +3804,12 @@ Invalid action.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | InvalidActionError |  | Invalid action. |  |
+
+#### InvalidFormDataError
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| InvalidFormDataError |  |  |  |
 
 #### JSONObject
 

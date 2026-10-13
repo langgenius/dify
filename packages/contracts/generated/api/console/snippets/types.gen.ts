@@ -182,6 +182,11 @@ export type WorkflowAgentComposerResponse = {
   workflow_id?: string | null
 }
 
+export type AgentNotFoundError = ErrorResponse & {
+  code: 'agent_not_found_error'
+  status?: 404
+}
+
 export type AgentVersionNotFoundError = ErrorResponse & {
   code: 'agent_version_not_found_error'
   status?: 404
@@ -218,11 +223,6 @@ export type InvalidComposerConfigError = ErrorResponse & {
 export type PlaintextSecretNotAllowedError = ErrorResponse & {
   code: 'plaintext_secret_not_allowed_error'
   status?: 400
-}
-
-export type AgentNotFoundError = ErrorResponse & {
-  code: 'agent_not_found_error'
-  status?: 404
 }
 
 export type AgentComposerCandidatesResponse = {
@@ -1559,7 +1559,7 @@ export type GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerData =
 export type GetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerErrors = {
   400: AccountNotInitializedError
   401: NotInitValidatedError | NotSetupError
-  404: AgentVersionNotFoundError
+  404: AgentNotFoundError | AgentVersionNotFoundError
   default: ErrorResponse
 }
 
