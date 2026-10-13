@@ -60,19 +60,20 @@ vi.mock('@/app/components/workflow/store', () => ({
   }),
 }))
 
-vi.mock('@/service/console', () => ({
-  consoleClient: {
-    snippets: {
-      bySnippetId: {
-        workflows: {
-          draft: {
-            post: (...args: unknown[]) => mockSyncDraftWorkflow(...args),
-          },
-        },
-      },
-    },
-  },
-}))
+// Rejections pass through the console link's contract error validation, as in production.
+vi.mock('@/service/console', async () => {
+  const { snippets } = await import('@dify/contracts/api/console/snippets/orpc.gen')
+  const { validateDefinedErrors } = await import('@/service/console/defined-errors')
+  const validate = validateDefinedErrors({ snippets })
+  const post = (...args: unknown[]) =>
+    validate({
+      context: {},
+      input: args[0],
+      path: ['snippets', 'bySnippetId', 'workflows', 'draft', 'post'],
+      next: () => mockSyncDraftWorkflow(...args),
+    })
+  return { consoleClient: { snippets: { bySnippetId: { workflows: { draft: { post } } } } } }
+})
 
 vi.mock('@/service/fetch', () => ({
   postWithKeepalive: (...args: unknown[]) => mockPostWithKeepalive(...args),
@@ -134,6 +135,11 @@ describe('snippet/use-nodes-sync-draft', () => {
         new ORPCError(code, {
           status: code === 'forbidden' ? 403 : 409,
           message: 'Draft could not be saved',
+          data: {
+            code,
+            message: 'Draft could not be saved',
+            status: code === 'forbidden' ? 403 : 409,
+          },
         }),
       )
       const callback = { onError: vi.fn(), onSuccess: vi.fn(), onSettled: vi.fn() }

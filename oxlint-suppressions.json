@@ -2281,19 +2281,11 @@
   "web/app/components/rag-pipeline/hooks/use-nodes-sync-draft.ts": {
     "no-restricted-imports": {
       "count": 1
-    },
-    "typescript/no-explicit-any": {
-      "count": 1
     }
   },
   "web/app/components/rag-pipeline/hooks/use-pipeline-config.ts": {
     "typescript/no-explicit-any": {
       "count": 4
-    }
-  },
-  "web/app/components/rag-pipeline/hooks/use-pipeline-init.ts": {
-    "typescript/no-explicit-any": {
-      "count": 1
     }
   },
   "web/app/components/rag-pipeline/hooks/use-pipeline-run.ts": {
