@@ -36,8 +36,8 @@ def clean_dataset_task(
     dataset_id: str,
     tenant_id: str,
     indexing_technique: str | None,
-    index_struct: str,
-    collection_binding_id: str,
+    index_struct: str | None,
+    collection_binding_id: str | None,
     doc_form: str,
     pipeline_id: str | None = None,
 ):

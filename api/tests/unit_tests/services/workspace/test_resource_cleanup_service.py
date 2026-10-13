@@ -2,15 +2,27 @@ from unittest.mock import Mock
 
 import pytest
 from flask import Flask
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from models import Dataset
 from models.agent import Agent, AgentHomeSnapshot, AgentScope, AgentSource, AgentStatus, AgentWorkingResourceStatus
+from repositories.app.console_repository import ConsoleAppRepository
+from repositories.knowledge.dataset_repository import SQLAlchemyDatasetRepository
+from repositories.workspace.resource_cleanup_repository import WorkspaceResourceCleanupRepository
 from services.workspace import resource_cleanup_service as module
 
 
+def _service(session_factory: sessionmaker[Session]) -> module.WorkspaceResourceCleanupService:
+    return module.WorkspaceResourceCleanupService(
+        session_factory=session_factory,
+        apps=ConsoleAppRepository(session_factory=session_factory),
+        datasets=SQLAlchemyDatasetRepository(session_factory=session_factory),
+        agent_resources=WorkspaceResourceCleanupRepository(session_factory=session_factory),
+    )
+
+
 def test_agent_sweep_covers_all_scopes_and_retains_other_tenants(
-    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     agents = [
         Agent(
@@ -52,7 +64,7 @@ def test_agent_sweep_covers_all_scopes_and_retains_other_tenants(
         assert home_snapshot.status == AgentWorkingResourceStatus.RETIRED
 
     collection.side_effect = assert_committed
-    module.WorkspaceResourceCleanupService._retire_agents("target")
+    _service(sqlite_session_factory)._retire_agents("target")
     payload = collection.call_args.kwargs
     assert set(payload["purge_agent_ids"]) == {"roster", "inline", "archived"}
     assert payload["home_snapshot_ids"] == ["home"]
@@ -63,7 +75,7 @@ def test_agent_sweep_covers_all_scopes_and_retains_other_tenants(
 
 
 def test_dataset_deletion_schedules_even_without_index_configuration(
-    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     sqlite_session.add_all(
         [
@@ -76,9 +88,9 @@ def test_dataset_deletion_schedules_even_without_index_configuration(
     monkeypatch.setattr(module, "clean_dataset_task", cleanup)
     monkeypatch.setattr(module.dataset_api_key_bindings, "delete_keys_scoped_only_to", Mock())
     monkeypatch.setattr(module, "build_resource_access_token_cleanup_service", Mock())
-    module.WorkspaceResourceCleanupService._delete_dataset("target", "other-dataset")
+    _service(sqlite_session_factory)._delete_dataset("target", "other-dataset")
     cleanup.delay.assert_not_called()
-    module.WorkspaceResourceCleanupService._delete_dataset("target", "dataset")
+    _service(sqlite_session_factory)._delete_dataset("target", "dataset")
     cleanup.delay.assert_called_once()
     assert cleanup.delay.call_args.args[:2] == ("dataset", "target")
     sqlite_session.expire_all()
@@ -87,7 +99,7 @@ def test_dataset_deletion_schedules_even_without_index_configuration(
 
 
 def test_agent_collection_failure_propagates_and_retirement_can_be_retried(
-    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     sqlite_session.add(
         Agent(id="agent", tenant_id="target", name="Agent", scope=AgentScope.ROSTER, source=AgentSource.WORKFLOW)
@@ -96,14 +108,14 @@ def test_agent_collection_failure_propagates_and_retirement_can_be_retried(
     collection = Mock(side_effect=RuntimeError("broker unavailable"))
     monkeypatch.setattr(module, "enqueue_agent_resource_collection", collection)
     with pytest.raises(RuntimeError, match="broker unavailable"):
-        module.WorkspaceResourceCleanupService._retire_agents("target")
+        _service(sqlite_session_factory)._retire_agents("target")
     collection.side_effect = None
-    module.WorkspaceResourceCleanupService._retire_agents("target")
+    _service(sqlite_session_factory)._retire_agents("target")
     assert collection.call_args.kwargs["purge_agent_ids"] == ["agent"]
 
 
 def test_working_resources_are_retired_even_when_the_app_is_missing(
-    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     from models.agent import (
         AgentConfigVersionKind,
@@ -135,7 +147,7 @@ def test_working_resources_are_retired_even_when_the_app_is_missing(
     sqlite_session.commit()
     collection = Mock()
     monkeypatch.setattr(module, "enqueue_agent_resource_collection", collection)
-    module.WorkspaceResourceCleanupService._retire_agents("target")
+    _service(sqlite_session_factory)._retire_agents("target")
     sqlite_session.expire_all()
     working_workspace = sqlite_session.get(AgentWorkspace, "working")
     assert working_workspace is not None
@@ -148,7 +160,7 @@ def test_working_resources_are_retired_even_when_the_app_is_missing(
 
 
 def test_resource_failure_does_not_skip_the_other_groups(
-    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     from models import App
     from models.enums import AppStatus
@@ -177,13 +189,13 @@ def test_resource_failure_does_not_skip_the_other_groups(
     monkeypatch.setattr(module.WorkspaceResourceCleanupService, "_delete_dataset", datasets)
     monkeypatch.setattr(module.WorkspaceResourceCleanupService, "_retire_agents", agents)
     with pytest.raises(RuntimeError, match="app:app"):
-        module.WorkspaceResourceCleanupService.cleanup("target")
+        _service(sqlite_session_factory).cleanup("target")
     datasets.assert_called_once_with("target", "dataset")
     agents.assert_called_once_with("target")
 
 
 def test_agent_skill_snapshots_and_orphan_homes_are_included(
-    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     from models.skill import AgentSkillBindingSnapshot
 
@@ -211,7 +223,7 @@ def test_agent_skill_snapshots_and_orphan_homes_are_included(
     sqlite_session.commit()
     collection = Mock()
     monkeypatch.setattr(module, "enqueue_agent_resource_collection", collection)
-    module.WorkspaceResourceCleanupService._retire_agents("target")
+    _service(sqlite_session_factory)._retire_agents("target")
     sqlite_session.expire_all()
     assert sqlite_session.get(AgentSkillBindingSnapshot, "target-binding") is None
     assert sqlite_session.get(AgentSkillBindingSnapshot, "other-binding") is not None
@@ -222,7 +234,10 @@ def test_agent_skill_snapshots_and_orphan_homes_are_included(
 
 
 def test_direct_cleanup_does_not_resolve_a_console_login(
-    app: Flask, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+    app: Flask,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from unittest.mock import MagicMock
 
@@ -258,8 +273,43 @@ def test_direct_cleanup_does_not_resolve_a_console_login(
     monkeypatch.setattr(app_service, "BillingService", Mock())
     monkeypatch.setattr(module, "enqueue_agent_resource_collection", Mock())
     with app.test_request_context(method="DELETE"):
-        module.WorkspaceResourceCleanupService.cleanup("target")
+        _service(sqlite_session_factory).cleanup("target")
     sqlite_session.expire_all()
     assert sqlite_session.get(App, "app") is None
     assert retirement.retire_unowned.call_args.kwargs["account_id"] is None
     user.__bool__.assert_not_called()
+
+
+def test_tenant_home_snapshot_retirement_is_tenant_scoped_and_idempotent(sqlite_session: Session) -> None:
+    from datetime import datetime
+
+    from services.agent.home_snapshot_service import AgentHomeSnapshotService
+
+    retired_at = datetime(2026, 1, 1)
+    sqlite_session.add_all(
+        [
+            AgentHomeSnapshot(id="active", tenant_id="target", agent_id="agent", snapshot_ref="a"),
+            AgentHomeSnapshot(
+                id="retired",
+                tenant_id="target",
+                agent_id="missing",
+                snapshot_ref="b",
+                status=AgentWorkingResourceStatus.RETIRED,
+                retired_at=retired_at,
+            ),
+            AgentHomeSnapshot(id="other", tenant_id="other", agent_id="agent", snapshot_ref="c"),
+        ]
+    )
+    sqlite_session.commit()
+    ids = AgentHomeSnapshotService.retire_all_for_tenant(session=sqlite_session, tenant_id="target")
+    sqlite_session.commit()
+    assert set(ids) == {"active", "retired"}
+    active = sqlite_session.get(AgentHomeSnapshot, "active")
+    retired = sqlite_session.get(AgentHomeSnapshot, "retired")
+    other = sqlite_session.get(AgentHomeSnapshot, "other")
+    assert active is not None
+    assert active.status == AgentWorkingResourceStatus.RETIRED
+    assert retired is not None
+    assert retired.retired_at == retired_at
+    assert other is not None
+    assert other.status == AgentWorkingResourceStatus.ACTIVE
