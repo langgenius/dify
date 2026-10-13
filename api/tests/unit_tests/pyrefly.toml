@@ -519,8 +519,6 @@ project-excludes = [
   "extensions/logstore/test_sql_escape.py",
   "extensions/otel/decorators/handlers/test_generate_handler.py",
   "extensions/otel/decorators/handlers/test_workflow_app_runner_handler.py",
-  "extensions/otel/decorators/test_base.py",
-  "extensions/otel/decorators/test_handler.py",
   "extensions/otel/test_retrieval_tracing.py",
   "extensions/test_celery_ssl.py",
   "extensions/test_ext_login.py",
