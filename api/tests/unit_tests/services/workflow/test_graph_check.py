@@ -58,6 +58,9 @@ def test_graph_without_nodes() -> None:
         ({"nodes": [{"data": {"type": "start"}}], "edges": []}, ("nodes", 0, "id")),
         ({"nodes": [{"id": {"x": 1}, "data": {"type": "start"}}], "edges": []}, ("nodes", 0, "id")),
         ({"nodes": [{"id": "", "data": {"type": "start"}}], "edges": []}, ("nodes", 0, "id")),
+        ({"nodes": [START, START], "edges": []}, ("nodes", 1, "id")),
+        ({"nodes": [START, {"id": "start", "data": None}], "edges": []}, ("nodes", 1, "id")),
+        ({"nodes": [START, {"id": "start", "type": "custom-note", "data": {}}], "edges": []}, ("nodes", 1, "id")),
         ({"nodes": [START], "edges": 5}, ("edges",)),
         ({"nodes": [START], "edges": "start->end"}, ("edges",)),
         ({"nodes": [START], "edges": [{"source": "start", "target": "end"}, 7]}, ("edges", 1)),
@@ -66,6 +69,14 @@ def test_graph_without_nodes() -> None:
 def test_malformed_shapes_are_graph_issues_not_errors(graph: Mapping[str, object], loc: tuple[object, ...]) -> None:
     issues = check_graph(graph, mode=AppMode.WORKFLOW, resources=credential_check("ws-1", {}, cast(Session, Mock())))
     assert [(i.code, i.loc) for i in issues] == [(IssueCode.GRAPH_INVALID, loc)]
+
+
+def test_every_repeat_of_a_node_id_is_reported() -> None:
+    issues = check_graph({"nodes": [START, END, START, START], "edges": []}, mode=AppMode.WORKFLOW)
+    assert [(i.code, i.node_id, i.loc) for i in issues] == [
+        (IssueCode.GRAPH_INVALID, "start", ("nodes", 2, "id")),
+        (IssueCode.GRAPH_INVALID, "start", ("nodes", 3, "id")),
+    ]
 
 
 def test_missing_edges_are_no_edges() -> None:

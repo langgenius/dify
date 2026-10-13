@@ -275,16 +275,28 @@ def _shape_issues(graph: Mapping[str, Any]) -> list[GraphIssue]:
     if not isinstance(nodes, list):
         return [GraphIssue(IssueCode.GRAPH_INVALID, "graph.nodes must be a list", None, ("nodes",))]
     issues: list[GraphIssue] = []
+    seen_ids: set[str] = set()
     for index, node in enumerate(nodes):
         node_id = node.get("id") if isinstance(node, Mapping) else None
         if not isinstance(node, Mapping):
             issues.append(GraphIssue(IssueCode.GRAPH_INVALID, "A node must be a mapping", None, ("nodes", index)))
         elif not isinstance(node_id, str) or not node_id:
             issues.append(GraphIssue(IssueCode.GRAPH_INVALID, "A node needs a string id", None, ("nodes", index, "id")))
+        elif node_id in seen_ids:
+            issues.append(
+                GraphIssue(
+                    IssueCode.GRAPH_INVALID,
+                    f"Node id {node_id!r} is used by more than one node; node ids must be unique",
+                    node_id,
+                    ("nodes", index, "id"),
+                )
+            )
         elif not isinstance(node.get("data"), Mapping):
             issues.append(
                 GraphIssue(IssueCode.GRAPH_INVALID, "The node data must be a mapping", node_id, _data_loc(node_id))
             )
+        if isinstance(node_id, str) and node_id:
+            seen_ids.add(node_id)
     edges = graph.get("edges")
     if edges is None:
         return issues
