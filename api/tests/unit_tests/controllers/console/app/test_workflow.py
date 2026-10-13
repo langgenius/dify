@@ -10,7 +10,7 @@ from unittest.mock import Mock
 import pytest
 from flask import Flask
 from pydantic import ValidationError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import HTTPException, NotFound
 
 from controllers.common.errors import InvalidArgumentError
@@ -25,6 +25,7 @@ from models.model import App, AppMode
 from models.workflow import Workflow, WorkflowType
 from services.app.access import AppAccessFilter
 from tests.unit_tests.config_override import apply_config_overrides
+from tests.workflow_empty_draft_test_utils import POPULATED_GRAPH, post_empty_draft, seed_owner, workflow_rows
 
 
 @pytest.fixture(autouse=True)
@@ -351,31 +352,35 @@ def test_sync_draft_workflow_success(app: Flask, monkeypatch: pytest.MonkeyPatch
     assert sync_draft_workflow.call_args.kwargs["preserve_environment_variables"] is True
 
 
-@pytest.mark.parametrize("content_type", ["application/json", "text/plain"])
+@pytest.mark.parametrize("content_type", ["application/json", "text/plain"], ids=["json", "beacon"])
 @pytest.mark.parametrize("confirmation", [{}, {"force": False}], ids=["missing-force", "force-false"])
 def test_sync_draft_workflow_rejects_empty_graph_without_confirmation(
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
     content_type: str,
     confirmation: dict[str, bool],
 ) -> None:
-    workflow_service = Mock()
-    monkeypatch.setattr(workflow_module, "WorkflowService", workflow_service)
-    api = workflow_module.DraftWorkflowApi()
-    handler = inspect.unwrap(api.post)
-
-    with app.test_request_context(
-        "/apps/app/workflows/draft",
-        method="POST",
-        data=json.dumps({"graph": {"nodes": [], "edges": []}, "features": {}, "hash": "h", **confirmation}),
-        content_type=content_type,
-    ):
-        with pytest.raises(InvalidArgumentError) as exc:
-            handler(api, _account(), app_model=_app())
+    # Preserve the destructive-clear guard while allowing a legitimate existing-empty presave.
+    owner = seed_owner(sqlite_session, graph=POPULATED_GRAPH)
+    assert owner.draft is not None
+    before = workflow_rows(sqlite_session_factory)
+    with pytest.raises(InvalidArgumentError) as exc:
+        post_empty_draft(
+            app,
+            monkeypatch,
+            sqlite_session,
+            owner,
+            content_type=content_type,
+            unique_hash=owner.draft.unique_hash,
+            confirmation=confirmation,
+        )
 
     assert exc.value.code == 400
     assert exc.value.description == "Saving an empty workflow requires force=true."
-    workflow_service.assert_not_called()
+    sqlite_session.rollback()
+    assert workflow_rows(sqlite_session_factory) == before
 
 
 @pytest.mark.parametrize("content_type", ["application/json", "text/plain"])
