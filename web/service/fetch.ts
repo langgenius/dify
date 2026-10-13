@@ -13,7 +13,7 @@ import {
   PUBLIC_API_PREFIX,
   WEB_APP_SHARE_CODE_HEADER_NAME,
 } from '@/config'
-import { httpErrorFromResponse } from './http-error'
+import { httpErrorFromResponse, isHttpErrorStatus } from './http-error'
 import { getWebAppPublicApiPath, resolveWebAppAddress } from './webapp-address'
 import { getWebAppAccessToken, getWebAppPassport } from './webapp-auth'
 
@@ -44,7 +44,7 @@ const afterResponse204: AfterResponseHook = async ({ response }) => {
 }
 
 const afterResponseErrorCode: AfterResponseHook = async ({ response }) => {
-  if (!response.ok) throw await httpErrorFromResponse(response)
+  if (isHttpErrorStatus(response.status)) throw await httpErrorFromResponse(response)
 }
 
 const beforeRequestPublicWithCode: BeforeRequestHook = ({ request }) => {
@@ -65,6 +65,7 @@ const baseHooks: Hooks = {
 
 const baseClient = ky.create({
   hooks: baseHooks,
+  throwHttpErrors: isHttpErrorStatus,
   timeout: TIME_OUT,
 })
 

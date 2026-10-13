@@ -12,6 +12,17 @@ export function isNotFoundError(error: unknown): boolean {
   return getHttpErrorStatus(error) === 404
 }
 
+/** 3xx responses are not failures, and ORPCError rejects statuses in 200-399. */
+export function isHttpErrorStatus(status: number): boolean {
+  return status < 200 || status >= 400
+}
+
+/** Rate limits and server outages are worth retrying instead of treating as a final answer. */
+export function isTransientHttpError(error: unknown): boolean {
+  const status = getHttpErrorStatus(error)
+  return status === 408 || status === 429 || (status !== undefined && status >= 500)
+}
+
 const asRecord = (value: unknown): Record<string, unknown> | undefined =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
     ? (value as Record<string, unknown>)
@@ -37,6 +48,18 @@ export function createHttpError(
     data,
     cause: { headers: new Headers(response.headers) },
   })
+}
+
+export function httpErrorFromXhr(xhr: XMLHttpRequest) {
+  const headers = new Headers()
+  for (const line of xhr
+    .getAllResponseHeaders()
+    .trim()
+    .split(/[\r\n]+/)) {
+    const separator = line.indexOf(':')
+    if (separator > 0) headers.append(line.slice(0, separator), line.slice(separator + 1).trim())
+  }
+  return createHttpError({ status: xhr.status, statusText: xhr.statusText, headers }, xhr.response)
 }
 
 export async function httpErrorFromResponse(response: Response) {

@@ -1,7 +1,7 @@
 import { API_PREFIX } from '@/config'
 import { fetchWithRetry } from '@/utils'
 import { isClient } from '@/utils/client'
-import { httpErrorFromResponse } from './http-error'
+import { httpErrorFromResponse, isHttpErrorStatus } from './http-error'
 
 const LOCAL_STORAGE_KEY = 'is_other_tab_refreshing'
 
@@ -61,7 +61,7 @@ async function getNewAccessToken(timeout: number): Promise<void> {
       if (error) {
         return Promise.reject(error)
       } else {
-        if (!ret.ok) throw await httpErrorFromResponse(ret)
+        if (isHttpErrorStatus(ret.status)) throw await httpErrorFromResponse(ret)
       }
     }
   } catch (error) {
