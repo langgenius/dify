@@ -82,7 +82,6 @@ class AudioApi(WebApiResource):
             200: "Success",
             400: "Bad Request",
             401: "Unauthorized",
-            403: "Forbidden",
             413: "Audio file too large",
             415: "Unsupported audio type",
             500: "Internal Server Error",
@@ -152,7 +151,6 @@ class TextApi(WebApiResource):
             200: "Success",
             400: "Bad Request",
             401: "Unauthorized",
-            403: "Forbidden",
             500: "Internal Server Error",
         }
     )

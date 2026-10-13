@@ -250,7 +250,9 @@ Document business errors so clients can branch on `code`:
 Service API operation statically raises, and CI runs it. `--fix` adds what handlers are missing to their
 `@error_responses`; `make lint` runs it with `--fix`. Undocumented errors raised by a decorator are reported against the
 decorator and fixed there. Stale entries are warnings; `--fix --prune` removes them. Inference cannot see instance
-calls, signals or other dynamic dispatch, so add errors raised that way by hand.
+calls, signals or other dynamic dispatch, so add errors raised that way by hand. `--report-unproduced` lists declared
+error statuses nothing inferred produces; it is a review aid (services that raise HTTP exceptions are invisible to it),
+not a CI check.
 
 Controller unit tests also check every 4xx/5xx JSON response an `ExternalApi` serves against that API's generated
 document (`tests/unit_tests/controllers/error_contract.py`): the body must be the standard error body, unless the

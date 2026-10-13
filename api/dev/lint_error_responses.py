@@ -15,6 +15,10 @@ with what those declarations document at runtime:
 - placeholder code (error): the handler raises a ``BaseHTTPException`` subclass that never
   declares an ``error_code``, so nothing can document it. Declare one; ``--fix`` never
   adds such a class.
+- unproduced status (review, ``--report-unproduced`` only): a declared error status that
+  no inferred raise, hand-built body or framework behavior produces. Errors raised from
+  instance calls (notably HTTP exceptions raised inside services) are invisible, so treat
+  each report as a lead to verify, not a finding.
 - non-standard error body (error): the handler, or a ``controllers`` helper it calls,
   returns ``(body, 4xx/5xx)`` whose body lacks ``code``/``message``/``status`` for a
   status with no ``@ns.response(status, ..., Model)``, or calls ``flask_restx.abort``
@@ -22,7 +26,8 @@ with what those declarations document at runtime:
   status's real model.
 
 Inference is static and conservative toward over-reporting: it follows direct raises,
-re-raises in ``except`` blocks, ``abort(<status>)``, Pydantic validation, and calls that
+re-raises in ``except`` blocks, ``raise factory(...)`` through the exception classes the
+factory returns, ``abort(<status>)``, Pydantic validation, and calls that
 resolve to backend functions (``controllers``, ``libs``, ``services``, ``core``,
 ``machinery``) up to ``--max-depth``. Calls through instances, signals and other dynamic
 dispatch are invisible, so a missing report is reliable but the absence of one is not
@@ -350,9 +355,26 @@ class RaiseAnalyzer:
         obj = self.resolve(target, env, owner)
         if _is_exception_class(obj):
             return {obj}  # type: ignore[set-item]
+        factory = self.backend_function(obj) if isinstance(node.exc, ast.Call) else None
+        if factory is not None:
+            return self._returned_exceptions(factory)
         if isinstance(target, ast.Name):
             return caught_by(enclosing_handler(node, target.id))
         return set()
+
+    def _returned_exceptions(self, factory: FunctionType) -> set[type]:
+        """Exception classes ``factory`` builds in its ``return`` statements (``raise factory(...)``)."""
+        node = self.parse_function(factory)
+        if node is None:
+            return set()
+        env = self.function_env(factory)
+        found: set[type] = set()
+        for child in ast.walk(node):
+            if isinstance(child, ast.Return) and isinstance(child.value, ast.Call):
+                built = self.resolve(child.value.func, env, None)
+                if _is_exception_class(built):
+                    found.add(built)  # type: ignore[arg-type]
+        return found
 
     def _raised_by_call(self, node: ast.Call, env: Mapping[str, object], owner: type | None, depth: int) -> set[type]:
         found: set[type] = set()
@@ -589,6 +611,8 @@ class LintResult:
     body_violations: dict[BodySite, set[str]] = field(default_factory=lambda: defaultdict(set))
     # business error class that keeps the placeholder error_code -> the operations raising it
     placeholder_codes: dict[type, set[str]] = field(default_factory=lambda: defaultdict(set))
+    # operation -> declared error statuses nothing inferred can produce (only with --report-unproduced)
+    unproduced: dict[str, set[int]] = field(default_factory=lambda: defaultdict(set))
     skipped: list[str] = field(default_factory=list)
 
 
@@ -615,7 +639,7 @@ def _source_location(fn: Callable[..., object]) -> str:
         return _qualname(fn)
 
 
-def lint(apis: Mapping[str, Any], analyzer: RaiseAnalyzer) -> LintResult:
+def lint(apis: Mapping[str, Any], analyzer: RaiseAnalyzer, *, collect_unproduced: bool = False) -> LintResult:
     from libs.exception import RelayedHTTPError
     from libs.external_api import is_business_error, keeps_placeholder_error_code
 
@@ -659,7 +683,9 @@ def lint(apis: Mapping[str, Any], analyzer: RaiseAnalyzer) -> LintResult:
                     module = sys.modules[owner.__module__]
                     env = analyzer.module_env(module)
                     documented = documented_at_runtime(resource, method)
-                    explicit = explicit_error_statuses(operation_doc(resource, method))
+                    doc = operation_doc(resource, method)
+                    explicit = explicit_error_statuses(doc)
+                    produced: set[int] = set()
                     for site in error_body_sites(
                         analyzer,
                         node,
@@ -667,6 +693,8 @@ def lint(apis: Mapping[str, Any], analyzer: RaiseAnalyzer) -> LintResult:
                         resource,
                         lambda line, path=path: f"{path.relative_to(API_ROOT)}:{line}",
                     ):
+                        if site.status is not None:
+                            produced.add(site.status)
                         if site.abort or (not site.standard and site.status not in explicit):
                             result.body_violations[site].add(f"{owner.__name__}.{method}")
 
@@ -682,7 +710,8 @@ def lint(apis: Mapping[str, Any], analyzer: RaiseAnalyzer) -> LintResult:
                             declaration=read_declaration(node, env),
                         )
                         result.handlers[key] = report
-                    inferred = business(analyzer.raises_of_node(node, env, resource), f"{owner.__name__}.{method}")
+                    raised_by_handler = analyzer.raises_of_node(node, env, resource)
+                    inferred = business(raised_by_handler, f"{owner.__name__}.{method}")
                     report.inferred |= inferred
                     report.missing |= inferred - documented - report.declaration.unreachable
 
@@ -702,7 +731,30 @@ def lint(apis: Mapping[str, Any], analyzer: RaiseAnalyzer) -> LintResult:
                             result.decorator_gaps[label] |= gaps
                             result.decorator_hits[label] += 1
                             result.decorator_sources[label] = _source_location(fn)
+
+                    if collect_unproduced:
+                        for exception in raised_by_handler.union(*(raised for _, _, raised in guards)):
+                            if exception is HTTPException or not issubclass(exception, Exception):
+                                continue
+                            try:
+                                produced.add(api.resolve_error(exception)[0])
+                            except ValueError:
+                                continue
+                        produced |= _framework_statuses(doc, route.urls)
+                        declared = {int(status) for status in doc.get("responses") or {} if str(status)[:1] in "45"}
+                        if unproduced := declared - produced:
+                            result.unproduced[f"{report.location} {method.upper()}"] |= unproduced
     return result
+
+
+def _framework_statuses(doc: Mapping[str, Any], urls: Iterable[str]) -> set[int]:
+    """Statuses Flask/werkzeug can answer for any operation of this shape."""
+    statuses = {500}  # unhandled exceptions reach the catch-all handler
+    if doc.get("expect"):
+        statuses |= {400, 415}  # malformed or non-JSON request bodies
+    if any("<uuid:" in url or "<int:" in url for url in urls):
+        statuses.add(404)  # typed path parameters that fail to convert
+    return statuses
 
 
 # ---- fix ----------------------------------------------------------------------------
@@ -860,6 +912,11 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--fix", action="store_true", help="add missing errors to handlers' @error_responses")
     parser.add_argument("--prune", action="store_true", help="with --fix, also remove stale entries")
     parser.add_argument("--max-depth", type=int, default=DEFAULT_MAX_DEPTH, help="call depth to follow")
+    parser.add_argument(
+        "--report-unproduced",
+        action="store_true",
+        help="list declared error statuses nothing inferred produces (review aid; not run in CI)",
+    )
     return parser.parse_args(argv)
 
 
@@ -874,7 +931,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         and not Path(file).is_relative_to(API_ROOT / "tests")
         and not Path(file).is_relative_to(API_ROOT / ".venv")
     ]
-    result = lint(apis, RaiseAnalyzer(max_depth=args.max_depth, modules=modules))
+    result = lint(
+        apis, RaiseAnalyzer(max_depth=args.max_depth, modules=modules), collect_unproduced=args.report_unproduced
+    )
 
     failures = 0
     if args.fix:
@@ -929,6 +988,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             f"{', '.join(sorted(operations))} can document it"
         )
         failures += 1
+    for operation, statuses in sorted(result.unproduced.items()):
+        _emit(f"review: {operation}: declares {', '.join(map(str, sorted(statuses)))} that nothing inferred produces")
     for message in result.skipped:
         _emit(f"skipped: {message}")
     _emit(f"{len(result.handlers)} handlers checked, {failures} errors")

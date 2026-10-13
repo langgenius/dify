@@ -73,7 +73,6 @@ class MessageListApi(WebApiResource):
             200: "Success",
             400: "Bad Request",
             401: "Unauthorized",
-            403: "Forbidden",
             404: "Conversation Not Found or Not a Chat App",
             500: "Internal Server Error",
         }
@@ -127,7 +126,6 @@ class MessageFeedbackApi(WebApiResource):
             200: "Feedback submitted successfully",
             400: "Bad Request",
             401: "Unauthorized",
-            403: "Forbidden",
             404: "Message Not Found",
             500: "Internal Server Error",
         }

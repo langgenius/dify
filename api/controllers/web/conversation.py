@@ -57,7 +57,6 @@ class ConversationListApi(WebApiResource):
             200: "Success",
             400: "Bad Request",
             401: "Unauthorized",
-            403: "Forbidden",
             404: "App Not Found or Not a Chat App",
             500: "Internal Server Error",
         }
@@ -111,7 +110,6 @@ class ConversationApi(WebApiResource):
             204: "Conversation deleted successfully",
             400: "Bad Request",
             401: "Unauthorized",
-            403: "Forbidden",
             404: "Conversation Not Found or Not a Chat App",
             500: "Internal Server Error",
         }
@@ -151,7 +149,6 @@ class ConversationRenameApi(WebApiResource):
             200: "Conversation renamed successfully",
             400: "Bad Request",
             401: "Unauthorized",
-            403: "Forbidden",
             404: "Conversation Not Found or Not a Chat App",
             500: "Internal Server Error",
         }
@@ -191,7 +188,6 @@ class ConversationPinApi(WebApiResource):
             200: "Conversation pinned successfully",
             400: "Bad Request",
             401: "Unauthorized",
-            403: "Forbidden",
             404: "Conversation Not Found or Not a Chat App",
             500: "Internal Server Error",
         }
@@ -223,7 +219,6 @@ class ConversationUnPinApi(WebApiResource):
             200: "Conversation unpinned successfully",
             400: "Bad Request",
             401: "Unauthorized",
-            403: "Forbidden",
             404: "Conversation Not Found or Not a Chat App",
             500: "Internal Server Error",
         }
