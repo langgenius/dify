@@ -1971,10 +1971,10 @@ class WorkflowOnlineUsersApi(Resource):
             return {"data": []}
 
         access_filter = None
+        if dify_config.RBAC_ENABLED:
+            access_filter = resolve_app_access_filter(current_tenant_id, current_user.id)
         workflow_service = WorkflowService()
         with session_factory.create_session() as session:
-            if dify_config.RBAC_ENABLED:
-                access_filter = resolve_app_access_filter(current_tenant_id, current_user.id, session=session)
             app_maintainers = workflow_service.get_tenant_app_maintainers(app_ids, current_tenant_id, session=session)
 
         accessible_app_ids = set(app_maintainers)

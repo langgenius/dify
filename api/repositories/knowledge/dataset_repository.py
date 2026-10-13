@@ -4,6 +4,7 @@ from sqlalchemy import and_, exists, literal, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from models.dataset import Dataset, DatasetPermission, Document
+from repositories.knowledge.dataset_read_repository import pipeline_dataset_query
 from services.knowledge.dataset_access import DatasetAccessRecord, DatasetAccessSnapshot
 from services.knowledge.indexing.estimate import DatasetEstimateRecord
 from services.knowledge.resource_scope import DatasetRef
@@ -44,6 +45,26 @@ class SQLAlchemyDatasetRepository:
 
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
+
+    def get_maintainer_id(self, workspace_id: str, resource_id: str) -> str | None:
+        with self._session_factory() as session:
+            return session.scalar(
+                select(Dataset.maintainer).where(Dataset.id == resource_id, Dataset.tenant_id == workspace_id)
+            )
+
+    def get_dataset_id_by_document(self, workspace_id: str, document_id: str) -> str | None:
+        with self._session_factory() as session:
+            return session.scalar(
+                select(Dataset.id)
+                .join(Document, Document.dataset_id == Dataset.id)
+                .where(
+                    Dataset.tenant_id == workspace_id, Document.tenant_id == workspace_id, Document.id == document_id
+                )
+            )
+
+    def get_dataset_id_by_pipeline(self, workspace_id: str, pipeline_id: str) -> str | None:
+        with self._session_factory() as session:
+            return session.scalar(pipeline_dataset_query(workspace_id, pipeline_id).with_only_columns(Dataset.id))
 
     def get_estimate_record(self, dataset_ref: DatasetRef) -> DatasetEstimateRecord | None:
         with self._session_factory() as session:

@@ -5,9 +5,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, Literal, Protocol, assert_never, cast
 
-from agenton.compositor import CompositorSessionSnapshot
 from dify_agent.agent_stub.protocol import AgentStubFileMapping
-from dify_agent.layers.ask_human import DifyAskHumanLayerConfig
 from dify_agent.layers.config import (
     DifyConfigFileConfig,
     DifyConfigLayerConfig,
@@ -35,7 +33,8 @@ from dify_agent.layers.shell import (
     DifyShellLayerConfig,
     DifyShellSecretRefConfig,
 )
-from dify_agent.protocol import CreateRunRequest, DeferredToolResultsPayload
+from dify_agent.protocol import CreateRunRequest
+from dify_agent.protocol.snapshot import SessionSnapshot
 from pydantic import BaseModel, ValidationError
 from sqlalchemy.exc import OperationalError
 
@@ -138,10 +137,7 @@ class WorkflowAgentRuntimeBuildContext:
     # Stage 4 §7 / D-4: 0 for the first run, then incremented per retry. Drives the
     # idempotency key so the backend treats each retry as a fresh request.
     attempt: int = 0
-    session_snapshot: CompositorSessionSnapshot | None = None
-    # ENG-638: set when resuming after a submitted ask_human HITL form; threads
-    # the human's answer back into the second Agent run keyed by tool_call_id.
-    deferred_tool_results: DeferredToolResultsPayload | None = None
+    session_snapshot: SessionSnapshot | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -273,11 +269,9 @@ class WorkflowAgentRuntimeRequestBuilder:
                 core_tools=tool_layers.core_tools,
                 knowledge=knowledge_config,
                 config_layer_config=config_layer_config,
-                ask_human_config=build_ask_human_layer_config(agent_soul),
                 include_shell=dify_config.AGENT_SHELL_ENABLED,
                 shell_config=build_shell_layer_config(agent_soul),
                 session_snapshot=context.session_snapshot,
-                deferred_tool_results=context.deferred_tool_results,
                 idempotency_key=self._idempotency_key(context),
                 metadata=metadata,
             )
@@ -851,20 +845,6 @@ def _knowledge_model_config(model: AgentKnowledgeModelConfig | None) -> DifyKnow
         mode=model.mode,
         completion_params=model.completion_params,
     )
-
-
-def build_ask_human_layer_config(agent_soul: AgentSoulConfig) -> DifyAskHumanLayerConfig | None:
-    """Enable the dify.ask_human deferred tool when the soul configures human involvement.
-
-    HITL is opt-in: only when at least one human contact is configured does the
-    model get the ``ask_human`` tool (recipients for the resulting form come from
-    those contacts, ENG-635). Returns ``None`` to leave the tool off entirely.
-    The tool/field guardrails use the layer defaults; ``human.tools`` semantics are
-    out of scope this round.
-    """
-    if not agent_soul.human.contacts:
-        return None
-    return DifyAskHumanLayerConfig()
 
 
 def append_runtime_warnings(metadata: dict[str, Any], warnings: list[dict[str, str]]) -> None:

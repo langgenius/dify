@@ -166,7 +166,7 @@ Dify 欢迎各种形式的贡献：
 
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=langgenius/dify&type=Date)](https://star-history.com/#langgenius/dify&Date)
+[![Star History Chart](https://star-history.dera.page/svg?repos=langgenius/dify&type=date&legend=top-left)](https://star-history.dera.page/langgenius/dify?type=date&legend=top-left#gh-light-mode-only) [![Star History Chart](https://star-history.dera.page/svg?repos=langgenius/dify&type=date&theme=dark&legend=top-left)](https://star-history.dera.page/langgenius/dify?type=date&legend=top-left#gh-dark-mode-only)
 ## 安全问题
 
 请按照[安全政策](../../SECURITY.md)，通过 GitHub Security Advisories 私下报告漏洞，不要在公开 issue、讨论或 PR 中披露。

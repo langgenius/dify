@@ -1,11 +1,10 @@
-import json
 import logging
 import time
 from dataclasses import dataclass
-from typing import Any
 
 import click
 from celery import shared_task
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -48,14 +47,23 @@ def _build_form_link(token: str) -> str:
     return f"{base_url.rstrip('/')}/form/{token}"
 
 
+class _RecipientPayload(BaseModel):
+    """Shape of HumanInputFormRecipient.recipient_payload written by the recipients layer."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    email: str
+    TYPE: RecipientType
+
+
 def _parse_recipient_payload(payload: str) -> tuple[str | None, RecipientType | None]:
     try:
-        payload_dict: dict[str, Any] = json.loads(payload)
+        recipient = _RecipientPayload.model_validate_json(payload)
     except Exception:
         logger.exception("Failed to parse recipient payload")
         return None, None
 
-    return payload_dict.get("email"), payload_dict.get("TYPE")
+    return recipient.email, recipient.TYPE
 
 
 def _load_email_jobs(session: Session, form: HumanInputForm) -> list[_EmailDeliveryJob]:

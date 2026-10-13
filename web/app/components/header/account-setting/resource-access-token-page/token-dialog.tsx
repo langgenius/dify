@@ -85,7 +85,6 @@ export default function ResourceAccessTokenDialog({
         },
         {
           onSuccess: () => {
-            toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
             void invalidateResourceAccessTokens()
             onSaved()
           },
