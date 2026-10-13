@@ -25,6 +25,7 @@ from core.dify_builder.execution_policy import (
     BuilderExecutionContext,
     BuilderExecutionPolicyError,
     ConfirmedToolExecutionContext,
+    JsonToolExecutionContext,
     scalar_inputs_digest,
 )
 from core.trigger.constants import is_trigger_node_type
@@ -117,7 +118,10 @@ class AppGenerateService:
         streaming: bool = True,
         root_node_id: str | None = None,
         workflow_execution_mode: Literal["celery", "in_process"] = "celery",
-        builder_execution: BuilderExecutionContext | ConfirmedToolExecutionContext | None = None,
+        builder_execution: BuilderExecutionContext
+        | ConfirmedToolExecutionContext
+        | JsonToolExecutionContext
+        | None = None,
         builder_execution_admit: BuilderExecutionAdmission | None = None,
     ):
         """
@@ -214,7 +218,10 @@ class AppGenerateService:
         rate_limit: RateLimit,
         request_id: str,
         workflow_execution_mode: Literal["celery", "in_process"] = "celery",
-        builder_execution: BuilderExecutionContext | ConfirmedToolExecutionContext | None = None,
+        builder_execution: BuilderExecutionContext
+        | ConfirmedToolExecutionContext
+        | JsonToolExecutionContext
+        | None = None,
         builder_execution_admit: BuilderExecutionAdmission | None = None,
     ):
         effective_mode = (

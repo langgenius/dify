@@ -19,6 +19,7 @@ from core.dify_builder.execution_policy import (
     BuilderExecutionContext,
     BuilderExecutionContextValue,
     ConfirmedToolExecutionContext,
+    JsonToolExecutionContext,
 )
 from core.entities.provider_configuration import ProviderModelBundle
 from graphon.file import File, FileUploadConfig
@@ -149,7 +150,7 @@ def build_dify_run_context(
     created_by: CreditUsageCreatedByInput = None,
     trace_session_id: str | None = None,
     extra_context: Mapping[str, Any] | None = None,
-    builder_execution: BuilderExecutionContext | ConfirmedToolExecutionContext | None = None,
+    builder_execution: BuilderExecutionContext | ConfirmedToolExecutionContext | JsonToolExecutionContext | None = None,
 ) -> dict[str, Any]:
     """
     Build graph run_context with the reserved Dify runtime payload.

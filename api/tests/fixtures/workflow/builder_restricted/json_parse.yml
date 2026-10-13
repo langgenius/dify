@@ -1,0 +1,264 @@
+{
+  "edges": [
+    {
+      "data": {
+        "isInIteration": false,
+        "isInLoop": false,
+        "iteration_id": null,
+        "loop_id": null,
+        "sourceType": "start",
+        "targetType": "tool"
+      },
+      "id": "node1-node2",
+      "source": "node1",
+      "sourceHandle": "source",
+      "target": "node2",
+      "targetHandle": "target",
+      "type": "custom",
+      "zIndex": 0
+    },
+    {
+      "data": {
+        "isInIteration": false,
+        "isInLoop": false,
+        "iteration_id": null,
+        "loop_id": null,
+        "sourceType": "tool",
+        "targetType": "end"
+      },
+      "id": "node2-node3",
+      "source": "node2",
+      "sourceHandle": "source",
+      "target": "node3",
+      "targetHandle": "target",
+      "type": "custom",
+      "zIndex": 0
+    }
+  ],
+  "nodes": [
+    {
+      "data": {
+        "desc": "Collect required text inputs payload and json_path.",
+        "selected": false,
+        "title": "User Input",
+        "type": "start",
+        "variables": [
+          {
+            "label": "Payload",
+            "max_length": 4096,
+            "options": [],
+            "required": true,
+            "type": "paragraph",
+            "variable": "payload"
+          },
+          {
+            "label": "JSON Path",
+            "max_length": 256,
+            "options": [],
+            "required": true,
+            "type": "text-input",
+            "variable": "json_path"
+          }
+        ]
+      },
+      "height": 179,
+      "id": "node1",
+      "position": {
+        "x": 80,
+        "y": 280
+      },
+      "positionAbsolute": {
+        "x": 80,
+        "y": 280
+      },
+      "selected": false,
+      "sourcePosition": null,
+      "targetPosition": null,
+      "type": "custom",
+      "width": 242,
+      "zIndex": 0
+    },
+    {
+      "data": {
+        "desc": "Parse content from payload using json_filter from json_path with ensure_ascii true via langgenius/json_process/json_process/parse.",
+        "output_schema": {},
+        "paramSchemas": [
+          {
+            "auto_generate": null,
+            "default": null,
+            "form": "llm",
+            "human_description": {
+              "en_US": "JSON data",
+              "ja_JP": "JSON data",
+              "pt_BR": "JSON数据",
+              "zh_Hans": "JSON数据"
+            },
+            "input_schema": null,
+            "label": {
+              "en_US": "JSON data",
+              "ja_JP": "JSON data",
+              "pt_BR": "JSON data",
+              "zh_Hans": "JSON数据"
+            },
+            "llm_description": "JSON data to be processed",
+            "max": null,
+            "min": null,
+            "multiple": false,
+            "name": "content",
+            "options": [],
+            "placeholder": null,
+            "precision": null,
+            "required": true,
+            "scope": null,
+            "template": null,
+            "type": "string"
+          },
+          {
+            "auto_generate": null,
+            "default": null,
+            "form": "llm",
+            "human_description": {
+              "en_US": "JSON fields to be parsed",
+              "ja_JP": "JSON fields to be parsed",
+              "pt_BR": "JSON fields to be parsed",
+              "zh_Hans": "需要解析的 JSON 字段"
+            },
+            "input_schema": null,
+            "label": {
+              "en_US": "JSON filter",
+              "ja_JP": "JSON filter",
+              "pt_BR": "JSON filter",
+              "zh_Hans": "JSON解析对象"
+            },
+            "llm_description": "JSON fields to be parsed",
+            "max": null,
+            "min": null,
+            "multiple": false,
+            "name": "json_filter",
+            "options": [],
+            "placeholder": null,
+            "precision": null,
+            "required": true,
+            "scope": null,
+            "template": null,
+            "type": "string"
+          },
+          {
+            "auto_generate": null,
+            "default": true,
+            "form": "form",
+            "human_description": {
+              "en_US": "Ensure the JSON output is ASCII encoded",
+              "ja_JP": "Ensure the JSON output is ASCII encoded",
+              "pt_BR": "Ensure the JSON output is ASCII encoded",
+              "zh_Hans": "确保输出的 JSON 是 ASCII 编码"
+            },
+            "input_schema": null,
+            "label": {
+              "en_US": "Ensure ASCII",
+              "ja_JP": "Ensure ASCII",
+              "pt_BR": "Ensure ASCII",
+              "zh_Hans": "确保 ASCII"
+            },
+            "llm_description": "",
+            "max": null,
+            "min": null,
+            "multiple": false,
+            "name": "ensure_ascii",
+            "options": [],
+            "placeholder": null,
+            "precision": null,
+            "required": false,
+            "scope": null,
+            "template": null,
+            "type": "boolean"
+          }
+        ],
+        "params": {
+          "content": "",
+          "ensure_ascii": "",
+          "json_filter": ""
+        },
+        "plugin_id": "langgenius/json_process",
+        "plugin_unique_identifier": "langgenius/json_process:0.0.8@3333687ec0412e1f2a1798d632fc5f3187f36ebd4bf2432a599a96c74e92f503",
+        "provider_id": "langgenius/json_process/json_process",
+        "provider_name": "langgenius/json_process/json_process",
+        "provider_type": "builtin",
+        "selected": false,
+        "title": "JSON Parse",
+        "tool_configurations": {
+          "ensure_ascii": true
+        },
+        "tool_description": "A tool for extracting JSON objects",
+        "tool_label": "JSON Parse",
+        "tool_name": "parse",
+        "tool_node_version": "2",
+        "tool_parameters": {
+          "content": {
+            "type": "mixed",
+            "value": "{{#node1.payload#}}"
+          },
+          "json_filter": {
+            "type": "mixed",
+            "value": "{{#node1.json_path#}}"
+          }
+        },
+        "type": "tool"
+      },
+      "height": 180,
+      "id": "node2",
+      "position": {
+        "x": 400,
+        "y": 280
+      },
+      "positionAbsolute": {
+        "x": 400,
+        "y": 280
+      },
+      "selected": false,
+      "sourcePosition": null,
+      "targetPosition": null,
+      "type": "custom",
+      "width": 242,
+      "zIndex": 0
+    },
+    {
+      "data": {
+        "desc": "Return result from the parse tool text output.",
+        "outputs": [
+          {
+            "value_selector": [
+              "node2",
+              "text"
+            ],
+            "variable": "result"
+          }
+        ],
+        "selected": false,
+        "title": "Output",
+        "type": "end"
+      },
+      "height": 132,
+      "id": "node3",
+      "position": {
+        "x": 720,
+        "y": 280
+      },
+      "positionAbsolute": {
+        "x": 720,
+        "y": 280
+      },
+      "selected": true,
+      "sourcePosition": null,
+      "targetPosition": null,
+      "type": "custom",
+      "width": 242,
+      "zIndex": 0
+    }
+  ],
+  "viewport": {
+    "x": -724,
+    "y": -100,
+    "zoom": 1
+  }
+}

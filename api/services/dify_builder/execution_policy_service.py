@@ -14,6 +14,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
+from core.app.app_config.workflow_ui_based_app.variables.manager import WorkflowVariablesConfigManager
+from core.app.apps.base_app_generator import BaseAppGenerator
 from core.dify_builder import gmail_read_policy
 from core.dify_builder.execution_policy import (
     MAX_OBSERVATIONS,
@@ -25,6 +27,8 @@ from core.dify_builder.execution_policy import (
     ExecutionEvidenceSummary,
     HttpFixtureSetV1,
     HttpResponseFixtureV1,
+    JsonToolExecutionContext,
+    QualifiedJsonToolBinding,
     RestrictedAdmissionSnapshot,
     TrustedExecutionCompletion,
     admit_raw_execution_metadata,
@@ -50,6 +54,13 @@ from models.dify_builder import (
 )
 from models.model import App
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowRun
+from services.dify_builder.json_tool_execution import admit_json_workflow, resolve_json_parameters
+from services.dify_builder.json_tool_metadata import (
+    InstalledJsonParse,
+    require_same_json_installation,
+    resolve_installed_json_parse,
+)
+from services.dify_builder.json_tool_runtime import JsonRuntimeBinding, JsonToolRuntimeIssuer
 from services.dify_builder.revision import executable_graph_revision, execution_revision
 from services.rbac.resource_queries import ResourceQueryService
 
@@ -220,11 +231,11 @@ def check_app_permissions(
         raise BuilderExecutionPolicyError("execution_permission_denied") from None
 
 
-ExecutionContext = BuilderExecutionContext | ConfirmedToolExecutionContext
+ExecutionContext = BuilderExecutionContext | ConfirmedToolExecutionContext | JsonToolExecutionContext
 
 
 def _validate_context(context: ExecutionContext) -> None:
-    if not isinstance(context, (BuilderExecutionContext, ConfirmedToolExecutionContext)):
+    if not isinstance(context, (BuilderExecutionContext, ConfirmedToolExecutionContext, JsonToolExecutionContext)):
         raise BuilderExecutionPolicyError("invalid_execution_context")
     try:
         # Validate even a model_copy/model_construct crossing a trusted boundary;
@@ -256,6 +267,10 @@ def admit_execution_workflow(context: ExecutionContext, snapshot: RestrictedAdmi
             admit_confirmed_workflow(context, snapshot)
         case BuilderExecutionContext():
             admit_restricted_workflow(context, snapshot)
+        case JsonToolExecutionContext():
+            _validate_context(context)
+            if admit_json_workflow(snapshot).nodes != context.admitted_nodes:
+                raise BuilderExecutionPolicyError("node_binding_mismatch")
         case _:
             raise BuilderExecutionPolicyError("unsupported_execution_policy")
 
@@ -274,6 +289,89 @@ def _bound_request(db: Session, context: ExecutionContext, *, lock: bool) -> Dif
     return row
 
 
+def _is_json_parse_candidate(snapshot: RestrictedAdmissionSnapshot) -> bool:
+    """Select this one action from its raw identity before policy-specific admission."""
+    nodes = snapshot.graph.get("nodes")
+    return isinstance(nodes, list) and any(
+        isinstance(node, dict)
+        and isinstance(node.get("data"), dict)
+        and node["data"].get("type") == "tool"
+        and node["data"].get("provider_id") == "langgenius/json_process/json_process"
+        and node["data"].get("tool_name") == "parse"
+        for node in nodes
+    )
+
+
+def _owned_effective_inputs(owner: ExecutionOwnerSnapshot) -> dict[str, Any]:
+    """Run the existing native input preparation on saved, owned test input."""
+    assert owner.test_input is not None
+    try:
+        return dict(
+            BaseAppGenerator()._prepare_user_inputs(
+                user_inputs=owner.test_input.inputs,
+                variables=WorkflowVariablesConfigManager.convert(owner.workflow),
+                tenant_id=owner.app.tenant_id,
+            )
+        )
+    except (ValueError, TypeError):
+        raise BuilderExecutionPolicyError("unsupported_input_value") from None
+
+
+def _json_owner_state(owner: ExecutionOwnerSnapshot, snapshot: RestrictedAdmissionSnapshot) -> str:
+    """Capture the complete participating owner/configuration/input state across daemon I/O."""
+    assert owner.session is not None
+    assert owner.test_input is not None
+    return canonical_digest(
+        {
+            "app": {
+                "id": owner.app.id,
+                "tenant_id": owner.app.tenant_id,
+                "status": owner.app.status.value,
+                "mode": owner.app.mode.value,
+                "tracing": owner.app.tracing,
+                "workflow_id": owner.app.workflow_id,
+            },
+            "workflow": {
+                "id": owner.workflow.id,
+                "app_id": owner.workflow.app_id,
+                "tenant_id": owner.workflow.tenant_id,
+                "version": owner.workflow.version,
+                "unique_hash": owner.workflow.unique_hash,
+                "type": owner.workflow.type.value,
+                "kind": owner.workflow.kind.value if owner.workflow.kind is not None else None,
+                "graph": snapshot.graph,
+                "features": snapshot.features,
+                "environment": owner.workflow._environment_variables,
+                "conversation": owner.workflow._conversation_variables,
+                "revision": execution_revision(owner.workflow),
+            },
+            "session": {
+                "id": owner.session.id,
+                "app_id": owner.session.app_id,
+                "tenant_id": owner.session.tenant_id,
+                "actor_id": owner.session.owner_account_id,
+                "state": owner.session.current_state,
+                "version": owner.session.version,
+                "entry_mode": owner.session.entry_mode,
+            },
+            "test_input": {
+                "id": owner.test_input.id,
+                "session_id": owner.test_input.session_id,
+                "inputs": owner.test_input.inputs,
+                "fixtures": owner.test_input.http_fixtures,
+                "source": owner.test_input.source,
+                "start_schema_hash": owner.test_input.start_schema_hash,
+            },
+        }
+    )
+
+
+def _json_binding_digest(context: JsonToolExecutionContext) -> str:
+    return InstalledJsonParse(
+        **{field: getattr(context.qualified_tool, field) for field in InstalledJsonParse.__dataclass_fields__}
+    ).binding_digest
+
+
 class BuilderExecutionPolicyService:
     def __init__(self, session_factory: sessionmaker[Session]):
         self._session_factory = session_factory
@@ -288,7 +386,9 @@ class BuilderExecutionPolicyService:
         workflow: Workflow,
         submitted_inputs: Inputs,
         effective_inputs: Inputs,
-    ) -> BuilderExecutionContext:
+    ) -> BuilderExecutionContext | JsonToolExecutionContext:
+        json_values: dict[str, Any] | None = None
+        json_state: str | None = None
         with self._session_factory() as db:
             owner = load_execution_owners(
                 db,
@@ -309,33 +409,105 @@ class BuilderExecutionPolicyService:
             effective_digest = scalar_inputs_digest(effective_inputs)
             if submitted_digest != scalar_inputs_digest(owner.test_input.inputs):
                 raise BuilderExecutionPolicyError("test_input_binding_mismatch")
+            json_candidate = _is_json_parse_candidate(snapshot)
+            admission = admit_json_workflow(snapshot) if json_candidate else None
             revision = execution_revision(owner.workflow)
             fixtures = decode_http_fixture_set(owner.test_input.http_fixtures)
             if fixtures is not None and fixtures.execution_revision != revision:
                 raise BuilderExecutionPolicyError("stale_http_fixtures")
-            http_fixtures = fixtures.fixtures if fixtures is not None else ()
-            values = {
-                "request_id": str(uuid4()),
-                "tenant_id": actor.tenant_id,
-                "app_id": app_id,
-                "workflow_id": owner.workflow.id,
-                "actor_id": actor.account_id,
-                "session_id": session_id,
-                "test_input_id": test_input_id,
-                "execution_revision": revision,
-                "graph_revision": executable_graph_revision(snapshot.graph),
-                "submitted_inputs_digest": submitted_digest,
-                "effective_inputs_digest": effective_digest,
-                "fixture_digest": fixture_digest(revision, http_fixtures),
-                "mode": "mock" if http_fixtures else "restricted",
-                "sandbox_profile": "disabled",
-                "admitted_nodes": admitted_node_bindings(snapshot),
-                "http_fixtures": http_fixtures,
-            }
-            initial = BuilderExecutionContext.model_validate({**values, "context_digest": "0" * 64})
-            context = BuilderExecutionContext.model_validate({**values, "context_digest": context_digest(initial)})
-            admit_restricted_workflow(context, snapshot)
+            if admission is not None:
+                if fixtures is not None or owner.test_input.http_fixtures is not None:
+                    raise BuilderExecutionPolicyError("unsupported_json_tool_configuration")
+                owned_effective = _owned_effective_inputs(owner)
+                if scalar_inputs_digest(owned_effective) != effective_digest:
+                    raise BuilderExecutionPolicyError("effective_input_binding_mismatch")
+                parameters = resolve_json_parameters(snapshot, owned_effective)
+                json_state = _json_owner_state(owner, snapshot)
+                json_values = {
+                    "policy_version": "builder-json-parse-v1",
+                    "request_id": str(uuid4()),
+                    "tenant_id": actor.tenant_id,
+                    "app_id": app_id,
+                    "workflow_id": owner.workflow.id,
+                    "actor_id": actor.account_id,
+                    "session_id": session_id,
+                    "test_input_id": test_input_id,
+                    "execution_revision": revision,
+                    "graph_revision": executable_graph_revision(snapshot.graph),
+                    "submitted_inputs_digest": submitted_digest,
+                    "effective_inputs_digest": effective_digest,
+                    "mode": "restricted",
+                    "sandbox_profile": "disabled",
+                    "admitted_nodes": admission.nodes,
+                    "final_parameters_digest": canonical_digest(parameters),
+                }
+            if json_values is None:
+                http_fixtures = fixtures.fixtures if fixtures is not None else ()
+                values = {
+                    "request_id": str(uuid4()),
+                    "tenant_id": actor.tenant_id,
+                    "app_id": app_id,
+                    "workflow_id": owner.workflow.id,
+                    "actor_id": actor.account_id,
+                    "session_id": session_id,
+                    "test_input_id": test_input_id,
+                    "execution_revision": revision,
+                    "graph_revision": executable_graph_revision(snapshot.graph),
+                    "submitted_inputs_digest": submitted_digest,
+                    "effective_inputs_digest": effective_digest,
+                    "fixture_digest": fixture_digest(revision, http_fixtures),
+                    "mode": "mock" if http_fixtures else "restricted",
+                    "sandbox_profile": "disabled",
+                    "admitted_nodes": admitted_node_bindings(snapshot),
+                    "http_fixtures": http_fixtures,
+                }
+                initial = BuilderExecutionContext.model_validate({**values, "context_digest": "0" * 64})
+                context = BuilderExecutionContext.model_validate({**values, "context_digest": context_digest(initial)})
+                admit_restricted_workflow(context, snapshot)
         check_execution_permission(actor, app_id, self._session_factory)
+        if json_values is not None:
+            assert json_state is not None
+            installed = resolve_installed_json_parse(tenant_id=actor.tenant_id)
+            check_execution_permission(actor, app_id, self._session_factory)
+            qualified = QualifiedJsonToolBinding(
+                node_id=json_values["admitted_nodes"][1].node_id,
+                **{name: getattr(installed, name) for name in installed.__dataclass_fields__},
+                final_parameters_digest=json_values.pop("final_parameters_digest"),
+            )
+            json_values["qualified_tool"] = qualified
+            initial_json = JsonToolExecutionContext.model_validate({**json_values, "context_digest": "0" * 64})
+            json_context = initial_json.model_copy(update={"context_digest": context_digest(initial_json)})
+            with self._session_factory.begin() as db:
+                owner = load_execution_owners(
+                    db,
+                    app_id=app_id,
+                    actor=actor,
+                    workflow_id=workflow.id,
+                    session_id=session_id,
+                    test_input_id=test_input_id,
+                )
+                current = restricted_admission_snapshot(owner.workflow, owner.app)
+                if _json_owner_state(owner, current) != json_state:
+                    raise BuilderExecutionPolicyError("stale_execution_revision")
+                if scalar_inputs_digest(_owned_effective_inputs(owner)) != effective_digest:
+                    raise BuilderExecutionPolicyError("effective_input_binding_mismatch")
+                admit_execution_workflow(json_context, current)
+                db.add(
+                    DifyBuilderExecutionRequest(
+                        id=json_context.request_id,
+                        tenant_id=json_context.tenant_id,
+                        app_id=json_context.app_id,
+                        workflow_id=json_context.workflow_id,
+                        actor_id=json_context.actor_id,
+                        session_id=json_context.session_id,
+                        test_input_id=json_context.test_input_id,
+                        context=json_context.model_dump(mode="json"),
+                        context_digest=json_context.context_digest,
+                        state="prepared",
+                        observations=[],
+                    )
+                )
+            return json_context
         with self._session_factory.begin() as db:
             db.add(
                 DifyBuilderExecutionRequest(
@@ -461,8 +633,11 @@ class BuilderExecutionPolicyService:
             raise BuilderExecutionPolicyError("execution_owner_mismatch")
         # Refuse raw changes before any revision function can resolve secrets.
         supplied = restricted_admission_snapshot(workflow, app)
+        if isinstance(context, JsonToolExecutionContext):
+            admit_execution_workflow(context, supplied)
         actor = Actor(account_id=context.actor_id, tenant_id=context.tenant_id)
         check_execution_permission(actor, context.app_id, self._session_factory)
+        json_state: str | None = None
         with self._session_factory() as db:
             row = _bound_request(db, context, lock=False)
             if row.state not in {"prepared", "running"}:
@@ -476,6 +651,8 @@ class BuilderExecutionPolicyService:
                 test_input_id=context.test_input_id,
             )
             snapshot = restricted_admission_snapshot(owner.workflow, owner.app)
+            if isinstance(context, JsonToolExecutionContext):
+                admit_execution_workflow(context, snapshot)
             if (
                 supplied != snapshot
                 or context.execution_revision != execution_revision(owner.workflow)
@@ -489,19 +666,56 @@ class BuilderExecutionPolicyService:
                 self._require_start_root(snapshot, root_node_id)
                 return
             assert owner.test_input is not None
-            envelope = decode_http_fixture_set(owner.test_input.http_fixtures)
-            fixtures = envelope.fixtures if envelope is not None else ()
-            if envelope is not None and envelope.execution_revision != context.execution_revision:
-                raise BuilderExecutionPolicyError("stale_http_fixtures")
-            if (
-                fixtures != context.http_fixtures
-                or scalar_inputs_digest(owner.test_input.inputs) != context.submitted_inputs_digest
-            ):
-                raise BuilderExecutionPolicyError("test_input_binding_mismatch")
-            if scalar_inputs_digest(effective_inputs) != context.effective_inputs_digest:
-                raise BuilderExecutionPolicyError("effective_input_binding_mismatch")
-            admit_restricted_workflow(context, snapshot)
-            self._require_start_root(snapshot, root_node_id)
+            if isinstance(context, JsonToolExecutionContext):
+                if owner.test_input.http_fixtures is not None:
+                    raise BuilderExecutionPolicyError("test_input_binding_mismatch")
+                owned_effective = _owned_effective_inputs(owner)
+                if (
+                    scalar_inputs_digest(owner.test_input.inputs) != context.submitted_inputs_digest
+                    or scalar_inputs_digest(owned_effective) != context.effective_inputs_digest
+                    or scalar_inputs_digest(effective_inputs) != context.effective_inputs_digest
+                ):
+                    raise BuilderExecutionPolicyError("effective_input_binding_mismatch")
+                expected = resolve_json_parameters(snapshot, owned_effective)
+                if canonical_digest(expected) != context.qualified_tool.final_parameters_digest:
+                    raise BuilderExecutionPolicyError("json_tool_parameters_changed")
+                admit_execution_workflow(context, snapshot)
+                self._require_start_root(snapshot, root_node_id)
+                json_state = _json_owner_state(owner, snapshot)
+            else:
+                envelope = decode_http_fixture_set(owner.test_input.http_fixtures)
+                fixtures = envelope.fixtures if envelope is not None else ()
+                if envelope is not None and envelope.execution_revision != context.execution_revision:
+                    raise BuilderExecutionPolicyError("stale_http_fixtures")
+                if (
+                    fixtures != context.http_fixtures
+                    or scalar_inputs_digest(owner.test_input.inputs) != context.submitted_inputs_digest
+                ):
+                    raise BuilderExecutionPolicyError("test_input_binding_mismatch")
+                if scalar_inputs_digest(effective_inputs) != context.effective_inputs_digest:
+                    raise BuilderExecutionPolicyError("effective_input_binding_mismatch")
+                admit_restricted_workflow(context, snapshot)
+                self._require_start_root(snapshot, root_node_id)
+        if isinstance(context, JsonToolExecutionContext):
+            assert json_state is not None
+            installed = resolve_installed_json_parse(tenant_id=context.tenant_id)
+            require_same_json_installation(context.qualified_tool, installed)
+            check_execution_permission(actor, context.app_id, self._session_factory)
+            with self._session_factory() as db:
+                row = _bound_request(db, context, lock=False)
+                if row.state not in {"prepared", "running"}:
+                    raise BuilderExecutionPolicyError("execution_request_closed")
+                owner = load_execution_owners(
+                    db,
+                    app_id=context.app_id,
+                    actor=actor,
+                    workflow_id=context.workflow_id,
+                    session_id=context.session_id,
+                    test_input_id=context.test_input_id,
+                )
+                current = restricted_admission_snapshot(owner.workflow, owner.app)
+                if _json_owner_state(owner, current) != json_state:
+                    raise BuilderExecutionPolicyError("stale_execution_revision")
 
     @staticmethod
     def _require_start_root(snapshot: RestrictedAdmissionSnapshot, root_node_id: str) -> None:
@@ -523,6 +737,23 @@ class BuilderExecutionPolicyService:
             raise BuilderExecutionPolicyError("invalid_execution_observation") from None
         if isinstance(context, ConfirmedToolExecutionContext):
             # A confirmed run serves no fixtures and blocks no effects: no observation is admissible.
+            raise BuilderExecutionPolicyError("observation_binding_mismatch")
+        if isinstance(context, JsonToolExecutionContext):
+            binding_digest = _json_binding_digest(context)
+            if (
+                observation.kind != "qualified_json_completed"
+                or observation.node_id != context.qualified_tool.node_id
+                or observation.reason_code != "completed"
+                or observation.native_node_execution_id != observation.observation_id
+                or observation.invocation_id != observation.observation_id
+                or observation.qualification_digest != context.qualified_tool.qualification_digest
+                or observation.final_parameters_digest != context.qualified_tool.final_parameters_digest
+                or observation.installed_binding_digest != binding_digest
+                or observation.pre_binding_digest != binding_digest
+                or observation.post_binding_digest != binding_digest
+            ):
+                raise BuilderExecutionPolicyError("observation_binding_mismatch")
+        elif observation.kind == "qualified_json_completed":
             raise BuilderExecutionPolicyError("observation_binding_mismatch")
         with self._session_factory.begin() as db:
             row = _bound_request(db, context, lock=True)
@@ -547,6 +778,8 @@ class BuilderExecutionPolicyService:
             if observation.kind.startswith("sandbox_") or observation.profile_digest is not None:
                 raise BuilderExecutionPolicyError("sandbox_capability_unverified")
             observations = list(row.observations)
+            if isinstance(context, JsonToolExecutionContext) and observations:
+                raise BuilderExecutionPolicyError("duplicate_execution_observation")
             if len(observations) >= MAX_OBSERVATIONS:
                 raise BuilderExecutionPolicyError("observation_limit_exceeded")
             if any(o["observation_id"] == observation.observation_id for o in observations):
@@ -564,9 +797,28 @@ class BuilderExecutionPolicyService:
         context = completion.context
         if request_id != context.request_id:
             raise BuilderExecutionPolicyError("execution_request_mismatch")
+        json_installation_valid = False
+        if isinstance(context, JsonToolExecutionContext):
+            try:
+                check_execution_permission(
+                    Actor(account_id=context.actor_id, tenant_id=context.tenant_id),
+                    context.app_id,
+                    self._session_factory,
+                )
+                installed = resolve_installed_json_parse(tenant_id=context.tenant_id)
+                require_same_json_installation(context.qualified_tool, installed)
+                check_execution_permission(
+                    Actor(account_id=context.actor_id, tenant_id=context.tenant_id),
+                    context.app_id,
+                    self._session_factory,
+                )
+                json_installation_valid = True
+            except BuilderExecutionPolicyError:
+                # A native Run may exist, but changed/unavailable metadata cannot seal it.
+                pass
         with self._session_factory.begin() as db:
             row = _bound_request(db, context, lock=True)
-            load_execution_owners(
+            owner = load_execution_owners(
                 db,
                 app_id=context.app_id,
                 actor=Actor(account_id=context.actor_id, tenant_id=context.tenant_id),
@@ -695,6 +947,10 @@ class BuilderExecutionPolicyService:
                 # owner settles its own state from this sealed summary afterwards. They
                 # are not fingerprinted: the first seal freezes the summary.
                 summary = self._confirmed_summary(db, context, completion, row, native, nodes)
+            elif isinstance(context, JsonToolExecutionContext):
+                summary = self._json_summary(
+                    request_id, context, completion, row, native, nodes, owner, json_installation_valid
+                )
             else:
                 summary = self._restricted_summary(request_id, context, completion, row, native, nodes)
             row.state = "sealed"
@@ -702,6 +958,172 @@ class BuilderExecutionPolicyService:
             row.completion_summary = summary.model_dump(mode="json")
             row.sealed_at = naive_utc_now()
             return summary
+
+    def _json_summary(
+        self,
+        request_id: str,
+        context: JsonToolExecutionContext,
+        completion: TrustedExecutionCompletion,
+        row: DifyBuilderExecutionRequest,
+        native: WorkflowRun | None,
+        nodes: list[WorkflowNodeExecutionModel],
+        owner: ExecutionOwnerSnapshot,
+        installation_valid: bool,
+    ) -> ExecutionEvidenceSummary:
+        """Seal only composed SQL/native evidence with its one in-process receipt."""
+        outcome = "execution_evidence_unknown"
+        if (
+            native is None
+            and completion.refusal is not None
+            and completion.response_completed
+            and (
+                completion.preworker_refusal
+                or (completion.worker_finished and completion.worker_exit == "policy_refused")
+            )
+        ):
+            outcome = "unsupported_safe_execution"
+        elif (
+            installation_valid
+            and completion.worker_finished
+            and completion.worker_exit == "returned"
+            and completion.response_completed
+            and completion.recorder_healthy
+            and native is not None
+            and self._json_native_proof(context, row, native, nodes, owner)
+        ):
+            outcome = "restricted_execution_completed"
+        return ExecutionEvidenceSummary(
+            request_id=request_id,
+            policy_version=context.policy_version,
+            mode="restricted",
+            sealed=True,
+            safety_outcome=outcome,
+            sandbox_profile="disabled",
+            native_run_id=native.id if native is not None else None,
+        )
+
+    @staticmethod
+    def _json_native_proof(
+        context: JsonToolExecutionContext,
+        row: DifyBuilderExecutionRequest,
+        native: WorkflowRun,
+        nodes: list[WorkflowNodeExecutionModel],
+        owner: ExecutionOwnerSnapshot,
+    ) -> bool:
+        """Require the exact Start/Tool/End SQL chain and Tool TEXT receipt."""
+        from core.app.workflow.retry_history import RETRY_HISTORY_PROCESS_DATA_KEY
+
+        try:
+            snapshot = restricted_admission_snapshot(owner.workflow, owner.app)
+            admission = admit_json_workflow(snapshot)
+            if (
+                execution_revision(owner.workflow) != context.execution_revision
+                or executable_graph_revision(snapshot.graph) != context.graph_revision
+                or admission.nodes != context.admitted_nodes
+                or owner.test_input is None
+                or owner.test_input.http_fixtures is not None
+                or scalar_inputs_digest(owner.test_input.inputs) != context.submitted_inputs_digest
+            ):
+                return False
+            owned_effective = _owned_effective_inputs(owner)
+            if (
+                scalar_inputs_digest(owned_effective) != context.effective_inputs_digest
+                or canonical_digest(resolve_json_parameters(snapshot, owned_effective))
+                != context.qualified_tool.final_parameters_digest
+            ):
+                return False
+            graph = _raw_object(native.graph, "invalid_native_graph")
+            native_snapshot = RestrictedAdmissionSnapshot(
+                app_mode="workflow",
+                workflow_kind="standard",
+                graph=graph,
+                input_schema=start_schema(graph),
+                features={},
+                has_environment_variables=False,
+                has_conversation_variables=False,
+                has_external_tracing=False,
+            )
+            if (
+                admit_json_workflow(native_snapshot).nodes != context.admitted_nodes
+                or executable_graph_revision(graph) != context.graph_revision
+            ):
+                return False
+            inputs = _raw_object(native.inputs, "invalid_native_inputs")
+            if scalar_inputs_digest({k: v for k, v in inputs.items() if not k.startswith("sys.")}) != (
+                context.effective_inputs_digest
+            ):
+                return False
+            if (
+                native.status != "succeeded"
+                or native.finished_at is None
+                or native.error
+                or native.total_steps != 3
+                or native.exceptions_count != 0
+                or len(nodes) != 3
+                or len(row.observations) != 1
+            ):
+                return False
+            receipt = BuilderExecutionObservation.model_validate(row.observations[0])
+            if (
+                receipt.kind != "qualified_json_completed"
+                or receipt.reason_code != "completed"
+                or receipt.request_id != context.request_id
+                or receipt.node_id != context.qualified_tool.node_id
+                or receipt.qualification_digest != context.qualified_tool.qualification_digest
+                or receipt.final_parameters_digest != context.qualified_tool.final_parameters_digest
+                or receipt.installed_binding_digest != _json_binding_digest(context)
+                or receipt.pre_binding_digest != receipt.installed_binding_digest
+                or receipt.post_binding_digest != receipt.installed_binding_digest
+                or receipt.observation_id != receipt.invocation_id
+                or receipt.observation_id != receipt.native_node_execution_id
+                or receipt.implementation_version
+                != f"{context.admitted_nodes[1].implementation}:{context.admitted_nodes[1].node_version}"
+            ):
+                return False
+            ordered = sorted(nodes, key=lambda node: node.index)
+            ids = [binding.node_id for binding in context.admitted_nodes]
+            if (
+                [node.node_id for node in ordered] != ids
+                or [node.index for node in ordered] != [1, 2, 3]
+                or len({node.node_execution_id for node in ordered}) != 3
+                or any(node.node_execution_id is None for node in ordered)
+                or [node.node_type for node in ordered] != ["start", "tool", "end"]
+                or any(node.status != "succeeded" or node.finished_at is None or node.error for node in ordered)
+                or ordered[0].predecessor_node_id not in {None, ""}
+                or ordered[1].predecessor_node_id not in {None, ids[0]}
+                or ordered[2].predecessor_node_id not in {None, ids[1]}
+                or receipt.native_node_execution_id != ordered[1].node_execution_id
+            ):
+                return False
+            for node in ordered:
+                process = _raw_object(node.process_data, "invalid_native_retries", absent_allowed=True)
+                if process.get(RETRY_HISTORY_PROCESS_DATA_KEY):
+                    return False
+            tool_outputs = _raw_object(ordered[1].outputs, "invalid_native_outputs")
+            text = tool_outputs.get("text")
+            if type(text) is not str or receipt.native_text_output_digest != canonical_digest(text):
+                return False
+            if receipt.text_bytes != len(text.encode("utf-8")):
+                return False
+            end_outputs = _raw_object(ordered[2].outputs, "invalid_native_outputs")
+            run_outputs = _raw_object(native.outputs, "invalid_native_outputs")
+            if end_outputs != run_outputs:
+                return False
+            end_data = next(node["data"] for node in graph["nodes"] if node["id"] == ids[2])
+            for output in end_data["outputs"]:
+                if output["value_selector"] == [ids[1], "text"] and end_outputs.get(output["variable"]) != text:
+                    return False
+            return True
+        except (
+            BuilderExecutionPolicyError,
+            ValidationError,
+            ValueError,
+            TypeError,
+            KeyError,
+            StopIteration,
+            UnicodeError,
+        ):
+            return False
 
     def _confirmed_summary(
         self,
@@ -1043,8 +1465,71 @@ class BuilderExecutionPolicyService:
         except (BuilderExecutionPolicyError, ValidationError, ValueError, TypeError, KeyError, StopIteration):
             return False
 
-    def recorder(self, *, context: ExecutionContext, native_run_id: str, task_id: str) -> "ServiceExecutionRecorder":
-        return ServiceExecutionRecorder(self, context, native_run_id, task_id)
+    def recorder(
+        self, *, context: ExecutionContext, native_run_id: str, task_id: str
+    ) -> "ServiceExecutionRecorder | JsonLaunchRecorder":
+        delegate = ServiceExecutionRecorder(self, context, native_run_id, task_id)
+        if isinstance(context, JsonToolExecutionContext):
+            return JsonLaunchRecorder(self, delegate, context, native_run_id, task_id)
+        return delegate
+
+    def issue_json_runtime_binding(
+        self,
+        *,
+        context: JsonToolExecutionContext,
+        native_run_id: str,
+        task_id: str,
+        native_node_execution_id: str,
+        node_id: str,
+        recorder: "JsonLaunchRecorder",
+    ) -> JsonRuntimeBinding:
+        """Bind Graphon's actual node execution ID to the persisted launch owner."""
+        if node_id != context.qualified_tool.node_id or not recorder.healthy:
+            raise BuilderExecutionPolicyError("execution_launch_mismatch")
+        _ID_ADAPTER.validate_python(native_node_execution_id)
+        actor = Actor(account_id=context.actor_id, tenant_id=context.tenant_id)
+        with self._session_factory() as db:
+            row = _bound_request(db, context, lock=False)
+            if (row.state, row.native_run_id, row.task_id, row.observations) != (
+                "running",
+                native_run_id,
+                task_id,
+                [],
+            ):
+                raise BuilderExecutionPolicyError("execution_launch_mismatch")
+            owner = load_execution_owners(
+                db,
+                app_id=context.app_id,
+                actor=actor,
+                workflow_id=context.workflow_id,
+                session_id=context.session_id,
+                test_input_id=context.test_input_id,
+            )
+            snapshot = restricted_admission_snapshot(owner.workflow, owner.app)
+            admit_execution_workflow(context, snapshot)
+            if (
+                context.execution_revision != execution_revision(owner.workflow)
+                or context.graph_revision != executable_graph_revision(snapshot.graph)
+                or owner.test_input is None
+                or owner.test_input.http_fixtures is not None
+                or scalar_inputs_digest(owner.test_input.inputs) != context.submitted_inputs_digest
+            ):
+                raise BuilderExecutionPolicyError("stale_execution_revision")
+            owned_effective = _owned_effective_inputs(owner)
+            if scalar_inputs_digest(owned_effective) != context.effective_inputs_digest:
+                raise BuilderExecutionPolicyError("effective_input_binding_mismatch")
+            admit_execution_workflow(context, snapshot)
+            expected = resolve_json_parameters(snapshot, owned_effective)
+            if canonical_digest(expected) != context.qualified_tool.final_parameters_digest:
+                raise BuilderExecutionPolicyError("json_tool_parameters_changed")
+        return JsonRuntimeBinding(
+            context=context,
+            native_run_id=native_run_id,
+            native_task_id=task_id,
+            native_node_execution_id=native_node_execution_id,
+            expected_parameters=expected,
+            recorder=recorder,
+        )
 
 
 @dataclass(frozen=True)
@@ -1071,3 +1556,41 @@ class ServiceExecutionRecorder:
         except Exception:
             object.__setattr__(self, "_failed", True)
             raise BuilderExecutionPolicyError("execution_recorder_failed") from None
+
+
+@dataclass(frozen=True)
+class JsonLaunchRecorder(JsonToolRuntimeIssuer):
+    """In-process authority for exactly one persisted JSON launch and native node."""
+
+    _service: BuilderExecutionPolicyService
+    _delegate: ServiceExecutionRecorder
+    _context: JsonToolExecutionContext
+    _native_run_id: str
+    _task_id: str
+    _issued: bool = field(default=False, init=False)
+
+    @property
+    def healthy(self) -> bool:
+        return self._delegate.healthy
+
+    @property
+    def native_task_id(self) -> str:
+        return self._task_id
+
+    def record(self, observation: BuilderExecutionObservation) -> None:
+        self._delegate.record(observation)
+
+    def json_runtime_binding(
+        self, *, node_id: str, native_run_id: str, native_node_execution_id: str
+    ) -> JsonRuntimeBinding:
+        if self._issued or native_run_id != self._native_run_id:
+            raise BuilderExecutionPolicyError("execution_launch_mismatch")
+        object.__setattr__(self, "_issued", True)
+        return self._service.issue_json_runtime_binding(
+            context=self._context,
+            native_run_id=native_run_id,
+            task_id=self._task_id,
+            native_node_execution_id=native_node_execution_id,
+            node_id=node_id,
+            recorder=self,
+        )
