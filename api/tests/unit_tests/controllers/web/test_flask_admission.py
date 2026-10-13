@@ -13,7 +13,7 @@ def _wrapper_chain(view: object) -> list[str]:
     return chain
 
 
-def test_edition_gate_wraps_the_admitted_view_so_guard_metadata_survives():
+def test_edition_gate_wraps_the_admitted_view_so_guard_metadata_survives() -> None:
     def view(_self: object, _context: object) -> str:
         return "ok"
 
