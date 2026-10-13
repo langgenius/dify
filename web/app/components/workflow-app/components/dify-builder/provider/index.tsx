@@ -28,7 +28,6 @@ type DifyBuilderProviderProps = {
   canStartCreation?: boolean
   children: ReactNode
   getCanvasSnapshot: () => { nodes: DifyBuilderCanvasNode[]; edgeCount: number }
-  onFocusCanvas: () => void
   onRefreshCanvas: (shouldApply: () => boolean) => Promise<boolean>
   onSyncDraft: (saveDraft: boolean, signal: AbortSignal) => Promise<void>
   tenantId?: string
@@ -41,7 +40,6 @@ const DifyBuilderProviderContent = ({
   canStartCreation = false,
   children,
   getCanvasSnapshot,
-  onFocusCanvas,
   onRefreshCanvas,
   onSyncDraft,
   tenantId,
@@ -96,11 +94,7 @@ const DifyBuilderProviderContent = ({
   }, [])
 
   const runEvents = useDifyBuilderRunEvents(appId)
-  const canvasEvents = useDifyBuilderCanvasEvents(
-    onFocusCanvas,
-    onPublishWorkflow,
-    onResetPublication,
-  )
+  const canvasEvents = useDifyBuilderCanvasEvents(onPublishWorkflow, onResetPublication)
   const sessionEvents = useMemo<SessionRunEvents>(
     () => ({
       ...runEvents,

@@ -325,21 +325,17 @@ def _change_not_applied(
     return StepResult(next=PcState.EDIT_PLAN_APPROVAL, context=fc, items=turn_items)
 
 
-def _resume_adjusting(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext, *, cancel_publish: bool) -> StepResult:
+def _resume_adjusting(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> StepResult:
     """Leave an Edit gate for edit.impact_analysis with the edit-rules form
     repopulated and unfrozen, so the user changes the RULES instead of
     re-submitting the same ones.
 
-    Shared by edit.review's "Continue adjusting" (where a publish decision is
-    being taken back, hence ``cancel_publish``) and edit.plan_approval's (where
-    nothing has been applied and no publish is pending, hence not).
+    Shared by "Continue adjusting" at edit.review and edit.plan_approval.
 
     Routing the user to the form is not the same as changing the rules -- they
     may edit nothing and resubmit -- so ``last_edit_rejection`` is left alone
     here and cleared by handle_impact_analysis if and when the submitted
     payload actually changes ``fc.edit_rules``."""
-    if cancel_publish:
-        emit_canvas(env, "cancel_publish")
     for node_id in fc.edit_target_node_ids:
         emit_canvas(env, "highlight_edit_target", node_id=node_id)
     fc.test_input_ref = ""
@@ -391,7 +387,7 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
     (triage edit-branch-failure-2026-09-22, "Hard dead end")."""
     kind = action_kind(turn)
     if kind == "re_fix":  # continue_adjusting -> re-open the edit rules
-        return _resume_adjusting(env, turn, s, fc, cancel_publish=False)
+        return _resume_adjusting(env, turn, s, fc)
     if kind == "undo":  # revert -> abandon the change plan at its gate
         perform_revert(env, turn, s, fc)
         fc.staged_repair = []
@@ -408,7 +404,6 @@ def handle_plan_approval(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
         steps=_EDIT_EXECUTION_STEPS,
     )
     progress.activate("edit-prepare")
-    emit_canvas(env, "create_checkpoint")
     graph, read_revision = env.dify.read_graph(s.app_id, turn.actor)
     try:
         intents = env.agent.build_edit_intents(
@@ -585,7 +580,6 @@ def handle_apply_changes(env: Env, turn: Turn, s: Session, fc: DifyBuilderContex
                 cards=["form"],
             )
             return StepResult(next=PcState.EDIT_AWAIT_TESTDATA, context=fc, items=[*form_items, *turn_items])
-        emit_canvas(env, "start_test_run")
         items = append_card(fc, DecisionItem(text="Run affected-path tests"))
         return StepResult(next=PcState.EDIT_TEST_AFFECTED_PATHS, context=fc, items=items)
     return StepResult(next=PcState.EDIT_APPLY_CHANGES, context=fc)
@@ -737,7 +731,6 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
         fc.diagnosis = None
         fc.staged_repair = []
         run.culprit_node_id = dead_end_branch_node_id(graph, per_node)
-        emit_canvas(env, "mark_test_error", dify_run_id=run.dify_run_id)
         test_items = append_card(
             fc,
             result_card(run)
@@ -763,12 +756,10 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
         )
 
     if status == "succeeded":
-        emit_canvas(env, "mark_test_success", dify_run_id=run.dify_run_id)
         test_items = append_card(
             fc,
             result_card(run),
         )
-        emit_canvas(env, "mark_review_ready")
         execution = progress.finish()
         turn_items = append_assistant(
             env,
@@ -821,7 +812,6 @@ def handle_test_affected_paths(env: Env, turn: Turn, s: Session, fc: DifyBuilder
     # failure: real diagnosis + proposed repair, staged for the approval gate
     run.culprit_node_id = first_failed_node(per_node)
     fc.verify_run_id = run.id
-    emit_canvas(env, "mark_test_error", dify_run_id=run.dify_run_id)
 
     if is_input_failure(run):
         # The attempted run failed on its inputs. Keep it as the latest
@@ -1079,7 +1069,6 @@ def handle_review(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
             items=append_card(fc, DecisionItem(text="Chose to publish")),
         )
     if kind == "keep_draft":
-        emit_canvas(env, "cancel_publish")
         decision_items = append_card(fc, DecisionItem(text="Kept the draft"))
         turn_items = append_assistant(
             env,
@@ -1089,7 +1078,7 @@ def handle_review(env: Env, turn: Turn, s: Session, fc: DifyBuilderContext) -> S
         )
         return StepResult(next=PcState.EDIT_COMPLETE, context=fc, items=[*decision_items, *turn_items])
     if kind == "re_fix":  # continue_adjusting -> re-analyze impact
-        return _resume_adjusting(env, turn, s, fc, cancel_publish=True)
+        return _resume_adjusting(env, turn, s, fc)
     if kind == "undo":  # revert
         perform_revert(env, turn, s, fc)
         items = append_card(fc, DecisionItem(text="Requested a revert"))

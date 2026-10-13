@@ -33,7 +33,7 @@ const Harness = ({
   refresh: (shouldApply: () => boolean) => Promise<boolean>
   refreshed: () => void
 }) => {
-  const canvas = useDifyBuilderCanvasEvents(() => undefined)
+  const canvas = useDifyBuilderCanvasEvents()
   const setBusy = useSetAtom(difyBuilderSessionBusyAtom)
   const setView = useSetAtom(difyBuilderSessionViewAtom)
   const retry = useSetAtom(difyBuilderRetryCanvasRefreshAtom)
@@ -106,7 +106,6 @@ describe('Builder canvas commands', () => {
       canvasEvent('highlight_edit_target', 'start'),
       canvasEvent('highlight_edit_target', 'answer'),
       canvasEvent('apply_edit_plan'),
-      canvasEvent('mark_review_ready'),
     ])
 
     await user.click(screen.getByRole('button', { name: 'Apply changes' }))
@@ -137,11 +136,7 @@ describe('Builder canvas commands', () => {
       .mockResolvedValueOnce(false)
       .mockResolvedValueOnce(true)
     const { user, store, refreshed } = setup(
-      [
-        canvasEvent('add_llm_node', 'answer'),
-        canvasEvent('apply_edit_plan'),
-        canvasEvent('mark_review_ready'),
-      ],
+      [canvasEvent('add_llm_node', 'answer'), canvasEvent('apply_edit_plan')],
       refresh,
     )
     await user.click(screen.getByRole('button', { name: 'Apply changes' }))
