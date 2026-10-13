@@ -700,7 +700,9 @@ def test_console_member_invite_documents_bad_request_response(openapi_json: Open
     operation = payload["paths"]["/workspaces/current/members/invite-email"]["post"]
     response_schema = operation["responses"]["400"]["content"]["application/json"]["schema"]
 
-    assert response_schema["$ref"] == "#/components/schemas/MemberInviteErrorResponse"
+    # The declared invite body and the standard error body can both answer 400.
+    assert response_schema["anyOf"][0] == {"$ref": "#/components/schemas/MemberInviteErrorResponse"}
+    assert response_schema["anyOf"][1] == {"$ref": "#/components/schemas/ErrorResponse"}
     assert payload["components"]["schemas"]["MemberInviteErrorResponse"] == {
         "properties": {
             "code": {
@@ -743,7 +745,8 @@ def test_console_billing_routes_document_error_responses(openapi_json: OpenAPIJS
         operation = payload["paths"][path][method]
         for status, model_name in responses.items():
             schema = operation["responses"][status]["content"]["application/json"]["schema"]
-            assert schema["$ref"] == f"#/components/schemas/{model_name}"
+            # The declared model is unioned with the error body the handlers can still send.
+            assert schema["anyOf"][0] == {"$ref": f"#/components/schemas/{model_name}"}
 
         if path.startswith("/billing/"):
             forbidden_response = operation["responses"]["403"]
