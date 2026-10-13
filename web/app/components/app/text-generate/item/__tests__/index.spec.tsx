@@ -8,6 +8,7 @@ const mockFetchTextGenerationMessage = vi.fn()
 const mockUpdateFeedback = vi.fn()
 const mockOnOpenLog = vi.fn()
 const mockSubmitHumanInputForm = vi.fn()
+const mockSubmitWebAppHumanInputForm = vi.fn()
 const mockSubmitHumanInputFormWorkflow = vi.fn()
 const mockToastWarning = vi.fn()
 vi.mock('@/next/navigation', () => ({
@@ -28,6 +29,10 @@ vi.mock('@/service/share', async () => {
 
 vi.mock('@/service/workflow', () => ({
   submitHumanInputForm: (...args: unknown[]) => mockSubmitHumanInputFormWorkflow(...args),
+}))
+
+vi.mock('@/service/webapp-human-input', () => ({
+  submitWebAppHumanInputForm: (...args: unknown[]) => mockSubmitWebAppHumanInputForm(...args),
 }))
 
 vi.mock('@/service/debug', () => ({
@@ -265,39 +270,55 @@ describe('GenerationItem', () => {
       action: 'submit',
       inputs: { name: 'dify' },
     })
+    expect(mockSubmitWebAppHumanInputForm).not.toHaveBeenCalled()
   })
 
-  it('should route human input submissions to the share service and allow workflow tab switching', async () => {
-    render(
-      <GenerationItem
-        appSourceType={AppSourceType.webApp}
-        content="workflow result"
-        isError={false}
-        isWorkflow
-        messageId="msg-1"
-        onRetry={vi.fn()}
-        siteInfo={null}
-        workflowProcessData={
-          {
-            resultText: 'workflow result',
-          } as any
-        }
-      />,
-    )
+  it.each([
+    {
+      appSourceType: AppSourceType.webApp,
+      submit: mockSubmitWebAppHumanInputForm,
+      unusedSubmit: mockSubmitHumanInputForm,
+    },
+    {
+      appSourceType: AppSourceType.tryApp,
+      submit: mockSubmitHumanInputForm,
+      unusedSubmit: mockSubmitWebAppHumanInputForm,
+    },
+  ])(
+    'should preserve $appSourceType human input submission and workflow tab switching',
+    async ({ appSourceType, submit, unusedSubmit }) => {
+      const user = userEvent.setup()
+      render(
+        <GenerationItem
+          appSourceType={appSourceType}
+          content="workflow result"
+          isError={false}
+          isWorkflow
+          messageId="msg-1"
+          onRetry={vi.fn()}
+          siteInfo={null}
+          workflowProcessData={
+            {
+              resultText: 'workflow result',
+            } as any
+          }
+        />,
+      )
 
-    expect(screen.getByText('workflow-body:RESULT')).toBeInTheDocument()
+      expect(screen.getByText('workflow-body:RESULT')).toBeInTheDocument()
 
-    await act(async () => {
-      fireEvent.click(screen.getByText('submit-human-input'))
-      fireEvent.click(screen.getByText('switch-workflow-tab'))
-    })
+      await user.click(screen.getByRole('button', { name: 'submit-human-input' }))
+      await user.click(screen.getByRole('button', { name: 'switch-workflow-tab' }))
 
-    expect(mockSubmitHumanInputForm).toHaveBeenCalledWith('token-1', {
-      action: 'submit',
-      inputs: { name: 'dify' },
-    })
-    expect(screen.getByText('workflow-body:LOG')).toBeInTheDocument()
-  })
+      expect(submit).toHaveBeenCalledWith('token-1', {
+        action: 'submit',
+        inputs: { name: 'dify' },
+      })
+      expect(unusedSubmit).not.toHaveBeenCalled()
+      expect(mockSubmitHumanInputFormWorkflow).not.toHaveBeenCalled()
+      expect(screen.getByText('workflow-body:LOG')).toBeInTheDocument()
+    },
+  )
 
   it('should clear recursive results when requested or when the parent reloads', async () => {
     mockFetchMoreLikeThis.mockResolvedValue({

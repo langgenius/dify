@@ -19,8 +19,8 @@ import {
   fetchSuggestedQuestions,
   getUrl,
   stopChatMessageResponding,
-  submitHumanInputForm,
 } from '@/service/share'
+import { submitWebAppHumanInputForm } from '@/service/webapp-human-input'
 import { submitHumanInputForm as submitHumanInputFormService } from '@/service/workflow'
 import { TransferMethod } from '@/types/app'
 import { formatBooleanInputs } from '@/utils/model-config'
@@ -288,7 +288,7 @@ const ChatWrapper = () => {
       if (!(await prepareHumanInputSubmission())) return
 
       if (isInstalledApp) await submitHumanInputFormService(formToken, formData)
-      else await submitHumanInputForm(formToken, formData)
+      else await submitWebAppHumanInputForm(formToken, formData)
     },
     [isInstalledApp, prepareHumanInputSubmission],
   )

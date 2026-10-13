@@ -22,6 +22,7 @@ import {
   submitHumanInputForm,
   updateFeedback,
 } from '@/service/share'
+import { submitWebAppHumanInputForm } from '@/service/webapp-human-input'
 import { submitHumanInputForm as submitHumanInputFormService } from '@/service/workflow'
 import GenerationActionGroups from './action-groups'
 import {
@@ -186,6 +187,8 @@ const GenerationItem: FC<IGenerationItemProps> = ({
     async (formToken: string, formData: HumanInputFormSubmitData) => {
       if (appSourceType === AppSourceType.installedApp)
         await submitHumanInputFormService(formToken, formData)
+      else if (appSourceType === AppSourceType.webApp)
+        await submitWebAppHumanInputForm(formToken, formData)
       else await submitHumanInputForm(formToken, formData)
     },
     [appSourceType],

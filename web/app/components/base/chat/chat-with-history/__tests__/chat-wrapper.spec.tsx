@@ -5,12 +5,8 @@ import type { AppData, AppMeta, ConversationItem } from '@/models/share'
 import type { HumanInputFormData } from '@/types/workflow'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { InputVarType } from '@/app/components/workflow/types'
-import {
-  fetchChatList,
-  fetchSuggestedQuestions,
-  stopChatMessageResponding,
-  submitHumanInputForm,
-} from '@/service/share'
+import { fetchChatList, fetchSuggestedQuestions, stopChatMessageResponding } from '@/service/share'
+import { submitWebAppHumanInputForm } from '@/service/webapp-human-input'
 import { TransferMethod } from '@/types/app'
 import { useChat } from '../../chat/hooks'
 import { isValidGeneratedAnswer } from '../../utils'
@@ -61,6 +57,10 @@ vi.mock('@/service/share', () => ({
 
 vi.mock('@/service/workflow', () => ({
   submitHumanInputForm: vi.fn(),
+}))
+
+vi.mock('@/service/webapp-human-input', () => ({
+  submitWebAppHumanInputForm: vi.fn(),
 }))
 
 vi.mock('@/app/components/base/markdown', () => ({
@@ -979,6 +979,7 @@ describe('ChatWrapper', () => {
     await waitFor(() => {
       expect(submitWorkflowForm).toHaveBeenCalled()
     })
+    expect(submitWebAppHumanInputForm).not.toHaveBeenCalled()
   })
 
   it('should handle human input form submission for web app', async () => {
@@ -1031,7 +1032,10 @@ describe('ChatWrapper', () => {
     fireEvent.click(screen.getByText('Run'))
 
     await waitFor(() => {
-      expect(submitHumanInputForm).toHaveBeenCalledWith('token-web-1', expect.any(Object))
+      expect(submitWebAppHumanInputForm).toHaveBeenCalledWith('token-web-1', {
+        inputs: { test: 'web-test' },
+        action: 'run',
+      })
     })
   })
 

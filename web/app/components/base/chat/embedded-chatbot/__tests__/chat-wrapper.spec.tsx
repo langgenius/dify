@@ -4,8 +4,10 @@ import type { ChatConfig, ChatItem, ChatItemInTree } from '../../types'
 import type { EmbeddedChatbotContextValue } from '../context'
 import type { ConversationItem } from '@/models/share'
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { InputVarType } from '@/app/components/workflow/types'
 import { AppSourceType, fetchSuggestedQuestions, submitHumanInputForm } from '@/service/share'
+import { submitWebAppHumanInputForm } from '@/service/webapp-human-input'
 import { submitHumanInputForm as submitHumanInputFormService } from '@/service/workflow'
 import { useChat } from '../../chat/hooks'
 import ChatWrapper from '../chat-wrapper'
@@ -123,6 +125,10 @@ vi.mock('@/service/share', async (importOriginal) => {
 
 vi.mock('@/service/workflow', () => ({
   submitHumanInputForm: vi.fn(),
+}))
+
+vi.mock('@/service/webapp-human-input', () => ({
+  submitWebAppHumanInputForm: vi.fn(),
 }))
 
 const mockIsDify = vi.fn(() => false)
@@ -491,10 +497,24 @@ describe('EmbeddedChatbot chat-wrapper', () => {
           action: 'approve',
         })
       })
-      expect(submitHumanInputForm).not.toHaveBeenCalled()
+      expect(submitWebAppHumanInputForm).not.toHaveBeenCalled()
     })
 
-    it('should submit via share service and support chat actions in web app mode', async () => {
+    it('should submit web app approvals through the passport-aware service', async () => {
+      const user = userEvent.setup()
+      render(<ChatWrapper />)
+
+      await user.click(screen.getByRole('button', { name: 'submit human input' }))
+
+      expect(submitWebAppHumanInputForm).toHaveBeenCalledWith('form-token', {
+        inputs: { answer: 'ok' },
+        action: 'approve',
+      })
+      expect(submitHumanInputForm).not.toHaveBeenCalled()
+      expect(submitHumanInputFormService).not.toHaveBeenCalled()
+    })
+
+    it('should preserve legacy human input submission and chat actions in try app mode', async () => {
       const handleSend = vi.fn()
       const handleSwitchSibling = vi.fn()
       const handleStop = vi.fn()
@@ -540,6 +560,8 @@ describe('EmbeddedChatbot chat-wrapper', () => {
           action: 'approve',
         })
       })
+      expect(submitWebAppHumanInputForm).not.toHaveBeenCalled()
+      expect(submitHumanInputFormService).not.toHaveBeenCalled()
       expect(handleSend).toHaveBeenCalledTimes(2)
       const sendOptions = handleSend.mock.calls[0]?.[2] as {
         onGetSuggestedQuestions: (responseItemId: string) => void
