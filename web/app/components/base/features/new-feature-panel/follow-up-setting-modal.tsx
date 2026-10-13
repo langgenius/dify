@@ -214,7 +214,7 @@ function FollowUpSettingsForm({ data, onSave }: Omit<FollowUpSettingsDialogProps
                 value={PROMPT_MODE.default}
                 nativeButton
                 render={<button type="button" />}
-                className="w-full rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg p-4 text-left transition-colors hover:bg-state-base-hover data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg data-checked:hover:bg-components-option-card-option-selected-bg"
+                className="w-full rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg p-4 text-left hover:bg-state-base-hover data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg data-checked:hover:bg-components-option-card-option-selected-bg"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
@@ -247,7 +247,7 @@ function FollowUpSettingsForm({ data, onSave }: Omit<FollowUpSettingsDialogProps
             </FieldItem>
             <FieldItem
               className={cn(
-                'rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg p-4 transition-colors hover:bg-state-base-hover',
+                'rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg p-4 hover:bg-state-base-hover',
                 promptMode === PROMPT_MODE.custom &&
                   'border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg hover:bg-components-option-card-option-selected-bg',
               )}
