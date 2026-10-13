@@ -13,6 +13,7 @@ import { FormTypeEnum } from '@/app/components/base/form/types'
 import { ReadmeEntrance } from '@/app/components/plugins/readme-panel/entrance'
 import { toast } from '@/app/notifications'
 import { useUpdateTriggerSubscription } from '@/service/use-triggers'
+import { getErrorMessage } from '@/utils/error-message'
 import { usePluginStore } from '../../store'
 import { useSubscriptionList } from '../use-subscription-list'
 
@@ -49,11 +50,6 @@ export const OAuthEditModal = ({ onClose, subscription, pluginDetail }: Props) =
   const { refetch } = useSubscriptionList()
 
   const { mutate: updateSubscription, isPending: isUpdating } = useUpdateTriggerSubscription()
-
-  const getErrorMessage = (error: unknown, fallback: string) => {
-    if (error instanceof Error && error.message) return error.message
-    return fallback
-  }
 
   const parametersSchema = useMemo<ParametersSchema[]>(
     () => detail?.declaration?.trigger?.subscription_constructor?.parameters || [],
@@ -92,10 +88,8 @@ export const OAuthEditModal = ({ onClose, subscription, pluginDetail }: Props) =
         },
         onError: (error: unknown) => {
           toast.error(
-            getErrorMessage(
-              error,
+            getErrorMessage(error) ??
               t(($) => $['subscription.list.item.actions.edit.error'], { ns: 'pluginTrigger' }),
-            ),
           )
         },
       },

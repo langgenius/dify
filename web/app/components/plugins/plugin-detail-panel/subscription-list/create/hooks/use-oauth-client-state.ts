@@ -16,6 +16,7 @@ import {
   useInitiateTriggerOAuth,
   useVerifyAndUpdateTriggerSubscriptionBuilder,
 } from '@/service/use-triggers'
+import { getErrorMessage } from '@/utils/error-message'
 
 export const AuthorizationStatusEnum = {
   Pending: 'pending',
@@ -34,12 +35,6 @@ export const ClientTypeEnum = {
 export type ClientTypeEnum = (typeof ClientTypeEnum)[keyof typeof ClientTypeEnum]
 
 const POLL_INTERVAL_MS = 3000
-
-// Extract error message from various error formats
-export const getErrorMessage = (error: unknown, fallback: string): string => {
-  if (error instanceof Error && error.message) return error.message
-  return fallback
-}
 
 type UseOAuthClientStateParams = {
   oauthConfig?: TriggerOAuthConfig
@@ -144,10 +139,8 @@ export const useOAuthClientState = ({
       },
       onError: (error: unknown) => {
         toast.error(
-          getErrorMessage(
-            error,
+          getErrorMessage(error) ??
             t(($) => $['modal.oauth.remove.failed'], { ns: 'pluginTrigger' }),
-          ),
         )
       },
     })
