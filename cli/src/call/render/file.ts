@@ -1,12 +1,18 @@
 import type { Renderer } from './index'
 import { writeFile } from 'node:fs/promises'
 import { join, posix } from 'node:path'
-import { unknownError } from '@/errors/base'
+import { CALL_FLAG } from '@/call/flags'
+import { BaseError, unknownError } from '@/errors/base'
+import { ErrorCode } from '@/errors/codes'
 import { renderJson } from './object'
 
 const CONTENT_DISPOSITION_HEADER = 'content-disposition'
 const CONTENT_TYPE_HEADER = 'content-type'
 const UNKNOWN_EXTENSION = 'bin'
+const EEXIST = 'EEXIST'
+// A name the server picked never replaces a file; a path the caller named does.
+const CREATE_ONLY = 'wx'
+const CREATE_OR_REPLACE = 'w'
 
 const EXTENSIONS: Readonly<Record<string, string>> = {
   'application/json': 'json',
@@ -47,10 +53,18 @@ export const fileRenderer: Renderer = async (res, io, options, opId) => {
     filenameFromContentDisposition(res.headers.get(CONTENT_DISPOSITION_HEADER)) ??
     `${opId}.${extensionOf(contentType)}`
   const path = options.output ?? join(process.cwd(), filename)
+  const flag = options.output === undefined ? CREATE_ONLY : CREATE_OR_REPLACE
 
   try {
-    await writeFile(path, bytes)
+    await writeFile(path, bytes, { flag })
   } catch (cause) {
+    if ((cause as NodeJS.ErrnoException).code === EEXIST)
+      throw new BaseError({
+        code: ErrorCode.UsageMissingArg,
+        message: `${path} already exists; not overwriting it`,
+        hint: `pass --${CALL_FLAG.Output} <path> to choose where to save it`,
+        cause,
+      })
     throw unknownError(`failed to write file: ${path}`, cause)
   }
 
