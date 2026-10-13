@@ -6,11 +6,11 @@ import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/d
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Separator } from '@langgenius/dify-ui/separator'
+import { useRefWithInit } from '@langgenius/dify-ui/use-ref-with-init'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import ToolSelector from '@/app/components/plugins/plugin-detail-panel/tool-selector'
 import { useMCPToolAvailability } from '@/app/components/workflow/nodes/_base/components/mcp-tool-availability'
-import { useRefWithInit } from '@/hooks/use-ref-with-init'
 import { useAllMCPTools } from '@/service/use-tools'
 
 type Props = Readonly<{

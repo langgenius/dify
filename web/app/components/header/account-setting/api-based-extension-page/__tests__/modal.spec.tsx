@@ -218,7 +218,6 @@ describe('ApiBasedExtensionModal', () => {
             api_key: '[__HIDDEN__]',
           },
         })
-        expect(mockToast.success).toHaveBeenCalledWith('common.actionMsg.modifiedSuccessfully')
         expect(mockOnSaved).toHaveBeenCalled()
       })
     })

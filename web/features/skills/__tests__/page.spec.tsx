@@ -10,6 +10,7 @@ import { createEvent, fireEvent, render, screen, waitFor, within } from '@testin
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { toast } from '@/app/notifications'
+import { createHttpError, httpErrorFromResponse } from '@/service/http-error'
 import SkillsPage from '../page'
 
 type SkillsInfiniteOptions = {
@@ -774,7 +775,6 @@ describe('SkillsPage', () => {
         expect.anything(),
       )
     })
-    expect(toast.success).toHaveBeenCalledWith('skill.skillManagement.createSuccess')
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['skills', { type: 'query' }] })
     expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['skills', { type: 'infinite' }] })
     expect(invalidateQueries).toHaveBeenCalledWith({
@@ -786,7 +786,9 @@ describe('SkillsPage', () => {
 
   it('explains when the workspace skill limit blocks draft creation', async () => {
     const user = userEvent.setup()
-    mocks.createSkillMutationFn.mockRejectedValueOnce({ code: 'skill_limit_exceeded' })
+    mocks.createSkillMutationFn.mockRejectedValueOnce(
+      createHttpError(new Response(null, { status: 400 }), { code: 'skill_limit_exceeded' }),
+    )
     renderSkillsPage()
 
     await user.click(await screen.findByRole('button', { name: 'skill.skillManagement.create' }))
@@ -851,7 +853,6 @@ describe('SkillsPage', () => {
           expect.anything(),
         )
       })
-      expect(toast.success).toHaveBeenCalledWith('skill.skillManagement.importSuccess')
       expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['skills', { type: 'query' }] })
       expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['skills', { type: 'infinite' }] })
       expect(invalidateQueries).toHaveBeenCalledWith({
@@ -1097,30 +1098,26 @@ describe('SkillsPage', () => {
 
   it.each([
     {
-      error: {
-        data: {
-          body: {
-            code: 'skill_name_conflict',
-            details: { name: 'refund-approval' },
-          },
-        },
-      },
+      error: createHttpError(new Response(null, { status: 409 }), {
+        code: 'skill_name_conflict',
+        details: { name: 'refund-approval' },
+      }),
       message: 'skill.skillManagement.errors.nameConflict:{"name":"refund-approval"}',
     },
     {
-      error: { code: 'skill_limit_exceeded' },
+      error: createHttpError(new Response(null, { status: 400 }), { code: 'skill_limit_exceeded' }),
       message: 'skill.skillManagement.errors.workspaceLimit',
     },
     {
-      error: { code: 'missing_skill_md' },
+      error: createHttpError(new Response(null, { status: 400 }), { code: 'missing_skill_md' }),
       message: 'skill.skillManagement.errors.missingSkillMd',
     },
     {
-      error: { message: 'Skill package must contain SKILL.md' },
+      error: new Error('Skill package must contain SKILL.md'),
       message: 'skill.skillManagement.errors.missingSkillMd',
     },
     {
-      error: { message: 'Skill name "refund-approval" already exists' },
+      error: new Error('Skill name "refund-approval" already exists'),
       message: 'skill.skillManagement.errors.nameConflict:{"name":"refund-approval"}',
     },
   ])('explains import errors for $error.code', async ({ error, message }) => {
@@ -1144,9 +1141,11 @@ describe('SkillsPage', () => {
   it('keeps the package available for retry after explaining an error returned as a Response body', async () => {
     const user = userEvent.setup()
     mocks.importSkillMutationFn.mockRejectedValueOnce(
-      new Response(JSON.stringify({ message: 'Skill package must contain SKILL.md' }), {
-        status: 400,
-      }),
+      await httpErrorFromResponse(
+        new Response(JSON.stringify({ message: 'Skill package must contain SKILL.md' }), {
+          status: 400,
+        }),
+      ),
     )
     renderSkillsPage()
     const dialog = await openImportDialog(user)
@@ -1194,7 +1193,6 @@ describe('SkillsPage', () => {
         expect.anything(),
       )
     })
-    expect(toast.success).toHaveBeenCalledWith('skill.skillManagement.duplicateSuccess')
     expect(mocks.push).toHaveBeenCalledWith('/skills/duplicated-skill?rename=true')
   })
 
@@ -1301,7 +1299,6 @@ describe('SkillsPage', () => {
         expect.anything(),
       )
     })
-    expect(toast.success).toHaveBeenCalledWith('skill.skillManagement.deleteSuccess')
   })
 
   it('loads references in the delete confirmation when the list reference count is stale', async () => {

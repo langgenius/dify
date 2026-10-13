@@ -699,10 +699,6 @@ describe('ToolPicker', () => {
     await waitFor(() => {
       expect(mockCreateCustomCollection).toHaveBeenCalledWith({ name: 'collection-a' })
     })
-    expect(mockNotify).toHaveBeenCalledWith({
-      type: 'success',
-      message: 'common.api.actionSuccess',
-    })
     expect(mockInvalidateCustomTools).toHaveBeenCalledTimes(1)
     expect(screen.queryByTestId('edit-custom-tool-modal')).not.toBeInTheDocument()
   })

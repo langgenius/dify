@@ -145,7 +145,6 @@ describe('useCreateSnippet', () => {
           ],
         },
       })
-      expect(mockToastSuccess).toHaveBeenCalledWith('workflow.snippet.createSuccess')
       expect(mockPush).toHaveBeenCalledWith('/snippets/snippet-123/orchestrate')
       expect(result.current.isCreateSnippetDialogOpen).toBe(false)
       expect(result.current.isCreatingSnippet).toBe(false)

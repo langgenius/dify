@@ -1,4 +1,5 @@
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
+import { ORPCError } from '@orpc/client'
 import { useCallback, useEffect, useState } from 'react'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
@@ -56,29 +57,27 @@ export const usePipelineInit = () => {
       workflowStore.setState({ isWorkflowDataLoaded: true })
       setIsLoading(false)
     } catch (error: any) {
-      if (error && error.json && !error.bodyUsed && datasetId) {
-        error.json().then((err: any) => {
-          if (err.code === 'draft_workflow_not_exist') {
-            workflowStore.setState({
-              notInitialWorkflow: true,
-              shouldAutoOpenStartNodeSelector: true,
-            })
-            syncWorkflowDraft({
-              url: `/rag/pipelines/${datasetId}/workflows/draft`,
-              params: {
-                graph: {
-                  nodes: nodesTemplate,
-                  edges: edgesTemplate,
-                },
-                environment_variables: [],
+      if (error instanceof ORPCError && datasetId) {
+        if (error.code === 'draft_workflow_not_exist') {
+          workflowStore.setState({
+            notInitialWorkflow: true,
+            shouldAutoOpenStartNodeSelector: true,
+          })
+          syncWorkflowDraft({
+            url: `/rag/pipelines/${datasetId}/workflows/draft`,
+            params: {
+              graph: {
+                nodes: nodesTemplate,
+                edges: edgesTemplate,
               },
-            }).then((res) => {
-              const { setDraftUpdatedAt } = workflowStore.getState()
-              setDraftUpdatedAt(res.updated_at)
-              handleGetInitialWorkflowData()
-            })
-          }
-        })
+              environment_variables: [],
+            },
+          }).then((res) => {
+            const { setDraftUpdatedAt } = workflowStore.getState()
+            setDraftUpdatedAt(res.updated_at)
+            handleGetInitialWorkflowData()
+          })
+        }
       }
     }
   }, [nodesTemplate, edgesTemplate, workflowStore, datasetId])

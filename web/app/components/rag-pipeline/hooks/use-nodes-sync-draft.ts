@@ -1,4 +1,5 @@
 import type { SyncDraftCallback } from '@/app/components/workflow/hooks-store'
+import { ORPCError } from '@orpc/client'
 import { produce } from 'immer'
 import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
@@ -92,12 +93,12 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         setDraftUpdatedAt(res.updated_at)
         callback?.onSuccess?.()
       } catch (error: any) {
-        if (error && error.json && !error.bodyUsed) {
-          error.json().then((err: any) => {
-            if (err.code === 'draft_workflow_not_sync' && !notRefreshWhenSyncError)
-              handleRefreshWorkflowDraft()
-          })
-        }
+        if (
+          error instanceof ORPCError &&
+          error.code === 'draft_workflow_not_sync' &&
+          !notRefreshWhenSyncError
+        )
+          handleRefreshWorkflowDraft()
         callback?.onError?.()
       } finally {
         callback?.onSettled?.()

@@ -128,7 +128,7 @@ vi.mock('@/service/use-triggers', () => ({
   }),
 }))
 
-const mockParsePluginErrorMessage = vi.fn().mockResolvedValue(null)
+const mockParsePluginErrorMessage = vi.fn().mockReturnValue(null)
 vi.mock('@/utils/error-parser', () => ({
   parsePluginErrorMessage: (...args: unknown[]) => mockParsePluginErrorMessage(...args),
 }))
@@ -294,7 +294,7 @@ describe('CommonCreateModal', () => {
     })
     setMockGetFormReturnsNull(false)
     setMockFormValidation(true, true, true) // All forms validated by default
-    mockParsePluginErrorMessage.mockResolvedValue(null)
+    mockParsePluginErrorMessage.mockReturnValue(null)
   })
 
   afterEach(() => {
@@ -1222,7 +1222,7 @@ describe('CommonCreateModal', () => {
 
   describe('Error Message Parsing', () => {
     it('should use parsed error message when available for verify error', async () => {
-      mockParsePluginErrorMessage.mockResolvedValue('Custom parsed error')
+      mockParsePluginErrorMessage.mockReturnValue('Custom parsed error')
 
       const detailWithCredentials = createMockPluginDetail({
         declaration: {
@@ -1262,7 +1262,7 @@ describe('CommonCreateModal', () => {
     })
 
     it('should use parsed error message when available for build error', async () => {
-      mockParsePluginErrorMessage.mockResolvedValue('Custom build error')
+      mockParsePluginErrorMessage.mockReturnValue('Custom build error')
 
       const builder = createMockSubscriptionBuilder()
       mockBuildSubscription.mockImplementation((params, { onError }) => {
@@ -1292,7 +1292,7 @@ describe('CommonCreateModal', () => {
     })
 
     it('should use fallback error message when parsePluginErrorMessage returns null', async () => {
-      mockParsePluginErrorMessage.mockResolvedValue(null)
+      mockParsePluginErrorMessage.mockReturnValue(null)
 
       const builder = createMockSubscriptionBuilder()
       mockBuildSubscription.mockImplementation((params, { onError }) => {
@@ -1318,7 +1318,7 @@ describe('CommonCreateModal', () => {
     })
 
     it('should use parsed error message for update builder error', async () => {
-      mockParsePluginErrorMessage.mockResolvedValue('Custom update error')
+      mockParsePluginErrorMessage.mockReturnValue('Custom update error')
 
       const detailWithManualSchema = createMockPluginDetail({
         declaration: {
@@ -1492,13 +1492,6 @@ describe('CommonCreateModal', () => {
       )
 
       fireEvent.click(screen.getByTestId('modal-confirm'))
-
-      await waitFor(() => {
-        expect(mockToastNotify).toHaveBeenCalledWith({
-          type: 'success',
-          message: 'pluginTrigger.subscription.createSuccess',
-        })
-      })
 
       await waitFor(() => {
         expect(mockOnClose).toHaveBeenCalled()

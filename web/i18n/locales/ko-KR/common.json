@@ -10,7 +10,6 @@
   "actionMsg.generatedUnsuccessfully": "생성에 실패했습니다",
   "actionMsg.modifiedSuccessfully": "변경이 성공적으로 이루어졌습니다",
   "actionMsg.modifiedUnsuccessfully": "변경에 실패했습니다",
-  "actionMsg.noModification": "현재 변경사항이 없습니다.",
   "actionMsg.payCancelled": "결제가 취소되었습니다",
   "actionMsg.paySucceeded": "결제가 성공했습니다",
   "agentStrategyPage.description": "AI Agent가 어떻게 추론하고 의사결정하는지 정의하세요. 도구 선택, 결과 처리, 자율적인 문제 해결을 포함합니다.",

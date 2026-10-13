@@ -32,7 +32,7 @@ from models.workflow import Workflow, WorkflowType
 from repositories.app.console_repository import ConsoleAppRepository
 from services.agent.errors import AgentAccessNotReadyError, AgentNameConflictError
 from services.app_service import AppListParams, AppResponseView, AppService, CreateAppParams
-from services.enterprise import rbac_service as enterprise_rbac_service
+from services.rbac import contracts as rbac_contracts
 
 
 def _persist_account(session: Session) -> Account:
@@ -71,6 +71,16 @@ def _persist_app(session: Session, *, tenant_id: str, name: str = "Visible App")
     session.add(app)
     session.commit()
     return app
+
+
+@pytest.mark.parametrize("sqlite_session", [(App,)], indirect=True)
+def test_get_app_in_workspace_enforces_ownership(sqlite_session: Session) -> None:
+    tenant_id = str(uuid4())
+    app = _persist_app(sqlite_session, tenant_id=tenant_id)
+
+    assert AppService.get_app_in_workspace(tenant_id=tenant_id, app_id=app.id, session=sqlite_session) is app
+    assert AppService.get_app_in_workspace(tenant_id=str(uuid4()), app_id=app.id, session=sqlite_session) is None
+    assert AppService.get_app_in_workspace(tenant_id=tenant_id, app_id=str(uuid4()), session=sqlite_session) is None
 
 
 def _persist_agent_app(
@@ -374,13 +384,13 @@ class TestCreateAppRBACAccessInitialization:
             account.current_tenant_id,
             account.id,
             agent.id,
-            enterprise_rbac_service.ReplaceMemberBindings(automatic_include_workspace_members=True),
+            rbac_contracts.ReplaceMemberBindings(automatic_include_workspace_members=True),
         )
         seed_task.assert_called_once_with(account.current_tenant_id, account.id, agent_id=agent.id)
         creator_sync.assert_called_once_with(
             account.current_tenant_id,
             account.id,
-            resource_type=enterprise_rbac_service.RBACResourceType.AGENT,
+            resource_type=rbac_contracts.RBACResourceType.AGENT,
             resource_id=agent.id,
         )
         app_creator_sync.assert_not_called()
@@ -426,12 +436,8 @@ def test_unpublished_agent_app_access_cannot_be_enabled(
     assert commits == []
 
 
-class TestOpenapiVisibilityHelpers:
-    """Coverage for the session-injected, openapi-visibility-scoped
-    ``AppService`` getters used by ``/openapi/v1/apps*``. These helpers
-    centralise the "row exists + status normal + openapi-visibility
-    gate passes" check so the controller can stay free of SQL.
-    """
+class TestAppLookup:
+    """The auth pipeline's app lookup preserves status and API enablement signals."""
 
     def test_get_app_by_id_is_plain_session_get(self, sqlite_session: Session):
         """``get_app_by_id`` must NOT apply status / visibility filters
@@ -446,56 +452,6 @@ class TestOpenapiVisibilityHelpers:
 
     def test_get_app_by_id_returns_none_when_missing(self, sqlite_session: Session):
         assert AppService.get_app_by_id(str(uuid4()), sqlite_session) is None
-
-    def test_get_visible_app_by_id_returns_app_when_visible(self, sqlite_session: Session):
-        app = _persist_app(sqlite_session, tenant_id=str(uuid4()))
-
-        with patch("services.app_service.is_openapi_visible", return_value=True):
-            assert AppService.get_visible_app_by_id(app.id, sqlite_session) is app
-
-    def test_get_visible_app_by_id_returns_none_when_row_missing(self, sqlite_session: Session):
-        assert AppService.get_visible_app_by_id(str(uuid4()), sqlite_session) is None
-
-    def test_get_visible_app_by_id_returns_none_when_status_not_normal(self, sqlite_session: Session):
-        """Soft-deleted/archived rows must not surface on the openapi
-        surface — the helper hides them by returning ``None``.
-        """
-        app = _persist_app(sqlite_session, tenant_id=str(uuid4()))
-        app.status = "archived"  # type: ignore[assignment]
-
-        with patch("services.app_service.is_openapi_visible", return_value=True):
-            assert AppService.get_visible_app_by_id(app.id, sqlite_session) is None
-
-    def test_get_visible_app_by_id_returns_none_when_visibility_gate_rejects(self, sqlite_session: Session):
-        """``is_openapi_visible`` is the per-row counterpart to
-        ``apply_openapi_gate`` — when it returns False the helper must
-        treat the row as invisible (not "found but unauthorized").
-        """
-        app = _persist_app(sqlite_session, tenant_id=str(uuid4()))
-
-        with patch("services.app_service.is_openapi_visible", return_value=False):
-            assert AppService.get_visible_app_by_id(app.id, sqlite_session) is None
-
-    def test_find_visible_apps_by_ids_short_circuits_on_empty_input(self, unbound_session: Session):
-        """Empty id list must not emit ``WHERE id IN ()`` — Postgres
-        rejects empty IN lists and the call is a guaranteed no-op
-        anyway. The helper returns ``[]`` without touching the session.
-        """
-        assert AppService.find_visible_apps_by_ids([], unbound_session) == []
-
-    def test_find_visible_apps_by_ids_passes_through_visibility_gate(self, sqlite_session: Session):
-        """Bulk fetch routes through ``apply_openapi_gate`` exactly once
-        and materialises the scalar rows. **No** status filter is
-        applied here — the EE permitted-external pipeline filters
-        non-normal hits in Python so its page count stays anchored.
-        """
-        rows = [_persist_app(sqlite_session, tenant_id=str(uuid4())) for _ in range(2)]
-
-        with patch("services.app_service.apply_openapi_gate", side_effect=lambda q: q) as gate:
-            out = AppService.find_visible_apps_by_ids([app.id for app in rows], sqlite_session)
-
-        assert {app.id for app in out} == {app.id for app in rows}
-        gate.assert_called_once()
 
 
 def test_get_recent_apps_uses_one_tenant_scoped_projection_query(sqlite_session: Session) -> None:

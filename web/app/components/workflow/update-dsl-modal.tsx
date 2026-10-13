@@ -10,13 +10,13 @@ import { memo, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import DSLImportWarningDescription from '@/app/components/app/create-from-dsl-modal/dsl-import-warning-description'
 import { Uploader } from '@/app/components/app/create-from-dsl-modal/uploader'
-import { getAppTransferErrorMessage } from '@/app/components/app/transfer-error'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 import { toast } from '@/app/notifications'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { DSLImportMode, DSLImportStatus } from '@/models/app'
 import { consoleQuery } from '@/service/console'
 import { fetchWorkflowDraft } from '@/service/workflow'
+import { getErrorMessage } from '@/utils/error-message'
 import { collaborationManager } from './collaboration/core/collaboration-manager'
 import { WORKFLOW_DATA_UPDATE } from './constants'
 import {
@@ -96,7 +96,7 @@ const UpdateDSLModal = ({ appId, appMode, onCancel, onBackup, onImport }: Update
         toast.error(
           t(($) => $.error, { ns: 'common' }),
           {
-            description: await getAppTransferErrorMessage(error),
+            description: getErrorMessage(error),
           },
         )
         // Reload the committed graph before the old canvas can resume autosaving.
@@ -129,7 +129,7 @@ const UpdateDSLModal = ({ appId, appMode, onCancel, onBackup, onImport }: Update
     toast.error(
       t(($) => $['common.importFailure'], { ns: 'workflow' }),
       {
-        description: await getAppTransferErrorMessage(error),
+        description: getErrorMessage(error),
       },
     )
   }
