@@ -390,7 +390,6 @@
   "nodes.listFilter.filterConditionKey": "Klucz warunku filtra",
   "nodes.listFilter.inputVar": "Zmienna wejściowa",
   "nodes.llm.prompt": "prompt",
-  "nodes.llm.sysQueryInUser": "sys.query w wiadomości użytkownika jest wymagane",
   "nodes.loop.deleteDesc": "Usunięcie węzła pętli spowoduje usunięcie wszystkich węzłów potomnych.",
   "nodes.loop.deleteTitle": "Usunąć węzeł pętli?",
   "nodes.loop.loopMaxCountError": "Proszę wprowadzić prawidłową maksymalną liczbę iteracji, mieszczącą się w przedziale od 1 do {{maxCount}}",

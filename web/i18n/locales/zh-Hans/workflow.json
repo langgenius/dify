@@ -390,7 +390,6 @@
   "nodes.listFilter.filterConditionKey": "过滤条件的 Key",
   "nodes.listFilter.inputVar": "输入变量",
   "nodes.llm.prompt": "提示词",
-  "nodes.llm.sysQueryInUser": "user message 中必须包含 sys.query",
   "nodes.loop.deleteDesc": "删除循环节点将删除所有子节点",
   "nodes.loop.deleteTitle": "删除循环节点？",
   "nodes.loop.loopMaxCountError": "请输入正确的 最大循环次数，范围为 1 到 {{maxCount}}",

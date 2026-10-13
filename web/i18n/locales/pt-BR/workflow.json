@@ -390,7 +390,6 @@
   "nodes.listFilter.filterConditionKey": "Chave de condição do filtro",
   "nodes.listFilter.inputVar": "Variável de entrada",
   "nodes.llm.prompt": "prompt",
-  "nodes.llm.sysQueryInUser": "sys.query na mensagem do usuário é necessário",
   "nodes.loop.deleteDesc": "A exclusão do nó de loop removerá todos os nós filhos",
   "nodes.loop.deleteTitle": "Excluir Nó de Loop?",
   "nodes.loop.loopMaxCountError": "Por favor, insira um limite máximo de loop válido, variando de 1 a {{maxCount}}",

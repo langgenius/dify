@@ -390,7 +390,6 @@
   "nodes.listFilter.filterConditionKey": "Chiave condizione filtro",
   "nodes.listFilter.inputVar": "Variabile di input",
   "nodes.llm.prompt": "prompt",
-  "nodes.llm.sysQueryInUser": "sys.query nel messaggio utente è richiesto",
   "nodes.loop.deleteDesc": "Cancellare il nodo di ciclo rimuoverà tutti i nodi figli",
   "nodes.loop.deleteTitle": "Elimina nodo ciclo?",
   "nodes.loop.loopMaxCountError": "Si prega di inserire un conteggio massimo di cicli valido, compreso tra 1 e {{maxCount}}",

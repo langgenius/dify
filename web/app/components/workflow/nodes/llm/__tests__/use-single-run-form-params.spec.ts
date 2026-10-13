@@ -166,4 +166,95 @@ describe('llm/use-single-run-form-params', () => {
       }),
     ])
   })
+
+  it('does not force a sys.query single-run input when memory uses another variable', () => {
+    const getInputVars = vi.fn((_textList: string[]) => [createInputVar('#start.completed#')])
+    const toVarInputs = vi.fn((_variables: Variable[]) => [])
+
+    const { result } = renderHook(() =>
+      useSingleRunFormParams({
+        id: 'llm-node',
+        payload: createData({
+          memory: {
+            window: {
+              enabled: false,
+              size: 50,
+            },
+            query_prompt_template: '{{#start.completed#}}',
+          },
+        }),
+        runInputData: {},
+        runInputDataRef: { current: {} },
+        getInputVars,
+        setRunInputData: vi.fn(),
+        toVarInputs,
+      }),
+    )
+
+    const textList = getInputVars.mock.calls[0]![0] as string[]
+    expect(textList).toContain('{{#start.completed#}}')
+    expect(textList).not.toContain('{{#sys.query#}}')
+    expect(result.current.forms[0]!.inputs).toEqual([
+      expect.objectContaining({
+        variable: '#start.completed#',
+      }),
+    ])
+  })
+
+  it('keeps the sys.query single-run input when memory falls back to the default template', () => {
+    const getInputVars = vi.fn((_textList: string[]) => [createInputVar('#sys.query#')])
+    const toVarInputs = vi.fn((_variables: Variable[]) => [])
+
+    renderHook(() =>
+      useSingleRunFormParams({
+        id: 'llm-node',
+        payload: createData({
+          memory: {
+            window: {
+              enabled: false,
+              size: 50,
+            },
+            query_prompt_template: '',
+          },
+        }),
+        runInputData: {},
+        runInputDataRef: { current: {} },
+        getInputVars,
+        setRunInputData: vi.fn(),
+        toVarInputs,
+      }),
+    )
+
+    const textList = getInputVars.mock.calls[0]![0] as string[]
+    expect(textList).toContain('{{#sys.query#}}')
+  })
+
+  it('does not force a sys.query single-run input for a static memory template', () => {
+    const getInputVars = vi.fn((_textList: string[]) => [])
+    const toVarInputs = vi.fn((_variables: Variable[]) => [])
+
+    renderHook(() =>
+      useSingleRunFormParams({
+        id: 'llm-node',
+        payload: createData({
+          memory: {
+            window: {
+              enabled: false,
+              size: 50,
+            },
+            query_prompt_template: 'custom prompt',
+          },
+        }),
+        runInputData: {},
+        runInputDataRef: { current: {} },
+        getInputVars,
+        setRunInputData: vi.fn(),
+        toVarInputs,
+      }),
+    )
+
+    const textList = getInputVars.mock.calls[0]![0] as string[]
+    expect(textList).toContain('custom prompt')
+    expect(textList).not.toContain('{{#sys.query#}}')
+  })
 })

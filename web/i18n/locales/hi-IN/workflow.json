@@ -390,7 +390,6 @@
   "nodes.listFilter.filterConditionKey": "फ़िल्टर स्थिति कुंजी",
   "nodes.listFilter.inputVar": "इनपुट वेरिएबल",
   "nodes.llm.prompt": "प्रॉम्प्ट",
-  "nodes.llm.sysQueryInUser": "उपयोगकर्ता संदेश में sys.query आवश्यक है",
   "nodes.loop.deleteDesc": "लूप नोड को हटाने से सभी बाल नोड हट जाएंगे",
   "nodes.loop.deleteTitle": "लूप नोड हटाएँ?",
   "nodes.loop.loopMaxCountError": "कृपया अधिकतम लूप संख्या दर्ज करें, जो 1 से {{maxCount}} के बीच हो",

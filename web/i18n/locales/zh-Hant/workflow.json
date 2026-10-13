@@ -390,7 +390,6 @@
   "nodes.listFilter.filterConditionKey": "篩選條件鍵",
   "nodes.listFilter.inputVar": "輸入變數",
   "nodes.llm.prompt": "提示詞",
-  "nodes.llm.sysQueryInUser": "user message 中必須包含 sys.query",
   "nodes.loop.deleteDesc": "刪除循環節點將移除所有子節點",
   "nodes.loop.deleteTitle": "刪除循環節點嗎？",
   "nodes.loop.loopMaxCountError": "請輸入一個有效的最大迴圈次數，範圍為 1 到 {{maxCount}}",

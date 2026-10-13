@@ -390,7 +390,6 @@
   "nodes.listFilter.filterConditionKey": "Filtre Koşulu Anahtarı",
   "nodes.listFilter.inputVar": "Giriş Değişkeni",
   "nodes.llm.prompt": "istem",
-  "nodes.llm.sysQueryInUser": "sys.query kullanıcı mesajında gereklidir",
   "nodes.loop.deleteDesc": "Döngü düğümünü silmek, tüm alt düğümleri kaldıracaktır.",
   "nodes.loop.deleteTitle": "Döngü Düğümünü Sil?",
   "nodes.loop.loopMaxCountError": "Lütfen 1 ile {{maxCount}} arasında geçerli bir maksimum döngü sayısı girin.",

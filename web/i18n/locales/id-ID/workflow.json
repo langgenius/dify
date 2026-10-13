@@ -390,7 +390,6 @@
   "nodes.listFilter.filterConditionKey": "Kunci Kondisi Filter",
   "nodes.listFilter.inputVar": "Variabel Masukan",
   "nodes.llm.prompt": "cepat",
-  "nodes.llm.sysQueryInUser": "sys.query dalam pesan pengguna diperlukan",
   "nodes.loop.deleteDesc": "Menghapus simpul perulangan akan menghapus semua simpul turunan",
   "nodes.loop.deleteTitle": "Hapus Simpul Loop?",
   "nodes.loop.loopMaxCountError": "Harap masukkan jumlah loop maksimum yang valid, mulai dari 1 hingga {{maxCount}}",

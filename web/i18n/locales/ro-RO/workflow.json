@@ -390,7 +390,6 @@
   "nodes.listFilter.filterConditionKey": "Tasta de condiție a filtrului",
   "nodes.listFilter.inputVar": "Variabilă de intrare",
   "nodes.llm.prompt": "prompt",
-  "nodes.llm.sysQueryInUser": "sys.query în mesajul utilizatorului este necesar",
   "nodes.loop.deleteDesc": "Ștergerea nodului buclă va elimina toate nodurile copil.",
   "nodes.loop.deleteTitle": "Șterge nodul de ciclu?",
   "nodes.loop.loopMaxCountError": "Vă rugăm să introduceți un număr maxim valid de bucle, care să fie între 1 și {{maxCount}}",

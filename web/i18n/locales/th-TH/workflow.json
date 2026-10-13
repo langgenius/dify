@@ -390,7 +390,6 @@
   "nodes.listFilter.filterConditionKey": "คีย์เงื่อนไขตัวกรอง",
   "nodes.listFilter.inputVar": "ตัวแปรอินพุต",
   "nodes.llm.prompt": "พร้อมท์",
-  "nodes.llm.sysQueryInUser": "sys.query ในข้อความผู้ใช้เป็นสิ่งจําเป็น",
   "nodes.loop.deleteDesc": "การลบโหนดลูปจะลบโหนดลูกทั้งหมด",
   "nodes.loop.deleteTitle": "ลบโหนดลูปหรือไม่?",
   "nodes.loop.loopMaxCountError": "กรุณาใส่จำนวนรอบสูงสุดที่ถูกต้อง ซึ่งอยู่ระหว่าง 1 ถึง {{maxCount}}",

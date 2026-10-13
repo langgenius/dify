@@ -390,7 +390,6 @@
   "nodes.listFilter.filterConditionKey": "Bedingungsschlüssel filtern",
   "nodes.listFilter.inputVar": "Eingabevariable",
   "nodes.llm.prompt": "Prompt",
-  "nodes.llm.sysQueryInUser": "sys.query in Benutzernachricht erforderlich",
   "nodes.loop.deleteDesc": "Das Löschen des Schleifen-Knotens entfernt alle untergeordneten Knoten.",
   "nodes.loop.deleteTitle": "Schleifen-Knoten löschen?",
   "nodes.loop.loopMaxCountError": "Bitte geben Sie eine gültige maximale Schleifenanzahl ein, die von 1 bis {{maxCount}} reicht.",

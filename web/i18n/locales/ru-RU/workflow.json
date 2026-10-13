@@ -390,7 +390,6 @@
   "nodes.listFilter.filterConditionKey": "Ключ условия фильтра",
   "nodes.listFilter.inputVar": "Входная переменная",
   "nodes.llm.prompt": "подсказка",
-  "nodes.llm.sysQueryInUser": "sys.query в сообщении пользователя обязателен",
   "nodes.loop.deleteDesc": "Удаление узла цикла удалит все дочерние узлы.",
   "nodes.loop.deleteTitle": "Удалить узел цикла?",
   "nodes.loop.loopMaxCountError": "Пожалуйста, введите допустимое максимальное количество циклов, от 1 до {{maxCount}}",

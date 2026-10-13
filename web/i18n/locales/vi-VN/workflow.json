@@ -390,7 +390,6 @@
   "nodes.listFilter.filterConditionKey": "Khóa điều kiện bộ lọc",
   "nodes.listFilter.inputVar": "Biến đầu vào",
   "nodes.llm.prompt": "prompt",
-  "nodes.llm.sysQueryInUser": "sys.query trong tin nhắn của người dùng là bắt buộc",
   "nodes.loop.deleteDesc": "Xóa nút vòng sẽ xóa tất cả các nút con",
   "nodes.loop.deleteTitle": "Xóa nút vòng lặp?",
   "nodes.loop.loopMaxCountError": "Vui lòng nhập số vòng lặp tối đa hợp lệ, trong khoảng từ 1 đến {{maxCount}}",
