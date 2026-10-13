@@ -315,6 +315,18 @@ it('an unreachable catalog costs a notice, not the static suggestion', async () 
   expect(w.io.errBuf()).toMatch(/^could not list server operations: failed to fetch the catalog: /)
 })
 
+it('an unreachable catalog makes a word no static claims catalog_unavailable (exit 6)', async () => {
+  const w = await world(true, ['get', 'console_app'])
+  w.mock.setScenario('no-catalog')
+  const miss = (await w.ctx.get(commands)).run()
+  await expect(miss).rejects.toMatchObject({
+    code: 'catalog_unavailable',
+    message: expect.stringMatching(/^failed to fetch the catalog: /),
+    hint: expect.any(String),
+  })
+  await expect(miss).rejects.toSatisfy((err: BaseError) => err.exit() === ExitCode.Catalog)
+})
+
 it('without a login a word no static claims is not_logged_in (exit 4)', async () => {
   const w = await world(false, ['get', 'console_app'])
   const miss = (await w.ctx.get(commands)).run()

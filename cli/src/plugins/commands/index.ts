@@ -4,7 +4,7 @@ import type { CollectOptions, CommandTree, ResolvedCommand } from '@/plugins/com
 import type { IOService } from '@/plugins/io'
 import type { OpsService, TreeOptions } from '@/plugins/ops'
 import { commandTree } from '@/commands/tree'
-import { BaseError, notLoggedInMessage } from '@/errors/base'
+import { BaseError, isBaseError, notLoggedInMessage } from '@/errors/base'
 import { ErrorCode, ExitCode } from '@/errors/codes'
 import { errorMessage } from '@/errors/message'
 import { definePlugin } from '@/kernel/plugin'
@@ -77,22 +77,25 @@ function leadingWords(tokens: readonly string[]): number {
   return at === -1 ? tokens.length : at
 }
 
+/** What a catalog load gave: the value, or why there is none (`failure` unset when logged out). */
+type Fetched<T> = Readonly<{ value: T }> | Readonly<{ value?: undefined; failure?: unknown }>
+
 // An unreachable server must not cost the caller the static half of help.
 async function fromOps<T>(
   ctx: CommandContext,
   streams: IOService,
   load: (service: OpsService) => Promise<T>,
-): Promise<T | undefined> {
+): Promise<Fetched<T>> {
   const login = await (await ctx.get(session)).current()
   if (login === null) {
     streams.notice(NO_SERVER_NOTICE)
-    return undefined
+    return {}
   }
   try {
-    return await load(await ctx.get(ops))
-  } catch (err) {
-    streams.notice(`${OPS_UNAVAILABLE_PREFIX}${errorMessage(err)}`)
-    return undefined
+    return { value: await load(await ctx.get(ops)) }
+  } catch (failure) {
+    streams.notice(`${OPS_UNAVAILABLE_PREFIX}${errorMessage(failure)}`)
+    return { failure }
   }
 }
 
@@ -136,6 +139,22 @@ const unknownOp: Miss = (tree, words) =>
     message: `no command or server operation named ${words.join(COMMAND_SEPARATOR)}`,
     hint: suggestionHint(tree, words) ?? helpHint(),
   })
+
+function catalogUnavailable(failure: unknown): BaseError {
+  return isBaseError(failure)
+    ? failure
+    : new BaseError({
+        code: ErrorCode.CatalogUnavailable,
+        message: `${OPS_UNAVAILABLE_PREFIX}${errorMessage(failure)}`,
+        cause: failure,
+      })
+}
+
+// Words that might name an op cannot be called unknown when the ops never loaded.
+function unloaded(statics: CommandTree, fetched: Fetched<unknown>): Miss | undefined {
+  if (!('failure' in fetched)) return undefined
+  return unlessStaticTypo(statics, () => catalogUnavailable(fetched.failure))
+}
 
 type Discovery = Readonly<{
   tree: CommandTree
@@ -204,9 +223,10 @@ function answerable(walk: Walk, cached: CommandTree): boolean {
 
 // Statics resolve without touching the catalog. A miss walks the server's ops as
 // commands too: the cached catalog first, then one refetch in case the op is newer
-// than the cache. A server that cannot answer costs the caller nothing but a notice —
+// than the cache. A server that cannot answer costs help nothing but a notice —
 // resolution falls back to the widest tree it did get, which is also the tree help
-// lists, so the catalog is loaded at most once per run.
+// lists, so the catalog is loaded at most once per run. A plain miss then reports the
+// failed load rather than an unknown command.
 async function resolveWithOps(walk: Walk): Promise<Resolution> {
   const { ctx, streams, tree } = walk
   const path = [...walk.path]
@@ -218,15 +238,16 @@ async function resolveWithOps(walk: Walk): Promise<Resolution> {
     return { resolved: undefined, tree, miss: unlessStaticTypo(tree, loggedOut) }
 
   const known = await fromOps(ctx, streams, (service) => service.commands(EVERY_OP))
-  if (known === undefined) return { resolved: undefined, tree }
-  const cached = mergeTrees(tree, known).tree
+  if (known.value === undefined) return { resolved: undefined, tree, miss: unloaded(tree, known) }
+  const cached = mergeTrees(tree, known.value).tree
   const fromCache = resolveCommand(cached, path)
   if (fromCache !== undefined || answerable(walk, cached))
     return { resolved: fromCache, tree: cached }
 
   const refetched = await fromOps(ctx, streams, (service) => service.commands(EVERY_OP_FRESH))
-  if (refetched === undefined) return { resolved: undefined, tree: cached }
-  const fresh = mergeTrees(tree, refetched).tree
+  if (refetched.value === undefined)
+    return { resolved: undefined, tree: cached, miss: unloaded(tree, refetched) }
+  const fresh = mergeTrees(tree, refetched.value).tree
   return {
     resolved: resolveCommand(fresh, path),
     tree: fresh,
