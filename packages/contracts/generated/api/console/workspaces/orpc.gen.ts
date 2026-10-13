@@ -11,6 +11,7 @@ import {
   zDeleteWorkspacesCurrentMembersByMemberIdResponse,
   zDeleteWorkspacesCurrentModelProvidersByProviderCredentialsBody,
   zDeleteWorkspacesCurrentModelProvidersByProviderCredentialsPath,
+  zDeleteWorkspacesCurrentModelProvidersByProviderCredentialsQuery,
   zDeleteWorkspacesCurrentModelProvidersByProviderCredentialsResponse,
   zDeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsPath,
   zDeleteWorkspacesCurrentModelProvidersByProviderModelsCredentialsQuery,
@@ -1308,6 +1309,7 @@ export const delete5 = oc
     z.object({
       body: zDeleteWorkspacesCurrentModelProvidersByProviderCredentialsBody,
       params: zDeleteWorkspacesCurrentModelProvidersByProviderCredentialsPath,
+      query: zDeleteWorkspacesCurrentModelProvidersByProviderCredentialsQuery,
     }),
   )
   .output(zDeleteWorkspacesCurrentModelProvidersByProviderCredentialsResponse)

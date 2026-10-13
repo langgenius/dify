@@ -4420,6 +4420,10 @@ export const zDeleteWorkspacesCurrentModelProvidersByProviderCredentialsPath = z
   provider: z.string(),
 })
 
+export const zDeleteWorkspacesCurrentModelProvidersByProviderCredentialsQuery = z.object({
+  credential_id: z.string(),
+})
+
 /**
  * Credential deleted successfully
  */
