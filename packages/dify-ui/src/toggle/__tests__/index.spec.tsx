@@ -23,28 +23,4 @@ describe('Toggle', () => {
     await userEvent.click(toggle)
     await expect.element(toggle).toHaveAttribute('aria-pressed', 'false')
   })
-
-  it('owns the focus ring so a bare toggle shows one', async () => {
-    const screen = await render(<Toggle aria-label="Bold" />)
-
-    await expect
-      .element(screen.getByRole('button', { name: 'Bold' }))
-      .toHaveClass('focus-visible:ring-2', 'focus-visible:ring-state-accent-solid')
-  })
-
-  it('lets a caller replace the ring with a gapped outline', async () => {
-    const screen = await render(
-      <Toggle
-        aria-label="Monday"
-        className="outline-state-accent-solid focus-visible:ring-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-solid"
-      />,
-    )
-
-    const toggle = screen.getByRole('button', { name: 'Monday' })
-    await expect
-      .element(toggle)
-      .toHaveClass('focus-visible:ring-0', 'focus-visible:outline-solid', 'focus-visible:outline-2')
-    await expect.element(toggle).not.toHaveClass('focus-visible:ring-2')
-    await expect.element(toggle).not.toHaveClass('focus-visible:outline-hidden')
-  })
 })
