@@ -314,3 +314,37 @@ def _chained_instance_handler() -> None:
 def test_follows_methods_called_on_instances(analyzer: lint.RaiseAnalyzer) -> None:
     assert _MissingError in analyzer.raises_of_function(_instance_handler, None, 0)
     assert _MissingError in analyzer.raises_of_function(_chained_instance_handler, None, 0)
+
+
+class _FirstError(BaseHTTPException):
+    error_code = "first"
+    code = 400
+
+
+class _SecondError(BaseHTTPException):
+    error_code = "second"
+    code = 409
+
+
+class _FirstService:
+    def run(self) -> None:
+        raise _FirstError()
+
+
+class _SecondService:
+    def run(self) -> None:
+        raise _SecondError()
+
+
+def _branching_handler(first: bool) -> None:
+    if first:
+        service: _FirstService | _SecondService = _FirstService()
+    else:
+        service = _SecondService()
+    service.run()
+
+
+def test_follows_every_class_a_name_is_bound_to(analyzer: lint.RaiseAnalyzer) -> None:
+    raised = analyzer.raises_of_function(_branching_handler, None, 0)
+
+    assert {_FirstError, _SecondError} <= raised

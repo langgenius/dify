@@ -120,9 +120,12 @@ def resolve(expr: ast.AST, env: Mapping[str, object], owner: type | None) -> obj
     return None
 
 
-def local_instances(node: ast.AST, env: Mapping[str, object], owner: type | None) -> dict[str, type]:
-    """Names bound to ``Class(...)`` in ``node`` (``service = Service(session)``), for method resolution."""
-    bound: dict[str, type] = {}
+def local_instances(node: ast.AST, env: Mapping[str, object], owner: type | None) -> dict[str, tuple[type, ...]]:
+    """Classes each name is bound to via ``Class(...)`` in ``node`` (``service = Service(session)``).
+
+    A name assigned in several branches keeps every class, so calls on it are analyzed for each.
+    """
+    bound: dict[str, dict[type, None]] = {}
     for child in ast.walk(node):
         targets: list[ast.expr] = []
         value: ast.expr | None = None
@@ -138,8 +141,8 @@ def local_instances(node: ast.AST, env: Mapping[str, object], owner: type | None
         if isinstance(built, type):
             for target in targets:
                 if isinstance(target, ast.Name):
-                    bound[target.id] = built
-    return bound
+                    bound.setdefault(target.id, {})[built] = None
+    return {name: tuple(classes) for name, classes in bound.items()}
 
 
 def _eval_test(test: ast.expr, bindings: Mapping[str, object]) -> bool | None:
@@ -348,7 +351,9 @@ class RaiseAnalyzer:
                 current = parents.get(current)
             return None
 
-        env = {**env, **local_instances(node, env, owner)}
+        instances = local_instances(node, env, owner)
+        env = {**env, **{name: classes[0] for name, classes in instances.items() if len(classes) == 1}}
+        branching = {name: classes for name, classes in instances.items() if len(classes) > 1}
         found: set[type] = set()
         for child in _walk_pruned(node.body, bindings):
             if isinstance(child, ast.Raise):
@@ -357,7 +362,7 @@ class RaiseAnalyzer:
                     continue
                 found |= self._raised_by(child, env, owner, enclosing_handler)
             elif isinstance(child, ast.Call):
-                found |= self._raised_by_call(child, env, owner, depth)
+                found |= self._raised_by_call(child, env, owner, depth, branching)
 
         self._memo[key] = found
         return found
@@ -403,7 +408,21 @@ class RaiseAnalyzer:
                     found.add(built)  # type: ignore[arg-type]
         return found
 
-    def _raised_by_call(self, node: ast.Call, env: Mapping[str, object], owner: type | None, depth: int) -> set[type]:
+    def _raised_by_call(
+        self,
+        node: ast.Call,
+        env: Mapping[str, object],
+        owner: type | None,
+        depth: int,
+        branching: Mapping[str, tuple[type, ...]],
+    ) -> set[type]:
+        receiver = node.func.value if isinstance(node.func, ast.Attribute) else None
+        if branching and isinstance(receiver, ast.Name) and receiver.id in branching:
+            # ``service.run()`` where branches bind ``service`` to different classes: any may run.
+            found_any: set[type] = set()
+            for cls in branching[receiver.id]:
+                found_any |= self._raised_by_call(node, {**env, receiver.id: cls}, owner, depth, {})
+            return found_any
         found: set[type] = set()
         if isinstance(node.func, ast.Attribute) and node.func.attr in VALIDATE_ATTRS:
             found.add(ValueError)
