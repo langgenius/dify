@@ -428,8 +428,6 @@ project-excludes = [
   "core/tools/utils/test_workflow_configuration_sync.py",
   "core/tools/workflow_as_tool/test_provider.py",
   "core/tools/workflow_as_tool/test_tool.py",
-  "core/trigger/debug/test_debug_event_bus.py",
-  "core/trigger/debug/test_debug_event_selectors.py",
   "core/trigger/utils/test_utils_encryption.py",
   "core/trigger/utils/test_utils_endpoint.py",
   "core/trigger/utils/test_utils_locks.py",
