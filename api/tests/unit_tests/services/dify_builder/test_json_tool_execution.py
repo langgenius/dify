@@ -44,6 +44,20 @@ def _tool(graph):
     return graph["nodes"][1]["data"]
 
 
+def add_native_editor_metadata(graph):
+    """Mirror the inert fields emitted by the native Tool and End editors."""
+    _tool(graph).update(
+        {
+            "is_team_authorization": True,
+            "provider_show_name": "JSON Process",
+            "provider_icon": "https://console.example.invalid/console/api/workspaces/current/plugin/icon?tenant_id=00000000-0000-0000-0000-000000000001&filename=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.svg",
+            "provider_icon_dark": "https://console.example.invalid/console/api/workspaces/current/plugin/icon?tenant_id=00000000-0000-0000-0000-000000000001&filename=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.svg",
+        }
+    )
+    graph["nodes"][2]["data"]["outputs"][0]["value_type"] = "string"
+    return graph
+
+
 def test_reviewed_pure_mixed_graph_admits_exact_native_chain(json_graph):
     admitted = admit_json_workflow(snapshot_for(json_graph))
     assert (admitted.start_node_id, admitted.tool_node_id, admitted.end_node_id) == ("node1", "node2", "node3")
@@ -53,6 +67,69 @@ def test_reviewed_pure_mixed_graph_admits_exact_native_chain(json_graph):
         "json_filter": _inputs()["json_path"],
         "ensure_ascii": True,
     }
+
+
+@pytest.mark.parametrize("variant", ["native-editor", "bounded-display"], ids=["native-editor", "bounded-display"])
+def test_native_editor_metadata_admits_without_changing_graph_or_parameters(json_graph, variant):
+    graph = add_native_editor_metadata(json_graph)
+    if variant == "bounded-display":
+        _tool(graph)["is_team_authorization"] = False
+        _tool(graph)["provider_show_name"] = "x" * 256
+        _tool(graph)["provider_icon"] = "x" * 2048
+        _tool(graph)["provider_icon_dark"] = "x" * 2048
+    original = deepcopy(graph)
+    admitted = admit_json_workflow(snapshot_for(graph))
+    assert (admitted.start_node_id, admitted.tool_node_id, admitted.end_node_id) == ("node1", "node2", "node3")
+    assert resolve_json_parameters(snapshot_for(graph), _inputs()) == {
+        "content": _inputs()["payload"],
+        "json_filter": _inputs()["json_path"],
+        "ensure_ascii": True,
+    }
+    assert graph == original
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        pytest.param("is_team_authorization", 1, id="authorization-int"),
+        pytest.param("is_team_authorization", "true", id="authorization-text"),
+        pytest.param("is_team_authorization", None, id="authorization-null"),
+        pytest.param("provider_show_name", None, id="show-name-null"),
+        pytest.param("provider_show_name", {"en_US": "JSON Process"}, id="show-name-object"),
+        pytest.param("provider_show_name", "x" * 257, id="show-name-over-256"),
+        pytest.param("provider_icon", 1, id="icon-int"),
+        pytest.param("provider_icon", "x" * 2049, id="icon-over-2048"),
+        pytest.param("provider_icon_dark", ["icon"], id="dark-icon-list"),
+        pytest.param("provider_icon_dark", "x" * 2049, id="dark-icon-over-2048"),
+        pytest.param("unreviewed_editor_metadata", "display", id="unknown-field"),
+        pytest.param("credential_id", "selected", id="credential-still-refused"),
+        pytest.param("credential_type", "api-key", id="credential-type-still-refused"),
+        pytest.param("credential_name", "selected", id="credential-name-still-refused"),
+    ],
+)
+def test_native_editor_tool_metadata_refuses_bad_types_bounds_and_unknown_fields(json_graph, field, value):
+    graph = add_native_editor_metadata(json_graph)
+    _tool(graph)[field] = value
+    with pytest.raises(BuilderExecutionPolicyError):
+        admit_json_workflow(snapshot_for(graph))
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        pytest.param("value_type", "number", id="nontext-type"),
+        pytest.param("value_type", "any", id="native-default-explicit"),
+        pytest.param("value_type", None, id="null-type"),
+        pytest.param("value_type", 1, id="numeric-type"),
+        pytest.param("unreviewed_output_metadata", "display", id="unknown-output-field"),
+        pytest.param("value_selector", ["node1", "payload"], id="non-tool-selector"),
+    ],
+)
+def test_native_editor_end_metadata_keeps_exact_text_tool_selector(json_graph, field, value):
+    graph = add_native_editor_metadata(json_graph)
+    graph["nodes"][2]["data"]["outputs"][0][field] = value
+    with pytest.raises(BuilderExecutionPolicyError):
+        admit_json_workflow(snapshot_for(graph))
 
 
 @pytest.mark.parametrize("source_kind", ["constant", "variable", "mixed"])
