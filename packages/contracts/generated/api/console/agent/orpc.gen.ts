@@ -18,6 +18,7 @@ import {
   zCreateAgentMessageFeedbackError404,
   zDeleteAgentApiKeyApiError400,
   zDeleteAgentApiKeyApiError401,
+  zDeleteAgentApiKeyApiError409,
   zDeleteAgentAppApiError400,
   zDeleteAgentAppApiError401,
   zDeleteAgentBuildDraftApiError400,
@@ -47,6 +48,7 @@ import {
   zGetAgentApiAccessApiError401,
   zGetAgentApiKeyListApiError400,
   zGetAgentApiKeyListApiError401,
+  zGetAgentApiKeyListApiError409,
   zGetAgentAppApiError400,
   zGetAgentAppApiError401,
   zGetAgentAppApiError404,
@@ -116,6 +118,7 @@ import {
   zListAgentChatMessagesError404,
   zPostAgentApiKeyListApiError400,
   zPostAgentApiKeyListApiError401,
+  zPostAgentApiKeyListApiError409,
   zPostAgentApiStatusApiError400,
   zPostAgentApiStatusApiError401,
   zPostAgentApiStatusApiError409,
@@ -416,9 +419,12 @@ export const delete_ = oc
     account_not_initialized: { status: 400, data: zDeleteAgentApiKeyApiError400 },
     bad_request: { status: 400, data: zDeleteAgentApiKeyApiError400 },
     invalid_param: { status: 400, data: zDeleteAgentApiKeyApiError400 },
+    max_keys_exceeded: { status: 400, data: zDeleteAgentApiKeyApiError400 },
     not_init_validated: { status: 401, data: zDeleteAgentApiKeyApiError401 },
     not_setup: { status: 401, data: zDeleteAgentApiKeyApiError401 },
     unauthorized: { status: 401, data: zDeleteAgentApiKeyApiError401 },
+    agent_not_published: { status: 409, data: zDeleteAgentApiKeyApiError409 },
+    conflict: { status: 409, data: zDeleteAgentApiKeyApiError409 },
   })
 
 export const byApiKeyId = {
@@ -439,9 +445,12 @@ export const get3 = oc
     account_not_initialized: { status: 400, data: zGetAgentApiKeyListApiError400 },
     bad_request: { status: 400, data: zGetAgentApiKeyListApiError400 },
     invalid_param: { status: 400, data: zGetAgentApiKeyListApiError400 },
+    max_keys_exceeded: { status: 400, data: zGetAgentApiKeyListApiError400 },
     not_init_validated: { status: 401, data: zGetAgentApiKeyListApiError401 },
     not_setup: { status: 401, data: zGetAgentApiKeyListApiError401 },
     unauthorized: { status: 401, data: zGetAgentApiKeyListApiError401 },
+    agent_not_published: { status: 409, data: zGetAgentApiKeyListApiError409 },
+    conflict: { status: 409, data: zGetAgentApiKeyListApiError409 },
   })
 
 export const post2 = oc
@@ -459,9 +468,12 @@ export const post2 = oc
     account_not_initialized: { status: 400, data: zPostAgentApiKeyListApiError400 },
     bad_request: { status: 400, data: zPostAgentApiKeyListApiError400 },
     invalid_param: { status: 400, data: zPostAgentApiKeyListApiError400 },
+    max_keys_exceeded: { status: 400, data: zPostAgentApiKeyListApiError400 },
     not_init_validated: { status: 401, data: zPostAgentApiKeyListApiError401 },
     not_setup: { status: 401, data: zPostAgentApiKeyListApiError401 },
     unauthorized: { status: 401, data: zPostAgentApiKeyListApiError401 },
+    agent_not_published: { status: 409, data: zPostAgentApiKeyListApiError409 },
+    conflict: { status: 409, data: zPostAgentApiKeyListApiError409 },
   })
 
 export const apiKeys = {
@@ -684,6 +696,7 @@ export const put = oc
     not_setup: { status: 401, data: zPutAgentBuildDraftApiError401 },
     unauthorized: { status: 401, data: zPutAgentBuildDraftApiError401 },
     agent_not_found_error: { status: 404, data: zPutAgentBuildDraftApiError404 },
+    agent_version_not_found_error: { status: 404, data: zPutAgentBuildDraftApiError404 },
     not_found: { status: 404, data: zPutAgentBuildDraftApiError404 },
   })
 
@@ -849,9 +862,14 @@ export const post8 = oc
   .output(zPostAgentByAgentIdComposerValidateResponse)
   .errors({
     account_not_initialized: { status: 400, data: zPostAgentComposerValidateApiError400 },
+    agent_soul_locked_error: { status: 400, data: zPostAgentComposerValidateApiError400 },
     bad_request: { status: 400, data: zPostAgentComposerValidateApiError400 },
     invalid_composer_config_error: { status: 400, data: zPostAgentComposerValidateApiError400 },
     invalid_param: { status: 400, data: zPostAgentComposerValidateApiError400 },
+    plaintext_secret_not_allowed_error: {
+      status: 400,
+      data: zPostAgentComposerValidateApiError400,
+    },
     not_init_validated: { status: 401, data: zPostAgentComposerValidateApiError401 },
     not_setup: { status: 401, data: zPostAgentComposerValidateApiError401 },
     unauthorized: { status: 401, data: zPostAgentComposerValidateApiError401 },
@@ -1582,6 +1600,7 @@ export const post15 = oc
   .errors({
     account_not_initialized: { status: 400, data: zPostAgentPublishApiError400 },
     agent_model_not_configured: { status: 400, data: zPostAgentPublishApiError400 },
+    agent_soul_locked_error: { status: 400, data: zPostAgentPublishApiError400 },
     bad_request: { status: 400, data: zPostAgentPublishApiError400 },
     invalid_composer_config_error: { status: 400, data: zPostAgentPublishApiError400 },
     invalid_param: { status: 400, data: zPostAgentPublishApiError400 },

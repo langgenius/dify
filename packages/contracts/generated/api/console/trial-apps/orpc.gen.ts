@@ -44,6 +44,8 @@ import {
   zPostTrialAppFileUploadApiError400,
   zPostTrialAppFileUploadApiError401,
   zPostTrialAppFileUploadApiError403,
+  zPostTrialAppFileUploadApiError413,
+  zPostTrialAppFileUploadApiError415,
   zPostTrialAppRemoteFileUploadApiError400,
   zPostTrialAppRemoteFileUploadApiError401,
   zPostTrialAppRemoteFileUploadApiError403,
@@ -669,6 +671,7 @@ export const post5 = oc
   .errors({
     account_not_initialized: { status: 400, data: zPostTrialAppFileUploadApiError400 },
     bad_request: { status: 400, data: zPostTrialAppFileUploadApiError400 },
+    file_extension_blocked: { status: 400, data: zPostTrialAppFileUploadApiError400 },
     filename_not_exists_error: { status: 400, data: zPostTrialAppFileUploadApiError400 },
     invalid_param: { status: 400, data: zPostTrialAppFileUploadApiError400 },
     no_file_uploaded: { status: 400, data: zPostTrialAppFileUploadApiError400 },
@@ -680,6 +683,10 @@ export const post5 = oc
     trial_app_feature_disabled: { status: 403, data: zPostTrialAppFileUploadApiError403 },
     trial_app_limit_exceeded: { status: 403, data: zPostTrialAppFileUploadApiError403 },
     trial_app_not_allowed: { status: 403, data: zPostTrialAppFileUploadApiError403 },
+    file_too_large: { status: 413, data: zPostTrialAppFileUploadApiError413 },
+    request_entity_too_large: { status: 413, data: zPostTrialAppFileUploadApiError413 },
+    unsupported_file_type: { status: 415, data: zPostTrialAppFileUploadApiError415 },
+    unsupported_media_type: { status: 415, data: zPostTrialAppFileUploadApiError415 },
   })
 
 export const upload = {

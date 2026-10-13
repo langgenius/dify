@@ -10,6 +10,7 @@ import {
   zCheckExternalApiUsageError401,
   zCreateDatasetApiKeyError400,
   zCreateDatasetApiKeyError401,
+  zCreateDatasetApiKeyError409,
   zCreateDatasetError400,
   zCreateDatasetError401,
   zCreateDatasetError409,
@@ -25,8 +26,12 @@ import {
   zDeleteDatasetApiError400,
   zDeleteDatasetApiError401,
   zDeleteDatasetApiError409,
+  zDeleteDatasetApiKeyA407Edb2Error400,
+  zDeleteDatasetApiKeyA407Edb2Error401,
+  zDeleteDatasetApiKeyA407Edb2Error409,
   zDeleteDatasetApiKeyError400,
   zDeleteDatasetApiKeyError401,
+  zDeleteDatasetApiKeyError409,
   zDeleteDatasetDocumentListApiError400,
   zDeleteDatasetDocumentListApiError401,
   zDeleteDatasetDocumentListApiError403,
@@ -73,8 +78,12 @@ import {
   zGetDataSourceNotionDocumentSyncApiError404,
   zGetDatasetApiBaseInfoError400,
   zGetDatasetApiBaseInfoError401,
+  zGetDatasetApiKeys4114B8EbError400,
+  zGetDatasetApiKeys4114B8EbError401,
+  zGetDatasetApiKeys4114B8EbError409,
   zGetDatasetApiKeysError400,
   zGetDatasetApiKeysError401,
+  zGetDatasetApiKeysError409,
   zGetDatasetAutoDisableLogsError400,
   zGetDatasetAutoDisableLogsError401,
   zGetDatasetAutoDisableLogsError409,
@@ -183,6 +192,7 @@ import {
   zPostDataSourceNotionIndexingEstimateApiError500,
   zPostDatasetApiKeyApiError400,
   zPostDatasetApiKeyApiError401,
+  zPostDatasetApiKeyApiError409,
   zPostDatasetDocumentListApiError400,
   zPostDatasetDocumentListApiError401,
   zPostDatasetDocumentListApiError403,
@@ -452,9 +462,12 @@ export const delete_ = oc
     account_not_initialized: { status: 400, data: zDeleteDatasetApiKeyError400 },
     bad_request: { status: 400, data: zDeleteDatasetApiKeyError400 },
     invalid_param: { status: 400, data: zDeleteDatasetApiKeyError400 },
+    max_keys_exceeded: { status: 400, data: zDeleteDatasetApiKeyError400 },
     not_init_validated: { status: 401, data: zDeleteDatasetApiKeyError401 },
     not_setup: { status: 401, data: zDeleteDatasetApiKeyError401 },
     unauthorized: { status: 401, data: zDeleteDatasetApiKeyError401 },
+    agent_not_published: { status: 409, data: zDeleteDatasetApiKeyError409 },
+    conflict: { status: 409, data: zDeleteDatasetApiKeyError409 },
   })
 
 export const byApiKeyId = {
@@ -478,9 +491,12 @@ export const get2 = oc
     account_not_initialized: { status: 400, data: zGetDatasetApiKeysError400 },
     bad_request: { status: 400, data: zGetDatasetApiKeysError400 },
     invalid_param: { status: 400, data: zGetDatasetApiKeysError400 },
+    max_keys_exceeded: { status: 400, data: zGetDatasetApiKeysError400 },
     not_init_validated: { status: 401, data: zGetDatasetApiKeysError401 },
     not_setup: { status: 401, data: zGetDatasetApiKeysError401 },
     unauthorized: { status: 401, data: zGetDatasetApiKeysError401 },
+    agent_not_published: { status: 409, data: zGetDatasetApiKeysError409 },
+    conflict: { status: 409, data: zGetDatasetApiKeysError409 },
   })
 
 export const post = oc
@@ -497,9 +513,12 @@ export const post = oc
     account_not_initialized: { status: 400, data: zPostDatasetApiKeyApiError400 },
     bad_request: { status: 400, data: zPostDatasetApiKeyApiError400 },
     invalid_param: { status: 400, data: zPostDatasetApiKeyApiError400 },
+    max_keys_exceeded: { status: 400, data: zPostDatasetApiKeyApiError400 },
     not_init_validated: { status: 401, data: zPostDatasetApiKeyApiError401 },
     not_setup: { status: 401, data: zPostDatasetApiKeyApiError401 },
     unauthorized: { status: 401, data: zPostDatasetApiKeyApiError401 },
+    agent_not_published: { status: 409, data: zPostDatasetApiKeyApiError409 },
+    conflict: { status: 409, data: zPostDatasetApiKeyApiError409 },
   })
 
 export const apiKeys = {
@@ -2880,12 +2899,15 @@ export const delete10 = oc
   .input(z.object({ params: zDeleteDatasetsByResourceIdApiKeysByApiKeyIdPath }))
   .output(zDeleteDatasetsByResourceIdApiKeysByApiKeyIdResponse)
   .errors({
-    account_not_initialized: { status: 400 },
-    bad_request: { status: 400 },
-    invalid_param: { status: 400 },
-    not_init_validated: { status: 401 },
-    not_setup: { status: 401 },
-    unauthorized: { status: 401 },
+    account_not_initialized: { status: 400, data: zDeleteDatasetApiKeyA407Edb2Error400 },
+    bad_request: { status: 400, data: zDeleteDatasetApiKeyA407Edb2Error400 },
+    invalid_param: { status: 400, data: zDeleteDatasetApiKeyA407Edb2Error400 },
+    max_keys_exceeded: { status: 400, data: zDeleteDatasetApiKeyA407Edb2Error400 },
+    not_init_validated: { status: 401, data: zDeleteDatasetApiKeyA407Edb2Error401 },
+    not_setup: { status: 401, data: zDeleteDatasetApiKeyA407Edb2Error401 },
+    unauthorized: { status: 401, data: zDeleteDatasetApiKeyA407Edb2Error401 },
+    agent_not_published: { status: 409, data: zDeleteDatasetApiKeyA407Edb2Error409 },
+    conflict: { status: 409, data: zDeleteDatasetApiKeyA407Edb2Error409 },
   })
 
 export const byApiKeyId2 = {
@@ -2907,12 +2929,15 @@ export const get34 = oc
   .input(z.object({ params: zGetDatasetsByResourceIdApiKeysPath }))
   .output(zGetDatasetsByResourceIdApiKeysResponse)
   .errors({
-    account_not_initialized: { status: 400 },
-    bad_request: { status: 400 },
-    invalid_param: { status: 400 },
-    not_init_validated: { status: 401 },
-    not_setup: { status: 401 },
-    unauthorized: { status: 401 },
+    account_not_initialized: { status: 400, data: zGetDatasetApiKeys4114B8EbError400 },
+    bad_request: { status: 400, data: zGetDatasetApiKeys4114B8EbError400 },
+    invalid_param: { status: 400, data: zGetDatasetApiKeys4114B8EbError400 },
+    max_keys_exceeded: { status: 400, data: zGetDatasetApiKeys4114B8EbError400 },
+    not_init_validated: { status: 401, data: zGetDatasetApiKeys4114B8EbError401 },
+    not_setup: { status: 401, data: zGetDatasetApiKeys4114B8EbError401 },
+    unauthorized: { status: 401, data: zGetDatasetApiKeys4114B8EbError401 },
+    agent_not_published: { status: 409, data: zGetDatasetApiKeys4114B8EbError409 },
+    conflict: { status: 409, data: zGetDatasetApiKeys4114B8EbError409 },
   })
 
 /**
@@ -2934,9 +2959,12 @@ export const post21 = oc
     account_not_initialized: { status: 400, data: zCreateDatasetApiKeyError400 },
     bad_request: { status: 400, data: zCreateDatasetApiKeyError400 },
     invalid_param: { status: 400, data: zCreateDatasetApiKeyError400 },
+    max_keys_exceeded: { status: 400, data: zCreateDatasetApiKeyError400 },
     not_init_validated: { status: 401, data: zCreateDatasetApiKeyError401 },
     not_setup: { status: 401, data: zCreateDatasetApiKeyError401 },
     unauthorized: { status: 401, data: zCreateDatasetApiKeyError401 },
+    agent_not_published: { status: 409, data: zCreateDatasetApiKeyError409 },
+    conflict: { status: 409, data: zCreateDatasetApiKeyError409 },
   })
 
 export const apiKeys3 = {

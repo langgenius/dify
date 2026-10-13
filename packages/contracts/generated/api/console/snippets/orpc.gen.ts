@@ -691,12 +691,17 @@ export const post7 = oc
   .output(zPostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerValidateResponse)
   .errors({
     account_not_initialized: { status: 400, data: zPostSnippetAgentComposerValidateApiError400 },
+    agent_soul_locked_error: { status: 400, data: zPostSnippetAgentComposerValidateApiError400 },
     bad_request: { status: 400, data: zPostSnippetAgentComposerValidateApiError400 },
     invalid_composer_config_error: {
       status: 400,
       data: zPostSnippetAgentComposerValidateApiError400,
     },
     invalid_param: { status: 400, data: zPostSnippetAgentComposerValidateApiError400 },
+    plaintext_secret_not_allowed_error: {
+      status: 400,
+      data: zPostSnippetAgentComposerValidateApiError400,
+    },
     not_init_validated: { status: 401, data: zPostSnippetAgentComposerValidateApiError401 },
     not_setup: { status: 401, data: zPostSnippetAgentComposerValidateApiError401 },
     unauthorized: { status: 401, data: zPostSnippetAgentComposerValidateApiError401 },

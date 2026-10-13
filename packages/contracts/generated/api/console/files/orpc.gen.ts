@@ -11,6 +11,8 @@ import {
   zGetFileSupportTypeApiError401,
   zPostFileApiError400,
   zPostFileApiError401,
+  zPostFileApiError413,
+  zPostFileApiError415,
 } from './zod.gen.ts'
 import {
   zGetFilesByFileIdPreviewPath,
@@ -75,6 +77,7 @@ export const post = oc
   .errors({
     account_not_initialized: { status: 400, data: zPostFileApiError400 },
     bad_request: { status: 400, data: zPostFileApiError400 },
+    file_extension_blocked: { status: 400, data: zPostFileApiError400 },
     filename_not_exists_error: { status: 400, data: zPostFileApiError400 },
     invalid_param: { status: 400, data: zPostFileApiError400 },
     no_file_uploaded: { status: 400, data: zPostFileApiError400 },
@@ -82,6 +85,10 @@ export const post = oc
     not_init_validated: { status: 401, data: zPostFileApiError401 },
     not_setup: { status: 401, data: zPostFileApiError401 },
     unauthorized: { status: 401, data: zPostFileApiError401 },
+    file_too_large: { status: 413, data: zPostFileApiError413 },
+    request_entity_too_large: { status: 413, data: zPostFileApiError413 },
+    unsupported_file_type: { status: 415, data: zPostFileApiError415 },
+    unsupported_media_type: { status: 415, data: zPostFileApiError415 },
   })
 
 export const upload = {

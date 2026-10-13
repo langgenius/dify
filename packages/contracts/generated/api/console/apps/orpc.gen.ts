@@ -28,6 +28,7 @@ import {
   zCreateAnnotationError401,
   zCreateAppApiKeyError400,
   zCreateAppApiKeyError401,
+  zCreateAppApiKeyError409,
   zCreateAppError400,
   zCreateAppError401,
   zCreateAppMcpServerError400,
@@ -46,8 +47,12 @@ import {
   zCreateTraceAppConfigError500,
   zCreateWorkflowCommentError400,
   zCreateWorkflowCommentError401,
+  zCreateWorkflowCommentError403,
+  zCreateWorkflowCommentError404,
   zCreateWorkflowCommentReplyError400,
   zCreateWorkflowCommentReplyError401,
+  zCreateWorkflowCommentReplyError403,
+  zCreateWorkflowCommentReplyError404,
   zDeleteAgentConfigFileError400,
   zDeleteAgentConfigFileError401,
   zDeleteAgentConfigFileError404,
@@ -60,6 +65,7 @@ import {
   zDeleteAnnotationUpdateDeleteApiError401,
   zDeleteAppApiKeyError400,
   zDeleteAppApiKeyError401,
+  zDeleteAppApiKeyError409,
   zDeleteAppError400,
   zDeleteAppError401,
   zDeleteChatConversationError400,
@@ -83,8 +89,12 @@ import {
   zDeleteWorkflowByIdApiError404,
   zDeleteWorkflowCommentError400,
   zDeleteWorkflowCommentError401,
+  zDeleteWorkflowCommentError403,
+  zDeleteWorkflowCommentError404,
   zDeleteWorkflowCommentReplyError400,
   zDeleteWorkflowCommentReplyError401,
+  zDeleteWorkflowCommentReplyError403,
+  zDeleteWorkflowCommentReplyError404,
   zDeleteWorkflowVariablesError400,
   zDeleteWorkflowVariablesError401,
   zDeleteWorkflowVariablesError404,
@@ -146,6 +156,7 @@ import {
   zGetAnnotationSettingError401,
   zGetAppApiKeysError400,
   zGetAppApiKeysError401,
+  zGetAppApiKeysError409,
   zGetAppDetailError400,
   zGetAppDetailError401,
   zGetAppImportCheckDependenciesApiError400,
@@ -173,6 +184,9 @@ import {
   zGetCompletionConversationError400,
   zGetCompletionConversationError401,
   zGetCompletionConversationError404,
+  zGetConversationVariablesA709B7A1Error400,
+  zGetConversationVariablesA709B7A1Error401,
+  zGetConversationVariablesA709B7A1Error404,
   zGetConversationVariablesError400,
   zGetConversationVariablesError401,
   zGetConversationVariablesError404,
@@ -254,6 +268,8 @@ import {
   zGetWorkflowAverageAppInteractionStatisticError404,
   zGetWorkflowCommentError400,
   zGetWorkflowCommentError401,
+  zGetWorkflowCommentError403,
+  zGetWorkflowCommentError404,
   zGetWorkflowDailyRunsStatisticError400,
   zGetWorkflowDailyRunsStatisticError401,
   zGetWorkflowDailyRunsStatisticError404,
@@ -330,6 +346,8 @@ import {
   zListWorkflowAgentSandboxFilesError503,
   zListWorkflowCommentsError400,
   zListWorkflowCommentsError401,
+  zListWorkflowCommentsError403,
+  zListWorkflowCommentsError404,
   zPollDraftWorkflowTriggerNodeError400,
   zPollDraftWorkflowTriggerNodeError401,
   zPollDraftWorkflowTriggerNodeError404,
@@ -388,6 +406,8 @@ import {
   zResetVariableError404,
   zResolveWorkflowCommentError400,
   zResolveWorkflowCommentError401,
+  zResolveWorkflowCommentError403,
+  zResolveWorkflowCommentError404,
   zRestoreWorkflowToDraftError400,
   zRestoreWorkflowToDraftError401,
   zRestoreWorkflowToDraftError404,
@@ -487,8 +507,12 @@ import {
   zUpdateWorkflowByIdError404,
   zUpdateWorkflowCommentError400,
   zUpdateWorkflowCommentError401,
+  zUpdateWorkflowCommentError403,
+  zUpdateWorkflowCommentError404,
   zUpdateWorkflowCommentReplyError400,
   zUpdateWorkflowCommentReplyError401,
+  zUpdateWorkflowCommentReplyError403,
+  zUpdateWorkflowCommentReplyError404,
   zUpdateWorkflowFeaturesError400,
   zUpdateWorkflowFeaturesError401,
   zUpdateWorkflowFeaturesError404,
@@ -500,6 +524,8 @@ import {
   zUploadAgentConfigSkillError404,
   zWorkflowCommentMentionUsersError400,
   zWorkflowCommentMentionUsersError401,
+  zWorkflowCommentMentionUsersError403,
+  zWorkflowCommentMentionUsersError404,
 } from './zod.gen.ts'
 import {
   zDeleteAppsByAppIdAgentConfigFilesByNamePath,
@@ -4383,6 +4409,9 @@ export const get53 = oc
     not_init_validated: { status: 401, data: zWorkflowCommentMentionUsersError401 },
     not_setup: { status: 401, data: zWorkflowCommentMentionUsersError401 },
     unauthorized: { status: 401, data: zWorkflowCommentMentionUsersError401 },
+    forbidden: { status: 403, data: zWorkflowCommentMentionUsersError403 },
+    app_not_found: { status: 404, data: zWorkflowCommentMentionUsersError404 },
+    not_found: { status: 404, data: zWorkflowCommentMentionUsersError404 },
   })
 
 export const mentionUsers = {
@@ -4414,6 +4443,9 @@ export const delete9 = oc
     not_init_validated: { status: 401, data: zDeleteWorkflowCommentReplyError401 },
     not_setup: { status: 401, data: zDeleteWorkflowCommentReplyError401 },
     unauthorized: { status: 401, data: zDeleteWorkflowCommentReplyError401 },
+    forbidden: { status: 403, data: zDeleteWorkflowCommentReplyError403 },
+    app_not_found: { status: 404, data: zDeleteWorkflowCommentReplyError404 },
+    not_found: { status: 404, data: zDeleteWorkflowCommentReplyError404 },
   })
 
 /**
@@ -4445,6 +4477,9 @@ export const put2 = oc
     not_init_validated: { status: 401, data: zUpdateWorkflowCommentReplyError401 },
     not_setup: { status: 401, data: zUpdateWorkflowCommentReplyError401 },
     unauthorized: { status: 401, data: zUpdateWorkflowCommentReplyError401 },
+    forbidden: { status: 403, data: zUpdateWorkflowCommentReplyError403 },
+    app_not_found: { status: 404, data: zUpdateWorkflowCommentReplyError404 },
+    not_found: { status: 404, data: zUpdateWorkflowCommentReplyError404 },
   })
 
 export const byReplyId = {
@@ -4482,6 +4517,9 @@ export const post40 = oc
     not_init_validated: { status: 401, data: zCreateWorkflowCommentReplyError401 },
     not_setup: { status: 401, data: zCreateWorkflowCommentReplyError401 },
     unauthorized: { status: 401, data: zCreateWorkflowCommentReplyError401 },
+    forbidden: { status: 403, data: zCreateWorkflowCommentReplyError403 },
+    app_not_found: { status: 404, data: zCreateWorkflowCommentReplyError404 },
+    not_found: { status: 404, data: zCreateWorkflowCommentReplyError404 },
   })
 
 export const replies = {
@@ -4513,6 +4551,9 @@ export const post41 = oc
     not_init_validated: { status: 401, data: zResolveWorkflowCommentError401 },
     not_setup: { status: 401, data: zResolveWorkflowCommentError401 },
     unauthorized: { status: 401, data: zResolveWorkflowCommentError401 },
+    forbidden: { status: 403, data: zResolveWorkflowCommentError403 },
+    app_not_found: { status: 404, data: zResolveWorkflowCommentError404 },
+    not_found: { status: 404, data: zResolveWorkflowCommentError404 },
   })
 
 export const resolve = {
@@ -4544,6 +4585,9 @@ export const delete10 = oc
     not_init_validated: { status: 401, data: zDeleteWorkflowCommentError401 },
     not_setup: { status: 401, data: zDeleteWorkflowCommentError401 },
     unauthorized: { status: 401, data: zDeleteWorkflowCommentError401 },
+    forbidden: { status: 403, data: zDeleteWorkflowCommentError403 },
+    app_not_found: { status: 404, data: zDeleteWorkflowCommentError404 },
+    not_found: { status: 404, data: zDeleteWorkflowCommentError404 },
   })
 
 /**
@@ -4570,6 +4614,9 @@ export const get54 = oc
     not_init_validated: { status: 401, data: zGetWorkflowCommentError401 },
     not_setup: { status: 401, data: zGetWorkflowCommentError401 },
     unauthorized: { status: 401, data: zGetWorkflowCommentError401 },
+    forbidden: { status: 403, data: zGetWorkflowCommentError403 },
+    app_not_found: { status: 404, data: zGetWorkflowCommentError404 },
+    not_found: { status: 404, data: zGetWorkflowCommentError404 },
   })
 
 /**
@@ -4601,6 +4648,9 @@ export const put3 = oc
     not_init_validated: { status: 401, data: zUpdateWorkflowCommentError401 },
     not_setup: { status: 401, data: zUpdateWorkflowCommentError401 },
     unauthorized: { status: 401, data: zUpdateWorkflowCommentError401 },
+    forbidden: { status: 403, data: zUpdateWorkflowCommentError403 },
+    app_not_found: { status: 404, data: zUpdateWorkflowCommentError404 },
+    not_found: { status: 404, data: zUpdateWorkflowCommentError404 },
   })
 
 export const byCommentId = {
@@ -4635,6 +4685,9 @@ export const get55 = oc
     not_init_validated: { status: 401, data: zListWorkflowCommentsError401 },
     not_setup: { status: 401, data: zListWorkflowCommentsError401 },
     unauthorized: { status: 401, data: zListWorkflowCommentsError401 },
+    forbidden: { status: 403, data: zListWorkflowCommentsError403 },
+    app_not_found: { status: 404, data: zListWorkflowCommentsError404 },
+    not_found: { status: 404, data: zListWorkflowCommentsError404 },
   })
 
 /**
@@ -4667,6 +4720,9 @@ export const post42 = oc
     not_init_validated: { status: 401, data: zCreateWorkflowCommentError401 },
     not_setup: { status: 401, data: zCreateWorkflowCommentError401 },
     unauthorized: { status: 401, data: zCreateWorkflowCommentError401 },
+    forbidden: { status: 403, data: zCreateWorkflowCommentError403 },
+    app_not_found: { status: 404, data: zCreateWorkflowCommentError404 },
+    not_found: { status: 404, data: zCreateWorkflowCommentError404 },
   })
 
 export const comments = {
@@ -4912,14 +4968,14 @@ export const get62 = oc
   .input(z.object({ params: zGetAppsByAppIdWorkflowsDraftConversationVariablesPath }))
   .output(zGetAppsByAppIdWorkflowsDraftConversationVariablesResponse)
   .errors({
-    account_not_initialized: { status: 400 },
-    bad_request: { status: 400 },
-    invalid_param: { status: 400 },
-    not_init_validated: { status: 401 },
-    not_setup: { status: 401 },
-    unauthorized: { status: 401 },
-    app_not_found: { status: 404 },
-    not_found: { status: 404 },
+    account_not_initialized: { status: 400, data: zGetConversationVariablesA709B7A1Error400 },
+    bad_request: { status: 400, data: zGetConversationVariablesA709B7A1Error400 },
+    invalid_param: { status: 400, data: zGetConversationVariablesA709B7A1Error400 },
+    not_init_validated: { status: 401, data: zGetConversationVariablesA709B7A1Error401 },
+    not_setup: { status: 401, data: zGetConversationVariablesA709B7A1Error401 },
+    unauthorized: { status: 401, data: zGetConversationVariablesA709B7A1Error401 },
+    app_not_found: { status: 404, data: zGetConversationVariablesA709B7A1Error404 },
+    not_found: { status: 404, data: zGetConversationVariablesA709B7A1Error404 },
   })
 
 /**
@@ -5452,12 +5508,17 @@ export const post54 = oc
   .output(zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerValidateResponse)
   .errors({
     account_not_initialized: { status: 400, data: zPostWorkflowAgentComposerValidateApiError400 },
+    agent_soul_locked_error: { status: 400, data: zPostWorkflowAgentComposerValidateApiError400 },
     bad_request: { status: 400, data: zPostWorkflowAgentComposerValidateApiError400 },
     invalid_composer_config_error: {
       status: 400,
       data: zPostWorkflowAgentComposerValidateApiError400,
     },
     invalid_param: { status: 400, data: zPostWorkflowAgentComposerValidateApiError400 },
+    plaintext_secret_not_allowed_error: {
+      status: 400,
+      data: zPostWorkflowAgentComposerValidateApiError400,
+    },
     not_init_validated: { status: 401, data: zPostWorkflowAgentComposerValidateApiError401 },
     not_setup: { status: 401, data: zPostWorkflowAgentComposerValidateApiError401 },
     unauthorized: { status: 401, data: zPostWorkflowAgentComposerValidateApiError401 },
@@ -6786,9 +6847,12 @@ export const delete16 = oc
     account_not_initialized: { status: 400, data: zDeleteAppApiKeyError400 },
     bad_request: { status: 400, data: zDeleteAppApiKeyError400 },
     invalid_param: { status: 400, data: zDeleteAppApiKeyError400 },
+    max_keys_exceeded: { status: 400, data: zDeleteAppApiKeyError400 },
     not_init_validated: { status: 401, data: zDeleteAppApiKeyError401 },
     not_setup: { status: 401, data: zDeleteAppApiKeyError401 },
     unauthorized: { status: 401, data: zDeleteAppApiKeyError401 },
+    agent_not_published: { status: 409, data: zDeleteAppApiKeyError409 },
+    conflict: { status: 409, data: zDeleteAppApiKeyError409 },
   })
 
 export const byApiKeyId = {
@@ -6813,9 +6877,12 @@ export const get84 = oc
     account_not_initialized: { status: 400, data: zGetAppApiKeysError400 },
     bad_request: { status: 400, data: zGetAppApiKeysError400 },
     invalid_param: { status: 400, data: zGetAppApiKeysError400 },
+    max_keys_exceeded: { status: 400, data: zGetAppApiKeysError400 },
     not_init_validated: { status: 401, data: zGetAppApiKeysError401 },
     not_setup: { status: 401, data: zGetAppApiKeysError401 },
     unauthorized: { status: 401, data: zGetAppApiKeysError401 },
+    agent_not_published: { status: 409, data: zGetAppApiKeysError409 },
+    conflict: { status: 409, data: zGetAppApiKeysError409 },
   })
 
 /**
@@ -6837,9 +6904,12 @@ export const post63 = oc
     account_not_initialized: { status: 400, data: zCreateAppApiKeyError400 },
     bad_request: { status: 400, data: zCreateAppApiKeyError400 },
     invalid_param: { status: 400, data: zCreateAppApiKeyError400 },
+    max_keys_exceeded: { status: 400, data: zCreateAppApiKeyError400 },
     not_init_validated: { status: 401, data: zCreateAppApiKeyError401 },
     not_setup: { status: 401, data: zCreateAppApiKeyError401 },
     unauthorized: { status: 401, data: zCreateAppApiKeyError401 },
+    agent_not_published: { status: 409, data: zCreateAppApiKeyError409 },
+    conflict: { status: 409, data: zCreateAppApiKeyError409 },
   })
 
 export const apiKeys = {

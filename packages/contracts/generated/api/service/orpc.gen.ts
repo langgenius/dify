@@ -12,9 +12,12 @@ import {
   zCreateChildChunkError400,
   zCreateCompletionError400,
   zCreateDatasetError409,
+  zCreateDocumentByFile75A87285Error400,
+  zCreateDocumentByFile75A87285Error413,
   zCreateDocumentByTextDeprecatedError400,
   zCreateSegmentsError400,
   zDatasetHitTestingError400,
+  zDatasetHitTestingF584B2DdError400,
   zDeleteConversationError400,
   zDeleteDocumentError403,
   zGetAppInfoError400,
@@ -51,6 +54,9 @@ import {
   zTextToAudioError413,
   zTextToAudioError415,
   zUpdateConversationVariableError400,
+  zUpdateDocumentByFileDeprecated5Dc5Fe59Error400,
+  zUpdateDocumentByFileDeprecated5Dc5Fe59Error413,
+  zUpdateDocumentByFileDeprecated5Dc5Fe59Error415,
   zUpdateDocumentByFileError400,
   zUpdateDocumentByFileError413,
   zUpdateDocumentByFileError415,
@@ -1016,14 +1022,14 @@ export const post13 = oc
   )
   .output(zPostDatasetsByDatasetIdDocumentCreateByFileResponse)
   .errors({
-    bad_request: { status: 400 },
-    filename_not_exists_error: { status: 400 },
-    invalid_param: { status: 400 },
-    no_file_uploaded: { status: 400 },
-    provider_not_initialize: { status: 400 },
-    too_many_files: { status: 400 },
-    file_too_large: { status: 413 },
-    request_entity_too_large: { status: 413 },
+    bad_request: { status: 400, data: zCreateDocumentByFile75A87285Error400 },
+    filename_not_exists_error: { status: 400, data: zCreateDocumentByFile75A87285Error400 },
+    invalid_param: { status: 400, data: zCreateDocumentByFile75A87285Error400 },
+    no_file_uploaded: { status: 400, data: zCreateDocumentByFile75A87285Error400 },
+    provider_not_initialize: { status: 400, data: zCreateDocumentByFile75A87285Error400 },
+    too_many_files: { status: 400, data: zCreateDocumentByFile75A87285Error400 },
+    file_too_large: { status: 413, data: zCreateDocumentByFile75A87285Error413 },
+    request_entity_too_large: { status: 413, data: zCreateDocumentByFile75A87285Error413 },
   })
 
 /**
@@ -1053,14 +1059,14 @@ export const post14 = oc
   )
   .output(zPostDatasetsByDatasetIdDocumentCreateByFile2Response)
   .errors({
-    bad_request: { status: 400 },
-    filename_not_exists_error: { status: 400 },
-    invalid_param: { status: 400 },
-    no_file_uploaded: { status: 400 },
-    provider_not_initialize: { status: 400 },
-    too_many_files: { status: 400 },
-    file_too_large: { status: 413 },
-    request_entity_too_large: { status: 413 },
+    bad_request: { status: 400, data: zCreateDocumentByFile75A87285Error400 },
+    filename_not_exists_error: { status: 400, data: zCreateDocumentByFile75A87285Error400 },
+    invalid_param: { status: 400, data: zCreateDocumentByFile75A87285Error400 },
+    no_file_uploaded: { status: 400, data: zCreateDocumentByFile75A87285Error400 },
+    provider_not_initialize: { status: 400, data: zCreateDocumentByFile75A87285Error400 },
+    too_many_files: { status: 400, data: zCreateDocumentByFile75A87285Error400 },
+    file_too_large: { status: 413, data: zCreateDocumentByFile75A87285Error413 },
+    request_entity_too_large: { status: 413, data: zCreateDocumentByFile75A87285Error413 },
   })
 
 export const createByFile = {
@@ -1562,15 +1568,21 @@ export const post22 = oc
   )
   .output(zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileResponse)
   .errors({
-    bad_request: { status: 400 },
-    filename_not_exists_error: { status: 400 },
-    invalid_param: { status: 400 },
-    provider_not_initialize: { status: 400 },
-    too_many_files: { status: 400 },
-    file_too_large: { status: 413 },
-    request_entity_too_large: { status: 413 },
-    unsupported_file_type: { status: 415 },
-    unsupported_media_type: { status: 415 },
+    bad_request: { status: 400, data: zUpdateDocumentByFileDeprecated5Dc5Fe59Error400 },
+    filename_not_exists_error: {
+      status: 400,
+      data: zUpdateDocumentByFileDeprecated5Dc5Fe59Error400,
+    },
+    invalid_param: { status: 400, data: zUpdateDocumentByFileDeprecated5Dc5Fe59Error400 },
+    provider_not_initialize: { status: 400, data: zUpdateDocumentByFileDeprecated5Dc5Fe59Error400 },
+    too_many_files: { status: 400, data: zUpdateDocumentByFileDeprecated5Dc5Fe59Error400 },
+    file_too_large: { status: 413, data: zUpdateDocumentByFileDeprecated5Dc5Fe59Error413 },
+    request_entity_too_large: {
+      status: 413,
+      data: zUpdateDocumentByFileDeprecated5Dc5Fe59Error413,
+    },
+    unsupported_file_type: { status: 415, data: zUpdateDocumentByFileDeprecated5Dc5Fe59Error415 },
+    unsupported_media_type: { status: 415, data: zUpdateDocumentByFileDeprecated5Dc5Fe59Error415 },
   })
 
 /**
@@ -1600,15 +1612,21 @@ export const post23 = oc
   )
   .output(zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Response)
   .errors({
-    bad_request: { status: 400 },
-    filename_not_exists_error: { status: 400 },
-    invalid_param: { status: 400 },
-    provider_not_initialize: { status: 400 },
-    too_many_files: { status: 400 },
-    file_too_large: { status: 413 },
-    request_entity_too_large: { status: 413 },
-    unsupported_file_type: { status: 415 },
-    unsupported_media_type: { status: 415 },
+    bad_request: { status: 400, data: zUpdateDocumentByFileDeprecated5Dc5Fe59Error400 },
+    filename_not_exists_error: {
+      status: 400,
+      data: zUpdateDocumentByFileDeprecated5Dc5Fe59Error400,
+    },
+    invalid_param: { status: 400, data: zUpdateDocumentByFileDeprecated5Dc5Fe59Error400 },
+    provider_not_initialize: { status: 400, data: zUpdateDocumentByFileDeprecated5Dc5Fe59Error400 },
+    too_many_files: { status: 400, data: zUpdateDocumentByFileDeprecated5Dc5Fe59Error400 },
+    file_too_large: { status: 413, data: zUpdateDocumentByFileDeprecated5Dc5Fe59Error413 },
+    request_entity_too_large: {
+      status: 413,
+      data: zUpdateDocumentByFileDeprecated5Dc5Fe59Error413,
+    },
+    unsupported_file_type: { status: 415, data: zUpdateDocumentByFileDeprecated5Dc5Fe59Error415 },
+    unsupported_media_type: { status: 415, data: zUpdateDocumentByFileDeprecated5Dc5Fe59Error415 },
   })
 
 export const updateByFile = {
@@ -1832,12 +1850,12 @@ export const post26 = oc
   )
   .output(zPostDatasetsByDatasetIdHitTestingResponse)
   .errors({
-    bad_request: { status: 400 },
-    completion_request_error: { status: 400 },
-    invalid_param: { status: 400 },
-    model_currently_not_support: { status: 400 },
-    provider_not_initialize: { status: 400 },
-    provider_quota_exceeded: { status: 400 },
+    bad_request: { status: 400, data: zDatasetHitTestingF584B2DdError400 },
+    completion_request_error: { status: 400, data: zDatasetHitTestingF584B2DdError400 },
+    invalid_param: { status: 400, data: zDatasetHitTestingF584B2DdError400 },
+    model_currently_not_support: { status: 400, data: zDatasetHitTestingF584B2DdError400 },
+    provider_not_initialize: { status: 400, data: zDatasetHitTestingF584B2DdError400 },
+    provider_quota_exceeded: { status: 400, data: zDatasetHitTestingF584B2DdError400 },
   })
 
 export const hitTesting = {
