@@ -647,24 +647,6 @@ class ModelProviderService:
             credential_name=credential_name,
         )
 
-    def activate_model_credential_if_none(
-        self, tenant_id: str, provider: str, model_type: str, model: str, credential_id: str
-    ) -> None:
-        """Make the credential the model's active one when the model has none, as a provider's first credential is."""
-        provider_configuration = self._get_provider_configuration(tenant_id, provider)
-        current = next(
-            (
-                m
-                for m in provider_configuration.custom_configuration.models
-                if m.model == model and m.model_type == ModelType(model_type)
-            ),
-            None,
-        )
-        if current is not None and not current.current_credential_id:
-            provider_configuration.switch_custom_model_credential(
-                model_type=ModelType(model_type), model=model, credential_id=credential_id
-            )
-
     def update_model_credential(
         self,
         tenant_id: str,
