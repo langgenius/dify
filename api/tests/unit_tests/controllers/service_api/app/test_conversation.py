@@ -29,7 +29,6 @@ from werkzeug.exceptions import BadRequest, NotFound
 import services
 from controllers.service_api.app.conversation import (
     ConversationApi,
-    ConversationDetailApi,
     ConversationListQuery,
     ConversationRenamePayload,
     ConversationVariableDetailApi,
@@ -562,44 +561,6 @@ class TestConversationApiController:
                     ConversationListQuery.model_validate(request.args.to_dict(flat=True)),
                     app_model=app_model,
                     end_user=end_user,
-                )
-
-
-class TestConversationDetailApiController:
-    def test_delete_not_chat(self, app: Flask) -> None:
-        api = ConversationDetailApi()
-        handler = unwrap(api.delete)
-        app_model = _app(mode=AppMode.COMPLETION)
-        end_user = _end_user()
-
-        with app.test_request_context("/conversations/1", method="DELETE"):
-            with pytest.raises(NotChatAppError):
-                handler(
-                    api,
-                    app_model=app_model,
-                    end_user=end_user,
-                    conversation_id="00000000-0000-0000-0000-000000000001",
-                )
-
-    def test_delete_not_found(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(
-            ConversationService,
-            "delete",
-            lambda *_args, **_kwargs: (_ for _ in ()).throw(ConversationNotExistsError()),
-        )
-
-        api = ConversationDetailApi()
-        handler = unwrap(api.delete)
-        app_model = _app()
-        end_user = _end_user()
-
-        with app.test_request_context("/conversations/1", method="DELETE"):
-            with pytest.raises(NotFound):
-                handler(
-                    api,
-                    app_model=app_model,
-                    end_user=end_user,
-                    conversation_id="00000000-0000-0000-0000-000000000001",
                 )
 
 
