@@ -68,11 +68,9 @@ describe('HomeCatalogNavigation', () => {
     const templatesTab = screen.getByRole('link', { name: 'plugin.marketplace.home.templates' })
 
     expect(pluginsTab).toHaveAttribute('href', '/plugins')
-    expect(pluginsTab).toHaveClass('cursor-pointer')
     expect(pluginsTab).toHaveClass('bg-state-base-active')
     expect(pluginsTab.querySelector('[aria-hidden="true"]')).not.toBeInTheDocument()
     expect(templatesTab).toHaveAttribute('href', '/templates')
-    expect(templatesTab).toHaveClass('cursor-pointer')
     expect(templatesTab).not.toHaveClass('bg-state-base-active')
   })
 

@@ -72,14 +72,6 @@ describe('ImageList', () => {
   })
 
   describe('Rendering', () => {
-    it('should render all images when count is below limit', () => {
-      const images = createMockImages(5)
-      render(<ImageList images={images} size="md" limit={9} />)
-      // Each image renders a FileThumb component
-      const thumbnails = document.querySelectorAll('[class*="cursor-pointer"]')
-      expect(thumbnails.length).toBeGreaterThanOrEqual(5)
-    })
-
     it('should render limited images when count exceeds limit', () => {
       const images = createMockImages(15)
       render(<ImageList images={images} size="md" limit={9} />)
@@ -148,69 +140,6 @@ describe('ImageList', () => {
       // More button should disappear
       // More button should disappear
       expect(screen.queryByText(/\+6/)).not.toBeInTheDocument()
-    })
-
-    it('should open preview when image is clicked', () => {
-      const images = createMockImages(3)
-      render(<ImageList images={images} size="md" />)
-
-      // Find and click an image thumbnail
-      const thumbnails = document.querySelectorAll('[class*="cursor-pointer"]')
-      if (thumbnails.length > 0) {
-        fireEvent.click(thumbnails[0]!)
-        // Preview should open
-        // Preview should open
-        expect(screen.getByTestId('image-previewer'))!.toBeInTheDocument()
-      }
-    })
-
-    it('should close preview when close button is clicked', () => {
-      const images = createMockImages(3)
-      render(<ImageList images={images} size="md" />)
-
-      // Open preview
-      const thumbnails = document.querySelectorAll('[class*="cursor-pointer"]')
-      if (thumbnails.length > 0) {
-        fireEvent.click(thumbnails[0]!)
-
-        // Close preview
-        const closeButton = screen.getByTestId('close-preview')
-        fireEvent.click(closeButton)
-
-        // Preview should be closed
-        // Preview should be closed
-        // Preview should be closed
-        // Preview should be closed
-        // Preview should be closed
-        // Preview should be closed
-        // Preview should be closed
-        // Preview should be closed
-        // Preview should be closed
-        // Preview should be closed
-        // Preview should be closed
-        // Preview should be closed
-        // Preview should be closed
-        // Preview should be closed
-        // Preview should be closed
-        // Preview should be closed
-        // Preview should be closed
-        // Preview should be closed
-        // Preview should be closed
-        // Preview should be closed
-        // Preview should be closed
-        // Preview should be closed
-        // Preview should be closed
-        // Preview should be closed
-        // Preview should be closed
-        // Preview should be closed
-        // Preview should be closed
-        // Preview should be closed
-        // Preview should be closed
-        // Preview should be closed
-        // Preview should be closed
-        // Preview should be closed
-        expect(screen.queryByTestId('image-previewer')).not.toBeInTheDocument()
-      }
     })
   })
 

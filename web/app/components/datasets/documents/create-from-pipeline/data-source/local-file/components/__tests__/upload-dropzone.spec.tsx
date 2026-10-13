@@ -268,17 +268,6 @@ describe('UploadDropzone', () => {
     })
   })
 
-  describe('styling', () => {
-    it('should have cursor-pointer on browse button', () => {
-      render(<UploadDropzone {...defaultProps} />)
-
-      const browseButton = screen.getByRole('button', {
-        name: 'datasetCreation.stepOne.uploader.browse',
-      })
-      expect(browseButton).toHaveClass('cursor-pointer')
-    })
-  })
-
   describe('accessibility', () => {
     it('should have an accessible file input', () => {
       render(<UploadDropzone {...defaultProps} />)

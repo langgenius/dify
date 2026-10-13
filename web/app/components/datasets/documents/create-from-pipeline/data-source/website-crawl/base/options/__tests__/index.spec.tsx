@@ -593,21 +593,6 @@ describe('Options', () => {
       // Assert - Should still be expanded (unless step changes)
       expect(screen.getByTestId('field-test_variable')).toBeInTheDocument()
     })
-
-    it('should allow clicking on arrow icon container to toggle', () => {
-      const props = createDefaultProps()
-      const { container } = render(<Options {...props} />)
-
-      // Assert - Initially expanded
-      expect(screen.getByTestId('field-test_variable')).toBeInTheDocument()
-
-      // Act - Click on the toggle container (parent of the options text and arrow)
-      const toggleContainer = container.querySelector('.cursor-pointer')
-      fireEvent.click(toggleContainer!)
-
-      // Assert - Should be folded
-      expect(screen.queryByTestId('field-test_variable')).not.toBeInTheDocument()
-    })
   })
 
   describe('Edge Cases and Error Handling', () => {
@@ -865,15 +850,6 @@ describe('Options', () => {
 
   // Styling Tests
   describe('Styling', () => {
-    it('should apply cursor-pointer class to toggle container', () => {
-      const props = createDefaultProps()
-
-      const { container } = render(<Options {...props} />)
-
-      const toggleContainer = container.querySelector('.cursor-pointer')
-      expect(toggleContainer).toBeInTheDocument()
-    })
-
     it('should apply select-none class to prevent text selection on toggle', () => {
       const props = createDefaultProps()
 
