@@ -19,6 +19,7 @@ export const createSessionView = (overrides: Partial<SessionView> = {}): Session
   phase: 'understand',
   canvas_read_only: true,
   run_status: 'processing',
+  reply_language: '',
   interrupted: false,
   last_command_id: 'command-1',
   conversation_last_seq: -1,

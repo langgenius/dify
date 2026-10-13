@@ -12,6 +12,7 @@ const view: SessionView = {
   version: 3,
   phase: 'plan',
   run_status: 'waiting_input',
+  reply_language: '',
   canvas_read_only: false,
   interrupted: false,
   conversation_last_seq: 1,
