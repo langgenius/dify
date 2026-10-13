@@ -74,7 +74,6 @@
   "resourceAccessToken.createdTokenDescription": "Salvează acest token de acces într-un loc sigur, deoarece nu îl vei mai putea vedea. Oricine îl deține poate folosi Difyctl pentru a descoperi și accesa resursele autorizate. Dacă îl pierzi, creează un token nou și revocă-l pe cel vechi.",
   "resourceAccessToken.deleteDescription": "Tokenul de acces va fi dezactivat imediat. Solicitările care îl folosesc vor fi respinse, ceea ce poate întrerupe sau provoca eșecul sarcinilor în curs. După ștergere, nu îl vei mai putea vedea sau modifica.",
   "resourceAccessToken.deleteTitle": "Ștergi tokenul de acces?",
-  "resourceAccessToken.deleted": "Tokenul de acces a fost șters",
   "resourceAccessToken.done": "Gata",
   "resourceAccessToken.editTitle": "Editează tokenul de acces",
   "resourceAccessToken.empty": "Nu există încă tokenuri de acces",

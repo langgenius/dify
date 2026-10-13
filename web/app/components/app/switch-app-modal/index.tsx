@@ -98,7 +98,6 @@ const SwitchAppModal = ({ show, sourceApp, onClose }: SwitchAppModalProps) => {
         },
       })
       onClose()
-      toast.success(t(($) => $['newApp.appCreated'], { ns: 'app' }))
       if (removeOriginal)
         await deleteOriginalApp({
           params: { app_id: sourceApp.id },

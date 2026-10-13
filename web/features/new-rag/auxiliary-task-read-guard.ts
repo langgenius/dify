@@ -1,5 +1,5 @@
+import { useRefWithInit } from '@langgenius/dify-ui/use-ref-with-init'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useRefWithInit } from '@/hooks/use-ref-with-init'
 import { taskVersionIsAfter } from './document-model'
 
 type RefetchDocuments = (options: { cancelRefetch: true }) => Promise<{ error: unknown }>

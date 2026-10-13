@@ -1,13 +1,11 @@
 'use client'
-import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
-import * as React from 'react'
+import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import Dot from '../../documents/detail/completed/common/dot'
 import { SegmentIndexTag } from '../../documents/detail/completed/common/segment-index-tag'
-import Score from './score'
+import { Score } from './score'
 
-type Props = {
+type ResultItemMetaProps = {
   readonly labelPrefix: string
   readonly positionId: number
   readonly wordCount: number
@@ -15,26 +13,26 @@ type Props = {
   readonly className?: string
 }
 
-const ResultItemMeta: FC<Props> = ({ labelPrefix, positionId, wordCount, score, className }) => {
-  const { t } = useTranslation(['datasetDocuments'])
+export const ResultItemMeta = memo(
+  ({ labelPrefix, positionId, wordCount, score, className }: ResultItemMetaProps) => {
+    const { t } = useTranslation(['datasetDocuments'])
 
-  return (
-    <div className={cn('flex items-center justify-between', className)}>
-      <div className="flex items-center space-x-2">
-        <SegmentIndexTag
-          labelPrefix={labelPrefix}
-          positionId={positionId}
-          className={cn('w-fit group-hover:opacity-100')}
-        />
-        <Dot />
-        <div className="system-xs-medium text-text-tertiary">
-          {wordCount}{' '}
-          {t(($) => $['segment.characters'], { ns: 'datasetDocuments', count: wordCount })}
-        </div>
-      </div>
-      <Score value={score} />
-    </div>
-  )
-}
-
-export default React.memo(ResultItemMeta)
+    return (
+      <span className={cn('flex items-center justify-between', className)}>
+        <span className="flex items-center space-x-2">
+          <SegmentIndexTag
+            labelPrefix={labelPrefix}
+            positionId={positionId}
+            className={cn('w-fit group-hover:opacity-100')}
+          />
+          <span className="system-xs-medium text-text-quaternary">·</span>
+          <span className="system-xs-medium text-text-tertiary">
+            {wordCount}{' '}
+            {t(($) => $['segment.characters'], { ns: 'datasetDocuments', count: wordCount })}
+          </span>
+        </span>
+        <Score value={score} />
+      </span>
+    )
+  },
+)

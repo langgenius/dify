@@ -74,7 +74,6 @@
   "resourceAccessToken.createdTokenDescription": "Guarda este token de acceso en un lugar seguro: no podrás volver a verlo. Quien lo tenga podrá usar Difyctl para descubrir y acceder a los recursos autorizados por el token. Si lo pierdes, crea uno nuevo y revoca el anterior.",
   "resourceAccessToken.deleteDescription": "El token de acceso se desactivará de inmediato. Se rechazarán las llamadas que lo utilicen, lo que puede interrumpir o hacer fallar las tareas en curso. Una vez eliminado, no podrás verlo ni modificarlo.",
   "resourceAccessToken.deleteTitle": "¿Eliminar el token de acceso?",
-  "resourceAccessToken.deleted": "Token de acceso eliminado",
   "resourceAccessToken.done": "Listo",
   "resourceAccessToken.editTitle": "Editar token de acceso",
   "resourceAccessToken.empty": "Todavía no hay tokens de acceso",
