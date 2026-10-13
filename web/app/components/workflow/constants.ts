@@ -130,12 +130,16 @@ export const AGENT_OUTPUT_STRUCT: Var[] = [
     type: VarType.string,
   },
   {
+    variable: 'usage',
+    type: VarType.object,
+  },
+  {
     variable: 'files',
     type: VarType.arrayFile,
   },
   {
     variable: 'json',
-    type: VarType.object,
+    type: VarType.arrayObject,
   },
 ]
 

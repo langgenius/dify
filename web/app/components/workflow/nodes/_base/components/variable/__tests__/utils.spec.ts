@@ -179,6 +179,41 @@ describe('variable utils', () => {
       })
     })
 
+    it('deduplicates classic agent output vars and includes usage', () => {
+      const node = createNode<AgentNodeType>({
+        type: BlockEnum.Agent,
+        title: 'Agent',
+        desc: '',
+        output_schema: {
+          properties: {
+            text: {
+              type: 'string',
+              description: 'duplicate text from strategy schema',
+            },
+            summary: {
+              type: 'string',
+              description: 'custom summary output',
+            },
+          },
+        },
+      })
+
+      const availableVars = toNodeAvailableVars({
+        beforeNodes: [node],
+        isChatMode: false,
+        filterVar: () => true,
+        allPluginInfoList: {},
+      })
+
+      const agentVars = availableVars.find((item) => item.nodeId === 'node-1')?.vars ?? []
+      const variableNames = agentVars.map(({ variable }) => variable)
+
+      expect(variableNames).toEqual(['text', 'usage', 'files', 'json', 'summary'])
+      expect(variableNames.filter((name) => name === 'text')).toHaveLength(1)
+      expect(variableNames.filter((name) => name === 'files')).toHaveLength(1)
+      expect(variableNames.filter((name) => name === 'json')).toHaveLength(1)
+    })
+
     it('uses Agent v2 declared outputs from graph data', () => {
       const node = createNode<AgentV2NodeType>({
         type: BlockEnum.AgentV2,
