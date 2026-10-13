@@ -46,6 +46,7 @@ from types import FunctionType, ModuleType
 from typing import Any
 
 from flask import abort as flask_abort
+from flask_restx import Namespace
 from flask_restx import abort as restx_abort
 from werkzeug.exceptions import HTTPException, default_exceptions
 from werkzeug.exceptions import abort as werkzeug_abort
@@ -476,7 +477,7 @@ STANDARD_BODY_KEYS = frozenset({"code", "message", "status"})
 
 @dataclass(frozen=True)
 class BodySite:
-    """A hand-built error response: ``return body, status`` or ``flask_restx.abort(..., message=...)``."""
+    """A hand-built error response: ``return body, status`` or ``abort(..., message=...)`` (module or namespace)."""
 
     location: str
     status: int | None
@@ -519,7 +520,7 @@ def error_body_sites(
                 yield BodySite(location(child.lineno), status, _body_is_standard(child.value.elts[0]), abort=False)
         elif isinstance(child, ast.Call):
             target = resolve(child.func, env, owner)
-            if target is restx_abort:
+            if target is restx_abort or (inspect.ismethod(target) and target.__func__ is Namespace.abort):
                 if len(child.args) > 1 or child.keywords:
                     status = _status_value(child.args[0], env) if child.args else None
                     yield BodySite(location(child.lineno), status, standard=False, abort=True)
