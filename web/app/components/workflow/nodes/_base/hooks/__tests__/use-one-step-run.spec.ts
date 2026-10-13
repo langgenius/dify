@@ -8,7 +8,7 @@ import {
 } from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
 // oxlint-disable-next-line no-restricted-imports -- Exercise the existing stream transport through its business owner.
-import { ssePost } from '@/service/base'
+import { post, ssePost } from '@/service/base'
 import { getIterationSingleNodeRunUrl, getLoopSingleNodeRunUrl } from '@/service/workflow'
 import { FlowType } from '@/types/common'
 import useOneStepRun from '../use-one-step-run'
@@ -253,6 +253,31 @@ describe('useOneStepRun', () => {
         type: InputVarType.number,
       },
     ])
+  })
+
+  it.each([
+    {
+      response: { status: 'error', message: 'Schedule execution failed.' },
+      message: 'Schedule execution failed.',
+    },
+    { response: undefined, message: 'workflow.common.scheduleTriggerRunFailed' },
+  ])('reports a schedule failure once: $message', async ({ response, message }) => {
+    vi.mocked(post).mockResolvedValueOnce(response)
+    const { result } = renderUseOneStepRun(BlockEnum.TriggerSchedule)
+
+    await act(async () => {
+      expect(await result.current.handleRun({})).toBe(false)
+    })
+
+    expect(toast.error).toHaveBeenCalledExactlyOnceWith(message)
+    expect(mockNodeDataUpdate).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          _isSingleRun: false,
+          _singleRunningStatus: NodeRunningStatus.Failed,
+        }),
+      }),
+    )
   })
 
   it.each([BlockEnum.Iteration, BlockEnum.Loop])(

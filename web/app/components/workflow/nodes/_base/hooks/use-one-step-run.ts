@@ -443,14 +443,12 @@ const useOneStepRun = <T>({
 
       if (!response) {
         const message = t(($) => $['common.scheduleTriggerRunFailed'], { ns: 'workflow' })
-        toast.error(message)
         throw new Error(message)
       }
 
       if (response?.status === 'error') {
         const message =
           response?.message || t(($) => $['common.scheduleTriggerRunFailed'], { ns: 'workflow' })
-        toast.error(message)
         throw new Error(message)
       }
 
@@ -474,7 +472,11 @@ const useOneStepRun = <T>({
           _singleRunningStatus: NodeRunningStatus.Failed,
         },
       })
-      toast.error(t(($) => $['common.scheduleTriggerRunFailed'], { ns: 'workflow' }))
+      toast.error(
+        error instanceof Error && error.message
+          ? error.message
+          : t(($) => $['common.scheduleTriggerRunFailed'], { ns: 'workflow' }),
+      )
       throw error
     }
   }, [flowId, id, handleNodeDataUpdate, data, t])
