@@ -35,6 +35,28 @@ export const zErrorResponse = z.object({
 })
 
 /**
+ * SendForgotPasswordEmailError401
+ */
+export const zSendForgotPasswordEmailError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * SendForgotPasswordEmailError429
+ */
+export const zSendForgotPasswordEmailError429 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'email_send_ip_limit',
+      'password_reset_rate_limit_exceeded',
+      'too_many_requests',
+    ]),
+  }),
+)
+
+/**
  * ForgotPasswordResetPayload
  */
 export const zForgotPasswordResetPayload = z.object({
@@ -49,6 +71,30 @@ export const zForgotPasswordResetPayload = z.object({
 export const zForgotPasswordResetResponse = z.object({
   result: z.string(),
 })
+
+/**
+ * ResetPasswordError400
+ */
+export const zResetPasswordError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'account_not_found',
+      'bad_request',
+      'invalid_or_expired_token',
+      'invalid_param',
+      'password_mismatch',
+    ]),
+  }),
+)
+
+/**
+ * ResetPasswordError401
+ */
+export const zResetPasswordError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
 
 /**
  * ForgotPasswordCheckPayload
@@ -67,6 +113,39 @@ export const zForgotPasswordCheckResponse = z.object({
   is_valid: z.boolean(),
   token: z.string(),
 })
+
+/**
+ * CheckForgotPasswordCodeError400
+ */
+export const zCheckForgotPasswordCodeError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'bad_request',
+      'email_code_error',
+      'invalid_email',
+      'invalid_or_expired_token',
+      'invalid_param',
+    ]),
+  }),
+)
+
+/**
+ * CheckForgotPasswordCodeError401
+ */
+export const zCheckForgotPasswordCodeError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * CheckForgotPasswordCodeError429
+ */
+export const zCheckForgotPasswordCodeError429 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['email_password_reset_limit', 'too_many_requests']),
+  }),
+)
 
 export const zPostForgotPasswordBody = zForgotPasswordSendPayload
 

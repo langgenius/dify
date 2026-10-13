@@ -24,6 +24,32 @@ export const zErrorResponse = z.object({
 })
 
 /**
+ * GenerateRuleConfigError400
+ */
+export const zGenerateRuleConfigError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'account_not_initialized',
+      'bad_request',
+      'completion_request_error',
+      'invalid_param',
+      'model_currently_not_support',
+      'provider_not_initialize',
+      'provider_quota_exceeded',
+    ]),
+  }),
+)
+
+/**
+ * GenerateRuleConfigError401
+ */
+export const zGenerateRuleConfigError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
  * LLMMode
  *
  * Enum class for large language model mode.

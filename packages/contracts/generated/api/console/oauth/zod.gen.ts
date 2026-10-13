@@ -19,6 +19,13 @@ export const zErrorMessageResponse = z.object({
 })
 
 /**
+ * OAuthDataSourceResponse
+ */
+export const zOAuthDataSourceResponse = z.object({
+  data: z.string(),
+})
+
+/**
  * ErrorResponse
  *
  * Documented non-2xx body emitted by ``register_external_error_handlers``.
@@ -35,11 +42,40 @@ export const zErrorResponse = z.object({
 })
 
 /**
- * OAuthDataSourceResponse
+ * OauthDataSourceBindingError400
  */
-export const zOAuthDataSourceResponse = z.object({
-  data: z.string(),
-})
+export const zOauthDataSourceBindingError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * OauthDataSourceBindingError401
+ */
+export const zOauthDataSourceBindingError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * OauthDataSourceError400
+ */
+export const zOauthDataSourceError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * OauthDataSourceError401
+ */
+export const zOauthDataSourceError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
 
 /**
  * OAuthDataSourceSyncResponse
@@ -49,11 +85,65 @@ export const zOAuthDataSourceSyncResponse = z.object({
 })
 
 /**
+ * OauthDataSourceSyncError400
+ */
+export const zOauthDataSourceSyncError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * OauthDataSourceSyncError401
+ */
+export const zOauthDataSourceSyncError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
  * PluginOAuthAuthorizationUrlResponse
  */
 export const zPluginOAuthAuthorizationUrlResponse = z.object({
   authorization_url: z.string(),
 })
+
+/**
+ * GetDatasourcePluginOAuthAuthorizationUrlError400
+ */
+export const zGetDatasourcePluginOAuthAuthorizationUrlError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetDatasourcePluginOAuthAuthorizationUrlError401
+ */
+export const zGetDatasourcePluginOAuthAuthorizationUrlError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetToolPluginOAuthApiError400
+ */
+export const zGetToolPluginOAuthApiError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetToolPluginOAuthApiError401
+ */
+export const zGetToolPluginOAuthApiError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
 
 /**
  * OAuthProviderRequest
@@ -72,6 +162,15 @@ export const zOAuthProviderAppResponse = z.object({
   auto_authorize: z.boolean(),
   scope: z.string(),
 })
+
+/**
+ * PostOAuthServerAppApiError401
+ */
+export const zPostOAuthServerAppApiError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
 
 /**
  * OAuthClientPayload
@@ -94,11 +193,38 @@ export const zOAuthProviderAccountResponse = z.object({
 })
 
 /**
+ * PostOAuthServerUserAccountApiError401
+ */
+export const zPostOAuthServerUserAccountApiError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
  * OAuthProviderAuthorizeResponse
  */
 export const zOAuthProviderAuthorizeResponse = z.object({
   code: z.string(),
 })
+
+/**
+ * PostOAuthServerUserAuthorizeApiError400
+ */
+export const zPostOAuthServerUserAuthorizeApiError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * PostOAuthServerUserAuthorizeApiError401
+ */
+export const zPostOAuthServerUserAuthorizeApiError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
 
 /**
  * OAuthTokenRequest
@@ -121,6 +247,15 @@ export const zOAuthProviderTokenResponse = z.object({
   refresh_token: z.string(),
   token_type: z.string(),
 })
+
+/**
+ * PostOAuthServerUserTokenApiError401
+ */
+export const zPostOAuthServerUserTokenApiError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
 
 export const zGetOauthDataSourceBindingByProviderPath = z.object({
   provider: z.string(),

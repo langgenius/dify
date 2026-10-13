@@ -19,6 +19,50 @@ export const zErrorResponse = z.object({
 })
 
 /**
+ * GenerateWorkflowGraphError400
+ */
+export const zGenerateWorkflowGraphError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'account_not_initialized',
+      'bad_request',
+      'completion_request_error',
+      'invalid_param',
+      'model_currently_not_support',
+      'provider_not_initialize',
+      'provider_quota_exceeded',
+    ]),
+  }),
+)
+
+/**
+ * GenerateWorkflowGraphError401
+ */
+export const zGenerateWorkflowGraphError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GenerateWorkflowGraphStreamError400
+ */
+export const zGenerateWorkflowGraphStreamError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GenerateWorkflowGraphStreamError401
+ */
+export const zGenerateWorkflowGraphStreamError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
  * WorkflowInstructionSuggestionsPayload
  *
  * Payload for the workflow-generator instruction-suggestions endpoint.
@@ -39,6 +83,24 @@ export const zWorkflowInstructionSuggestionsPayload = z.object({
 export const zWorkflowInstructionSuggestionsResponse = z.object({
   suggestions: z.array(z.string()),
 })
+
+/**
+ * GenerateWorkflowInstructionSuggestionsError400
+ */
+export const zGenerateWorkflowInstructionSuggestionsError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GenerateWorkflowInstructionSuggestionsError401
+ */
+export const zGenerateWorkflowInstructionSuggestionsError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
 
 /**
  * WorkflowGraphEdge

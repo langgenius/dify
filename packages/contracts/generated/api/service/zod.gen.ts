@@ -1101,6 +1101,244 @@ export const zErrorResponse = z.object({
 })
 
 /**
+ * AudioToTextError400
+ */
+export const zAudioToTextError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'app_unavailable',
+      'bad_request',
+      'completion_request_error',
+      'invalid_param',
+      'model_currently_not_support',
+      'no_audio_uploaded',
+      'provider_not_initialize',
+      'provider_not_support_speech_to_text',
+      'provider_quota_exceeded',
+      'speech_to_text_disabled',
+    ]),
+  }),
+)
+
+/**
+ * AudioToTextError413
+ */
+export const zAudioToTextError413 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['audio_too_large', 'request_entity_too_large']),
+  }),
+)
+
+/**
+ * AudioToTextError415
+ */
+export const zAudioToTextError415 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['unsupported_audio_type', 'unsupported_media_type']),
+  }),
+)
+
+/**
+ * CreateChatMessageError400
+ */
+export const zCreateChatMessageError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'agent_not_published',
+      'app_unavailable',
+      'bad_request',
+      'completion_request_error',
+      'invalid_param',
+      'model_currently_not_support',
+      'not_chat_app',
+      'provider_not_initialize',
+      'provider_quota_exceeded',
+    ]),
+  }),
+)
+
+/**
+ * CreateChatMessageError403
+ */
+export const zCreateChatMessageError403 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['forbidden', 'workflow_version_execution_not_allowed']),
+  }),
+)
+
+/**
+ * CreateChatMessageError429
+ */
+export const zCreateChatMessageError429 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['rate_limit_error', 'too_many_requests']),
+  }),
+)
+
+/**
+ * CreateChildChunkError400
+ */
+export const zCreateChildChunkError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['bad_request', 'invalid_param', 'provider_not_initialize']),
+  }),
+)
+
+/**
+ * CreateCompletionError400
+ */
+export const zCreateCompletionError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'agent_not_published',
+      'app_unavailable',
+      'bad_request',
+      'completion_request_error',
+      'invalid_param',
+      'model_currently_not_support',
+      'provider_not_initialize',
+      'provider_quota_exceeded',
+    ]),
+  }),
+)
+
+/**
+ * CreateDatasetError409
+ */
+export const zCreateDatasetError409 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['conflict', 'dataset_name_duplicate']),
+  }),
+)
+
+/**
+ * CreateDocumentByFile75a87285Error400
+ */
+export const zCreateDocumentByFile75A87285Error400 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'bad_request',
+      'filename_not_exists_error',
+      'invalid_param',
+      'no_file_uploaded',
+      'provider_not_initialize',
+      'too_many_files',
+    ]),
+  }),
+)
+
+/**
+ * CreateDocumentByFile75a87285Error413
+ */
+export const zCreateDocumentByFile75A87285Error413 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['file_too_large', 'request_entity_too_large']),
+  }),
+)
+
+/**
+ * CreateDocumentByFileError400
+ */
+export const zCreateDocumentByFileError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'bad_request',
+      'filename_not_exists_error',
+      'invalid_param',
+      'no_file_uploaded',
+      'provider_not_initialize',
+      'too_many_files',
+    ]),
+  }),
+)
+
+/**
+ * CreateDocumentByFileError413
+ */
+export const zCreateDocumentByFileError413 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['file_too_large', 'request_entity_too_large']),
+  }),
+)
+
+/**
+ * CreateDocumentByTextDeprecatedError400
+ */
+export const zCreateDocumentByTextDeprecatedError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['bad_request', 'invalid_param', 'provider_not_initialize']),
+  }),
+)
+
+/**
+ * CreateDocumentByTextError400
+ */
+export const zCreateDocumentByTextError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['bad_request', 'invalid_param', 'provider_not_initialize']),
+  }),
+)
+
+/**
+ * CreateSegmentsError400
+ */
+export const zCreateSegmentsError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['bad_request', 'invalid_param', 'provider_not_initialize']),
+  }),
+)
+
+/**
+ * DatasetHitTestingError400
+ */
+export const zDatasetHitTestingError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'bad_request',
+      'completion_request_error',
+      'invalid_param',
+      'model_currently_not_support',
+      'provider_not_initialize',
+      'provider_quota_exceeded',
+    ]),
+  }),
+)
+
+/**
+ * DatasetHitTestingF584b2ddError400
+ */
+export const zDatasetHitTestingF584B2DdError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'bad_request',
+      'completion_request_error',
+      'invalid_param',
+      'model_currently_not_support',
+      'provider_not_initialize',
+      'provider_quota_exceeded',
+    ]),
+  }),
+)
+
+/**
+ * DeleteConversationError400
+ */
+export const zDeleteConversationError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['bad_request', 'invalid_param', 'not_chat_app']),
+  }),
+)
+
+/**
+ * DeleteDocumentError403
+ */
+export const zDeleteDocumentError403 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['archived_document_immutable', 'forbidden']),
+  }),
+)
+
+/**
  * EventStreamResponse
  */
 export const zEventStreamResponse = z.string()
@@ -1190,6 +1428,69 @@ export const zFileListInputConfig = z.object({
   output_variable_name: z.string(),
   type: z.literal('file-list').optional().default('file-list'),
 })
+
+/**
+ * GetAppInfoError400
+ */
+export const zGetAppInfoError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_unavailable', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetAppMetaError400
+ */
+export const zGetAppMetaError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_unavailable', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetAppParametersError400
+ */
+export const zGetAppParametersError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['agent_not_published', 'app_unavailable', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetEndUserError404
+ */
+export const zGetEndUserError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['end_user_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * GetSuggestedQuestionsError400
+ */
+export const zGetSuggestedQuestionsError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['bad_request', 'invalid_param', 'not_chat_app']),
+  }),
+)
+
+/**
+ * GetWorkflowEventsError400
+ */
+export const zGetWorkflowEventsError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['bad_request', 'invalid_param', 'not_workflow_app']),
+  }),
+)
+
+/**
+ * GetWorkflowRunDetailError400
+ */
+export const zGetWorkflowRunDetailError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['bad_request', 'invalid_param', 'not_workflow_app']),
+  }),
+)
 
 /**
  * HitTestingChildChunk
@@ -1441,6 +1742,66 @@ export const zKnowledgeTagResponse = z.object({
  * KnowledgeTagListResponse
  */
 export const zKnowledgeTagListResponse = z.array(zKnowledgeTagResponse)
+
+/**
+ * KnowledgebasePipelineFileUploadError400
+ */
+export const zKnowledgebasePipelineFileUploadError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'bad_request',
+      'filename_not_exists_error',
+      'invalid_param',
+      'no_file_uploaded',
+      'too_many_files',
+    ]),
+  }),
+)
+
+/**
+ * KnowledgebasePipelineFileUploadError413
+ */
+export const zKnowledgebasePipelineFileUploadError413 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['file_too_large', 'request_entity_too_large']),
+  }),
+)
+
+/**
+ * ListConversationVariablesError400
+ */
+export const zListConversationVariablesError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['bad_request', 'invalid_param', 'not_chat_app']),
+  }),
+)
+
+/**
+ * ListConversationsError400
+ */
+export const zListConversationsError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['bad_request', 'invalid_param', 'not_chat_app']),
+  }),
+)
+
+/**
+ * ListMessagesError400
+ */
+export const zListMessagesError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['bad_request', 'invalid_param', 'not_chat_app']),
+  }),
+)
+
+/**
+ * ListSegmentsError400
+ */
+export const zListSegmentsError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['bad_request', 'invalid_param', 'provider_not_initialize']),
+  }),
+)
 
 /**
  * MessageFeedbackPayload
@@ -1704,6 +2065,24 @@ export const zPreProcessingRule = z.object({
 })
 
 /**
+ * PreviewFileError403
+ */
+export const zPreviewFileError403 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['file_access_denied', 'forbidden']),
+  }),
+)
+
+/**
+ * PreviewFileError404
+ */
+export const zPreviewFileError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['file_not_found', 'not_found']),
+  }),
+)
+
+/**
  * ProcessRuleMode
  *
  * Dataset Process Rule Mode
@@ -1760,6 +2139,15 @@ export const zPublishedPipelineRunResponse = z.object({
 })
 
 /**
+ * RenameConversationError400
+ */
+export const zRenameConversationError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['bad_request', 'invalid_param', 'not_chat_app']),
+  }),
+)
+
+/**
  * RerankingModel
  */
 export const zRerankingModel = z.object({
@@ -1811,6 +2199,89 @@ export const zRetrieverResource = z.object({
   title: z.string().nullish(),
   word_count: z.int().nullish(),
 })
+
+/**
+ * RunPipelineError500
+ */
+export const zRunPipelineError500 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['internal_server_error', 'pipeline_run_error', 'unknown']),
+  }),
+)
+
+/**
+ * RunWorkflowByIdError400
+ */
+export const zRunWorkflowByIdError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'bad_request',
+      'completion_request_error',
+      'invalid_param',
+      'model_currently_not_support',
+      'not_workflow_app',
+      'provider_not_initialize',
+      'provider_quota_exceeded',
+    ]),
+  }),
+)
+
+/**
+ * RunWorkflowByIdError403
+ */
+export const zRunWorkflowByIdError403 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'forbidden',
+      'trigger_workflow_service_mode_unavailable',
+      'workflow_version_execution_not_allowed',
+    ]),
+  }),
+)
+
+/**
+ * RunWorkflowByIdError429
+ */
+export const zRunWorkflowByIdError429 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['rate_limit_error', 'too_many_requests']),
+  }),
+)
+
+/**
+ * RunWorkflowError400
+ */
+export const zRunWorkflowError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'bad_request',
+      'completion_request_error',
+      'invalid_param',
+      'model_currently_not_support',
+      'not_workflow_app',
+      'provider_not_initialize',
+      'provider_quota_exceeded',
+    ]),
+  }),
+)
+
+/**
+ * RunWorkflowError403
+ */
+export const zRunWorkflowError403 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['forbidden', 'trigger_workflow_service_mode_unavailable']),
+  }),
+)
+
+/**
+ * RunWorkflowError429
+ */
+export const zRunWorkflowError429 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['rate_limit_error', 'too_many_requests']),
+  }),
+)
 
 /**
  * ServiceApiUserPayload
@@ -2049,6 +2520,33 @@ export const zSite = z.object({
   title: z.string(),
   use_icon_as_answer_icon: z.boolean(),
 })
+
+/**
+ * StopChatMessageError400
+ */
+export const zStopChatMessageError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['bad_request', 'invalid_param', 'not_chat_app']),
+  }),
+)
+
+/**
+ * StopCompletionError400
+ */
+export const zStopCompletionError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_unavailable', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * StopWorkflowTaskError400
+ */
+export const zStopWorkflowTaskError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['bad_request', 'invalid_param', 'not_workflow_app']),
+  }),
+)
 
 /**
  * SystemParameters
@@ -2452,6 +2950,43 @@ export const zTagUpdatePayload = z.object({
 })
 
 /**
+ * TextToAudioError400
+ */
+export const zTextToAudioError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'app_unavailable',
+      'bad_request',
+      'completion_request_error',
+      'invalid_param',
+      'model_currently_not_support',
+      'no_audio_uploaded',
+      'provider_not_initialize',
+      'provider_not_support_speech_to_text',
+      'provider_quota_exceeded',
+    ]),
+  }),
+)
+
+/**
+ * TextToAudioError413
+ */
+export const zTextToAudioError413 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['audio_too_large', 'request_entity_too_large']),
+  }),
+)
+
+/**
+ * TextToAudioError415
+ */
+export const zTextToAudioError415 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['unsupported_audio_type', 'unsupported_media_type']),
+  }),
+)
+
+/**
  * TextToAudioPayload
  */
 export const zTextToAudioPayload = z.object({
@@ -2486,6 +3021,184 @@ export const zToolIcon = z.object({
 export const zAppMetaResponse = z.object({
   tool_icons: z.record(z.string(), z.union([z.string(), zToolIcon])).optional(),
 })
+
+/**
+ * UpdateConversationVariableError400
+ */
+export const zUpdateConversationVariableError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['bad_request', 'invalid_param', 'not_chat_app']),
+  }),
+)
+
+/**
+ * UpdateDocumentByFileDeprecated5dc5fe59Error400
+ */
+export const zUpdateDocumentByFileDeprecated5Dc5Fe59Error400 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'bad_request',
+      'filename_not_exists_error',
+      'invalid_param',
+      'provider_not_initialize',
+      'too_many_files',
+    ]),
+  }),
+)
+
+/**
+ * UpdateDocumentByFileDeprecated5dc5fe59Error413
+ */
+export const zUpdateDocumentByFileDeprecated5Dc5Fe59Error413 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['file_too_large', 'request_entity_too_large']),
+  }),
+)
+
+/**
+ * UpdateDocumentByFileDeprecated5dc5fe59Error415
+ */
+export const zUpdateDocumentByFileDeprecated5Dc5Fe59Error415 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['unsupported_file_type', 'unsupported_media_type']),
+  }),
+)
+
+/**
+ * UpdateDocumentByFileDeprecatedError400
+ */
+export const zUpdateDocumentByFileDeprecatedError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'bad_request',
+      'filename_not_exists_error',
+      'invalid_param',
+      'provider_not_initialize',
+      'too_many_files',
+    ]),
+  }),
+)
+
+/**
+ * UpdateDocumentByFileDeprecatedError413
+ */
+export const zUpdateDocumentByFileDeprecatedError413 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['file_too_large', 'request_entity_too_large']),
+  }),
+)
+
+/**
+ * UpdateDocumentByFileDeprecatedError415
+ */
+export const zUpdateDocumentByFileDeprecatedError415 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['unsupported_file_type', 'unsupported_media_type']),
+  }),
+)
+
+/**
+ * UpdateDocumentByFileError400
+ */
+export const zUpdateDocumentByFileError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'bad_request',
+      'filename_not_exists_error',
+      'invalid_param',
+      'provider_not_initialize',
+      'too_many_files',
+    ]),
+  }),
+)
+
+/**
+ * UpdateDocumentByFileError413
+ */
+export const zUpdateDocumentByFileError413 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['file_too_large', 'request_entity_too_large']),
+  }),
+)
+
+/**
+ * UpdateDocumentByFileError415
+ */
+export const zUpdateDocumentByFileError415 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['unsupported_file_type', 'unsupported_media_type']),
+  }),
+)
+
+/**
+ * UpdateDocumentByTextDeprecatedError400
+ */
+export const zUpdateDocumentByTextDeprecatedError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['bad_request', 'invalid_param', 'provider_not_initialize']),
+  }),
+)
+
+/**
+ * UpdateDocumentByTextError400
+ */
+export const zUpdateDocumentByTextError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['bad_request', 'invalid_param', 'provider_not_initialize']),
+  }),
+)
+
+/**
+ * UpdateDocumentStatusError400
+ */
+export const zUpdateDocumentStatusError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['bad_request', 'invalid_action', 'invalid_param']),
+  }),
+)
+
+/**
+ * UpdateSegmentError400
+ */
+export const zUpdateSegmentError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['bad_request', 'invalid_param', 'provider_not_initialize']),
+  }),
+)
+
+/**
+ * UploadFileError400
+ */
+export const zUploadFileError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'bad_request',
+      'file_extension_blocked',
+      'filename_not_exists_error',
+      'invalid_param',
+      'no_file_uploaded',
+      'too_many_files',
+    ]),
+  }),
+)
+
+/**
+ * UploadFileError413
+ */
+export const zUploadFileError413 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['file_too_large', 'request_entity_too_large']),
+  }),
+)
+
+/**
+ * UploadFileError415
+ */
+export const zUploadFileError415 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['unsupported_file_type', 'unsupported_media_type']),
+  }),
+)
 
 /**
  * UrlResponse

@@ -38,6 +38,24 @@ export const zErrorResponse = z.object({
 })
 
 /**
+ * ActivateAccountError400
+ */
+export const zActivateAccountError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_in_freeze', 'bad_request', 'email_domain_suspended', 'invalid_param']),
+  }),
+)
+
+/**
+ * ActivateAccountError403
+ */
+export const zActivateAccountError403 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['already_activate', 'forbidden', 'invitation_account_mismatch']),
+  }),
+)
+
+/**
  * ActivationCheckData
  */
 export const zActivationCheckData = z.object({

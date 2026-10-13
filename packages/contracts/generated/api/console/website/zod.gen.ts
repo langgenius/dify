@@ -32,6 +32,60 @@ export const zErrorResponse = z.object({
   status: z.int(),
 })
 
+/**
+ * CrawlWebsiteError400
+ */
+export const zCrawlWebsiteError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * CrawlWebsiteError401
+ */
+export const zCrawlWebsiteError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * CrawlWebsiteError500
+ */
+export const zCrawlWebsiteError500 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['active_workspace_required', 'crawl_failed', 'internal_server_error', 'unknown']),
+  }),
+)
+
+/**
+ * GetCrawlStatusError400
+ */
+export const zGetCrawlStatusError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetCrawlStatusError401
+ */
+export const zGetCrawlStatusError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetCrawlStatusError500
+ */
+export const zGetCrawlStatusError500 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['active_workspace_required', 'crawl_failed', 'internal_server_error', 'unknown']),
+  }),
+)
+
 export const zPostWebsiteCrawlBody = zWebsiteCrawlPayload
 
 /**

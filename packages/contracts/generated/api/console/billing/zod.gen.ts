@@ -26,6 +26,24 @@ export const zErrorResponse = z.object({
 })
 
 /**
+ * GetInvoicesError400
+ */
+export const zGetInvoicesError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetInvoicesError401
+ */
+export const zGetInvoicesError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
  * BillingOperationFailedErrorResponse
  */
 export const zBillingOperationFailedErrorResponse = z.object({
@@ -49,6 +67,24 @@ export const zBillingUnavailableErrorResponse = z.object({
 export const zBillingSubscriptionResponse = z.object({
   url: z.string(),
 })
+
+/**
+ * GetSubscriptionError400
+ */
+export const zGetSubscriptionError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetSubscriptionError401
+ */
+export const zGetSubscriptionError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
 
 /**
  * BillingUnprocessableEntityErrorResponse

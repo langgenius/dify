@@ -3,22 +3,6 @@
 import * as z from 'zod'
 
 /**
- * ErrorResponse
- *
- * Documented non-2xx body emitted by ``register_external_error_handlers``.
- *
- * ``params`` and ``details`` appear only on the errors that set them. The schema
- * stays open because ``HTTPException.data`` may carry extra keys.
- */
-export const zErrorResponse = z.object({
-  code: z.string(),
-  details: z.record(z.string(), z.unknown()).optional(),
-  message: z.string(),
-  params: z.string().optional(),
-  status: z.int(),
-})
-
-/**
  * DismissNotificationPayload
  */
 export const zDismissNotificationPayload = z.object({
@@ -52,6 +36,58 @@ export const zNotificationResponse = z.object({
   notifications: z.array(zNotificationItemResponse),
   should_show: z.boolean(),
 })
+
+/**
+ * ErrorResponse
+ *
+ * Documented non-2xx body emitted by ``register_external_error_handlers``.
+ *
+ * ``params`` and ``details`` appear only on the errors that set them. The schema
+ * stays open because ``HTTPException.data`` may carry extra keys.
+ */
+export const zErrorResponse = z.object({
+  code: z.string(),
+  details: z.record(z.string(), z.unknown()).optional(),
+  message: z.string(),
+  params: z.string().optional(),
+  status: z.int(),
+})
+
+/**
+ * GetNotificationError400
+ */
+export const zGetNotificationError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetNotificationError401
+ */
+export const zGetNotificationError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * DismissNotificationError400
+ */
+export const zDismissNotificationError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * DismissNotificationError401
+ */
+export const zDismissNotificationError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
 
 export const zGetNotificationQuery = z.object({
   language: z.string().optional().default('en-US'),

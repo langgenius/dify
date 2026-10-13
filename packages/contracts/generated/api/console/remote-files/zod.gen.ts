@@ -40,12 +40,117 @@ export const zErrorResponse = z.object({
 })
 
 /**
+ * PostRemoteFileUploadError400
+ */
+export const zPostRemoteFileUploadError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'bad_request',
+      'file_extension_blocked',
+      'invalid_param',
+      'remote_file_access_denied',
+      'remote_file_invalid_url',
+      'remote_file_url_blocked',
+    ]),
+  }),
+)
+
+/**
+ * PostRemoteFileUploadError404
+ */
+export const zPostRemoteFileUploadError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_found', 'remote_file_not_found']),
+  }),
+)
+
+/**
+ * PostRemoteFileUploadError413
+ */
+export const zPostRemoteFileUploadError413 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['file_too_large', 'request_entity_too_large']),
+  }),
+)
+
+/**
+ * PostRemoteFileUploadError415
+ */
+export const zPostRemoteFileUploadError415 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['unsupported_file_type', 'unsupported_media_type']),
+  }),
+)
+
+/**
+ * PostRemoteFileUploadError502
+ */
+export const zPostRemoteFileUploadError502 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'bad_gateway',
+      'plugin_runtime_error',
+      'remote_file_invalid_response',
+      'remote_file_unavailable',
+    ]),
+  }),
+)
+
+/**
  * RemoteFileInfo
  */
 export const zRemoteFileInfo = z.object({
   file_length: z.int(),
   file_type: z.string(),
 })
+
+/**
+ * GetGetRemoteFileInfoError400
+ */
+export const zGetGetRemoteFileInfoError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'account_not_initialized',
+      'bad_request',
+      'invalid_param',
+      'remote_file_access_denied',
+      'remote_file_invalid_url',
+      'remote_file_url_blocked',
+    ]),
+  }),
+)
+
+/**
+ * GetGetRemoteFileInfoError401
+ */
+export const zGetGetRemoteFileInfoError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetGetRemoteFileInfoError404
+ */
+export const zGetGetRemoteFileInfoError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_found', 'remote_file_not_found']),
+  }),
+)
+
+/**
+ * GetGetRemoteFileInfoError502
+ */
+export const zGetGetRemoteFileInfoError502 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'bad_gateway',
+      'plugin_runtime_error',
+      'remote_file_invalid_response',
+      'remote_file_unavailable',
+    ]),
+  }),
+)
 
 export const zPostRemoteFilesUploadBody = zRemoteFileUploadPayload
 

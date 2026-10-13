@@ -187,6 +187,340 @@ export const zErrorResponse = z.object({
 })
 
 /**
+ * AudioToTextError400
+ */
+export const zAudioToTextError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'app_unavailable',
+      'bad_request',
+      'completion_request_error',
+      'invalid_param',
+      'model_currently_not_support',
+      'no_audio_uploaded',
+      'provider_not_initialize',
+      'provider_not_support_speech_to_text',
+      'provider_quota_exceeded',
+      'speech_to_text_disabled',
+    ]),
+  }),
+)
+
+/**
+ * AudioToTextError401
+ */
+export const zAudioToTextError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['unauthorized', 'web_app_access_denied', 'web_sso_auth_required']),
+  }),
+)
+
+/**
+ * AudioToTextError404
+ */
+export const zAudioToTextError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * AudioToTextError413
+ */
+export const zAudioToTextError413 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['audio_too_large', 'request_entity_too_large']),
+  }),
+)
+
+/**
+ * AudioToTextError415
+ */
+export const zAudioToTextError415 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['unsupported_audio_type', 'unsupported_media_type']),
+  }),
+)
+
+/**
+ * AudioToTextError503
+ */
+export const zAudioToTextError503 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['service_unavailable', 'web_app_access_unavailable']),
+  }),
+)
+
+/**
+ * CheckAppPermissionError401
+ */
+export const zCheckAppPermissionError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['unauthorized', 'web_sso_auth_required']),
+  }),
+)
+
+/**
+ * CheckAppPermissionError503
+ */
+export const zCheckAppPermissionError503 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['service_unavailable', 'web_app_access_unavailable']),
+  }),
+)
+
+/**
+ * CheckForgotPasswordTokenError400
+ */
+export const zCheckForgotPasswordTokenError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'bad_request',
+      'email_code_error',
+      'invalid_email',
+      'invalid_or_expired_token',
+      'invalid_param',
+    ]),
+  }),
+)
+
+/**
+ * CheckForgotPasswordTokenError401
+ */
+export const zCheckForgotPasswordTokenError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * CheckForgotPasswordTokenError429
+ */
+export const zCheckForgotPasswordTokenError429 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['email_password_reset_limit', 'too_many_requests']),
+  }),
+)
+
+/**
+ * CreateChatMessageError400
+ */
+export const zCreateChatMessageError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'agent_not_published',
+      'app_unavailable',
+      'bad_request',
+      'completion_request_error',
+      'invalid_param',
+      'model_currently_not_support',
+      'not_chat_app',
+      'provider_not_initialize',
+      'provider_quota_exceeded',
+    ]),
+  }),
+)
+
+/**
+ * CreateChatMessageError401
+ */
+export const zCreateChatMessageError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['unauthorized', 'web_app_access_denied', 'web_sso_auth_required']),
+  }),
+)
+
+/**
+ * CreateChatMessageError404
+ */
+export const zCreateChatMessageError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * CreateChatMessageError429
+ */
+export const zCreateChatMessageError429 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['rate_limit_error', 'too_many_requests']),
+  }),
+)
+
+/**
+ * CreateChatMessageError503
+ */
+export const zCreateChatMessageError503 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['service_unavailable', 'web_app_access_unavailable']),
+  }),
+)
+
+/**
+ * CreateCompletionMessageError400
+ */
+export const zCreateCompletionMessageError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'agent_not_published',
+      'app_unavailable',
+      'bad_request',
+      'completion_request_error',
+      'invalid_param',
+      'model_currently_not_support',
+      'not_completion_app',
+      'provider_not_initialize',
+      'provider_quota_exceeded',
+    ]),
+  }),
+)
+
+/**
+ * CreateCompletionMessageError401
+ */
+export const zCreateCompletionMessageError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['unauthorized', 'web_app_access_denied', 'web_sso_auth_required']),
+  }),
+)
+
+/**
+ * CreateCompletionMessageError404
+ */
+export const zCreateCompletionMessageError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * CreateCompletionMessageError503
+ */
+export const zCreateCompletionMessageError503 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['service_unavailable', 'web_app_access_unavailable']),
+  }),
+)
+
+/**
+ * CreateHumanInputFormUploadTokenError404
+ */
+export const zCreateHumanInputFormUploadTokenError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_found']),
+  }),
+)
+
+/**
+ * CreateHumanInputFormUploadTokenError429
+ */
+export const zCreateHumanInputFormUploadTokenError429 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['too_many_requests', 'web_form_rate_limit_exceeded']),
+  }),
+)
+
+/**
+ * CreateMessageFeedbackError401
+ */
+export const zCreateMessageFeedbackError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['unauthorized', 'web_app_access_denied', 'web_sso_auth_required']),
+  }),
+)
+
+/**
+ * CreateMessageFeedbackError404
+ */
+export const zCreateMessageFeedbackError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * CreateMessageFeedbackError503
+ */
+export const zCreateMessageFeedbackError503 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['service_unavailable', 'web_app_access_unavailable']),
+  }),
+)
+
+/**
+ * DeleteConversationError400
+ */
+export const zDeleteConversationError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['bad_request', 'invalid_param', 'not_chat_app']),
+  }),
+)
+
+/**
+ * DeleteConversationError401
+ */
+export const zDeleteConversationError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['unauthorized', 'web_app_access_denied', 'web_sso_auth_required']),
+  }),
+)
+
+/**
+ * DeleteConversationError404
+ */
+export const zDeleteConversationError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * DeleteConversationError503
+ */
+export const zDeleteConversationError503 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['service_unavailable', 'web_app_access_unavailable']),
+  }),
+)
+
+/**
+ * DeleteSavedMessageError400
+ */
+export const zDeleteSavedMessageError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['bad_request', 'invalid_param', 'not_completion_app']),
+  }),
+)
+
+/**
+ * DeleteSavedMessageError401
+ */
+export const zDeleteSavedMessageError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['unauthorized', 'web_app_access_denied', 'web_sso_auth_required']),
+  }),
+)
+
+/**
+ * DeleteSavedMessageError404
+ */
+export const zDeleteSavedMessageError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * DeleteSavedMessageError503
+ */
+export const zDeleteSavedMessageError503 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['service_unavailable', 'web_app_access_unavailable']),
+  }),
+)
+
+/**
  * EventStreamResponse
  */
 export const zEventStreamResponse = z.string()
@@ -294,6 +628,465 @@ export const zForgotPasswordSendPayload = z.object({
   email: z.string(),
   language: z.string().nullish(),
 })
+
+/**
+ * GenerateMoreLikeThisError400
+ */
+export const zGenerateMoreLikeThisError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'bad_request',
+      'completion_request_error',
+      'invalid_param',
+      'model_currently_not_support',
+      'not_completion_app',
+      'provider_not_initialize',
+      'provider_quota_exceeded',
+    ]),
+  }),
+)
+
+/**
+ * GenerateMoreLikeThisError401
+ */
+export const zGenerateMoreLikeThisError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['unauthorized', 'web_app_access_denied', 'web_sso_auth_required']),
+  }),
+)
+
+/**
+ * GenerateMoreLikeThisError403
+ */
+export const zGenerateMoreLikeThisError403 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_more_like_this_disabled', 'forbidden']),
+  }),
+)
+
+/**
+ * GenerateMoreLikeThisError404
+ */
+export const zGenerateMoreLikeThisError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * GenerateMoreLikeThisError503
+ */
+export const zGenerateMoreLikeThisError503 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['service_unavailable', 'web_app_access_unavailable']),
+  }),
+)
+
+/**
+ * GetAppAccessModeError400
+ */
+export const zGetAppAccessModeError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetAppAccessModeError404
+ */
+export const zGetAppAccessModeError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * GetAppAccessModeError503
+ */
+export const zGetAppAccessModeError503 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['service_unavailable', 'web_app_access_unavailable']),
+  }),
+)
+
+/**
+ * GetAppMetaError400
+ */
+export const zGetAppMetaError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_unavailable', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetAppMetaError401
+ */
+export const zGetAppMetaError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['unauthorized', 'web_app_access_denied', 'web_sso_auth_required']),
+  }),
+)
+
+/**
+ * GetAppMetaError404
+ */
+export const zGetAppMetaError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * GetAppMetaError503
+ */
+export const zGetAppMetaError503 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['service_unavailable', 'web_app_access_unavailable']),
+  }),
+)
+
+/**
+ * GetAppParametersError400
+ */
+export const zGetAppParametersError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['agent_not_published', 'app_unavailable', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetAppParametersError401
+ */
+export const zGetAppParametersError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['unauthorized', 'web_app_access_denied', 'web_sso_auth_required']),
+  }),
+)
+
+/**
+ * GetAppParametersError404
+ */
+export const zGetAppParametersError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * GetAppParametersError503
+ */
+export const zGetAppParametersError503 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['service_unavailable', 'web_app_access_unavailable']),
+  }),
+)
+
+/**
+ * GetAppSiteInfoError401
+ */
+export const zGetAppSiteInfoError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['unauthorized', 'web_app_access_denied', 'web_sso_auth_required']),
+  }),
+)
+
+/**
+ * GetAppSiteInfoError404
+ */
+export const zGetAppSiteInfoError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * GetAppSiteInfoError503
+ */
+export const zGetAppSiteInfoError503 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['service_unavailable', 'web_app_access_unavailable']),
+  }),
+)
+
+/**
+ * GetConversationListError400
+ */
+export const zGetConversationListError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['bad_request', 'invalid_param', 'not_chat_app']),
+  }),
+)
+
+/**
+ * GetConversationListError401
+ */
+export const zGetConversationListError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['unauthorized', 'web_app_access_denied', 'web_sso_auth_required']),
+  }),
+)
+
+/**
+ * GetConversationListError404
+ */
+export const zGetConversationListError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * GetConversationListError503
+ */
+export const zGetConversationListError503 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['service_unavailable', 'web_app_access_unavailable']),
+  }),
+)
+
+/**
+ * GetHumanInputFormError404
+ */
+export const zGetHumanInputFormError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_found']),
+  }),
+)
+
+/**
+ * GetHumanInputFormError429
+ */
+export const zGetHumanInputFormError429 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['too_many_requests', 'web_form_rate_limit_exceeded']),
+  }),
+)
+
+/**
+ * GetMessageListError400
+ */
+export const zGetMessageListError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['bad_request', 'invalid_param', 'not_chat_app']),
+  }),
+)
+
+/**
+ * GetMessageListError401
+ */
+export const zGetMessageListError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['unauthorized', 'web_app_access_denied', 'web_sso_auth_required']),
+  }),
+)
+
+/**
+ * GetMessageListError404
+ */
+export const zGetMessageListError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * GetMessageListError503
+ */
+export const zGetMessageListError503 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['service_unavailable', 'web_app_access_unavailable']),
+  }),
+)
+
+/**
+ * GetPassportError401
+ */
+export const zGetPassportError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['unauthorized', 'web_sso_auth_required']),
+  }),
+)
+
+/**
+ * GetRemoteFileInfoError400
+ */
+export const zGetRemoteFileInfoError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'bad_request',
+      'invalid_param',
+      'remote_file_access_denied',
+      'remote_file_invalid_url',
+      'remote_file_url_blocked',
+    ]),
+  }),
+)
+
+/**
+ * GetRemoteFileInfoError401
+ */
+export const zGetRemoteFileInfoError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['unauthorized', 'web_app_access_denied', 'web_sso_auth_required']),
+  }),
+)
+
+/**
+ * GetRemoteFileInfoError404
+ */
+export const zGetRemoteFileInfoError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found', 'remote_file_not_found']),
+  }),
+)
+
+/**
+ * GetRemoteFileInfoError502
+ */
+export const zGetRemoteFileInfoError502 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'bad_gateway',
+      'plugin_runtime_error',
+      'remote_file_invalid_response',
+      'remote_file_unavailable',
+    ]),
+  }),
+)
+
+/**
+ * GetRemoteFileInfoError503
+ */
+export const zGetRemoteFileInfoError503 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['service_unavailable', 'web_app_access_unavailable']),
+  }),
+)
+
+/**
+ * GetSavedMessagesError400
+ */
+export const zGetSavedMessagesError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['bad_request', 'invalid_param', 'not_completion_app']),
+  }),
+)
+
+/**
+ * GetSavedMessagesError401
+ */
+export const zGetSavedMessagesError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['unauthorized', 'web_app_access_denied', 'web_sso_auth_required']),
+  }),
+)
+
+/**
+ * GetSavedMessagesError404
+ */
+export const zGetSavedMessagesError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * GetSavedMessagesError503
+ */
+export const zGetSavedMessagesError503 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['service_unavailable', 'web_app_access_unavailable']),
+  }),
+)
+
+/**
+ * GetSuggestedQuestionsError400
+ */
+export const zGetSuggestedQuestionsError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'bad_request',
+      'completion_request_error',
+      'invalid_param',
+      'model_currently_not_support',
+      'not_chat_app',
+      'provider_not_initialize',
+      'provider_quota_exceeded',
+    ]),
+  }),
+)
+
+/**
+ * GetSuggestedQuestionsError401
+ */
+export const zGetSuggestedQuestionsError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['unauthorized', 'web_app_access_denied', 'web_sso_auth_required']),
+  }),
+)
+
+/**
+ * GetSuggestedQuestionsError403
+ */
+export const zGetSuggestedQuestionsError403 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_suggested_questions_after_answer_disabled', 'forbidden']),
+  }),
+)
+
+/**
+ * GetSuggestedQuestionsError404
+ */
+export const zGetSuggestedQuestionsError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * GetSuggestedQuestionsError503
+ */
+export const zGetSuggestedQuestionsError503 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['service_unavailable', 'web_app_access_unavailable']),
+  }),
+)
+
+/**
+ * GetWorkflowEventsApiError400
+ */
+export const zGetWorkflowEventsApiError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetWorkflowEventsApiError401
+ */
+export const zGetWorkflowEventsApiError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['unauthorized', 'web_app_access_denied', 'web_sso_auth_required']),
+  }),
+)
+
+/**
+ * GetWorkflowEventsApiError404
+ */
+export const zGetWorkflowEventsApiError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * GetWorkflowEventsApiError503
+ */
+export const zGetWorkflowEventsApiError503 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['service_unavailable', 'web_app_access_unavailable']),
+  }),
+)
 
 /**
  * HumanInputFileUploadFormPayload
@@ -465,6 +1258,42 @@ export const zPassportQuery = z.object({
 })
 
 /**
+ * PinConversationError400
+ */
+export const zPinConversationError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['bad_request', 'invalid_param', 'not_chat_app']),
+  }),
+)
+
+/**
+ * PinConversationError401
+ */
+export const zPinConversationError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['unauthorized', 'web_app_access_denied', 'web_sso_auth_required']),
+  }),
+)
+
+/**
+ * PinConversationError404
+ */
+export const zPinConversationError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * PinConversationError503
+ */
+export const zPinConversationError503 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['service_unavailable', 'web_app_access_unavailable']),
+  }),
+)
+
+/**
  * PluginInstallationScope
  */
 export const zPluginInstallationScope = z.enum([
@@ -483,6 +1312,85 @@ export const zPluginInstallationPermissionModel = z.object({
 })
 
 /**
+ * PostHumanInputFileUploadApiError400
+ */
+export const zPostHumanInputFileUploadApiError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'bad_request',
+      'file_extension_blocked',
+      'filename_not_exists_error',
+      'invalid_param',
+      'invalid_upload_token',
+      'no_file_uploaded',
+      'remote_file_access_denied',
+      'remote_file_invalid_url',
+      'remote_file_url_blocked',
+      'too_many_files',
+    ]),
+  }),
+)
+
+/**
+ * PostHumanInputFileUploadApiError401
+ */
+export const zPostHumanInputFileUploadApiError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['invalid_upload_token', 'unauthorized']),
+  }),
+)
+
+/**
+ * PostHumanInputFileUploadApiError403
+ */
+export const zPostHumanInputFileUploadApiError403 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['forbidden', 'invalid_upload_token']),
+  }),
+)
+
+/**
+ * PostHumanInputFileUploadApiError404
+ */
+export const zPostHumanInputFileUploadApiError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_found', 'remote_file_not_found']),
+  }),
+)
+
+/**
+ * PostHumanInputFileUploadApiError413
+ */
+export const zPostHumanInputFileUploadApiError413 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['file_too_large', 'request_entity_too_large']),
+  }),
+)
+
+/**
+ * PostHumanInputFileUploadApiError415
+ */
+export const zPostHumanInputFileUploadApiError415 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['unsupported_file_type', 'unsupported_media_type']),
+  }),
+)
+
+/**
+ * PostHumanInputFileUploadApiError502
+ */
+export const zPostHumanInputFileUploadApiError502 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'bad_gateway',
+      'plugin_runtime_error',
+      'remote_file_invalid_response',
+      'remote_file_unavailable',
+    ]),
+  }),
+)
+
+/**
  * RemoteFileInfo
  */
 export const zRemoteFileInfo = z.object({
@@ -496,6 +1404,60 @@ export const zRemoteFileInfo = z.object({
 export const zRemoteFileUploadPayload = z.object({
   url: z.url(),
 })
+
+/**
+ * RenameConversationError400
+ */
+export const zRenameConversationError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['bad_request', 'invalid_param', 'not_chat_app']),
+  }),
+)
+
+/**
+ * RenameConversationError401
+ */
+export const zRenameConversationError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['unauthorized', 'web_app_access_denied', 'web_sso_auth_required']),
+  }),
+)
+
+/**
+ * RenameConversationError404
+ */
+export const zRenameConversationError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * RenameConversationError503
+ */
+export const zRenameConversationError503 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['service_unavailable', 'web_app_access_unavailable']),
+  }),
+)
+
+/**
+ * ResetPasswordError400
+ */
+export const zResetPasswordError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['bad_request', 'invalid_or_expired_token', 'invalid_param', 'password_mismatch']),
+  }),
+)
+
+/**
+ * ResetPasswordError401
+ */
+export const zResetPasswordError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['authentication_failed', 'not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
 
 /**
  * ResultResponse
@@ -533,9 +1495,107 @@ export const zRetrieverResource = z.object({
 })
 
 /**
+ * RunWorkflowError400
+ */
+export const zRunWorkflowError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'bad_request',
+      'completion_request_error',
+      'invalid_param',
+      'model_currently_not_support',
+      'not_workflow_app',
+      'provider_not_initialize',
+      'provider_quota_exceeded',
+    ]),
+  }),
+)
+
+/**
+ * RunWorkflowError401
+ */
+export const zRunWorkflowError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['unauthorized', 'web_app_access_denied', 'web_sso_auth_required']),
+  }),
+)
+
+/**
+ * RunWorkflowError403
+ */
+export const zRunWorkflowError403 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['forbidden', 'trigger_workflow_service_mode_unavailable']),
+  }),
+)
+
+/**
+ * RunWorkflowError404
+ */
+export const zRunWorkflowError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * RunWorkflowError429
+ */
+export const zRunWorkflowError429 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['rate_limit_error', 'too_many_requests']),
+  }),
+)
+
+/**
+ * RunWorkflowError503
+ */
+export const zRunWorkflowError503 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['service_unavailable', 'web_app_access_unavailable']),
+  }),
+)
+
+/**
  * SSOProtocol
  */
 export const zSsoProtocol = z.enum(['oauth2', 'oidc', 'saml'])
+
+/**
+ * SaveMessageError400
+ */
+export const zSaveMessageError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['bad_request', 'invalid_param', 'not_completion_app']),
+  }),
+)
+
+/**
+ * SaveMessageError401
+ */
+export const zSaveMessageError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['unauthorized', 'web_app_access_denied', 'web_sso_auth_required']),
+  }),
+)
+
+/**
+ * SaveMessageError404
+ */
+export const zSaveMessageError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * SaveMessageError503
+ */
+export const zSaveMessageError503 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['service_unavailable', 'web_app_access_unavailable']),
+  }),
+)
 
 /**
  * SavedMessageCreatePayload
@@ -551,6 +1611,37 @@ export const zSavedMessageListQuery = z.object({
   last_id: z.string().nullish(),
   limit: z.int().gte(1).lte(100).optional().default(20),
 })
+
+/**
+ * SendEmailCodeLoginError401
+ */
+export const zSendEmailCodeLoginError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['authentication_failed', 'not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * SendForgotPasswordEmailError401
+ */
+export const zSendForgotPasswordEmailError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['authentication_failed', 'not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * SendForgotPasswordEmailError429
+ */
+export const zSendForgotPasswordEmailError429 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'email_send_ip_limit',
+      'password_reset_rate_limit_exceeded',
+      'too_many_requests',
+    ]),
+  }),
+)
 
 /**
  * SimpleConversation
@@ -617,6 +1708,132 @@ export const zSimpleResultDataResponse = z.object({
 export const zSimpleResultResponse = z.object({
   result: z.string(),
 })
+
+/**
+ * StopChatMessageError400
+ */
+export const zStopChatMessageError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['bad_request', 'invalid_param', 'not_chat_app']),
+  }),
+)
+
+/**
+ * StopChatMessageError401
+ */
+export const zStopChatMessageError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['unauthorized', 'web_app_access_denied', 'web_sso_auth_required']),
+  }),
+)
+
+/**
+ * StopChatMessageError404
+ */
+export const zStopChatMessageError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * StopChatMessageError503
+ */
+export const zStopChatMessageError503 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['service_unavailable', 'web_app_access_unavailable']),
+  }),
+)
+
+/**
+ * StopCompletionMessageError400
+ */
+export const zStopCompletionMessageError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['bad_request', 'invalid_param', 'not_completion_app']),
+  }),
+)
+
+/**
+ * StopCompletionMessageError401
+ */
+export const zStopCompletionMessageError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['unauthorized', 'web_app_access_denied', 'web_sso_auth_required']),
+  }),
+)
+
+/**
+ * StopCompletionMessageError404
+ */
+export const zStopCompletionMessageError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * StopCompletionMessageError503
+ */
+export const zStopCompletionMessageError503 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['service_unavailable', 'web_app_access_unavailable']),
+  }),
+)
+
+/**
+ * StopWorkflowTaskError400
+ */
+export const zStopWorkflowTaskError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['bad_request', 'invalid_param', 'not_workflow_app']),
+  }),
+)
+
+/**
+ * StopWorkflowTaskError401
+ */
+export const zStopWorkflowTaskError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['unauthorized', 'web_app_access_denied', 'web_sso_auth_required']),
+  }),
+)
+
+/**
+ * StopWorkflowTaskError404
+ */
+export const zStopWorkflowTaskError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * StopWorkflowTaskError503
+ */
+export const zStopWorkflowTaskError503 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['service_unavailable', 'web_app_access_unavailable']),
+  }),
+)
+
+/**
+ * SubmitHumanInputFormError404
+ */
+export const zSubmitHumanInputFormError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_found']),
+  }),
+)
+
+/**
+ * SubmitHumanInputFormError429
+ */
+export const zSubmitHumanInputFormError429 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['too_many_requests', 'web_form_rate_limit_exceeded']),
+  }),
+)
 
 /**
  * SuggestedQuestionsResponse
@@ -979,6 +2196,70 @@ export const zParameters = z.object({
 })
 
 /**
+ * TextToAudioError400
+ */
+export const zTextToAudioError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'app_unavailable',
+      'bad_request',
+      'completion_request_error',
+      'invalid_param',
+      'model_currently_not_support',
+      'no_audio_uploaded',
+      'provider_not_initialize',
+      'provider_not_support_speech_to_text',
+      'provider_quota_exceeded',
+    ]),
+  }),
+)
+
+/**
+ * TextToAudioError401
+ */
+export const zTextToAudioError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['unauthorized', 'web_app_access_denied', 'web_sso_auth_required']),
+  }),
+)
+
+/**
+ * TextToAudioError404
+ */
+export const zTextToAudioError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * TextToAudioError413
+ */
+export const zTextToAudioError413 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['audio_too_large', 'request_entity_too_large']),
+  }),
+)
+
+/**
+ * TextToAudioError415
+ */
+export const zTextToAudioError415 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['unsupported_audio_type', 'unsupported_media_type']),
+  }),
+)
+
+/**
+ * TextToAudioError503
+ */
+export const zTextToAudioError503 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['service_unavailable', 'web_app_access_unavailable']),
+  }),
+)
+
+/**
  * TextToAudioPayload
  */
 export const zTextToAudioPayload = z.object({
@@ -987,6 +2268,178 @@ export const zTextToAudioPayload = z.object({
   text: z.string().nullish(),
   voice: z.string().nullish(),
 })
+
+/**
+ * UnpinConversationError400
+ */
+export const zUnpinConversationError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['bad_request', 'invalid_param', 'not_chat_app']),
+  }),
+)
+
+/**
+ * UnpinConversationError401
+ */
+export const zUnpinConversationError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['unauthorized', 'web_app_access_denied', 'web_sso_auth_required']),
+  }),
+)
+
+/**
+ * UnpinConversationError404
+ */
+export const zUnpinConversationError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * UnpinConversationError503
+ */
+export const zUnpinConversationError503 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['service_unavailable', 'web_app_access_unavailable']),
+  }),
+)
+
+/**
+ * UploadFileError400
+ */
+export const zUploadFileError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'bad_request',
+      'file_extension_blocked',
+      'filename_not_exists_error',
+      'invalid_param',
+      'no_file_uploaded',
+      'too_many_files',
+    ]),
+  }),
+)
+
+/**
+ * UploadFileError401
+ */
+export const zUploadFileError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['unauthorized', 'web_app_access_denied', 'web_sso_auth_required']),
+  }),
+)
+
+/**
+ * UploadFileError404
+ */
+export const zUploadFileError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * UploadFileError413
+ */
+export const zUploadFileError413 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['file_too_large', 'request_entity_too_large']),
+  }),
+)
+
+/**
+ * UploadFileError415
+ */
+export const zUploadFileError415 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['unsupported_file_type', 'unsupported_media_type']),
+  }),
+)
+
+/**
+ * UploadFileError503
+ */
+export const zUploadFileError503 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['service_unavailable', 'web_app_access_unavailable']),
+  }),
+)
+
+/**
+ * UploadRemoteFileError400
+ */
+export const zUploadRemoteFileError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'bad_request',
+      'file_extension_blocked',
+      'invalid_param',
+      'remote_file_access_denied',
+      'remote_file_invalid_url',
+      'remote_file_url_blocked',
+    ]),
+  }),
+)
+
+/**
+ * UploadRemoteFileError401
+ */
+export const zUploadRemoteFileError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['unauthorized', 'web_app_access_denied', 'web_sso_auth_required']),
+  }),
+)
+
+/**
+ * UploadRemoteFileError404
+ */
+export const zUploadRemoteFileError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found', 'remote_file_not_found']),
+  }),
+)
+
+/**
+ * UploadRemoteFileError413
+ */
+export const zUploadRemoteFileError413 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['file_too_large', 'request_entity_too_large']),
+  }),
+)
+
+/**
+ * UploadRemoteFileError415
+ */
+export const zUploadRemoteFileError415 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['unsupported_file_type', 'unsupported_media_type']),
+  }),
+)
+
+/**
+ * UploadRemoteFileError502
+ */
+export const zUploadRemoteFileError502 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'bad_gateway',
+      'plugin_runtime_error',
+      'remote_file_invalid_response',
+      'remote_file_unavailable',
+    ]),
+  }),
+)
+
+/**
+ * UploadRemoteFileError503
+ */
+export const zUploadRemoteFileError503 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['service_unavailable', 'web_app_access_unavailable']),
+  }),
+)
 
 /**
  * UserActionConfig
@@ -1094,6 +2547,30 @@ export const zVerificationTokenResponse = z.object({
 })
 
 /**
+ * VerifyEmailCodeLoginError400
+ */
+export const zVerifyEmailCodeLoginError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'account_banned',
+      'bad_request',
+      'email_code_error',
+      'invalid_email',
+      'invalid_param',
+    ]),
+  }),
+)
+
+/**
+ * VerifyEmailCodeLoginError401
+ */
+export const zVerifyEmailCodeLoginError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['authentication_failed', 'not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
  * WebAppAuthSSOModel
  */
 export const zWebAppAuthSsoModel = z.object({
@@ -1158,6 +2635,60 @@ export const zWebAppCustomConfigResponse = z.object({
   remove_webapp_brand: z.boolean(),
   replace_webapp_logo: z.string().nullish(),
 })
+
+/**
+ * WebAppLoginError400
+ */
+export const zWebAppLoginError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_banned', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * WebAppLoginError401
+ */
+export const zWebAppLoginError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['authentication_failed', 'not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * WebAppLoginStatusError401
+ */
+export const zWebAppLoginStatusError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * WebAppLoginStatusError404
+ */
+export const zWebAppLoginStatusError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * WebAppLoginStatusError503
+ */
+export const zWebAppLoginStatusError503 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['service_unavailable', 'web_app_access_unavailable']),
+  }),
+)
+
+/**
+ * WebAppLogoutError401
+ */
+export const zWebAppLogoutError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
 
 /**
  * WebMessageListItem

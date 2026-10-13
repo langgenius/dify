@@ -603,6 +603,42 @@ export const zCheckDependenciesResult = z.object({
 })
 
 /**
+ * PostDeviceApproveApiError400
+ */
+export const zPostDeviceApproveApiError400 = zErrorBody.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request']),
+  }),
+)
+
+/**
+ * PostDeviceApproveApiError401
+ */
+export const zPostDeviceApproveApiError401 = zErrorBody.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * PostDeviceDenyApiError400
+ */
+export const zPostDeviceDenyApiError400 = zErrorBody.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request']),
+  }),
+)
+
+/**
+ * PostDeviceDenyApiError401
+ */
+export const zPostDeviceDenyApiError401 = zErrorBody.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
  * RevokeResponse
  */
 export const zRevokeResponse = z.object({

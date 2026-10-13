@@ -19,6 +19,47 @@ export const zErrorResponse = z.object({
 })
 
 /**
+ * ListAppsError400
+ */
+export const zListAppsError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * ListAppsError401
+ */
+export const zListAppsError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'not_init_validated',
+      'not_setup',
+      'unauthorized',
+      'unauthorized_and_force_logout',
+    ]),
+  }),
+)
+
+/**
+ * CreateAppError400
+ */
+export const zCreateAppError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * CreateAppError401
+ */
+export const zCreateAppError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
  * AppImportPayload
  */
 export const zAppImportPayload = z.object({
@@ -37,11 +78,238 @@ export const zAppImportPayload = z.object({
 })
 
 /**
+ * PostAppImportApiError400
+ */
+export const zPostAppImportApiError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'account_not_initialized',
+      'bad_request',
+      'invalid_param',
+      'invalid_roster_agent_package',
+    ]),
+  }),
+)
+
+/**
+ * PostAppImportApiError401
+ */
+export const zPostAppImportApiError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * PostAppImportApiError404
+ */
+export const zPostAppImportApiError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_found', 'recommended_app_not_found']),
+  }),
+)
+
+/**
+ * GetAppImportCheckDependenciesApiError400
+ */
+export const zGetAppImportCheckDependenciesApiError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetAppImportCheckDependenciesApiError401
+ */
+export const zGetAppImportCheckDependenciesApiError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetAppImportCheckDependenciesApiError404
+ */
+export const zGetAppImportCheckDependenciesApiError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * PostAppImportConfirmApiError400
+ */
+export const zPostAppImportConfirmApiError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * PostAppImportConfirmApiError401
+ */
+export const zPostAppImportConfirmApiError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * ListRecentAppsError400
+ */
+export const zListRecentAppsError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * ListRecentAppsError401
+ */
+export const zListRecentAppsError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'not_init_validated',
+      'not_setup',
+      'unauthorized',
+      'unauthorized_and_force_logout',
+    ]),
+  }),
+)
+
+/**
+ * ListStarredAppsError400
+ */
+export const zListStarredAppsError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * ListStarredAppsError401
+ */
+export const zListStarredAppsError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'not_init_validated',
+      'not_setup',
+      'unauthorized',
+      'unauthorized_and_force_logout',
+    ]),
+  }),
+)
+
+/**
  * WorkflowOnlineUsersPayload
  */
 export const zWorkflowOnlineUsersPayload = z.object({
   app_ids: z.array(z.string()).optional(),
 })
+
+/**
+ * GetWorkflowOnlineUsersError400
+ */
+export const zGetWorkflowOnlineUsersError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetWorkflowOnlineUsersError401
+ */
+export const zGetWorkflowOnlineUsersError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * DeleteAppError400
+ */
+export const zDeleteAppError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * DeleteAppError401
+ */
+export const zDeleteAppError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetAppDetailError400
+ */
+export const zGetAppDetailError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetAppDetailError401
+ */
+export const zGetAppDetailError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'not_init_validated',
+      'not_setup',
+      'unauthorized',
+      'unauthorized_and_force_logout',
+    ]),
+  }),
+)
+
+/**
+ * UpdateAppError400
+ */
+export const zUpdateAppError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * UpdateAppError401
+ */
+export const zUpdateAppError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetAdvancedChatWorkflowRunsError400
+ */
+export const zGetAdvancedChatWorkflowRunsError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetAdvancedChatWorkflowRunsError401
+ */
+export const zGetAdvancedChatWorkflowRunsError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetAdvancedChatWorkflowRunsError404
+ */
+export const zGetAdvancedChatWorkflowRunsError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
 
 /**
  * WorkflowRunCountResponse
@@ -54,6 +322,33 @@ export const zWorkflowRunCountResponse = z.object({
   succeeded: z.int(),
   total: z.int(),
 })
+
+/**
+ * GetAdvancedChatWorkflowRunsCountError400
+ */
+export const zGetAdvancedChatWorkflowRunsCountError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetAdvancedChatWorkflowRunsCountError401
+ */
+export const zGetAdvancedChatWorkflowRunsCountError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetAdvancedChatWorkflowRunsCountError404
+ */
+export const zGetAdvancedChatWorkflowRunsCountError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
 
 /**
  * HumanInputFormPreviewPayload
@@ -79,6 +374,33 @@ export const zHumanInputFormPreviewResponse = z.object({
 })
 
 /**
+ * GetAdvancedChatDraftHumanInputFormError400
+ */
+export const zGetAdvancedChatDraftHumanInputFormError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetAdvancedChatDraftHumanInputFormError401
+ */
+export const zGetAdvancedChatDraftHumanInputFormError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetAdvancedChatDraftHumanInputFormError404
+ */
+export const zGetAdvancedChatDraftHumanInputFormError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
  * HumanInputFormSubmitPayload
  */
 export const zHumanInputFormSubmitPayload = z.object({
@@ -93,6 +415,33 @@ export const zHumanInputFormSubmitPayload = z.object({
 export const zHumanInputFormSubmitResponse = z.record(z.string(), z.unknown())
 
 /**
+ * SubmitAdvancedChatDraftHumanInputFormError400
+ */
+export const zSubmitAdvancedChatDraftHumanInputFormError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * SubmitAdvancedChatDraftHumanInputFormError401
+ */
+export const zSubmitAdvancedChatDraftHumanInputFormError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * SubmitAdvancedChatDraftHumanInputFormError404
+ */
+export const zSubmitAdvancedChatDraftHumanInputFormError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
  * IterationNodeRunPayload
  */
 export const zIterationNodeRunPayload = z.object({
@@ -100,11 +449,65 @@ export const zIterationNodeRunPayload = z.object({
 })
 
 /**
+ * RunAdvancedChatDraftIterationNodeError400
+ */
+export const zRunAdvancedChatDraftIterationNodeError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * RunAdvancedChatDraftIterationNodeError401
+ */
+export const zRunAdvancedChatDraftIterationNodeError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * RunAdvancedChatDraftIterationNodeError404
+ */
+export const zRunAdvancedChatDraftIterationNodeError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
  * LoopNodeRunPayload
  */
 export const zLoopNodeRunPayload = z.object({
   inputs: z.record(z.string(), z.unknown()).nullish(),
 })
+
+/**
+ * RunAdvancedChatDraftLoopNodeError400
+ */
+export const zRunAdvancedChatDraftLoopNodeError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * RunAdvancedChatDraftLoopNodeError401
+ */
+export const zRunAdvancedChatDraftLoopNodeError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * RunAdvancedChatDraftLoopNodeError404
+ */
+export const zRunAdvancedChatDraftLoopNodeError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
 
 /**
  * AdvancedChatWorkflowRunPayload
@@ -118,11 +521,101 @@ export const zAdvancedChatWorkflowRunPayload = z.object({
 })
 
 /**
+ * RunAdvancedChatDraftWorkflowError400
+ */
+export const zRunAdvancedChatDraftWorkflowError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * RunAdvancedChatDraftWorkflowError401
+ */
+export const zRunAdvancedChatDraftWorkflowError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * RunAdvancedChatDraftWorkflowError404
+ */
+export const zRunAdvancedChatDraftWorkflowError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * RunAdvancedChatDraftWorkflowError429
+ */
+export const zRunAdvancedChatDraftWorkflowError429 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['rate_limit_error', 'too_many_requests']),
+  }),
+)
+
+/**
+ * GetAgentConfigFilesError400
+ */
+export const zGetAgentConfigFilesError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'agent_not_bound', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetAgentConfigFilesError401
+ */
+export const zGetAgentConfigFilesError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetAgentConfigFilesError404
+ */
+export const zGetAgentConfigFilesError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
  * AgentConfigFileUploadPayload
  */
 export const zAgentConfigFileUploadPayload = z.object({
   upload_file_id: z.string(),
 })
+
+/**
+ * UploadAgentConfigFileError400
+ */
+export const zUploadAgentConfigFileError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'agent_not_bound', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * UploadAgentConfigFileError401
+ */
+export const zUploadAgentConfigFileError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * UploadAgentConfigFileError404
+ */
+export const zUploadAgentConfigFileError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
 
 /**
  * AgentConfigDeleteResponse
@@ -133,11 +626,65 @@ export const zAgentConfigDeleteResponse = z.object({
 })
 
 /**
+ * DeleteAgentConfigFileError400
+ */
+export const zDeleteAgentConfigFileError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'agent_not_bound', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * DeleteAgentConfigFileError401
+ */
+export const zDeleteAgentConfigFileError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * DeleteAgentConfigFileError404
+ */
+export const zDeleteAgentConfigFileError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
  * AgentConfigDownloadResponse
  */
 export const zAgentConfigDownloadResponse = z.object({
   url: z.string(),
 })
+
+/**
+ * DownloadAgentConfigFileError400
+ */
+export const zDownloadAgentConfigFileError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'agent_not_bound', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * DownloadAgentConfigFileError401
+ */
+export const zDownloadAgentConfigFileError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * DownloadAgentConfigFileError404
+ */
+export const zDownloadAgentConfigFileError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
 
 /**
  * AgentConfigFilePreviewResponse
@@ -151,6 +698,222 @@ export const zAgentConfigFilePreviewResponse = z.object({
 })
 
 /**
+ * PreviewAgentConfigFileError400
+ */
+export const zPreviewAgentConfigFileError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'agent_not_bound', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * PreviewAgentConfigFileError401
+ */
+export const zPreviewAgentConfigFileError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * PreviewAgentConfigFileError404
+ */
+export const zPreviewAgentConfigFileError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * GetAgentConfigManifestError400
+ */
+export const zGetAgentConfigManifestError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'agent_not_bound', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetAgentConfigManifestError401
+ */
+export const zGetAgentConfigManifestError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetAgentConfigManifestError404
+ */
+export const zGetAgentConfigManifestError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * GetAgentConfigSkillsError400
+ */
+export const zGetAgentConfigSkillsError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'agent_not_bound', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetAgentConfigSkillsError401
+ */
+export const zGetAgentConfigSkillsError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetAgentConfigSkillsError404
+ */
+export const zGetAgentConfigSkillsError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * UploadAgentConfigSkillError400
+ */
+export const zUploadAgentConfigSkillError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'agent_not_bound', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * UploadAgentConfigSkillError401
+ */
+export const zUploadAgentConfigSkillError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * UploadAgentConfigSkillError404
+ */
+export const zUploadAgentConfigSkillError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * DeleteAgentConfigSkillError400
+ */
+export const zDeleteAgentConfigSkillError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'agent_not_bound', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * DeleteAgentConfigSkillError401
+ */
+export const zDeleteAgentConfigSkillError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * DeleteAgentConfigSkillError404
+ */
+export const zDeleteAgentConfigSkillError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * DownloadAgentConfigSkillError400
+ */
+export const zDownloadAgentConfigSkillError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'agent_not_bound', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * DownloadAgentConfigSkillError401
+ */
+export const zDownloadAgentConfigSkillError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * DownloadAgentConfigSkillError404
+ */
+export const zDownloadAgentConfigSkillError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * GetAgentConfigSkillFileDownloadContentApiError400
+ */
+export const zGetAgentConfigSkillFileDownloadContentApiError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'agent_not_bound', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetAgentConfigSkillFileDownloadContentApiError401
+ */
+export const zGetAgentConfigSkillFileDownloadContentApiError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetAgentConfigSkillFileDownloadContentApiError404
+ */
+export const zGetAgentConfigSkillFileDownloadContentApiError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * DownloadAgentConfigSkillFileError400
+ */
+export const zDownloadAgentConfigSkillFileError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'agent_not_bound', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * DownloadAgentConfigSkillFileError401
+ */
+export const zDownloadAgentConfigSkillFileError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * DownloadAgentConfigSkillFileError404
+ */
+export const zDownloadAgentConfigSkillFileError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
  * AgentConfigSkillFilePreviewResponse
  */
 export const zAgentConfigSkillFilePreviewResponse = z.object({
@@ -160,6 +923,87 @@ export const zAgentConfigSkillFilePreviewResponse = z.object({
   text: z.string().nullish(),
   truncated: z.boolean(),
 })
+
+/**
+ * PreviewAgentConfigSkillFileError400
+ */
+export const zPreviewAgentConfigSkillFileError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'agent_not_bound', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * PreviewAgentConfigSkillFileError401
+ */
+export const zPreviewAgentConfigSkillFileError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * PreviewAgentConfigSkillFileError404
+ */
+export const zPreviewAgentConfigSkillFileError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * InspectAgentConfigSkillError400
+ */
+export const zInspectAgentConfigSkillError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'agent_not_bound', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * InspectAgentConfigSkillError401
+ */
+export const zInspectAgentConfigSkillError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * InspectAgentConfigSkillError404
+ */
+export const zInspectAgentConfigSkillError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * GetAgentLogsError400
+ */
+export const zGetAgentLogsError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetAgentLogsError401
+ */
+export const zGetAgentLogsError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetAgentLogsError404
+ */
+export const zGetAgentLogsError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
 
 /**
  * AnnotationReplyPayload
@@ -179,6 +1023,24 @@ export const zAnnotationJobStatusResponse = z.object({
 })
 
 /**
+ * AnnotationReplyActionError400
+ */
+export const zAnnotationReplyActionError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * AnnotationReplyActionError401
+ */
+export const zAnnotationReplyActionError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
  * AnnotationJobStatusDetailResponse
  */
 export const zAnnotationJobStatusDetailResponse = z.object({
@@ -188,11 +1050,101 @@ export const zAnnotationJobStatusDetailResponse = z.object({
 })
 
 /**
+ * GetAnnotationReplyActionStatusError400
+ */
+export const zGetAnnotationReplyActionStatusError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetAnnotationReplyActionStatusError401
+ */
+export const zGetAnnotationReplyActionStatusError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetAnnotationSettingError400
+ */
+export const zGetAnnotationSettingError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetAnnotationSettingError401
+ */
+export const zGetAnnotationSettingError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
  * AnnotationSettingUpdatePayload
  */
 export const zAnnotationSettingUpdatePayload = z.object({
   score_threshold: z.number(),
 })
+
+/**
+ * UpdateAnnotationSettingError400
+ */
+export const zUpdateAnnotationSettingError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * UpdateAnnotationSettingError401
+ */
+export const zUpdateAnnotationSettingError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * DeleteAnnotationApiError400
+ */
+export const zDeleteAnnotationApiError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * DeleteAnnotationApiError401
+ */
+export const zDeleteAnnotationApiError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * ListAnnotationsError400
+ */
+export const zListAnnotationsError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * ListAnnotationsError401
+ */
+export const zListAnnotationsError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
 
 /**
  * CreateAnnotationPayload
@@ -228,6 +1180,24 @@ export const zAnnotationList = z.object({
 })
 
 /**
+ * CreateAnnotationError400
+ */
+export const zCreateAnnotationError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * CreateAnnotationError401
+ */
+export const zCreateAnnotationError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
  * AnnotationBatchImportResponse
  */
 export const zAnnotationBatchImportResponse = z.object({
@@ -238,6 +1208,48 @@ export const zAnnotationBatchImportResponse = z.object({
 })
 
 /**
+ * BatchImportAnnotationsError400
+ */
+export const zBatchImportAnnotationsError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'account_not_initialized',
+      'bad_request',
+      'invalid_param',
+      'no_file_uploaded',
+      'too_many_files',
+    ]),
+  }),
+)
+
+/**
+ * BatchImportAnnotationsError401
+ */
+export const zBatchImportAnnotationsError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetBatchImportStatusError400
+ */
+export const zGetBatchImportStatusError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetBatchImportStatusError401
+ */
+export const zGetBatchImportStatusError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
  * AnnotationCountResponse
  */
 export const zAnnotationCountResponse = z.object({
@@ -245,11 +1257,74 @@ export const zAnnotationCountResponse = z.object({
 })
 
 /**
+ * GetAnnotationCountError400
+ */
+export const zGetAnnotationCountError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetAnnotationCountError401
+ */
+export const zGetAnnotationCountError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetAnnotationCountError404
+ */
+export const zGetAnnotationCountError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
  * AnnotationExportList
  */
 export const zAnnotationExportList = z.object({
   data: z.array(zAnnotation),
 })
+
+/**
+ * ExportAnnotationsError400
+ */
+export const zExportAnnotationsError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * ExportAnnotationsError401
+ */
+export const zExportAnnotationsError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * DeleteAnnotationUpdateDeleteApiError400
+ */
+export const zDeleteAnnotationUpdateDeleteApiError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * DeleteAnnotationUpdateDeleteApiError401
+ */
+export const zDeleteAnnotationUpdateDeleteApiError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
 
 /**
  * UpdateAnnotationPayload
@@ -262,11 +1337,65 @@ export const zUpdateAnnotationPayload = z.object({
 })
 
 /**
+ * UpdateDeleteAnnotationError400
+ */
+export const zUpdateDeleteAnnotationError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * UpdateDeleteAnnotationError401
+ */
+export const zUpdateDeleteAnnotationError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * ListAnnotationHitHistoriesError400
+ */
+export const zListAnnotationHitHistoriesError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * ListAnnotationHitHistoriesError401
+ */
+export const zListAnnotationHitHistoriesError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
  * AppApiStatusPayload
  */
 export const zAppApiStatusPayload = z.object({
   enable_api: z.boolean(),
 })
+
+/**
+ * UpdateAppApiStatusError400
+ */
+export const zUpdateAppApiStatusError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * UpdateAppApiStatusError401
+ */
+export const zUpdateAppApiStatusError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
 
 /**
  * AudioTranscriptResponse
@@ -276,6 +1405,171 @@ export const zAudioTranscriptResponse = z.object({
 })
 
 /**
+ * ChatMessageAudioTranscriptError400
+ */
+export const zChatMessageAudioTranscriptError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'account_not_initialized',
+      'app_unavailable',
+      'bad_request',
+      'completion_request_error',
+      'invalid_param',
+      'model_currently_not_support',
+      'no_audio_uploaded',
+      'provider_not_initialize',
+      'provider_not_support_speech_to_text',
+      'provider_quota_exceeded',
+      'speech_to_text_disabled',
+    ]),
+  }),
+)
+
+/**
+ * ChatMessageAudioTranscriptError401
+ */
+export const zChatMessageAudioTranscriptError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * ChatMessageAudioTranscriptError404
+ */
+export const zChatMessageAudioTranscriptError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * ChatMessageAudioTranscriptError413
+ */
+export const zChatMessageAudioTranscriptError413 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['audio_too_large', 'request_entity_too_large']),
+  }),
+)
+
+/**
+ * ChatMessageAudioTranscriptError415
+ */
+export const zChatMessageAudioTranscriptError415 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['unsupported_audio_type', 'unsupported_media_type']),
+  }),
+)
+
+/**
+ * ListChatConversationsError400
+ */
+export const zListChatConversationsError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * ListChatConversationsError401
+ */
+export const zListChatConversationsError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * ListChatConversationsError404
+ */
+export const zListChatConversationsError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * DeleteChatConversationError400
+ */
+export const zDeleteChatConversationError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * DeleteChatConversationError401
+ */
+export const zDeleteChatConversationError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * DeleteChatConversationError404
+ */
+export const zDeleteChatConversationError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * GetChatConversationError400
+ */
+export const zGetChatConversationError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetChatConversationError401
+ */
+export const zGetChatConversationError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetChatConversationError404
+ */
+export const zGetChatConversationError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * ListChatMessagesError400
+ */
+export const zListChatMessagesError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * ListChatMessagesError401
+ */
+export const zListChatMessagesError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * ListChatMessagesError404
+ */
+export const zListChatMessagesError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
  * SuggestedQuestionsResponse
  */
 export const zSuggestedQuestionsResponse = z.object({
@@ -283,11 +1577,164 @@ export const zSuggestedQuestionsResponse = z.object({
 })
 
 /**
+ * GetMessageSuggestedQuestionsError400
+ */
+export const zGetMessageSuggestedQuestionsError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'account_not_initialized',
+      'app_unavailable',
+      'bad_request',
+      'completion_request_error',
+      'invalid_param',
+      'model_currently_not_support',
+      'provider_not_initialize',
+      'provider_quota_exceeded',
+    ]),
+  }),
+)
+
+/**
+ * GetMessageSuggestedQuestionsError401
+ */
+export const zGetMessageSuggestedQuestionsError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetMessageSuggestedQuestionsError403
+ */
+export const zGetMessageSuggestedQuestionsError403 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_suggested_questions_after_answer_disabled', 'forbidden']),
+  }),
+)
+
+/**
+ * GetMessageSuggestedQuestionsError404
+ */
+export const zGetMessageSuggestedQuestionsError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
  * SimpleResultResponse
  */
 export const zSimpleResultResponse = z.object({
   result: z.string(),
 })
+
+/**
+ * StopChatMessageError400
+ */
+export const zStopChatMessageError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * StopChatMessageError401
+ */
+export const zStopChatMessageError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * StopChatMessageError404
+ */
+export const zStopChatMessageError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * ListCompletionConversationsError400
+ */
+export const zListCompletionConversationsError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * ListCompletionConversationsError401
+ */
+export const zListCompletionConversationsError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * ListCompletionConversationsError404
+ */
+export const zListCompletionConversationsError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * DeleteCompletionConversationError400
+ */
+export const zDeleteCompletionConversationError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * DeleteCompletionConversationError401
+ */
+export const zDeleteCompletionConversationError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * DeleteCompletionConversationError404
+ */
+export const zDeleteCompletionConversationError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * GetCompletionConversationError400
+ */
+export const zGetCompletionConversationError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetCompletionConversationError401
+ */
+export const zGetCompletionConversationError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetCompletionConversationError404
+ */
+export const zGetCompletionConversationError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
 
 /**
  * CompletionMessagePayload
@@ -300,6 +1747,96 @@ export const zCompletionMessagePayload = z.object({
   response_mode: z.enum(['blocking', 'streaming']).optional().default('blocking'),
   retriever_from: z.string().optional().default('dev'),
 })
+
+/**
+ * CreateCompletionMessageError400
+ */
+export const zCreateCompletionMessageError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'account_not_initialized',
+      'app_unavailable',
+      'bad_request',
+      'completion_request_error',
+      'invalid_param',
+      'model_currently_not_support',
+      'provider_not_initialize',
+      'provider_quota_exceeded',
+    ]),
+  }),
+)
+
+/**
+ * CreateCompletionMessageError401
+ */
+export const zCreateCompletionMessageError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * CreateCompletionMessageError404
+ */
+export const zCreateCompletionMessageError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * StopCompletionMessageError400
+ */
+export const zStopCompletionMessageError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * StopCompletionMessageError401
+ */
+export const zStopCompletionMessageError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * StopCompletionMessageError404
+ */
+export const zStopCompletionMessageError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * GetConversationVariablesError400
+ */
+export const zGetConversationVariablesError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetConversationVariablesError401
+ */
+export const zGetConversationVariablesError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetConversationVariablesError404
+ */
+export const zGetConversationVariablesError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
 
 /**
  * ConvertToWorkflowPayload
@@ -320,11 +1857,74 @@ export const zNewAppResponse = z.object({
 })
 
 /**
+ * ConvertToWorkflowError400
+ */
+export const zConvertToWorkflowError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * ConvertToWorkflowError401
+ */
+export const zConvertToWorkflowError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * ConvertToWorkflowError404
+ */
+export const zConvertToWorkflowError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * CopyAppError400
+ */
+export const zCopyAppError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * CopyAppError401
+ */
+export const zCopyAppError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
  * AppExportResponse
  */
 export const zAppExportResponse = z.object({
   data: z.string(),
 })
+
+/**
+ * ExportAppError400
+ */
+export const zExportAppError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * ExportAppError401
+ */
+export const zExportAppError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
 
 /**
  * MessageFeedbackPayload
@@ -336,11 +1936,128 @@ export const zMessageFeedbackPayload = z.object({
 })
 
 /**
+ * CreateMessageFeedbackError400
+ */
+export const zCreateMessageFeedbackError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * CreateMessageFeedbackError401
+ */
+export const zCreateMessageFeedbackError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * CreateMessageFeedbackError404
+ */
+export const zCreateMessageFeedbackError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * UpdateAppIconError400
+ */
+export const zUpdateAppIconError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * UpdateAppIconError401
+ */
+export const zUpdateAppIconError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetMessageError400
+ */
+export const zGetMessageError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetMessageError401
+ */
+export const zGetMessageError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetMessageError404
+ */
+export const zGetMessageError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * UpdateAppModelConfigError400
+ */
+export const zUpdateAppModelConfigError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * UpdateAppModelConfigError401
+ */
+export const zUpdateAppModelConfigError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * UpdateAppModelConfigError404
+ */
+export const zUpdateAppModelConfigError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
  * AppNamePayload
  */
 export const zAppNamePayload = z.object({
   name: z.string().min(1),
 })
+
+/**
+ * CheckAppNameError400
+ */
+export const zCheckAppNameError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * CheckAppNameError401
+ */
+export const zCheckAppNameError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
 
 /**
  * RedirectUrlResponse
@@ -350,12 +2067,138 @@ export const zRedirectUrlResponse = z.object({
 })
 
 /**
+ * PostAppPublishToCreatorsPlatformApiError400
+ */
+export const zPostAppPublishToCreatorsPlatformApiError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * PostAppPublishToCreatorsPlatformApiError401
+ */
+export const zPostAppPublishToCreatorsPlatformApiError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetAppMcpServerError400
+ */
+export const zGetAppMcpServerError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetAppMcpServerError401
+ */
+export const zGetAppMcpServerError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetAppMcpServerError404
+ */
+export const zGetAppMcpServerError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
  * MCPServerCreatePayload
  */
 export const zMcpServerCreatePayload = z.object({
   description: z.string().nullish(),
   parameters: z.record(z.string(), z.unknown()),
 })
+
+/**
+ * CreateAppMcpServerError400
+ */
+export const zCreateAppMcpServerError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * CreateAppMcpServerError401
+ */
+export const zCreateAppMcpServerError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * CreateAppMcpServerError404
+ */
+export const zCreateAppMcpServerError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * UpdateAppMcpServerError400
+ */
+export const zUpdateAppMcpServerError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * UpdateAppMcpServerError401
+ */
+export const zUpdateAppMcpServerError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * UpdateAppMcpServerError404
+ */
+export const zUpdateAppMcpServerError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * RefreshAppMcpServerError400
+ */
+export const zRefreshAppMcpServerError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * RefreshAppMcpServerError401
+ */
+export const zRefreshAppMcpServerError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * RefreshAppMcpServerError404
+ */
+export const zRefreshAppMcpServerError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
 
 /**
  * AppSiteUpdatePayload
@@ -403,11 +2246,345 @@ export const zAppSiteResponse = z.object({
 })
 
 /**
+ * UpdateAppSiteError400
+ */
+export const zUpdateAppSiteError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * UpdateAppSiteError401
+ */
+export const zUpdateAppSiteError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * UpdateAppSiteError404
+ */
+export const zUpdateAppSiteError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
  * AppSiteStatusPayload
  */
 export const zAppSiteStatusPayload = z.object({
   enable_site: z.boolean(),
 })
+
+/**
+ * UpdateAppSiteStatusError400
+ */
+export const zUpdateAppSiteStatusError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * UpdateAppSiteStatusError401
+ */
+export const zUpdateAppSiteStatusError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * ResetAppSiteAccessTokenError400
+ */
+export const zResetAppSiteAccessTokenError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * ResetAppSiteAccessTokenError401
+ */
+export const zResetAppSiteAccessTokenError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * ResetAppSiteAccessTokenError404
+ */
+export const zResetAppSiteAccessTokenError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * UnstarAppError400
+ */
+export const zUnstarAppError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * UnstarAppError401
+ */
+export const zUnstarAppError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'not_init_validated',
+      'not_setup',
+      'unauthorized',
+      'unauthorized_and_force_logout',
+    ]),
+  }),
+)
+
+/**
+ * StarAppError400
+ */
+export const zStarAppError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * StarAppError401
+ */
+export const zStarAppError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'not_init_validated',
+      'not_setup',
+      'unauthorized',
+      'unauthorized_and_force_logout',
+    ]),
+  }),
+)
+
+/**
+ * GetAverageResponseTimeStatisticsError400
+ */
+export const zGetAverageResponseTimeStatisticsError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetAverageResponseTimeStatisticsError401
+ */
+export const zGetAverageResponseTimeStatisticsError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetAverageResponseTimeStatisticsError404
+ */
+export const zGetAverageResponseTimeStatisticsError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * GetAverageSessionInteractionStatisticsError400
+ */
+export const zGetAverageSessionInteractionStatisticsError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetAverageSessionInteractionStatisticsError401
+ */
+export const zGetAverageSessionInteractionStatisticsError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetAverageSessionInteractionStatisticsError404
+ */
+export const zGetAverageSessionInteractionStatisticsError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * GetDailyConversationStatisticsError400
+ */
+export const zGetDailyConversationStatisticsError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetDailyConversationStatisticsError401
+ */
+export const zGetDailyConversationStatisticsError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetDailyConversationStatisticsError404
+ */
+export const zGetDailyConversationStatisticsError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * GetDailyTerminalsStatisticsError400
+ */
+export const zGetDailyTerminalsStatisticsError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetDailyTerminalsStatisticsError401
+ */
+export const zGetDailyTerminalsStatisticsError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetDailyTerminalsStatisticsError404
+ */
+export const zGetDailyTerminalsStatisticsError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * GetDailyMessageStatisticsError400
+ */
+export const zGetDailyMessageStatisticsError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetDailyMessageStatisticsError401
+ */
+export const zGetDailyMessageStatisticsError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetDailyMessageStatisticsError404
+ */
+export const zGetDailyMessageStatisticsError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * GetDailyTokenCostStatisticsError400
+ */
+export const zGetDailyTokenCostStatisticsError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetDailyTokenCostStatisticsError401
+ */
+export const zGetDailyTokenCostStatisticsError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetDailyTokenCostStatisticsError404
+ */
+export const zGetDailyTokenCostStatisticsError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * GetTokensPerSecondStatisticsError400
+ */
+export const zGetTokensPerSecondStatisticsError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetTokensPerSecondStatisticsError401
+ */
+export const zGetTokensPerSecondStatisticsError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetTokensPerSecondStatisticsError404
+ */
+export const zGetTokensPerSecondStatisticsError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * GetUserSatisfactionRateStatisticsError400
+ */
+export const zGetUserSatisfactionRateStatisticsError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetUserSatisfactionRateStatisticsError401
+ */
+export const zGetUserSatisfactionRateStatisticsError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetUserSatisfactionRateStatisticsError404
+ */
+export const zGetUserSatisfactionRateStatisticsError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
 
 /**
  * TextToSpeechPayload
@@ -420,6 +2597,117 @@ export const zTextToSpeechPayload = z.object({
 })
 
 /**
+ * ChatMessageTextToSpeechError400
+ */
+export const zChatMessageTextToSpeechError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'account_not_initialized',
+      'app_unavailable',
+      'bad_request',
+      'completion_request_error',
+      'invalid_param',
+      'model_currently_not_support',
+      'no_audio_uploaded',
+      'provider_not_initialize',
+      'provider_not_support_speech_to_text',
+      'provider_quota_exceeded',
+    ]),
+  }),
+)
+
+/**
+ * ChatMessageTextToSpeechError401
+ */
+export const zChatMessageTextToSpeechError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * ChatMessageTextToSpeechError404
+ */
+export const zChatMessageTextToSpeechError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * ChatMessageTextToSpeechError413
+ */
+export const zChatMessageTextToSpeechError413 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['audio_too_large', 'request_entity_too_large']),
+  }),
+)
+
+/**
+ * ChatMessageTextToSpeechError415
+ */
+export const zChatMessageTextToSpeechError415 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['unsupported_audio_type', 'unsupported_media_type']),
+  }),
+)
+
+/**
+ * GetTextToSpeechVoicesError400
+ */
+export const zGetTextToSpeechVoicesError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'account_not_initialized',
+      'bad_request',
+      'completion_request_error',
+      'invalid_param',
+      'model_currently_not_support',
+      'no_audio_uploaded',
+      'provider_not_initialize',
+      'provider_not_support_speech_to_text',
+      'provider_quota_exceeded',
+    ]),
+  }),
+)
+
+/**
+ * GetTextToSpeechVoicesError401
+ */
+export const zGetTextToSpeechVoicesError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetTextToSpeechVoicesError404
+ */
+export const zGetTextToSpeechVoicesError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * GetTextToSpeechVoicesError413
+ */
+export const zGetTextToSpeechVoicesError413 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['audio_too_large', 'request_entity_too_large']),
+  }),
+)
+
+/**
+ * GetTextToSpeechVoicesError415
+ */
+export const zGetTextToSpeechVoicesError415 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['unsupported_audio_type', 'unsupported_media_type']),
+  }),
+)
+
+/**
  * AppTraceResponse
  */
 export const zAppTraceResponse = z.object({
@@ -428,12 +2716,99 @@ export const zAppTraceResponse = z.object({
 })
 
 /**
+ * GetAppTraceError400
+ */
+export const zGetAppTraceError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetAppTraceError401
+ */
+export const zGetAppTraceError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
  * AppTracePayload
  */
 export const zAppTracePayload = z.object({
   enabled: z.boolean(),
   tracing_provider: z.string().nullish(),
 })
+
+/**
+ * UpdateAppTraceError400
+ */
+export const zUpdateAppTraceError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'account_not_initialized',
+      'bad_request',
+      'invalid_param',
+      'tracing_provider_unavailable',
+    ]),
+  }),
+)
+
+/**
+ * UpdateAppTraceError401
+ */
+export const zUpdateAppTraceError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * DeleteTraceAppConfigError400
+ */
+export const zDeleteTraceAppConfigError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'account_not_initialized',
+      'bad_request',
+      'invalid_param',
+      'unsupported_tracing_provider',
+    ]),
+  }),
+)
+
+/**
+ * DeleteTraceAppConfigError401
+ */
+export const zDeleteTraceAppConfigError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * DeleteTraceAppConfigError404
+ */
+export const zDeleteTraceAppConfigError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found', 'trace_config_not_found']),
+  }),
+)
+
+/**
+ * DeleteTraceAppConfigError500
+ */
+export const zDeleteTraceAppConfigError500 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'active_workspace_required',
+      'internal_server_error',
+      'tracing_config_processing_failed',
+      'unknown',
+    ]),
+  }),
+)
 
 /**
  * TraceAppConfigResponse
@@ -452,12 +2827,166 @@ export const zTraceAppConfigResponse = z.object({
 })
 
 /**
+ * GetTraceAppConfigError400
+ */
+export const zGetTraceAppConfigError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'account_not_initialized',
+      'bad_request',
+      'invalid_param',
+      'tracing_provider_unavailable',
+      'unsupported_tracing_provider',
+    ]),
+  }),
+)
+
+/**
+ * GetTraceAppConfigError401
+ */
+export const zGetTraceAppConfigError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetTraceAppConfigError404
+ */
+export const zGetTraceAppConfigError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * GetTraceAppConfigError500
+ */
+export const zGetTraceAppConfigError500 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'active_workspace_required',
+      'internal_server_error',
+      'tracing_config_processing_failed',
+      'unknown',
+    ]),
+  }),
+)
+
+/**
  * TraceConfigPayload
  */
 export const zTraceConfigPayload = z.object({
   tracing_config: z.record(z.string(), z.unknown()),
   tracing_provider: z.string(),
 })
+
+/**
+ * UpdateTraceAppConfigError400
+ */
+export const zUpdateTraceAppConfigError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'account_not_initialized',
+      'bad_request',
+      'invalid_param',
+      'invalid_tracing_config',
+      'tracing_config_verification_failed',
+      'tracing_provider_unavailable',
+      'unsupported_tracing_provider',
+    ]),
+  }),
+)
+
+/**
+ * UpdateTraceAppConfigError401
+ */
+export const zUpdateTraceAppConfigError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * UpdateTraceAppConfigError404
+ */
+export const zUpdateTraceAppConfigError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found', 'trace_config_not_found']),
+  }),
+)
+
+/**
+ * UpdateTraceAppConfigError500
+ */
+export const zUpdateTraceAppConfigError500 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'active_workspace_required',
+      'internal_server_error',
+      'tracing_config_processing_failed',
+      'unknown',
+    ]),
+  }),
+)
+
+/**
+ * CreateTraceAppConfigError400
+ */
+export const zCreateTraceAppConfigError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'account_not_initialized',
+      'bad_request',
+      'invalid_param',
+      'invalid_tracing_config',
+      'tracing_config_verification_failed',
+      'tracing_provider_unavailable',
+      'unsupported_tracing_provider',
+    ]),
+  }),
+)
+
+/**
+ * CreateTraceAppConfigError401
+ */
+export const zCreateTraceAppConfigError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * CreateTraceAppConfigError404
+ */
+export const zCreateTraceAppConfigError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * CreateTraceAppConfigError409
+ */
+export const zCreateTraceAppConfigError409 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['conflict', 'trace_config_already_exists']),
+  }),
+)
+
+/**
+ * CreateTraceAppConfigError500
+ */
+export const zCreateTraceAppConfigError500 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'active_workspace_required',
+      'internal_server_error',
+      'tracing_config_processing_failed',
+      'unknown',
+    ]),
+  }),
+)
 
 /**
  * ParserEnable
@@ -483,11 +3012,277 @@ export const zWorkflowTriggerResponse = z.object({
 })
 
 /**
+ * PostAppTriggerEnableApiError400
+ */
+export const zPostAppTriggerEnableApiError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * PostAppTriggerEnableApiError401
+ */
+export const zPostAppTriggerEnableApiError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * PostAppTriggerEnableApiError404
+ */
+export const zPostAppTriggerEnableApiError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
  * WorkflowTriggerListResponse
  */
 export const zWorkflowTriggerListResponse = z.object({
   data: z.array(zWorkflowTriggerResponse),
 })
+
+/**
+ * GetAppTriggersApiError400
+ */
+export const zGetAppTriggersApiError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetAppTriggersApiError401
+ */
+export const zGetAppTriggersApiError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetAppTriggersApiError404
+ */
+export const zGetAppTriggersApiError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * GetWorkflowAppLogsError400
+ */
+export const zGetWorkflowAppLogsError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetWorkflowAppLogsError401
+ */
+export const zGetWorkflowAppLogsError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetWorkflowAppLogsError404
+ */
+export const zGetWorkflowAppLogsError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * GetWorkflowRunsError400
+ */
+export const zGetWorkflowRunsError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetWorkflowRunsError401
+ */
+export const zGetWorkflowRunsError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetWorkflowRunsError404
+ */
+export const zGetWorkflowRunsError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * GetWorkflowRunsCountError400
+ */
+export const zGetWorkflowRunsCountError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetWorkflowRunsCountError401
+ */
+export const zGetWorkflowRunsCountError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetWorkflowRunsCountError404
+ */
+export const zGetWorkflowRunsCountError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * StopWorkflowTaskError400
+ */
+export const zStopWorkflowTaskError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * StopWorkflowTaskError401
+ */
+export const zStopWorkflowTaskError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * StopWorkflowTaskError404
+ */
+export const zStopWorkflowTaskError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * GetWorkflowRunDetailError400
+ */
+export const zGetWorkflowRunDetailError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetWorkflowRunDetailError401
+ */
+export const zGetWorkflowRunDetailError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetWorkflowRunDetailError404
+ */
+export const zGetWorkflowRunDetailError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * GetWorkflowRunNodeExecutionsError400
+ */
+export const zGetWorkflowRunNodeExecutionsError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetWorkflowRunNodeExecutionsError401
+ */
+export const zGetWorkflowRunNodeExecutionsError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetWorkflowRunNodeExecutionsError404
+ */
+export const zGetWorkflowRunNodeExecutionsError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * ListWorkflowAgentSandboxFilesError400
+ */
+export const zListWorkflowAgentSandboxFilesError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * ListWorkflowAgentSandboxFilesError401
+ */
+export const zListWorkflowAgentSandboxFilesError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * ListWorkflowAgentSandboxFilesError404
+ */
+export const zListWorkflowAgentSandboxFilesError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['agent_not_found_error', 'app_not_found', 'no_active_binding', 'not_found']),
+  }),
+)
+
+/**
+ * ListWorkflowAgentSandboxFilesError502
+ */
+export const zListWorkflowAgentSandboxFilesError502 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'agent_backend_unreachable',
+      'bad_gateway',
+      'binding_file_download_unavailable',
+      'plugin_runtime_error',
+    ]),
+  }),
+)
+
+/**
+ * ListWorkflowAgentSandboxFilesError503
+ */
+export const zListWorkflowAgentSandboxFilesError503 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['inspector_unavailable', 'service_unavailable']),
+  }),
+)
 
 /**
  * WorkflowAgentSandboxDownloadPayload
@@ -505,6 +3300,56 @@ export const zSandboxDownloadResponse = z.object({
 })
 
 /**
+ * DownloadWorkflowAgentSandboxFileError400
+ */
+export const zDownloadWorkflowAgentSandboxFileError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * DownloadWorkflowAgentSandboxFileError401
+ */
+export const zDownloadWorkflowAgentSandboxFileError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * DownloadWorkflowAgentSandboxFileError404
+ */
+export const zDownloadWorkflowAgentSandboxFileError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['agent_not_found_error', 'app_not_found', 'no_active_binding', 'not_found']),
+  }),
+)
+
+/**
+ * DownloadWorkflowAgentSandboxFileError502
+ */
+export const zDownloadWorkflowAgentSandboxFileError502 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'agent_backend_unreachable',
+      'bad_gateway',
+      'binding_file_download_unavailable',
+      'plugin_runtime_error',
+    ]),
+  }),
+)
+
+/**
+ * DownloadWorkflowAgentSandboxFileError503
+ */
+export const zDownloadWorkflowAgentSandboxFileError503 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['inspector_unavailable', 'service_unavailable']),
+  }),
+)
+
+/**
  * SandboxReadResponse
  */
 export const zSandboxReadResponse = z.object({
@@ -514,6 +3359,74 @@ export const zSandboxReadResponse = z.object({
   text: z.string().nullish(),
   truncated: z.boolean(),
 })
+
+/**
+ * ReadWorkflowAgentSandboxFileError400
+ */
+export const zReadWorkflowAgentSandboxFileError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * ReadWorkflowAgentSandboxFileError401
+ */
+export const zReadWorkflowAgentSandboxFileError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * ReadWorkflowAgentSandboxFileError404
+ */
+export const zReadWorkflowAgentSandboxFileError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['agent_not_found_error', 'app_not_found', 'no_active_binding', 'not_found']),
+  }),
+)
+
+/**
+ * ReadWorkflowAgentSandboxFileError502
+ */
+export const zReadWorkflowAgentSandboxFileError502 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'agent_backend_unreachable',
+      'bad_gateway',
+      'binding_file_download_unavailable',
+      'plugin_runtime_error',
+    ]),
+  }),
+)
+
+/**
+ * ReadWorkflowAgentSandboxFileError503
+ */
+export const zReadWorkflowAgentSandboxFileError503 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['inspector_unavailable', 'service_unavailable']),
+  }),
+)
+
+/**
+ * ListWorkflowCommentsError400
+ */
+export const zListWorkflowCommentsError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * ListWorkflowCommentsError401
+ */
+export const zListWorkflowCommentsError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
 
 /**
  * WorkflowCommentCreatePayload
@@ -534,6 +3447,78 @@ export const zWorkflowCommentCreate = z.object({
 })
 
 /**
+ * CreateWorkflowCommentError400
+ */
+export const zCreateWorkflowCommentError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * CreateWorkflowCommentError401
+ */
+export const zCreateWorkflowCommentError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * WorkflowCommentMentionUsersError400
+ */
+export const zWorkflowCommentMentionUsersError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * WorkflowCommentMentionUsersError401
+ */
+export const zWorkflowCommentMentionUsersError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * DeleteWorkflowCommentError400
+ */
+export const zDeleteWorkflowCommentError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * DeleteWorkflowCommentError401
+ */
+export const zDeleteWorkflowCommentError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetWorkflowCommentError400
+ */
+export const zGetWorkflowCommentError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetWorkflowCommentError401
+ */
+export const zGetWorkflowCommentError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
  * WorkflowCommentUpdatePayload
  */
 export const zWorkflowCommentUpdatePayload = z.object({
@@ -552,6 +3537,24 @@ export const zWorkflowCommentUpdate = z.object({
 })
 
 /**
+ * UpdateWorkflowCommentError400
+ */
+export const zUpdateWorkflowCommentError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * UpdateWorkflowCommentError401
+ */
+export const zUpdateWorkflowCommentError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
  * WorkflowCommentReplyPayload
  */
 export const zWorkflowCommentReplyPayload = z.object({
@@ -568,12 +3571,66 @@ export const zWorkflowCommentReplyCreate = z.object({
 })
 
 /**
+ * CreateWorkflowCommentReplyError400
+ */
+export const zCreateWorkflowCommentReplyError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * CreateWorkflowCommentReplyError401
+ */
+export const zCreateWorkflowCommentReplyError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * DeleteWorkflowCommentReplyError400
+ */
+export const zDeleteWorkflowCommentReplyError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * DeleteWorkflowCommentReplyError401
+ */
+export const zDeleteWorkflowCommentReplyError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
  * WorkflowCommentReplyUpdate
  */
 export const zWorkflowCommentReplyUpdate = z.object({
   id: z.string(),
   updated_at: z.int().nullish(),
 })
+
+/**
+ * UpdateWorkflowCommentReplyError400
+ */
+export const zUpdateWorkflowCommentReplyError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * UpdateWorkflowCommentReplyError401
+ */
+export const zUpdateWorkflowCommentReplyError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
 
 /**
  * WorkflowCommentResolve
@@ -586,14 +3643,248 @@ export const zWorkflowCommentResolve = z.object({
 })
 
 /**
+ * ResolveWorkflowCommentError400
+ */
+export const zResolveWorkflowCommentError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * ResolveWorkflowCommentError401
+ */
+export const zResolveWorkflowCommentError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetWorkflowAverageAppInteractionStatisticError400
+ */
+export const zGetWorkflowAverageAppInteractionStatisticError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetWorkflowAverageAppInteractionStatisticError401
+ */
+export const zGetWorkflowAverageAppInteractionStatisticError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetWorkflowAverageAppInteractionStatisticError404
+ */
+export const zGetWorkflowAverageAppInteractionStatisticError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * GetWorkflowDailyRunsStatisticError400
+ */
+export const zGetWorkflowDailyRunsStatisticError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetWorkflowDailyRunsStatisticError401
+ */
+export const zGetWorkflowDailyRunsStatisticError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetWorkflowDailyRunsStatisticError404
+ */
+export const zGetWorkflowDailyRunsStatisticError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * GetWorkflowDailyTerminalsStatisticError400
+ */
+export const zGetWorkflowDailyTerminalsStatisticError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetWorkflowDailyTerminalsStatisticError401
+ */
+export const zGetWorkflowDailyTerminalsStatisticError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetWorkflowDailyTerminalsStatisticError404
+ */
+export const zGetWorkflowDailyTerminalsStatisticError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * GetWorkflowDailyTokenCostStatisticError400
+ */
+export const zGetWorkflowDailyTokenCostStatisticError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetWorkflowDailyTokenCostStatisticError401
+ */
+export const zGetWorkflowDailyTokenCostStatisticError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetWorkflowDailyTokenCostStatisticError404
+ */
+export const zGetWorkflowDailyTokenCostStatisticError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * GetAllPublishedWorkflowsError400
+ */
+export const zGetAllPublishedWorkflowsError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetAllPublishedWorkflowsError401
+ */
+export const zGetAllPublishedWorkflowsError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetAllPublishedWorkflowsError404
+ */
+export const zGetAllPublishedWorkflowsError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
  * DefaultBlockConfigsResponse
  */
 export const zDefaultBlockConfigsResponse = z.array(z.record(z.string(), z.unknown()))
 
 /**
+ * GetDefaultBlockConfigsError400
+ */
+export const zGetDefaultBlockConfigsError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetDefaultBlockConfigsError401
+ */
+export const zGetDefaultBlockConfigsError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetDefaultBlockConfigsError404
+ */
+export const zGetDefaultBlockConfigsError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
  * DefaultBlockConfigResponse
  */
 export const zDefaultBlockConfigResponse = z.record(z.string(), z.unknown())
+
+/**
+ * GetDefaultBlockConfigError400
+ */
+export const zGetDefaultBlockConfigError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetDefaultBlockConfigError401
+ */
+export const zGetDefaultBlockConfigError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetDefaultBlockConfigError404
+ */
+export const zGetDefaultBlockConfigError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * GetDraftWorkflowError400
+ */
+export const zGetDraftWorkflowError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetDraftWorkflowError401
+ */
+export const zGetDraftWorkflowError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetDraftWorkflowError404
+ */
+export const zGetDraftWorkflowError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'draft_workflow_not_exist', 'not_found']),
+  }),
+)
 
 /**
  * SyncDraftWorkflowResponse
@@ -603,6 +3894,177 @@ export const zSyncDraftWorkflowResponse = z.object({
   result: z.string(),
   updated_at: z.int(),
 })
+
+/**
+ * SyncDraftWorkflowError400
+ */
+export const zSyncDraftWorkflowError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * SyncDraftWorkflowError401
+ */
+export const zSyncDraftWorkflowError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * SyncDraftWorkflowError404
+ */
+export const zSyncDraftWorkflowError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * SyncDraftWorkflowError409
+ */
+export const zSyncDraftWorkflowError409 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['conflict', 'draft_workflow_not_sync']),
+  }),
+)
+
+/**
+ * GetConversationVariablesA709b7a1Error400
+ */
+export const zGetConversationVariablesA709B7A1Error400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetConversationVariablesA709b7a1Error401
+ */
+export const zGetConversationVariablesA709B7A1Error401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetConversationVariablesA709b7a1Error404
+ */
+export const zGetConversationVariablesA709B7A1Error404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * UpdateConversationVariablesError400
+ */
+export const zUpdateConversationVariablesError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * UpdateConversationVariablesError401
+ */
+export const zUpdateConversationVariablesError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * UpdateConversationVariablesError404
+ */
+export const zUpdateConversationVariablesError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * GetEnvironmentVariablesError400
+ */
+export const zGetEnvironmentVariablesError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetEnvironmentVariablesError401
+ */
+export const zGetEnvironmentVariablesError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetEnvironmentVariablesError404
+ */
+export const zGetEnvironmentVariablesError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'draft_workflow_not_exist', 'not_found']),
+  }),
+)
+
+/**
+ * UpdateEnvironmentVariablesError400
+ */
+export const zUpdateEnvironmentVariablesError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * UpdateEnvironmentVariablesError401
+ */
+export const zUpdateEnvironmentVariablesError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * UpdateEnvironmentVariablesError404
+ */
+export const zUpdateEnvironmentVariablesError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * UpdateWorkflowFeaturesError400
+ */
+export const zUpdateWorkflowFeaturesError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * UpdateWorkflowFeaturesError401
+ */
+export const zUpdateWorkflowFeaturesError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * UpdateWorkflowFeaturesError404
+ */
+export const zUpdateWorkflowFeaturesError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
 
 /**
  * HumanInputDeliveryTestPayload
@@ -618,6 +4080,233 @@ export const zHumanInputDeliveryTestPayload = z.object({
 export const zEmptyObjectResponse = z.record(z.string(), z.unknown())
 
 /**
+ * TestWorkflowDraftHumanInputDeliveryError400
+ */
+export const zTestWorkflowDraftHumanInputDeliveryError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * TestWorkflowDraftHumanInputDeliveryError401
+ */
+export const zTestWorkflowDraftHumanInputDeliveryError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * TestWorkflowDraftHumanInputDeliveryError404
+ */
+export const zTestWorkflowDraftHumanInputDeliveryError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * GetWorkflowDraftHumanInputFormError400
+ */
+export const zGetWorkflowDraftHumanInputFormError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetWorkflowDraftHumanInputFormError401
+ */
+export const zGetWorkflowDraftHumanInputFormError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetWorkflowDraftHumanInputFormError404
+ */
+export const zGetWorkflowDraftHumanInputFormError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * SubmitWorkflowDraftHumanInputFormError400
+ */
+export const zSubmitWorkflowDraftHumanInputFormError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * SubmitWorkflowDraftHumanInputFormError401
+ */
+export const zSubmitWorkflowDraftHumanInputFormError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * SubmitWorkflowDraftHumanInputFormError404
+ */
+export const zSubmitWorkflowDraftHumanInputFormError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * RunWorkflowDraftIterationNodeError400
+ */
+export const zRunWorkflowDraftIterationNodeError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * RunWorkflowDraftIterationNodeError401
+ */
+export const zRunWorkflowDraftIterationNodeError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * RunWorkflowDraftIterationNodeError404
+ */
+export const zRunWorkflowDraftIterationNodeError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * RunWorkflowDraftLoopNodeError400
+ */
+export const zRunWorkflowDraftLoopNodeError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * RunWorkflowDraftLoopNodeError401
+ */
+export const zRunWorkflowDraftLoopNodeError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * RunWorkflowDraftLoopNodeError404
+ */
+export const zRunWorkflowDraftLoopNodeError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * GetWorkflowAgentComposerApiError400
+ */
+export const zGetWorkflowAgentComposerApiError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetWorkflowAgentComposerApiError401
+ */
+export const zGetWorkflowAgentComposerApiError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetWorkflowAgentComposerApiError404
+ */
+export const zGetWorkflowAgentComposerApiError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['agent_version_not_found_error', 'app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * PutWorkflowAgentComposerApiError400
+ */
+export const zPutWorkflowAgentComposerApiError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'account_not_initialized',
+      'agent_soul_locked_error',
+      'bad_request',
+      'invalid_composer_config_error',
+      'invalid_param',
+    ]),
+  }),
+)
+
+/**
+ * PutWorkflowAgentComposerApiError401
+ */
+export const zPutWorkflowAgentComposerApiError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * PutWorkflowAgentComposerApiError404
+ */
+export const zPutWorkflowAgentComposerApiError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'agent_not_found_error',
+      'agent_version_not_found_error',
+      'app_not_found',
+      'not_found',
+    ]),
+  }),
+)
+
+/**
+ * GetWorkflowAgentComposerCandidatesApiError400
+ */
+export const zGetWorkflowAgentComposerCandidatesApiError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetWorkflowAgentComposerCandidatesApiError401
+ */
+export const zGetWorkflowAgentComposerCandidatesApiError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetWorkflowAgentComposerCandidatesApiError404
+ */
+export const zGetWorkflowAgentComposerCandidatesApiError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
  * WorkflowComposerCopyFromRosterPayload
  */
 export const zWorkflowComposerCopyFromRosterPayload = z.object({
@@ -627,6 +4316,176 @@ export const zWorkflowComposerCopyFromRosterPayload = z.object({
 })
 
 /**
+ * PostWorkflowAgentComposerCopyFromRosterApiError400
+ */
+export const zPostWorkflowAgentComposerCopyFromRosterApiError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'account_not_initialized',
+      'bad_request',
+      'invalid_composer_config_error',
+      'invalid_param',
+    ]),
+  }),
+)
+
+/**
+ * PostWorkflowAgentComposerCopyFromRosterApiError401
+ */
+export const zPostWorkflowAgentComposerCopyFromRosterApiError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * PostWorkflowAgentComposerCopyFromRosterApiError404
+ */
+export const zPostWorkflowAgentComposerCopyFromRosterApiError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'agent_not_found_error',
+      'agent_version_not_found_error',
+      'app_not_found',
+      'not_found',
+    ]),
+  }),
+)
+
+/**
+ * PostWorkflowAgentComposerCopyFromRosterApiError409
+ */
+export const zPostWorkflowAgentComposerCopyFromRosterApiError409 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['agent_version_conflict_error', 'conflict']),
+  }),
+)
+
+/**
+ * PostWorkflowAgentComposerImpactApiError400
+ */
+export const zPostWorkflowAgentComposerImpactApiError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * PostWorkflowAgentComposerImpactApiError401
+ */
+export const zPostWorkflowAgentComposerImpactApiError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * PostWorkflowAgentComposerImpactApiError404
+ */
+export const zPostWorkflowAgentComposerImpactApiError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * PostWorkflowAgentComposerSaveToRosterApiError400
+ */
+export const zPostWorkflowAgentComposerSaveToRosterApiError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'account_not_initialized',
+      'agent_soul_locked_error',
+      'bad_request',
+      'invalid_composer_config_error',
+      'invalid_param',
+    ]),
+  }),
+)
+
+/**
+ * PostWorkflowAgentComposerSaveToRosterApiError401
+ */
+export const zPostWorkflowAgentComposerSaveToRosterApiError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * PostWorkflowAgentComposerSaveToRosterApiError404
+ */
+export const zPostWorkflowAgentComposerSaveToRosterApiError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'agent_not_found_error',
+      'agent_version_not_found_error',
+      'app_not_found',
+      'not_found',
+    ]),
+  }),
+)
+
+/**
+ * PostWorkflowAgentComposerValidateApiError400
+ */
+export const zPostWorkflowAgentComposerValidateApiError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum([
+      'account_not_initialized',
+      'bad_request',
+      'invalid_composer_config_error',
+      'invalid_param',
+    ]),
+  }),
+)
+
+/**
+ * PostWorkflowAgentComposerValidateApiError401
+ */
+export const zPostWorkflowAgentComposerValidateApiError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * PostWorkflowAgentComposerValidateApiError404
+ */
+export const zPostWorkflowAgentComposerValidateApiError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * GetDraftWorkflowNodeLastRunError400
+ */
+export const zGetDraftWorkflowNodeLastRunError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetDraftWorkflowNodeLastRunError401
+ */
+export const zGetDraftWorkflowNodeLastRunError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetDraftWorkflowNodeLastRunError404
+ */
+export const zGetDraftWorkflowNodeLastRunError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
  * DraftWorkflowNodeRunPayload
  */
 export const zDraftWorkflowNodeRunPayload = z.object({
@@ -634,6 +4493,33 @@ export const zDraftWorkflowNodeRunPayload = z.object({
   inputs: z.record(z.string(), z.unknown()),
   query: z.string().optional().default(''),
 })
+
+/**
+ * RunDraftWorkflowNodeError400
+ */
+export const zRunDraftWorkflowNodeError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * RunDraftWorkflowNodeError401
+ */
+export const zRunDraftWorkflowNodeError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * RunDraftWorkflowNodeError404
+ */
+export const zRunDraftWorkflowNodeError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
 
 /**
  * WorkflowTriggerRunErrorResponse
@@ -646,6 +4532,87 @@ export const zWorkflowTriggerRunErrorResponse = z.object({
 })
 
 /**
+ * PollDraftWorkflowTriggerNodeError400
+ */
+export const zPollDraftWorkflowTriggerNodeError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * PollDraftWorkflowTriggerNodeError401
+ */
+export const zPollDraftWorkflowTriggerNodeError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * PollDraftWorkflowTriggerNodeError404
+ */
+export const zPollDraftWorkflowTriggerNodeError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * DeleteNodeVariablesError400
+ */
+export const zDeleteNodeVariablesError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * DeleteNodeVariablesError401
+ */
+export const zDeleteNodeVariablesError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * DeleteNodeVariablesError404
+ */
+export const zDeleteNodeVariablesError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * GetNodeVariablesError400
+ */
+export const zGetNodeVariablesError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetNodeVariablesError401
+ */
+export const zGetNodeVariablesError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetNodeVariablesError404
+ */
+export const zGetNodeVariablesError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
  * DraftWorkflowRunPayload
  */
 export const zDraftWorkflowRunPayload = z.object({
@@ -656,9 +4623,180 @@ export const zDraftWorkflowRunPayload = z.object({
 })
 
 /**
+ * RunDraftWorkflowError400
+ */
+export const zRunDraftWorkflowError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * RunDraftWorkflowError401
+ */
+export const zRunDraftWorkflowError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * RunDraftWorkflowError404
+ */
+export const zRunDraftWorkflowError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * RunDraftWorkflowError429
+ */
+export const zRunDraftWorkflowError429 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['rate_limit_error', 'too_many_requests']),
+  }),
+)
+
+/**
+ * GetWorkflowDraftRunNodeOutputsError400
+ */
+export const zGetWorkflowDraftRunNodeOutputsError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetWorkflowDraftRunNodeOutputsError401
+ */
+export const zGetWorkflowDraftRunNodeOutputsError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetWorkflowDraftRunNodeOutputsError404
+ */
+export const zGetWorkflowDraftRunNodeOutputsError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found', 'unknown']),
+  }),
+)
+
+/**
  * EventStreamResponse
  */
 export const zEventStreamResponse = z.string()
+
+/**
+ * StreamWorkflowDraftRunNodeOutputEventsError400
+ */
+export const zStreamWorkflowDraftRunNodeOutputEventsError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * StreamWorkflowDraftRunNodeOutputEventsError401
+ */
+export const zStreamWorkflowDraftRunNodeOutputEventsError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * StreamWorkflowDraftRunNodeOutputEventsError404
+ */
+export const zStreamWorkflowDraftRunNodeOutputEventsError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found', 'unknown']),
+  }),
+)
+
+/**
+ * GetWorkflowDraftRunNodeOutputDetailError400
+ */
+export const zGetWorkflowDraftRunNodeOutputDetailError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetWorkflowDraftRunNodeOutputDetailError401
+ */
+export const zGetWorkflowDraftRunNodeOutputDetailError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetWorkflowDraftRunNodeOutputDetailError404
+ */
+export const zGetWorkflowDraftRunNodeOutputDetailError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found', 'unknown']),
+  }),
+)
+
+/**
+ * GetWorkflowDraftRunNodeOutputPreviewError400
+ */
+export const zGetWorkflowDraftRunNodeOutputPreviewError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetWorkflowDraftRunNodeOutputPreviewError401
+ */
+export const zGetWorkflowDraftRunNodeOutputPreviewError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetWorkflowDraftRunNodeOutputPreviewError404
+ */
+export const zGetWorkflowDraftRunNodeOutputPreviewError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found', 'unknown']),
+  }),
+)
+
+/**
+ * GetSystemVariablesError400
+ */
+export const zGetSystemVariablesError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetSystemVariablesError401
+ */
+export const zGetSystemVariablesError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetSystemVariablesError404
+ */
+export const zGetSystemVariablesError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
 
 /**
  * DraftWorkflowTriggerRunPayload
@@ -668,11 +4806,191 @@ export const zDraftWorkflowTriggerRunPayload = z.object({
 })
 
 /**
+ * PollDraftWorkflowTriggerRunError400
+ */
+export const zPollDraftWorkflowTriggerRunError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * PollDraftWorkflowTriggerRunError401
+ */
+export const zPollDraftWorkflowTriggerRunError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * PollDraftWorkflowTriggerRunError404
+ */
+export const zPollDraftWorkflowTriggerRunError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * PollDraftWorkflowTriggerRunError429
+ */
+export const zPollDraftWorkflowTriggerRunError429 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['rate_limit_error', 'too_many_requests']),
+  }),
+)
+
+/**
  * DraftWorkflowTriggerRunAllPayload
  */
 export const zDraftWorkflowTriggerRunAllPayload = z.object({
   node_ids: z.array(z.string()),
 })
+
+/**
+ * DraftWorkflowTriggerRunAllError400
+ */
+export const zDraftWorkflowTriggerRunAllError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * DraftWorkflowTriggerRunAllError401
+ */
+export const zDraftWorkflowTriggerRunAllError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * DraftWorkflowTriggerRunAllError404
+ */
+export const zDraftWorkflowTriggerRunAllError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * DraftWorkflowTriggerRunAllError429
+ */
+export const zDraftWorkflowTriggerRunAllError429 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['rate_limit_error', 'too_many_requests']),
+  }),
+)
+
+/**
+ * DeleteWorkflowVariablesError400
+ */
+export const zDeleteWorkflowVariablesError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * DeleteWorkflowVariablesError401
+ */
+export const zDeleteWorkflowVariablesError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * DeleteWorkflowVariablesError404
+ */
+export const zDeleteWorkflowVariablesError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * GetWorkflowVariablesError400
+ */
+export const zGetWorkflowVariablesError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetWorkflowVariablesError401
+ */
+export const zGetWorkflowVariablesError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetWorkflowVariablesError404
+ */
+export const zGetWorkflowVariablesError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'draft_workflow_not_exist', 'not_found']),
+  }),
+)
+
+/**
+ * DeleteVariableError400
+ */
+export const zDeleteVariableError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * DeleteVariableError401
+ */
+export const zDeleteVariableError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * DeleteVariableError404
+ */
+export const zDeleteVariableError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * GetVariableError400
+ */
+export const zGetVariableError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetVariableError401
+ */
+export const zGetVariableError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetVariableError404
+ */
+export const zGetVariableError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
 
 /**
  * WorkflowDraftVariableUpdatePayload
@@ -681,6 +4999,87 @@ export const zWorkflowDraftVariableUpdatePayload = z.object({
   name: z.string().nullish(),
   value: z.unknown().nullish(),
 })
+
+/**
+ * UpdateVariableError400
+ */
+export const zUpdateVariableError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * UpdateVariableError401
+ */
+export const zUpdateVariableError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * UpdateVariableError404
+ */
+export const zUpdateVariableError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * ResetVariableError400
+ */
+export const zResetVariableError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * ResetVariableError401
+ */
+export const zResetVariableError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * ResetVariableError404
+ */
+export const zResetVariableError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * GetPublishedWorkflowError400
+ */
+export const zGetPublishedWorkflowError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetPublishedWorkflowError401
+ */
+export const zGetPublishedWorkflowError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetPublishedWorkflowError404
+ */
+export const zGetPublishedWorkflowError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
 
 /**
  * PublishWorkflowPayload
@@ -703,6 +5102,141 @@ export const zWorkflowPublishResponse = z.object({
 })
 
 /**
+ * PostPublishedWorkflowApiError400
+ */
+export const zPostPublishedWorkflowApiError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * PostPublishedWorkflowApiError401
+ */
+export const zPostPublishedWorkflowApiError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * PostPublishedWorkflowApiError404
+ */
+export const zPostPublishedWorkflowApiError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * GetWorkflowPublishedRunNodeOutputsError400
+ */
+export const zGetWorkflowPublishedRunNodeOutputsError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetWorkflowPublishedRunNodeOutputsError401
+ */
+export const zGetWorkflowPublishedRunNodeOutputsError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetWorkflowPublishedRunNodeOutputsError404
+ */
+export const zGetWorkflowPublishedRunNodeOutputsError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found', 'unknown']),
+  }),
+)
+
+/**
+ * StreamWorkflowPublishedRunNodeOutputEventsError400
+ */
+export const zStreamWorkflowPublishedRunNodeOutputEventsError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * StreamWorkflowPublishedRunNodeOutputEventsError401
+ */
+export const zStreamWorkflowPublishedRunNodeOutputEventsError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * StreamWorkflowPublishedRunNodeOutputEventsError404
+ */
+export const zStreamWorkflowPublishedRunNodeOutputEventsError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found', 'unknown']),
+  }),
+)
+
+/**
+ * GetWorkflowPublishedRunNodeOutputDetailError400
+ */
+export const zGetWorkflowPublishedRunNodeOutputDetailError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetWorkflowPublishedRunNodeOutputDetailError401
+ */
+export const zGetWorkflowPublishedRunNodeOutputDetailError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetWorkflowPublishedRunNodeOutputDetailError404
+ */
+export const zGetWorkflowPublishedRunNodeOutputDetailError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found', 'unknown']),
+  }),
+)
+
+/**
+ * GetWorkflowPublishedRunNodeOutputPreviewError400
+ */
+export const zGetWorkflowPublishedRunNodeOutputPreviewError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetWorkflowPublishedRunNodeOutputPreviewError401
+ */
+export const zGetWorkflowPublishedRunNodeOutputPreviewError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetWorkflowPublishedRunNodeOutputPreviewError404
+ */
+export const zGetWorkflowPublishedRunNodeOutputPreviewError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found', 'unknown']),
+  }),
+)
+
+/**
  * WebhookTriggerResponse
  */
 export const zWebhookTriggerResponse = z.object({
@@ -715,12 +5249,93 @@ export const zWebhookTriggerResponse = z.object({
 })
 
 /**
+ * GetWebhookTriggerApiError400
+ */
+export const zGetWebhookTriggerApiError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetWebhookTriggerApiError401
+ */
+export const zGetWebhookTriggerApiError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetWebhookTriggerApiError404
+ */
+export const zGetWebhookTriggerApiError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * DeleteWorkflowByIdApiError400
+ */
+export const zDeleteWorkflowByIdApiError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * DeleteWorkflowByIdApiError401
+ */
+export const zDeleteWorkflowByIdApiError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * DeleteWorkflowByIdApiError404
+ */
+export const zDeleteWorkflowByIdApiError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
  * WorkflowUpdatePayload
  */
 export const zWorkflowUpdatePayload = z.object({
   marked_comment: z.string().max(100).nullish(),
   marked_name: z.string().max(20).nullish(),
 })
+
+/**
+ * UpdateWorkflowByIdError400
+ */
+export const zUpdateWorkflowByIdError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * UpdateWorkflowByIdError401
+ */
+export const zUpdateWorkflowByIdError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * UpdateWorkflowByIdError404
+ */
+export const zUpdateWorkflowByIdError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
 
 /**
  * WorkflowRestoreResponse
@@ -730,6 +5345,51 @@ export const zWorkflowRestoreResponse = z.object({
   result: z.string(),
   updated_at: z.int(),
 })
+
+/**
+ * RestoreWorkflowToDraftError400
+ */
+export const zRestoreWorkflowToDraftError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * RestoreWorkflowToDraftError401
+ */
+export const zRestoreWorkflowToDraftError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * RestoreWorkflowToDraftError404
+ */
+export const zRestoreWorkflowToDraftError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['app_not_found', 'not_found']),
+  }),
+)
+
+/**
+ * GetAppApiKeysError400
+ */
+export const zGetAppApiKeysError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetAppApiKeysError401
+ */
+export const zGetAppApiKeysError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
 
 /**
  * ApiKeyItem
@@ -749,6 +5409,42 @@ export const zApiKeyItem = z.object({
 export const zApiKeyList = z.object({
   data: z.array(zApiKeyItem),
 })
+
+/**
+ * CreateAppApiKeyError400
+ */
+export const zCreateAppApiKeyError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * CreateAppApiKeyError401
+ */
+export const zCreateAppApiKeyError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * DeleteAppApiKeyError400
+ */
+export const zDeleteAppApiKeyError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * DeleteAppApiKeyError401
+ */
+export const zDeleteAppApiKeyError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
 
 /**
  * IconType

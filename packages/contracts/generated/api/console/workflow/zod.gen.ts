@@ -24,6 +24,51 @@ export const zErrorResponse = z.object({
 })
 
 /**
+ * GetConsoleWorkflowEventsApiError400
+ */
+export const zGetConsoleWorkflowEventsApiError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetConsoleWorkflowEventsApiError404
+ */
+export const zGetConsoleWorkflowEventsApiError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_found']),
+  }),
+)
+
+/**
+ * GetWorkflowPauseDetailsError400
+ */
+export const zGetWorkflowPauseDetailsError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetWorkflowPauseDetailsError401
+ */
+export const zGetWorkflowPauseDetailsError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
+/**
+ * GetWorkflowPauseDetailsError404
+ */
+export const zGetWorkflowPauseDetailsError404 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_found']),
+  }),
+)
+
+/**
  * HumanInputPauseTypeResponse
  */
 export const zHumanInputPauseTypeResponse = z.object({

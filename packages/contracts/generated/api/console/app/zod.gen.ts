@@ -26,6 +26,24 @@ export const zErrorResponse = z.object({
   status: z.int(),
 })
 
+/**
+ * GetAdvancedPromptTemplatesError400
+ */
+export const zGetAdvancedPromptTemplatesError400 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['account_not_initialized', 'bad_request', 'invalid_param']),
+  }),
+)
+
+/**
+ * GetAdvancedPromptTemplatesError401
+ */
+export const zGetAdvancedPromptTemplatesError401 = zErrorResponse.and(
+  z.object({
+    code: z.enum(['not_init_validated', 'not_setup', 'unauthorized']),
+  }),
+)
+
 export const zGetAppPromptTemplatesQuery = z.object({
   app_mode: z.string(),
   has_context: z.string().optional().default('true'),
