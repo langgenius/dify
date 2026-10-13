@@ -11,6 +11,9 @@ import type {
 } from './routes'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Field, FieldItem } from '@langgenius/dify-ui/field'
+import { Fieldset, FieldsetLegend } from '@langgenius/dify-ui/fieldset'
+import { Radio, RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { useRefWithInit } from '@langgenius/dify-ui/use-ref-with-init'
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
@@ -133,35 +136,40 @@ function SourceTypeSelector({
   ]
 
   return (
-    <fieldset>
-      <legend className="mb-1.5 system-xs-medium text-text-secondary">
-        {t(($) => $['newKnowledge.sourceTypeLabel'])}
-      </legend>
-      <div className="grid grid-cols-1 gap-0.5 rounded-lg bg-background-section p-0.5 sm:grid-cols-3">
-        {options.map((option) => (
-          <label
-            key={option.key}
-            className={cn(
-              'relative flex h-8 items-center justify-center gap-1.5 rounded-md system-xs-medium outline-hidden has-focus-visible:ring-2 has-focus-visible:ring-state-accent-solid',
-              value === option.key
-                ? 'bg-background-default text-text-primary shadow-xs'
-                : 'cursor-pointer text-text-tertiary hover:text-text-secondary',
-            )}
-          >
-            <input
-              type="radio"
-              name="source-type"
-              value={option.key}
-              checked={value === option.key}
-              onChange={() => onChange(option.key)}
-              className="sr-only"
-            />
-            <span aria-hidden className={`${option.icon} size-4`} />
-            {t(($) => $[`newKnowledge.${option.key}`])}
-          </label>
-        ))}
-      </div>
-    </fieldset>
+    <Field className="contents">
+      <Fieldset
+        render={
+          <RadioGroup<SourceType>
+            name="source-type"
+            value={value}
+            onValueChange={onChange}
+            className="block"
+          />
+        }
+      >
+        <FieldsetLegend className="mb-1.5 py-0 system-xs-medium text-text-secondary">
+          {t(($) => $['newKnowledge.sourceTypeLabel'])}
+        </FieldsetLegend>
+        <div className="grid grid-cols-1 gap-0.5 rounded-lg bg-background-section p-0.5 sm:grid-cols-3">
+          {options.map((option) => (
+            <FieldItem key={option.key} className="contents">
+              <label
+                className={cn(
+                  'relative flex h-8 items-center justify-center gap-1.5 rounded-md system-xs-medium outline-hidden has-focus-visible:ring-2 has-focus-visible:ring-state-accent-solid',
+                  value === option.key
+                    ? 'bg-background-default text-text-primary shadow-xs'
+                    : 'cursor-pointer text-text-tertiary hover:text-text-secondary',
+                )}
+              >
+                <Radio value={option.key} className="sr-only" />
+                <span aria-hidden className={`${option.icon} size-4`} />
+                {t(($) => $[`newKnowledge.${option.key}`])}
+              </label>
+            </FieldItem>
+          ))}
+        </div>
+      </Fieldset>
+    </Field>
   )
 }
 
@@ -175,35 +183,40 @@ function ProviderSelector({
   const { t } = useTranslation(['datasetCreation'])
 
   return (
-    <fieldset>
-      <legend className="mb-1.5 system-xs-medium text-text-secondary">
-        {t(($) => $['stepOne.website.chooseProvider'])}
-      </legend>
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        {WEBSITE_PROVIDER_OPTIONS.map((option) => (
-          <label
-            key={option.value}
-            className={cn(
-              'relative flex min-h-9 items-center justify-center gap-2 rounded-lg border px-3 system-xs-medium outline-hidden has-focus-visible:ring-2 has-focus-visible:ring-state-accent-solid',
-              provider === option.value
-                ? 'border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary'
-                : 'cursor-pointer border-divider-subtle text-text-secondary hover:bg-state-base-hover',
-            )}
-          >
-            <input
-              type="radio"
-              name="source-provider"
-              value={option.value}
-              checked={provider === option.value}
-              onChange={() => onChange(option.value)}
-              className="sr-only"
-            />
-            <span aria-hidden className={`${option.icon} size-4`} />
-            {option.value}
-          </label>
-        ))}
-      </div>
-    </fieldset>
+    <Field className="contents">
+      <Fieldset
+        render={
+          <RadioGroup<NewKnowledgeWebsiteProvider>
+            name="source-provider"
+            value={provider}
+            onValueChange={onChange}
+            className="block"
+          />
+        }
+      >
+        <FieldsetLegend className="mb-1.5 py-0 system-xs-medium text-text-secondary">
+          {t(($) => $['stepOne.website.chooseProvider'])}
+        </FieldsetLegend>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {WEBSITE_PROVIDER_OPTIONS.map((option) => (
+            <FieldItem key={option.value} className="contents">
+              <label
+                className={cn(
+                  'relative flex min-h-9 items-center justify-center gap-2 rounded-lg border px-3 system-xs-medium outline-hidden has-focus-visible:ring-2 has-focus-visible:ring-state-accent-solid',
+                  provider === option.value
+                    ? 'border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary'
+                    : 'cursor-pointer border-divider-subtle text-text-secondary hover:bg-state-base-hover',
+                )}
+              >
+                <Radio value={option.value} className="sr-only" />
+                <span aria-hidden className={`${option.icon} size-4`} />
+                {option.value}
+              </label>
+            </FieldItem>
+          ))}
+        </div>
+      </Fieldset>
+    </Field>
   )
 }
 
@@ -378,28 +391,33 @@ function ConnectionForm({
   return (
     <form className="rounded-xl bg-background-section p-4" onSubmit={handleSubmit}>
       {supportedAuthKinds.length > 1 && (
-        <fieldset className="mb-4">
-          <legend className="mb-1.5 system-xs-medium text-text-secondary">
-            {t(($) => $['newKnowledge.authenticationMethod'])}
-          </legend>
-          <div className="flex gap-2">
-            {supportedAuthKinds.map((kind) => (
-              <label
-                key={kind}
-                className="flex items-center gap-1.5 system-xs-regular text-text-secondary"
-              >
-                <input
-                  type="radio"
-                  name="auth-kind"
-                  value={kind}
-                  checked={authKind === kind}
-                  onChange={() => changeAuthKind(kind)}
-                />
-                {t(($) => $[`newKnowledge.authKind.${kind}`])}
-              </label>
-            ))}
-          </div>
-        </fieldset>
+        <Field className="contents">
+          <Fieldset
+            className="mb-4"
+            render={
+              <RadioGroup<ConnectionAuthKind>
+                name="auth-kind"
+                value={authKind}
+                onValueChange={changeAuthKind}
+                className="block"
+              />
+            }
+          >
+            <FieldsetLegend className="mb-1.5 py-0 system-xs-medium text-text-secondary">
+              {t(($) => $['newKnowledge.authenticationMethod'])}
+            </FieldsetLegend>
+            <div className="flex gap-2">
+              {supportedAuthKinds.map((kind) => (
+                <FieldItem key={kind} className="contents">
+                  <label className="flex cursor-pointer items-center gap-1.5 system-xs-regular text-text-secondary">
+                    <Radio value={kind} />
+                    {t(($) => $[`newKnowledge.authKind.${kind}`])}
+                  </label>
+                </FieldItem>
+              ))}
+            </div>
+          </Fieldset>
+        </Field>
       )}
       <div className="space-y-3">
         {visibleFields.map((field) => (

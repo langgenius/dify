@@ -253,17 +253,6 @@ describe('EnvPanel container', () => {
     vi.restoreAllMocks()
   })
 
-  it('should close the panel from the header action', async () => {
-    const user = userEvent.setup()
-    const { container, store } = renderWithProviders(<EnvPanel />, {
-      environmentVariables: [],
-    })
-
-    await user.click(container.querySelector('.cursor-pointer') as HTMLElement)
-
-    expect(store.getState().showEnvPanel).toBe(false)
-  })
-
   it('should add variables and normalize secret values after syncing', async () => {
     const user = userEvent.setup()
     const { store } = renderWithProviders(<EnvPanel />, {

@@ -55,6 +55,8 @@
   "account.sendVerificationButton": "ส่งรหัสยืนยัน",
   "account.setPassword": "ตั้งรหัสผ่าน",
   "account.showAppLength": "แสดง {{length}} แอป",
+  "account.timezoneNoResults": "ไม่พบเขตเวลาที่ตรงกัน",
+  "account.timezoneSearchPlaceholder": "ค้นหาเมืองหรือเขตเวลา…",
   "account.verificationLabel": "รหัสยืนยัน",
   "account.verificationPlaceholder": "วางรหัส 6 หลัก",
   "account.workspaceName": "ชื่อพื้นที่ทำงาน",

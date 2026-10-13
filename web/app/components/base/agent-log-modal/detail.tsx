@@ -105,7 +105,7 @@ function AgentLogContent({
       },
       (error) => {
         if (!active) return
-        toast.error(`${error}`)
+        toast.error(error instanceof Error ? error.message : String(error))
         setLoading(false)
       },
     )

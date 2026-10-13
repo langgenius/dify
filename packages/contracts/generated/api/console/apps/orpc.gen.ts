@@ -1352,6 +1352,7 @@ export const delete3 = oc
     method: 'DELETE',
     operationId: 'deleteAppsByAppIdAnnotationsByAnnotationId',
     path: '/apps/{app_id}/annotations/{annotation_id}',
+    successStatus: 204,
     tags: ['console'],
   })
   .input(z.object({ params: zDeleteAppsByAppIdAnnotationsByAnnotationIdPath }))
@@ -1389,6 +1390,7 @@ export const delete4 = oc
     method: 'DELETE',
     operationId: 'deleteAppsByAppIdAnnotations',
     path: '/apps/{app_id}/annotations',
+    successStatus: 204,
     tags: ['console'],
   })
   .input(z.object({ params: zDeleteAppsByAppIdAnnotationsPath }))
@@ -4288,6 +4290,7 @@ export const delete14 = oc
     method: 'DELETE',
     operationId: 'deleteAppsByAppIdWorkflowsByWorkflowId',
     path: '/apps/{app_id}/workflows/{workflow_id}',
+    successStatus: 204,
     summary: 'Delete workflow',
     tags: ['console'],
   })

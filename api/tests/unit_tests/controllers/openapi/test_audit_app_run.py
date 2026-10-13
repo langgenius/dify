@@ -16,11 +16,11 @@ class _AuditLogRecord(Protocol):
     surface: str
 
 
-def test_event_constant():
+def test_event_constant() -> None:
     assert EVENT_APP_RUN_OPENAPI == "app.run.openapi"
 
 
-def test_emit_app_run_logs_with_audit_extra(caplog: pytest.LogCaptureFixture):
+def test_emit_app_run_logs_with_audit_extra(caplog: pytest.LogCaptureFixture) -> None:
     with caplog.at_level(logging.INFO, logger="controllers.openapi._audit"):
         emit_app_run(
             app_id="app1",

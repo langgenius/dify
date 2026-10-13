@@ -33,32 +33,13 @@ import { datasetDetailQueryKeyPrefix, useInvalidDatasetList } from '@/service/kn
 import { useInvalid } from '@/service/use-base'
 import { useExportPipelineDSL } from '@/service/use-pipeline'
 import { downloadBlob } from '@/utils/download'
+import { getErrorMessage } from '@/utils/error-message'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import RenameDatasetModal from '../../datasets/rename-modal'
 
 type DropDownProps = {
   expand: boolean
   triggerClassName?: string
-}
-
-type JsonErrorResponse = {
-  json: () => Promise<{ message?: string }>
-}
-
-const isJsonErrorResponse = (error: unknown): error is JsonErrorResponse => {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'json' in error &&
-    typeof error.json === 'function'
-  )
-}
-
-const getErrorMessage = async (error: unknown) => {
-  if (!isJsonErrorResponse(error)) return 'Unknown error'
-
-  const res = await error.json()
-  return res?.message || 'Unknown error'
 }
 
 const DropDown = ({ expand, triggerClassName }: DropDownProps) => {
@@ -142,7 +123,7 @@ const DropDown = ({ expand, triggerClassName }: DropDownProps) => {
       )
       setShowConfirmDelete(true)
     } catch (e: unknown) {
-      toast.error(await getErrorMessage(e))
+      toast.error(getErrorMessage(e) ?? 'Unknown error')
     }
   }, [dataset.id, t])
 

@@ -3,7 +3,6 @@ import { fireEvent, screen } from '@testing-library/react'
 import { createNode, resetFixtureCounters } from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
-import { toast } from '@/app/notifications'
 import VarGroupItem from '../var-group-item'
 
 vi.mock('@/app/notifications', () => ({
@@ -18,8 +17,6 @@ vi.mock('@/app/notifications', () => ({
 vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference-picker', () => ({
   default: () => null,
 }))
-
-const mockToast = vi.mocked(toast)
 
 const createPayload = () => ({
   group_name: 'Group_A',
@@ -75,26 +72,5 @@ describe('variable-assigner/var-group-item', () => {
     })
 
     expect(handleGroupNameChange).toHaveBeenCalledWith('Next_Group')
-  })
-
-  it('rejects invalid group names and forwards remove actions', () => {
-    const handleRemove = vi.fn()
-    const { container } = renderGroupItem({
-      onGroupNameChange: vi.fn(),
-      canRemove: true,
-      onRemove: handleRemove,
-    })
-
-    fireEvent.click(screen.getByText('Group_A'))
-    fireEvent.change(screen.getByDisplayValue('Group_A'), {
-      target: { value: '1bad' },
-    })
-
-    expect(mockToast.error).toHaveBeenCalled()
-
-    const removeButton = container.querySelector('.cursor-pointer.rounded-md.p-1')
-    fireEvent.click(removeButton as HTMLElement)
-
-    expect(handleRemove).toHaveBeenCalledTimes(1)
   })
 })

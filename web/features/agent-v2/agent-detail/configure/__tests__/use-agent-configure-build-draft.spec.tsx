@@ -1,6 +1,7 @@
 import type { PropsWithChildren } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
+import { createHttpError } from '@/service/http-error'
 import { useAgentConfigureBuildDraftData } from '../use-agent-configure-build-draft'
 
 const mocks = vi.hoisted(() => ({
@@ -71,7 +72,7 @@ describe('build draft refresh errors', () => {
     const { result, setSoulSourceOverride } = setup()
     await waitFor(() => expect(result.current.isActive).toBe(true))
 
-    const notFound = new Response(null, { status: 404 })
+    const notFound = createHttpError(new Response(null, { status: 404 }))
     mocks.request.mockRejectedValueOnce(notFound)
     await act(async () => {
       const refreshed = await result.current.refetch()
@@ -88,7 +89,7 @@ describe('build draft refresh errors', () => {
     const { result, setSoulSourceOverride } = setup()
     await waitFor(() => expect(result.current.isActive).toBe(true))
 
-    const serverError = new Response(null, { status: 500 })
+    const serverError = createHttpError(new Response(null, { status: 500 }))
     mocks.request.mockRejectedValueOnce(serverError)
     await act(async () => {
       const refreshed = await result.current.refetch()

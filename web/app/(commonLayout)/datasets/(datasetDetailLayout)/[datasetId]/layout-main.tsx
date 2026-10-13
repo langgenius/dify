@@ -1,4 +1,5 @@
 'use client'
+
 import type { FC } from 'react'
 import type { DataSet } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -18,6 +19,7 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { usePathname, useRouter } from '@/next/navigation'
+import { getHttpErrorStatus } from '@/service/http-error'
 import { useDatasetDetail } from '@/service/knowledge/use-dataset'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 
@@ -26,15 +28,8 @@ type IAppDetailLayoutProps = {
   datasetId: string
 }
 
-const getResponseStatus = (error: unknown) => {
-  if (error instanceof Response) return error.status
-
-  if (typeof error === 'object' && error && 'status' in error && typeof error.status === 'number')
-    return error.status
-}
-
 const shouldRedirectToDatasetList = (error: unknown) => {
-  const status = getResponseStatus(error)
+  const status = getHttpErrorStatus(error)
   return status === 403 || status === 404
 }
 
