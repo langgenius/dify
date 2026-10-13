@@ -14,6 +14,11 @@ from core.dify_builder.execution_policy import (
     RestrictedAdmissionSnapshot,
     admit_raw_execution_metadata,
 )
+from core.workflow.variable_prefixes import (
+    CONVERSATION_VARIABLE_NODE_ID,
+    ENVIRONMENT_VARIABLE_NODE_ID,
+    SYSTEM_VARIABLE_NODE_ID,
+)
 from services.dify_builder.execution_contracts import (
     AdmittedNodeBinding,
     BuilderExecutionPolicyError,
@@ -33,6 +38,9 @@ _PLUGIN_ID = "langgenius/json_process"
 _PROVIDER_ID = "langgenius/json_process/json_process"
 _UNIQUE_IDENTIFIER = "langgenius/json_process:0.0.8@3333687ec0412e1f2a1798d632fc5f3187f36ebd4bf2432a599a96c74e92f503"
 _NODE_ID = re.compile(r"[A-Za-z0-9_-]{1,128}\Z", re.ASCII)
+_RESERVED_NATIVE_OWNERS = frozenset(
+    {SYSTEM_VARIABLE_NODE_ID, ENVIRONMENT_VARIABLE_NODE_ID, CONVERSATION_VARIABLE_NODE_ID}
+)
 _START_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]{0,63}\Z", re.ASCII)
 _PURE_MIXED = re.compile(r"\{\{#([A-Za-z0-9_]{1,50})\.([A-Za-z_][A-Za-z0-9_]{0,29})#\}\}\Z", re.ASCII)
 _PATH_PART = re.compile(r"\.([A-Za-z_][A-Za-z0-9_]*)|\.\*|\[([0-9]+|\*)\]", re.ASCII)
@@ -327,7 +335,12 @@ def admit_json_workflow(snapshot: RestrictedAdmissionSnapshot) -> JsonToolAdmiss
         if not isinstance(node, dict) or set(node) - _NODE_KEYS or not isinstance(node.get("data"), dict):
             _refuse("unsupported_graph")
         data, node_id = node["data"], node.get("id")
-        if type(node_id) is not str or not _NODE_ID.fullmatch(node_id) or node_id in seen:
+        if (
+            type(node_id) is not str
+            or not _NODE_ID.fullmatch(node_id)
+            or node_id in seen
+            or node_id in _RESERVED_NATIVE_OWNERS
+        ):
             _refuse("unsupported_graph")
         if any(
             node.get(key) or data.get(key)

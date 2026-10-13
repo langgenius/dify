@@ -246,6 +246,50 @@ def test_direct_variable_retains_general_name_limit(json_graph):
     assert actual["content"] == "{}"
 
 
+@pytest.mark.parametrize("owner", ["sys", "env", "conversation"])
+@pytest.mark.parametrize("node_kind", ["start", "tool", "end"])
+def test_reserved_native_owner_refuses_for_every_node(json_graph, owner, node_kind):
+    index = {"start": 0, "tool": 1, "end": 2}[node_kind]
+    original_id = json_graph["nodes"][index]["id"]
+    json_graph["nodes"][index]["id"] = owner
+    for edge in json_graph["edges"]:
+        for key in ("source", "target"):
+            if edge[key] == original_id:
+                edge[key] = owner
+    if node_kind == "start":
+        for parameter, name in (("content", "payload"), ("json_filter", "json_path")):
+            _tool(json_graph)["tool_parameters"][parameter] = {"type": "mixed", "value": f"{{{{#{owner}.{name}#}}}}"}
+    if node_kind == "tool":
+        json_graph["nodes"][2]["data"]["outputs"][0]["value_selector"] = [owner, "text"]
+    with pytest.raises(BuilderExecutionPolicyError, match="unsupported_graph"):
+        admit_json_workflow(snapshot_for(json_graph))
+
+
+def test_optional_start_user_id_cannot_collide_with_native_system_owner(json_graph, monkeypatch):
+    from graphon.nodes.start.start_node import StartNode
+    from graphon.runtime.variable_pool import VariablePool
+
+    pool = VariablePool()
+    pool.add(["sys", "user_id"], "private-system-user")
+    assert pool.get(["sys", "user_id"]).value == "private-system-user"
+    json_graph["nodes"][0]["id"] = "sys"
+    json_graph["edges"][0]["source"] = "sys"
+    json_graph["nodes"][0]["data"]["variables"].append(
+        {"variable": "user_id", "type": "text-input", "label": "User ID", "required": False, "options": []}
+    )
+    json_graph["nodes"][2]["data"]["outputs"].append({"variable": "leak", "value_selector": ["sys", "user_id"]})
+    for parameter, name in (("content", "payload"), ("json_filter", "json_path")):
+        _tool(json_graph)["tool_parameters"][parameter] = {"type": "mixed", "value": f"{{{{#sys.{name}#}}}}"}
+
+    def forbidden(*_args, **_kwargs):
+        pytest.fail("reserved owner reached native class validation or pool lookup")
+
+    monkeypatch.setattr(StartNode, "validate_node_data", forbidden)
+    monkeypatch.setattr(VariablePool, "get", forbidden)
+    with pytest.raises(BuilderExecutionPolicyError, match="unsupported_graph"):
+        admit_json_workflow(snapshot_for(json_graph))
+
+
 def test_missing_or_duplicated_ensure_ascii_refuses(json_graph):
     missing = deepcopy(json_graph)
     del _tool(missing)["tool_configurations"]["ensure_ascii"]

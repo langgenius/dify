@@ -1,9 +1,10 @@
 """Real SQLite owner/state controls. PostgreSQL locking is CI-owned."""
 
+import hashlib
 import importlib
 import json
-from copy import deepcopy
 from datetime import datetime
+from pathlib import Path
 from uuid import uuid4
 
 import pytest
@@ -19,6 +20,10 @@ from models.dify_builder import DifyBuilderSession, DifyBuilderTestInput
 from models.model import App
 from models.workflow import Workflow, WorkflowKind, WorkflowNodeExecutionModel, WorkflowRun, WorkflowType
 from tests.unit_tests.core.dify_builder.test_execution_policy import fixture, graph, policy
+
+_PRE_EXTRACTION_GOLDENS = (
+    Path(__file__).resolve().parents[3] / "fixtures/workflow/builder_restricted/pre_extraction_context_goldens.json"
+)
 
 
 def _stored_context_values():
@@ -104,10 +109,33 @@ def test_historical_restricted_context_tag_and_absence_decode_identically():
             p.validate_execution_context(forged)
 
 
+@pytest.mark.parametrize("case_name", ["restricted_tagged", "restricted_untagged", "confirmed_tagged"])
+def test_saved_pre_extraction_context_bytes_and_digest_are_unchanged(case_name):
+    p = policy()
+    golden = json.loads(_PRE_EXTRACTION_GOLDENS.read_text())["cases"][case_name]
+    decoded = p.validate_execution_context(golden["raw"])
+    normalized = decoded.model_dump(mode="json")
+    encoded = p.canonical_json(normalized)
+    assert normalized == golden["normalized"]
+    assert encoded == golden["canonical_json_utf8"].encode("utf-8")
+    assert hashlib.sha256(encoded).hexdigest() == golden["normalized_sha256"]
+    assert decoded.context_digest == p.context_digest(decoded) == golden["context_digest"]
+
+
+@pytest.mark.parametrize("case_name", ["restricted_tagged", "restricted_untagged", "confirmed_tagged"])
+def test_saved_pre_extraction_context_refuses_json_fields_and_unknown_tags(case_name):
+    p = policy()
+    raw = json.loads(_PRE_EXTRACTION_GOLDENS.read_text())["cases"][case_name]["raw"]
+    for forged in ({**raw, "qualified_tool": {}}, {**raw, "policy_version": "builder-unknown-v9"}):
+        with pytest.raises(p.BuilderExecutionPolicyError, match="invalid_execution_context"):
+            p.validate_execution_context(forged)
+
+
 @pytest.mark.parametrize(
     "field",
     [
         "installation_id",
+        "node_id",
         "tenant_id",
         "plugin_id",
         "provider_id",
@@ -124,11 +152,19 @@ def test_historical_restricted_context_tag_and_absence_decode_identically():
 )
 def test_json_context_digest_covers_qualified_binding(field):
     p = policy()
-    raw = _json_context().model_dump(mode="json")
-    changed = deepcopy(raw)
-    changed["qualified_tool"][field] = "changed"
-    with pytest.raises(p.BuilderExecutionPolicyError):
-        p.validate_execution_context(changed)
+    context = _json_context()
+    replacement = "a" * 64 if field == "checksum" or field.endswith("_digest") else "alternate"
+    mutated_binding = context.qualified_tool.model_copy(update={field: replacement})
+    mutated_context = context.model_copy(update={"qualified_tool": mutated_binding})
+    assert p.context_digest(mutated_context) != context.context_digest
+    raw = mutated_context.model_dump(mode="json")
+    if field not in {"node_id", "tenant_id", "tool_name", "runtime_type"}:
+        p.JsonToolExecutionContext.model_validate(raw)
+        with pytest.raises(p.BuilderExecutionPolicyError, match="context_digest_mismatch"):
+            p.validate_execution_context(raw)
+    else:
+        with pytest.raises(p.BuilderExecutionPolicyError):
+            p.validate_execution_context(raw)
 
 
 def test_json_context_decodes_through_completion_and_requires_explicit_tag():

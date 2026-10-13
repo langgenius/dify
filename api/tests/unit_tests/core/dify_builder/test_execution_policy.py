@@ -455,6 +455,58 @@ def test_json_evidence_variant_and_receipt_are_strict() -> None:
             p.BuilderExecutionObservation.model_validate({**receipt.model_dump(mode="json"), **mutation})
 
 
+@pytest.mark.parametrize(
+    ("sealed", "admitted"),
+    [(True, True), (False, False), (1, False), ("true", False), (None, False)],
+    ids=["true", "false", "integer-one", "string-true", "null"],
+)
+def test_json_success_evidence_requires_raw_boolean_seal(sealed, admitted):
+    p = policy()
+    values = {
+        "request_id": "request-1",
+        "policy_version": "builder-json-parse-v1",
+        "mode": "restricted",
+        "sealed": sealed,
+        "safety_outcome": "restricted_execution_completed",
+        "sandbox_profile": "disabled",
+        "native_run_id": "run-1",
+    }
+    if admitted:
+        assert p.ExecutionEvidenceSummary.model_validate(values).sealed is True
+    else:
+        with pytest.raises(ValidationError):
+            p.ExecutionEvidenceSummary.model_validate(values)
+
+
+def test_json_non_success_evidence_allows_exact_false_seal_and_legacy_coercion_is_unchanged():
+    p = policy()
+    json_values = {
+        "request_id": "request-1",
+        "policy_version": "builder-json-parse-v1",
+        "mode": "restricted",
+        "sealed": False,
+        "safety_outcome": "execution_evidence_unknown",
+        "sandbox_profile": "disabled",
+    }
+    assert p.ExecutionEvidenceSummary.model_validate(json_values).sealed is False
+    for legacy_seal in (1, "true"):
+        restricted = {
+            **json_values,
+            "policy_version": "builder-restricted-v1",
+            "fixture_digest": "a" * 64,
+            "sealed": legacy_seal,
+        }
+        confirmed = {
+            **json_values,
+            "policy_version": "builder-confirmed-gmail-read-v1",
+            "mode": "confirmed_tool",
+            "consent_id": "consent-1",
+            "sealed": legacy_seal,
+        }
+        assert p.ExecutionEvidenceSummary.model_validate(restricted).sealed is True
+        assert p.ExecutionEvidenceSummary.model_validate(confirmed).sealed is True
+
+
 def normal_workflow_features(*, citation=True):
     """Literal metadata produced by ordinary Workflow creation/save."""
     return {
