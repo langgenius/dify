@@ -334,7 +334,14 @@ describe('request 401 handling', () => {
     ssePost('/chat-messages', { body: { query: 'hello' } }, { isPublicAPI: true, onError })
 
     await vi.waitFor(() => {
-      expect(onError).toHaveBeenCalledWith('webapp is disabled', 'web_app_disabled')
+      expect(onError).toHaveBeenCalledWith(
+        expect.objectContaining({
+          defined: false,
+          message: 'webapp is disabled',
+          code: 'web_app_disabled',
+          status: 403,
+        }),
+      )
     })
     expect(mocks.beginWebAppAuthorizationRecovery).not.toHaveBeenCalled()
   })

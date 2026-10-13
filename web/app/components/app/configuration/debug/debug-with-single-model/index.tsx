@@ -125,7 +125,7 @@ const DebugWithSingleModel = ({
       if ((config.file_upload as any)?.enabled && files?.length) data.files = files
 
       handleSend(`apps/${appId}/chat-messages`, data, {
-        onNotifyError: (message) => toast.error(message),
+        onNotifyError: (error) => toast.error(error.message),
         onGetConversationMessages: (conversationId, getAbortController) =>
           fetchConversationMessages(appId, conversationId, getAbortController),
         onGetSuggestedQuestions: (responseItemId, getAbortController) =>

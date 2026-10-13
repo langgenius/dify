@@ -141,8 +141,9 @@ const WebsiteCrawl = ({
             setCrawlErrorMessage('')
             setStep(CrawlStep.finished)
           },
-          onError: (message) => {
-            setCrawlErrorMessage(message.startsWith('AbortError') ? '' : message)
+          onError: (error) => {
+            const message = error.message
+            setCrawlErrorMessage(error.name === 'AbortError' ? '' : message)
             setStep(CrawlStep.finished)
           },
           onDataSourceNodeError: (error: DataSourceNodeErrorResponse) => {

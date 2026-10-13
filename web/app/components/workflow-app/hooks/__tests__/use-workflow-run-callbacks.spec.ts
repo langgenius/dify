@@ -1,4 +1,5 @@
 import type { AudioPlayer } from '@/app/components/base/audio-btn/audio'
+import { StreamError } from '@/service/stream-error'
 import {
   createBaseWorkflowRunCallbacks,
   createFinalWorkflowRunCallbacks,
@@ -124,7 +125,7 @@ describe('useWorkflowRun callbacks helpers', () => {
     expect(fetchInspectVars).toHaveBeenCalledWith({})
     expect(invalidAllLastRun).toHaveBeenCalled()
 
-    callbacks.onError?.('LLM provider and model are required.')
+    callbacks.onError?.(new Error('LLM provider and model are required.'))
     expect(clearAbortController).toHaveBeenCalled()
     expect(handlers.handleWorkflowFailed).toHaveBeenCalledWith(
       'LLM provider and model are required.',
@@ -132,7 +133,7 @@ describe('useWorkflowRun callbacks helpers', () => {
     expect(userOnError).toHaveBeenCalled()
     expect(getWorkflowRunningData).toHaveBeenCalled()
     expect(trackWorkflowRunFailed).toHaveBeenCalledWith(
-      'LLM provider and model are required.',
+      new Error('LLM provider and model are required.'),
       workflowData,
     )
 
@@ -274,7 +275,7 @@ describe('useWorkflowRun callbacks helpers', () => {
     callbacks.onTTSEnd?.('message-1', 'audio-finished')
     callbacks.onWorkflowPaused?.({ workflow_run_id: 'run-2' } as never)
     callbacks.onWorkflowPaused?.({ workflow_run_id: 'run-2' } as never)
-    callbacks.onError?.({ error: 'failed', node_type: 'llm' } as never, '500')
+    callbacks.onError?.(new StreamError({ message: 'failed', code: '500', node_type: 'llm' }))
 
     expect(handlers.handleWorkflowStarted).toHaveBeenCalled()
     expect(userCallbacks.onWorkflowStarted).toHaveBeenCalled()
@@ -335,10 +336,12 @@ describe('useWorkflowRun callbacks helpers', () => {
     expect(mockSseGet).toHaveBeenCalledTimes(1)
     expect(clearAbortController).toHaveBeenCalled()
     expect(handlers.handleWorkflowFailed).toHaveBeenCalled()
-    expect(userCallbacks.onError).toHaveBeenCalledWith({ error: 'failed', node_type: 'llm' }, '500')
+    expect(userCallbacks.onError).toHaveBeenCalledWith(
+      new StreamError({ message: 'failed', code: '500', node_type: 'llm' }),
+    )
     expect(getWorkflowRunningData).toHaveBeenCalled()
     expect(trackWorkflowRunFailed).toHaveBeenCalledWith(
-      { error: 'failed', node_type: 'llm' },
+      new StreamError({ message: 'failed', code: '500', node_type: 'llm' }),
       workflowData,
     )
     expect(invalidateRunHistory).toHaveBeenCalledWith('/apps/app-1/workflow-runs')
@@ -455,7 +458,7 @@ describe('useWorkflowRun callbacks helpers', () => {
     finalCallbacks.onTTSChunk?.('message-2', 'audio-chunk')
     finalCallbacks.onTTSEnd?.('message-2', 'audio-finished')
     await finalCallbacks.onCompleted?.(true, 'done')
-    finalCallbacks.onError?.({ error: 'failed' } as never, '500')
+    finalCallbacks.onError?.(new StreamError({ message: 'failed', code: '500' }))
 
     expect(setAbortController).toHaveBeenCalled()
     expect(handlers.handleWorkflowFinished).toHaveBeenCalled()
@@ -506,9 +509,14 @@ describe('useWorkflowRun callbacks helpers', () => {
     expect(clearAbortController).toHaveBeenCalled()
     expect(handlers.handleWorkflowFailed).toHaveBeenCalled()
     expect(clearListeningState).toHaveBeenCalled()
-    expect(userCallbacks.onError).toHaveBeenCalledWith({ error: 'failed' }, '500')
+    expect(userCallbacks.onError).toHaveBeenCalledWith(
+      new StreamError({ message: 'failed', code: '500' }),
+    )
     expect(getWorkflowRunningData).toHaveBeenCalled()
-    expect(trackWorkflowRunFailed).toHaveBeenCalledWith({ error: 'failed' }, workflowData)
+    expect(trackWorkflowRunFailed).toHaveBeenCalledWith(
+      new StreamError({ message: 'failed', code: '500' }),
+      workflowData,
+    )
     expect(invalidateRunHistory).toHaveBeenCalledWith('/apps/app-1/workflow-runs')
   })
 })

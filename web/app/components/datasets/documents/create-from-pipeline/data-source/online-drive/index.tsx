@@ -114,11 +114,12 @@ const OnlineDrive = ({
           setIsLoading(false)
           isLoadingRef.current = false
         },
-        onError: (message) => {
+        onError: (error) => {
+          const message = error.message
           // oxlint-disable-next-line eslint-react/set-state-in-effect -- The SSE callback runs after the network failure, not during the subscribing effect.
           setIsLoading(false)
           isLoadingRef.current = false
-          if (!message.startsWith('AbortError')) toast.error(message)
+          if (error.name !== 'AbortError') toast.error(message)
         },
         onDataSourceNodeError: (error: DataSourceNodeErrorResponse) => {
           toast.error(error.error)

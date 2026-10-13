@@ -737,10 +737,7 @@ describe('SkillDetailPage builder', () => {
       onData?.('已创建用于客户问题分级处理的 skill 草案', true, {
         messageId: 'assistant-message',
       })
-      onError?.(
-        'the Skill Authoring assistant could not apply its response',
-        'skill_assistant_failed',
-      )
+      onError?.(new Error('the Skill Authoring assistant could not apply its response'))
       return Promise.resolve()
     })
 

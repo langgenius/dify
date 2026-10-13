@@ -44,8 +44,9 @@ import { isClient } from '@/utils/client'
 import { resolveLoginRedirectTarget } from '@/utils/login-redirect'
 import { basePath } from '@/utils/var'
 import { base, ContentType, getBaseOptions } from './fetch'
-import { createHttpError } from './http-error'
+import { createHttpError, httpErrorFromResponse } from './http-error'
 import { refreshAccessTokenOrReLogin } from './refresh-token'
+import { StreamError } from './stream-error'
 import { getWebAppPublicApiPath, resolveWebAppAddress } from './webapp-address'
 import {
   beginWebAppAuthorizationRecovery,
@@ -100,8 +101,7 @@ export type IOnDataMoreInfo = {
   conversationId?: string
   taskId?: string
   messageId: string
-  errorMessage?: string
-  errorCode?: string
+  error?: Error
 }
 
 export type IOnData = (message: string, isFirstMessage: boolean, moreInfo: IOnDataMoreInfo) => void
@@ -110,48 +110,30 @@ type IOnFile = (file: VisionFile) => void
 type IOnMessageEnd = (messageEnd: MessageEnd) => void
 export type IOnMessageReplace = (messageReplace: MessageReplace) => void
 export type IOnCompleted = (hasError?: boolean, errorMessage?: string) => void
-export type IOnError = (msg: string, code?: string) => void
+export type IOnError = (error: Error) => void
 
 const reportStreamResponseError = async (response: Response, onError: IOnError | undefined) => {
-  let errorMessage = 'Server Error'
-  let errorCode: string | undefined
-  try {
-    const data: unknown = await response.json()
-    if (typeof data === 'object' && data !== null && 'message' in data) {
-      const message = data.message
-      if (typeof message === 'string' && message) errorMessage = message
-    }
-    if (typeof data === 'object' && data !== null && 'code' in data) {
-      const code = data.code
-      if (typeof code === 'string' && code) errorCode = code
-    }
-  } catch {}
-
-  if (errorCode) {
-    onError?.(errorMessage, errorCode)
-  } else {
-    onError?.(errorMessage)
-  }
+  onError?.(await httpErrorFromResponse(response))
 }
 
 const handlePublicStreamResponseError = async (
   response: Response,
   onError: IOnError | undefined,
 ) => {
-  let data: { code?: string; message?: string; reason?: unknown } | undefined
-  try {
-    data = (await response.clone().json()) as typeof data
-  } catch {}
-
-  if (data) {
-    if (handleWebAppAuthorizationError(data)) return
-    if (data.code === 'web_sso_auth_required' || data.code === 'unauthorized') {
-      requiredWebSSOLogin()
-      return
-    }
+  const error = await httpErrorFromResponse(response)
+  if (
+    handleWebAppAuthorizationError({
+      code: error.code,
+      message: error.message,
+      reason: error.data?.reason,
+    })
+  )
+    return
+  if (error.code === 'web_sso_auth_required' || error.code === 'unauthorized') {
+    requiredWebSSOLogin()
+    return
   }
-
-  await reportStreamResponseError(response, onError)
+  onError?.(error)
 }
 
 type UnhandledEventError = {
@@ -384,14 +366,20 @@ export const handleStream = (
   let buffer = ''
   let bufferObj: Record<string, any>
   let isFirstMessage = true
-  const completeWithError = (errorMessage: string, errorCode?: string) => {
+  let completed = false
+  const completeWithError = (
+    error: Error,
+    info?: Pick<IOnDataMoreInfo, 'conversationId' | 'messageId'>,
+  ) => {
+    if (completed) return
+    completed = true
     onData('', false, {
-      conversationId: bufferObj?.conversation_id,
-      messageId: bufferObj?.message_id ?? '',
-      errorMessage,
-      errorCode,
+      conversationId: info?.conversationId ?? bufferObj?.conversation_id,
+      messageId: info?.messageId ?? bufferObj?.message_id ?? '',
+      error,
     })
-    onCompleted?.(true, errorMessage)
+    onCompleted?.(true, error.message)
+    void reader?.cancel().catch(() => {})
   }
 
   function read() {
@@ -399,13 +387,15 @@ export const handleStream = (
     reader?.read().then(
       (result: ReadableStreamReadResult<Uint8Array>) => {
         if (result.done) {
-          onCompleted?.()
+          if (!completed) onCompleted?.()
+          completed = true
           return
         }
         buffer += decoder.decode(result.value, { stream: true })
         const lines = buffer.split('\n')
         try {
-          lines.forEach((message) => {
+          lines.slice(0, -1).forEach((message) => {
+            if (completed) return
             if (message.startsWith('data: ')) {
               // check if it starts with data:
               try {
@@ -418,27 +408,17 @@ export const handleStream = (
                 })
                 return
               }
-              if (!bufferObj || typeof bufferObj !== 'object') {
-                onData('', isFirstMessage, {
-                  conversationId: undefined,
-                  messageId: '',
-                  errorMessage: 'Invalid response data',
-                  errorCode: 'invalid_data',
-                })
+              if (!bufferObj || typeof bufferObj !== 'object' || Array.isArray(bufferObj)) {
                 hasError = true
-                onCompleted?.(true, 'Invalid response data')
+                completeWithError(
+                  new StreamError({ message: 'Invalid response data', code: 'invalid_data' }),
+                )
                 return
               }
               const hasErrorStatus = typeof bufferObj.status === 'number' && bufferObj.status >= 400
               if (bufferObj.event === 'error' || hasErrorStatus || !bufferObj.event) {
-                onData('', false, {
-                  conversationId: undefined,
-                  messageId: '',
-                  errorMessage: bufferObj?.message,
-                  errorCode: bufferObj?.code,
-                })
                 hasError = true
-                onCompleted?.(true, bufferObj?.message)
+                completeWithError(new StreamError(bufferObj))
                 return
               }
               if (bufferObj.event === 'message' || bufferObj.event === 'agent_message') {
@@ -513,14 +493,18 @@ export const handleStream = (
               } else {
                 const unhandledEventError = onUnhandledEvent?.(bufferObj)
                 if (unhandledEventError) {
-                  onData('', false, {
-                    conversationId: unhandledEventError.conversationId,
-                    messageId: unhandledEventError.messageId ?? '',
-                    errorMessage: unhandledEventError.errorMessage,
-                    errorCode: unhandledEventError.errorCode,
-                  })
                   hasError = true
-                  onCompleted?.(true, unhandledEventError.errorMessage)
+                  completeWithError(
+                    new StreamError({
+                      ...bufferObj,
+                      message: unhandledEventError.errorMessage,
+                      code: unhandledEventError.errorCode,
+                    }),
+                    {
+                      conversationId: unhandledEventError.conversationId,
+                      messageId: unhandledEventError.messageId ?? '',
+                    },
+                  )
                   return
                 }
                 console.warn(`Unknown event: ${bufferObj.event}`, bufferObj)
@@ -529,19 +513,14 @@ export const handleStream = (
           })
           buffer = lines[lines.length - 1]!
         } catch (e) {
-          onData('', false, {
-            conversationId: undefined,
-            messageId: '',
-            errorMessage: `${e}`,
-          })
           hasError = true
-          onCompleted?.(true, e as string)
+          completeWithError(e instanceof Error ? e : new Error(String(e)))
           return
         }
         if (!hasError) read()
       },
       (e: unknown) => {
-        completeWithError(String(e), 'stream_read_error')
+        completeWithError(e instanceof Error ? e : new Error(String(e)))
       },
     )
   }
@@ -712,76 +691,79 @@ export const ssePost = async (
   const { body } = options
   if (body) options.body = JSON.stringify(body)
 
-  globalThis
-    .fetch(urlWithPrefix, options as RequestInit)
-    .then((res) => {
-      if (!/^[23]\d{2}$/.test(String(res.status))) {
-        if (res.status === 401 || (res.status === 403 && isPublicAPI)) {
-          if (isPublicAPI) {
-            void handlePublicStreamResponseError(res, onError)
+  let refreshed = false
+  const connect = (): Promise<void> =>
+    globalThis
+      .fetch(urlWithPrefix, options as RequestInit)
+      .then(async (res) => {
+        if (!res.ok) {
+          if (res.status === 401 || (res.status === 403 && isPublicAPI)) {
+            if (isPublicAPI) {
+              await handlePublicStreamResponseError(res, onError)
+            } else if (!refreshed) {
+              refreshed = true
+              await refreshAccessTokenOrReLogin(TIME_OUT)
+              abortController.signal.throwIfAborted()
+              ;(options.headers as Headers).set(
+                CSRF_HEADER_NAME,
+                Cookies.get(CSRF_COOKIE_NAME()) || '',
+              )
+              return connect()
+            } else {
+              await reportStreamResponseError(res, onError)
+            }
           } else {
-            refreshAccessTokenOrReLogin(TIME_OUT)
-              .then(() => {
-                ssePost(url, fetchOptions, otherOptions)
-              })
-              .catch((err) => {
-                const errorMessage = String(err)
-                console.error(err)
-                onError?.(errorMessage)
-              })
+            await reportStreamResponseError(res, onError)
           }
-        } else {
-          void reportStreamResponseError(res, onError)
+          return
         }
-        return
-      }
-      return handleStream(
-        res,
-        (str: string, isFirstMessage: boolean, moreInfo: IOnDataMoreInfo) => {
-          if (moreInfo.errorMessage) {
-            onError?.(moreInfo.errorMessage, moreInfo.errorCode)
-            return
-          }
-          onData?.(str, isFirstMessage, moreInfo)
-        },
-        onCompleted,
-        onThought,
-        onMessageEnd,
-        onMessageReplace,
-        onFile,
-        onWorkflowStarted,
-        onWorkflowFinished,
-        onNodeStarted,
-        onNodeFinished,
-        onIterationStart,
-        onIterationNext,
-        onIterationFinish,
-        onLoopStart,
-        onLoopNext,
-        onLoopFinish,
-        onNodeRetry,
-        onParallelBranchStarted,
-        onParallelBranchFinished,
-        onTextChunk,
-        onTTSChunk,
-        onTTSEnd,
-        onTextReplace,
-        onAgentLog,
-        onHumanInputRequired,
-        onHumanInputFormFilled,
-        onHumanInputFormTimeout,
-        onWorkflowPaused,
-        onDataSourceNodeProcessing,
-        onDataSourceNodeCompleted,
-        onDataSourceNodeError,
-        onReasoning,
-        onUnhandledEvent,
-      )
-    })
-    .catch((e) => {
-      const errorMessage = String(e)
-      onError?.(errorMessage)
-    })
+        return handleStream(
+          res,
+          (str: string, isFirstMessage: boolean, moreInfo: IOnDataMoreInfo) => {
+            if (moreInfo.error) {
+              onError?.(moreInfo.error)
+              return
+            }
+            onData?.(str, isFirstMessage, moreInfo)
+          },
+          onCompleted,
+          onThought,
+          onMessageEnd,
+          onMessageReplace,
+          onFile,
+          onWorkflowStarted,
+          onWorkflowFinished,
+          onNodeStarted,
+          onNodeFinished,
+          onIterationStart,
+          onIterationNext,
+          onIterationFinish,
+          onLoopStart,
+          onLoopNext,
+          onLoopFinish,
+          onNodeRetry,
+          onParallelBranchStarted,
+          onParallelBranchFinished,
+          onTextChunk,
+          onTTSChunk,
+          onTTSEnd,
+          onTextReplace,
+          onAgentLog,
+          onHumanInputRequired,
+          onHumanInputFormFilled,
+          onHumanInputFormTimeout,
+          onWorkflowPaused,
+          onDataSourceNodeProcessing,
+          onDataSourceNodeCompleted,
+          onDataSourceNodeError,
+          onReasoning,
+          onUnhandledEvent,
+        )
+      })
+      .catch((e) => {
+        onError?.(e instanceof Error ? e : new Error(String(e)))
+      })
+  void connect()
 }
 
 export const sseGet = async (
@@ -853,76 +835,79 @@ export const sseGet = async (
 
   const urlWithPrefix = formatURL(url, isPublicAPI)
 
-  globalThis
-    .fetch(urlWithPrefix, options as RequestInit)
-    .then((res) => {
-      if (!/^[23]\d{2}$/.test(String(res.status))) {
-        if (res.status === 401 || (res.status === 403 && isPublicAPI)) {
-          if (isPublicAPI) {
-            void handlePublicStreamResponseError(res, onError)
+  let refreshed = false
+  const connect = (): Promise<void> =>
+    globalThis
+      .fetch(urlWithPrefix, options as RequestInit)
+      .then(async (res) => {
+        if (!res.ok) {
+          if (res.status === 401 || (res.status === 403 && isPublicAPI)) {
+            if (isPublicAPI) {
+              await handlePublicStreamResponseError(res, onError)
+            } else if (!refreshed) {
+              refreshed = true
+              await refreshAccessTokenOrReLogin(TIME_OUT)
+              abortController.signal.throwIfAborted()
+              ;(options.headers as Headers).set(
+                CSRF_HEADER_NAME,
+                Cookies.get(CSRF_COOKIE_NAME()) || '',
+              )
+              return connect()
+            } else {
+              await reportStreamResponseError(res, onError)
+            }
           } else {
-            refreshAccessTokenOrReLogin(TIME_OUT)
-              .then(() => {
-                sseGet(url, fetchOptions, otherOptions)
-              })
-              .catch((err) => {
-                const errorMessage = String(err)
-                console.error(err)
-                onError?.(errorMessage)
-              })
+            await reportStreamResponseError(res, onError)
           }
-        } else {
-          void reportStreamResponseError(res, onError)
+          return
         }
-        return
-      }
-      return handleStream(
-        res,
-        (str: string, isFirstMessage: boolean, moreInfo: IOnDataMoreInfo) => {
-          if (moreInfo.errorMessage) {
-            onError?.(moreInfo.errorMessage, moreInfo.errorCode)
-            return
-          }
-          onData?.(str, isFirstMessage, moreInfo)
-        },
-        onCompleted,
-        onThought,
-        onMessageEnd,
-        onMessageReplace,
-        onFile,
-        onWorkflowStarted,
-        onWorkflowFinished,
-        onNodeStarted,
-        onNodeFinished,
-        onIterationStart,
-        onIterationNext,
-        onIterationFinish,
-        onLoopStart,
-        onLoopNext,
-        onLoopFinish,
-        onNodeRetry,
-        onParallelBranchStarted,
-        onParallelBranchFinished,
-        onTextChunk,
-        onTTSChunk,
-        onTTSEnd,
-        onTextReplace,
-        onAgentLog,
-        onHumanInputRequired,
-        onHumanInputFormFilled,
-        onHumanInputFormTimeout,
-        onWorkflowPaused,
-        onDataSourceNodeProcessing,
-        onDataSourceNodeCompleted,
-        onDataSourceNodeError,
-        onReasoning,
-        onUnhandledEvent,
-      )
-    })
-    .catch((e) => {
-      const errorMessage = String(e)
-      onError?.(errorMessage)
-    })
+        return handleStream(
+          res,
+          (str: string, isFirstMessage: boolean, moreInfo: IOnDataMoreInfo) => {
+            if (moreInfo.error) {
+              onError?.(moreInfo.error)
+              return
+            }
+            onData?.(str, isFirstMessage, moreInfo)
+          },
+          onCompleted,
+          onThought,
+          onMessageEnd,
+          onMessageReplace,
+          onFile,
+          onWorkflowStarted,
+          onWorkflowFinished,
+          onNodeStarted,
+          onNodeFinished,
+          onIterationStart,
+          onIterationNext,
+          onIterationFinish,
+          onLoopStart,
+          onLoopNext,
+          onLoopFinish,
+          onNodeRetry,
+          onParallelBranchStarted,
+          onParallelBranchFinished,
+          onTextChunk,
+          onTTSChunk,
+          onTTSEnd,
+          onTextReplace,
+          onAgentLog,
+          onHumanInputRequired,
+          onHumanInputFormFilled,
+          onHumanInputFormTimeout,
+          onWorkflowPaused,
+          onDataSourceNodeProcessing,
+          onDataSourceNodeCompleted,
+          onDataSourceNodeError,
+          onReasoning,
+          onUnhandledEvent,
+        )
+      })
+      .catch((e) => {
+        onError?.(e instanceof Error ? e : new Error(String(e)))
+      })
+  void connect()
 }
 
 export type GeneratorStreamCallbacks = {
@@ -930,7 +915,7 @@ export type GeneratorStreamCallbacks = {
   onPlan?: (data: Record<string, unknown>) => void
   /** Fired once when the builder + validation finish — carries the final graph envelope. */
   onResult?: (data: Record<string, unknown>) => void
-  onError?: (message: string) => void
+  onError?: IOnError
   onCompleted?: () => void
   getAbortController?: (abortController: AbortController) => void
 }
@@ -968,68 +953,68 @@ export const sseGeneratorPost = (
   const fail = (e: unknown) => {
     // Aborts are intentional (modal close / regenerate) — never surface them.
     if (e instanceof Error && e.name === 'AbortError') return
-    onError?.(`${e}`)
+    onError?.(e instanceof Error ? e : new Error(String(e)))
   }
 
-  globalThis
-    .fetch(urlWithPrefix, options as RequestInit)
-    .then((res) => {
-      if (!/^[23]\d{2}$/.test(String(res.status))) {
-        if (res.status === 401) {
-          refreshAccessTokenOrReLogin(TIME_OUT)
-            .then(() =>
-              sseGeneratorPost(url, body, {
-                onPlan,
-                onResult,
-                onError,
-                onCompleted,
-                getAbortController,
-              }),
+  let refreshed = false
+  const connect = (): Promise<void> =>
+    globalThis
+      .fetch(urlWithPrefix, options as RequestInit)
+      .then(async (res) => {
+        if (!res.ok) {
+          if (res.status === 401 && !refreshed) {
+            refreshed = true
+            await refreshAccessTokenOrReLogin(TIME_OUT)
+            abortController.signal.throwIfAborted()
+            ;(options.headers as Headers).set(
+              CSRF_HEADER_NAME,
+              Cookies.get(CSRF_COOKIE_NAME()) || '',
             )
-            .catch(() => onError?.('Unauthorized'))
+            return connect()
+          }
+          await reportStreamResponseError(res, onError)
           return
         }
-        res
-          .json()
-          .then((data: { message?: string }) => onError?.(data?.message || 'Server Error'))
-          .catch(() => onError?.('Server Error'))
-        return
-      }
 
-      const reader = res.body?.getReader()
-      const decoder = new TextDecoder('utf-8')
-      let buffer = ''
-      const read = () => {
-        reader
-          ?.read()
-          .then(({ done, value }) => {
-            if (done) {
-              onCompleted?.()
-              return
-            }
-            buffer += decoder.decode(value, { stream: true })
-            const lines = buffer.split('\n')
-            // Process every complete line; keep the trailing partial in the buffer.
-            lines.slice(0, -1).forEach((message) => {
-              if (!message.startsWith('data: ')) return
-              let obj: Record<string, unknown>
-              try {
-                obj = JSON.parse(message.slice(6))
-              } catch {
-                // A chunk boundary split the JSON — it'll re-arrive intact next read.
+        const reader = res.body?.getReader()
+        const decoder = new TextDecoder('utf-8')
+        let buffer = ''
+        const read = () => {
+          reader
+            ?.read()
+            .then(({ done, value }) => {
+              if (done) {
+                onCompleted?.()
                 return
               }
-              if (obj.event === 'plan') onPlan?.(obj)
-              else if (obj.event === 'result') onResult?.(obj)
+              buffer += decoder.decode(value, { stream: true })
+              const lines = buffer.split('\n')
+              // Process every complete line; keep the trailing partial in the buffer.
+              lines.slice(0, -1).forEach((message) => {
+                if (!message.startsWith('data: ')) return
+                let obj: Record<string, unknown>
+                try {
+                  obj = JSON.parse(message.slice(6))
+                } catch {
+                  // A chunk boundary split the JSON — it'll re-arrive intact next read.
+                  return
+                }
+                if (obj.event === 'plan') onPlan?.(obj)
+                else if (obj.event === 'result') onResult?.(obj)
+                else if (obj.event === 'error') throw new StreamError(obj)
+              })
+              buffer = lines[lines.length - 1] || ''
+              read()
             })
-            buffer = lines[lines.length - 1] || ''
-            read()
-          })
-          .catch(fail)
-      }
-      read()
-    })
-    .catch(fail)
+            .catch((error) => {
+              void reader.cancel().catch(() => {})
+              fail(error)
+            })
+        }
+        read()
+      })
+      .catch(fail)
+  void connect()
 }
 
 // base request

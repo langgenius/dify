@@ -28,7 +28,7 @@ export function generateWorkflow(body: GenerateWorkflowBody, options?: GenerateW
 export type GenerateWorkflowStreamCallbacks = {
   onPlan?: (plan: WorkflowGenPlan) => void
   onResult?: (result: GenerateWorkflowResponse) => void
-  onError?: (message: string) => void
+  onError?: (error: Error) => void
   onCompleted?: () => void
   getAbortController?: (controller: AbortController) => void
 }

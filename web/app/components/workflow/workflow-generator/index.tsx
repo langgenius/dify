@@ -415,7 +415,8 @@ function WorkflowGeneratorModal() {
         handleResult(res)
         finish()
       },
-      onError: (msg) => {
+      onError: (error) => {
+        const msg = error.message
         if (!settled) {
           generateWorkflow(body, {
             getAbortController: (c) => {

@@ -57,6 +57,12 @@ show a single warning and reload before the stale canvas can save over the commi
 ## Existing Code
 
 When migrating a request, inspect its caller before removing error feedback. The HTTP layer does not provide a fallback. Background queries should expose their error state at the consuming surface instead of producing unsolicited toasts.
+[form contract]: ../../packages/dify-ui/docs/forms.md
+
+Streaming callbacks follow the same ownership rule. `onError` receives an `Error`: an `ORPCError`
+for a failed HTTP handshake, a `StreamError` for a failure event after connection, or the original
+network/reader error. Inspect `error.name === 'AbortError'` for cancellation, not the rendered
+message. Read `error.message` at the presentation owner; keep status and business metadata intact
+when forwarding the error to another owner.
 
 [CopyFeedback]: ../app/components/base/copy-feedback/index.tsx
-[form contract]: ../../packages/dify-ui/docs/forms.md

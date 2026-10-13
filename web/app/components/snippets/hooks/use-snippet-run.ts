@@ -155,7 +155,7 @@ export const useSnippetRun = (snippetId: string) => {
             onWorkflowFinished?.(params)
           },
           onError: (params) => {
-            handleWorkflowFailed(params)
+            handleWorkflowFailed(params.message)
             invalidateRunHistory(runHistoryUrl)
 
             onError?.(params)

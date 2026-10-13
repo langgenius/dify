@@ -877,9 +877,10 @@ const useOneStepRun = <T>({
               _iterationResult = newIterationRunResult
               setIterationRunResult(newIterationRunResult)
             },
-            onError: (message) => {
+            onError: (error) => {
+              const message = error.message
               if (isPausedRef.current) return
-              if (!message.startsWith('AbortError')) toast.error(message)
+              if (error.name !== 'AbortError') toast.error(message)
               handleNodeDataUpdate({
                 id,
                 data: {
@@ -978,9 +979,10 @@ const useOneStepRun = <T>({
               _loopResult = newLoopRunResult
               setLoopRunResult(newLoopRunResult)
             },
-            onError: (message) => {
+            onError: (error) => {
+              const message = error.message
               if (isPausedRef.current) return
-              if (!message.startsWith('AbortError')) toast.error(message)
+              if (error.name !== 'AbortError') toast.error(message)
               handleNodeDataUpdate({
                 id,
                 data: {

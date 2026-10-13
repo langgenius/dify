@@ -320,9 +320,10 @@ const Debug: FC<IDebug> = ({
       onCompleted() {
         setRespondingFalse()
       },
-      onError(message) {
+      onError(error) {
+        const message = error.message
         setRespondingFalse()
-        if (!message.startsWith('AbortError')) toast.error(message)
+        if (error.name !== 'AbortError') toast.error(message)
       },
     })
   }

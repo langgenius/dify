@@ -129,17 +129,17 @@ export function sendSkillAssistMessage({
         onCompleted?.(streamErrorHandled && hasError ? false : hasError, errorMessage)
       },
       onData: (chunk, isFirstMessage, moreInfo) => {
-        if (moreInfo.errorMessage) {
+        if (moreInfo.error) {
           streamErrorHandled = true
-          onError?.(moreInfo.errorMessage, moreInfo.errorCode)
+          onError?.(moreInfo.error)
           return
         }
 
         onData?.(chunk, isFirstMessage, moreInfo)
       },
-      onError: (errorMessage, errorCode) => {
+      onError: (error) => {
         streamErrorHandled = true
-        onError?.(errorMessage, errorCode)
+        onError?.(error)
       },
       onUnhandledEvent,
     },

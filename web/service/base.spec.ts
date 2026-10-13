@@ -2,7 +2,7 @@ import { waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { toast } from '@/app/notifications'
 import { PUBLIC_API_PREFIX } from '@/config'
-// oxlint-disable-next-line no-restricted-imports
+// oxlint-disable-next-line no-restricted-imports -- This test exercises the transport boundary directly.
 import {
   del,
   get,
@@ -15,6 +15,7 @@ import {
   ssePost,
   upload,
 } from './base'
+import { StreamError } from './stream-error'
 
 const refreshAccessTokenOrReLoginMock = vi.hoisted(() => vi.fn())
 
@@ -39,6 +40,7 @@ describe('handleStream', () => {
       const onCompleted = vi.fn()
 
       const mockReader = {
+        cancel: vi.fn().mockResolvedValue(undefined),
         read: vi
           .fn()
           .mockResolvedValueOnce({
@@ -62,11 +64,10 @@ describe('handleStream', () => {
 
       await new Promise((resolve) => setTimeout(resolve, 50))
 
-      expect(onData).toHaveBeenCalledWith('', true, {
+      expect(onData).toHaveBeenCalledWith('', false, {
         conversationId: undefined,
         messageId: '',
-        errorMessage: 'Invalid response data',
-        errorCode: 'invalid_data',
+        error: expect.objectContaining({ message: 'Invalid response data', code: 'invalid_data' }),
       })
       expect(onCompleted).toHaveBeenCalledWith(true, 'Invalid response data')
     })
@@ -76,6 +77,7 @@ describe('handleStream', () => {
       const onCompleted = vi.fn()
 
       const mockReader = {
+        cancel: vi.fn().mockResolvedValue(undefined),
         read: vi
           .fn()
           .mockResolvedValueOnce({
@@ -99,11 +101,10 @@ describe('handleStream', () => {
 
       await new Promise((resolve) => setTimeout(resolve, 50))
 
-      expect(onData).toHaveBeenCalledWith('', true, {
+      expect(onData).toHaveBeenCalledWith('', false, {
         conversationId: undefined,
         messageId: '',
-        errorMessage: 'Invalid response data',
-        errorCode: 'invalid_data',
+        error: expect.objectContaining({ message: 'Invalid response data', code: 'invalid_data' }),
       })
       expect(onCompleted).toHaveBeenCalledWith(true, 'Invalid response data')
     })
@@ -121,6 +122,7 @@ describe('handleStream', () => {
       }
 
       const mockReader = {
+        cancel: vi.fn().mockResolvedValue(undefined),
         read: vi
           .fn()
           .mockResolvedValueOnce({
@@ -164,6 +166,7 @@ describe('handleStream', () => {
       }
 
       const mockReader = {
+        cancel: vi.fn().mockResolvedValue(undefined),
         read: vi
           .fn()
           .mockResolvedValueOnce({
@@ -190,8 +193,7 @@ describe('handleStream', () => {
       expect(onData).toHaveBeenCalledWith('', false, {
         conversationId: undefined,
         messageId: '',
-        errorMessage: 'Bad request',
-        errorCode: 'bad_request',
+        error: expect.objectContaining({ message: 'Bad request', code: 'bad_request' }),
       })
       expect(onCompleted).toHaveBeenCalledWith(true, 'Bad request')
     })
@@ -218,6 +220,7 @@ describe('handleStream', () => {
       const onData = vi.fn()
       const onCompleted = vi.fn()
       const mockReader = {
+        cancel: vi.fn().mockResolvedValue(undefined),
         read: vi
           .fn()
           .mockResolvedValueOnce({
@@ -242,8 +245,7 @@ describe('handleStream', () => {
         expect(onData).toHaveBeenCalledWith('', false, {
           conversationId: undefined,
           messageId: '',
-          errorMessage: payload.message,
-          errorCode: payload.code,
+          error: new StreamError(payload),
         })
       })
       expect(onCompleted).toHaveBeenCalledWith(true, payload.message)
@@ -254,6 +256,7 @@ describe('handleStream', () => {
       const onCompleted = vi.fn()
 
       const mockReader = {
+        cancel: vi.fn().mockResolvedValue(undefined),
         read: vi
           .fn()
           .mockResolvedValueOnce({
@@ -293,6 +296,7 @@ describe('handleStream', () => {
       }
 
       const mockReader = {
+        cancel: vi.fn().mockResolvedValue(undefined),
         read: vi
           .fn()
           .mockResolvedValueOnce({
@@ -339,6 +343,7 @@ describe('handleStream', () => {
         audio_type: 'audio/wav',
       }
       const mockReader = {
+        cancel: vi.fn().mockResolvedValue(undefined),
         read: vi
           .fn()
           .mockResolvedValueOnce({
@@ -371,6 +376,7 @@ describe('handleStream', () => {
       const onCompleted = vi.fn()
 
       const mockReader = {
+        cancel: vi.fn().mockResolvedValue(undefined),
         read: vi.fn().mockRejectedValueOnce(new Error('stream lost')),
       }
 
@@ -387,11 +393,10 @@ describe('handleStream', () => {
         expect(onData).toHaveBeenCalledWith('', false, {
           conversationId: undefined,
           messageId: '',
-          errorMessage: 'Error: stream lost',
-          errorCode: 'stream_read_error',
+          error: new Error('stream lost'),
         })
       })
-      expect(onCompleted).toHaveBeenCalledWith(true, 'Error: stream lost')
+      expect(onCompleted).toHaveBeenCalledWith(true, 'stream lost')
     })
 
     it('should throw error when response is not ok', () => {
@@ -428,7 +433,7 @@ describe('ssePost and sseGet', () => {
     )
 
     await waitFor(() => {
-      expect(onError).toHaveBeenCalledWith('TypeError: Network failed')
+      expect(onError).toHaveBeenCalledWith(new TypeError('Network failed'))
     })
     expect(toast.error).not.toHaveBeenCalled()
   })
@@ -445,7 +450,13 @@ describe('ssePost and sseGet', () => {
     await ssePost('/chat-messages', { body: { query: 'hello' } }, { onError })
 
     await waitFor(() => {
-      expect(onError).toHaveBeenCalledWith('Base model not found')
+      expect(onError).toHaveBeenCalledWith(
+        expect.objectContaining({
+          defined: false,
+          message: 'Base model not found',
+          status: 400,
+        }),
+      )
     })
     expect(toast.error).not.toHaveBeenCalled()
   })
@@ -462,7 +473,13 @@ describe('ssePost and sseGet', () => {
     await sseGet('/workflow/workflow-run-1/events', {}, { onError })
 
     await waitFor(() => {
-      expect(onError).toHaveBeenCalledWith('Workflow resume failed')
+      expect(onError).toHaveBeenCalledWith(
+        expect.objectContaining({
+          defined: false,
+          message: 'Workflow resume failed',
+          status: 400,
+        }),
+      )
     })
     expect(toast.error).not.toHaveBeenCalled()
   })
@@ -479,7 +496,9 @@ describe('ssePost and sseGet', () => {
     await ssePost('/chat-messages', { body: { query: 'hello' } }, { onError })
 
     await waitFor(() => {
-      expect(onError).toHaveBeenCalledWith('Base model not found', 'model_not_found')
+      expect(onError).toHaveBeenCalledWith(
+        expect.objectContaining({ message: 'Base model not found', code: 'model_not_found' }),
+      )
     })
     expect(toast.error).not.toHaveBeenCalled()
   })
@@ -501,7 +520,9 @@ describe('ssePost and sseGet', () => {
     await ssePost('/chat-messages', { body: { query: 'hello' } }, { onError })
 
     await waitFor(() => {
-      expect(onError).toHaveBeenCalledWith('Base model not found', 'model_not_found')
+      expect(onError).toHaveBeenCalledWith(
+        expect.objectContaining({ message: 'Base model not found', code: 'model_not_found' }),
+      )
     })
     expect(toast.error).not.toHaveBeenCalled()
   })
@@ -524,7 +545,7 @@ describe('ssePost and sseGet', () => {
     )
 
     await waitFor(() => {
-      expect(onError).toHaveBeenCalledWith('Error: refresh failed')
+      expect(onError).toHaveBeenCalledWith(new Error('refresh failed'))
     })
   })
 
@@ -542,7 +563,7 @@ describe('ssePost and sseGet', () => {
     )
 
     await waitFor(() => {
-      expect(onError).toHaveBeenCalledWith('Error: resume refresh failed')
+      expect(onError).toHaveBeenCalledWith(new Error('resume refresh failed'))
     })
   })
 
@@ -550,6 +571,7 @@ describe('ssePost and sseGet', () => {
     const onError = vi.fn()
     const onCompleted = vi.fn()
     const mockReader = {
+      cancel: vi.fn().mockResolvedValue(undefined),
       read: vi.fn().mockRejectedValueOnce(new Error('stream lost')),
     }
     const response = {
@@ -576,9 +598,9 @@ describe('ssePost and sseGet', () => {
     )
 
     await waitFor(() => {
-      expect(onError).toHaveBeenCalledWith('Error: stream lost', 'stream_read_error')
+      expect(onError).toHaveBeenCalledWith(new Error('stream lost'))
     })
-    expect(onCompleted).toHaveBeenCalledWith(true, 'Error: stream lost')
+    expect(onCompleted).toHaveBeenCalledWith(true, 'stream lost')
     expect(toast.error).not.toHaveBeenCalled()
   })
 
@@ -586,6 +608,7 @@ describe('ssePost and sseGet', () => {
     const onError = vi.fn()
     const onCompleted = vi.fn()
     const mockReader = {
+      cancel: vi.fn().mockResolvedValue(undefined),
       read: vi
         .fn()
         .mockRejectedValueOnce(new DOMException('BodyStreamBuffer was aborted', 'AbortError')),
@@ -615,11 +638,10 @@ describe('ssePost and sseGet', () => {
 
     await waitFor(() => {
       expect(onError).toHaveBeenCalledWith(
-        'AbortError: BodyStreamBuffer was aborted',
-        'stream_read_error',
+        new DOMException('BodyStreamBuffer was aborted', 'AbortError'),
       )
     })
-    expect(onCompleted).toHaveBeenCalledWith(true, 'AbortError: BodyStreamBuffer was aborted')
+    expect(onCompleted).toHaveBeenCalledWith(true, 'BodyStreamBuffer was aborted')
     expect(toast.error).not.toHaveBeenCalled()
   })
 

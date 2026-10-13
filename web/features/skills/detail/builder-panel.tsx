@@ -758,7 +758,8 @@ export function SkillBuilderPanel({
           toast.error(errorMessage)
         }
       },
-      onError: (errorMessage) => {
+      onError: (error) => {
+        const errorMessage = error.message
         const thinkingDurationSeconds = thinkingElapsedSecondsRef.current
         updateMessages((currentMessages) =>
           currentMessages.map((message) =>
@@ -770,7 +771,7 @@ export function SkillBuilderPanel({
         thinkingElapsedSecondsRef.current = 0
         isSendingRef.current = false
         assistAbortControllerRef.current = null
-        if (errorMessage) {
+        if (errorMessage && error.name !== 'AbortError') {
           replaceAssistantMessageWithError(assistantMessageId, errorMessage)
           toast.error(errorMessage)
         }

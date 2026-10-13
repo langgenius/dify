@@ -622,9 +622,9 @@ describe('DebugWithSingleModel', () => {
       )
 
       const callbacks = mockSsePost.mock.calls[0]![2] as {
-        onError: (message: string) => void
+        onError: (error: Error) => void
       }
-      callbacks.onError('Base model not found')
+      callbacks.onError(new Error('Base model not found'))
       expect(mockToastError).toHaveBeenCalledWith('Base model not found')
     })
 

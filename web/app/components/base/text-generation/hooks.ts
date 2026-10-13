@@ -4,7 +4,7 @@ import { toast } from '@/app/notifications'
 import { ssePost } from '@/service/base'
 
 type SendOptions = {
-  onNotifyError?: (message: string, code?: string) => void
+  onNotifyError?: (error: Error) => void
 }
 
 export const useTextGeneration = () => {
@@ -42,10 +42,11 @@ export const useTextGeneration = () => {
         onCompleted() {
           setIsResponding(false)
         },
-        onError(message, code) {
+        onError(error) {
+          const message = error.message
           setIsResponding(false)
-          if (message.startsWith('AbortError')) return
-          if (onNotifyError) onNotifyError(message, code)
+          if (error.name === 'AbortError') return
+          if (onNotifyError) onNotifyError(error)
           else toast.error(message)
         },
       },

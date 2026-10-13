@@ -394,7 +394,7 @@ describe('useChat – handleSend SSE callbacks', () => {
     it('should set isResponding to false', () => {
       const { result } = setupAndSend()
       act(() => {
-        capturedCallbacks.onError('Stream failed')
+        capturedCallbacks.onError(new Error('Stream failed'))
       })
       expect(result.current.isResponding).toBe(false)
     })

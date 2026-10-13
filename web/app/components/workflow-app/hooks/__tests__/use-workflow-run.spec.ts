@@ -1,6 +1,7 @@
 import { act, renderHook } from '@testing-library/react'
 import { TriggerType } from '@/app/components/workflow/header/test-run-menu'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { StreamError } from '@/service/stream-error'
 import { useWorkflowRun } from '../use-workflow-run'
 
 type DebugAbortControllerRef = {
@@ -444,7 +445,7 @@ describe('useWorkflowRun', () => {
       -1,
     )?.[0] as {
       getWorkflowRunningData: () => unknown
-      trackWorkflowRunFailed: (params: unknown, workflowData: unknown) => void
+      trackWorkflowRunFailed: (error: Error, workflowData: unknown) => void
     }
     const workflowData = {
       result: { status: WorkflowRunningStatus.Running },
@@ -452,7 +453,7 @@ describe('useWorkflowRun', () => {
     }
 
     baseCallbackFactoryContext.trackWorkflowRunFailed(
-      { error: 'failed', node_type: 'llm' },
+      new StreamError({ message: 'failed', node_type: 'llm' }),
       workflowData,
     )
 
@@ -468,7 +469,7 @@ describe('useWorkflowRun', () => {
     })
 
     mocks.mockTrackEvent.mockClear()
-    baseCallbackFactoryContext.trackWorkflowRunFailed('Server Error', workflowData)
+    baseCallbackFactoryContext.trackWorkflowRunFailed(new Error('Server Error'), workflowData)
 
     expect(mocks.mockTrackEvent).toHaveBeenCalledWith('workflow_run_failed', {
       workflow_id: 'flow-1',
@@ -492,7 +493,7 @@ describe('useWorkflowRun', () => {
     const baseCallbackFactoryContext = mocks.mockCreateBaseWorkflowRunCallbacks.mock.calls.at(
       -1,
     )?.[0] as {
-      trackWorkflowRunFailed: (params: unknown, workflowData: unknown) => void
+      trackWorkflowRunFailed: (error: Error, workflowData: unknown) => void
     }
     const workflowData = {
       result: {
@@ -505,7 +506,7 @@ describe('useWorkflowRun', () => {
     }
 
     baseCallbackFactoryContext.trackWorkflowRunFailed(
-      { error: 'failed', node_type: 'llm' },
+      new StreamError({ message: 'failed', node_type: 'llm' }),
       workflowData,
     )
 
@@ -541,7 +542,7 @@ describe('useWorkflowRun', () => {
     const baseCallbackFactoryContext = mocks.mockCreateBaseWorkflowRunCallbacks.mock.calls.at(
       -1,
     )?.[0] as {
-      trackWorkflowRunFailed: (params: unknown, workflowData: unknown) => void
+      trackWorkflowRunFailed: (error: Error, workflowData: unknown) => void
     }
 
     baseCallbackFactoryContext.trackWorkflowRunFailed(new Error('network down'), undefined)
@@ -564,13 +565,13 @@ describe('useWorkflowRun', () => {
     circularWorkflowData.self = circularWorkflowData
 
     baseCallbackFactoryContext.trackWorkflowRunFailed(
-      { message: 'missing error' },
+      new StreamError({ message: null }),
       circularWorkflowData,
     )
 
     expect(mocks.mockTrackEvent).toHaveBeenCalledWith('workflow_run_failed', {
       workflow_id: 'flow-1',
-      reason: undefined,
+      reason: 'Stream failed',
       node_type: undefined,
       data: {
         workflow_status: undefined,

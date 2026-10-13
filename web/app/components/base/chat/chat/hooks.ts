@@ -783,11 +783,12 @@ export const useChat = (
             responseItem.content = messageReplace.answer
           })
         },
-        onError(message, code) {
+        onError(error) {
+          const message = error.message
           if (requestGeneration !== workflowRequestGenerationRef.current) return
 
-          if (!message.startsWith('AbortError')) {
-            if (onNotifyError) onNotifyError(message, code)
+          if (error.name !== 'AbortError') {
+            if (onNotifyError) onNotifyError(error)
             else toast.error(message)
           }
           handleResponding(false)
@@ -1487,11 +1488,12 @@ export const useChat = (
         onMessageReplace: (messageReplace) => {
           responseItem.content = messageReplace.answer
         },
-        onError(message, code) {
+        onError(error) {
+          const message = error.message
           if (requestGeneration !== workflowRequestGenerationRef.current) return
 
-          if (!message.startsWith('AbortError')) {
-            if (onNotifyError) onNotifyError(message, code)
+          if (error.name !== 'AbortError') {
+            if (onNotifyError) onNotifyError(error)
             else toast.error(message)
           }
           handleResponding(false)

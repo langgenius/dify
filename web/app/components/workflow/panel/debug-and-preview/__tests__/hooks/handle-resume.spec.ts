@@ -511,7 +511,7 @@ describe('useChat – handleResume', () => {
     it('should set isResponding to false', async () => {
       const { result } = await setupResumeWithTree()
       act(() => {
-        capturedResumeOptions.onError('Stream failed')
+        capturedResumeOptions.onError(new Error('Stream failed'))
       })
       expect(result.current.isResponding).toBe(false)
     })

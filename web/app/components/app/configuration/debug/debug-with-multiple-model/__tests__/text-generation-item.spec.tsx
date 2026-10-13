@@ -418,9 +418,9 @@ describe('TextGenerationItem', () => {
       )
 
       const callbacks = handleSend.mock.calls[0]![2] as {
-        onNotifyError: (message: string) => void
+        onNotifyError: (error: Error) => void
       }
-      callbacks.onNotifyError('Base model not found')
+      callbacks.onNotifyError(new Error('Base model not found'))
       expect(mockToastError).toHaveBeenCalledWith('Base model not found')
     })
 

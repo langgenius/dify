@@ -157,7 +157,7 @@ describe('useTextGeneration', () => {
 
       const streamOptions = getLatestStreamOptions()
       act(() => {
-        streamOptions.onError?.('something went wrong')
+        streamOptions.onError?.(new Error('something went wrong'))
       })
 
       expect(result.current.isResponding).toBe(false)
@@ -172,11 +172,14 @@ describe('useTextGeneration', () => {
           await result.current.handleSend('/console/api', { query: 'hello' }, { onNotifyError })
         })
 
-        act(() => getLatestStreamOptions().onError?.(message, 'forbidden'))
+        const error = message.startsWith('AbortError')
+          ? new DOMException('Cancelled', 'AbortError')
+          : new Error(message)
+        act(() => getLatestStreamOptions().onError?.(error))
 
         expect(result.current.isResponding).toBe(false)
         if (message.startsWith('AbortError')) expect(onNotifyError).not.toHaveBeenCalled()
-        else expect(onNotifyError).toHaveBeenCalledExactlyOnceWith(message, 'forbidden')
+        else expect(onNotifyError).toHaveBeenCalledExactlyOnceWith(error)
         expect(mockNotify).not.toHaveBeenCalled()
       },
     )

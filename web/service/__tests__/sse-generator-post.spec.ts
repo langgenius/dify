@@ -1,5 +1,5 @@
 // Testing the SSE helper requires importing the module under test directly.
-// oxlint-disable-next-line no-restricted-imports
+// oxlint-disable-next-line no-restricted-imports -- This test exercises the transport boundary directly.
 import { sseGeneratorPost } from '../base'
 
 vi.mock('@/utils/var', () => ({
@@ -8,24 +8,16 @@ vi.mock('@/utils/var', () => ({
   PUBLIC_API_PREFIX: '/api',
 }))
 
-// Minimal streaming Response: a body whose reader yields the given chunks in
-// order, then signals done. ``json()`` backs the non-2xx error path.
-const makeStreamResponse = (chunks: string[], status = 200) => {
-  const encoder = new TextEncoder()
-  let i = 0
-  return {
-    status,
-    body: {
-      getReader: () => ({
-        read: () =>
-          i < chunks.length
-            ? Promise.resolve({ done: false, value: encoder.encode(chunks[i++]) })
-            : Promise.resolve({ done: true, value: undefined }),
-      }),
-    },
-    json: () => Promise.resolve({ message: 'Server Error' }),
-  } as unknown as Response
-}
+const makeStreamResponse = (chunks: string[]) =>
+  new Response(
+    new ReadableStream({
+      start(controller) {
+        for (const chunk of chunks) controller.enqueue(new TextEncoder().encode(chunk))
+        controller.close()
+      },
+    }),
+    { headers: { 'Content-Type': 'text/event-stream' } },
+  )
 
 describe('sseGeneratorPost', () => {
   afterEach(() => {
@@ -85,12 +77,19 @@ describe('sseGeneratorPost', () => {
   })
 
   it('reports a non-2xx (non-401) response through onError', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(makeStreamResponse([], 500)))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(Response.json({ message: 'Server Error' }, { status: 500 })),
+    )
 
     const onError = vi.fn()
     sseGeneratorPost('/workflow-generate/stream', {}, { onError })
 
-    await vi.waitFor(() => expect(onError).toHaveBeenCalledWith('Server Error'))
+    await vi.waitFor(() =>
+      expect(onError).toHaveBeenCalledWith(
+        expect.objectContaining({ defined: false, status: 500, message: 'Server Error' }),
+      ),
+    )
   })
 
   it('reports a rejected fetch through onError', async () => {
@@ -100,6 +99,6 @@ describe('sseGeneratorPost', () => {
     sseGeneratorPost('/workflow-generate/stream', {}, { onError })
 
     await vi.waitFor(() => expect(onError).toHaveBeenCalled())
-    expect(onError.mock.calls[0]![0]).toContain('network down')
+    expect(onError).toHaveBeenCalledWith(new Error('network down'))
   })
 })

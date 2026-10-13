@@ -4261,11 +4261,6 @@
       "count": 1
     }
   },
-  "web/service/__tests__/sse-generator-post.spec.ts": {
-    "dify/require-disable-directive-description": {
-      "count": 1
-    }
-  },
   "web/service/__tests__/use-pipeline.spec.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -4318,11 +4313,6 @@
       "count": 1
     },
     "typescript/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/service/base.spec.ts": {
-    "dify/require-disable-directive-description": {
       "count": 1
     }
   },

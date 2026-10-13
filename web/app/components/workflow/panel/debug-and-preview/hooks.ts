@@ -424,9 +424,10 @@ export const useChat = (
         onMessageReplace: (messageReplace) => {
           responseItem.content = messageReplace.answer
         },
-        onError(message) {
+        onError(error) {
+          const message = error.message
           handleResponding(false)
-          if (!message.startsWith('AbortError')) toast.error(message)
+          if (error.name !== 'AbortError') toast.error(message)
         },
         onWorkflowStarted: ({ workflow_run_id, task_id, conversation_id, message_id }) => {
           // If there are no streaming messages, we still need to set the conversation_id to avoid create a new conversation when regeneration in chat-flow.
@@ -807,9 +808,10 @@ export const useChat = (
             responseItem.content = messageReplace.answer
           })
         },
-        onError(message) {
+        onError(error) {
+          const message = error.message
           handleResponding(false)
-          if (!message.startsWith('AbortError')) toast.error(message)
+          if (error.name !== 'AbortError') toast.error(message)
         },
         onWorkflowStarted: ({ workflow_run_id, task_id }) => {
           handleResponding(true)

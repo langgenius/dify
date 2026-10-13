@@ -544,7 +544,7 @@ describe('useChat', () => {
       })
 
       act(() => {
-        callbacks.onError('Stream failed')
+        callbacks.onError(new Error('Stream failed'))
         callbacks.onCompleted(true)
       })
 
@@ -677,7 +677,7 @@ describe('useChat', () => {
         })
         callbacks.onMessageReplace({ answer: 'Replaced content' })
 
-        callbacks.onError('Stream failed')
+        callbacks.onError(new Error('Stream failed'))
       })
 
       const lastResponse = result.current.chatList[1]
@@ -865,7 +865,7 @@ describe('useChat', () => {
       expect(result.current.chatList[1]!.humanInputFormDataList).toHaveLength(1)
 
       act(() => {
-        postCallbacks.onError('stream failed')
+        postCallbacks.onError(new Error('stream failed'))
       })
 
       await expect(readyPromise).resolves.toBe(false)
@@ -1551,7 +1551,7 @@ describe('useChat', () => {
         callbacks.onWorkflowPaused({ data: { workflow_run_id: 'wr-1' } })
         callbacks.onWorkflowPaused({ data: { workflow_run_id: 'wr-1' } })
 
-        callbacks.onError('Stream failed')
+        callbacks.onError(new Error('Stream failed'))
 
         // Remove the callbacks.onWorkflowFinished({ data: { status: 'succeeded' } }) call to leave it paused
 
@@ -1845,7 +1845,7 @@ describe('useChat', () => {
       })
 
       act(() => {
-        callbacks.onError('Stream failed')
+        callbacks.onError(new Error('Stream failed'))
         callbacks.onCompleted(true)
       })
 

@@ -72,7 +72,7 @@ type CallbackContext = {
   clearAbortController: () => void
   clearListeningState: () => void
   getWorkflowRunningData: () => unknown
-  trackWorkflowRunFailed: (params: unknown, workflowData: unknown) => void
+  trackWorkflowRunFailed: (error: Error, workflowData: unknown) => void
   handlers: WorkflowRunEventHandlers
   callbacks: UserCallbackHandlers
   restCallback: IOtherOptions
@@ -149,16 +149,16 @@ export const createBaseWorkflowRunCallbacks = ({
   } = callbacks
   let hasStartedResumeStream = false
 
-  const wrappedOnError: IOtherOptions['onError'] = (params, code) => {
+  const wrappedOnError: IOtherOptions['onError'] = (error) => {
     clearAbortController()
-    handleWorkflowFailed(params)
+    handleWorkflowFailed(error.message)
     const workflowData = getWorkflowRunningData()
     invalidateRunHistory(runHistoryUrl)
     clearListeningState()
 
-    if (onError) onError(params, code)
+    if (onError) onError(error)
 
-    trackWorkflowRunFailed(params, workflowData)
+    trackWorkflowRunFailed(error, workflowData)
   }
 
   const wrappedOnCompleted: IOtherOptions['onCompleted'] = async (hasError, errorMessage) => {
@@ -361,15 +361,15 @@ export const createFinalWorkflowRunCallbacks = ({
         invalidAllLastRun()
       }
     },
-    onError: (params, code) => {
+    onError: (error) => {
       clearAbortController()
-      handleWorkflowFailed(params)
+      handleWorkflowFailed(error.message)
       const workflowData = getWorkflowRunningData()
       invalidateRunHistory(runHistoryUrl)
       clearListeningState()
 
-      if (onError) onError(params, code)
-      trackWorkflowRunFailed(params, workflowData)
+      if (onError) onError(error)
+      trackWorkflowRunFailed(error, workflowData)
     },
     onNodeStarted: (params) => {
       handleWorkflowNodeStarted(params, { clientWidth, clientHeight })

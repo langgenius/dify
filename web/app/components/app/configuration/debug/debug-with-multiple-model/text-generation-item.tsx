@@ -123,7 +123,7 @@ const TextGenerationItem: FC<TextGenerationItemProps> = ({ modelAndParameter }) 
     }
 
     handleSend(`apps/${appId}/completion-messages`, data, {
-      onNotifyError: (message) => toast.error(message),
+      onNotifyError: (error) => toast.error(error.message),
     })
   }
 
