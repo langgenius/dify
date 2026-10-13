@@ -28,7 +28,6 @@ import { builderModel, createBuilderQueryClient } from './model-fixtures'
 const mocks = vi.hoisted(() => ({
   controllerHook:
     vi.fn<(prepare: (saveDraft: boolean) => Promise<void>, events: SessionRunEvents) => void>(),
-  focusCanvas: vi.fn(),
   refreshCanvas: vi.fn<(shouldApply: () => boolean) => Promise<boolean>>(async () => true),
   reset: vi.fn(),
   restore: vi.fn(async () => true),
@@ -190,20 +189,6 @@ const Probe = () => {
       >
         Focus event node
       </button>
-      <button
-        type="button"
-        onClick={() =>
-          mocks.controllerHook.mock.lastCall![1].onCanvasEvent({
-            at_version: 2,
-            event: 'focus_workflow',
-            operation_id: 'operation-1',
-            revision: 2,
-            session_id: 'session-1',
-          })
-        }
-      >
-        Focus event canvas
-      </button>
       <output aria-label="Canvas refreshing">{String(canvasRefreshing)}</output>
       <textarea
         aria-label="Builder draft"
@@ -224,7 +209,6 @@ const renderProvider = (edgeCount = 0, difyBuilderEnabled = true, userId = 'user
       appId="app-1"
       canEdit
       getCanvasSnapshot={() => ({ nodes: [], edgeCount })}
-      onFocusCanvas={mocks.focusCanvas}
       onRefreshCanvas={mocks.refreshCanvas}
       onSyncDraft={mocks.syncDraft}
       tenantId="workspace-1"
@@ -270,7 +254,6 @@ const CreationNavigation = ({
           canEdit={canEdit}
           canStartCreation
           getCanvasSnapshot={() => ({ nodes: [], edgeCount: 0 })}
-          onFocusCanvas={mocks.focusCanvas}
           onRefreshCanvas={mocks.refreshCanvas}
           onSyncDraft={mocks.syncDraft}
           tenantId="workspace-1"
@@ -645,15 +628,13 @@ describe('DifyBuilderProvider', () => {
     expect(screen.getByRole('status', { name: 'Recheck ready' })).toHaveTextContent('true')
   })
 
-  it('applies focus-only canvas events without refreshing the draft', async () => {
+  it('highlights the edit target without refreshing the draft', async () => {
     const user = userEvent.setup()
     renderProvider()
 
     await user.click(screen.getByRole('button', { name: 'Focus event node' }))
-    await user.click(screen.getByRole('button', { name: 'Focus event canvas' }))
 
     expect(mocks.selectWorkflowNode).toHaveBeenCalledWith('llm-1', true)
-    expect(mocks.focusCanvas).toHaveBeenCalledOnce()
     expect(mocks.refreshCanvas).not.toHaveBeenCalled()
   })
 })

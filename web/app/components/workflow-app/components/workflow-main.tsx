@@ -64,7 +64,6 @@ type VarsUpdateSnapshot = {
 const HIDDEN_SECRET_VALUE = '[__HIDDEN__]'
 const GRAPH_RELOAD_RETRY_BASE_DELAY = 1000
 const GRAPH_RELOAD_RETRY_MAX_DELAY = 30_000
-const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)'
 
 const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
   const { t } = useTranslation(['workflow'] as const)
@@ -610,10 +609,6 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
     },
     [handleRefreshWorkflowDraft],
   )
-  const handleDifyBuilderFocusCanvas = useCallback(() => {
-    const duration = window.matchMedia(REDUCED_MOTION_QUERY).matches ? 0 : 800
-    void reactFlow.fitView({ duration })
-  }, [reactFlow])
 
   return (
     <DifyBuilderProvider
@@ -627,7 +622,6 @@ const WorkflowMain = ({ nodes, edges, viewport }: WorkflowMainProps) => {
             collaborationManager.canPersistLocalGraph()))
       }
       getCanvasSnapshot={getDifyBuilderCanvasSnapshot}
-      onFocusCanvas={handleDifyBuilderFocusCanvas}
       onSyncDraft={prepareWorkflowDraftForBuilder}
       onRefreshCanvas={handleDifyBuilderRefreshCanvas}
       tenantId={currentWorkspaceId}
