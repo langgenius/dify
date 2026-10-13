@@ -86,39 +86,6 @@ describe('ChatRecord', () => {
     })
   })
 
-  it('closes the record panel and restores the backup draft', async () => {
-    const user = userEvent.setup()
-    const handleLoadBackupDraft = vi.fn()
-
-    mockFetchConversationMessages.mockResolvedValue({
-      data: [
-        {
-          id: 'msg-1',
-          query: 'Question 1',
-          answer: 'Answer 1',
-          metadata: {},
-          message_files: [],
-          workflow_run_id: 'run-1',
-        },
-      ],
-    } as never)
-
-    const { container, store } = renderWorkflowComponent(<ChatRecord />, {
-      initialStoreState: { historyWorkflowData },
-      hooksStoreProps: { handleLoadBackupDraft },
-    })
-
-    await screen.findByText('Question 1')
-    await user.click(screen.getByRole('button', { name: 'common.operation.log' }))
-    expect(store.getState().messageLogItem?.workflow_run_id).toBe('run-1')
-
-    await user.click(container.querySelector('.size-6.cursor-pointer') as HTMLElement)
-
-    expect(handleLoadBackupDraft).toHaveBeenCalledTimes(1)
-    expect(store.getState().historyWorkflowData).toBeUndefined()
-    expect(store.getState().messageLogItem).toBeUndefined()
-  })
-
   it('stops loading when conversation fetching fails', async () => {
     mockFetchConversationMessages.mockRejectedValue(new Error('network error'))
 

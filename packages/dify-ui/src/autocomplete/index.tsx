@@ -13,6 +13,7 @@ import {
   floatingItemIndicatorClassName,
   floatingPopupAnimationClassName,
   floatingSeparatorClassName,
+  positionerClassName,
 } from '../internal/overlay'
 import { parsePlacement } from '../internal/placement'
 import { resolveClassName } from '../internal/resolve-class-name'
@@ -85,7 +86,7 @@ const autocompleteListClassName = [
 ]
 
 const autocompleteItemClassName = [
-  'flex min-h-8 cursor-pointer select-none items-center gap-2 rounded-lg px-2 py-1.5 text-text-secondary outline-hidden',
+  'flex min-h-8 select-none items-center gap-2 rounded-lg px-2 py-1.5 text-text-secondary outline-hidden',
   'data-highlighted:bg-state-base-hover data-highlighted:text-text-primary',
   'data-disabled:cursor-not-allowed data-disabled:opacity-30',
 ]
@@ -170,13 +171,12 @@ function AutocompleteInput({
 
 const autocompleteControlVariants = cva(
   [
-    'flex shrink-0 touch-manipulation items-center justify-center rounded-md text-text-tertiary transition-colors',
+    'flex shrink-0 touch-manipulation items-center justify-center rounded-md text-text-tertiary',
     'hover:bg-components-input-bg-hover hover:text-text-secondary focus-visible:bg-components-input-bg-hover focus-visible:text-text-secondary',
     insetFocusRingClassName,
     'disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-text-tertiary disabled:focus-visible:bg-transparent',
     'group-data-disabled/autocomplete:cursor-not-allowed group-data-disabled/autocomplete:hover:bg-transparent group-data-disabled/autocomplete:focus-visible:bg-transparent',
     'group-data-readonly/autocomplete:hidden',
-    'motion-reduce:transition-none',
   ],
   {
     variants: {
@@ -284,7 +284,7 @@ function AutocompletePositioner({
       side={side}
       align={align}
       sideOffset={sideOffset}
-      className={(state) => cn('z-50 outline-hidden', resolveClassName(className, state))}
+      className={(state) => cn(positionerClassName, resolveClassName(className, state))}
       {...props}
     />
   )

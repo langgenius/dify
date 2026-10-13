@@ -8,7 +8,7 @@ import type { InfiniteData } from '@tanstack/react-query'
 import { skipToken, useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { consoleQuery } from '@/service/console'
-import { responseStatus } from './document-detail-model'
+import { getHttpErrorStatus } from '@/service/http-error'
 import { newestTaskByDocument } from './document-model'
 
 const TASK_PAGE_SIZE = 100
@@ -116,7 +116,7 @@ export function useDocumentTaskStatus({
           },
           refetchOnWindowFocus: false,
           retry: (failureCount, error) => {
-            const status = responseStatus(error)
+            const status = getHttpErrorStatus(error)
             return status !== 403 && status !== 404 && failureCount < 2
           },
         },
@@ -167,13 +167,13 @@ export function useDocumentTaskStatus({
             ? ACTIVE_TASK_REFRESH_INTERVAL
             : false,
         retry: (failureCount, error) => {
-          const status = responseStatus(error)
+          const status = getHttpErrorStatus(error)
           return status !== 403 && status !== 404 && failureCount < 2
         },
       },
     ),
   )
-  const taskSnapshotErrorStatus = responseStatus(taskSnapshotQuery.error)
+  const taskSnapshotErrorStatus = getHttpErrorStatus(taskSnapshotQuery.error)
   const latestTask =
     taskSnapshotErrorStatus === 403 || taskSnapshotErrorStatus === 404
       ? undefined

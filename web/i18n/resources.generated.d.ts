@@ -58,6 +58,8 @@ export default interface Resources {
     'account.sendVerificationButton': 'Send Verification Code'
     'account.setPassword': 'Set a password'
     'account.showAppLength': 'Show {{length}} apps'
+    'account.timezoneNoResults': 'No matching time zones found'
+    'account.timezoneSearchPlaceholder': 'Search cities or time zones...'
     'account.verificationLabel': 'Verification Code'
     'account.verificationPlaceholder': 'Paste the 6-digit code'
     'account.workspaceName': 'Workspace Name'
@@ -3191,7 +3193,7 @@ export default interface Resources {
     'tryApp.retrying': 'Retrying…'
     'tryApp.tabHeader.detail': 'Orchestration Details'
     'tryApp.tabHeader.try': 'Try it'
-    'tryApp.tryInfo': 'This is a sample app. You can try up to 5 messages. To keep using it, click "Create from this sample app" and set it up!'
+    'tryApp.tryInfo': 'This is a sample app with limited trial messages. To keep using it, click “Create from this sample app” and set it up!'
   }
   fileUpload: {
     'feature.audioUpload.description': 'Enable Audio will allow the model to process audio files for transcription and analysis.'

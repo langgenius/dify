@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager
 from typing import cast
 from unittest.mock import MagicMock, patch
@@ -136,8 +136,8 @@ def _config(
 
 
 @contextmanager
-def _raise_on_insert(engine: Engine) -> Iterator[None]:
-    def raise_error(_conn, _cursor, statement, _parameters, _context, _executemany):
+def _raise_on_insert(engine: Engine) -> Generator[None]:
+    def raise_error(_conn, _cursor, statement: str, _parameters, _context, _executemany) -> None:
         if statement.lstrip().upper().startswith("INSERT") and "load_balancing_model_configs" in statement:
             raise RuntimeError("forced INSERT")
 
@@ -186,7 +186,7 @@ def test_enable_disable_persists_provider_model_setting(
 
 def test_provider_missing_errors_use_runtime_boundary(service: ServiceFixture, sqlite_session: Session) -> None:
     svc, manager, _ = service
-    manager.get_configurations.return_value = {}
+    manager.get_configurations.return_value = dict[str, object]()
     with pytest.raises(ValueError, match="Provider openai does not exist"):
         svc.enable_model_load_balancing("tenant-1", "openai", "model", ModelType.LLM)
     with pytest.raises(ValueError, match="Provider openai does not exist"):
@@ -329,7 +329,7 @@ def test_init_inherit_config_persists_and_sql_failure_rolls_back(
     ],
 )
 def test_update_configs_rejects_invalid_payloads(
-    configs,
+    configs: object,
     message: str,
     service: ServiceFixture,
     sqlite_session: Session,
@@ -337,7 +337,13 @@ def test_update_configs_rejects_invalid_payloads(
     svc, _, _ = service
     with pytest.raises(ValueError, match=message):
         svc.update_load_balancing_configs(
-            "tenant-1", "openai", "gpt-4o-mini", ModelType.LLM, configs, "custom-model", sqlite_session
+            "tenant-1",
+            "openai",
+            "gpt-4o-mini",
+            ModelType.LLM,
+            configs,  # pyrefly: ignore[bad-argument-type]
+            "custom-model",
+            sqlite_session,
         )
 
 
@@ -391,6 +397,7 @@ def test_update_configs_updates_creates_and_deletes_persisted_rows(
     updated = sqlite_session.get(LoadBalancingModelConfig, keep.id)
     assert updated is not None
     assert updated.enabled is False
+    assert updated.encrypted_config is not None
     assert json.loads(updated.encrypted_config) == {"api_key": "enc-new"}
 
 

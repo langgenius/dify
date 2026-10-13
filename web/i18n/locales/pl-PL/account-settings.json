@@ -55,6 +55,8 @@
   "account.sendVerificationButton": "Wyślij kod weryfikacyjny",
   "account.setPassword": "Ustaw hasło",
   "account.showAppLength": "Pokaż {{length}} aplikacje",
+  "account.timezoneNoResults": "Nie znaleziono pasujących stref czasowych",
+  "account.timezoneSearchPlaceholder": "Szukaj miast lub stref czasowych…",
   "account.verificationLabel": "Kod weryfikacyjny",
   "account.verificationPlaceholder": "Wklej 6-cyfrowy kod",
   "account.workspaceName": "Nazwa miejsca pracy",
