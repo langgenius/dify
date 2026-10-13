@@ -17,16 +17,10 @@ import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { toast } from '@/app/notifications'
 import { getFileIconType } from '@/features/agent-v2/file-icon'
 import { consoleClient, consoleQuery } from '@/service/console'
-import {
-  getSkillErrorCode,
-  getSkillErrorDetailNumber,
-  getSkillErrorDetailString,
-  isSkillErrorRecord,
-} from '../error'
+import { getSkillErrorCode, getSkillErrorDetailString, isSkillErrorRecord } from '../error'
 
 export const isRecord = isSkillErrorRecord
 export const getErrorCode = getSkillErrorCode
-export const getErrorDetailNumber = getSkillErrorDetailNumber
 export const getErrorDetailString = getSkillErrorDetailString
 
 export const SKILL_TAG_CREATE_OPTION_PREFIX = '\u0000skill-tag-create:'
