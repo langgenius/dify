@@ -31,7 +31,6 @@ from controllers.console.workspace.error import (
     MemberCannotOperateSelfError,
     MemberNotFoundError,
     MemberRoleAlreadyAssignedError,
-    MemberRoleInvalidError,
 )
 from enums.account import TenantAccountRole
 from extensions.ext_application_services import application_services
@@ -338,7 +337,7 @@ def _raise_member_mutation_error(
     if isinstance(error, (AccountNotFoundError, workspace_errors.WorkspaceNotFoundError)):
         raise NotFound() from error
     if isinstance(error, InvalidWorkspaceMemberRoleError):
-        raise MemberRoleInvalidError() from error
+        raise InvalidMemberRoleError() from error
     if isinstance(error, workspace_errors.CannotOperateSelfError):
         raise MemberCannotOperateSelfError(str(error)) from error
     if isinstance(error, NoPermissionError):

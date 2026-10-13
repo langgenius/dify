@@ -53,13 +53,13 @@ from services.remote_file_service import RemoteFileUrlBlockedError as RemoteFile
 
 
 class InvalidUploadTokenBadRequestError(BaseHTTPException):
-    error_code = "invalid_upload_token"
-    description = "Invalid upload token."
+    error_code = "malformed_upload_token"
+    description = "The upload token is malformed."
     code = 400
 
 
 class InvalidUploadTokenUnauthorizedError(BaseHTTPException):
-    error_code = "invalid_upload_token"
+    error_code = "upload_token_required"
     description = "Upload token is required."
     code = 401
 

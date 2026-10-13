@@ -172,7 +172,7 @@ class TestMemberCancelInviteApiWithContainers:
 
         assert exc_info.value.code == 400
         assert exc_info.value.data == {
-            "code": "cannot-operate-self",
+            "code": "cannot_operate_self",
             "message": exc_info.value.description,
             "status": 400,
         }
@@ -219,7 +219,7 @@ class TestMemberCancelInviteApiWithContainers:
                 method(api, RequestContext("request", None, current_user.id, tenant.id), member.id)
 
         assert exc_info.value.code == 404
-        assert exc_info.value.data == {"code": "member-not-found", "message": exc_info.value.description, "status": 404}
+        assert exc_info.value.data == {"code": "member_not_found", "message": exc_info.value.description, "status": 404}
 
 
 class TestMemberUpdateRoleApiWithContainers:
