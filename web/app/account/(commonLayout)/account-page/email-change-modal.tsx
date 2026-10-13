@@ -11,6 +11,7 @@ import { Trans, useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { checkEmailExisted, resetEmail, sendVerifyCode, verifyEmail } from '@/service/common'
 import { useLogout } from '@/service/use-common'
+import { getErrorMessage } from '@/utils/error-message'
 
 type Props = {
   onClose: () => void
@@ -27,11 +28,6 @@ const STEP = {
 type Step = (typeof STEP)[keyof typeof STEP]
 
 const emailPattern = /^[\w.!#$%&'*+\-/=?^`{|}~]+@(?:[\w-]+\.)+[\w-]{2,}$/
-
-function getErrorMessage(error: unknown) {
-  if (error instanceof Error) return error.message
-  return ''
-}
 
 const EmailChangeModal = ({ onClose, email }: Props) => {
   const { t } = useTranslation(['common', 'accountSettings'])
@@ -79,7 +75,7 @@ const EmailChangeModal = ({ onClose, email }: Props) => {
       startCount()
       if (res.data) setStepToken(res.data)
     } catch (error) {
-      toast.error(`Error sending verification code: ${getErrorMessage(error)}`)
+      toast.error(`Error sending verification code: ${getErrorMessage(error) ?? ''}`)
     }
   }
 
@@ -102,7 +98,7 @@ const EmailChangeModal = ({ onClose, email }: Props) => {
         toast.error('Verifying email failed')
       }
     } catch (error) {
-      toast.error(`Error verifying email: ${getErrorMessage(error)}`)
+      toast.error(`Error verifying email: ${getErrorMessage(error) ?? ''}`)
     }
   }
 
@@ -182,7 +178,7 @@ const EmailChangeModal = ({ onClose, email }: Props) => {
       })
       await logout()
     } catch (error) {
-      toast.error(`Error changing email: ${getErrorMessage(error)}`)
+      toast.error(`Error changing email: ${getErrorMessage(error) ?? ''}`)
     }
   }
 

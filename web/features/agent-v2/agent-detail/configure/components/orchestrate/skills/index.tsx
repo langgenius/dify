@@ -521,9 +521,8 @@ export function AgentSkills() {
           },
         },
         {
-          onError: async (error) => {
-            const normalizedError = error
-            const errorCode = getSkillErrorCode(normalizedError)
+          onError: (error) => {
+            const errorCode = getSkillErrorCode(error)
             if (errorCode === 'too_many_agent_skills') {
               toast.error(
                 t(($) => $['agentDetail.configure.skills.workspaceSelector.limitReached']),
@@ -533,7 +532,7 @@ export function AgentSkills() {
             if (errorCode === 'skill_name_conflict') {
               toast.error(
                 tSkill(($) => $['skillManagement.errors.nameConflict'], {
-                  name: getSkillErrorDetailString(normalizedError, 'name') ?? '',
+                  name: getSkillErrorDetailString(error, 'name') ?? '',
                 }),
               )
               return

@@ -1,8 +1,10 @@
 import type { EmojiIcon, ImageIcon } from '@/app/components/base/icon-picker'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { act, renderHook } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vite-plus/test'
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 import { MCPAuthMethod } from '@/app/components/tools/types'
+import { toast } from '@/app/notifications'
+import { createHttpError } from '@/service/http-error'
 import { isValidServerID, isValidUrl, useMCPModalForm } from '../use-mcp-modal-form'
 
 // Mock the API service
@@ -19,6 +21,10 @@ vi.mock('tldts', () => ({
     }
   }),
 }))
+
+afterEach(() => {
+  vi.restoreAllMocks()
+})
 
 describe('useMCPModalForm', () => {
   describe('Utility Functions', () => {
@@ -408,50 +414,32 @@ describe('useMCPModalForm', () => {
       })
     })
 
-    it('should handle error when icon fetch fails with error code', async () => {
+    it.each([
+      {
+        name: 'HTTP failure',
+        error: createHttpError(new Response(null, { status: 400 }), {
+          code: 'UPLOAD_ERROR',
+          message: 'Remote icon upload failed',
+        }),
+        message: 'Remote icon upload failed',
+      },
+      {
+        name: 'network failure',
+        error: new TypeError('Failed to fetch'),
+        message: 'Failed to fetch',
+      },
+    ])('shows the error message for an icon $name', async ({ error, message }) => {
       const { uploadRemoteFileInfo } = await import('@/service/common')
-      const mockError = {
-        json: vi.fn().mockResolvedValue({ code: 'UPLOAD_ERROR' }),
-      }
-      vi.mocked(uploadRemoteFileInfo).mockRejectedValueOnce(mockError)
-
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-
+      vi.mocked(uploadRemoteFileInfo).mockRejectedValueOnce(error)
+      const warningSpy = vi.spyOn(toast, 'warning').mockReturnValue('icon-upload-warning')
       const { result } = renderHook(() => useMCPModalForm())
 
       await act(async () => {
         await result.current.actions.handleUrlBlur('https://example.com/mcp')
       })
 
-      // Should have called console.error
-      expect(consoleErrorSpy).toHaveBeenCalled()
-      // isFetchingIcon should be reset to false after error
+      expect(warningSpy).toHaveBeenCalledWith(message)
       expect(result.current.state.isFetchingIcon).toBe(false)
-
-      consoleErrorSpy.mockRestore()
-    })
-
-    it('should handle error when icon fetch fails without error code', async () => {
-      const { uploadRemoteFileInfo } = await import('@/service/common')
-      const mockError = {
-        json: vi.fn().mockResolvedValue({}),
-      }
-      vi.mocked(uploadRemoteFileInfo).mockRejectedValueOnce(mockError)
-
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-
-      const { result } = renderHook(() => useMCPModalForm())
-
-      await act(async () => {
-        await result.current.actions.handleUrlBlur('https://example.com/mcp')
-      })
-
-      // Should have called console.error
-      expect(consoleErrorSpy).toHaveBeenCalled()
-      // isFetchingIcon should be reset to false after error
-      expect(result.current.state.isFetchingIcon).toBe(false)
-
-      consoleErrorSpy.mockRestore()
     })
 
     it('should ignore stale blur when a newer blur starts before fetch completes', async () => {
