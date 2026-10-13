@@ -166,6 +166,9 @@ import {
   zPostDatasetsByDatasetIdDocumentsMetadataBody,
   zPostDatasetsByDatasetIdDocumentsMetadataPath,
   zPostDatasetsByDatasetIdDocumentsMetadataResponse,
+  zPostDatasetsByDatasetIdDocumentsRetryBody,
+  zPostDatasetsByDatasetIdDocumentsRetryPath,
+  zPostDatasetsByDatasetIdDocumentsRetryResponse,
   zPostDatasetsByDatasetIdHitTestingBody,
   zPostDatasetsByDatasetIdHitTestingPath,
   zPostDatasetsByDatasetIdHitTestingResponse,
@@ -1018,6 +1021,35 @@ export const metadata = {
 }
 
 /**
+ * Retry Failed Document Indexing
+ *
+ * Retry indexing using the existing stored source without changing document IDs or batch IDs. Every requested document must belong to this knowledge base, have indexing_status `error` and be neither archived nor paused. An invalid batch is rejected before any retries are scheduled. A 204 response acknowledges asynchronous scheduling; poll the existing indexing-status endpoint with each document's batch ID to track completion.
+ */
+export const post19 = oc
+  .route({
+    description:
+      "Retry indexing using the existing stored source without changing document IDs or batch IDs. Every requested document must belong to this knowledge base, have indexing_status `error` and be neither archived nor paused. An invalid batch is rejected before any retries are scheduled. A 204 response acknowledges asynchronous scheduling; poll the existing indexing-status endpoint with each document's batch ID to track completion.",
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postDatasetsByDatasetIdDocumentsRetry',
+    path: '/datasets/{dataset_id}/documents/retry',
+    successStatus: 204,
+    summary: 'Retry Failed Document Indexing',
+    tags: ['Documents'],
+  })
+  .input(
+    z.object({
+      body: zPostDatasetsByDatasetIdDocumentsRetryBody,
+      params: zPostDatasetsByDatasetIdDocumentsRetryPath,
+    }),
+  )
+  .output(zPostDatasetsByDatasetIdDocumentsRetryResponse)
+
+export const retry = {
+  post: post19,
+}
+
+/**
  * Update Document Status in Batch
  *
  * Enable, disable, archive, or unarchive multiple documents at once.
@@ -1185,7 +1217,7 @@ export const get10 = oc
  *
  * Create a child chunk under the specified segment.
  */
-export const post19 = oc
+export const post20 = oc
   .route({
     description: 'Create a child chunk under the specified segment.',
     inputStructure: 'detailed',
@@ -1205,7 +1237,7 @@ export const post19 = oc
 
 export const childChunks = {
   get: get10,
-  post: post19,
+  post: post20,
   byChildChunkId,
 }
 
@@ -1254,7 +1286,7 @@ export const get11 = oc
  *
  * Update a chunk's content, keywords, or answer. Re-triggers indexing for the modified chunk.
  */
-export const post20 = oc
+export const post21 = oc
   .route({
     description:
       "Update a chunk's content, keywords, or answer. Re-triggers indexing for the modified chunk.",
@@ -1276,7 +1308,7 @@ export const post20 = oc
 export const bySegmentId = {
   delete: delete5,
   get: get11,
-  post: post20,
+  post: post21,
   childChunks,
 }
 
@@ -1309,7 +1341,7 @@ export const get12 = oc
  *
  * Create one or more chunks within a document. Each chunk can include optional keywords and an answer field (for QA-mode documents).
  */
-export const post21 = oc
+export const post22 = oc
   .route({
     description:
       'Create one or more chunks within a document. Each chunk can include optional keywords and an answer field (for QA-mode documents).',
@@ -1330,7 +1362,7 @@ export const post21 = oc
 
 export const segments = {
   get: get12,
-  post: post21,
+  post: post22,
   bySegmentId,
 }
 
@@ -1341,7 +1373,7 @@ export const segments = {
  *
  * @deprecated
  */
-export const post22 = oc
+export const post23 = oc
   .route({
     deprecated: true,
     description:
@@ -1368,7 +1400,7 @@ export const post22 = oc
  *
  * @deprecated
  */
-export const post23 = oc
+export const post24 = oc
   .route({
     deprecated: true,
     description:
@@ -1389,7 +1421,7 @@ export const post23 = oc
   .output(zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Response)
 
 export const updateByFile = {
-  post: post23,
+  post: post24,
 }
 
 /**
@@ -1397,7 +1429,7 @@ export const updateByFile = {
  *
  * Update an existing document's text content, name, or processing configuration. Re-triggers indexing if content changes — use the returned `batch` ID with [Get Document Indexing Status](/api-reference/documents/get-document-indexing-status) to track progress.
  */
-export const post24 = oc
+export const post25 = oc
   .route({
     description:
       "Update an existing document's text content, name, or processing configuration. Re-triggers indexing if content changes — use the returned `batch` ID with [Get Document Indexing Status](/api-reference/documents/get-document-indexing-status) to track progress.",
@@ -1423,7 +1455,7 @@ export const post24 = oc
  *
  * @deprecated
  */
-export const post25 = oc
+export const post26 = oc
   .route({
     deprecated: true,
     description:
@@ -1444,7 +1476,7 @@ export const post25 = oc
   .output(zPostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Response)
 
 export const updateByText = {
-  post: post25,
+  post: post26,
 }
 
 /**
@@ -1552,6 +1584,7 @@ export const documents = {
   get: get14,
   downloadZip,
   metadata,
+  retry,
   status: status2,
   byBatch,
   byDocumentId,
@@ -1564,7 +1597,7 @@ export const documents = {
  *
  * @deprecated
  */
-export const post26 = oc
+export const post27 = oc
   .route({
     deprecated: true,
     description:
@@ -1585,7 +1618,7 @@ export const post26 = oc
   .output(zPostDatasetsByDatasetIdHitTestingResponse)
 
 export const hitTesting = {
-  post: post26,
+  post: post27,
 }
 
 /**
@@ -1593,7 +1626,7 @@ export const hitTesting = {
  *
  * Enable or disable built-in metadata fields for the knowledge base.
  */
-export const post27 = oc
+export const post28 = oc
   .route({
     description: 'Enable or disable built-in metadata fields for the knowledge base.',
     inputStructure: 'detailed',
@@ -1607,7 +1640,7 @@ export const post27 = oc
   .output(zPostDatasetsByDatasetIdMetadataBuiltInByActionResponse)
 
 export const byAction3 = {
-  post: post27,
+  post: post28,
 }
 
 /**
@@ -1706,7 +1739,7 @@ export const get16 = oc
  *
  * Create a custom metadata field for the knowledge base. Metadata fields can be used to annotate documents with structured information.
  */
-export const post28 = oc
+export const post29 = oc
   .route({
     description:
       'Create a custom metadata field for the knowledge base. Metadata fields can be used to annotate documents with structured information.',
@@ -1728,7 +1761,7 @@ export const post28 = oc
 
 export const metadata2 = {
   get: get16,
-  post: post28,
+  post: post29,
   builtIn,
   byMetadataId,
 }
@@ -1766,7 +1799,7 @@ export const datasourcePlugins = {
  *
  * Execute a single datasource node within the knowledge pipeline. Returns a streaming response with the node execution results.
  */
-export const post29 = oc
+export const post30 = oc
   .route({
     description:
       'Execute a single datasource node within the knowledge pipeline. Returns a streaming response with the node execution results.',
@@ -1786,7 +1819,7 @@ export const post29 = oc
   .output(zPostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunResponse)
 
 export const run = {
-  post: post29,
+  post: post30,
 }
 
 export const byNodeId = {
@@ -1806,7 +1839,7 @@ export const datasource = {
  *
  * Execute the full knowledge pipeline for a knowledge base. Published runs are queued and return batch metadata as JSON. Draft runs support blocking JSON and streaming Server-Sent Events.
  */
-export const post30 = oc
+export const post31 = oc
   .route({
     description:
       'Execute the full knowledge pipeline for a knowledge base. Published runs are queued and return batch metadata as JSON. Draft runs support blocking JSON and streaming Server-Sent Events.',
@@ -1826,7 +1859,7 @@ export const post30 = oc
   .output(zPostDatasetsByDatasetIdPipelineRunResponse)
 
 export const run2 = {
-  post: post30,
+  post: post31,
 }
 
 export const pipeline2 = {
@@ -1840,7 +1873,7 @@ export const pipeline2 = {
  *
  * Performs a search query against a knowledge base to retrieve the most relevant chunks. This endpoint can be used for both production retrieval and test retrieval.
  */
-export const post31 = oc
+export const post32 = oc
   .route({
     description:
       'Performs a search query against a knowledge base to retrieve the most relevant chunks. This endpoint can be used for both production retrieval and test retrieval.',
@@ -1860,7 +1893,7 @@ export const post31 = oc
   .output(zPostDatasetsByDatasetIdRetrieveResponse)
 
 export const retrieve = {
-  post: post31,
+  post: post32,
 }
 
 /**
@@ -1979,7 +2012,7 @@ export const get20 = oc
  *
  * Create a new empty knowledge base. After creation, use [Create Document by Text](/api-reference/documents/create-document-by-text) or [Create Document by File](/api-reference/documents/create-document-by-file) to add documents.
  */
-export const post32 = oc
+export const post33 = oc
   .route({
     description:
       'Create a new empty knowledge base. After creation, use [Create Document by Text](/api-reference/documents/create-document-by-text) or [Create Document by File](/api-reference/documents/create-document-by-file) to add documents.',
@@ -1995,7 +2028,7 @@ export const post32 = oc
 
 export const datasets = {
   get: get20,
-  post: post32,
+  post: post33,
   pipeline,
   tags,
   byDatasetId,
@@ -2033,7 +2066,7 @@ export const endUsers = {
  *
  * Upload a file for use when sending messages, enabling multimodal understanding of images, documents, audio, and video. Uploaded files are for use by the current end-user only.
  */
-export const post33 = oc
+export const post34 = oc
   .route({
     description:
       'Upload a file for use when sending messages, enabling multimodal understanding of images, documents, audio, and video. Uploaded files are for use by the current end-user only.',
@@ -2049,7 +2082,7 @@ export const post33 = oc
   .output(zPostFilesUploadResponse)
 
 export const upload = {
-  post: post33,
+  post: post34,
 }
 
 /**
@@ -2113,7 +2146,7 @@ export const get23 = oc
  *
  * Submit the recipient's response to a paused Human Input form. The workflow resumes on acceptance; use [Stream Workflow Events](/api-reference/chatflows/stream-workflow-events) to follow subsequent events. Requires **WebApp** delivery.
  */
-export const post34 = oc
+export const post35 = oc
   .route({
     description:
       "Submit the recipient's response to a paused Human Input form. The workflow resumes on acceptance; use [Stream Workflow Events](/api-reference/chatflows/stream-workflow-events) to follow subsequent events. Requires **WebApp** delivery.",
@@ -2134,7 +2167,7 @@ export const post34 = oc
 
 export const byFormToken = {
   get: get23,
-  post: post34,
+  post: post35,
 }
 
 export const humanInput = {
@@ -2172,7 +2205,7 @@ export const info = {
  *
  * Submit feedback for a message. End users can rate messages as `like` or `dislike`, and optionally provide text feedback. Pass `null` for `rating` to revoke previously submitted feedback.
  */
-export const post35 = oc
+export const post36 = oc
   .route({
     description:
       'Submit feedback for a message. End users can rate messages as `like` or `dislike`, and optionally provide text feedback. Pass `null` for `rating` to revoke previously submitted feedback.',
@@ -2192,7 +2225,7 @@ export const post35 = oc
   .output(zPostMessagesByMessageIdFeedbacksResponse)
 
 export const feedbacks2 = {
-  post: post35,
+  post: post36,
 }
 
 /**
@@ -2322,7 +2355,7 @@ export const site = {
  *
  * Convert text to speech.
  */
-export const post36 = oc
+export const post37 = oc
   .route({
     description: 'Convert text to speech.',
     inputStructure: 'detailed',
@@ -2336,7 +2369,7 @@ export const post36 = oc
   .output(zPostTextToAudioResponse)
 
 export const textToAudio = {
-  post: post36,
+  post: post37,
 }
 
 /**
@@ -2425,7 +2458,7 @@ export const byWorkflowRunId2 = {
  *
  * Execute a workflow. Cannot be executed without a published workflow.
  */
-export const post37 = oc
+export const post38 = oc
   .route({
     description: 'Execute a workflow. Cannot be executed without a published workflow.',
     inputStructure: 'detailed',
@@ -2439,7 +2472,7 @@ export const post37 = oc
   .output(zPostWorkflowsRunResponse)
 
 export const run3 = {
-  post: post37,
+  post: post38,
   byWorkflowRunId: byWorkflowRunId2,
 }
 
@@ -2448,7 +2481,7 @@ export const run3 = {
  *
  * Stop a running workflow task. Only supported in `streaming` mode.
  */
-export const post38 = oc
+export const post39 = oc
   .route({
     description: 'Stop a running workflow task. Only supported in `streaming` mode.',
     inputStructure: 'detailed',
@@ -2467,7 +2500,7 @@ export const post38 = oc
   .output(zPostWorkflowsTasksByTaskIdStopResponse)
 
 export const stop3 = {
-  post: post38,
+  post: post39,
 }
 
 export const byTaskId3 = {
@@ -2483,7 +2516,7 @@ export const tasks = {
  *
  * Execute a specific workflow version identified by its ID. Useful for running a particular published version of the workflow.
  */
-export const post39 = oc
+export const post40 = oc
   .route({
     description:
       'Execute a specific workflow version identified by its ID. Useful for running a particular published version of the workflow.',
@@ -2503,7 +2536,7 @@ export const post39 = oc
   .output(zPostWorkflowsByWorkflowIdRunResponse)
 
 export const run4 = {
-  post: post39,
+  post: post40,
 }
 
 export const byWorkflowId = {

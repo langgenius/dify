@@ -1301,6 +1301,33 @@ Download multiple uploaded-file documents as a single ZIP archive. Accepts up to
 | 403 | `forbidden` : Insufficient permissions. |  |
 | 404 | `not_found` : Document or dataset not found. |  |
 
+### [POST] /datasets/{dataset_id}/documents/retry
+**Retry Failed Document Indexing**
+
+Retry indexing using the existing stored source without changing document IDs or batch IDs. Every requested document must belong to this knowledge base, have indexing_status `error` and be neither archived nor paused. An invalid batch is rejected before any retries are scheduled. A 204 response acknowledges asynchronous scheduling; poll the existing indexing-status endpoint with each document's batch ID to track completion.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| dataset_id | path | Knowledge base ID. | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [DocumentRetryPayload](#documentretrypayload)<br> |
+
+#### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 204 | Document indexing retries scheduled. |
+| 400 | Invalid document IDs, document state or a retry already in progress. |
+| 401 | Unauthorized - invalid API token |
+| 403 | Dataset access denied, an archived document or knowledge request rate limit exceeded. |
+| 404 | Dataset or document not found. |
+
 ### [PATCH] /datasets/{dataset_id}/documents/status/{action}
 **Update Document Status in Batch**
 
@@ -3216,6 +3243,12 @@ Request payload for bulk downloading documents as a zip archive.
 | summary_index_status | string |  | No |
 | tokens | integer |  | No |
 | word_count | integer |  | No |
+
+#### DocumentRetryPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| document_ids | [ string (uuid) ] | IDs of failed documents to retry in this knowledge base. Duplicate IDs are retried once. | Yes |
 
 #### DocumentStatusListResponse
 

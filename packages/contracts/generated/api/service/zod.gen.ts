@@ -1023,6 +1023,13 @@ export const zDocumentListResponse = z.object({
 })
 
 /**
+ * DocumentRetryPayload
+ */
+export const zDocumentRetryPayload = z.object({
+  document_ids: z.array(z.uuid()).min(1).max(100),
+})
+
+/**
  * DocumentStatusPayload
  */
 export const zDocumentStatusPayload = z.object({
@@ -3511,6 +3518,17 @@ export const zPostDatasetsByDatasetIdDocumentsMetadataPath = z.object({
  * Document metadata updated successfully.
  */
 export const zPostDatasetsByDatasetIdDocumentsMetadataResponse = zDatasetMetadataActionResponse
+
+export const zPostDatasetsByDatasetIdDocumentsRetryBody = zDocumentRetryPayload
+
+export const zPostDatasetsByDatasetIdDocumentsRetryPath = z.object({
+  dataset_id: z.uuid(),
+})
+
+/**
+ * Document indexing retries scheduled.
+ */
+export const zPostDatasetsByDatasetIdDocumentsRetryResponse = z.void()
 
 export const zPatchDatasetsByDatasetIdDocumentsStatusByActionBody = zDocumentStatusPayload
 
