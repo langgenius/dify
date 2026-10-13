@@ -14,7 +14,7 @@ class HumanInputEmailDeliveryCase:
     name: str
     deployment_edition: DeploymentEdition
     tenant_id: str | None
-    plan: str
+    plan: CloudPlan
     expected: bool
 
 
@@ -68,7 +68,7 @@ CASES = [
 def test_resolve_human_input_email_delivery_enabled_matrix(
     config_overrides: Callable[..., None],
     case: HumanInputEmailDeliveryCase,
-):
+) -> None:
     config_overrides(DEPLOYMENT_EDITION=case.deployment_edition)
     features = FeatureModel()
     features.billing.subscription.plan = case.plan
@@ -83,7 +83,7 @@ def test_resolve_human_input_email_delivery_enabled_matrix(
 
 def test_get_vector_space_converts_billing_float_size(
     monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
-):
+) -> None:
     config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     monkeypatch.setattr(
         feature_service_module.BillingService,
@@ -100,7 +100,7 @@ def test_get_vector_space_converts_billing_float_size(
 
 def test_get_vector_space_preserves_unknown_usage(
     monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None]
-):
+) -> None:
     config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     monkeypatch.setattr(
         feature_service_module.BillingService,
