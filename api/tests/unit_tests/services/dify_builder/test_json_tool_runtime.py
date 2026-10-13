@@ -702,7 +702,7 @@ def test_file_producing_output_refuses_before_all_file_owners(monkeypatch, sqlit
         variable_pool=VariablePool(),
         node_execution_id="node-execution",
     )
-    with pytest.raises(ToolRuntimeInvocationError, match="unsupported_json_tool_output"):
+    with pytest.raises(ToolRuntimeInvocationError, match="json_tool_invocation_failed"):
         list(runtime.invoke(tool_runtime=handle, tool_parameters=EXPECTED, workflow_call_depth=0, provider_name="json"))
     assert calls == []
     assert transformed == []
