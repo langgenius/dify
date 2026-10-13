@@ -4,7 +4,6 @@ import { useAtomValue } from 'jotai'
 import { createElement, useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import DSLImportWarningDescription from '@/app/components/app/create-from-dsl-modal/dsl-import-warning-description'
-import { getAppTransferErrorMessage } from '@/app/components/app/transfer-error'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
@@ -15,6 +14,7 @@ import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { asyncRunSafe } from '@/utils'
 import { getRedirection } from '@/utils/app-redirection'
+import { getErrorMessage } from '@/utils/error-message'
 import { resolveImportedAppRedirectionTarget } from '@/utils/imported-app-redirection'
 
 type ResponseCallback = {
@@ -125,7 +125,7 @@ export const useImportDSL = () => {
         toast.error(
           t(($) => $['newApp.appCreateFailed'], { ns: 'app' }),
           {
-            description: getAppTransferErrorMessage(error),
+            description: getErrorMessage(error),
           },
         )
         onFailed?.()
@@ -177,7 +177,7 @@ export const useImportDSL = () => {
         toast.error(
           t(($) => $['newApp.appCreateFailed'], { ns: 'app' }),
           {
-            description: getAppTransferErrorMessage(error),
+            description: getErrorMessage(error),
           },
         )
         onFailed?.()

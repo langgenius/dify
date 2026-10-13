@@ -72,6 +72,7 @@ import HelpMenu from '@/app/components/main-nav/components/help-menu'
 import { toast } from '@/app/notifications'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 import { fetchSkillFileBlob, uploadSkillFile } from '../client'
 import { SkillDropDestinationHint, SkillUploadStatusPanel } from './file-tree-dnd'
 import { FileTreeItem, FileTreeNameInput, RootFileActionMenuItems } from './file-tree-items'
@@ -85,7 +86,6 @@ import {
   getErrorCode,
   getPathBaseName,
   getPathDirName,
-  getSkillErrorMessage,
   getUploadFileName,
   getUploadPath,
   invalidateSkillDetail,
@@ -569,7 +569,7 @@ export function FileTree({
         const errorCode = getErrorCode(error)
         let failureKind: SkillUploadQueueItem['failureKind'] = 'network'
         let errorMessage =
-          getSkillErrorMessage(error) ?? t(($) => $['skillManagement.detail.uploadNetworkFailure'])
+          getErrorMessage(error) ?? t(($) => $['skillManagement.detail.uploadNetworkFailure'])
         let suggestedPath: string | undefined
         if (errorCode === 'skill_conflict') {
           failureKind = 'conflict'

@@ -11,6 +11,7 @@ import { DSLImportMode, DSLImportStatus } from '@/models/app'
 import { useImportPipelineDSL, useImportPipelineDSLConfirm } from '@/service/use-pipeline'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { asyncRunSafe } from '@/utils'
+import { getErrorMessage } from '@/utils/error-message'
 
 type VersionInfo = {
   importedVersion: string
@@ -22,17 +23,6 @@ type UseUpdateDSLModalParams = {
 }
 const isCompletedStatus = (status: DSLImportStatus): boolean =>
   status === DSLImportStatus.COMPLETED || status === DSLImportStatus.COMPLETED_WITH_WARNINGS
-const getNonEmptyString = (value: unknown): string | undefined => {
-  if (typeof value !== 'string') return undefined
-
-  const trimmedValue = value.trim()
-  return trimmedValue || undefined
-}
-const getImportErrorMessage = async (error: unknown): Promise<string | undefined> => {
-  if (error instanceof Error) return getNonEmptyString(error.message)
-
-  return undefined
-}
 export const useUpdateDSLModal = ({ onCancel, onImport }: UseUpdateDSLModalParams) => {
   const { t } = useTranslation(['workflow'])
   const { eventEmitter } = useEventEmitterContextContext()
@@ -165,7 +155,7 @@ export const useUpdateDSLModal = ({ onCancel, onImport }: UseUpdateDSLModalParam
       else notifyError(response.error)
     } catch (error) {
       if (!(error instanceof Error && error.name === 'AbortError'))
-        notifyError(await getImportErrorMessage(error))
+        notifyError(getErrorMessage(error)?.trim() || undefined)
     } finally {
       isCreatingRef.current = false
       setLoading(false)
@@ -192,7 +182,7 @@ export const useUpdateDSLModal = ({ onCancel, onImport }: UseUpdateDSLModalParam
       if (status === DSLImportStatus.FAILED) notifyError(error)
     } catch (error) {
       if (!(error instanceof Error && error.name === 'AbortError'))
-        notifyError(await getImportErrorMessage(error))
+        notifyError(getErrorMessage(error)?.trim() || undefined)
     } finally {
       isCreatingRef.current = false
       setLoading(false)
