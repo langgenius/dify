@@ -1,9 +1,8 @@
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
-import { rag as ragContract } from '@dify/contracts/api/console/rag/orpc.gen'
 import { useCallback, useEffect, useState } from 'react'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
-import { toDefinedError } from '@/service/console/defined-errors'
+import { consoleDefinedError } from '@/service/console/defined-errors'
 import { fetchWorkflowDraft, syncWorkflowDraft } from '@/service/workflow'
 import { usePipelineConfig } from './use-pipeline-config'
 import { usePipelineTemplate } from './use-pipeline-template'
@@ -58,10 +57,8 @@ export const usePipelineInit = () => {
       workflowStore.setState({ isWorkflowDataLoaded: true })
       setIsLoading(false)
     } catch (error: unknown) {
-      const definedError = await toDefinedError(
-        ragContract.pipelines.byPipelineId.workflows.draft.get,
-        error,
-      )
+      const definedError =
+        await consoleDefinedError.rag.pipelines.byPipelineId.workflows.draft.get(error)
       if (datasetId) {
         if (definedError?.code === 'draft_workflow_not_exist') {
           workflowStore.setState({

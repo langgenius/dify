@@ -1,7 +1,6 @@
 import type { Edge, Node } from '@/app/components/workflow/types'
 import type { FileUploadConfigResponse } from '@/models/common'
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
-import { apps as appsContract } from '@dify/contracts/api/console/apps/orpc.gen'
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -10,7 +9,7 @@ import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { toDefinedError } from '@/service/console/defined-errors'
+import { consoleDefinedError } from '@/service/console/defined-errors'
 import { useWorkflowConfig } from '@/service/use-workflow'
 import { fetchNodesDefaultConfigs, fetchWorkflowDraft, syncWorkflowDraft } from '@/service/workflow'
 import { appWorkflowQueryOptions } from '@/service/workflow-queries'
@@ -128,7 +127,7 @@ export const useWorkflowInit = () => {
       setSyncWorkflowDraftHash(initialData.hash)
       setIsLoading(false)
     } catch (error: unknown) {
-      const definedError = await toDefinedError(appsContract.byAppId.workflows.draft.get, error)
+      const definedError = await consoleDefinedError.apps.byAppId.workflows.draft.get(error)
       if (appDetail) {
         if (definedError?.code === 'draft_workflow_not_exist') {
           const isAdvancedChat = appDetail.mode === AppModeEnum.ADVANCED_CHAT
