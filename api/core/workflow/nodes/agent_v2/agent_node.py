@@ -308,7 +308,9 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 inputs=inputs,
                 process_data=process_data,
                 metadata=metadata,
-                stream_text=not custom_outputs and not node_job.output_routes.enabled,
+                stream_text=not custom_outputs
+                and not node_job.output_routes.enabled
+                and self.error_strategy != ErrorStrategy.DEFAULT_VALUE,
             )
             # None means no post-exit snapshot was produced; leave the previously stored session snapshot untouched.
             if (
@@ -452,6 +454,10 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         at least one chunk was sent; otherwise the response coordinator falls
         back to the final ``text`` variable. Structured runs keep deltas as
         metadata because their ``text`` comes from the structured output.
+        Plain runs with the default-value error strategy stay buffered too:
+        once a selector has stream chunks, the response filter no longer reads
+        the variable pool, so a configured fallback ``text`` would be dropped
+        after a partial stream.
 
         Returns a 2-tuple ``(terminal_event, transport_failure)``:
         - ``terminal_event``: the first non-stream/non-started internal event,

@@ -672,6 +672,22 @@ def test_agent_node_structured_run_keeps_agent_message_delta_out_of_text_stream(
     assert agent_backend["agent_message_delta_count"] == 1
 
 
+def test_agent_node_default_value_plain_run_keeps_agent_message_delta_out_of_text_stream():
+    events = list(
+        _node(
+            error_strategy=ErrorStrategy.DEFAULT_VALUE,
+            agent_backend_client=AgentMessageDeltaBackendClient(),
+        )._run()
+    )
+
+    assert not any(isinstance(event, StreamChunkEvent) for event in events)
+    assert len(events) == 1
+    result = cast(StreamCompletedEvent, events[0]).node_run_result
+    assert result.outputs == {"text": "hello agent"}
+    agent_backend = result.metadata[WorkflowNodeExecutionMetadataKey.AGENT_LOG]["agent_backend"]
+    assert agent_backend["agent_message_delta_count"] == 1
+
+
 def test_agent_node_run_normalizes_declared_file_output_with_canonical_mapping():
     tool_reference = build_file_reference(record_id="tool-file-1")
     with patch(
