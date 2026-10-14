@@ -355,7 +355,8 @@ def test_generate_specs_writes_service_api_reference_descriptions(tmp_path: Path
     assert pipeline_operation["operationId"] == "run_pipeline"
 
     chat_error_content = chat_operation["responses"]["401"]["content"]
-    assert chat_error_content == {"application/json": {}}
+    # No business error on chat-messages answers 401, so it keeps the open error body.
+    assert chat_error_content == {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorResponse"}}}
     chat_success_content = chat_operation["responses"]["200"]["content"]
     assert chat_success_content["application/json"]["schema"] == {"$ref": "#/components/schemas/ChatBlockingResponse"}
     assert chat_success_content["text/event-stream"]["schema"] == {"type": "string"}

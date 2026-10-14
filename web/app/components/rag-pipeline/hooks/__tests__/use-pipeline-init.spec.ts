@@ -270,8 +270,10 @@ describe('usePipelineInit', () => {
 
   describe('draft not exist error handling', () => {
     it('should create initial workflow when draft does not exist', async () => {
-      const mockJsonError = createHttpError(new Response(null, { status: 400 }), {
+      const mockJsonError = createHttpError(new Response(null, { status: 404 }), {
         code: 'draft_workflow_not_exist',
+        message: 'Draft workflow not exist.',
+        status: 404,
       })
       mockFetchWorkflowDraft.mockRejectedValueOnce(mockJsonError)
       mockSyncWorkflowDraft.mockResolvedValue({ updated_at: '2024-01-02T00:00:00Z' })
@@ -296,8 +298,10 @@ describe('usePipelineInit', () => {
     })
 
     it('should sync initial workflow with template nodes', async () => {
-      const mockJsonError = createHttpError(new Response(null, { status: 400 }), {
+      const mockJsonError = createHttpError(new Response(null, { status: 404 }), {
         code: 'draft_workflow_not_exist',
+        message: 'Draft workflow not exist.',
+        status: 404,
       })
       mockFetchWorkflowDraft.mockRejectedValueOnce(mockJsonError)
       mockSyncWorkflowDraft.mockResolvedValue({ updated_at: '2024-01-02T00:00:00Z' })

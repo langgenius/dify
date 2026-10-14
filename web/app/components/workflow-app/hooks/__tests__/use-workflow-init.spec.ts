@@ -94,7 +94,11 @@ vi.mock('@/service/workflow', () => ({
 }))
 
 const notExistError = () =>
-  createHttpError(new Response(null, { status: 400 }), { code: 'draft_workflow_not_exist' })
+  createHttpError(new Response(null, { status: 404 }), {
+    code: 'draft_workflow_not_exist',
+    message: 'Draft workflow not exist.',
+    status: 404,
+  })
 
 const draftResponse = {
   id: 'draft-id',
