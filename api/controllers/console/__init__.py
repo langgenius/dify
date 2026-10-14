@@ -1,6 +1,7 @@
 from collections import OrderedDict
 from http import HTTPStatus
 from importlib import import_module
+from types import ModuleType
 from typing import cast
 
 from flask import Blueprint, current_app, got_request_exception
@@ -128,9 +129,226 @@ RESOURCE_MODULES = (
 for module_name in RESOURCE_MODULES:
     import_module(module_name)
 
-# Ensure resource modules are imported so route decorators are evaluated.
-# Import other controllers
-from . import (
+
+def _register_controllers() -> tuple[ModuleType, ...]:
+    """Load route modules after their namespaces and schema models exist."""
+
+    # Ensure resource modules are imported so route decorators are evaluated.
+    # Import other controllers
+    from . import (
+        apikey,
+        extension,
+        feature,
+        human_input_form,
+        init_validate,
+        knowledge_fs_proxy,
+        notification,
+        onboarding,
+        resource_access_token,
+        setup,
+        spec,
+        system,
+        workflow_run_archive,
+    )
+    from .agent import composer as agent_composer
+    from .agent import roster as agent_roster
+
+    # Import app controllers
+    from .app import (
+        advanced_prompt_template,
+        agent,
+        agent_app_access,
+        agent_app_feature,
+        agent_app_sandbox,
+        agent_config_inspector,
+        annotation,
+        app,
+        audio,
+        completion,
+        conversation,
+        conversation_variables,
+        generator,
+        mcp_server,
+        message,
+        model_config,
+        ops_trace,
+        site,
+        statistic,
+        workflow,
+        workflow_app_log,
+        workflow_comment,
+        workflow_draft_variable,
+        workflow_node_output_inspector,
+        workflow_run,
+        workflow_statistic,
+        workflow_trigger,
+    )
+
+    # Import auth controllers
+    from .auth import (
+        activate,
+        data_source_bearer_auth,
+        data_source_oauth,
+        email_register,
+        forgot_password,
+        login,
+        oauth,
+        oauth_server,
+    )
+
+    # Import billing controllers
+    from .billing import billing, compliance
+
+    # Import datasets controllers
+    from .datasets import (
+        data_source,
+        datasets,
+        datasets_document,
+        datasets_segments,
+        external,
+        hit_testing,
+        metadata,
+        website,
+    )
+    from .datasets.rag_pipeline import (
+        datasource_auth,
+        datasource_content_preview,
+        rag_pipeline,
+        rag_pipeline_datasets,
+        rag_pipeline_draft_variable,
+        rag_pipeline_import,
+        rag_pipeline_workflow,
+    )
+
+    # Import explore controllers
+    from .explore import (
+        banner,
+        installed_app,
+        parameter,
+        recommended_app,
+        saved_message,
+        trial,
+    )
+    from .snippets import snippet_workflow, snippet_workflow_draft_variable
+    from .socketio import workflow as socketio_workflow
+
+    # Import tag controllers
+    from .tag import tags
+
+    # Import workspace controllers
+    from .workspace import (
+        account,
+        agent_providers,
+        endpoint,
+        load_balancing_config,
+        members,
+        model_providers,
+        models,
+        plugin,
+        rbac,
+        skills,
+        snippets,
+        tool_providers,
+        trigger_providers,
+        workspace,
+    )
+
+    return (
+        apikey,
+        extension,
+        feature,
+        human_input_form,
+        init_validate,
+        knowledge_fs_proxy,
+        notification,
+        onboarding,
+        resource_access_token,
+        setup,
+        spec,
+        system,
+        workflow_run_archive,
+        agent_composer,
+        agent_roster,
+        advanced_prompt_template,
+        agent,
+        agent_app_access,
+        agent_app_feature,
+        agent_app_sandbox,
+        agent_config_inspector,
+        annotation,
+        app,
+        audio,
+        completion,
+        conversation,
+        conversation_variables,
+        generator,
+        mcp_server,
+        message,
+        model_config,
+        ops_trace,
+        site,
+        statistic,
+        workflow,
+        workflow_app_log,
+        workflow_comment,
+        workflow_draft_variable,
+        workflow_node_output_inspector,
+        workflow_run,
+        workflow_statistic,
+        workflow_trigger,
+        activate,
+        data_source_bearer_auth,
+        data_source_oauth,
+        email_register,
+        forgot_password,
+        login,
+        oauth,
+        oauth_server,
+        billing,
+        compliance,
+        data_source,
+        datasets,
+        datasets_document,
+        datasets_segments,
+        external,
+        hit_testing,
+        metadata,
+        website,
+        datasource_auth,
+        datasource_content_preview,
+        rag_pipeline,
+        rag_pipeline_datasets,
+        rag_pipeline_draft_variable,
+        rag_pipeline_import,
+        rag_pipeline_workflow,
+        banner,
+        installed_app,
+        parameter,
+        recommended_app,
+        saved_message,
+        trial,
+        snippet_workflow,
+        snippet_workflow_draft_variable,
+        socketio_workflow,
+        tags,
+        account,
+        agent_providers,
+        endpoint,
+        load_balancing_config,
+        members,
+        model_providers,
+        models,
+        plugin,
+        rbac,
+        skills,
+        snippets,
+        tool_providers,
+        trigger_providers,
+        workspace,
+    )
+
+
+(
     apikey,
     extension,
     feature,
@@ -144,12 +362,8 @@ from . import (
     spec,
     system,
     workflow_run_archive,
-)
-from .agent import composer as agent_composer
-from .agent import roster as agent_roster
-
-# Import app controllers
-from .app import (
+    agent_composer,
+    agent_roster,
     advanced_prompt_template,
     agent,
     agent_app_access,
@@ -177,10 +391,6 @@ from .app import (
     workflow_run,
     workflow_statistic,
     workflow_trigger,
-)
-
-# Import auth controllers
-from .auth import (
     activate,
     data_source_bearer_auth,
     data_source_oauth,
@@ -189,13 +399,8 @@ from .auth import (
     login,
     oauth,
     oauth_server,
-)
-
-# Import billing controllers
-from .billing import billing, compliance
-
-# Import datasets controllers
-from .datasets import (
+    billing,
+    compliance,
     data_source,
     datasets,
     datasets_document,
@@ -204,8 +409,6 @@ from .datasets import (
     hit_testing,
     metadata,
     website,
-)
-from .datasets.rag_pipeline import (
     datasource_auth,
     datasource_content_preview,
     rag_pipeline,
@@ -213,25 +416,16 @@ from .datasets.rag_pipeline import (
     rag_pipeline_draft_variable,
     rag_pipeline_import,
     rag_pipeline_workflow,
-)
-
-# Import explore controllers
-from .explore import (
     banner,
     installed_app,
     parameter,
     recommended_app,
     saved_message,
     trial,
-)
-from .snippets import snippet_workflow, snippet_workflow_draft_variable
-from .socketio import workflow as socketio_workflow
-
-# Import tag controllers
-from .tag import tags
-
-# Import workspace controllers
-from .workspace import (
+    snippet_workflow,
+    snippet_workflow_draft_variable,
+    socketio_workflow,
+    tags,
     account,
     agent_providers,
     endpoint,
@@ -246,7 +440,7 @@ from .workspace import (
     tool_providers,
     trigger_providers,
     workspace,
-)
+) = _register_controllers()
 
 api.add_namespace(console_ns)
 

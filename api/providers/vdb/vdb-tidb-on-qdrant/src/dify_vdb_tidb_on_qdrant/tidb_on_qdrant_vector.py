@@ -8,9 +8,6 @@ from typing import TYPE_CHECKING, Any, override
 
 import httpx
 import qdrant_client
-from sqlalchemy.orm import Session
-
-logger = logging.getLogger(__name__)
 from flask import current_app
 from httpx import DigestAuth
 from pydantic import BaseModel
@@ -25,6 +22,7 @@ from qdrant_client.http.models import (
 )
 from qdrant_client.local.qdrant_local import QdrantLocal
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.rag.datasource.vdb.field import Field
@@ -38,6 +36,8 @@ from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset, TidbAuthBinding
 from models.enums import TidbAuthBindingStatus
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from qdrant_client import grpc  # noqa

@@ -376,7 +376,8 @@ class RagPipelineGenerateEntity(WorkflowAppGenerateEntity):
     start_node_id: str | None = None
 
 
-from core.ops.ops_trace_manager import TraceQueueManager
+# Resolve circular model references after model definitions.
+from core.ops.ops_trace_manager import TraceQueueManager  # noqa: E402
 
 AppGenerateEntity.model_rebuild()
 EasyUIBasedAppGenerateEntity.model_rebuild()

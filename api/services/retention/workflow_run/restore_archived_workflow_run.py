@@ -19,19 +19,6 @@ import click
 from pydantic import TypeAdapter
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.engine import CursorResult
-
-
-class _TableInfo(TypedDict, total=False):
-    row_count: int
-
-
-class ArchiveManifest(TypedDict, total=False):
-    tables: dict[str, _TableInfo]
-    schema_version: str
-
-
-_manifest_adapter: TypeAdapter[ArchiveManifest] = TypeAdapter(ArchiveManifest)
-
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 from extensions.ext_database import db
@@ -53,6 +40,18 @@ from models.workflow import (
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
 from repositories.factory import DifyAPIRepositoryFactory
 from services.retention.workflow_run.constants import ARCHIVE_BUNDLE_NAME
+
+
+class _TableInfo(TypedDict, total=False):
+    row_count: int
+
+
+class ArchiveManifest(TypedDict, total=False):
+    tables: dict[str, _TableInfo]
+    schema_version: str
+
+
+_manifest_adapter: TypeAdapter[ArchiveManifest] = TypeAdapter(ArchiveManifest)
 
 logger = logging.getLogger(__name__)
 

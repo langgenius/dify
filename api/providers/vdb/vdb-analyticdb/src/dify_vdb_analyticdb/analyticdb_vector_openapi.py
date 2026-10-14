@@ -3,14 +3,14 @@ from typing import Any, TypedDict
 
 from pydantic import BaseModel, model_validator
 
+from core.rag.datasource.vdb.field import parse_metadata_json
+from core.rag.models.document import Document
+from extensions.ext_redis import redis_client
+
 _import_err_msg = (
     "`alibabacloud_gpdb20160503` and `alibabacloud_tea_openapi` packages not found, "
     "please run `pip install alibabacloud_gpdb20160503 alibabacloud_tea_openapi`"
 )
-
-from core.rag.datasource.vdb.field import parse_metadata_json
-from core.rag.models.document import Document
-from extensions.ext_redis import redis_client
 
 
 class AnalyticdbClientParamsDict(TypedDict):
