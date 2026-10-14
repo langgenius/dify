@@ -1,7 +1,6 @@
 import logging
 import os
 import sys
-from typing import Union
 
 from celery.signals import worker_init
 from flask_login import user_loaded_from_request, user_logged_in
@@ -62,27 +61,27 @@ def is_celery_worker():
 
 @user_logged_in.connect
 @user_loaded_from_request.connect
-def on_user_loaded(_sender, user: Union["Account", "EndUser"]):
-    if dify_config.ENABLE_OTEL:
-        from opentelemetry.trace import get_current_span
+def on_user_loaded(_sender: object, user: Account | EndUser | None) -> None:
+    if dify_config.ENABLE_OTEL and user:
+        try:
+            if not trace.get_current_span().is_recording():
+                return
+            set_identity_span_attributes(tenant_id=extract_tenant_id(user), user_id=user.id)
+        except Exception:
+            logger.exception("Error setting tenant and user attributes")
 
-        if user:
-            try:
-                current_span = get_current_span()
-                if not current_span.is_recording():
-                    return
-                tenant_id = extract_tenant_id(user)
-                if not tenant_id:
-                    return
-                current_span.set_attributes(
-                    {
-                        DifySpanAttributes.TENANT_ID: tenant_id,
-                        GenAIAttributes.USER_ID: user.id,
-                    }
-                )
-            except Exception:
-                logger.exception("Error setting tenant and user attributes")
-                pass
+
+def set_identity_span_attributes(*, tenant_id: str | None, user_id: str) -> None:
+    """Enrich the recording span; a missing workspace (None) skips enrichment."""
+    if not dify_config.ENABLE_OTEL:
+        return
+    try:
+        current_span = trace.get_current_span()
+        if not current_span.is_recording() or not tenant_id:
+            return
+        current_span.set_attributes({DifySpanAttributes.TENANT_ID: tenant_id, GenAIAttributes.USER_ID: user_id})
+    except Exception:
+        logger.exception("Error setting tenant and user attributes")
 
 
 @worker_init.connect(weak=False)

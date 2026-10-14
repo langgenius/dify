@@ -158,8 +158,11 @@ Enables or disables the annotation reply feature. Requires embedding model confi
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Annotation reply settings task initiated. | **application/json**: [AnnotationJobStatusResponse](#annotationjobstatusresponse)<br> |
-| 401 | Unauthorized - invalid API token |  |
+| 400 | `invalid_param` : Invalid action, app selection, or missing workspace. |  |
+| 401 | `unauthorized` : Invalid API credential or workspace owner unavailable. |  |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
+| 404 | `not_found` : App no longer exists. |  |
+| 422 | `unprocessable_entity` : Invalid annotation reply payload. |  |
 
 ### [GET] /apps/annotation-reply/{action}/status/{job_id}
 **Get Annotation Reply Job Status**
@@ -178,9 +181,10 @@ Retrieves the status of an asynchronous annotation reply configuration job start
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Successfully retrieved task status. | **application/json**: [AnnotationJobStatusDetailResponse](#annotationjobstatusdetailresponse)<br> |
-| 400 | `invalid_param` : The specified job does not exist. |  |
-| 401 | Unauthorized - invalid API token |  |
+| 400 | `invalid_param` : Invalid action, app selection, or missing workspace. |  |
+| 401 | `unauthorized` : Invalid API credential or workspace owner unavailable. |  |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
+| 404 | `not_found` : The specified job does not belong to this app or no longer exists. |  |
 
 ### [GET] /apps/annotations
 **List Annotations**
@@ -200,8 +204,11 @@ Retrieves a paginated list of annotations for the application. Supports keyword 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Successfully retrieved annotation list. | **application/json**: [AnnotationList](#annotationlist)<br> |
-| 401 | Unauthorized - invalid API token |  |
+| 400 | `invalid_param` : Invalid app selection or missing workspace. |  |
+| 401 | `unauthorized` : Invalid API credential or workspace owner unavailable. |  |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
+| 404 | `not_found` : App no longer exists. |  |
+| 422 | `unprocessable_entity` : Invalid pagination query. |  |
 
 ### [POST] /apps/annotations
 **Create Annotation**
@@ -219,8 +226,11 @@ Creates a new annotation. Annotations provide predefined question-answer pairs t
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | Annotation created successfully. | **application/json**: [Annotation](#annotation)<br> |
-| 401 | Unauthorized - invalid API token |  |
+| 400 | `invalid_param` : Invalid app selection or missing workspace. |  |
+| 401 | `unauthorized` : Invalid API credential or workspace owner unavailable. |  |
 | 403 | Forbidden - token scope, app, dataset, or workspace access denied |  |
+| 404 | `not_found` : App no longer exists. |  |
+| 422 | `unprocessable_entity` : Invalid annotation payload. |  |
 
 ### [DELETE] /apps/annotations/{annotation_id}
 **Delete Annotation**
@@ -238,9 +248,10 @@ Deletes an annotation and its associated hit history.
 | Code | Description |
 | ---- | ----------- |
 | 204 | Annotation deleted successfully. |
-| 401 | Unauthorized - invalid API token |
-| 403 | `forbidden` : Insufficient permissions to edit annotations. |
-| 404 | `not_found` : Annotation does not exist. |
+| 400 | `invalid_param` : Invalid app selection or missing workspace. |
+| 401 | `unauthorized` : Invalid API credential or workspace owner unavailable. |
+| 403 | `forbidden` : API credential scope, app, or workspace access denied. |
+| 404 | `not_found` : App or annotation no longer exists. |
 
 ### [PUT] /apps/annotations/{annotation_id}
 **Update Annotation**
@@ -264,9 +275,11 @@ Updates the question and answer of an existing annotation.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Annotation updated successfully. | **application/json**: [Annotation](#annotation)<br> |
-| 401 | Unauthorized - invalid API token |  |
-| 403 | `forbidden` : Insufficient permissions to edit annotations. |  |
-| 404 | `not_found` : Annotation does not exist. |  |
+| 400 | `invalid_param` : Invalid app selection or missing workspace. |  |
+| 401 | `unauthorized` : Invalid API credential or workspace owner unavailable. |  |
+| 403 | `forbidden` : API credential scope, app, or workspace access denied. |  |
+| 404 | `not_found` : App or annotation no longer exists. |  |
+| 422 | `unprocessable_entity` : Invalid annotation payload. |  |
 
 ---
 ## default

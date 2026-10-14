@@ -26,7 +26,7 @@ from tasks.annotation.delete_annotation_index_task import delete_annotation_inde
 from tasks.annotation.update_annotation_to_index_task import update_annotation_to_index_task
 from tests.unit_tests.model_factories import make_app
 
-type Operation = Literal["upsert", "update", "delete", "delete_many", "clear"]
+type Operation = Literal["create", "upsert", "update", "delete", "delete_many", "clear"]
 type BulkOperation = Literal["delete_many", "clear"]
 
 
@@ -44,6 +44,14 @@ class _Harness:
     publications: list[tuple[bool, tuple[AnnotationRecord, ...]]]
 
     def apply(self, operation: Operation) -> str:
+        if operation == "create":
+            return self.service.create(
+                tenant_id=self.app.tenant_id,
+                app_id=self.app.id,
+                account_id=self.annotation.account_id,
+                question="",
+                answer="",
+            ).id
         if operation == "upsert":
             return self.service.upsert(
                 tenant_id=self.app.tenant_id,
@@ -159,7 +167,7 @@ def test_changing_the_matching_threshold_keeps_embeddings_without_publishing(har
             messages.get(block=False)
 
 
-@pytest.mark.parametrize("operation", ["upsert", "update", "delete", "delete_many", "clear"])
+@pytest.mark.parametrize("operation", ["create", "upsert", "update", "delete", "delete_many", "clear"])
 def test_tasks_are_published_after_committed_rows_are_visible_and_sessions_close(
     harness: _Harness, operation: Operation
 ) -> None:
@@ -175,9 +183,13 @@ def test_tasks_are_published_after_committed_rows_are_visible_and_sessions_close
         "tenant_id": harness.app.tenant_id,
         "collection_binding_id": harness.binding_id,
     }
-    task_index = {"upsert": 0, "update": 1, "delete": 2, "delete_many": 2, "clear": 2}[operation]
+    task_index = {"create": 0, "upsert": 0, "update": 1, "delete": 2, "delete_many": 2, "clear": 2}[operation]
     if operation in {"delete", "delete_many", "clear"}:
         assert annotation_id not in saved
+    elif operation == "create":
+        expected_kwargs["question"] = ""
+        assert saved[annotation_id].question == ""
+        assert saved[annotation_id].content == ""
     else:
         expected_kwargs["question"] = "new question" if operation == "upsert" else "updated answer"
         assert saved[annotation_id].content == ("legacy answer" if operation == "upsert" else "updated answer")
@@ -191,7 +203,7 @@ def test_tasks_are_published_after_committed_rows_are_visible_and_sessions_close
             messages.get(block=False)
 
 
-@pytest.mark.parametrize("operation", ["upsert", "update", "delete", "delete_many", "clear"])
+@pytest.mark.parametrize("operation", ["create", "upsert", "update", "delete", "delete_many", "clear"])
 def test_disabled_annotation_reply_does_not_publish(harness: _Harness, operation: Operation) -> None:
     harness.apply(operation)
     assert harness.publications == []
@@ -210,7 +222,7 @@ def test_rejected_write_does_not_publish(harness: _Harness) -> None:
     ]
 
 
-@pytest.mark.parametrize("operation", ["upsert", "update", "delete", "delete_many", "clear"])
+@pytest.mark.parametrize("operation", ["create", "upsert", "update", "delete", "delete_many", "clear"])
 def test_publish_failure_propagates_without_rolling_back_committed_write(
     harness: _Harness, operation: Operation
 ) -> None:
@@ -222,7 +234,10 @@ def test_publish_failure_propagates_without_rolling_back_committed_write(
         harness.apply(operation)
 
     records = harness.repository.get_all(tenant_id=harness.app.tenant_id, app_id=harness.app.id)
-    if operation == "upsert":
+    if operation == "create":
+        assert len(records) == 2
+        assert any(record.question == record.content == "" for record in records)
+    elif operation == "upsert":
         assert len(records) == 2
         assert any(record.content == "legacy answer" for record in records)
     elif operation == "update":

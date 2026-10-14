@@ -13,8 +13,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from models import TenantAccountRole
 from models.account import Account, Tenant, TenantAccountJoin
 from models.enums import ConversationFromSource, EndUserType
-from models.model import App, Conversation, EndUser, Message, MessageAnnotation
-from services.annotation_service import AppAnnotationService
+from models.model import App, Conversation, EndUser, Message
 from services.conversation_service import ConversationService
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import FirstMessageNotExistsError, MessageNotExistsError
@@ -683,128 +682,6 @@ class TestConversationServiceSummarization:
         # Assert
         assert result == conversation
         assert conversation.name == generated_name
-
-
-class TestConversationServiceMessageAnnotation:
-    """
-    Test message annotation operations.
-
-    Tests AppAnnotationService operations for creating and managing
-    message annotations.
-    """
-
-    @patch("services.annotation_service.current_account_with_tenant")
-    def test_get_annotation_list(self, mock_current_account, db_session_with_containers: Session):
-        """
-        Test retrieving paginated annotation list.
-
-        Annotations can be retrieved in a paginated list for display in the UI.
-        """
-        # Arrange
-        app_model, account = ConversationServiceIntegrationTestDataFactory.create_app_and_account(
-            db_session_with_containers
-        )
-        annotations = [
-            MessageAnnotation(
-                app_id=app_model.id,
-                conversation_id=None,
-                message_id=None,
-                question=f"Question {i}",
-                content=f"Content {i}",
-                account_id=account.id,
-            )
-            for i in range(5)
-        ]
-        db_session_with_containers.add_all(annotations)
-        db_session_with_containers.commit()
-
-        mock_current_account.return_value = (account, app_model.tenant_id)
-
-        # Act
-        result_items, result_total = AppAnnotationService.get_annotation_list_by_app_id(
-            app_id=app_model.id, page=1, limit=10, keyword="", session=db_session_with_containers
-        )
-
-        # Assert
-        assert len(result_items) == 5
-        assert result_total == 5
-
-    @patch("services.annotation_service.current_account_with_tenant")
-    def test_get_annotation_list_with_keyword_search(self, mock_current_account, db_session_with_containers: Session):
-        """
-        Test retrieving annotations with keyword filtering.
-
-        Annotations can be searched by question or content using case-insensitive matching.
-        """
-        # Arrange
-        app_model, account = ConversationServiceIntegrationTestDataFactory.create_app_and_account(
-            db_session_with_containers
-        )
-
-        # Create annotations with searchable content
-        annotations = [
-            MessageAnnotation(
-                app_id=app_model.id,
-                conversation_id=None,
-                message_id=None,
-                question="What is machine learning?",
-                content="ML is a subset of AI",
-                account_id=account.id,
-            ),
-            MessageAnnotation(
-                app_id=app_model.id,
-                conversation_id=None,
-                message_id=None,
-                question="What is deep learning?",
-                content="Deep learning uses neural networks",
-                account_id=account.id,
-            ),
-        ]
-        db_session_with_containers.add_all(annotations)
-        db_session_with_containers.commit()
-
-        mock_current_account.return_value = (account, app_model.tenant_id)
-
-        # Act
-        result_items, result_total = AppAnnotationService.get_annotation_list_by_app_id(
-            app_id=app_model.id,
-            page=1,
-            limit=10,
-            keyword="machine",  # Search keyword,
-            session=db_session_with_containers,
-        )
-
-        # Assert
-        assert len(result_items) == 1
-        assert result_total == 1
-
-    @patch("services.annotation_service.add_annotation_to_index_task")
-    @patch("services.annotation_service.current_account_with_tenant")
-    def test_insert_annotation_directly(self, mock_current_account, mock_add_task, db_session_with_containers: Session):
-        """
-        Test direct annotation insertion without message reference.
-
-        This is used for bulk imports or manual annotation creation.
-        """
-        # Arrange
-        app_model, account = ConversationServiceIntegrationTestDataFactory.create_app_and_account(
-            db_session_with_containers
-        )
-
-        mock_current_account.return_value = (account, app_model.tenant_id)
-
-        args = {
-            "question": "What is natural language processing?",
-            "answer": "NLP is a field of AI focused on language understanding",
-        }
-
-        # Act
-        result = AppAnnotationService.insert_app_annotation_directly(args, app_model.id, db_session_with_containers)
-
-        # Assert
-        assert result.question == args["question"]
-        assert result.content == args["answer"]
-        mock_add_task.delay.assert_not_called()
 
 
 class TestConversationServiceRetrieval:

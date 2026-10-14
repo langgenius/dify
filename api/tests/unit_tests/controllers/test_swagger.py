@@ -587,7 +587,6 @@ def test_service_schemas_only_document_reachable_not_found_responses(openapi_jso
     paths = json.loads(openapi_json(service_api_bp, "/v1/openapi.json", False))["paths"]
 
     for path, method in (
-        ("/apps/annotation-reply/{action}/status/{job_id}", "get"),
         ("/info", "get"),
         ("/meta", "get"),
         ("/parameters", "get"),
@@ -597,8 +596,38 @@ def test_service_schemas_only_document_reachable_not_found_responses(openapi_jso
         assert "404" not in paths[path][method]["responses"]
         assert "400" in paths[path][method]["responses"]
 
+    annotation_status = paths["/apps/annotation-reply/{action}/status/{job_id}"]["get"]["responses"]
+    assert "404" in annotation_status
+    assert "400" in annotation_status
     assert "404" in paths["/workflows/{workflow_id}/run"]["post"]["responses"]
     assert "404" in paths["/chat-messages"]["post"]["responses"]
+
+
+@pytest.mark.parametrize(
+    ("path", "method", "validates_payload"),
+    [
+        ("/apps/annotation-reply/{action}", "post", True),
+        ("/apps/annotation-reply/{action}/status/{job_id}", "get", False),
+        ("/apps/annotations", "get", True),
+        ("/apps/annotations", "post", True),
+        ("/apps/annotations/{annotation_id}", "put", True),
+        ("/apps/annotations/{annotation_id}", "delete", False),
+    ],
+)
+def test_annotation_schemas_document_admission_and_validation_errors(
+    openapi_json: OpenAPIJSONLoader, path: str, method: str, validates_payload: bool
+) -> None:
+    from controllers.service_api import bp as service_api_bp
+
+    paths = json.loads(openapi_json(service_api_bp, "/v1/openapi.json", False))["paths"]
+    responses = paths[path][method]["responses"]
+
+    assert {"400", "401", "403", "404"} <= responses.keys()
+    assert "invalid_param" in responses["400"]["description"]
+    assert "workspace" in responses["403"]["description"]
+    assert ("422" in responses) == validates_payload
+    if validates_payload:
+        assert "unprocessable_entity" in responses["422"]["description"]
 
 
 def test_service_openapi_does_not_encode_docs_coverage_boundaries(openapi_json: OpenAPIJSONLoader):
