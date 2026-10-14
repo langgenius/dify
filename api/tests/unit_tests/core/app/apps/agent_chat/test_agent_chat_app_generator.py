@@ -18,6 +18,7 @@ from core.app.entities.app_invoke_entities import (
     InvokeFrom,
 )
 from core.app.entities.queue_entities import QueueErrorEvent
+from core.app.file_access import get_current_file_access_scope
 from core.ops.ops_trace_manager import TraceQueueManager
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from models import Account
@@ -250,7 +251,10 @@ class TestAgentChatAppGeneratorGenerate:
         assert len(scheduled_threads) == 1
         thread = scheduled_threads[0]
         assert type(thread) is threading.Thread
-        thread.run()
+        parent_scope = get_current_file_access_scope()
+        # The worker restores its captured context; keep that state in a separate thread context.
+        contextvars.Context().run(thread.run)
+        assert get_current_file_access_scope() is parent_scope
         assert len(runner_calls) == 1
         entity = runner_calls[0]["application_generate_entity"]
         assert isinstance(entity, AgentChatAppGenerateEntity)
@@ -336,7 +340,9 @@ class TestAgentChatAppGeneratorGenerate:
         assert to_dict.calls == [RecordedCall(args=(), kwargs={"annotation_reply": annotation_reply})]
         assert get_app_config.calls[-1].kwargs["annotation_reply"] is annotation_reply
         assert len(scheduled_threads) == 1
-        scheduled_threads[0].run()
+        parent_scope = get_current_file_access_scope()
+        contextvars.Context().run(scheduled_threads[0].run)
+        assert get_current_file_access_scope() is parent_scope
         assert len(runner_calls) == 1
         assert type(runner_calls[0]["queue_manager"]) is MessageBasedAppQueueManager
 
