@@ -28,6 +28,7 @@ from services.retention.workflow_run.archive_download_task import (
     build_pending_archive_download_task,
 )
 from services.retention.workflow_run.archive_log_service import WorkflowRunArchiveBundleRecord
+from services.retention.workflow_run.archive_month_lock import WorkflowRunArchiveMonthLease
 from services.retention.workflow_run.constants import ARCHIVE_BUNDLE_FORMAT, ARCHIVE_BUNDLE_SCHEMA_VERSION
 
 TENANT_ID = "1251fe32-c0c7-4fe2-a7bd-a8105267faf5"
@@ -179,6 +180,7 @@ def _preparer(
     archive_storage: FakeArchiveStorage | None = None,
     download_storage: FakeArchiveStorage | None = None,
     cache: FakeTaskCache,
+    lease: WorkflowRunArchiveMonthLease,
     bundles: list[WorkflowRunArchiveBundleRecord] | None = None,
 ) -> WorkflowRunArchiveDownloadPreparer:
     source_storage = archive_storage or storage
@@ -190,7 +192,7 @@ def _preparer(
         bundles=FakeBundleQuery(tuple([_bundle()] if bundles is None else bundles)),
         cache=cache,
         download_storage_provider=lambda: cast(ArchiveStorage, target_storage),
-        month_lock=lambda **_kwargs: nullcontext(MagicMock(assert_owned=MagicMock())),
+        month_lock=lambda **_kwargs: nullcontext(lease),
     )
 
 
@@ -201,7 +203,9 @@ def _parquet_bytes(records: list[dict[str, object]]) -> bytes:
 
 
 @pytest.mark.parametrize("after_upload", ["pending", "failed", "missing"])
-def test_preparation_does_not_revive_archives_deleted_during_upload(after_upload: str) -> None:
+def test_preparation_does_not_revive_archives_deleted_during_upload(
+    after_upload: str, month_lease: WorkflowRunArchiveMonthLease
+) -> None:
     task = _task()
     payloads = {"workflow_runs": _parquet_bytes([{"id": "run-a"}])}
     storage = FakeArchiveStorage(
@@ -229,7 +233,7 @@ def test_preparation_does_not_revive_archives_deleted_during_upload(after_upload
         download_storage_provider=lambda: cast(ArchiveStorage, storage),
         cache=cache,
         bundles=bundles,
-        month_lock=lambda **_kwargs: nullcontext(MagicMock(assert_owned=MagicMock())),
+        month_lock=lambda **_kwargs: nullcontext(month_lease),
     )
 
     result = preparer.prepare(tenant_id=TENANT_ID, download_id=task.download_id)
@@ -283,7 +287,9 @@ assert len(ticks) >= 5, ticks
     )
 
 
-def test_prepare_workflow_run_archive_download_builds_csv_zip_and_marks_ready() -> None:
+def test_prepare_workflow_run_archive_download_builds_csv_zip_and_marks_ready(
+    month_lease: WorkflowRunArchiveMonthLease,
+) -> None:
     bundle_refs = [(SHARD, "bundle-a"), (SHARD, "bundle-b")]
     task = _task(bundle_refs)
     first_bundle_payloads = {
@@ -320,6 +326,7 @@ def test_prepare_workflow_run_archive_download_builds_csv_zip_and_marks_ready() 
         archive_storage=archive_storage,
         download_storage=download_storage,
         cache=cache,
+        lease=month_lease,
         bundles=[_bundle("bundle-a"), _bundle("bundle-b")],
     )
 
@@ -346,7 +353,9 @@ def test_prepare_workflow_run_archive_download_builds_csv_zip_and_marks_ready() 
         assert '"run-b","failed","safe"' in workflow_runs_csv
 
 
-def test_prepare_workflow_run_archive_download_marks_failed_on_checksum_mismatch() -> None:
+def test_prepare_workflow_run_archive_download_marks_failed_on_checksum_mismatch(
+    month_lease: WorkflowRunArchiveMonthLease,
+) -> None:
     task = _task()
     table_payloads = {"workflow_runs": _parquet_bytes([{"id": "run-a", "status": "succeeded"}])}
     manifest_data = json.loads(_manifest_bytes(table_payloads).decode("utf-8"))
@@ -358,7 +367,7 @@ def test_prepare_workflow_run_archive_download_marks_failed_on_checksum_mismatch
         }
     )
     cache = FakeTaskCache(task)
-    preparer = _preparer(storage=storage, cache=cache)
+    preparer = _preparer(storage=storage, cache=cache, lease=month_lease)
 
     result = preparer.prepare(tenant_id=TENANT_ID, download_id=task.download_id)
 
@@ -368,17 +377,27 @@ def test_prepare_workflow_run_archive_download_marks_failed_on_checksum_mismatch
     assert storage.put_objects == {}
 
 
-def test_prepare_workflow_run_archive_download_marks_failed_when_storage_is_unavailable() -> None:
+def test_prepare_workflow_run_archive_download_marks_failed_when_storage_is_unavailable(
+    month_lease: WorkflowRunArchiveMonthLease,
+) -> None:
     task = _task()
     cache = FakeTaskCache(task)
-    archive_storage_provider = MagicMock(side_effect=RuntimeError("archive storage unavailable"))
-    download_storage_provider = MagicMock()
+
+    def archive_storage_provider() -> ArchiveStorage:
+        raise RuntimeError("archive storage unavailable")
+
+    download_storage_calls: list[None] = []
+
+    def download_storage_provider() -> ArchiveStorage:
+        download_storage_calls.append(None)
+        raise AssertionError("download storage must not be accessed when archive storage is unavailable")
+
     preparer = WorkflowRunArchiveDownloadPreparer(
         archive_storage_provider=archive_storage_provider,
         bundles=FakeBundleQuery((_bundle(),)),
         cache=cache,
         download_storage_provider=download_storage_provider,
-        month_lock=lambda **_kwargs: nullcontext(MagicMock(assert_owned=MagicMock())),
+        month_lock=lambda **_kwargs: nullcontext(month_lease),
     )
 
     result = preparer.prepare(tenant_id=TENANT_ID, download_id=task.download_id)
@@ -386,16 +405,19 @@ def test_prepare_workflow_run_archive_download_marks_failed_when_storage_is_unav
     assert result is not None
     assert result.status == WorkflowRunArchiveDownloadStatus.FAILED
     assert result.error == "archive storage unavailable"
-    download_storage_provider.assert_not_called()
+    assert not download_storage_calls
 
 
-def test_prepare_workflow_run_archive_download_skips_duplicate_worker() -> None:
+def test_prepare_workflow_run_archive_download_skips_duplicate_worker(
+    month_lease: WorkflowRunArchiveMonthLease,
+) -> None:
     task = _task().model_copy(update={"celery_task_id": "celery-task-1"})
     storage = FakeArchiveStorage({})
     cache = FakeTaskCache(task)
     preparer = _preparer(
         storage=storage,
         cache=cache,
+        lease=month_lease,
         bundles=[],
     )
     nested_results: list[WorkflowRunArchiveDownloadTask | None] = []
@@ -416,13 +438,13 @@ def test_prepare_workflow_run_archive_download_skips_duplicate_worker() -> None:
     preparer._build_zip_payload.assert_called_once()
 
 
-def test_failed_worker_cannot_overwrite_ready_task() -> None:
+def test_failed_worker_cannot_overwrite_ready_task(month_lease: WorkflowRunArchiveMonthLease) -> None:
     processing_task = _task().model_copy(
         update={"status": WorkflowRunArchiveDownloadStatus.PROCESSING, "celery_task_id": "celery-task-1"}
     )
     ready_task = processing_task.model_copy(update={"status": WorkflowRunArchiveDownloadStatus.READY})
     cache = FakeTaskCache(ready_task)
-    preparer = _preparer(storage=FakeArchiveStorage({}), cache=cache)
+    preparer = _preparer(storage=FakeArchiveStorage({}), cache=cache, lease=month_lease)
 
     result = preparer._mark_failed(processing_task, error="late failure")
 

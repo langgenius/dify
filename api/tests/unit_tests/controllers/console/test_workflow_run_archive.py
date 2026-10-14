@@ -4,7 +4,7 @@ import inspect
 from collections.abc import Callable
 from types import CodeType, SimpleNamespace
 from typing import Protocol, cast
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
@@ -24,6 +24,7 @@ from controllers.console.workflow_run_archive import (
     WorkflowRunArchivesApi,
 )
 from enums import CloudPlan, DeploymentEdition
+from extensions.ext_application_services import ApplicationServices
 from libs.login import AccountWithTenant
 from machinery.context import RequestContext
 from models import Account, TenantAccountRole
@@ -36,6 +37,7 @@ from services.retention.workflow_run.archive_log_service import (
     WorkflowRunArchiveDownloadTaskNotFoundError,
     WorkflowRunArchiveInvalidMonthError,
     WorkflowRunArchiveNotFoundError,
+    WorkflowRunArchiveService,
 )
 from tests.unit_tests.config_override import apply_config_overrides
 from tests.unit_tests.model_factories import make_account
@@ -75,6 +77,15 @@ def _admission_injector(method: Callable[..., object]) -> Callable[..., object]:
     while "inject_request_context" not in current.__code__.co_qualname:
         current = current.__wrapped__
     return cast(Callable[..., object], current)
+
+
+@pytest.fixture
+def archive_service(
+    account_application_services: ApplicationServices,
+    monkeypatch: pytest.MonkeyPatch,
+) -> WorkflowRunArchiveService:
+    monkeypatch.setattr(workflow_run_archive, "application_services", lambda: account_application_services)
+    return account_application_services.workflow_run_archives
 
 
 @pytest.mark.parametrize("method", _ENDPOINTS)
@@ -183,6 +194,7 @@ def test_workflow_run_archive_endpoint_allows_admitted_role_when_rbac_is_enabled
 @pytest.mark.parametrize("role", [TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.NORMAL])
 def test_workflow_run_archive_role_permissions_when_rbac_is_disabled(
     monkeypatch: pytest.MonkeyPatch,
+    archive_service: WorkflowRunArchiveService,
     role: TenantAccountRole,
 ) -> None:
     apply_config_overrides(monkeypatch, RBAC_ENABLED=False)
@@ -193,38 +205,36 @@ def test_workflow_run_archive_role_permissions_when_rbac_is_disabled(
         "controllers.console.wraps.BillingService.get_info",
         lambda _tenant_id, **_kwargs: {"subscription": {"plan": CloudPlan.TEAM}},
     )
-    service = MagicMock()
     task = object()
     archives = object()
-    service.delete_archive.return_value = task
-    service.create_download.return_value = task
-    service.list_archives.return_value = archives
-    monkeypatch.setattr(
-        workflow_run_archive, "application_services", lambda: SimpleNamespace(workflow_run_archives=service)
-    )
     monkeypatch.setattr(workflow_run_archive, "dump_response", lambda _model, value: value)
     app = Flask(__name__)
 
-    with app.test_request_context(method="POST", json={"year": 2025, "month": 3}):
+    with (
+        patch.object(archive_service, "delete_archive", return_value=task) as delete_archive,
+        patch.object(archive_service, "create_download", return_value=task) as create_download,
+        patch.object(archive_service, "list_archives", return_value=archives) as list_archives,
+        app.test_request_context(method="POST", json={"year": 2025, "month": 3}),
+    ):
         if role == TenantAccountRole.OWNER:
             assert _admission_injector(WorkflowRunArchiveMonthApi.delete)(None, 2025, 3) == (task, 202)
-            context = service.delete_archive.call_args.args[0]
+            context = delete_archive.call_args.args[0]
             assert context.account_id == "account-1"
             assert context.active_workspace_id == "tenant-1"
-            service.delete_archive.assert_called_once_with(context, year=2025, month=3)
+            delete_archive.assert_called_once_with(context, year=2025, month=3)
         else:
             with pytest.raises(Forbidden):
                 _admission_injector(WorkflowRunArchiveMonthApi.delete)(None, 2025, 3)
-            service.delete_archive.assert_not_called()
+            delete_archive.assert_not_called()
 
         if role == TenantAccountRole.ADMIN:
             assert _admission_injector(WorkflowRunArchivesApi.get)(None) is archives
             assert _admission_injector(WorkflowRunArchiveDownloadsApi.post)(None) == (task, 202)
-            context = service.list_archives.call_args.args[0]
+            context = list_archives.call_args.args[0]
             assert context.account_id == "account-1"
             assert context.active_workspace_id == "tenant-1"
-            service.list_archives.assert_called_once_with(context)
-            service.create_download.assert_called_once_with(context, year=2025, month=3)
+            list_archives.assert_called_once_with(context)
+            create_download.assert_called_once_with(context, year=2025, month=3)
 
 
 def test_workflow_run_archive_endpoints_delegate_to_application_service(
@@ -335,19 +345,15 @@ def test_workflow_run_archive_file_redirects_to_signed_url(monkeypatch: pytest.M
 
 @pytest.mark.parametrize(("year", "month"), [(0, 3), (-1, 3), (10000, 3), (2025, 0), (2025, 13), (2025, -1)])
 def test_delete_archive_validates_path_month_before_dispatch(
-    monkeypatch: pytest.MonkeyPatch,
+    archive_service: WorkflowRunArchiveService,
     year: int,
     month: int,
 ) -> None:
-    service = MagicMock()
-    monkeypatch.setattr(
-        workflow_run_archive, "application_services", lambda: SimpleNamespace(workflow_run_archives=service)
-    )
+    with patch.object(archive_service, "delete_archive") as delete_archive:
+        with pytest.raises(WorkflowRunArchiveInvalidMonthError):
+            _original(WorkflowRunArchiveMonthApi.delete)(None, _CONTEXT, year, month)
 
-    with pytest.raises(WorkflowRunArchiveInvalidMonthError):
-        _original(WorkflowRunArchiveMonthApi.delete)(None, _CONTEXT, year, month)
-
-    service.delete_archive.assert_not_called()
+        delete_archive.assert_not_called()
 
 
 @pytest.fixture
@@ -437,7 +443,7 @@ def archive_http_client() -> FlaskClient:
     ],
 )
 def test_workflow_run_archive_domain_errors_keep_http_responses(
-    monkeypatch: pytest.MonkeyPatch,
+    archive_service: WorkflowRunArchiveService,
     archive_http_client: FlaskClient,
     method: str,
     path: str,
@@ -446,28 +452,21 @@ def test_workflow_run_archive_domain_errors_keep_http_responses(
     status: int,
     code: str,
 ) -> None:
-    service = MagicMock()
-    service.configure_mock(**{f"{service_method}.side_effect": error})
-    monkeypatch.setattr(
-        workflow_run_archive, "application_services", lambda: SimpleNamespace(workflow_run_archives=service)
-    )
-
-    response = archive_http_client.open(path, method=method.upper())
+    with patch.object(archive_service, service_method, side_effect=error):
+        response = archive_http_client.open(path, method=method.upper())
 
     assert response.status_code == status
     assert response.json == {"code": code, "message": str(error), "status": status}
 
 
 def test_invalid_archive_month_keeps_bad_request_response(
-    monkeypatch: pytest.MonkeyPatch,
+    archive_service: WorkflowRunArchiveService,
     archive_http_client: FlaskClient,
 ) -> None:
-    service = MagicMock()
-    monkeypatch.setattr(
-        workflow_run_archive, "application_services", lambda: SimpleNamespace(workflow_run_archives=service)
-    )
+    with patch.object(archive_service, "delete_archive") as delete_archive:
+        response = archive_http_client.delete("/workflow-run-archives/2025/13")
 
-    response = archive_http_client.delete("/workflow-run-archives/2025/13")
+        delete_archive.assert_not_called()
 
     assert response.status_code == 400
     payload = response.json
@@ -475,24 +474,19 @@ def test_invalid_archive_month_keeps_bad_request_response(
     assert payload["code"] == "bad_request"
     assert payload["status"] == 400
     assert "month" in payload["message"]
-    service.delete_archive.assert_not_called()
 
 
 def test_archive_domain_error_handlers_preserve_accepted_deletion_and_download_redirect(
-    monkeypatch: pytest.MonkeyPatch,
+    archive_service: WorkflowRunArchiveService,
     archive_http_client: FlaskClient,
 ) -> None:
-    service = MagicMock()
-    service.delete_archive.return_value = WorkflowRunArchiveDeletionTask(
-        year=2025, month=3, status=WorkflowRunArchiveDeletionStatus.PENDING
-    )
-    service.get_download_url.return_value = "https://storage.example.com/archive.zip"
-    monkeypatch.setattr(
-        workflow_run_archive, "application_services", lambda: SimpleNamespace(workflow_run_archives=service)
-    )
-
-    deletion = archive_http_client.delete("/workflow-run-archives/2025/3")
-    download = archive_http_client.get("/workflow-run-archives/downloads/download-1/file")
+    task = WorkflowRunArchiveDeletionTask(year=2025, month=3, status=WorkflowRunArchiveDeletionStatus.PENDING)
+    with (
+        patch.object(archive_service, "delete_archive", return_value=task),
+        patch.object(archive_service, "get_download_url", return_value="https://storage.example.com/archive.zip"),
+    ):
+        deletion = archive_http_client.delete("/workflow-run-archives/2025/3")
+        download = archive_http_client.get("/workflow-run-archives/downloads/download-1/file")
 
     assert deletion.status_code == 202
     assert deletion.json == {"year": 2025, "month": 3, "status": "pending", "error": None}

@@ -4,12 +4,14 @@ from collections.abc import Sequence
 from typing import Any, cast
 from unittest.mock import MagicMock, call, patch
 
+import boto3
 import pytest
 from botocore.exceptions import ClientError, ReadTimeoutError
+from botocore.stub import Stubber
 from sqlalchemy import delete, event
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
-from libs.archive_storage import ArchiveStorageError
+from libs.archive_storage import ArchiveStorage, ArchiveStorageError
 from models.workflow import WorkflowRunArchiveBundle
 from services.retention.workflow_run.bundle_archive_maintenance import (
     ARCHIVED_TABLES,
@@ -27,6 +29,7 @@ from services.retention.workflow_run.constants import (
     ARCHIVE_BUNDLE_RESTORED_MARKER_NAME,
     ARCHIVE_BUNDLE_SCHEMA_VERSION,
 )
+from tests.unit_tests.config_override import apply_config_overrides
 
 TENANT_ID = "1251fe32-c0c7-4fe2-a7bd-a8105267faf5"
 CATALOG_ID = "019f63b7-5ca4-7681-9ce0-800283608f39"
@@ -967,22 +970,32 @@ def test_delete_marker_does_not_retry_non_retryable_delete_error() -> None:
 
 
 def test_delete_bundle_with_deleted_marker_clears_stale_delete_started_marker(
-    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     entry = _catalog_entry()
     _persist_catalog(sqlite_session, entry)
     archive_records = _sample_archive_records()
     bundle_ref = _bundle_reference(entry, table_records=archive_records)
-    storage = MagicMock()
+    apply_config_overrides(
+        monkeypatch,
+        ARCHIVE_STORAGE_ENABLED=True,
+        ARCHIVE_STORAGE_ENDPOINT="https://storage.example.com",
+        ARCHIVE_STORAGE_ACCESS_KEY="test-access",
+        ARCHIVE_STORAGE_SECRET_KEY="test-secret",
+    )
+    client = boto3.client("s3", aws_access_key_id="test-access", aws_secret_access_key="test-secret")
+    with Stubber(client) as stubber, patch("libs.archive_storage.boto3.client", return_value=client):
+        stubber.add_response("head_bucket", {}, {"Bucket": "archive-test"})
+        storage = ArchiveStorage(bucket="archive-test")
     existing_markers = {
         f"{bundle_ref.object_prefix}/{ARCHIVE_BUNDLE_DELETED_MARKER_NAME}",
         f"{bundle_ref.object_prefix}/{ARCHIVE_BUNDLE_DELETE_STARTED_MARKER_NAME}",
     }
-    storage.object_exists.side_effect = lambda key: key in existing_markers
-    storage.delete_object.side_effect = lambda key: existing_markers.discard(key)
     maintenance = WorkflowRunBundleArchiveMaintenance(session_factory=sqlite_session_factory)
 
     with (
+        patch.object(storage, "object_exists", side_effect=lambda key: key in existing_markers),
+        patch.object(storage, "delete_object", side_effect=existing_markers.discard) as delete_object,
         patch.object(
             maintenance,
             "_validate_archive_object",
@@ -994,7 +1007,7 @@ def test_delete_bundle_with_deleted_marker_clears_stale_delete_started_marker(
 
     assert result.success
     assert existing_markers == {f"{bundle_ref.object_prefix}/{ARCHIVE_BUNDLE_DELETED_MARKER_NAME}"}
-    assert storage.delete_object.call_args_list == [
+    assert delete_object.call_args_list == [
         call(f"{bundle_ref.object_prefix}/{ARCHIVE_BUNDLE_DELETE_STARTED_MARKER_NAME}"),
         call(f"{bundle_ref.object_prefix}/{ARCHIVE_BUNDLE_RESTORED_MARKER_NAME}"),
     ]
