@@ -7,6 +7,7 @@ import {
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { createHttpError } from '@/service/http-error'
 import {
   createDataTransfer,
   createSkillDetail,
@@ -357,18 +358,14 @@ describe('SkillDetailPage clipboard', () => {
         },
       ],
     })
-    const conflict = new Error('skill has been modified by another user') as Error & {
-      code: string
+    const conflict = createHttpError(new Response(null, { status: 409 }), {
+      code: 'skill_conflict',
+      message: 'skill has been modified by another user',
       details: {
-        current_updated_at: number
-        expected_updated_at: number
-      }
-    }
-    conflict.code = 'skill_conflict'
-    conflict.details = {
-      current_updated_at: latestDetail.updated_at,
-      expected_updated_at: 1784638487,
-    }
+        current_updated_at: latestDetail.updated_at,
+        expected_updated_at: 1784638487,
+      },
+    })
     mocks.saveDraftFileMutationFn
       .mockRejectedValueOnce(conflict)
       .mockImplementationOnce(async () => {
@@ -444,10 +441,10 @@ describe('SkillDetailPage clipboard', () => {
       updated_at: 1784638491,
       files: [...sourceFiles, copiedAlpha, copiedBeta],
     })
-    const conflict = new Error('skill has been modified by another user') as Error & {
-      code: string
-    }
-    conflict.code = 'skill_conflict'
+    const conflict = createHttpError(new Response(null, { status: 409 }), {
+      code: 'skill_conflict',
+      message: 'skill has been modified by another user',
+    })
 
     mocks.skillDetail = createSkillDetail({ files: sourceFiles })
     mocks.saveDraftFileMutationFn

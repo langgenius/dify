@@ -1,5 +1,6 @@
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { httpErrorFromResponse } from '@/service/http-error'
 import { render } from '@/test/console/render'
 import ImportSnippetDSLDialog from '../import-snippet-dsl-dialog'
 
@@ -149,6 +150,30 @@ describe('ImportSnippetDSLDialog', () => {
       expect(toastMocks.error).toHaveBeenCalledWith('invalid yaml')
       expect(onClose).not.toHaveBeenCalled()
     })
+  })
+
+  it.each(['import', 'confirm'])('leaves HTTP %s failures to the request layer', async (step) => {
+    const user = userEvent.setup()
+    const onClose = vi.fn()
+    const error = await httpErrorFromResponse(
+      Response.json({ message: 'Invalid DSL' }, { status: 400 }),
+    )
+    if (step === 'import') serviceMocks.importMutateAsync.mockRejectedValue(error)
+    else {
+      serviceMocks.importMutateAsync.mockResolvedValue({ id: 'import-1', status: 'pending' })
+      serviceMocks.confirmMutateAsync.mockRejectedValue(error)
+    }
+
+    render(<ImportSnippetDSLDialog isOpen onClose={onClose} />)
+    await user.click(screen.getByRole('button', { name: 'select-dsl-file' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
+    if (step === 'confirm') {
+      await user.click(await screen.findByRole('button', { name: 'common.operation.confirm' }))
+      expect(serviceMocks.confirmMutateAsync).toHaveBeenCalledWith({ importId: 'import-1' })
+    }
+    expect(serviceMocks.importMutateAsync).toHaveBeenCalledOnce()
+    expect(toastMocks.error).not.toHaveBeenCalled()
+    expect(onClose).not.toHaveBeenCalled()
   })
 
   it('should disable import without snippet create permission', async () => {

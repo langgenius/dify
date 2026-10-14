@@ -2,6 +2,7 @@ import type { CrawlOptions, CrawlResultItem } from '@/models/datasets'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { createHttpError } from '@/service/http-error'
 // Component Import (after mocks)
 import FireCrawl from '../index'
 
@@ -586,9 +587,9 @@ describe('FireCrawl', () => {
     it('should handle API exception during status check', async () => {
       const user = userEvent.setup()
       mockCreateFirecrawlTask.mockResolvedValueOnce({ job_id: 'test-job' })
-      mockCheckFirecrawlTaskStatus.mockRejectedValueOnce({
-        json: () => Promise.resolve({ message: 'Status check failed' }),
-      })
+      mockCheckFirecrawlTaskStatus.mockRejectedValueOnce(
+        createHttpError(new Response(null, { status: 502 }), { message: 'Status check failed' }),
+      )
 
       render(<FireCrawl {...defaultProps} />)
 
@@ -601,6 +602,7 @@ describe('FireCrawl', () => {
       await waitFor(() => {
         expect(screen.getByText(/exceptionErrorTitle/i))!.toBeInTheDocument()
       })
+      expect(screen.getByText('Status check failed')).toBeInTheDocument()
     })
 
     it('should display error message from API', async () => {

@@ -28,10 +28,8 @@ import { Score } from './score'
 
 const i18nPrefix = ''
 
-type ChunkDetailDialogProps = {
+type ChunkDetailDialogProps = Required<Pick<DialogProps, 'open' | 'onOpenChange'>> & {
   payload: HitTesting
-  open: boolean
-  onOpenChange: DialogProps['onOpenChange']
 }
 
 export function ChunkDetailDialog({ payload, open, onOpenChange }: ChunkDetailDialogProps) {

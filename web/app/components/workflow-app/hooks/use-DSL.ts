@@ -3,13 +3,13 @@ import type { ExportSecretEnvironmentEvent } from '@/app/components/workflow/exp
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { getAppTransferErrorMessage } from '@/app/components/app/transfer-error'
 import { exportAppDslFile } from '@/app/components/app/use-export-app-dsl'
 import { DSL_EXPORT_CHECK } from '@/app/components/workflow/constants'
 import { toast } from '@/app/notifications'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useParams } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 import { useNodesSyncDraftByCanEdit } from './use-nodes-sync-draft'
 
 type DoSyncWorkflowDraft = ReturnType<typeof useNodesSyncDraft>['doSyncWorkflowDraft']
@@ -61,7 +61,7 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       } catch (error) {
         toast.error(
           t(($) => $.exportAppFailed, { ns: 'app' }),
-          { description: await getAppTransferErrorMessage(error) },
+          { description: getErrorMessage(error) },
         )
         return false
       }
@@ -91,7 +91,7 @@ const useDSLBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       toast.error(
         t(($) => $.exportAppFailed, { ns: 'app' }),
         {
-          description: await getAppTransferErrorMessage(error),
+          description: getErrorMessage(error),
         },
       )
     }

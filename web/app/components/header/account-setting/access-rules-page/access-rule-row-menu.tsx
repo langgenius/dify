@@ -32,7 +32,6 @@ type AccessRuleRowMenuProps = {
 
 const AccessRuleRowMenu = ({ rule, onView, onEdit }: AccessRuleRowMenuProps) => {
   const { t } = useTranslation(['common', 'permission'])
-  const [open, setOpen] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   const { mutate: copyAccessRule } = useMutation(
@@ -52,7 +51,6 @@ const AccessRuleRowMenu = ({ rule, onView, onEdit }: AccessRuleRowMenuProps) => 
       {
         onSuccess: () => {
           toast.success(t(($) => $['accessRule.copied'], { ns: 'permission' }))
-          setOpen(false)
         },
       },
     )
@@ -60,7 +58,6 @@ const AccessRuleRowMenu = ({ rule, onView, onEdit }: AccessRuleRowMenuProps) => 
 
   const openDeleteConfirm = useCallback(() => {
     setShowDeleteConfirm(true)
-    setOpen(false)
   }, [])
 
   const handleDelete = useCallback(() => {
@@ -78,7 +75,7 @@ const AccessRuleRowMenu = ({ rule, onView, onEdit }: AccessRuleRowMenuProps) => 
 
   return (
     <>
-      <DropdownMenu open={open} onOpenChange={setOpen}>
+      <DropdownMenu>
         <DropdownMenuTrigger
           render={
             <IconButton

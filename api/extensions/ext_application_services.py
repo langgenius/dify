@@ -56,10 +56,12 @@ from repositories.app.console_repository import ConsoleAppRepository
 from repositories.app.mcp_server_repository import AppMCPServerRepository
 from repositories.app.site_command_repository import AppSiteCommandRepository
 from repositories.app.tracing_config_repository import SQLAlchemyAppTracingConfigRepository
+from repositories.app.workflow_comment_repository import WorkflowCommentRepository
 from repositories.app_definition_query_repository import AppDefinitionQueryRepository
 from repositories.app_preview_query_repository import AppPreviewQueryRepository
 from repositories.app_scoped_end_user_repository import AppScopedEndUserRepo
 from repositories.app_statistic_query_repository import AppStatisticQueryRepository
+from repositories.conversation_variable_query_repository import ConversationVariableQueryRepository
 from repositories.credentials.query_repository import CredentialQueryRepository
 from repositories.explore_banner_query_repository import ExploreBannerQueryRepository
 from repositories.factory import DifyAPIRepositoryFactory
@@ -101,6 +103,8 @@ from services.api_based_extension_application_service import APIBasedExtensionAp
 from services.app.advanced_prompt_template_service import AdvancedPromptTemplateService
 from services.app.api_key_service import AppApiKeyService
 from services.app.mcp_server_service import AppMCPServerService
+from services.app.workflow_comment_mention_gateway import CeleryWorkflowCommentMentionNotifier
+from services.app.workflow_comment_service import WorkflowCommentService
 from services.app_audio_adapters import AppAudioRuntime
 from services.app_audio_service import AppAudio
 from services.app_definition_query_service import AppDefinitionQueryService
@@ -117,6 +121,7 @@ from services.app_tracing_config_service import AppTracingConfigService
 from services.billing_portal_service import BillingPortalService
 from services.billing_service import BillingService
 from services.compliance_download_service import ComplianceDownloadService
+from services.conversation_variable_query import ConversationVariableQuery
 from services.credentials.query import CredentialQuery
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.file_grant_entities import FileGrantLimits
@@ -259,6 +264,7 @@ class ApplicationServices:
     app_preview_details: AppPreviewDetails
     app_previews: AppPreviewQueryService
     app_sites: AppSiteService
+    conversation_variables: ConversationVariableQuery
     app_statistics: AppStatisticQuery
     app_tracing_configs: AppTracingConfigService
     billing_portal: BillingPortalService
@@ -298,6 +304,7 @@ class ApplicationServices:
     workflow_runs: WorkflowRunService
     workspaces: WorkspaceServices
     workflow_app_logs: WorkflowAppLogQueryService
+    workflow_comments: WorkflowCommentService
     inner_mail: InnerMailService
     web_passport: WebPassportService
     tags: TagApplicationService
@@ -463,7 +470,6 @@ def build_application_services(
         providers=datasource_credentials.providers,
         redis=redis,
         tags=tags,
-        app_queries=apps.queries,
         rbac_members=rbac.members,
     )
     app_scoped_end_user_repository = AppScopedEndUserRepo(session_factory=database_client)
@@ -498,6 +504,7 @@ def build_application_services(
         activation_accounts=activation_accounts,
     )
     workspace_services = build_workspace_services(
+        database_client=database_client,
         workspaces=workspace_repository,
         accounts=accounts,
         files=file_service,
@@ -526,6 +533,7 @@ def build_application_services(
         app_sites=AppSiteService(
             sites=AppSiteCommandRepository(session_factory=database_client),
         ),
+        conversation_variables=ConversationVariableQueryRepository(session_factory=database_client),
         app_api_keys=build_app_api_key_service(database_client=database_client),
         dataset_api_keys=build_dataset_api_key_service(
             database_client=database_client,
@@ -678,6 +686,11 @@ def build_application_services(
         workspaces=workspace_services,
         workflow_app_logs=WorkflowAppLogQueryService(
             logs=WorkflowAppLogQueryRepository(session_factory=database_client),
+        ),
+        workflow_comments=WorkflowCommentService(
+            comments=WorkflowCommentRepository(session_factory=database_client),
+            notifier=CeleryWorkflowCommentMentionNotifier(),
+            console_web_url=dify_config.CONSOLE_WEB_URL,
         ),
         inner_mail=InnerMailService(dispatch=enqueue_inner_mail),
         web_passport=WebPassportService(

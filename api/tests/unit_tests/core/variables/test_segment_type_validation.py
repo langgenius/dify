@@ -6,7 +6,6 @@ including edge cases, error conditions, and different ArrayValidation strategies
 """
 
 from dataclasses import dataclass
-from typing import Any
 
 import pytest
 
@@ -52,7 +51,7 @@ class ValidationTestCase:
     """Test case data structure for validation tests."""
 
     segment_type: SegmentType
-    value: Any
+    value: object
     expected: bool
     description: str
 
@@ -65,7 +64,7 @@ class ArrayValidationTestCase:
     """Test case data structure for array validation tests."""
 
     segment_type: SegmentType
-    value: Any
+    value: object
     array_validation: ArrayValidation
     expected: bool
     description: str
@@ -561,7 +560,7 @@ class TestSegmentTypeIsValid:
 
         for segment_type in all_segment_types:
             # Create a valid test value for each type
-            test_value: Any = None
+            test_value: object = None
             if segment_type == SegmentType.STRING:
                 test_value = "test"
             elif segment_type in {SegmentType.NUMBER, SegmentType.INTEGER}:
@@ -730,7 +729,7 @@ class TestSegmentTypeValidationIntegration:
 
         for segment_type in non_array_types:
             # Create appropriate valid value for each type
-            valid_value: Any
+            valid_value: object
             if segment_type == SegmentType.STRING:
                 valid_value = "test"
             elif segment_type == SegmentType.NUMBER:
