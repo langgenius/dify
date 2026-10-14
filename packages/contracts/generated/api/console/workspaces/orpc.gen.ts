@@ -623,6 +623,7 @@ export const put = oc
     }),
   )
   .output(zPutWorkspacesCurrentAgentsByAgentIdSkillsResponse)
+  .errors({ invalid_request: { status: 400, data: zInvalidRequestError } })
 
 export const skills = {
   get: get3,
@@ -3683,6 +3684,7 @@ export const post50 = oc
     }),
   )
   .output(zPostWorkspacesCurrentSkillsBySkillIdAssistMessagesResponse)
+  .errors({ invalid_request: { status: 400, data: zInvalidRequestError } })
 
 export const messages = {
   post: post50,
@@ -3843,6 +3845,7 @@ export const post53 = oc
     }),
   )
   .output(zPostWorkspacesCurrentSkillsBySkillIdPublishResponse)
+  .errors({ invalid_request: { status: 400, data: zInvalidRequestError } })
 
 export const publish = {
   post: post53,
@@ -3878,6 +3881,7 @@ export const post54 = oc
     }),
   )
   .output(zPostWorkspacesCurrentSkillsBySkillIdRestoreResponse)
+  .errors({ invalid_request: { status: 400, data: zInvalidRequestError } })
 
 export const restore = {
   post: post54,
@@ -3920,6 +3924,7 @@ export const patch6 = oc
     }),
   )
   .output(zPatchWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdResponse)
+  .errors({ invalid_request: { status: 400, data: zInvalidRequestError } })
 
 export const byVersionId = {
   delete: delete14,
@@ -3958,6 +3963,7 @@ export const delete15 = oc
     }),
   )
   .output(zDeleteWorkspacesCurrentSkillsBySkillIdResponse)
+  .errors({ invalid_request: { status: 400, data: zInvalidRequestError } })
 
 export const get82 = oc
   .route({

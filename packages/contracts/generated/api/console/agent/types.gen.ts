@@ -75,6 +75,11 @@ export type AgentNotFoundError = ErrorResponse & {
   status: 404
 }
 
+export type AgentNameConflictError = ErrorResponse & {
+  code: 'agent_name_conflict_error'
+  status: 409
+}
+
 export type AgentInviteOptionsResponse = {
   data: Array<AgentInviteOptionResponse>
   has_more: boolean
@@ -260,6 +265,16 @@ export type InvalidComposerConfigError = ErrorResponse & {
 export type PlaintextSecretNotAllowedError = ErrorResponse & {
   code: 'plaintext_secret_not_allowed_error'
   status: 400
+}
+
+export type AgentHomeSnapshotTooLargeError = ErrorResponse & {
+  code: 'agent_home_snapshot_too_large'
+  status: 413
+}
+
+export type AgentHomeSnapshotCreateFailedError = ErrorResponse & {
+  code: 'agent_home_snapshot_create_failed'
+  status: 502
 }
 
 export type AgentBuildDraftCheckoutPayload = {
@@ -2453,7 +2468,7 @@ export type PostAgentErrors = {
   400: ErrorResponse
   403: ErrorResponse
   404: AgentNotFoundError | ErrorResponse
-  409: ErrorResponse
+  409: AgentNameConflictError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2549,6 +2564,7 @@ export type PutAgentByAgentIdErrors = {
   400: ErrorResponse
   403: ErrorResponse
   404: AgentNotFoundError | ErrorResponse
+  409: AgentNameConflictError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2848,6 +2864,8 @@ export type PostAgentByAgentIdBuildDraftApplyErrors = {
     | AgentNotFoundError
     | AgentVersionNotFoundError
     | ErrorResponse
+  413: AgentHomeSnapshotTooLargeError | ErrorResponse
+  502: AgentHomeSnapshotCreateFailedError | ErrorResponse
   default: ErrorResponse
 }
 

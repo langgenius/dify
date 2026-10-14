@@ -276,11 +276,6 @@ export type DocumentIndexingError = ErrorResponse & {
   status: 400
 }
 
-export type InvalidActionError = ErrorResponse & {
-  code: 'invalid_action'
-  status: 400
-}
-
 export type ModelCurrentlyNotSupportError = ErrorResponse & {
   code: 'model_currently_not_support'
   status: 400
@@ -289,11 +284,6 @@ export type ModelCurrentlyNotSupportError = ErrorResponse & {
 export type ProviderQuotaExceededError = ErrorResponse & {
   code: 'provider_quota_exceeded'
   status: 400
-}
-
-export type ArchivedDocumentImmutableError = ErrorResponse & {
-  code: 'archived_document_immutable'
-  status: 403
 }
 
 export type DatasetMetadataBuiltInFieldsResponse = {
@@ -392,6 +382,11 @@ export type MetadataOperationData = {
   operation_data: Array<DocumentMetadataOperation>
 }
 
+export type InvalidActionError = ErrorResponse & {
+  code: 'invalid_action'
+  status: 400
+}
+
 export type DocumentDetailResponse = {
   archived?: boolean | null
   average_segment_length?: number | null
@@ -465,6 +460,11 @@ export type DocumentPipelineExecutionLogResponse = {
   datasource_node_id?: string | null
   datasource_type?: string | null
   input_data?: JsonValue | null
+}
+
+export type ArchivedDocumentImmutableError = ErrorResponse & {
+  code: 'archived_document_immutable'
+  status: 403
 }
 
 export type DocumentRenamePayload = {
@@ -1574,12 +1574,10 @@ export type PostDatasetsInitData = {
 export type PostDatasetsInitErrors = {
   400:
     | DocumentIndexingError
-    | InvalidActionError
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
     | ErrorResponse
-  403: ArchivedDocumentImmutableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1646,14 +1644,6 @@ export type GetDatasetsProcessRuleData = {
 }
 
 export type GetDatasetsProcessRuleErrors = {
-  400:
-    | DocumentIndexingError
-    | InvalidActionError
-    | ModelCurrentlyNotSupportError
-    | ProviderNotInitializeError
-    | ProviderQuotaExceededError
-    | ErrorResponse
-  403: ArchivedDocumentImmutableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1876,14 +1866,6 @@ export type GetDatasetsByDatasetIdBatchByBatchIndexingStatusData = {
 }
 
 export type GetDatasetsByDatasetIdBatchByBatchIndexingStatusErrors = {
-  400:
-    | DocumentIndexingError
-    | InvalidActionError
-    | ModelCurrentlyNotSupportError
-    | ProviderNotInitializeError
-    | ProviderQuotaExceededError
-    | ErrorResponse
-  403: ArchivedDocumentImmutableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1909,12 +1891,10 @@ export type DeleteDatasetsByDatasetIdDocumentsData = {
 export type DeleteDatasetsByDatasetIdDocumentsErrors = {
   400:
     | DocumentIndexingError
-    | InvalidActionError
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
     | ErrorResponse
-  403: ArchivedDocumentImmutableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1945,14 +1925,6 @@ export type GetDatasetsByDatasetIdDocumentsData = {
 }
 
 export type GetDatasetsByDatasetIdDocumentsErrors = {
-  400:
-    | DocumentIndexingError
-    | InvalidActionError
-    | ModelCurrentlyNotSupportError
-    | ProviderNotInitializeError
-    | ProviderQuotaExceededError
-    | ErrorResponse
-  403: ArchivedDocumentImmutableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1978,12 +1950,10 @@ export type PostDatasetsByDatasetIdDocumentsData = {
 export type PostDatasetsByDatasetIdDocumentsErrors = {
   400:
     | DocumentIndexingError
-    | InvalidActionError
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
     | ErrorResponse
-  403: ArchivedDocumentImmutableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2009,12 +1979,10 @@ export type PostDatasetsByDatasetIdDocumentsDownloadZipData = {
 export type PostDatasetsByDatasetIdDocumentsDownloadZipErrors = {
   400:
     | DocumentIndexingError
-    | InvalidActionError
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
     | ErrorResponse
-  403: ArchivedDocumentImmutableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2040,14 +2008,8 @@ export type PostDatasetsByDatasetIdDocumentsGenerateSummaryData = {
 }
 
 export type PostDatasetsByDatasetIdDocumentsGenerateSummaryErrors = {
-  400:
-    | DocumentIndexingError
-    | InvalidActionError
-    | ModelCurrentlyNotSupportError
-    | ProviderNotInitializeError
-    | ProviderQuotaExceededError
-    | ErrorResponse
-  403: ArchivedDocumentImmutableError | ErrorResponse
+  400: ErrorResponse
+  403: ErrorResponse
   404: ErrorResponse
   default: ErrorResponse
 }
@@ -2104,7 +2066,6 @@ export type PatchDatasetsByDatasetIdDocumentsStatusByActionBatchErrors = {
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
     | ErrorResponse
-  403: ArchivedDocumentImmutableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2131,12 +2092,10 @@ export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdData = {
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdErrors = {
   400:
     | DocumentIndexingError
-    | InvalidActionError
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
     | ErrorResponse
-  403: ArchivedDocumentImmutableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2163,15 +2122,7 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdData = {
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdErrors = {
-  400:
-    | DocumentIndexingError
-    | InvalidActionError
-    | InvalidMetadataError
-    | ModelCurrentlyNotSupportError
-    | ProviderNotInitializeError
-    | ProviderQuotaExceededError
-    | ErrorResponse
-  403: ArchivedDocumentImmutableError | ErrorResponse
+  400: InvalidMetadataError | ErrorResponse
   404: ErrorResponse
   default: ErrorResponse
 }
@@ -2199,12 +2150,10 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadData = {
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadErrors = {
   400:
     | DocumentIndexingError
-    | InvalidActionError
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
     | ErrorResponse
-  403: ArchivedDocumentImmutableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2257,14 +2206,6 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingStatusData = {
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingStatusErrors = {
-  400:
-    | DocumentIndexingError
-    | InvalidActionError
-    | ModelCurrentlyNotSupportError
-    | ProviderNotInitializeError
-    | ProviderQuotaExceededError
-    | ErrorResponse
-  403: ArchivedDocumentImmutableError | ErrorResponse
   404: ErrorResponse
   default: ErrorResponse
 }
@@ -2290,14 +2231,7 @@ export type PutDatasetsByDatasetIdDocumentsByDocumentIdMetadataData = {
 }
 
 export type PutDatasetsByDatasetIdDocumentsByDocumentIdMetadataErrors = {
-  400:
-    | DocumentIndexingError
-    | InvalidActionError
-    | ModelCurrentlyNotSupportError
-    | ProviderNotInitializeError
-    | ProviderQuotaExceededError
-    | ErrorResponse
-  403: ArchivedDocumentImmutableError | ErrorResponse
+  403: ErrorResponse
   404: ErrorResponse
   default: ErrorResponse
 }
@@ -2349,14 +2283,6 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdPipelineExecutionLogData 
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdPipelineExecutionLogErrors = {
-  400:
-    | DocumentIndexingError
-    | InvalidActionError
-    | ModelCurrentlyNotSupportError
-    | ProviderNotInitializeError
-    | ProviderQuotaExceededError
-    | ErrorResponse
-  403: ArchivedDocumentImmutableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2383,7 +2309,6 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingPauseData = {
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingPauseErrors = {
   400:
     | DocumentIndexingError
-    | InvalidActionError
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
@@ -2415,7 +2340,6 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingResumeData = 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingResumeErrors = {
   400:
     | DocumentIndexingError
-    | InvalidActionError
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
@@ -2446,14 +2370,7 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionData 
 }
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionErrors = {
-  400:
-    | DocumentIndexingError
-    | InvalidActionError
-    | ModelCurrentlyNotSupportError
-    | ProviderNotInitializeError
-    | ProviderQuotaExceededError
-    | ErrorResponse
-  403: ArchivedDocumentImmutableError | ErrorResponse
+  400: InvalidActionError | ErrorResponse
   404: ErrorResponse
   default: ErrorResponse
 }
@@ -2479,14 +2396,6 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdRenameData = {
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdRenameErrors = {
-  400:
-    | DocumentIndexingError
-    | InvalidActionError
-    | ModelCurrentlyNotSupportError
-    | ProviderNotInitializeError
-    | ProviderQuotaExceededError
-    | ErrorResponse
-  403: ArchivedDocumentImmutableError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -2854,14 +2763,6 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdSummaryStatusData = {
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSummaryStatusErrors = {
-  400:
-    | DocumentIndexingError
-    | InvalidActionError
-    | ModelCurrentlyNotSupportError
-    | ProviderNotInitializeError
-    | ProviderQuotaExceededError
-    | ErrorResponse
-  403: ArchivedDocumentImmutableError | ErrorResponse
   404: ErrorResponse
   default: ErrorResponse
 }
@@ -2889,7 +2790,6 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdWebsiteSyncData = {
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdWebsiteSyncErrors = {
   400:
     | DocumentIndexingError
-    | InvalidActionError
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
@@ -3242,12 +3142,10 @@ export type PostDatasetsByDatasetIdRetryData = {
 export type PostDatasetsByDatasetIdRetryErrors = {
   400:
     | DocumentIndexingError
-    | InvalidActionError
     | ModelCurrentlyNotSupportError
     | ProviderNotInitializeError
     | ProviderQuotaExceededError
     | ErrorResponse
-  403: ArchivedDocumentImmutableError | ErrorResponse
   default: ErrorResponse
 }
 

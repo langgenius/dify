@@ -24,53 +24,8 @@ export type AccountInFreezeError = ErrorResponse & {
   status: 400
 }
 
-export type AccountNotFoundError = ErrorResponse & {
-  code: 'account_not_found'
-  status: 400
-}
-
-export type EmailCodeError = ErrorResponse & {
-  code: 'email_code_error'
-  status: 400
-}
-
 export type EmailDomainSuspendedError = ErrorResponse & {
   code: 'email_domain_suspended'
-  status: 400
-}
-
-export type InvalidAccountPasswordError = ErrorResponse & {
-  code: 'invalid_account_password'
-  status: 400
-}
-
-export type InvalidEmailError = ErrorResponse & {
-  code: 'invalid_email'
-  status: 400
-}
-
-export type InvalidOrExpiredTokenError = ErrorResponse & {
-  code: 'invalid_or_expired_token'
-  status: 400
-}
-
-export type LimitExceededError = ErrorResponse & {
-  code: 'limit_exceeded'
-  status: 400
-}
-
-export type NormalizedEmailAlreadyInUseError = ErrorResponse & {
-  code: 'normalized_email_already_in_use'
-  status: 400
-}
-
-export type NotAllowedCreateWorkspaceError = ErrorResponse & {
-  code: 'not_allowed_create_workspace'
-  status: 400
-}
-
-export type TurnstileVerificationFailedError = ErrorResponse & {
-  code: 'turnstile_verification_failed'
   status: 400
 }
 
@@ -84,39 +39,9 @@ export type ErrorResponse = {
   status: number
 }
 
-export type AuthenticationFailedError = ErrorResponse & {
-  code: 'authentication_failed'
-  status: 401
-}
-
-export type EmailCodeLoginLimitError = ErrorResponse & {
-  code: 'email_code_login_limit'
-  status: 429
-}
-
-export type EmailCodeLoginRateLimitExceededError = ErrorResponse & {
-  code: 'email_code_login_rate_limit_exceeded'
-  status: 429
-}
-
-export type EmailSendIpLimitError = ErrorResponse & {
-  code: 'email_send_ip_limit'
-  status: 429
-}
-
 export type PasswordResetRateLimitExceededError = ErrorResponse & {
   code: 'password_reset_rate_limit_exceeded'
   status: 429
-}
-
-export type EmailCodeLoginServiceUnavailableError = ErrorResponse & {
-  code: 'email_code_login_service_unavailable'
-  status: 503
-}
-
-export type TurnstileServiceUnavailableError = ErrorResponse & {
-  code: 'turnstile_service_unavailable'
-  status: 503
 }
 
 export type PostResetPasswordData = {
@@ -127,28 +52,8 @@ export type PostResetPasswordData = {
 }
 
 export type PostResetPasswordErrors = {
-  400:
-    | AccountBannedError
-    | AccountInFreezeError
-    | AccountNotFoundError
-    | EmailCodeError
-    | EmailDomainSuspendedError
-    | InvalidAccountPasswordError
-    | InvalidEmailError
-    | InvalidOrExpiredTokenError
-    | LimitExceededError
-    | NormalizedEmailAlreadyInUseError
-    | NotAllowedCreateWorkspaceError
-    | TurnstileVerificationFailedError
-    | ErrorResponse
-  401: AuthenticationFailedError | ErrorResponse
-  429:
-    | EmailCodeLoginLimitError
-    | EmailCodeLoginRateLimitExceededError
-    | EmailSendIpLimitError
-    | PasswordResetRateLimitExceededError
-    | ErrorResponse
-  503: EmailCodeLoginServiceUnavailableError | TurnstileServiceUnavailableError | ErrorResponse
+  400: AccountBannedError | AccountInFreezeError | EmailDomainSuspendedError | ErrorResponse
+  429: PasswordResetRateLimitExceededError | ErrorResponse
   default: ErrorResponse
 }
 

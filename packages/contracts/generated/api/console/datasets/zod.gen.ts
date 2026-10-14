@@ -212,18 +212,6 @@ export const zDocumentIndexingError = zErrorResponse.and(
 )
 
 /**
- * InvalidActionError
- *
- * Invalid action.
- */
-export const zInvalidActionError = zErrorResponse.and(
-  z.object({
-    code: z.literal('invalid_action'),
-    status: z.literal(400),
-  }),
-)
-
-/**
  * ModelCurrentlyNotSupportError
  *
  * Dify Hosted OpenAI trial currently not support the GPT-4 model.
@@ -244,18 +232,6 @@ export const zProviderQuotaExceededError = zErrorResponse.and(
   z.object({
     code: z.literal('provider_quota_exceeded'),
     status: z.literal(400),
-  }),
-)
-
-/**
- * ArchivedDocumentImmutableError
- *
- * The archived document is not editable.
- */
-export const zArchivedDocumentImmutableError = zErrorResponse.and(
-  z.object({
-    code: z.literal('archived_document_immutable'),
-    status: z.literal(403),
   }),
 )
 
@@ -308,6 +284,18 @@ export const zDocumentBatchDownloadZipPayload = z.object({
 export const zGenerateSummaryPayload = z.object({
   document_list: z.array(z.string()),
 })
+
+/**
+ * InvalidActionError
+ *
+ * Invalid action.
+ */
+export const zInvalidActionError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_action'),
+    status: z.literal(400),
+  }),
+)
 
 /**
  * InvalidMetadataError
@@ -368,6 +356,18 @@ export const zSimpleResultMessageResponse = z.object({
   message: z.string(),
   result: z.string(),
 })
+
+/**
+ * ArchivedDocumentImmutableError
+ *
+ * The archived document is not editable.
+ */
+export const zArchivedDocumentImmutableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('archived_document_immutable'),
+    status: z.literal(403),
+  }),
+)
 
 /**
  * DocumentRenamePayload

@@ -205,6 +205,11 @@ export type PlaintextSecretNotAllowedError = ErrorResponse & {
   status: 400
 }
 
+export type AgentNameConflictError = ErrorResponse & {
+  code: 'agent_name_conflict_error'
+  status: 409
+}
+
 export type AgentComposerCandidatesResponse = {
   allowed_node_job_candidates?: AgentComposerNodeJobCandidatesResponse
   allowed_soul_candidates?: AgentComposerSoulCandidatesResponse
@@ -1543,6 +1548,7 @@ export type PutSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerErrors
     | PlaintextSecretNotAllowedError
     | ErrorResponse
   404: AgentNotFoundError | AgentVersionNotFoundError | ErrorResponse
+  409: AgentNameConflictError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -1649,6 +1655,7 @@ export type PostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerSaveT
     | PlaintextSecretNotAllowedError
     | ErrorResponse
   404: AgentNotFoundError | AgentVersionNotFoundError | ErrorResponse
+  409: AgentNameConflictError | ErrorResponse
   default: ErrorResponse
 }
 

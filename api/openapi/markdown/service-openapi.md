@@ -1449,7 +1449,7 @@ Retrieve detailed information about a specific document, including its indexing 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Document details. The response shape varies based on the `metadata` query parameter. When `metadata` is `only`, only `id`, `doc_type`, and `doc_metadata` are returned. When `metadata` is `without`, `doc_type` and `doc_metadata` are omitted. | **application/json**: [DocumentDetailResponse](#documentdetailresponse)<br> |
-| 400 | `invalid_metadata` : Invalid metadata value for the specified key. | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | `invalid_metadata` : Invalid metadata value for the specified key. | **application/json**: [InvalidMetadataError](#invalidmetadataerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | `forbidden` : No permission. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | `not_found` : Document not found. | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -3810,6 +3810,14 @@ Invalid action.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | InvalidFormDataError |  |  |  |
+
+#### InvalidMetadataError
+
+The metadata content is incorrect. Please check and verify.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| InvalidMetadataError |  | The metadata content is incorrect. Please check and verify. |  |
 
 #### JSONObject
 

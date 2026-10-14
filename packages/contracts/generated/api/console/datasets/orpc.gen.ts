@@ -479,9 +479,7 @@ export const post5 = oc
   .input(z.object({ body: zPostDatasetsInitBody }))
   .output(zPostDatasetsInitResponse)
   .errors({
-    archived_document_immutable: { status: 403, data: zArchivedDocumentImmutableError },
     document_indexing: { status: 400, data: zDocumentIndexingError },
-    invalid_action: { status: 400, data: zInvalidActionError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
     provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
@@ -543,14 +541,6 @@ export const get8 = oc
   })
   .input(z.object({ query: zGetDatasetsProcessRuleQuery.optional() }))
   .output(zGetDatasetsProcessRuleResponse)
-  .errors({
-    archived_document_immutable: { status: 403, data: zArchivedDocumentImmutableError },
-    document_indexing: { status: 400, data: zDocumentIndexingError },
-    invalid_action: { status: 400, data: zInvalidActionError },
-    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
-    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
-    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
-  })
 
 export const processRule = {
   get: get8,
@@ -672,14 +662,6 @@ export const get13 = oc
   })
   .input(z.object({ params: zGetDatasetsByDatasetIdBatchByBatchIndexingStatusPath }))
   .output(zGetDatasetsByDatasetIdBatchByBatchIndexingStatusResponse)
-  .errors({
-    archived_document_immutable: { status: 403, data: zArchivedDocumentImmutableError },
-    document_indexing: { status: 400, data: zDocumentIndexingError },
-    invalid_action: { status: 400, data: zInvalidActionError },
-    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
-    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
-    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
-  })
 
 export const indexingStatus = {
   get: get13,
@@ -717,9 +699,7 @@ export const post8 = oc
   )
   .output(zPostDatasetsByDatasetIdDocumentsDownloadZipResponse)
   .errors({
-    archived_document_immutable: { status: 403, data: zArchivedDocumentImmutableError },
     document_indexing: { status: 400, data: zDocumentIndexingError },
-    invalid_action: { status: 400, data: zInvalidActionError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
     provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
@@ -755,14 +735,6 @@ export const post9 = oc
     }),
   )
   .output(zPostDatasetsByDatasetIdDocumentsGenerateSummaryResponse)
-  .errors({
-    archived_document_immutable: { status: 403, data: zArchivedDocumentImmutableError },
-    document_indexing: { status: 400, data: zDocumentIndexingError },
-    invalid_action: { status: 400, data: zInvalidActionError },
-    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
-    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
-    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
-  })
 
 export const generateSummary = {
   post: post9,
@@ -800,7 +772,6 @@ export const patch2 = oc
   .input(z.object({ params: zPatchDatasetsByDatasetIdDocumentsStatusByActionBatchPath }))
   .output(zPatchDatasetsByDatasetIdDocumentsStatusByActionBatchResponse)
   .errors({
-    archived_document_immutable: { status: 403, data: zArchivedDocumentImmutableError },
     document_indexing: { status: 400, data: zDocumentIndexingError },
     invalid_action: { status: 400, data: zInvalidActionError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
@@ -835,9 +806,7 @@ export const get14 = oc
   .input(z.object({ params: zGetDatasetsByDatasetIdDocumentsByDocumentIdDownloadPath }))
   .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdDownloadResponse)
   .errors({
-    archived_document_immutable: { status: 403, data: zArchivedDocumentImmutableError },
     document_indexing: { status: 400, data: zDocumentIndexingError },
-    invalid_action: { status: 400, data: zInvalidActionError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
     provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
@@ -887,14 +856,6 @@ export const get16 = oc
   })
   .input(z.object({ params: zGetDatasetsByDatasetIdDocumentsByDocumentIdIndexingStatusPath }))
   .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdIndexingStatusResponse)
-  .errors({
-    archived_document_immutable: { status: 403, data: zArchivedDocumentImmutableError },
-    document_indexing: { status: 400, data: zDocumentIndexingError },
-    invalid_action: { status: 400, data: zInvalidActionError },
-    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
-    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
-    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
-  })
 
 export const indexingStatus2 = {
   get: get16,
@@ -919,14 +880,6 @@ export const put = oc
     }),
   )
   .output(zPutDatasetsByDatasetIdDocumentsByDocumentIdMetadataResponse)
-  .errors({
-    archived_document_immutable: { status: 403, data: zArchivedDocumentImmutableError },
-    document_indexing: { status: 400, data: zDocumentIndexingError },
-    invalid_action: { status: 400, data: zInvalidActionError },
-    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
-    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
-    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
-  })
 
 export const metadata3 = {
   put,
@@ -965,14 +918,6 @@ export const get18 = oc
   })
   .input(z.object({ params: zGetDatasetsByDatasetIdDocumentsByDocumentIdPipelineExecutionLogPath }))
   .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdPipelineExecutionLogResponse)
-  .errors({
-    archived_document_immutable: { status: 403, data: zArchivedDocumentImmutableError },
-    document_indexing: { status: 400, data: zDocumentIndexingError },
-    invalid_action: { status: 400, data: zInvalidActionError },
-    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
-    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
-    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
-  })
 
 export const pipelineExecutionLog = {
   get: get18,
@@ -996,7 +941,6 @@ export const patch3 = oc
   .errors({
     archived_document_immutable: { status: 403, data: zArchivedDocumentImmutableError },
     document_indexing: { status: 400, data: zDocumentIndexingError },
-    invalid_action: { status: 400, data: zInvalidActionError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
     provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
@@ -1024,7 +968,6 @@ export const patch4 = oc
   .errors({
     archived_document_immutable: { status: 403, data: zArchivedDocumentImmutableError },
     document_indexing: { status: 400, data: zDocumentIndexingError },
-    invalid_action: { status: 400, data: zInvalidActionError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
     provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
@@ -1048,14 +991,7 @@ export const patch5 = oc
   })
   .input(z.object({ params: zPatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionPath }))
   .output(zPatchDatasetsByDatasetIdDocumentsByDocumentIdProcessingByActionResponse)
-  .errors({
-    archived_document_immutable: { status: 403, data: zArchivedDocumentImmutableError },
-    document_indexing: { status: 400, data: zDocumentIndexingError },
-    invalid_action: { status: 400, data: zInvalidActionError },
-    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
-    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
-    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
-  })
+  .errors({ invalid_action: { status: 400, data: zInvalidActionError } })
 
 export const byAction2 = {
   patch: patch5,
@@ -1082,14 +1018,6 @@ export const post11 = oc
     }),
   )
   .output(zPostDatasetsByDatasetIdDocumentsByDocumentIdRenameResponse)
-  .errors({
-    archived_document_immutable: { status: 403, data: zArchivedDocumentImmutableError },
-    document_indexing: { status: 400, data: zDocumentIndexingError },
-    invalid_action: { status: 400, data: zInvalidActionError },
-    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
-    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
-    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
-  })
 
 export const rename = {
   post: post11,
@@ -1432,14 +1360,6 @@ export const get21 = oc
   })
   .input(z.object({ params: zGetDatasetsByDatasetIdDocumentsByDocumentIdSummaryStatusPath }))
   .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdSummaryStatusResponse)
-  .errors({
-    archived_document_immutable: { status: 403, data: zArchivedDocumentImmutableError },
-    document_indexing: { status: 400, data: zDocumentIndexingError },
-    invalid_action: { status: 400, data: zInvalidActionError },
-    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
-    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
-    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
-  })
 
 export const summaryStatus = {
   get: get21,
@@ -1462,7 +1382,6 @@ export const get22 = oc
   .errors({
     archived_document_immutable: { status: 403, data: zArchivedDocumentImmutableError },
     document_indexing: { status: 400, data: zDocumentIndexingError },
-    invalid_action: { status: 400, data: zInvalidActionError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
     provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
@@ -1484,9 +1403,7 @@ export const delete6 = oc
   .input(z.object({ params: zDeleteDatasetsByDatasetIdDocumentsByDocumentIdPath }))
   .output(zDeleteDatasetsByDatasetIdDocumentsByDocumentIdResponse)
   .errors({
-    archived_document_immutable: { status: 403, data: zArchivedDocumentImmutableError },
     document_indexing: { status: 400, data: zDocumentIndexingError },
-    invalid_action: { status: 400, data: zInvalidActionError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
     provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
@@ -1511,15 +1428,7 @@ export const get23 = oc
     }),
   )
   .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdResponse)
-  .errors({
-    archived_document_immutable: { status: 403, data: zArchivedDocumentImmutableError },
-    document_indexing: { status: 400, data: zDocumentIndexingError },
-    invalid_action: { status: 400, data: zInvalidActionError },
-    invalid_metadata: { status: 400, data: zInvalidMetadataError },
-    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
-    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
-    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
-  })
+  .errors({ invalid_metadata: { status: 400, data: zInvalidMetadataError } })
 
 export const byDocumentId = {
   delete: delete6,
@@ -1550,9 +1459,7 @@ export const delete7 = oc
   .input(z.object({ params: zDeleteDatasetsByDatasetIdDocumentsPath }))
   .output(zDeleteDatasetsByDatasetIdDocumentsResponse)
   .errors({
-    archived_document_immutable: { status: 403, data: zArchivedDocumentImmutableError },
     document_indexing: { status: 400, data: zDocumentIndexingError },
-    invalid_action: { status: 400, data: zInvalidActionError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
     provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
@@ -1577,14 +1484,6 @@ export const get24 = oc
     }),
   )
   .output(zGetDatasetsByDatasetIdDocumentsResponse)
-  .errors({
-    archived_document_immutable: { status: 403, data: zArchivedDocumentImmutableError },
-    document_indexing: { status: 400, data: zDocumentIndexingError },
-    invalid_action: { status: 400, data: zInvalidActionError },
-    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
-    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
-    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
-  })
 
 export const post15 = oc
   .route({
@@ -1602,9 +1501,7 @@ export const post15 = oc
   )
   .output(zPostDatasetsByDatasetIdDocumentsResponse)
   .errors({
-    archived_document_immutable: { status: 403, data: zArchivedDocumentImmutableError },
     document_indexing: { status: 400, data: zDocumentIndexingError },
-    invalid_action: { status: 400, data: zInvalidActionError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
     provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
@@ -1923,9 +1820,7 @@ export const post20 = oc
   )
   .output(zPostDatasetsByDatasetIdRetryResponse)
   .errors({
-    archived_document_immutable: { status: 403, data: zArchivedDocumentImmutableError },
     document_indexing: { status: 400, data: zDocumentIndexingError },
-    invalid_action: { status: 400, data: zInvalidActionError },
     model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
     provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
     provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },

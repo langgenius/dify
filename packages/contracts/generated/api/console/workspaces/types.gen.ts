@@ -38,6 +38,11 @@ export type AgentSkillBindingsPayload = {
   skill_ids?: Array<string>
 }
 
+export type InvalidRequestError = ErrorResponse & {
+  code: 'invalid_request'
+  status: 400
+}
+
 export type SnippetPaginationResponse = {
   data: Array<SnippetListItemResponse>
   has_more: boolean
@@ -801,11 +806,6 @@ export type SkillDetailResponse = {
   updated_by?: string | null
   updated_by_name?: string | null
   visibility: string
-}
-
-export type InvalidRequestError = ErrorResponse & {
-  code: 'invalid_request'
-  status: 400
 }
 
 export type SkillFileUploadResponse = {
@@ -3143,6 +3143,7 @@ export type PutWorkspacesCurrentAgentsByAgentIdSkillsData = {
 }
 
 export type PutWorkspacesCurrentAgentsByAgentIdSkillsErrors = {
+  400: InvalidRequestError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -6831,6 +6832,7 @@ export type DeleteWorkspacesCurrentSkillsBySkillIdData = {
 }
 
 export type DeleteWorkspacesCurrentSkillsBySkillIdErrors = {
+  400: InvalidRequestError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -6901,6 +6903,7 @@ export type PostWorkspacesCurrentSkillsBySkillIdAssistMessagesData = {
 }
 
 export type PostWorkspacesCurrentSkillsBySkillIdAssistMessagesErrors = {
+  400: InvalidRequestError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -7101,6 +7104,7 @@ export type PostWorkspacesCurrentSkillsBySkillIdPublishData = {
 }
 
 export type PostWorkspacesCurrentSkillsBySkillIdPublishErrors = {
+  400: InvalidRequestError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -7147,6 +7151,7 @@ export type PostWorkspacesCurrentSkillsBySkillIdRestoreData = {
 }
 
 export type PostWorkspacesCurrentSkillsBySkillIdRestoreErrors = {
+  400: InvalidRequestError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -7242,6 +7247,7 @@ export type PatchWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdData = {
 }
 
 export type PatchWorkspacesCurrentSkillsBySkillIdVersionsByVersionIdErrors = {
+  400: InvalidRequestError | ErrorResponse
   default: ErrorResponse
 }
 

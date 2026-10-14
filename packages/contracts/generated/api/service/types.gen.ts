@@ -1333,6 +1333,11 @@ export type InvalidFormDataError = ErrorResponse & {
   status: 400
 }
 
+export type InvalidMetadataError = ErrorResponse & {
+  code: 'invalid_metadata'
+  status: 400
+}
+
 export type JsonObject = {
   [key: string]: unknown
 }
@@ -3707,7 +3712,7 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdData = {
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdErrors = {
-  400: ErrorResponse
+  400: InvalidMetadataError | ErrorResponse
   401: ErrorResponse
   403: ErrorResponse
   404: ErrorResponse

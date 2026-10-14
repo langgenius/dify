@@ -4,6 +4,7 @@ import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
   zAgentBackendUnreachableError,
+  zAgentNameConflictError,
   zAgentNotBoundError,
   zAgentNotFoundError,
   zAgentNotPublishedError,
@@ -3920,6 +3921,7 @@ export const post53 = oc
   )
   .output(zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRosterResponse)
   .errors({
+    agent_name_conflict_error: { status: 409, data: zAgentNameConflictError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
     agent_soul_locked_error: { status: 400, data: zAgentSoulLockedError },
     agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
@@ -3995,6 +3997,7 @@ export const put4 = oc
   )
   .output(zPutAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerResponse)
   .errors({
+    agent_name_conflict_error: { status: 409, data: zAgentNameConflictError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
     agent_soul_locked_error: { status: 400, data: zAgentSoulLockedError },
     agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },

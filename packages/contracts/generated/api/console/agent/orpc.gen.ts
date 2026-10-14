@@ -5,7 +5,10 @@ import * as z from 'zod'
 import {
   zAgentBackendUnreachableError,
   zAgentBuildSandboxNotFoundError,
+  zAgentHomeSnapshotCreateFailedError,
+  zAgentHomeSnapshotTooLargeError,
   zAgentModelNotConfiguredError,
+  zAgentNameConflictError,
   zAgentNotFoundError,
   zAgentNotPublishedError,
   zAgentSoulLockedError,
@@ -377,6 +380,8 @@ export const post5 = oc
   .output(zPostAgentByAgentIdBuildDraftApplyResponse)
   .errors({
     agent_build_sandbox_not_found: { status: 404, data: zAgentBuildSandboxNotFoundError },
+    agent_home_snapshot_create_failed: { status: 502, data: zAgentHomeSnapshotCreateFailedError },
+    agent_home_snapshot_too_large: { status: 413, data: zAgentHomeSnapshotTooLargeError },
     agent_not_found_error: { status: 404, data: zAgentNotFoundError },
     agent_soul_locked_error: { status: 400, data: zAgentSoulLockedError },
     agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
@@ -1501,7 +1506,10 @@ export const put3 = oc
   })
   .input(z.object({ body: zPutAgentByAgentIdBody, params: zPutAgentByAgentIdPath }))
   .output(zPutAgentByAgentIdResponse)
-  .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
+  .errors({
+    agent_name_conflict_error: { status: 409, data: zAgentNameConflictError },
+    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+  })
 
 export const byAgentId = {
   delete: delete5,
@@ -1553,7 +1561,10 @@ export const post19 = oc
   })
   .input(z.object({ body: zPostAgentBody }))
   .output(zPostAgentResponse)
-  .errors({ agent_not_found_error: { status: 404, data: zAgentNotFoundError } })
+  .errors({
+    agent_name_conflict_error: { status: 409, data: zAgentNameConflictError },
+    agent_not_found_error: { status: 404, data: zAgentNotFoundError },
+  })
 
 export const agent = {
   get: get32,

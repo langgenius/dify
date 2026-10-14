@@ -420,7 +420,7 @@ Check if activation token is valid
 | 400 | Invalid request parameters | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
-| 409 | Agent name already exists | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 409 | Agent name already exists | **application/json**: [AgentNameConflictError](#agentnameconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/invite-options
@@ -491,6 +491,7 @@ Check if activation token is valid
 | 400 | Invalid request parameters | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [AgentNameConflictError](#agentnameconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/api-access
@@ -689,6 +690,8 @@ Run a build-draft Agent App turn that asks the agent to push config updates
 | 200 | Agent build draft applied | **application/json**: [AgentBuildDraftApplyResponse](#agentbuilddraftapplyresponse)<br> |
 | 400 | Bad Request | **application/json**: [AgentSoulLockedError](#agentsoullockederror)<br>[InvalidComposerConfigError](#invalidcomposerconfigerror)<br>[PlaintextSecretNotAllowedError](#plaintextsecretnotallowederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [AgentBuildSandboxNotFoundError](#agentbuildsandboxnotfounderror)<br>[AgentNotFoundError](#agentnotfounderror)<br>[AgentVersionNotFoundError](#agentversionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 413 | Request Entity Too Large | **application/json**: [AgentHomeSnapshotTooLargeError](#agenthomesnapshottoolargeerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 502 | Bad Gateway | **application/json**: [AgentHomeSnapshotCreateFailedError](#agenthomesnapshotcreatefailederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/build-draft/checkout
@@ -4566,6 +4569,7 @@ Submit human input form preview for workflow
 | 200 | Workflow agent composer saved | **application/json**: [WorkflowAgentComposerResponse](#workflowagentcomposerresponse)<br> |
 | 400 | Bad Request | **application/json**: [AgentSoulLockedError](#agentsoullockederror)<br>[InvalidComposerConfigError](#invalidcomposerconfigerror)<br>[PlaintextSecretNotAllowedError](#plaintextsecretnotallowederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AgentVersionNotFoundError](#agentversionnotfounderror)<br>[AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [AgentNameConflictError](#agentnameconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/candidates
@@ -4651,6 +4655,7 @@ Submit human input form preview for workflow
 | 200 | Workflow agent composer saved to roster | **application/json**: [WorkflowAgentComposerResponse](#workflowagentcomposerresponse)<br> |
 | 400 | Bad Request | **application/json**: [AgentSoulLockedError](#agentsoullockederror)<br>[InvalidComposerConfigError](#invalidcomposerconfigerror)<br>[PlaintextSecretNotAllowedError](#plaintextsecretnotallowederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AgentVersionNotFoundError](#agentversionnotfounderror)<br>[AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [AgentNameConflictError](#agentnameconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/validate
@@ -5845,8 +5850,7 @@ Initialize dataset with documents
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Dataset initialized successfully | **application/json**: [DatasetAndDocumentResponse](#datasetanddocumentresponse)<br> |
-| 400 | Invalid request parameters | **application/json**: [DocumentIndexingError](#documentindexingerror)<br>[InvalidActionError](#invalidactionerror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
-| 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Invalid request parameters | **application/json**: [DocumentIndexingError](#documentindexingerror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/metadata/built-in
@@ -5888,8 +5892,6 @@ Get dataset document processing rules
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Process rules retrieved successfully | **application/json**: [ProcessRuleResponse](#processruleresponse)<br> |
-| 400 | Bad Request | **application/json**: [DocumentIndexingError](#documentindexingerror)<br>[InvalidActionError](#invalidactionerror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
-| 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/retrieval-setting
@@ -6043,8 +6045,6 @@ Get dataset auto disable logs
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Indexing status retrieved successfully | **application/json**: [DocumentStatusListResponse](#documentstatuslistresponse)<br> |
-| 400 | Bad Request | **application/json**: [DocumentIndexingError](#documentindexingerror)<br>[InvalidActionError](#invalidactionerror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
-| 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /datasets/{dataset_id}/documents
@@ -6059,8 +6059,7 @@ Get dataset auto disable logs
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 204 | Documents deleted successfully |  |
-| 400 | Bad Request | **application/json**: [DocumentIndexingError](#documentindexingerror)<br>[InvalidActionError](#invalidactionerror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
-| 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Bad Request | **application/json**: [DocumentIndexingError](#documentindexingerror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/documents
@@ -6083,8 +6082,6 @@ Get documents in a dataset
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Documents retrieved successfully | **application/json**: [DocumentWithSegmentsListResponse](#documentwithsegmentslistresponse)<br> |
-| 400 | Bad Request | **application/json**: [DocumentIndexingError](#documentindexingerror)<br>[InvalidActionError](#invalidactionerror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
-| 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/documents
@@ -6105,8 +6102,7 @@ Get documents in a dataset
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Documents created successfully | **application/json**: [DatasetAndDocumentResponse](#datasetanddocumentresponse)<br> |
-| 400 | Bad Request | **application/json**: [DocumentIndexingError](#documentindexingerror)<br>[InvalidActionError](#invalidactionerror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
-| 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Bad Request | **application/json**: [DocumentIndexingError](#documentindexingerror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/documents/download-zip
@@ -6131,8 +6127,7 @@ Download selected dataset documents as a single ZIP archive (upload-file only)
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | ZIP archive downloaded successfully |  |
-| 400 | Bad Request | **application/json**: [DocumentIndexingError](#documentindexingerror)<br>[InvalidActionError](#invalidactionerror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
-| 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Bad Request | **application/json**: [DocumentIndexingError](#documentindexingerror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/documents/generate-summary
@@ -6160,8 +6155,8 @@ then asynchronously generates summary indexes for the provided documents.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Summary generation started successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 400 | Invalid request or dataset configuration | **application/json**: [DocumentIndexingError](#documentindexingerror)<br>[InvalidActionError](#invalidactionerror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
-| 403 | Permission denied | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Invalid request or dataset configuration | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Dataset not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -6200,7 +6195,6 @@ then asynchronously generates summary indexes for the provided documents.
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 | 400 | Bad Request | **application/json**: [DocumentIndexingError](#documentindexingerror)<br>[InvalidActionError](#invalidactionerror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
-| 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /datasets/{dataset_id}/documents/{document_id}
@@ -6216,8 +6210,7 @@ then asynchronously generates summary indexes for the provided documents.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 204 | Document deleted successfully |  |
-| 400 | Bad Request | **application/json**: [DocumentIndexingError](#documentindexingerror)<br>[InvalidActionError](#invalidactionerror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
-| 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Bad Request | **application/json**: [DocumentIndexingError](#documentindexingerror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/documents/{document_id}
@@ -6236,8 +6229,7 @@ Get document details
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Document retrieved successfully | **application/json**: [DocumentDetailResponse](#documentdetailresponse)<br> |
-| 400 | Bad Request | **application/json**: [DocumentIndexingError](#documentindexingerror)<br>[InvalidActionError](#invalidactionerror)<br>[InvalidMetadataError](#invalidmetadataerror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
-| 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Bad Request | **application/json**: [InvalidMetadataError](#invalidmetadataerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Document not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -6256,8 +6248,7 @@ Get a signed download URL for a dataset document's original uploaded file
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Download URL generated successfully | **application/json**: [UrlResponse](#urlresponse)<br> |
-| 400 | Bad Request | **application/json**: [DocumentIndexingError](#documentindexingerror)<br>[InvalidActionError](#invalidactionerror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
-| 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Bad Request | **application/json**: [DocumentIndexingError](#documentindexingerror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/documents/{document_id}/indexing-estimate
@@ -6296,8 +6287,6 @@ Get document indexing status
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Indexing status retrieved successfully | **application/json**: [DocumentStatusResponse](#documentstatusresponse)<br> |
-| 400 | Bad Request | **application/json**: [DocumentIndexingError](#documentindexingerror)<br>[InvalidActionError](#invalidactionerror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
-| 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Document not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -6322,8 +6311,7 @@ Update document metadata
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Document metadata updated successfully | **application/json**: [SimpleResultMessageResponse](#simpleresultmessageresponse)<br> |
-| 400 | Bad Request | **application/json**: [DocumentIndexingError](#documentindexingerror)<br>[InvalidActionError](#invalidactionerror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
-| 403 | Permission denied | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Document not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -6357,8 +6345,6 @@ Update document metadata
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Pipeline execution log retrieved successfully | **application/json**: [DocumentPipelineExecutionLogResponse](#documentpipelineexecutionlogresponse)<br> |
-| 400 | Bad Request | **application/json**: [DocumentIndexingError](#documentindexingerror)<br>[InvalidActionError](#invalidactionerror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
-| 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PATCH] /datasets/{dataset_id}/documents/{document_id}/processing/pause
@@ -6376,7 +6362,7 @@ Update document metadata
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 204 | Document paused successfully |  |
-| 400 | Bad Request | **application/json**: [DocumentIndexingError](#documentindexingerror)<br>[InvalidActionError](#invalidactionerror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Bad Request | **application/json**: [DocumentIndexingError](#documentindexingerror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -6395,7 +6381,7 @@ Update document metadata
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 204 | Document resumed successfully |  |
-| 400 | Bad Request | **application/json**: [DocumentIndexingError](#documentindexingerror)<br>[InvalidActionError](#invalidactionerror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Bad Request | **application/json**: [DocumentIndexingError](#documentindexingerror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -6415,8 +6401,7 @@ Update document processing status (pause/resume)
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Processing status updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 400 | Invalid action | **application/json**: [DocumentIndexingError](#documentindexingerror)<br>[InvalidActionError](#invalidactionerror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
-| 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Invalid action | **application/json**: [InvalidActionError](#invalidactionerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Document not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -6439,8 +6424,6 @@ Update document processing status (pause/resume)
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Document renamed successfully | **application/json**: [DocumentResponse](#documentresponse)<br> |
-| 400 | Bad Request | **application/json**: [DocumentIndexingError](#documentindexingerror)<br>[InvalidActionError](#invalidactionerror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
-| 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/documents/{document_id}/segment
@@ -6730,8 +6713,6 @@ Returns:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Summary status retrieved successfully | **application/json**: [DocumentSummaryStatusResponse](#documentsummarystatusresponse)<br> |
-| 400 | Bad Request | **application/json**: [DocumentIndexingError](#documentindexingerror)<br>[InvalidActionError](#invalidactionerror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
-| 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Document not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -6750,7 +6731,7 @@ Returns:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 400 | Bad Request | **application/json**: [DocumentIndexingError](#documentindexingerror)<br>[InvalidActionError](#invalidactionerror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Bad Request | **application/json**: [DocumentIndexingError](#documentindexingerror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -7012,8 +6993,7 @@ Get applications related to dataset
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 204 | Documents retry started successfully |  |
-| 400 | Bad Request | **application/json**: [DocumentIndexingError](#documentindexingerror)<br>[InvalidActionError](#invalidactionerror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
-| 403 | Forbidden | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Bad Request | **application/json**: [DocumentIndexingError](#documentindexingerror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/use-check
@@ -7100,9 +7080,8 @@ Delete an API key for a dataset
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultDataResponse](#simpleresultdataresponse)<br> |
-| 400 | Bad Request | **application/json**: [AccountBannedError](#accountbannederror)<br>[AccountInFreezeError](#accountinfreezeerror)<br>[AccountNotFoundError](#accountnotfounderror)<br>[EmailCodeError](#emailcodeerror)<br>[EmailDomainSuspendedError](#emaildomainsuspendederror)<br>[InvalidAccountPasswordError](#invalidaccountpassworderror)<br>[InvalidEmailError](#invalidemailerror)<br>[InvalidOrExpiredTokenError](#invalidorexpiredtokenerror)<br>[LimitExceededError](#limitexceedederror)<br>[NormalizedEmailAlreadyInUseError](#normalizedemailalreadyinuseerror)<br>[NotAllowedCreateWorkspaceError](#notallowedcreateworkspaceerror)<br>[TurnstileVerificationFailedError](#turnstileverificationfailederror)<br>[ErrorResponse](#errorresponse)<br> |
-| 401 | Unauthorized | **application/json**: [AuthenticationFailedError](#authenticationfailederror)<br>[ErrorResponse](#errorresponse)<br> |
-| 429 | Too Many Requests | **application/json**: [EmailCodeLoginLimitError](#emailcodeloginlimiterror)<br>[EmailCodeLoginRateLimitExceededError](#emailcodeloginratelimitexceedederror)<br>[EmailSendIpLimitError](#emailsendiplimiterror)<br>[PasswordResetRateLimitExceededError](#passwordresetratelimitexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Bad Request | **application/json**: [AccountBannedError](#accountbannederror)<br>[AccountInFreezeError](#accountinfreezeerror)<br>[EmailDomainSuspendedError](#emaildomainsuspendederror)<br>[TurnstileVerificationFailedError](#turnstileverificationfailederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [EmailCodeLoginRateLimitExceededError](#emailcodeloginratelimitexceedederror)<br>[EmailSendIpLimitError](#emailsendiplimiterror)<br>[ErrorResponse](#errorresponse)<br> |
 | 503 | Service Unavailable | **application/json**: [EmailCodeLoginServiceUnavailableError](#emailcodeloginserviceunavailableerror)<br>[TurnstileServiceUnavailableError](#turnstileserviceunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -7118,9 +7097,7 @@ Delete an API key for a dataset
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
-| 400 | Bad Request | **application/json**: [AccountBannedError](#accountbannederror)<br>[AccountInFreezeError](#accountinfreezeerror)<br>[AccountNotFoundError](#accountnotfounderror)<br>[EmailCodeError](#emailcodeerror)<br>[EmailDomainSuspendedError](#emaildomainsuspendederror)<br>[InvalidAccountPasswordError](#invalidaccountpassworderror)<br>[InvalidEmailError](#invalidemailerror)<br>[InvalidOrExpiredTokenError](#invalidorexpiredtokenerror)<br>[LimitExceededError](#limitexceedederror)<br>[NormalizedEmailAlreadyInUseError](#normalizedemailalreadyinuseerror)<br>[NotAllowedCreateWorkspaceError](#notallowedcreateworkspaceerror)<br>[TurnstileVerificationFailedError](#turnstileverificationfailederror)<br>[ErrorResponse](#errorresponse)<br> |
-| 401 | Unauthorized | **application/json**: [AuthenticationFailedError](#authenticationfailederror)<br>[ErrorResponse](#errorresponse)<br> |
-| 429 | Too Many Requests | **application/json**: [EmailCodeLoginLimitError](#emailcodeloginlimiterror)<br>[EmailCodeLoginRateLimitExceededError](#emailcodeloginratelimitexceedederror)<br>[EmailSendIpLimitError](#emailsendiplimiterror)<br>[PasswordResetRateLimitExceededError](#passwordresetratelimitexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Bad Request | **application/json**: [AccountBannedError](#accountbannederror)<br>[AccountInFreezeError](#accountinfreezeerror)<br>[AccountNotFoundError](#accountnotfounderror)<br>[EmailCodeError](#emailcodeerror)<br>[EmailDomainSuspendedError](#emaildomainsuspendederror)<br>[InvalidEmailError](#invalidemailerror)<br>[InvalidOrExpiredTokenError](#invalidorexpiredtokenerror)<br>[LimitExceededError](#limitexceedederror)<br>[NormalizedEmailAlreadyInUseError](#normalizedemailalreadyinuseerror)<br>[NotAllowedCreateWorkspaceError](#notallowedcreateworkspaceerror)<br>[TurnstileVerificationFailedError](#turnstileverificationfailederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 503 | Service Unavailable | **application/json**: [EmailCodeLoginServiceUnavailableError](#emailcodeloginserviceunavailableerror)<br>[TurnstileServiceUnavailableError](#turnstileserviceunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -7986,10 +7963,9 @@ Get instruction generation template
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultOptionalDataResponse](#simpleresultoptionaldataresponse)<br> |
-| 400 | Bad Request | **application/json**: [AccountBannedError](#accountbannederror)<br>[AccountInFreezeError](#accountinfreezeerror)<br>[AccountNotFoundError](#accountnotfounderror)<br>[EmailCodeError](#emailcodeerror)<br>[EmailDomainSuspendedError](#emaildomainsuspendederror)<br>[InvalidAccountPasswordError](#invalidaccountpassworderror)<br>[InvalidEmailError](#invalidemailerror)<br>[InvalidOrExpiredTokenError](#invalidorexpiredtokenerror)<br>[LimitExceededError](#limitexceedederror)<br>[NormalizedEmailAlreadyInUseError](#normalizedemailalreadyinuseerror)<br>[NotAllowedCreateWorkspaceError](#notallowedcreateworkspaceerror)<br>[TurnstileVerificationFailedError](#turnstileverificationfailederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Bad Request | **application/json**: [AccountBannedError](#accountbannederror)<br>[AccountInFreezeError](#accountinfreezeerror)<br>[AccountNotFoundError](#accountnotfounderror)<br>[EmailDomainSuspendedError](#emaildomainsuspendederror)<br>[InvalidAccountPasswordError](#invalidaccountpassworderror)<br>[InvalidEmailError](#invalidemailerror)<br>[LimitExceededError](#limitexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 401 | Unauthorized | **application/json**: [AuthenticationFailedError](#authenticationfailederror)<br>[ErrorResponse](#errorresponse)<br> |
-| 429 | Too Many Requests | **application/json**: [EmailCodeLoginLimitError](#emailcodeloginlimiterror)<br>[EmailCodeLoginRateLimitExceededError](#emailcodeloginratelimitexceedederror)<br>[EmailSendIpLimitError](#emailsendiplimiterror)<br>[PasswordResetRateLimitExceededError](#passwordresetratelimitexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
-| 503 | Service Unavailable | **application/json**: [EmailCodeLoginServiceUnavailableError](#emailcodeloginserviceunavailableerror)<br>[TurnstileServiceUnavailableError](#turnstileserviceunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [EmailCodeLoginLimitError](#emailcodeloginlimiterror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /logout
@@ -9378,10 +9354,8 @@ Update account-level Step-by-step Tour state
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [SimpleResultDataResponse](#simpleresultdataresponse)<br> |
-| 400 | Bad Request | **application/json**: [AccountBannedError](#accountbannederror)<br>[AccountInFreezeError](#accountinfreezeerror)<br>[AccountNotFoundError](#accountnotfounderror)<br>[EmailCodeError](#emailcodeerror)<br>[EmailDomainSuspendedError](#emaildomainsuspendederror)<br>[InvalidAccountPasswordError](#invalidaccountpassworderror)<br>[InvalidEmailError](#invalidemailerror)<br>[InvalidOrExpiredTokenError](#invalidorexpiredtokenerror)<br>[LimitExceededError](#limitexceedederror)<br>[NormalizedEmailAlreadyInUseError](#normalizedemailalreadyinuseerror)<br>[NotAllowedCreateWorkspaceError](#notallowedcreateworkspaceerror)<br>[TurnstileVerificationFailedError](#turnstileverificationfailederror)<br>[ErrorResponse](#errorresponse)<br> |
-| 401 | Unauthorized | **application/json**: [AuthenticationFailedError](#authenticationfailederror)<br>[ErrorResponse](#errorresponse)<br> |
-| 429 | Too Many Requests | **application/json**: [EmailCodeLoginLimitError](#emailcodeloginlimiterror)<br>[EmailCodeLoginRateLimitExceededError](#emailcodeloginratelimitexceedederror)<br>[EmailSendIpLimitError](#emailsendiplimiterror)<br>[PasswordResetRateLimitExceededError](#passwordresetratelimitexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
-| 503 | Service Unavailable | **application/json**: [EmailCodeLoginServiceUnavailableError](#emailcodeloginserviceunavailableerror)<br>[TurnstileServiceUnavailableError](#turnstileserviceunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Bad Request | **application/json**: [AccountBannedError](#accountbannederror)<br>[AccountInFreezeError](#accountinfreezeerror)<br>[EmailDomainSuspendedError](#emaildomainsuspendederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 429 | Too Many Requests | **application/json**: [PasswordResetRateLimitExceededError](#passwordresetratelimitexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /resource-access-tokens
@@ -9794,6 +9768,7 @@ Returns an SSE event stream with loop progress and results.
 | 200 | Snippet agent composer saved | **application/json**: [WorkflowAgentComposerResponse](#workflowagentcomposerresponse)<br> |
 | 400 | Bad Request | **application/json**: [AgentSoulLockedError](#agentsoullockederror)<br>[InvalidComposerConfigError](#invalidcomposerconfigerror)<br>[PlaintextSecretNotAllowedError](#plaintextsecretnotallowederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AgentVersionNotFoundError](#agentversionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [AgentNameConflictError](#agentnameconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer/candidates
@@ -9877,6 +9852,7 @@ Returns an SSE event stream with loop progress and results.
 | 200 | Snippet agent saved to roster | **application/json**: [WorkflowAgentComposerResponse](#workflowagentcomposerresponse)<br> |
 | 400 | Bad Request | **application/json**: [AgentSoulLockedError](#agentsoullockederror)<br>[InvalidComposerConfigError](#invalidcomposerconfigerror)<br>[PlaintextSecretNotAllowedError](#plaintextsecretnotallowederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [AgentNotFoundError](#agentnotfounderror)<br>[AgentVersionNotFoundError](#agentversionnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [AgentNameConflictError](#agentnameconflicterror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer/validate
@@ -11174,6 +11150,7 @@ Get list of available agent providers
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent Skill bindings replaced | **application/json**: [AgentSkillBindingsResponse](#agentskillbindingsresponse)<br> |
+| 400 | Bad Request | **application/json**: [InvalidRequestError](#invalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/customized-snippets
@@ -13618,6 +13595,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Skill deleted | **application/json**: [SkillDeleteResponse](#skilldeleteresponse)<br> |
+| 400 | Bad Request | **application/json**: [InvalidRequestError](#invalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/skills/{skill_id}
@@ -13673,6 +13651,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Skill Authoring assistant event stream |  |
+| 400 | Bad Request | **application/json**: [InvalidRequestError](#invalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/skills/{skill_id}/duplicate
@@ -13819,6 +13798,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Skill published | **application/json**: [SkillVersionResponse](#skillversionresponse)<br> |
+| 400 | Bad Request | **application/json**: [InvalidRequestError](#invalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/skills/{skill_id}/references
@@ -13853,6 +13833,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Skill version restored to draft | **application/json**: [SkillDetailResponse](#skilldetailresponse)<br> |
+| 400 | Bad Request | **application/json**: [InvalidRequestError](#invalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/skills/{skill_id}/versions
@@ -13918,6 +13899,7 @@ Import a Skill zip package from multipart form field `file`.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Skill version updated | **application/json**: [SkillVersionResponse](#skillversionresponse)<br> |
+| 400 | Bad Request | **application/json**: [InvalidRequestError](#invalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/summary
@@ -16128,6 +16110,22 @@ Agent Feature, used to describe the features of the agent strategy.
 | ---- | ---- | ----------- | -------- |
 | enabled | boolean, <br>**Default:** true |  | No |
 
+#### AgentHomeSnapshotCreateFailedError
+
+Failed to capture the Agent Home Snapshot.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AgentHomeSnapshotCreateFailedError |  | Failed to capture the Agent Home Snapshot. |  |
+
+#### AgentHomeSnapshotTooLargeError
+
+The Agent Home Snapshot exceeds the configured size limit.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AgentHomeSnapshotTooLargeError |  | The Agent Home Snapshot exceeds the configured size limit. |  |
+
 #### AgentHumanContactConfig
 
 | Name | Type | Description | Required |
@@ -16548,6 +16546,14 @@ Agent App requires the Agent Soul model to be configured.
 | inputs_config | [AgentModerationIOConfig](#agentmoderationioconfig) |  | No |
 | keywords | string |  | No |
 | outputs_config | [AgentModerationIOConfig](#agentmoderationioconfig) |  | No |
+
+#### AgentNameConflictError
+
+Agent name already exists.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AgentNameConflictError |  | Agent name already exists. |  |
 
 #### AgentNotBoundError
 

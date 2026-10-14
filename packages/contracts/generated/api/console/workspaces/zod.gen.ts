@@ -26,6 +26,18 @@ export const zAgentSkillBindingsPayload = z.object({
 })
 
 /**
+ * InvalidRequestError
+ *
+ * Invalid skill request.
+ */
+export const zInvalidRequestError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_request'),
+    status: z.literal(400),
+  }),
+)
+
+/**
  * SnippetImportPayload
  *
  * Payload for importing snippet from DSL.
@@ -703,18 +715,6 @@ export const zSkillCreatePayload = z.object({
   name: z.string().nullish(),
   tags: z.array(z.string()).optional(),
 })
-
-/**
- * InvalidRequestError
- *
- * Invalid skill request.
- */
-export const zInvalidRequestError = zErrorResponse.and(
-  z.object({
-    code: z.literal('invalid_request'),
-    status: z.literal(400),
-  }),
-)
 
 /**
  * SkillFileUploadResponse

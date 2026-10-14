@@ -1504,6 +1504,18 @@ export const zInvalidFormDataError = zErrorResponse.and(
   }),
 )
 
+/**
+ * InvalidMetadataError
+ *
+ * The metadata content is incorrect. Please check and verify.
+ */
+export const zInvalidMetadataError = zErrorResponse.and(
+  z.object({
+    code: z.literal('invalid_metadata'),
+    status: z.literal(400),
+  }),
+)
+
 export const zJsonObject = z.record(z.string(), z.unknown())
 
 /**

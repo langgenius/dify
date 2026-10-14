@@ -31,6 +31,18 @@ export const zAgentNotFoundError = zErrorResponse.and(
 )
 
 /**
+ * AgentNameConflictError
+ *
+ * Agent name already exists.
+ */
+export const zAgentNameConflictError = zErrorResponse.and(
+  z.object({
+    code: z.literal('agent_name_conflict_error'),
+    status: z.literal(409),
+  }),
+)
+
+/**
  * AgentApiAccessResponse
  */
 export const zAgentApiAccessResponse = z.object({
@@ -319,6 +331,30 @@ export const zPlaintextSecretNotAllowedError = zErrorResponse.and(
   z.object({
     code: z.literal('plaintext_secret_not_allowed_error'),
     status: z.literal(400),
+  }),
+)
+
+/**
+ * AgentHomeSnapshotTooLargeError
+ *
+ * The Agent Home Snapshot exceeds the configured size limit.
+ */
+export const zAgentHomeSnapshotTooLargeError = zErrorResponse.and(
+  z.object({
+    code: z.literal('agent_home_snapshot_too_large'),
+    status: z.literal(413),
+  }),
+)
+
+/**
+ * AgentHomeSnapshotCreateFailedError
+ *
+ * Failed to capture the Agent Home Snapshot.
+ */
+export const zAgentHomeSnapshotCreateFailedError = zErrorResponse.and(
+  z.object({
+    code: z.literal('agent_home_snapshot_create_failed'),
+    status: z.literal(502),
   }),
 )
 

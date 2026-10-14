@@ -20,6 +20,7 @@ import {
   zHumanInputFormSubmittedError,
   zInvalidActionError,
   zInvalidFormDataError,
+  zInvalidMetadataError,
   zModelCurrentlyNotSupportError,
   zNoAudioUploadedError,
   zNoFileUploadedError,
@@ -1614,6 +1615,7 @@ export const get13 = oc
     }),
   )
   .output(zGetDatasetsByDatasetIdDocumentsByDocumentIdResponse)
+  .errors({ invalid_metadata: { status: 400, data: zInvalidMetadataError } })
 
 /**
  * Update Document by File
