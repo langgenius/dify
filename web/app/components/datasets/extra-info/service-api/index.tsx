@@ -4,7 +4,7 @@ import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ApiKeyModal } from '@/app/components/api-key/api-key-modal'
+import { ApiKeyDialog } from '@/app/components/api-key/api-key-dialog'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { hasPermission } from '@/utils/permission'
 import { ServiceApiCard } from './card'
@@ -15,7 +15,7 @@ type ServiceApiProps = {
 
 export function ServiceApi({ apiBaseUrl }: ServiceApiProps) {
   const { t } = useTranslation(['dataset'])
-  const [apiKeyModalOpen, setApiKeyModalOpen] = useState(false)
+  const [apiKeyDialogOpen, setApiKeyDialogOpen] = useState(false)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const canManageApiKey = hasPermission(workspacePermissionKeys, 'dataset.api_key.manage')
 
@@ -48,13 +48,13 @@ export function ServiceApi({ apiBaseUrl }: ServiceApiProps) {
           <ServiceApiCard
             apiBaseUrl={apiBaseUrl}
             canManageApiKey={canManageApiKey}
-            onOpenApiKeyModal={() => setApiKeyModalOpen(true)}
+            onOpenApiKeyDialog={() => setApiKeyDialogOpen(true)}
           />
         </PopoverContent>
       </Popover>
-      <ApiKeyModal
-        open={apiKeyModalOpen}
-        onOpenChange={setApiKeyModalOpen}
+      <ApiKeyDialog
+        open={apiKeyDialogOpen}
+        onOpenChange={setApiKeyDialogOpen}
         canManage={canManageApiKey}
         scope={{ type: 'dataset' }}
       />

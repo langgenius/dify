@@ -5,7 +5,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { skipToken, useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ApiKeyModal } from '@/app/components/api-key/api-key-modal'
+import { ApiKeyDialog } from '@/app/components/api-key/api-key-dialog'
 import { consoleQuery } from '@/service/console'
 
 type ApiSecretKeyButtonProps = {
@@ -24,7 +24,7 @@ export function ApiSecretKeyButton({
   environmentId,
 }: ApiSecretKeyButtonProps) {
   const { t } = useTranslation(['appApi'])
-  const [modalOpen, setModalOpen] = useState(false)
+  const [dialogOpen, setDialogOpen] = useState(false)
   const isEnvironmentScope = Boolean(environmentId)
   const apiKeysQuery = useQuery(
     consoleQuery.apps.byResourceId.apiKeys.get.queryOptions({
@@ -46,7 +46,7 @@ export function ApiSecretKeyButton({
         size="medium"
         className="px-3"
         disabled={buttonDisabled}
-        onClick={() => setModalOpen(true)}
+        onClick={() => setDialogOpen(true)}
       >
         <span aria-hidden className="i-ri-key-2-line size-4" />
         {t(($) => $['apiKeyModal.apiSecretKey'], { ns: 'appApi' })}
@@ -60,13 +60,13 @@ export function ApiSecretKeyButton({
         </span>
       </Button>
 
-      <ApiKeyModal
+      <ApiKeyDialog
         canManage={canManage}
-        open={modalOpen}
+        open={dialogOpen}
         scope={
           environmentId ? { type: 'environment', appId, environmentId } : { type: 'app', appId }
         }
-        onOpenChange={setModalOpen}
+        onOpenChange={setDialogOpen}
       />
     </>
   )

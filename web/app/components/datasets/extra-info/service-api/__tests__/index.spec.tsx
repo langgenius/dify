@@ -13,8 +13,8 @@ vi.mock('@/context/permission-state', async () => {
   }))
 })
 
-vi.mock('@/app/components/api-key/api-key-modal', () => ({
-  ApiKeyModal: ({ open }: { open: boolean }) => (open ? <div>API key modal</div> : null),
+vi.mock('@/app/components/api-key/api-key-dialog', () => ({
+  ApiKeyDialog: ({ open }: { open: boolean }) => (open ? <div>API key modal</div> : null),
 }))
 
 vi.mock('@/hooks/use-api-access-url', () => ({

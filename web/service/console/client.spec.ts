@@ -1062,6 +1062,43 @@ describe('consoleQuery agent mutation defaults', () => {
     vi.restoreAllMocks()
   })
 
+  it('refreshes agent keys and access status without delaying mutation completion', async () => {
+    const consoleQuery = await loadConsoleQuery()
+    const queryClient = new QueryClient()
+    const invalidateQueries = vi
+      .spyOn(queryClient, 'invalidateQueries')
+      .mockImplementation(() => new Promise(() => {}))
+    const context = createMutationContext(queryClient)
+    const create = consoleQuery.agent.byAgentId.apiKeys.post
+      .mutationOptions()
+      .onSuccess?.(
+        { id: 'key-1', token: 'app-secret', type: 'app', dataset_ids: [] },
+        { params: { agent_id: 'agent-1' } },
+        undefined,
+        context,
+      )
+    const remove = consoleQuery.agent.byAgentId.apiKeys.byApiKeyId.delete
+      .mutationOptions()
+      .onSuccess?.(
+        undefined,
+        { params: { agent_id: 'agent-1', api_key_id: 'key-1' } },
+        undefined,
+        context,
+      )
+    expect([create, remove]).toEqual([undefined, undefined])
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.agent.byAgentId.apiKeys.get.queryKey({
+        input: { params: { agent_id: 'agent-1' } },
+      }),
+    })
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.agent.byAgentId.apiAccess.get.queryKey({
+        input: { params: { agent_id: 'agent-1' } },
+      }),
+    })
+    expect(invalidateQueries).toHaveBeenCalledTimes(4)
+  })
+
   it('should invalidate roster and invite option lists after creating an agent', async () => {
     const consoleQuery = await loadConsoleQuery()
     const queryClient = new QueryClient()

@@ -23,8 +23,8 @@ const render = (ui: ReactElement) => {
   return renderWithConsoleQuery(ui, { queryClient })
 }
 
-vi.mock('@/app/components/api-key/api-key-modal', () => ({
-  ApiKeyModal: ({
+vi.mock('@/app/components/api-key/api-key-dialog', () => ({
+  ApiKeyDialog: ({
     canManage,
     open,
     scope,

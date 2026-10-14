@@ -1202,7 +1202,7 @@ describe('Agent access surface cards', () => {
       )
 
       const dialog = await screen.findByRole('dialog', { name: 'appApi.apiKeyModal.apiSecretKey' })
-      const keyTable = within(dialog).getByRole('table', {
+      const keyTable = await within(dialog).findByRole('table', {
         name: 'appApi.apiKeyModal.apiSecretKey',
       })
       expect(
@@ -1215,7 +1215,7 @@ describe('Agent access surface cards', () => {
         within(keyTable).getByRole('columnheader', { name: 'appApi.apiKeyModal.lastUsed' }),
       ).toBeInTheDocument()
       expect(
-        await within(keyTable).findByRole('cell', { name: 'app...ing-secret-key-token' }),
+        await within(keyTable).findByRole('cell', { name: 'app-e...oken' }),
       ).toBeInTheDocument()
 
       await user.click(
@@ -1230,11 +1230,16 @@ describe('Agent access surface cards', () => {
         })
       })
       expect(await screen.findByText('appApi.apiKeyModal.generateTips')).toBeInTheDocument()
-      expect(screen.getByText('app-new-secret-key-token')).toBeInTheDocument()
-      await user.click(screen.getByRole('button', { name: 'appApi.actionMsg.ok' }))
+      expect(screen.getByRole('textbox', { name: 'appApi.apiKeyModal.secretKey' })).toHaveValue(
+        'app-new-secret-key-token',
+      )
+      const result = screen.getByRole('dialog', { name: 'appApi.apiKeyModal.createdTitle' })
+      await user.click(within(result).getByText('common.operation.close'))
 
-      await user.click(within(dialog).getByRole('button', { name: 'common.operation.delete' }))
-      await user.click(await screen.findByRole('button', { name: 'common.operation.confirm' }))
+      await user.click(
+        within(dialog).getByRole('button', { name: 'common.operation.delete app-e...oken' }),
+      )
+      await user.click(await screen.findByRole('button', { name: 'common.operation.delete' }))
 
       await waitFor(() => {
         expect(mocks.deleteApiKeyMutation.mock.calls[0]?.[0]).toEqual({
@@ -1244,6 +1249,11 @@ describe('Agent access surface cards', () => {
           },
         })
       })
+      await waitFor(() =>
+        expect(
+          within(dialog).getByRole('button', { name: 'appApi.apiKeyModal.createNewSecretKey' }),
+        ).toHaveFocus(),
+      )
     })
 
     it('should explain that publishing enables the Service API switch', async () => {

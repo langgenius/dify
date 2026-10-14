@@ -188,11 +188,12 @@ vi.mock('../../external-api/external-api-panel', () => ({
   ),
 }))
 
-// Mock ApiKeyModal — it depends on user profile context and service APIs
-// not configured in this test. ServiceApi always mounts the controlled modal,
+// Mock ApiKeyDialog — it depends on user profile context and service APIs
+// not configured in this test. ServiceApi always mounts the controlled dialog,
 // so we provide a lightweight stub.
-vi.mock('@/app/components/api-key/api-key-modal', () => ({
-  ApiKeyModal: ({ open }: { open: boolean }) => (open ? <div data-testid="api-key-modal" /> : null),
+vi.mock('@/app/components/api-key/api-key-dialog', () => ({
+  ApiKeyDialog: ({ open }: { open: boolean }) =>
+    open ? <div data-testid="api-key-dialog" /> : null,
 }))
 
 // Mock TagManagementModal

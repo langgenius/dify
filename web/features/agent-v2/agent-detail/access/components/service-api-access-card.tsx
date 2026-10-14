@@ -12,14 +12,14 @@ import { toast } from '@/app/notifications'
 import { useDocLink } from '@/context/i18n'
 import { useAgentPermissions } from '@/features/agent-v2/permissions'
 import { consoleQuery } from '@/service/console'
-import { AgentApiKeyModal } from './agent-api-key-modal'
+import { AgentApiKeyDialog } from './agent-api-key-dialog'
 
 export function ServiceApiAccessCard({ agentId }: { agentId: string }) {
   const { t } = useTranslation(['agentV2'])
   const { t: tCommon } = useTranslation(['common'])
   const docLink = useDocLink()
   const queryClient = useQueryClient()
-  const [apiKeyModalOpen, setApiKeyModalOpen] = useState(false)
+  const [apiKeyDialogOpen, setApiKeyDialogOpen] = useState(false)
   const { canManageAccessPoint } = useAgentPermissions(agentId)
   const apiAccessQueryOptions = consoleQuery.agent.byAgentId.apiAccess.get.queryOptions({
     input: {
@@ -120,7 +120,7 @@ export function ServiceApiAccessCard({ agentId }: { agentId: string }) {
             <Button
               variant="secondary"
               disabled={apiKeyActionDisabled}
-              onClick={() => setApiKeyModalOpen(true)}
+              onClick={() => setApiKeyDialogOpen(true)}
               className="flex items-center gap-1 px-3"
             >
               <span aria-hidden className="i-ri-key-2-line size-4" />
@@ -180,10 +180,10 @@ export function ServiceApiAccessCard({ agentId }: { agentId: string }) {
       </AccessPointCard>
 
       {canManageAccessPoint && (
-        <AgentApiKeyModal
+        <AgentApiKeyDialog
           agentId={agentId}
-          open={apiKeyModalOpen}
-          onOpenChange={setApiKeyModalOpen}
+          open={apiKeyDialogOpen}
+          onOpenChange={setApiKeyDialogOpen}
         />
       )}
     </>

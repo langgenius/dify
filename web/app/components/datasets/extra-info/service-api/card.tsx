@@ -10,10 +10,10 @@ import Link from '@/next/link'
 type CardProps = {
   apiBaseUrl: string
   canManageApiKey: boolean
-  onOpenApiKeyModal: () => void
+  onOpenApiKeyDialog: () => void
 }
 
-export function ServiceApiCard({ apiBaseUrl, canManageApiKey, onOpenApiKeyModal }: CardProps) {
+export function ServiceApiCard({ apiBaseUrl, canManageApiKey, onOpenApiKeyDialog }: CardProps) {
   const { t } = useTranslation(['dataset'])
 
   const apiReferenceUrl = useDatasetApiAccessUrl()
@@ -60,7 +60,7 @@ export function ServiceApiCard({ apiBaseUrl, canManageApiKey, onOpenApiKeyModal 
               size="small"
               className="text-text-tertiary"
               disabled={!canManageApiKey}
-              onClick={onOpenApiKeyModal}
+              onClick={onOpenApiKeyDialog}
             >
               <span aria-hidden className="i-ri-key-2-line size-3.5 shrink-0" />
               <span className="system-xs-medium">
