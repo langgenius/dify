@@ -55,6 +55,8 @@
   "account.sendVerificationButton": "ສົ່ງລະຫັດຢືນຢັນ",
   "account.setPassword": "ຕັ້ງລະຫັດຜ່ານ",
   "account.showAppLength": "ສະແດງ {{length}} ແອັບ",
+  "account.timezoneNoResults": "ບໍ່ພົບເຂດເວລາທີ່ກົງກັນ",
+  "account.timezoneSearchPlaceholder": "ຄົ້ນຫາເມືອງ ຫຼື ເຂດເວລາ…",
   "account.verificationLabel": "ລະຫັດຢືນຢັນ",
   "account.verificationPlaceholder": "ວາງລະຫັດ 6 ຫຼັກ",
   "account.workspaceName": "ຊື່ພື້ນທີ່ເຮັດວຽກ",

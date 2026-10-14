@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook } from '@testing-library/react'
+import { createHttpError } from '@/service/http-error'
 import { usePluginDependencies } from '../hooks'
 import { useStore } from '../store'
 
@@ -67,7 +68,9 @@ describe('usePluginDependencies', () => {
   it.each([
     [new TypeError('Network unavailable'), 'Network unavailable'],
     [
-      Response.json({ message: 'Dependency check unavailable' }, { status: 503 }),
+      createHttpError(new Response(null, { status: 503 }), {
+        message: 'Dependency check unavailable',
+      }),
       'Dependency check unavailable',
     ],
   ])(

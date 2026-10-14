@@ -4,6 +4,7 @@ import type {
   SyncDraftResult,
 } from '@/app/components/workflow/hooks-store'
 import type { WorkflowDraftFeaturesPayload } from '@/service/workflow'
+import { ORPCError } from '@orpc/client'
 import { skipToken, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
 import { useCallback, useEffect, useRef } from 'react'
@@ -228,19 +229,12 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         const { appId, isWorkflowDataLoaded } = workflowStore.getState()
         if (shouldSkipDraftSync(appId, isWorkflowDataLoaded)) return null
 
-        const responseError = error as {
-          bodyUsed?: boolean
-          json?: () => Promise<{ code?: string }>
-        }
-        if (responseError.json && !responseError.bodyUsed) {
-          try {
-            const err = await responseError.json()
-            if (err.code === 'draft_workflow_not_sync' && !notRefreshWhenSyncError)
-              handleRefreshWorkflowDraft(true)
-          } catch {
-            // Non-JSON upstream errors should not surface as unhandled promise rejections.
-          }
-        }
+        if (
+          error instanceof ORPCError &&
+          error.code === 'draft_workflow_not_sync' &&
+          !notRefreshWhenSyncError
+        )
+          handleRefreshWorkflowDraft(true)
         callback?.onError?.()
         return null
       } finally {

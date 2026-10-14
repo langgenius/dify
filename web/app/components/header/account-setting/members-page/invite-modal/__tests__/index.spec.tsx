@@ -5,6 +5,7 @@ import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vite-plus/test'
 import { useWorkspaceRoleList } from '@/service/access-control/use-workspace-roles'
+import { createHttpError } from '@/service/http-error'
 import { seedCurrentWorkspaceQuery } from '@/test/console/current-workspace'
 import { seedFeatures, seedSystemFeatures } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
@@ -546,10 +547,9 @@ describe('InviteModal', () => {
     ['invalid_role', /members\.invalidRole/i, 'role', 'combobox'],
   ])('maps %s server validation to the owning field', async (code, message, fieldName, role) => {
     const user = userEvent.setup()
-    inviteMember.mockRejectedValue({
-      code: 'BAD_REQUEST',
-      data: { body: { code, message: 'Backend message' } },
-    })
+    inviteMember.mockRejectedValue(
+      createHttpError(new Response(null, { status: 400 }), { code, message: 'Backend message' }),
+    )
     await renderModal()
 
     await addRecipients(user, 'user@example.com, another@example.com')
@@ -568,10 +568,12 @@ describe('InviteModal', () => {
 
   it('keeps a role server error visible when the user only opens the selector', async () => {
     const user = userEvent.setup()
-    inviteMember.mockRejectedValue({
-      code: 'BAD_REQUEST',
-      data: { body: { code: 'invalid_role', message: 'Backend message' } },
-    })
+    inviteMember.mockRejectedValue(
+      createHttpError(new Response(null, { status: 400 }), {
+        code: 'invalid_role',
+        message: 'Backend message',
+      }),
+    )
     await renderModal()
 
     await addRecipients(user, 'user@example.com')
@@ -605,10 +607,12 @@ describe('InviteModal', () => {
     await waitFor(() => expect(input).toBeDisabled())
 
     await act(async () =>
-      rejectInvite({
-        code: 'BAD_REQUEST',
-        data: { body: { code: 'limit_exceeded', message: 'Backend message' } },
-      }),
+      rejectInvite(
+        createHttpError(new Response(null, { status: 400 }), {
+          code: 'limit_exceeded',
+          message: 'Backend message',
+        }),
+      ),
     )
 
     expect(await screen.findByText(/members\.inviteLimitExceeded/i)).toBeInTheDocument()
@@ -619,10 +623,12 @@ describe('InviteModal', () => {
   it('should clear an email server error when the user edits and successfully retries', async () => {
     const user = userEvent.setup()
     inviteMember
-      .mockRejectedValueOnce({
-        code: 'BAD_REQUEST',
-        data: { body: { code: 'limit_exceeded', message: 'Backend message' } },
-      })
+      .mockRejectedValueOnce(
+        createHttpError(new Response(null, { status: 400 }), {
+          code: 'limit_exceeded',
+          message: 'Backend message',
+        }),
+      )
       .mockResolvedValueOnce({
         result: 'success',
         invitation_results: [],
@@ -657,10 +663,12 @@ describe('InviteModal', () => {
   it('should clear an email server error when a recipient is removed before retrying', async () => {
     const user = userEvent.setup()
     inviteMember
-      .mockRejectedValueOnce({
-        code: 'BAD_REQUEST',
-        data: { body: { code: 'limit_exceeded', message: 'Backend message' } },
-      })
+      .mockRejectedValueOnce(
+        createHttpError(new Response(null, { status: 400 }), {
+          code: 'limit_exceeded',
+          message: 'Backend message',
+        }),
+      )
       .mockResolvedValueOnce({
         result: 'success',
         invitation_results: [],

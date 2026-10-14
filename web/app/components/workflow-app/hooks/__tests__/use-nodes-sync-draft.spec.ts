@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { markAppDeletionFailed, markAppDeletionStarted } from '@/service/app-deletion'
 import { consoleQuery } from '@/service/console'
+import { createHttpError } from '@/service/http-error'
 import { createConsoleQueryClient, renderHookWithConsoleQuery } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { AppModeEnum } from '@/types/app'
@@ -593,10 +594,9 @@ describe('useNodesSyncDraft', () => {
   })
 
   it('should call handleRefreshWorkflowDraft(true) — not updating canvas — on draft_workflow_not_sync', async () => {
-    const error = {
-      json: vi.fn().mockResolvedValue({ code: 'draft_workflow_not_sync' }),
-      bodyUsed: false,
-    }
+    const error = createHttpError(new Response(null, { status: 400 }), {
+      code: 'draft_workflow_not_sync',
+    })
     mockSyncWorkflowDraft.mockRejectedValue(error)
 
     const { result } = renderUseNodesSyncDraft()
@@ -609,10 +609,9 @@ describe('useNodesSyncDraft', () => {
   })
 
   it('should NOT refresh when notRefreshWhenSyncError=true', async () => {
-    const error = {
-      json: vi.fn().mockResolvedValue({ code: 'draft_workflow_not_sync' }),
-      bodyUsed: false,
-    }
+    const error = createHttpError(new Response(null, { status: 400 }), {
+      code: 'draft_workflow_not_sync',
+    })
     mockSyncWorkflowDraft.mockRejectedValue(error)
 
     const { result } = renderUseNodesSyncDraft()
@@ -625,7 +624,7 @@ describe('useNodesSyncDraft', () => {
   })
 
   it('should NOT refresh for a different error code', async () => {
-    const error = { json: vi.fn().mockResolvedValue({ code: 'other_error' }), bodyUsed: false }
+    const error = createHttpError(new Response(null, { status: 400 }), { code: 'other_error' })
     mockSyncWorkflowDraft.mockRejectedValue(error)
 
     const { result } = renderUseNodesSyncDraft()
@@ -638,10 +637,7 @@ describe('useNodesSyncDraft', () => {
   })
 
   it('should ignore non-JSON sync errors without throwing an unhandled rejection', async () => {
-    const error = {
-      json: vi.fn().mockRejectedValue(new SyntaxError('Unexpected token U')),
-      bodyUsed: false,
-    }
+    const error = createHttpError(new Response(null, { status: 502 }))
     const callbacks = {
       onError: vi.fn(),
       onSettled: vi.fn(),
@@ -653,7 +649,6 @@ describe('useNodesSyncDraft', () => {
       await expect(result.current.doSyncWorkflowDraft(false, callbacks)).resolves.toBeNull()
     })
 
-    expect(error.json).toHaveBeenCalled()
     expect(mockHandleRefreshWorkflowDraft).not.toHaveBeenCalled()
     expect(callbacks.onError).toHaveBeenCalled()
     expect(callbacks.onSettled).toHaveBeenCalled()

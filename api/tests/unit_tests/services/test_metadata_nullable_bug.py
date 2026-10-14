@@ -74,7 +74,7 @@ class TestMetadataNullableBug:
 
     def test_api_layer_now_uses_pydantic_validation(self) -> None:
         """Verify that API layer relies on Pydantic validation instead of reqparse."""
-        invalid_payload = {"type": None, "name": None}
+        invalid_payload: dict[str, object] = {"type": None, "name": None}
         with pytest.raises((ValueError, TypeError)):
             MetadataArgs.model_validate(invalid_payload)
 

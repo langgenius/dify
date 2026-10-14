@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { createHttpError } from '@/service/http-error'
 import { confirmPageLeave } from '@/utils/page-leave-guard'
 import { CreateKnowledgePage } from '../create-knowledge-page'
 import { newKnowledgeSourceDraftStorageKey } from '../routes'
@@ -280,7 +281,7 @@ describe('CreateKnowledgePage', () => {
       vi.mocked(globalThis.crypto.randomUUID)
         .mockReturnValueOnce('11111111-1111-4111-8111-111111111111')
         .mockReturnValueOnce('22222222-2222-4222-8222-222222222222')
-      serviceMock.create.mockRejectedValueOnce({ status })
+      serviceMock.create.mockRejectedValueOnce(createHttpError(new Response(null, { status })))
       renderPage()
       await fillRequiredFields(user)
 
@@ -309,7 +310,7 @@ describe('CreateKnowledgePage', () => {
     'keeps request identity frozen after an ambiguous %s response',
     async (status) => {
       const user = userEvent.setup()
-      serviceMock.create.mockRejectedValueOnce({ status })
+      serviceMock.create.mockRejectedValueOnce(createHttpError(new Response(null, { status })))
       renderPage()
       await fillRequiredFields(user)
 

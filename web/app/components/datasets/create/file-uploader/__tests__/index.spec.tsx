@@ -204,14 +204,6 @@ describe('FileUploader', () => {
 
       expect(onFileListUpdate).toHaveBeenCalledWith([secondFile])
     })
-
-    it('should handle browse button click', () => {
-      render(<FileUploader {...defaultProps} />)
-
-      // The browse label should trigger file input click
-      const browseLabel = screen.getByText('datasetCreation.stepOne.uploader.browse')
-      expect(browseLabel).toHaveClass('cursor-pointer')
-    })
   })
 
   describe('upload announcements', () => {

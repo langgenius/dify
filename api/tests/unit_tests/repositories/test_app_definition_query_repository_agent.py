@@ -166,12 +166,15 @@ def test_get_public_parameter_config_loads_agent_snapshot(
     [(Agent, AgentConfigSnapshot, AgentConfigRevision, AppAnnotationSetting, AppModelConfig)],
     indirect=True,
 )
-def test_published_agent_app_parameters_use_soul_file_upload(sqlite_session: Session):
+@pytest.mark.parametrize("foreign_model_config", [False, True])
+def test_published_agent_app_parameters_use_soul_file_upload(
+    sqlite_session: Session, foreign_model_config: bool
+) -> None:
     tenant_id = _stable_uuid("tenant:one")
     agent_id = _stable_uuid("agent:one")
     snapshot_id = _stable_uuid("snapshot:one")
     app_model_config = AppModelConfig(
-        app_id=_stable_uuid(f"app:{tenant_id}"),
+        app_id=_stable_uuid("foreign-app") if foreign_model_config else _stable_uuid(f"app:{tenant_id}"),
         opening_statement="Hi from legacy presentation config",
         file_upload=json.dumps({"enabled": False, "image": {"enabled": False}}),
     )
@@ -212,7 +215,7 @@ def test_published_agent_app_parameters_use_soul_file_upload(sqlite_session: Ses
     )
     parameters = get_parameters_from_feature_dict(features_dict=features_dict, user_input_form=user_input_form)
 
-    assert parameters["opening_statement"] == "Hi from legacy presentation config"
+    assert parameters["opening_statement"] == (None if foreign_model_config else "Hi from legacy presentation config")
     assert parameters["file_upload"] == {
         "enabled": True,
         "allowed_file_extensions": ["PNG"],

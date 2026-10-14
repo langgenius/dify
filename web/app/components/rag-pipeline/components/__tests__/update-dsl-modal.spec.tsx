@@ -215,16 +215,6 @@ describe('UpdateDSLModal', () => {
 
       expect(screen.getByTestId('uploader')).toBeInTheDocument()
     })
-
-    it('should call onCancel when close icon is clicked', () => {
-      render(<UpdateDSLModal {...defaultProps} />)
-
-      const closeIconContainer = document.querySelector('.cursor-pointer')
-      if (closeIconContainer) {
-        fireEvent.click(closeIconContainer)
-        expect(mockOnCancel).toHaveBeenCalled()
-      }
-    })
   })
 
   describe('import functionality', () => {

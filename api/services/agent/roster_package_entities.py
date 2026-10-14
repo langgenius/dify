@@ -1,4 +1,4 @@
-"""Strict data contract for portable Roster Agent archives."""
+"""Data contract and integrity validation for portable Roster Agent archives."""
 
 from __future__ import annotations
 
@@ -25,19 +25,12 @@ class RosterAgentPackageMember:
     sha256: str
 
 
-class RosterAgentPackageAudit(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    ref: str = Field(min_length=1, max_length=255)
-
-
 class _RosterAgentPackageResource(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")
 
     path: str = Field(min_length=1, max_length=255)
     size: int = Field(ge=0)
     sha256: str
-    audit: RosterAgentPackageAudit | None = None
 
     @field_validator("sha256")
     @classmethod
@@ -95,7 +88,7 @@ class PackageIcon(_RosterAgentPackageResource):
 class AgentPackageResources(BaseModel):
     """Resources belonging to one portable Agent, independent of its container."""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")
 
     skills: list[RosterAgentPackageSkill] = Field(default_factory=list)
     files: list[RosterAgentPackageFile] = Field(default_factory=list)
@@ -164,7 +157,6 @@ class RosterAgentPackageManifest(AgentPackageResources):
 
     format: Literal["dify.roster-agent"]
     format_version: Literal[1]
-    audit: RosterAgentPackageAudit | None = None
     icons: list[PackageIcon] = Field(default_factory=list)
     apps: list[RosterAgentPackageApp] = Field(min_length=1)
 
@@ -251,7 +243,6 @@ __all__ = [
     "PreparedPackageArchive",
     "PreparedRosterAgentPackage",
     "RosterAgentPackageApp",
-    "RosterAgentPackageAudit",
     "RosterAgentPackageExport",
     "RosterAgentPackageFile",
     "RosterAgentPackageManifest",

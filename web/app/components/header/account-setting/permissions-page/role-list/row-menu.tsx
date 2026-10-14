@@ -37,7 +37,6 @@ type RowMenuProps = {
 
 const RowMenu = ({ roleCategory, role, onView, onEdit }: RowMenuProps) => {
   const { t } = useTranslation(['common', 'permission'])
-  const [open, setOpen] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showCopyMembersConfirm, setShowCopyMembersConfirm] = useState(false)
 
@@ -58,7 +57,6 @@ const RowMenu = ({ roleCategory, role, onView, onEdit }: RowMenuProps) => {
     if (!canManageRoles) return
 
     setShowCopyMembersConfirm(true)
-    setOpen(false)
   }, [canManageRoles])
 
   const handleDuplicate = useCallback(
@@ -86,7 +84,6 @@ const RowMenu = ({ roleCategory, role, onView, onEdit }: RowMenuProps) => {
     if (!canManageRoles) return
 
     setShowDeleteConfirm(true)
-    setOpen(false)
   }, [canManageRoles])
 
   const handleDelete = useCallback(() => {
@@ -105,7 +102,7 @@ const RowMenu = ({ roleCategory, role, onView, onEdit }: RowMenuProps) => {
 
   return (
     <>
-      <DropdownMenu open={open} onOpenChange={setOpen}>
+      <DropdownMenu>
         <DropdownMenuTrigger
           render={
             <IconButton

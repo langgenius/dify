@@ -210,6 +210,9 @@ class RedisClientWrapper:
             lt=lt,
         )
 
+    def zrem(self, name: str | bytes, *values: str | bytes) -> Any:
+        return self._require_client().zrem(_serialize_redis_name_arg(name, self._get_prefix()), *values)
+
     def zremrangebyscore(self, name: str | bytes, min: float | str, max: float | str) -> Any:
         return self._require_client().zremrangebyscore(_serialize_redis_name_arg(name, self._get_prefix()), min, max)
 

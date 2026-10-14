@@ -55,6 +55,8 @@
   "account.sendVerificationButton": "إرسال رمز التحقق",
   "account.setPassword": "تعيين كلمة مرور",
   "account.showAppLength": "عرض {{length}} تطبيقات",
+  "account.timezoneNoResults": "لم يتم العثور على مناطق زمنية مطابقة",
+  "account.timezoneSearchPlaceholder": "ابحث عن مدن أو مناطق زمنية…",
   "account.verificationLabel": "رمز التحقق",
   "account.verificationPlaceholder": "الصق الرمز المكون من 6 أرقام",
   "account.workspaceName": "اسم مساحة العمل",
