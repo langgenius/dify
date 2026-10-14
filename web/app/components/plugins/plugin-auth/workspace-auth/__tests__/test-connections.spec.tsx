@@ -1,12 +1,15 @@
 import type { TestConnection, TestConnectionDraft } from '../../app-user-auth/test-connection/model'
-import { screen, waitFor, within } from '@testing-library/react'
+import type { ConsoleClient } from '@/service/console'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
-import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { FormTypeEnum } from '@/app/components/base/form/types'
 import { PermissionLevel } from '@/models/permission'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { useMockTestConnectionSource } from '../../app-user-auth/test-connection/use-mock-test-connection-source'
-import { CredentialTypeEnum } from '../../types'
+import { AuthCategory, CredentialTypeEnum } from '../../types'
 import ConnectionSelector from '../connection-selector'
 
 const mocks = vi.hoisted(() => ({
@@ -41,21 +44,54 @@ const apiKeyConnection: TestConnection = {
   visibility: PermissionLevel.onlyMe,
 }
 const connectionNameLabel = 'plugin.auth.connection.name'
-const apiKeyLabel = 'plugin.auth.connection.apiKey'
+const apiKeyLabel = 'API Key'
 const saveLabel = 'common.operation.save'
 const cancelLabel = 'common.operation.cancel'
+const pluginPayload = { category: AuthCategory.tool, provider: 'test-provider' }
+type CredentialSchemas = Awaited<
+  ReturnType<
+    ConsoleClient['workspaces']['current']['toolProvider']['builtin']['byProvider']['credential']['schema']['byCredentialType']['get']
+  >
+>
+const defaultSchema: CredentialSchemas = [
+  {
+    name: 'api_key',
+    label: { en_US: apiKeyLabel },
+    type: FormTypeEnum.secretInput,
+    required: true,
+    multiple: false,
+  },
+]
 
 const setup = (
   initial: TestConnectionDraft = {
     connections: [oauthConnection, apiKeyConnection],
     selectedId: apiKeyConnection.id,
   },
+  schemas: CredentialSchemas | null = defaultSchema,
 ) => {
+  const queryClient = createConsoleQueryClient()
+  if (schemas) {
+    queryClient.setQueryData(
+      consoleQuery.workspaces.current.toolProvider.builtin.byProvider.credential.schema.byCredentialType.get.queryKey(
+        {
+          input: {
+            params: {
+              provider: pluginPayload.provider,
+              credential_type: CredentialTypeEnum.API_KEY,
+            },
+          },
+        },
+      ),
+      schemas,
+    )
+  }
   const onChange = vi.fn()
   const onOAuthClientSettings = vi.fn()
   const Harness = () => {
     const [value, setValue] = useState(initial)
     const source = useMockTestConnectionSource({
+      pluginPayload,
       value,
       onChange: (draft) => {
         onChange(draft)
@@ -72,7 +108,7 @@ const setup = (
     )
   }
   return {
-    ...renderWithConsoleQuery(<Harness />, { workspacePermissionKeys: [] }),
+    ...renderWithConsoleQuery(<Harness />, { queryClient, workspacePermissionKeys: [] }),
     onChange,
     onOAuthClientSettings,
   }
@@ -103,11 +139,17 @@ const findConnectionDialog = () =>
   screen.findByRole('dialog', { name: 'plugin.auth.connection.save' })
 
 describe('App user mock test connections', () => {
+  beforeEach(() => {
+    mocks.consoleCall.mockReset()
+  })
+
   afterEach(() => {
     expect(
       mocks.consoleCall.mock.calls.filter(
         ([path]) =>
-          Array.isArray(path) && (path.includes('toolProvider') || path.includes('oauth')),
+          Array.isArray(path) &&
+          (path.includes('toolProvider') || path.includes('oauth')) &&
+          path.slice(-4).join('.') !== 'credential.schema.byCredentialType.get',
       ),
     ).toEqual([])
     expect(mocks.schemaHook).not.toHaveBeenCalled()
@@ -174,6 +216,83 @@ describe('App user mock test connections', () => {
     const row = within(group).getByRole('button', { name: /^New test key/ })
     expect(row).toHaveAttribute('aria-pressed', 'true')
     expect(row).toHaveTextContent('•••• 7A2F')
+  })
+
+  it('uses the provider secret field and validates its required non-secret fields before saving a local connection', async () => {
+    const user = userEvent.setup()
+    const { onChange } = setup(undefined, [
+      {
+        name: 'api_token',
+        label: { en_US: 'API token' },
+        type: FormTypeEnum.secretInput,
+        required: true,
+        multiple: false,
+      },
+      {
+        name: 'workspace_id',
+        label: { en_US: 'Workspace ID' },
+        type: FormTypeEnum.textInput,
+        required: true,
+        multiple: false,
+      },
+    ])
+    await user.click(picker())
+    await user.click(
+      await screen.findByRole('button', { name: 'plugin.auth.connection.addApiKey' }),
+    )
+    const dialog = await screen.findByRole('dialog', { name: 'plugin.auth.useApiAuth' })
+    const token = within(dialog).getByLabelText('API token', { exact: false })
+    const workspaceId = within(dialog).getByRole('textbox', { name: /Workspace ID/ })
+    expect(within(dialog).queryByLabelText(apiKeyLabel, { exact: false })).not.toBeInTheDocument()
+    expect(token).toBeRequired()
+    expect(workspaceId).toBeRequired()
+    const secret = 'provider-api-token-8C4D'
+    await user.type(token, secret)
+    await user.click(within(dialog).getByRole('button', { name: saveLabel }))
+    expect(workspaceId).toHaveAttribute('aria-invalid', 'true')
+    expect(onChange).not.toHaveBeenCalled()
+
+    await user.type(workspaceId, 'provider-workspace')
+    await user.click(within(dialog).getByRole('button', { name: saveLabel }))
+    await waitFor(() => expect(dialog).not.toBeInTheDocument())
+
+    expect(picker()).toHaveTextContent('•••• 8C4D')
+    expect(JSON.stringify(onChange.mock.calls)).not.toContain(secret)
+    expect(document.body).not.toHaveTextContent(secret)
+    expect(onChange).toHaveBeenCalledOnce()
+  })
+
+  it('keeps saving disabled while the provider schema loads and enables the provider form when it arrives', async () => {
+    const user = userEvent.setup()
+    let resolveSchema!: (schemas: CredentialSchemas) => void
+    const schemaRequest = new Promise<CredentialSchemas>((resolve) => {
+      resolveSchema = resolve
+    })
+    mocks.consoleCall.mockReturnValue(schemaRequest)
+    const { onChange } = setup(undefined, null)
+    await user.click(picker())
+    await user.click(
+      await screen.findByRole('button', { name: 'plugin.auth.connection.addApiKey' }),
+    )
+    const dialog = await screen.findByRole('dialog', { name: 'plugin.auth.useApiAuth' })
+    const save = within(dialog).getByRole('button', { name: saveLabel })
+    expect(save).toBeDisabled()
+    expect(within(dialog).queryByLabelText(apiKeyLabel, { exact: false })).not.toBeInTheDocument()
+    await user.click(save)
+    expect(onChange).not.toHaveBeenCalled()
+
+    await act(async () => {
+      resolveSchema(defaultSchema)
+      await schemaRequest
+    })
+    const apiKey = await within(dialog).findByLabelText(apiKeyLabel, { exact: false })
+    expect(save).toBeEnabled()
+    await user.type(apiKey, 'loaded-provider-key-5E6F')
+    await user.click(save)
+    await waitFor(() => expect(dialog).not.toBeInTheDocument())
+
+    expect(picker()).toHaveTextContent('•••• 5E6F')
+    expect(onChange).toHaveBeenCalledOnce()
   })
 
   it.each([apiKeyConnection, oauthConnection])(

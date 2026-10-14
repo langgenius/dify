@@ -113,18 +113,29 @@ const PluginAuth = ({
           showDescription
         />
       </TabsPanel>
-      <TabsPanel value="app-user-auth" keepMounted className="px-4 py-2 data-hidden:hidden">
-        {!authorization.isLoading && (
-          <AppUserAuth
-            key={`${pluginPayload.category}/${pluginPayload.provider}/${authorization.canOAuth}/${authorization.canApiKey}`}
-            canOAuth={!!authorization.canOAuth}
-            canApiKey={!!authorization.canApiKey}
-            providerName={nodeAuth?.providerName}
-            value={appUserAuth?.draft}
-            onChange={appUserAuth?.onChange}
-          />
+      <TabsPanel
+        value="app-user-auth"
+        keepMounted
+        className="px-4 py-2 data-hidden:hidden"
+        render={(props, { hidden }) => (
+          <div {...props}>
+            {!authorization.isLoading && (
+              <AppUserAuth
+                pluginPayload={pluginPayload}
+                active={!hidden}
+                notAllowCustomCredential={authorization.notAllowCustomCredential}
+                onUpdate={authorization.invalidPluginCredentialInfo}
+                key={`${pluginPayload.category}/${pluginPayload.provider}/${authorization.canOAuth}/${authorization.canApiKey}`}
+                canOAuth={!!authorization.canOAuth}
+                canApiKey={!!authorization.canApiKey}
+                providerName={nodeAuth?.providerName}
+                value={appUserAuth?.draft}
+                onChange={appUserAuth?.onChange}
+              />
+            )}
+          </div>
         )}
-      </TabsPanel>
+      />
       <TabsPanel value="reuse-from-node" className="px-4 py-2">
         <ReuseFromNode {...reuseFromNode} />
       </TabsPanel>

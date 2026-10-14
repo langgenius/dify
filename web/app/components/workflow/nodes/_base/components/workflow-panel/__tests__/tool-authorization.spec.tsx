@@ -10,6 +10,8 @@ import { CollectionType } from '@/app/components/tools/types'
 import { createEdge, createNode } from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import ToolAuthorization from '../tool-authorization'
 
 vi.mock('@/app/components/plugins/plugin-auth/hooks/use-plugin-auth', () => ({
@@ -74,19 +76,40 @@ const setup = ({
   edges = [],
   actions,
 }: { nodes?: Node[]; edges?: Edge[]; actions?: ReactNode } = {}) => {
+  const { queryClient, wrapper: ConsoleQueryWrapper } = createConsoleQueryWrapper({
+    workspacePermissionKeys: ['credential.use', 'credential.create', 'credential.manage'],
+  })
+  for (const provider of ['provider-a', 'provider-b']) {
+    queryClient.setQueryData(
+      consoleQuery.workspaces.current.toolProvider.builtin.byProvider.credential.schema.byCredentialType.get.queryKey(
+        { input: { params: { provider, credential_type: 'api-key' } } },
+      ),
+      [
+        {
+          name: 'api_key',
+          label: { en_US: 'API Key' },
+          type: 'secret-input',
+          required: true,
+          multiple: false,
+        },
+      ],
+    )
+  }
   const content = (nodeId = 'node-1', provider = 'provider-a', providerId = 'provider-id-a') => (
-    <TooltipProvider delay={0} closeDelay={0}>
-      <section aria-label="Current node authorization">
-        <ToolAuthorization
-          key={nodeId}
-          nodeId={nodeId}
-          providerId={providerId}
-          pluginPayload={{ category: 'tool', provider }}
-          showAuthorizationTabs
-        />
-      </section>
-      {actions}
-    </TooltipProvider>
+    <ConsoleQueryWrapper>
+      <TooltipProvider delay={0} closeDelay={0}>
+        <section aria-label="Current node authorization">
+          <ToolAuthorization
+            key={nodeId}
+            nodeId={nodeId}
+            providerId={providerId}
+            pluginPayload={{ category: 'tool', provider }}
+            showAuthorizationTabs
+          />
+        </section>
+        {actions}
+      </TooltipProvider>
+    </ConsoleQueryWrapper>
   )
   return { content, ...renderWorkflowFlowComponent(content(), { nodes, edges }) }
 }

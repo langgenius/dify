@@ -1,15 +1,84 @@
+import type { ReactElement } from 'react'
 import type { AppUserAuthDraft } from '../draft'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import type { consoleClient } from '@/service/console'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
-import { describe, expect, it, vi } from 'vite-plus/test'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import AppUserAuth from '..'
+import { AuthCategory } from '../../types'
 import { createAppUserAuthDraft } from '../draft'
 
 const clientDialogName = 'plugin.auth.oauthClientSettings'
-const clientIdLabel = 'plugin.auth.appUser.clientId'
-const clientSecretLabel = 'plugin.auth.appUser.clientSecret'
+const clientIdLabel = 'Client ID'
+const clientSecretLabel = 'Client Secret'
 const saveLabel = 'plugin.auth.saveOnly'
+
+type OAuthClientSchema = Awaited<
+  ReturnType<
+    typeof consoleClient.workspaces.current.toolProvider.builtin.byProvider.oauth.clientSchema.get
+  >
+>
+
+const pluginPayload = { category: AuthCategory.tool, provider: 'test-provider' }
+const mocks = vi.hoisted(() => ({
+  consoleCall: vi.fn(),
+  setOAuthClient: vi.fn(),
+  deleteOAuthClient: vi.fn(),
+  invalidOAuthClient: vi.fn(),
+}))
+vi.mock('@/service/console/browser', () => ({
+  consoleBrowserLink: { call: (...args: unknown[]) => mocks.consoleCall(...args) },
+}))
+vi.mock('../../hooks/use-credential', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../hooks/use-credential')>()),
+  useSetPluginOAuthCustomClientHook: () => ({ mutateAsync: mocks.setOAuthClient }),
+  useDeletePluginOAuthCustomClientHook: () => ({ mutateAsync: mocks.deleteOAuthClient }),
+  useInvalidPluginOAuthClientSchemaHook: () => mocks.invalidOAuthClient,
+}))
+vi.mock('@/app/notifications', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
+
+const createClientSchema = (overrides: Partial<OAuthClientSchema> = {}): OAuthClientSchema => ({
+  schema: [
+    {
+      name: 'client_id',
+      label: { en_US: clientIdLabel },
+      type: 'text-input',
+      required: true,
+      multiple: false,
+    },
+    {
+      name: 'client_secret',
+      label: { en_US: clientSecretLabel },
+      type: 'secret-input',
+      required: true,
+      multiple: false,
+    },
+  ],
+  is_oauth_custom_client_enabled: false,
+  is_system_oauth_params_exists: false,
+  client_params: {},
+  redirect_uri: 'https://example.com/oauth/callback',
+  ...overrides,
+})
+let serverClient: OAuthClientSchema
+const clientQuery =
+  consoleQuery.workspaces.current.toolProvider.builtin.byProvider.oauth.clientSchema.get
+const clientQueryInput = { params: { provider: pluginPayload.provider } }
+const render = (
+  ui: ReactElement,
+  {
+    loading = false,
+    workspacePermissionKeys = ['credential.use', 'credential.create', 'credential.manage'],
+  }: { loading?: boolean; workspacePermissionKeys?: string[] } = {},
+) => {
+  const queryClient = createConsoleQueryClient()
+  if (!loading)
+    queryClient.setQueryData(clientQuery.queryKey({ input: clientQueryInput }), serverClient)
+  return renderWithConsoleQuery(ui, { queryClient, workspacePermissionKeys })
+}
 
 const ControlledHarness = ({
   initialDraft,
@@ -22,6 +91,7 @@ const ControlledHarness = ({
 
   return (
     <AppUserAuth
+      pluginPayload={pluginPayload}
       value={draft}
       onChange={(nextDraft) => {
         setDraft(nextDraft)
@@ -44,9 +114,41 @@ const saveCustomClient = async (user: ReturnType<typeof userEvent.setup>) => {
 }
 
 describe('AppUserAuth', () => {
+  beforeEach(() => {
+    serverClient = createClientSchema()
+    mocks.consoleCall.mockImplementation(async (path: string[]) => {
+      if (path.includes('clientSchema')) return serverClient
+      if (path.includes('schema'))
+        return [
+          {
+            name: 'api_key',
+            label: { en_US: 'API key' },
+            type: 'secret-input',
+            required: true,
+            multiple: false,
+          },
+        ]
+      throw new Error(`Unexpected console request: ${path.join('.')}`)
+    })
+    mocks.setOAuthClient.mockImplementation(
+      async ({ client_params, enable_oauth_custom_client }) => {
+        serverClient = {
+          ...serverClient,
+          is_oauth_custom_client_enabled: enable_oauth_custom_client,
+          client_params: {
+            ...client_params,
+            ...(client_params.client_secret ? { client_secret: '[__HIDDEN__]' } : {}),
+          },
+        }
+      },
+    )
+    mocks.deleteOAuthClient.mockImplementation(async () => {
+      serverClient = { ...serverClient, is_oauth_custom_client_enabled: false, client_params: {} }
+    })
+  })
   it('enables both available methods by default and toggles the API key explanation', async () => {
     const user = userEvent.setup()
-    render(<AppUserAuth />)
+    render(<AppUserAuth pluginPayload={pluginPayload} />)
 
     expect(screen.getByRole('checkbox', { name: 'plugin.auth.appUser.oauth' })).toBeChecked()
     const apiKey = screen.getByRole('checkbox', { name: 'plugin.auth.connection.apiKey' })
@@ -68,7 +170,7 @@ describe('AppUserAuth', () => {
     { canOAuth: true, canApiKey: false },
     { canOAuth: false, canApiKey: false },
   ])('offers only supported methods for $canOAuth OAuth and $canApiKey API key', (props) => {
-    render(<AppUserAuth {...props} />)
+    render(<AppUserAuth pluginPayload={pluginPayload} {...props} />)
 
     for (const { available, name } of [
       { available: props.canOAuth, name: 'plugin.auth.appUser.oauth' },
@@ -83,18 +185,16 @@ describe('AppUserAuth', () => {
     ).toBeVisible()
   })
 
-  it('saves a custom client locally and retains it while OAuth is disabled', async () => {
+  it('saves the shared custom client and retains its server configuration while OAuth is disabled', async () => {
     const user = userEvent.setup()
-    render(<AppUserAuth providerName="Google Drive" />)
+    render(<AppUserAuth pluginPayload={pluginPayload} providerName="Google Drive" />)
     await user.click(screen.getByRole('button', { name: 'plugin.auth.appUser.configureClient' }))
     const dialog = await screen.findByRole('dialog', { name: clientDialogName })
-    const unavailableDefault = within(dialog).getByRole('radio', { name: 'plugin.auth.default' })
-    expect(unavailableDefault).toHaveAttribute('aria-disabled', 'true')
-    expect(within(dialog).getByRole('radio', { name: 'plugin.auth.custom' })).toBeChecked()
-    await user.click(unavailableDefault)
-    expect(within(dialog).getByRole('radio', { name: 'plugin.auth.custom' })).toBeChecked()
+    expect(
+      within(dialog).queryByRole('radio', { name: 'plugin.auth.default' }),
+    ).not.toBeInTheDocument()
 
-    await user.type(within(dialog).getByRole('textbox', { name: clientIdLabel }), '  client-id  ')
+    await user.type(within(dialog).getByRole('textbox', { name: clientIdLabel }), 'client-id')
     await user.type(
       within(dialog).getByLabelText(clientSecretLabel, { exact: false }),
       'client-secret',
@@ -121,15 +221,19 @@ describe('AppUserAuth', () => {
     const reopened = await screen.findByRole('dialog', { name: clientDialogName })
     expect(within(reopened).getByRole('textbox', { name: clientIdLabel })).toHaveValue('client-id')
     expect(within(reopened).getByLabelText(clientSecretLabel, { exact: false })).toHaveValue(
-      'client-secret',
+      '[__HIDDEN__]',
     )
+    expect(mocks.setOAuthClient).toHaveBeenCalledExactlyOnceWith({
+      client_params: { client_id: 'client-id', client_secret: 'client-secret' },
+      enable_oauth_custom_client: true,
+    })
   })
 
   it.each(['cancel', 'escape'] as const)(
     'discards client edits when closed with %s',
     async (close) => {
       const user = userEvent.setup()
-      render(<AppUserAuth />)
+      render(<AppUserAuth pluginPayload={pluginPayload} />)
       await saveCustomClient(user)
       await user.click(screen.getByRole('button', { name: 'plugin.auth.appUser.customClient' }))
       const dialog = await screen.findByRole('dialog', { name: clientDialogName })
@@ -153,14 +257,16 @@ describe('AppUserAuth', () => {
         'client-id',
       )
       expect(within(reopened).getByLabelText(clientSecretLabel, { exact: false })).toHaveValue(
-        'client-secret',
+        '[__HIDDEN__]',
       )
+      expect(mocks.setOAuthClient).toHaveBeenCalledOnce()
     },
   )
 
   it('allows an available default client to replace custom client configuration', async () => {
     const user = userEvent.setup()
-    render(<AppUserAuth defaultClientAvailable />)
+    serverClient = createClientSchema({ is_system_oauth_params_exists: true })
+    render(<AppUserAuth pluginPayload={pluginPayload} />)
     await user.click(screen.getByRole('button', { name: 'plugin.auth.appUser.defaultClient' }))
     let dialog = await screen.findByRole('dialog', { name: clientDialogName })
     expect(within(dialog).getByRole('radio', { name: 'plugin.auth.default' })).toBeChecked()
@@ -187,9 +293,9 @@ describe('AppUserAuth', () => {
     expect(within(reopened).queryByRole('textbox', { name: clientIdLabel })).not.toBeInTheDocument()
   })
 
-  it('requires both custom client fields on save without showing errors while initially editing', async () => {
+  it('uses the required provider fields and blocks saving an incomplete client', async () => {
     const user = userEvent.setup()
-    render(<AppUserAuth />)
+    render(<AppUserAuth pluginPayload={pluginPayload} />)
     await user.click(screen.getByRole('button', { name: 'plugin.auth.appUser.configureClient' }))
     const dialog = await screen.findByRole('dialog', { name: clientDialogName })
     const clientId = within(dialog).getByRole('textbox', { name: clientIdLabel })
@@ -197,15 +303,10 @@ describe('AppUserAuth', () => {
     expect(clientId).toBeRequired()
     expect(clientSecret).toBeRequired()
     expect(clientSecret).toHaveAccessibleName(clientSecretLabel)
-    await user.type(clientId, 'draft')
-    await user.clear(clientId)
-    expect(clientId).not.toHaveAttribute('aria-invalid', 'true')
-    expect(clientSecret).not.toHaveAttribute('aria-invalid', 'true')
-
     await user.click(within(dialog).getByRole('button', { name: saveLabel }))
 
     expect(clientId).toHaveAttribute('aria-invalid', 'true')
-    expect(clientSecret).toHaveAttribute('aria-invalid', 'true')
+    expect(mocks.setOAuthClient).not.toHaveBeenCalled()
     expect(dialog).toBeVisible()
     await user.type(clientId, 'client-id')
     await user.click(within(dialog).getByRole('button', { name: saveLabel }))
@@ -218,9 +319,89 @@ describe('AppUserAuth', () => {
     expect(screen.getByRole('button', { name: 'plugin.auth.appUser.customClient' })).toBeVisible()
   })
 
+  it('clears client metadata and its valid state when the shared custom client is removed', async () => {
+    const user = userEvent.setup()
+    serverClient = createClientSchema({
+      is_oauth_custom_client_enabled: true,
+      client_params: { client_id: 'existing-client', client_secret: '[__HIDDEN__]' },
+    })
+    const initialDraft = {
+      ...createAppUserAuthDraft(),
+      description: 'Drive account',
+      client: { type: 'custom' as const },
+    }
+    const onChange = vi.fn<(draft: AppUserAuthDraft) => void>()
+    render(<ControlledHarness initialDraft={initialDraft} onChange={onChange} />)
+    expect(screen.queryByText('plugin.auth.appUser.setupClient')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'plugin.auth.appUser.customClient' }))
+    const dialog = await screen.findByRole('dialog', { name: clientDialogName })
+    expect(within(dialog).getByRole('textbox', { name: clientIdLabel })).toHaveValue(
+      'existing-client',
+    )
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.remove' }))
+    await waitFor(() => expect(dialog).not.toBeInTheDocument())
+
+    expect(mocks.deleteOAuthClient).toHaveBeenCalledOnce()
+    expect(mocks.setOAuthClient).not.toHaveBeenCalled()
+    expect(
+      await screen.findByRole('button', { name: 'plugin.auth.appUser.configureClient' }),
+    ).toHaveAccessibleDescription('plugin.auth.appUser.setupClient')
+    expect(onChange).toHaveBeenLastCalledWith({ ...initialDraft, client: undefined })
+    expect(JSON.stringify(onChange.mock.calls)).not.toContain('existing-client')
+  })
+
+  it('prevents opening client settings while the provider schema is loading, then uses the loaded configuration', async () => {
+    const user = userEvent.setup()
+    let resolveSchema!: (schema: OAuthClientSchema) => void
+    const pendingSchema = new Promise<OAuthClientSchema>((resolve) => {
+      resolveSchema = resolve
+    })
+    const originalCall = mocks.consoleCall.getMockImplementation()!
+    mocks.consoleCall.mockImplementation((path: string[], ...args: unknown[]) =>
+      path.includes('clientSchema') ? pendingSchema : originalCall(path, ...args),
+    )
+    render(<AppUserAuth pluginPayload={pluginPayload} />, { loading: true })
+    const configure = screen.getByRole('button', { name: 'plugin.auth.appUser.configureClient' })
+    expect(configure).toBeDisabled()
+    await user.click(configure)
+    expect(screen.queryByRole('dialog', { name: clientDialogName })).not.toBeInTheDocument()
+
+    await act(async () =>
+      resolveSchema(createClientSchema({ is_system_oauth_params_exists: true })),
+    )
+    expect(
+      await screen.findByRole('button', { name: 'plugin.auth.appUser.defaultClient' }),
+    ).toBeEnabled()
+    expect(mocks.setOAuthClient).not.toHaveBeenCalled()
+    expect(mocks.deleteOAuthClient).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    { workspacePermissionKeys: [], notAllowCustomCredential: false },
+    { workspacePermissionKeys: ['credential.manage'], notAllowCustomCredential: true },
+  ])(
+    'prevents changing the provider client without permission or when custom credentials are locked',
+    async (props) => {
+      const user = userEvent.setup()
+      render(
+        <AppUserAuth
+          pluginPayload={pluginPayload}
+          notAllowCustomCredential={props.notAllowCustomCredential}
+        />,
+        { workspacePermissionKeys: props.workspacePermissionKeys },
+      )
+      const configure = screen.getByRole('button', { name: 'plugin.auth.appUser.configureClient' })
+      expect(configure).toBeDisabled()
+      await user.click(configure)
+      expect(screen.queryByRole('dialog', { name: clientDialogName })).not.toBeInTheDocument()
+      expect(mocks.setOAuthClient).not.toHaveBeenCalled()
+      expect(mocks.deleteOAuthClient).not.toHaveBeenCalled()
+    },
+  )
+
   it('limits typed and pasted descriptions to 50 characters and updates the count and validity', async () => {
     const user = userEvent.setup()
-    render(<AppUserAuth />)
+    render(<AppUserAuth pluginPayload={pluginPayload} />)
     const description = screen.getByRole('textbox', {
       name: 'plugin.auth.appUser.connectionDescription',
     })
@@ -316,8 +497,9 @@ describe('AppUserAuth', () => {
     expect(onChange).toHaveBeenLastCalledWith({
       ...initialDraft,
       description: 'Drive account',
-      client: { type: 'custom', clientId: 'client-id', clientSecret: 'client-secret' },
+      client: { type: 'custom' },
     })
+    expect(JSON.stringify(onChange.mock.calls)).not.toContain('client-secret')
     expect(screen.queryByText('plugin.auth.appUser.setupClient')).not.toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: 'plugin.auth.appUser.customClient' }),
@@ -329,7 +511,7 @@ describe('AppUserAuth', () => {
     expect(onChange).toHaveBeenLastCalledWith({
       ...initialDraft,
       description: 'Drive account',
-      client: { type: 'custom', clientId: 'client-id', clientSecret: 'client-secret' },
+      client: { type: 'custom' },
     })
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })

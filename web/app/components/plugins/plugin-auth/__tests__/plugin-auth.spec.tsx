@@ -1,3 +1,4 @@
+import type { BuiltinProviderOAuthClientSchemaResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactNode } from 'react'
 import type { AppUserAuthDraft, AuthorizationTab } from '../app-user-auth/draft'
 import type { Credential } from '../types'
@@ -17,6 +18,10 @@ const mockConsoleState = vi.hoisted(() => ({
   workspacePermissionKeys: ['credential.use', 'credential.create', 'credential.manage'] as string[],
 }))
 const mockConsoleCall = vi.hoisted(() => vi.fn())
+const mockOAuthClientMutations = vi.hoisted(() => ({
+  save: vi.fn(),
+  remove: vi.fn(),
+}))
 
 vi.mock('@/service/console/browser', () => ({
   consoleBrowserLink: {
@@ -27,6 +32,15 @@ vi.mock('@/service/console/browser', () => ({
 vi.mock('../hooks/use-plugin-auth', () => ({
   usePluginAuth: (...args: unknown[]) => mockUsePluginAuth(...args),
 }))
+
+vi.mock('../hooks/use-credential', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../hooks/use-credential')>()
+  return {
+    ...actual,
+    useSetPluginOAuthCustomClientHook: () => ({ mutateAsync: mockOAuthClientMutations.save }),
+    useDeletePluginOAuthCustomClientHook: () => ({ mutateAsync: mockOAuthClientMutations.remove }),
+  }
+})
 
 vi.mock('../authorized', () => ({
   default: ({
@@ -94,6 +108,8 @@ const createConnectionQueryWrapper = () => {
 describe('PluginAuth', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockOAuthClientMutations.save.mockResolvedValue({ result: 'success' })
+    mockOAuthClientMutations.remove.mockResolvedValue({ result: 'success' })
     mockConsoleCall.mockImplementation(async (path: string[]) => {
       if (path.includes('clientSchema')) {
         return {
@@ -146,6 +162,65 @@ describe('PluginAuth', () => {
     render(<PluginAuth pluginPayload={defaultPayload} />)
     expect(screen.getByTestId('authorized')).toBeInTheDocument()
     expect(screen.queryByTestId('authorize')).not.toBeInTheDocument()
+  })
+
+  it('requests provider schemas only after entering App user from Reuse', async () => {
+    const user = userEvent.setup()
+    const pluginPayload = { ...defaultPayload, provider: 'drive-provider' }
+    mockUsePluginAuth.mockReturnValue({
+      isAuthorized: true,
+      isLoading: false,
+      canOAuth: true,
+      canApiKey: true,
+      credentials: [createCredential({ provider: pluginPayload.provider })],
+      invalidPluginCredentialInfo: vi.fn(),
+      notAllowCustomCredential: false,
+    })
+    const ControlledPluginAuth = () => {
+      const [tab, setTab] = useState<AuthorizationTab>('reuse-from-node')
+      return (
+        <PluginAuth
+          pluginPayload={pluginPayload}
+          nodeAuth={{ onAuthorizationItemClick: vi.fn() }}
+          authorizationTab={tab}
+          onAuthorizationTabChange={setTab}
+          showAuthorizationTabs
+        />
+      )
+    }
+    render(<ControlledPluginAuth />, { wrapper: createConsoleQueryWrapper().wrapper })
+    expect(screen.getByRole('tabpanel', { name: 'plugin.auth.reuseFromNode' })).toBeVisible()
+    const schemaRequests = () =>
+      mockConsoleCall.mock.calls.filter(
+        ([path]) =>
+          path.includes('clientSchema') || (path.includes('credential') && path.includes('schema')),
+      )
+    expect(schemaRequests()).toEqual([])
+
+    await user.click(screen.getByRole('tab', { name: 'plugin.auth.appUserAuth' }))
+
+    expect(screen.getByRole('tabpanel', { name: 'plugin.auth.appUserAuth' })).toBeVisible()
+    await waitFor(() =>
+      expect(
+        schemaRequests().map(([path, input]) => ({ endpoint: path.slice(-3).join('.'), input })),
+      ).toEqual(
+        expect.arrayContaining([
+          {
+            endpoint: 'oauth.clientSchema.get',
+            input: { params: { provider: pluginPayload.provider } },
+          },
+          {
+            endpoint: 'schema.byCredentialType.get',
+            input: {
+              params: {
+                provider: pluginPayload.provider,
+                credential_type: CredentialTypeEnum.API_KEY,
+              },
+            },
+          },
+        ]),
+      ),
+    )
   })
 
   it('keeps mock test connections independent when Workspace authorization becomes available', async () => {
@@ -299,7 +374,9 @@ describe('PluginAuth', () => {
       notAllowCustomCredential: false,
     })
 
-    render(<PluginAuth pluginPayload={defaultPayload} showAuthorizationTabs />)
+    render(<PluginAuth pluginPayload={defaultPayload} showAuthorizationTabs />, {
+      wrapper: createConnectionQueryWrapper(),
+    })
 
     expect(screen.getByRole('heading', { name: 'plugin.auth.authorization' })).toBeVisible()
     const workspaceTab = screen.getByRole('tab', { name: 'plugin.auth.workspaceAuth' })
@@ -506,32 +583,88 @@ describe('PluginAuth', () => {
     expect(onAuthorizationItemClick).not.toHaveBeenCalled()
   })
 
-  it('retains App user auth drafts across tabs and uses the provider capabilities and name', async () => {
+  it('shares saved and removed OAuth client settings with Workspace while retaining App user drafts', async () => {
     const user = userEvent.setup()
+    const onDraftChange = vi.fn<(draft: AppUserAuthDraft) => void>()
+    let oauthClient: BuiltinProviderOAuthClientSchemaResponse = {
+      schema: [
+        {
+          name: 'client_id',
+          label: { en_US: 'Client ID' },
+          type: 'text-input',
+          required: true,
+        },
+        {
+          name: 'client_secret',
+          label: { en_US: 'Client Secret' },
+          type: 'secret-input',
+          required: true,
+        },
+      ],
+      is_oauth_custom_client_enabled: false,
+      is_system_oauth_params_exists: false,
+      client_params: {},
+      redirect_uri: 'https://example.com/oauth/callback',
+    }
+    mockConsoleCall.mockImplementation(async (path: string[]) => {
+      if (path.includes('clientSchema')) return structuredClone(oauthClient)
+      return []
+    })
+    mockOAuthClientMutations.save.mockImplementation(async () => {
+      oauthClient = {
+        ...oauthClient,
+        is_oauth_custom_client_enabled: true,
+        client_params: { client_id: 'drive-client', client_secret: '[__HIDDEN__]' },
+      }
+      return { result: 'success' }
+    })
+    mockOAuthClientMutations.remove.mockImplementation(async () => {
+      oauthClient = {
+        ...oauthClient,
+        is_oauth_custom_client_enabled: false,
+        client_params: {},
+      }
+      return { result: 'success' }
+    })
     mockUsePluginAuth.mockReturnValue({
       isAuthorized: true,
       isLoading: false,
       canOAuth: true,
       canApiKey: false,
-      credentials: [createCredential({ credential_type: CredentialTypeEnum.OAUTH2 })],
+      credentials: [
+        createCredential({
+          name: 'Workspace Drive connection',
+          credential_type: CredentialTypeEnum.OAUTH2,
+        }),
+      ],
       invalidPluginCredentialInfo: vi.fn(),
       notAllowCustomCredential: false,
     })
-    render(
-      <PluginAuth
-        pluginPayload={defaultPayload}
-        nodeAuth={{ onAuthorizationItemClick: vi.fn(), providerName: 'Google Drive' }}
-        showAuthorizationTabs
-      />,
-      { wrapper: createConnectionQueryWrapper() },
-    )
+    const AppUserDraftHarness = () => {
+      const [draft, setDraft] = useState<AppUserAuthDraft>()
+      return (
+        <PluginAuth
+          pluginPayload={defaultPayload}
+          nodeAuth={{ onAuthorizationItemClick: vi.fn(), providerName: 'Google Drive' }}
+          appUserAuth={{
+            draft,
+            onChange: (nextDraft) => {
+              setDraft(nextDraft)
+              onDraftChange(nextDraft)
+            },
+          }}
+          showAuthorizationTabs
+        />
+      )
+    }
+    render(<AppUserDraftHarness />, { wrapper: createConnectionQueryWrapper() })
     const appUserTab = screen.getByRole('tab', { name: 'plugin.auth.appUserAuth' })
     await user.click(appUserTab)
     let panel = screen.getByRole('tabpanel', { name: 'plugin.auth.appUserAuth' })
     expect(
       within(panel).queryByRole('checkbox', { name: 'plugin.auth.connection.apiKey' }),
     ).not.toBeInTheDocument()
-    expect(within(panel).getByText('plugin.auth.appUser.setupClient')).toBeVisible()
+    expect(await within(panel).findByText('plugin.auth.appUser.setupClient')).toBeVisible()
     expect(within(panel).getByText('plugin.auth.appUser.enterDescription')).toBeVisible()
     await user.type(
       within(panel).getByRole('textbox', { name: 'plugin.auth.appUser.connectionDescription' }),
@@ -544,16 +677,21 @@ describe('PluginAuth', () => {
       within(panel).getByRole('button', { name: 'plugin.auth.appUser.configureClient' }),
     )
     const dialog = await screen.findByRole('dialog', { name: 'plugin.auth.oauthClientSettings' })
+    expect(within(dialog).getByText('https://example.com/oauth/callback')).toBeVisible()
+    await user.type(within(dialog).getByRole('textbox', { name: 'Client ID' }), 'drive-client')
     await user.type(
-      within(dialog).getByRole('textbox', { name: 'plugin.auth.appUser.clientId' }),
-      'drive-client',
-    )
-    await user.type(
-      within(dialog).getByLabelText('plugin.auth.appUser.clientSecret', { exact: false }),
+      within(dialog).getByLabelText('Client Secret', { exact: false }),
       'drive-secret',
     )
     await user.click(within(dialog).getByRole('button', { name: 'plugin.auth.saveOnly' }))
     await waitFor(() => expect(dialog).not.toBeInTheDocument())
+    expect(mockOAuthClientMutations.save).toHaveBeenCalledExactlyOnceWith({
+      client_params: { client_id: 'drive-client', client_secret: 'drive-secret' },
+      enable_oauth_custom_client: true,
+    })
+    expect(
+      await within(panel).findByRole('button', { name: 'plugin.auth.appUser.customClient' }),
+    ).toBeVisible()
     expect(within(panel).queryByText('plugin.auth.appUser.setupClient')).not.toBeInTheDocument()
     expect(
       within(panel).getByText(
@@ -563,6 +701,29 @@ describe('PluginAuth', () => {
     await user.click(within(panel).getByRole('checkbox', { name: 'plugin.auth.appUser.oauth' }))
 
     await user.click(screen.getByRole('tab', { name: 'plugin.auth.workspaceAuth' }))
+    const openWorkspaceClientSettings = async () => {
+      const workspacePanel = screen.getByRole('tabpanel', { name: 'plugin.auth.workspaceAuth' })
+      await user.click(
+        within(workspacePanel).getByRole('button', { name: /^Workspace Drive connection/ }),
+      )
+      const settings = await screen.findByRole('button', {
+        name: 'plugin.auth.connection.oauthClientSettings',
+      })
+      await waitFor(() => expect(settings).toBeEnabled())
+      await user.click(settings)
+      return screen.findByRole('dialog', { name: 'plugin.auth.oauthClientSettings' })
+    }
+    const workspaceSettings = await openWorkspaceClientSettings()
+    expect(within(workspaceSettings).getByRole('textbox', { name: 'Client ID' })).toHaveValue(
+      'drive-client',
+    )
+    expect(within(workspaceSettings).getByLabelText('Client Secret', { exact: false })).toHaveValue(
+      '[__HIDDEN__]',
+    )
+    await user.click(
+      within(workspaceSettings).getByRole('button', { name: 'common.operation.cancel' }),
+    )
+    await waitFor(() => expect(workspaceSettings).not.toBeInTheDocument())
     await user.click(screen.getByRole('tab', { name: 'plugin.auth.reuseFromNode' }))
     await user.click(appUserTab)
 
@@ -578,12 +739,48 @@ describe('PluginAuth', () => {
     )
 
     const reopened = await screen.findByRole('dialog', { name: 'plugin.auth.oauthClientSettings' })
+    expect(within(reopened).getByRole('textbox', { name: 'Client ID' })).toHaveValue('drive-client')
+    expect(within(reopened).getByLabelText('Client Secret', { exact: false })).toHaveValue(
+      '[__HIDDEN__]',
+    )
+    await user.click(within(reopened).getByRole('button', { name: 'common.operation.remove' }))
+    await waitFor(() => expect(reopened).not.toBeInTheDocument())
+    expect(mockOAuthClientMutations.remove).toHaveBeenCalledExactlyOnceWith()
     expect(
-      within(reopened).getByRole('textbox', { name: 'plugin.auth.appUser.clientId' }),
-    ).toHaveValue('drive-client')
+      await within(panel).findByRole('button', { name: 'plugin.auth.appUser.configureClient' }),
+    ).toBeVisible()
+    expect(within(panel).getByText('plugin.auth.appUser.setupClient')).toBeVisible()
     expect(
-      within(reopened).getByLabelText('plugin.auth.appUser.clientSecret', { exact: false }),
-    ).toHaveValue('drive-secret')
+      within(panel).getByRole('textbox', { name: 'plugin.auth.appUser.connectionDescription' }),
+    ).toHaveValue('Choose a Drive connection')
+    expect(onDraftChange).toHaveBeenLastCalledWith({
+      oauthEnabled: true,
+      apiKeyEnabled: false,
+      description: 'Choose a Drive connection',
+      client: undefined,
+    })
+    for (const [draft] of onDraftChange.mock.calls) {
+      if (draft.client) expect(draft.client).toEqual({ type: 'custom' })
+    }
+
+    await user.click(screen.getByRole('tab', { name: 'plugin.auth.workspaceAuth' }))
+    const clearedWorkspaceSettings = await openWorkspaceClientSettings()
+    expect(
+      within(clearedWorkspaceSettings).getByRole('textbox', { name: 'Client ID' }),
+    ).toHaveValue('')
+    expect(
+      within(clearedWorkspaceSettings).getByLabelText('Client Secret', { exact: false }),
+    ).toHaveValue('')
+    expect(
+      within(clearedWorkspaceSettings).queryByRole('button', { name: 'common.operation.remove' }),
+    ).not.toBeInTheDocument()
+    const schemaRequests = mockConsoleCall.mock.calls.filter(([path]) =>
+      path.includes('clientSchema'),
+    )
+    expect(schemaRequests.length).toBeGreaterThan(0)
+    for (const [, input] of schemaRequests) {
+      expect(input).toEqual({ params: { provider: defaultPayload.provider } })
+    }
   })
 
   it('initializes a controlled App user auth draft from supported methods when first selected', async () => {
@@ -617,7 +814,7 @@ describe('PluginAuth', () => {
         />
       )
     }
-    render(<ControlledPluginAuth />)
+    render(<ControlledPluginAuth />, { wrapper: createConnectionQueryWrapper() })
     expect(onDraftChange).not.toHaveBeenCalled()
     const appUserTab = screen.getByRole('tab', { name: 'plugin.auth.appUserAuth' })
     await user.click(appUserTab)
@@ -660,7 +857,7 @@ describe('PluginAuth', () => {
     ).toHaveValue('Keep this draft')
   })
 
-  it('preserves and validates an existing controlled App user auth draft', async () => {
+  it('preserves controlled methods and description when provider client status synchronizes', async () => {
     const user = userEvent.setup()
     const onDraftChange = vi.fn()
     mockUsePluginAuth.mockReturnValue({
@@ -672,24 +869,38 @@ describe('PluginAuth', () => {
       invalidPluginCredentialInfo: vi.fn(),
       notAllowCustomCredential: false,
     })
-    render(
-      <PluginAuth
-        pluginPayload={defaultPayload}
-        showAuthorizationTabs
-        appUserAuth={{
-          draft: {
-            oauthEnabled: false,
-            apiKeyEnabled: false,
-            description: 'Existing connection description',
-          },
-          onChange: onDraftChange,
-        }}
-      />,
-    )
+    const ControlledPluginAuth = () => {
+      const [draft, setDraft] = useState<AppUserAuthDraft>({
+        oauthEnabled: false,
+        apiKeyEnabled: false,
+        description: 'Existing connection description',
+      })
+      return (
+        <PluginAuth
+          pluginPayload={defaultPayload}
+          showAuthorizationTabs
+          appUserAuth={{
+            draft,
+            onChange: (nextDraft) => {
+              setDraft(nextDraft)
+              onDraftChange(nextDraft)
+            },
+          }}
+        />
+      )
+    }
+    render(<ControlledPluginAuth />, { wrapper: createConnectionQueryWrapper() })
     const appUserTab = screen.getByRole('tab', { name: 'plugin.auth.appUserAuth' })
     await user.click(appUserTab)
 
-    expect(onDraftChange).not.toHaveBeenCalled()
+    await waitFor(() =>
+      expect(onDraftChange).toHaveBeenCalledExactlyOnceWith({
+        oauthEnabled: false,
+        apiKeyEnabled: false,
+        description: 'Existing connection description',
+        client: { type: 'default' },
+      }),
+    )
     const panel = screen.getByRole('tabpanel', { name: 'plugin.auth.appUserAuth' })
     expect(
       within(panel).getByRole('checkbox', { name: 'plugin.auth.appUser.oauth' }),
@@ -705,7 +916,7 @@ describe('PluginAuth', () => {
     await user.click(screen.getByRole('tab', { name: 'plugin.auth.reuseFromNode' }))
     await user.click(appUserTab)
 
-    expect(onDraftChange).not.toHaveBeenCalled()
+    expect(onDraftChange).toHaveBeenCalledTimes(1)
     expect(
       within(screen.getByRole('tabpanel', { name: 'plugin.auth.appUserAuth' })).getByRole(
         'textbox',

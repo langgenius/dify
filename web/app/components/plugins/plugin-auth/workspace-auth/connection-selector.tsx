@@ -3,7 +3,6 @@ import type { ConnectionPickerOption } from '../connection-picker'
 import type { usePluginAuth } from '../hooks/use-plugin-auth'
 import type { Credential, PluginPayload } from '../types'
 import type { ConnectionActionsDataSource } from './connection-actions'
-import type { FormSchema } from '@/app/components/base/form/types'
 import type { CredentialPermission } from '@/models/permission'
 import { Button } from '@langgenius/dify-ui/button'
 import { createDropdownMenuHandle } from '@langgenius/dify-ui/dropdown-menu'
@@ -13,7 +12,6 @@ import { memo, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
-import { useRenderI18nObject } from '@/hooks/use-i18n'
 import { openOAuthPopup } from '@/hooks/use-oauth'
 import { PermissionLevel } from '@/models/permission'
 import { consoleQuery } from '@/service/console'
@@ -21,6 +19,7 @@ import ApiKeyModal from '../authorize/api-key-modal'
 import OAuthClientSettings from '../authorize/oauth-client-settings'
 import OAuthVisibilityDialog from '../authorize/oauth-visibility-dialog'
 import ConnectionPicker from '../connection-picker'
+import { useOAuthClient } from '../hooks/use-oauth-client'
 import { CredentialTypeEnum } from '../types'
 import ConnectionActions, { ConnectionActionsTrigger } from './connection-actions'
 
@@ -214,6 +213,7 @@ const ConnectionSelectorContent = ({
         <ConnectionActions
           handle={connectionActionsHandle}
           dataSource={dataSource.connectionActions}
+          pluginPayload={dataSource.pluginPayload}
           providerName={dataSource.providerName}
           onAction={() => setOpen(false)}
         />
@@ -231,6 +231,7 @@ const ConnectionSelectorContent = ({
           <ApiKeyModal
             key={apiKeySession}
             dataSource={dataSource.apiKey}
+            pluginPayload={dataSource.pluginPayload}
             open={apiKeyOpen}
             onOpenChange={setApiKeyOpen}
             disabled={!dataSource.canCreate}
@@ -258,7 +259,6 @@ const WorkspaceConnectionSelector = ({
   onDefaultCredentialChange,
 }: ConnectionSelectorProps) => {
   const { t } = useTranslation(['common', 'plugin', 'datasetSettings'])
-  const renderI18nObject = useRenderI18nObject()
   const { canUseCredential, canCreateCredential, canManageCredential } = useCredentialPermissions()
   const {
     credentials,
@@ -277,12 +277,8 @@ const WorkspaceConnectionSelector = ({
         : skipToken,
     }),
   )
-  const oauthSchema = useQuery(
-    providerApi.oauth.clientSchema.get.queryOptions({
-      input: canOAuth ? { params } : skipToken,
-      staleTime: 0,
-    }),
-  )
+  const oauthClient = useOAuthClient(pluginPayload, !!canOAuth)
+  const oauthSchema = oauthClient.query
   const [oauthSettingsSession, setOauthSettingsSession] = useState(0)
   const [oauthSettingsOpen, setOauthSettingsOpen] = useState(false)
   const [visibilityOpen, setVisibilityOpen] = useState(false)
@@ -349,34 +345,6 @@ const WorkspaceConnectionSelector = ({
       openOAuthSettings()
     }
   }
-  const oauthClient = oauthSchema.data
-  const oauthClientParams = oauthClient?.client_params || {}
-  const oauthFormSchemas: FormSchema[] = (oauthClient?.schema || []).map((field) => ({
-    ...field,
-    label: field.label ? renderI18nObject(field.label) : field.name,
-    required: !!field.required,
-    default: oauthClientParams[field.name] ?? field.default,
-    help: field.help ? renderI18nObject(field.help) : undefined,
-    placeholder: field.placeholder ? renderI18nObject(field.placeholder) : undefined,
-    scope: field.scope ?? undefined,
-    url: field.url ?? undefined,
-    options: field.options?.map((option) => ({ ...option, label: renderI18nObject(option.label) })),
-    show_on: oauthClient?.is_system_oauth_params_exists
-      ? [{ variable: '__oauth_client__', value: 'custom' }]
-      : undefined,
-  }))
-  if (oauthClient?.is_system_oauth_params_exists) {
-    oauthFormSchemas.unshift({
-      name: '__oauth_client__',
-      type: FormTypeEnum.radio,
-      label: t(($) => $['auth.oauthClient'], { ns: 'plugin' }),
-      required: false,
-      options: [
-        { label: t(($) => $['auth.default'], { ns: 'plugin' }), value: 'default' },
-        { label: t(($) => $['auth.custom'], { ns: 'plugin' }), value: 'custom' },
-      ],
-    })
-  }
 
   return (
     <>
@@ -413,18 +381,11 @@ const WorkspaceConnectionSelector = ({
           open={oauthSettingsOpen}
           onOpenChange={setOauthSettingsOpen}
           pluginPayload={pluginPayload}
-          schemas={oauthFormSchemas}
-          redirectUri={oauthClient?.redirect_uri}
+          schemas={oauthClient.schemas}
+          redirectUri={oauthClient.redirectUri}
           disabled={!canManageCredential || oauthSchema.isPending}
-          editValues={{
-            ...oauthClientParams,
-            __oauth_client__:
-              oauthClient?.is_oauth_custom_client_enabled ||
-              !oauthClient?.is_system_oauth_params_exists
-                ? 'custom'
-                : 'default',
-          }}
-          hasOriginalClientParams={Object.keys(oauthClientParams).length > 0}
+          editValues={oauthClient.editValues}
+          hasOriginalClientParams={oauthClient.hasOriginalClientParams}
           onUpdate={() => {
             invalidPluginCredentialInfo()
             oauthSchema.refetch().catch(() => {})

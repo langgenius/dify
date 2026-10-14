@@ -1,3 +1,4 @@
+import type { PluginPayload } from '../types'
 import type { AppUserAuthDraft } from './draft'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
@@ -5,32 +6,42 @@ import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
 import { Fieldset } from '@langgenius/dify-ui/fieldset'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
-import { useId, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
+import OAuthClientSettings from '../authorize/oauth-client-settings'
+import { useOAuthClient } from '../hooks/use-oauth-client'
 import ConnectionSelector from '../workspace-auth/connection-selector'
 import { createAppUserAuthDraft, validateAppUserAuth } from './draft'
-import OAuthClientModal from './oauth-client-modal'
 import { createMockTestConnectionDraft } from './test-connection/model'
 import { useMockTestConnectionSource } from './test-connection/use-mock-test-connection-source'
 
 type AppUserAuthProps = {
+  pluginPayload: PluginPayload
+  active?: boolean
+  notAllowCustomCredential?: boolean
+  onUpdate?: () => void
   canOAuth?: boolean
   canApiKey?: boolean
   providerName?: string
-  defaultClientAvailable?: boolean
   value?: AppUserAuthDraft
   onChange?: (draft: AppUserAuthDraft) => void
 }
 
 const AppUserAuth = ({
+  pluginPayload,
+  active = true,
+  notAllowCustomCredential,
+  onUpdate,
   canOAuth = true,
   canApiKey = true,
   providerName,
-  defaultClientAvailable = false,
   value,
   onChange,
 }: AppUserAuthProps) => {
   const { t } = useTranslation(['plugin'])
+  const { canManageCredential } = useCredentialPermissions()
+  const oauthClient = useOAuthClient(pluginPayload, canOAuth && active)
   const descriptionLabelId = useId()
   const descriptionCountId = useId()
   const oauthDescriptionId = useId()
@@ -40,11 +51,33 @@ const AppUserAuth = ({
   const testConnectionLabelId = useId()
   // Standalone previews own their draft; workflow callers share it with the canvas.
   const [localDraft, setLocalDraft] = useState(() =>
-    createAppUserAuthDraft({ canOAuth, canApiKey, defaultClientAvailable }),
+    createAppUserAuthDraft({ canOAuth, canApiKey }),
   )
   const draft = value ?? localDraft
-  const errors = validateAppUserAuth(draft)
-  const { oauthEnabled, apiKeyEnabled, description, client } = draft
+  const client = oauthClient.clientType ? { type: oauthClient.clientType } : undefined
+  const errors = validateAppUserAuth({ ...draft, client })
+  const { oauthEnabled, apiKeyEnabled, description } = draft
+  const oauthDisabled =
+    !canManageCredential ||
+    !!notAllowCustomCredential ||
+    oauthClient.query.isPending ||
+    oauthClient.query.isError
+  // The canvas validates the UI draft. Mirror only the provider's configured
+  // client type; its parameters and secrets remain in the shared query/form.
+  useEffect(() => {
+    if (
+      !value ||
+      !canOAuth ||
+      !oauthClient.query.isSuccess ||
+      draft.client?.type === oauthClient.clientType
+    )
+      return
+    const nextDraft = {
+      ...draft,
+      client: oauthClient.clientType ? { type: oauthClient.clientType } : undefined,
+    }
+    onChange?.(nextDraft)
+  }, [canOAuth, oauthClient.query.isSuccess, oauthClient.clientType, draft, value, onChange])
   const testConnection =
     draft.testConnection ??
     createMockTestConnectionDraft({
@@ -52,18 +85,27 @@ const AppUserAuth = ({
       canApiKey,
     })
   const updateDraft = (updates: Partial<AppUserAuthDraft>) => {
-    const nextDraft = { ...draft, ...updates }
+    const nextDraft = { ...draft, client, ...updates }
     if (!value) setLocalDraft(nextDraft)
     onChange?.(nextDraft)
   }
-  const [clientDialog, setClientDialog] = useState<{ open: boolean } | null>(null)
+  const [clientDialogSession, setClientDialogSession] = useState(0)
+  const [clientDialogOpen, setClientDialogOpen] = useState(false)
+  const openClientDialog = () => {
+    if (oauthDisabled) return
+    setClientDialogSession((session) => session + 1)
+    setClientDialogOpen(true)
+  }
   const testConnectionSource = useMockTestConnectionSource({
+    pluginPayload,
+    active,
     value: testConnection,
     canOAuth,
     canApiKey,
     providerName,
     onChange: (testConnection) => updateDraft({ testConnection }),
-    onOAuthClientSettings: () => setClientDialog({ open: true }),
+    onOAuthClientSettings: openClientDialog,
+    oauthDisabled,
   })
 
   return (
@@ -101,7 +143,8 @@ const AppUserAuth = ({
                     type="button"
                     variant="ghost"
                     className="h-8 w-full justify-between gap-0 rounded-lg bg-components-input-bg-normal p-0 system-sm-regular text-text-primary hover:bg-components-input-bg-hover"
-                    onClick={() => setClientDialog({ open: true })}
+                    onClick={openClientDialog}
+                    disabled={oauthDisabled}
                     aria-describedby={errors.oauthClient ? oauthClientErrorId : undefined}
                   >
                     <span className="min-w-0 px-2 wrap-anywhere">
@@ -118,7 +161,8 @@ const AppUserAuth = ({
                     type="button"
                     variant="primary"
                     className="h-8 w-full"
-                    onClick={() => setClientDialog({ open: true })}
+                    onClick={openClientDialog}
+                    disabled={oauthDisabled}
                     aria-describedby={errors.oauthClient ? oauthClientErrorId : undefined}
                   >
                     {t(($) => $['auth.appUser.configureClient'], { ns: 'plugin' })}
@@ -227,14 +271,22 @@ const AppUserAuth = ({
           {t(($) => $['auth.appUser.enterDescription'], { ns: 'plugin' })}
         </FieldError>
       </Field>
-      {clientDialog && (
-        <OAuthClientModal
-          client={client}
-          defaultClientAvailable={defaultClientAvailable}
-          open={clientDialog.open}
-          onOpenChange={(open) => setClientDialog({ open })}
-          onCloseComplete={() => setClientDialog(null)}
-          onSave={(client) => updateDraft({ client })}
+      {clientDialogSession > 0 && (
+        <OAuthClientSettings
+          key={clientDialogSession}
+          pluginPayload={pluginPayload}
+          schemas={oauthClient.schemas}
+          editValues={oauthClient.editValues}
+          redirectUri={oauthClient.redirectUri}
+          hasOriginalClientParams={oauthClient.hasOriginalClientParams}
+          disabled={oauthDisabled}
+          open={clientDialogOpen}
+          onOpenChange={setClientDialogOpen}
+          onUpdate={() => {
+            onUpdate?.()
+            oauthClient.query.refetch().catch(() => {})
+          }}
+          onRequestAuthorization={testConnectionSource.addOAuth}
         />
       )}
     </div>

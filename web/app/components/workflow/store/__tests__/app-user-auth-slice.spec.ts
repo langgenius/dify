@@ -101,7 +101,7 @@ describe('Workflow App user Auth draft', () => {
       oauthEnabled: true,
       apiKeyEnabled: false,
       description: '',
-      client: { type: 'custom', clientId: 'local-client', clientSecret: 'local-secret' },
+      client: { type: 'custom' },
     })
     expect(store.getState().nodeAuthDrafts[nodeId]?.errors).toEqual({
       methods: false,

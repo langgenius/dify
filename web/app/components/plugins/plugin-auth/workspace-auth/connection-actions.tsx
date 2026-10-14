@@ -300,6 +300,7 @@ const ConnectionActionsContent = ({
             open={replacementOpen}
             onOpenChange={setReplacementOpen}
             dataSource={dataSource.apiKey}
+            pluginPayload={pluginPayload}
             editValues={{
               ...replacementCredential.credentials,
               __name__: replacementCredential.name,

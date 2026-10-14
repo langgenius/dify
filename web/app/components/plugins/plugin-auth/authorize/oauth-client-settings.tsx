@@ -75,7 +75,7 @@ const OAuthClientSettings = ({
         needCheckValidatedValues: true,
         needTransformWhenSecretFieldIsPristine: true,
       }) || { isCheckValidated: false, values: {} }
-      if (!isCheckValidated) throw new Error('error')
+      if (!isCheckValidated) return false
       const { __oauth_client__, ...restValues } = values
 
       handleSetDoingAction(true)

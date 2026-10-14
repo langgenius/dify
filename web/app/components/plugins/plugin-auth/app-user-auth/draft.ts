@@ -2,9 +2,7 @@ import type { TestConnectionDraft } from './test-connection/model'
 
 export type AuthorizationTab = 'workspace-auth' | 'app-user-auth' | 'reuse-from-node'
 
-export type OAuthClientDraft =
-  | { type: 'default' }
-  | { type: 'custom'; clientId: string; clientSecret: string }
+export type OAuthClientDraft = { type: 'default' | 'custom' }
 
 export type AppUserAuthDraft = {
   oauthEnabled: boolean
@@ -37,10 +35,6 @@ export const createAppUserAuthDraft = ({
 
 export const validateAppUserAuth = (draft: AppUserAuthDraft): AppUserAuthErrors => ({
   methods: !draft.oauthEnabled && !draft.apiKeyEnabled,
-  oauthClient:
-    draft.oauthEnabled &&
-    (!draft.client ||
-      (draft.client.type === 'custom' &&
-        (!draft.client.clientId.trim() || !draft.client.clientSecret.trim()))),
+  oauthClient: draft.oauthEnabled && !draft.client,
   description: !draft.description.trim() || draft.description.length > 50,
 })
