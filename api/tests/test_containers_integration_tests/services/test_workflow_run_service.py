@@ -135,7 +135,7 @@ class TestWorkflowRunService:
         Returns:
             WorkflowRun: Created workflow run instance
         """
-        fake = Faker()
+        Faker()
 
         # Create workflow run with offset timestamp
         base_time = datetime.now(UTC)
@@ -237,7 +237,7 @@ class TestWorkflowRunService:
         - Repository method calls
         """
         # Arrange: Create test data
-        fake = Faker()
+        Faker()
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Create multiple workflow runs
@@ -284,7 +284,7 @@ class TestWorkflowRunService:
         - Repository method calls with proper parameters
         """
         # Arrange: Create test data
-        fake = Faker()
+        Faker()
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Create multiple workflow runs with different timestamps
@@ -333,11 +333,11 @@ class TestWorkflowRunService:
         - Repository method calls with default values
         """
         # Arrange: Create test data
-        fake = Faker()
+        Faker()
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Create workflow runs
-        workflow_run = self._create_test_workflow_run(db_session_with_containers, app, account, "debugging")
+        self._create_test_workflow_run(db_session_with_containers, app, account, "debugging")
 
         # Act: Execute the method under test without limit
         args = {}  # No limit specified
@@ -378,7 +378,7 @@ class TestWorkflowRunService:
         - WorkflowWithMessage wrapper functionality
         """
         # Arrange: Create test data
-        fake = Faker()
+        Faker()
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Create workflow runs with messages
@@ -387,7 +387,7 @@ class TestWorkflowRunService:
             workflow_run = self._create_test_workflow_run(
                 db_session_with_containers, app, account, "debugging", offset_minutes=i
             )
-            message = self._create_test_message(db_session_with_containers, app, account, workflow_run)
+            self._create_test_message(db_session_with_containers, app, account, workflow_run)
             workflow_runs.append(workflow_run)
 
         # Act: Execute the method under test
@@ -429,7 +429,7 @@ class TestWorkflowRunService:
         - Repository method calls with proper parameters
         """
         # Arrange: Create test data
-        fake = Faker()
+        Faker()
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Create workflow run
@@ -467,7 +467,7 @@ class TestWorkflowRunService:
         - Return value for missing records
         """
         # Arrange: Create test data
-        fake = Faker()
+        Faker()
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Use a non-existent UUID
@@ -499,7 +499,7 @@ class TestWorkflowRunService:
         - Context setup for plugin tool providers
         """
         # Arrange: Create test data
-        fake = Faker()
+        Faker()
         app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
 
         # Create workflow run

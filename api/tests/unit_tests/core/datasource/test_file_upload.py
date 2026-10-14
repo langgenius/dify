@@ -359,7 +359,6 @@ class TestVirusScanningIntegration:
         # When virus scanning is added, this test should be updated
 
         # Arrange
-        content = b"This could be any content"
 
         # Act - No virus scanning function exists yet
         # This is a placeholder for future implementation

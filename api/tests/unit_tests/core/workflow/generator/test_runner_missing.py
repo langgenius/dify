@@ -75,7 +75,6 @@ def test_collect_container_errors():
     nodes = [
         {"id": "n1", "data": {"type": "llm"}},
     ]
-    edges = []
     # Test would go here but we need to see what _validate_structure calls
 
 
@@ -182,5 +181,5 @@ def test_missing_terminal_mode_auto():
     graph = {"nodes": [{"id": "n1", "data": {"type": "start"}}], "edges": []}
 
     # Missing terminal check happens inside _validate_structure
-    errors = WorkflowGenerator._validate_structure(graph=graph, mode="workflow", installed_tools=set())
+    WorkflowGenerator._validate_structure(graph=graph, mode="workflow", installed_tools=set())
     # Mocking this deeply is hard, but we can verify it doesn't fail

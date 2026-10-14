@@ -287,7 +287,7 @@ class WeaviateVector(BaseVector):
 
                 self._ensure_properties()
                 redis_client.set(cache_key, 1, ex=3600)
-            except Exception as e:
+            except Exception:
                 logger.exception("Error creating collection %s", self._collection_name)
                 raise
 

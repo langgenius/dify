@@ -1885,7 +1885,7 @@ class DraftWorkflowTriggerNodeApi(Resource):
                 files=files,
             )
             return jsonable_encoder(node_execution)
-        except Exception as e:
+        except Exception:
             logger.exception("Error running draft workflow trigger node")
             return jsonable_encoder(
                 {"status": "error", "error": "An unexpected error occurred while running the node."}

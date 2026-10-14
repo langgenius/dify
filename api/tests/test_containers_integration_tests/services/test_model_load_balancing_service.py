@@ -124,7 +124,7 @@ class TestModelLoadBalancingService:
         Returns:
             tuple: (provider, provider_model_setting) - Created provider and setting instances
         """
-        fake = Faker()
+        Faker()
 
         # Create provider
         provider = Provider(
@@ -162,7 +162,7 @@ class TestModelLoadBalancingService:
         - Correct method calls to provider configuration
         """
         # Arrange: Create test data
-        fake = Faker()
+        Faker()
         account, tenant = self._create_test_account_and_tenant(
             db_session_with_containers, mock_external_service_dependencies
         )
@@ -205,7 +205,7 @@ class TestModelLoadBalancingService:
         - Correct method calls to provider configuration
         """
         # Arrange: Create test data
-        fake = Faker()
+        Faker()
         account, tenant = self._create_test_account_and_tenant(
             db_session_with_containers, mock_external_service_dependencies
         )
@@ -248,7 +248,7 @@ class TestModelLoadBalancingService:
         - No database state changes
         """
         # Arrange: Create test data
-        fake = Faker()
+        Faker()
         account, tenant = self._create_test_account_and_tenant(
             db_session_with_containers, mock_external_service_dependencies
         )
@@ -284,7 +284,7 @@ class TestModelLoadBalancingService:
         - Correct return format and data structure
         """
         # Arrange: Create test data
-        fake = Faker()
+        Faker()
         account, tenant = self._create_test_account_and_tenant(
             db_session_with_containers, mock_external_service_dependencies
         )
@@ -371,7 +371,7 @@ class TestModelLoadBalancingService:
         - No database state changes
         """
         # Arrange: Create test data
-        fake = Faker()
+        Faker()
         account, tenant = self._create_test_account_and_tenant(
             db_session_with_containers, mock_external_service_dependencies
         )
@@ -411,7 +411,7 @@ class TestModelLoadBalancingService:
         - Inherit config initialization when needed
         """
         # Arrange: Create test data
-        fake = Faker()
+        Faker()
         account, tenant = self._create_test_account_and_tenant(
             db_session_with_containers, mock_external_service_dependencies
         )

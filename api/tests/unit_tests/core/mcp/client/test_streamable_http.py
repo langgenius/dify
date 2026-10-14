@@ -206,17 +206,13 @@ def test_streamablehttp_client_queue_cleanup():
     """Test that StreamableHTTP client properly cleans up queues on exit."""
     test_url = "http://test.example/mcp"
 
-    read_queue = None
-    write_queue = None
-
     with patch("core.mcp.client.streamable_client.create_ssrf_proxy_mcp_http_client") as mock_client_factory:
         # Mock connection that raises an exception
         mock_client_factory.side_effect = Exception("Connection failed")
 
         try:
             with streamablehttp_client(test_url) as (rq, wq, get_session_id):
-                read_queue = rq
-                write_queue = wq
+                pass
         except Exception:
             pass  # Expected to fail
 
@@ -252,7 +248,7 @@ def test_streamablehttp_client_headers_propagation(monkeypatch: pytest.MonkeyPat
 def test_streamablehttp_client_concurrent_access():
     """Test StreamableHTTP client behavior with concurrent queue access."""
     test_read_queue: queue.Queue = queue.Queue()
-    test_write_queue: queue.Queue = queue.Queue()
+    queue.Queue()
 
     # Simulate concurrent producers and consumers
     def producer():

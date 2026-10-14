@@ -125,7 +125,7 @@ class AudioApi(WebApiResource):
             raise CompletionRequestError(e.description)
         except ValueError as e:
             raise e
-        except Exception as e:
+        except Exception:
             logger.exception("Failed to handle post request to AudioApi")
             raise InternalServerError()
 
@@ -189,6 +189,6 @@ class TextApi(WebApiResource):
             raise CompletionRequestError(e.description)
         except ValueError as e:
             raise e
-        except Exception as e:
+        except Exception:
             logger.exception("Failed to handle post request to TextApi")
             raise InternalServerError()

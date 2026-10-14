@@ -19,7 +19,7 @@ def _build_converter():
         workflow_id="wf-1",
         workflow_execution_id="run-1",
     )
-    runtime_state = GraphRuntimeState(variable_pool=VariablePool(), start_at=0.0)
+    GraphRuntimeState(variable_pool=VariablePool(), start_at=0.0)
     app_entity = SimpleNamespace(
         task_id="task-1",
         app_config=SimpleNamespace(app_id="app-1", tenant_id="tenant-1"),

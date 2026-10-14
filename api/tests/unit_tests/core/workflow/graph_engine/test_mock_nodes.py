@@ -689,7 +689,7 @@ class MockTemplateTransformNode(MockNodeMixin, TemplateTransformNode):
                 return NodeRunResult(
                     status=WorkflowNodeExecutionStatus.SUCCEEDED, inputs=variables, outputs={"output": result_text}
                 )
-        except Exception as e:
+        except Exception:
             # If direct Jinja2 fails, try CodeExecutor as fallback
             try:
                 from core.helper.code_executor.code_executor import CodeExecutor, CodeLanguage

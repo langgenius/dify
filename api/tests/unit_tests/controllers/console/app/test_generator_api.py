@@ -129,7 +129,7 @@ def test_instruction_generate_workflow_not_found(
     api = generator_module.InstructionGenerateApi()
     method = unwrap(api.post)
 
-    app_model = _persist_app(sqlite_session)
+    _persist_app(sqlite_session)
     _install_workflow_service(monkeypatch, workflow=None)
 
     with app.test_request_context(
@@ -157,7 +157,7 @@ def test_instruction_generate_node_missing(
     api = generator_module.InstructionGenerateApi()
     method = unwrap(api.post)
 
-    app_model = _persist_app(sqlite_session)
+    _persist_app(sqlite_session)
 
     workflow = _workflow({"nodes": []})
     _install_workflow_service(monkeypatch, workflow=workflow)

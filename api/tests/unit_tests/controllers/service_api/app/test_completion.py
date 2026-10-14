@@ -596,7 +596,7 @@ class TestChatApiController:
     def test_rejects_sandbox_plan_workflow_version(
         self, app: Flask, monkeypatch: pytest.MonkeyPatch, orm_session: Session
     ) -> None:
-        completion_module = sys.modules["controllers.service_api.app.completion"]
+        sys.modules["controllers.service_api.app.completion"]
         apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
 
         billing_get_info = Mock(return_value={"subscription": {"plan": CloudPlan.SANDBOX}})

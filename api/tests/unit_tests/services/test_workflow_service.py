@@ -3225,7 +3225,7 @@ class TestWorkflowServiceDraftExecution:
         with (
             patch("services.workflow_service.db", SimpleNamespace(engine=sqlite_engine)),
             patch("services.workflow_service.WorkflowDraftVariableService"),
-            patch("services.workflow_service.StartNodeData") as mock_start_data,
+            patch("services.workflow_service.StartNodeData"),
             patch(
                 "services.workflow_service._rebuild_file_for_user_inputs_in_start_node",
                 side_effect=lambda **kwargs: kwargs["user_inputs"],
