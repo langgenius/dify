@@ -527,7 +527,7 @@ def test_get_workflow_returns_detached_data_and_raw_environment_after_session_cl
             type=WorkflowType.CHAT,
             version="published",
             graph='{"nodes":[],"edges":[]}',
-            features=stored_features,
+            _features=stored_features,
             created_by=author.id,
             updated_by=updater.id,
             marked_name="Release",

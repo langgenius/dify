@@ -296,7 +296,7 @@ def test_draft_trigger_enrichment_is_tenant_scoped_and_tolerates_bad_graphs(
                     "edges": [],
                 }
             ),
-            features="{}",
+            _features="{}",
             created_by=ACTOR,
         )
         sqlite_session.add(workflow)

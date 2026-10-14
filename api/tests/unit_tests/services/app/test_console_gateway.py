@@ -89,12 +89,12 @@ def test_copy_preserves_shared_roster_bindings_and_clones_owned_inline_agents(
             id=workflow_id,
             tenant_id=tenant_id,
             app_id=app_id,
-            type=WorkflowType.from_app_mode(mode).value,
+            type=WorkflowType.from_app_mode(mode),
             version=Workflow.VERSION_DRAFT,
             graph=json.dumps(graph),
-            features=json.dumps({}),
-            environment_variables=[],
-            conversation_variables=[],
+            _features=json.dumps({}),
+            _environment_variables=[],
+            _conversation_variables=[],
             created_by=actor_id,
         )
         roster = Agent(
@@ -541,7 +541,7 @@ def test_real_dsl_export_releases_connection_before_plugin_request(
                     type=WorkflowType.WORKFLOW,
                     version=Workflow.VERSION_DRAFT,
                     graph='{"nodes":[],"edges":[]}',
-                    features="{}",
+                    _features="{}",
                     created_by=actor,
                 )
             )
