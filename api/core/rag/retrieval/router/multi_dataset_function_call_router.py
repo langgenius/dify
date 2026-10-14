@@ -1,4 +1,3 @@
-from typing import Union
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.credit_usage import CreditUsageCreatedBy
@@ -16,7 +15,7 @@ class FunctionCallMultiDatasetRouter:
         dataset_tools: list[PromptMessageTool],
         model_config: ModelConfigWithCredentialsEntity,
         model_instance: ModelInstance,
-    ) -> tuple[Union[str, None], LLMUsage]:
+    ) -> tuple[str | None, LLMUsage]:
         """Given input, decided what to do.
         Returns:
             Action specifying what tool to use.

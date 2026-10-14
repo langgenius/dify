@@ -3,7 +3,6 @@ import queue
 import time
 from concurrent.futures import Future, ThreadPoolExecutor
 from datetime import timedelta
-from typing import Union
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -53,11 +52,11 @@ class MockNotification(Notification[MockNotificationParams, str]):
     params: MockNotificationParams
 
 
-class ReceiveRequest(RootModel[Union[MockRequest, ClientRequest]]):
+class ReceiveRequest(RootModel[MockRequest | ClientRequest]):
     pass
 
 
-class ReceiveNotification(RootModel[Union[CancelledNotification, MockNotification, JSONRPCNotification]]):
+class ReceiveNotification(RootModel[CancelledNotification | MockNotification | JSONRPCNotification]):
     pass
 
 

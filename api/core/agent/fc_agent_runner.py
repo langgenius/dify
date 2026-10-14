@@ -3,7 +3,7 @@ import logging
 import re
 from collections.abc import Generator
 from copy import deepcopy
-from typing import Any, Union
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -173,7 +173,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                 "created_by": CreditUsageCreatedBy.APP,
             }
 
-            chunks: Union[Generator[LLMResultChunk], LLMResult] = model_instance.invoke_llm(
+            chunks: Generator[LLMResultChunk] | LLMResult = model_instance.invoke_llm(
                 prompt_messages=prompt_messages,
                 model_parameters=app_generate_entity.model_conf.parameters,
                 tools=prompt_messages_tools,
