@@ -636,9 +636,7 @@ class RateLimiter:
         self._redis_client.zremrangebyscore(key, "-inf", window_start_time)
         attempts = self._redis_client.zcard(key)
 
-        if attempts and int(attempts) >= self.max_attempts:
-            return True
-        return False
+        return bool(attempts and int(attempts) >= self.max_attempts)
 
     def increment_rate_limit(self, email: str):
         key = self._get_key(email)

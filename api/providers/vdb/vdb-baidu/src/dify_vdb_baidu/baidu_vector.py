@@ -123,9 +123,7 @@ class BaiduVector(BaseVector):
     @override
     def text_exists(self, id: str) -> bool:
         res = self._db.table(self._collection_name).query(primary_key={VDBField.PRIMARY_KEY: id})
-        if res and res.code == 0:
-            return True
-        return False
+        return bool(res and res.code == 0)
 
     @override
     def delete_by_ids(self, ids: list[str]):
