@@ -89,6 +89,8 @@ class ToolCatalogueEntry(TypedDict):
     provider_tags: NotRequired[list[str]]
     parameters: NotRequired[list[dict[str, Any]]]
     output_schema: NotRequired[dict[str, Any]]
+    # Direct public HTTP response declarations, distinct from native outputs.
+    response_contracts: NotRequired[dict[str, object]]
 
 
 class ToolCapabilityQuery(TypedDict):
