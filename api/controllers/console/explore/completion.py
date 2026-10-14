@@ -91,13 +91,10 @@ class CompletionApi(Resource):
     @error_responses(
         AppUnavailableError,
         CompletionRequestError,
-        InternalServerError,
         NotCompletionAppError,
-        NotFoundError,
         ProviderModelCurrentlyNotSupportError,
         ProviderNotInitializeError,
         ProviderQuotaExceededError,
-        UnauthorizedError,
     )
     @console_ns.expect(console_ns.models[CompletionMessageExplorePayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success")
@@ -183,14 +180,11 @@ class ChatApi(Resource):
     @error_responses(
         AppUnavailableError,
         CompletionRequestError,
-        InternalServerError,
         InvokeRateLimitHttpError,
         NotChatAppError,
-        NotFoundError,
         ProviderModelCurrentlyNotSupportError,
         ProviderNotInitializeError,
         ProviderQuotaExceededError,
-        UnauthorizedError,
     )
     @console_ns.expect(console_ns.models[ChatMessagePayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success")

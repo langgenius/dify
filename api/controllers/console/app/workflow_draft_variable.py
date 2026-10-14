@@ -313,7 +313,6 @@ class VariableApi(Resource):
     _PATCH_NAME_FIELD = "name"
     _PATCH_VALUE_FIELD = "value"
 
-    @error_responses(NotFoundError)
     @console_ns.doc("get_variable")
     @console_ns.doc(description="Get a specific workflow variable")
     @console_ns.doc(params={"app_id": "Application ID", "variable_id": "Variable ID"})
@@ -338,7 +337,6 @@ class VariableApi(Resource):
         )
         return dump_response(WorkflowDraftVariableResponse, variable)
 
-    @error_responses(NotFoundError)
     @console_ns.doc("update_variable")
     @console_ns.doc(description="Update a workflow variable")
     @console_ns.expect(console_ns.models[WorkflowDraftVariableUpdatePayload.__name__])
@@ -423,7 +421,6 @@ class VariableApi(Resource):
         db.session.commit()
         return dump_response(WorkflowDraftVariableResponse, variable)
 
-    @error_responses(NotFoundError)
     @console_ns.doc("delete_variable")
     @console_ns.doc(description="Delete a workflow variable")
     @console_ns.response(204, "Variable deleted successfully")
@@ -447,7 +444,6 @@ class VariableApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/variables/<uuid:variable_id>/reset")
 class VariableResetApi(Resource):
-    @error_responses(NotFoundError)
     @console_ns.doc("reset_variable")
     @console_ns.doc(description="Reset a workflow variable to its default value")
     @console_ns.doc(params={"app_id": "Application ID", "variable_id": "Variable ID"})
@@ -505,7 +501,6 @@ def _get_variable_list(app_model: App, node_id: str, current_user_id: str) -> Wo
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/conversation-variables")
 class ConversationVariableCollectionApi(Resource):
-    @error_responses(NotFoundError)
     @console_ns.doc("get_conversation_variables")
     @console_ns.doc(description="Get conversation variables for workflow")
     @console_ns.doc(params={"app_id": "Application ID"})

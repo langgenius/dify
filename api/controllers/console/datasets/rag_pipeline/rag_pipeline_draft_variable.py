@@ -192,7 +192,6 @@ class RagPipelineVariableApi(Resource):
     _PATCH_NAME_FIELD = "name"
     _PATCH_VALUE_FIELD = "value"
 
-    @error_responses(NotFoundError)
     @console_ns.response(
         200,
         "Variable retrieved successfully",
@@ -212,7 +211,6 @@ class RagPipelineVariableApi(Resource):
         )
         return dump_response(WorkflowDraftVariableResponse, variable)
 
-    @error_responses(NotFoundError)
     @console_ns.response(
         200,
         "Variable updated successfully",
@@ -295,7 +293,6 @@ class RagPipelineVariableApi(Resource):
         db.session.commit()
         return dump_response(WorkflowDraftVariableResponse, variable)
 
-    @error_responses(NotFoundError)
     @console_ns.response(204, "Variable deleted successfully")
     @_api_prerequisite
     def delete(self, current_user: Account, pipeline: Pipeline, variable_id: UUID):
@@ -316,7 +313,6 @@ class RagPipelineVariableApi(Resource):
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/variables/<uuid:variable_id>/reset")
 class RagPipelineVariableResetApi(Resource):
-    @error_responses(NotFoundError)
     @console_ns.response(
         200,
         "Variable reset successfully",

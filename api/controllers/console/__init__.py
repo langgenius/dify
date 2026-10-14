@@ -6,7 +6,13 @@ from typing import cast
 from flask import Blueprint, current_app, got_request_exception
 from flask_restx import Namespace
 
-from controllers.common.errors import InvalidArgumentError, register_permission_error_handler
+from controllers.common.errors import (
+    InternalServerError,
+    InvalidArgumentError,
+    NotFoundError,
+    UnauthorizedError,
+    register_permission_error_handler,
+)
 from controllers.console.error import NotInitValidateError, NotSetupError, UnauthorizedAndForceLogout
 from controllers.console.workspace.error import AccountNotInitializedError
 from libs.external_api import ExternalApi
@@ -22,13 +28,18 @@ api = ExternalApi(
 )
 register_permission_error_handler(api)
 # Errors the Console client handles centrally (bootstrap redirects, forced logout, malformed
-# input); any operation may answer with them, so no operation lists them.
+# input); any operation may answer with them, so no operation lists them. The shared
+# ``not_found``, ``unauthorized`` and ``internal_server_error`` codes are the ones Werkzeug's own
+# exceptions already produce on every operation, so documenting them per operation adds nothing.
 api.document_generic_errors(
     NotSetupError,
     NotInitValidateError,
     AccountNotInitializedError,
     UnauthorizedAndForceLogout,
     InvalidArgumentError,
+    NotFoundError,
+    UnauthorizedError,
+    InternalServerError,
 )
 
 

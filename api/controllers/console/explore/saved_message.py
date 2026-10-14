@@ -54,7 +54,7 @@ class SavedMessageListApi(Resource):
         )
         return dump_response(SavedMessageInfiniteScrollPagination, pagination)
 
-    @error_responses(NotCompletionAppError, NotFoundError)
+    @error_responses(NotCompletionAppError)
     @console_ns.expect(console_ns.models[SavedMessageCreatePayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[ResultResponse.__name__])
     @console_account_admission()

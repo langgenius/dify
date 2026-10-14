@@ -110,7 +110,6 @@ def _audio_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
         ProviderModelCurrentlyNotSupportError,
         CompletionRequestError,
         AgentVersionNotFoundHTTPError,
-        InternalServerError,
     )
 
 
@@ -124,7 +123,6 @@ class ChatAudioApi(Resource):
         AppUnavailableError,
         AudioTooLargeError,
         CompletionRequestError,
-        InternalServerError,
         NoAudioUploadedError,
         ProviderModelCurrentlyNotSupportError,
         ProviderNotInitializeError,

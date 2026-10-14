@@ -31,7 +31,7 @@ register_response_schema_model(web_ns, EventStreamResponse)
 class WorkflowEventsApi(WebApiResource):
     """API for getting workflow execution events after resume."""
 
-    @error_responses(InvalidArgumentError, NotFoundError)
+    @error_responses(InvalidArgumentError)
     @web_ns.response(200, "SSE event stream", web_ns.models[EventStreamResponse.__name__])
     def get(self, app_model: App, end_user: EndUser, task_id: str):
         """

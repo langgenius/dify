@@ -176,7 +176,6 @@ class SnippetNodeVariableCollectionApi(Resource):
 
 @console_ns.route("/snippets/<uuid:snippet_id>/workflows/draft/variables/<uuid:variable_id>")
 class SnippetVariableApi(Resource):
-    @error_responses(NotFoundError)
     @console_ns.doc("get_snippet_workflow_variable")
     @console_ns.doc(description="Get a specific draft workflow variable (snippet scope)")
     @console_ns.response(
@@ -200,7 +199,6 @@ class SnippetVariableApi(Resource):
         _ensure_snippet_draft_variable_row_allowed(variable=variable, variable_id=variable_id)
         return dump_response(WorkflowDraftVariableResponse, variable)
 
-    @error_responses(NotFoundError)
     @console_ns.doc("update_snippet_workflow_variable")
     @console_ns.doc(description="Update a draft workflow variable (snippet scope)")
     @console_ns.expect(console_ns.models[WorkflowDraftVariableUpdatePayload.__name__])
@@ -260,7 +258,6 @@ class SnippetVariableApi(Resource):
         draft_var_srv.update_variable(variable, name=new_name, value=new_value)
         return dump_response(WorkflowDraftVariableResponse, variable)
 
-    @error_responses(NotFoundError)
     @console_ns.doc("delete_snippet_workflow_variable")
     @console_ns.doc(description="Delete a draft workflow variable (snippet scope)")
     @console_ns.response(204, "Variable deleted successfully")
@@ -282,7 +279,6 @@ class SnippetVariableApi(Resource):
 
 @console_ns.route("/snippets/<uuid:snippet_id>/workflows/draft/variables/<uuid:variable_id>/reset")
 class SnippetVariableResetApi(Resource):
-    @error_responses(NotFoundError)
     @console_ns.doc("reset_snippet_workflow_variable")
     @console_ns.doc(description="Reset a draft workflow variable to its default value (snippet scope)")
     @console_ns.response(

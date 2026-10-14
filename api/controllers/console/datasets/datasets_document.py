@@ -465,11 +465,7 @@ class DatasetInitApi(Resource):
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/indexing-estimate")
 class DocumentIndexingEstimateApi(Resource):
     @error_responses(
-        DatasetAccessDeniedRequestError,
-        DocumentAlreadyFinishedError,
-        IndexingEstimateError,
-        NotFoundError,
-        ProviderNotInitializeError,
+        DatasetAccessDeniedRequestError, DocumentAlreadyFinishedError, IndexingEstimateError, ProviderNotInitializeError
     )
     @console_ns.doc("estimate_document_indexing")
     @console_ns.doc(description="Estimate document indexing cost")
@@ -514,11 +510,7 @@ class DocumentIndexingEstimateApi(Resource):
 @console_ns.route("/datasets/<uuid:dataset_id>/batch/<string:batch>/indexing-estimate")
 class DocumentBatchIndexingEstimateApi(Resource):
     @error_responses(
-        DatasetAccessDeniedRequestError,
-        DocumentAlreadyFinishedError,
-        IndexingEstimateError,
-        NotFoundError,
-        ProviderNotInitializeError,
+        DatasetAccessDeniedRequestError, DocumentAlreadyFinishedError, IndexingEstimateError, ProviderNotInitializeError
     )
     @console_ns.response(
         200,
@@ -657,12 +649,6 @@ class DocumentApi(Resource):
 class DocumentDownloadApi(Resource):
     """Return a signed download URL for a dataset document's original uploaded file."""
 
-    @error_responses(
-        DocumentIndexingError,
-        ProviderModelCurrentlyNotSupportError,
-        ProviderNotInitializeError,
-        ProviderQuotaExceededError,
-    )
     @console_ns.doc("get_dataset_document_download_url")
     @console_ns.doc(description="Get a signed download URL for a dataset document's original uploaded file")
     @console_ns.response(200, "Download URL generated successfully", console_ns.models[UrlResponse.__name__])
@@ -674,7 +660,7 @@ class DocumentDownloadApi(Resource):
                 request_context, dataset_id=str(dataset_id), document_id=str(document_id)
             )
         except Exception as error:
-            _raise_document_indexing_error(error)
+            _raise_document_error(error)
         return UrlResponse(url=result).model_dump(mode="json")
 
 
@@ -682,12 +668,6 @@ class DocumentDownloadApi(Resource):
 class DocumentBatchDownloadZipApi(Resource):
     """Download multiple uploaded-file documents as a single ZIP (avoids browser multi-download limits)."""
 
-    @error_responses(
-        DocumentIndexingError,
-        ProviderModelCurrentlyNotSupportError,
-        ProviderNotInitializeError,
-        ProviderQuotaExceededError,
-    )
     @console_ns.doc("download_dataset_documents_as_zip")
     @console_ns.doc(description="Download selected dataset documents as a single ZIP archive (upload-file only)")
     @console_ns.response(200, "ZIP archive downloaded successfully")
@@ -715,7 +695,7 @@ class DocumentBatchDownloadZipApi(Resource):
                 cleanup = stack.pop_all()
                 response.call_on_close(cleanup.close)
         except Exception as error:
-            _raise_document_indexing_error(error)
+            _raise_document_error(error)
         # response-contract:ignore binary ZIP download response
         return response
 

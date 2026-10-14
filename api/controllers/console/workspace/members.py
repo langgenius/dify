@@ -232,13 +232,7 @@ class MemberInviteEmailApi(Resource):
 class MemberCancelInviteApi(Resource):
     """Cancel an invitation by member id."""
 
-    @error_responses(
-        ForbiddenError,
-        InvalidMemberRoleError,
-        MemberCannotOperateSelfError,
-        MemberNotFoundError,
-        MemberRoleAlreadyAssignedError,
-    )
+    @error_responses(ForbiddenError, MemberCannotOperateSelfError, MemberNotFoundError)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[MemberActionResponse.__name__])
     @console_account_admission()
     def delete(self, request_context: RequestContext, member_id: UUID):
@@ -247,7 +241,7 @@ class MemberCancelInviteApi(Resource):
                 request_context.active_workspace_id, str(member_id), request_context.account_id
             )
         except (WorkspaceApplicationError, AccountNotFoundError, NoPermissionError) as error:
-            _raise_member_mutation_error(error)
+            _raise_member_error(error)
 
         return MemberActionResponse(
             result="success",
@@ -277,7 +271,7 @@ class MemberUpdateRoleApi(Resource):
                 request_context.active_workspace_id, str(member_id), args.role, request_context.account_id
             )
         except (WorkspaceApplicationError, AccountNotFoundError, NoPermissionError) as error:
-            _raise_member_mutation_error(error)
+            _raise_member_role_error(error)
 
         return SimpleResultResponse(result="success").model_dump(mode="json")
 
@@ -380,22 +374,30 @@ class OwnerTransfer(Resource):
         return SimpleResultResponse(result="success").model_dump(mode="json")
 
 
-def _raise_member_mutation_error(
+def _raise_member_error(
     error: WorkspaceApplicationError | AccountNotFoundError | NoPermissionError,
 ) -> NoReturn:
+    """Translate the errors every member mutation can raise."""
     if isinstance(error, (AccountNotFoundError, workspace_errors.WorkspaceNotFoundError)):
         raise NotFound() from error
-    if isinstance(error, InvalidWorkspaceMemberRoleError):
-        raise InvalidMemberRoleError() from error
     if isinstance(error, workspace_errors.CannotOperateSelfError):
         raise MemberCannotOperateSelfError(str(error)) from error
     if isinstance(error, NoPermissionError):
         raise ForbiddenError(str(error)) from error
     if isinstance(error, workspace_errors.MemberNotInTenantError):
         raise MemberNotFoundError(str(error)) from error
+    raise error
+
+
+def _raise_member_role_error(
+    error: WorkspaceApplicationError | AccountNotFoundError | NoPermissionError,
+) -> NoReturn:
+    """Changing a role also validates the role itself."""
+    if isinstance(error, InvalidWorkspaceMemberRoleError):
+        raise InvalidMemberRoleError() from error
     if isinstance(error, workspace_errors.RoleAlreadyAssignedError):
         raise MemberRoleAlreadyAssignedError(str(error)) from error
-    raise error
+    _raise_member_error(error)
 
 
 def _raise_owner_transfer_error(

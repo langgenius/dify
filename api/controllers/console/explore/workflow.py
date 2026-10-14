@@ -47,13 +47,11 @@ register_response_schema_models(console_ns, SimpleResultResponse)
 class InstalledAppWorkflowRunApi(Resource):
     @error_responses(
         CompletionRequestError,
-        InternalServerError,
         InvokeRateLimitHttpError,
         NotWorkflowAppError,
         ProviderModelCurrentlyNotSupportError,
         ProviderNotInitializeError,
         ProviderQuotaExceededError,
-        UnauthorizedError,
     )
     @console_ns.expect(console_ns.models[WorkflowRunPayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success")

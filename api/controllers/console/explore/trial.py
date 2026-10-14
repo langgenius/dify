@@ -551,13 +551,11 @@ class TrialAppWorkflowRunApi(Resource):
     @error_responses(
         AppUnavailableError,
         CompletionRequestError,
-        InternalServerError,
         InvokeRateLimitHttpError,
         NotWorkflowAppError,
         ProviderModelCurrentlyNotSupportError,
         ProviderNotInitializeError,
         ProviderQuotaExceededError,
-        UnauthorizedError,
     )
     @console_ns.expect(console_ns.models[WorkflowRunRequest.__name__])
     @console_ns.response(HTTPStatus.OK, "Success")
@@ -627,14 +625,11 @@ class TrialChatApi(Resource):
     @error_responses(
         AppUnavailableError,
         CompletionRequestError,
-        InternalServerError,
         InvokeRateLimitHttpError,
         NotChatAppError,
-        NotFoundError,
         ProviderModelCurrentlyNotSupportError,
         ProviderNotInitializeError,
         ProviderQuotaExceededError,
-        UnauthorizedError,
     )
     @console_ns.expect(console_ns.models[ChatRequest.__name__])
     @console_ns.response(HTTPStatus.OK, "Success")
@@ -721,13 +716,10 @@ class TrialMessageSuggestedQuestionApi(Resource):
         AppSuggestedQuestionsAfterAnswerDisabledError,
         AppUnavailableError,
         CompletionRequestError,
-        InternalServerError,
         NotChatAppError,
-        NotFoundError,
         ProviderModelCurrentlyNotSupportError,
         ProviderNotInitializeError,
         ProviderQuotaExceededError,
-        UnauthorizedError,
     )
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SuggestedQuestionsResponse.__name__])
     @console_account_admission()
@@ -815,7 +807,6 @@ def _trial_audio_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
         ProviderModelCurrentlyNotSupportError,
         CompletionRequestError,
         AgentVersionNotFoundHTTPError,
-        InternalServerError,
     )
 
 
@@ -829,7 +820,6 @@ class TrialChatAudioApi(Resource):
         AppUnavailableError,
         AudioTooLargeError,
         CompletionRequestError,
-        InternalServerError,
         NoAudioUploadedError,
         ProviderModelCurrentlyNotSupportError,
         ProviderNotInitializeError,
@@ -904,14 +894,11 @@ class TrialCompletionApi(Resource):
     @error_responses(
         AppUnavailableError,
         CompletionRequestError,
-        InternalServerError,
         InvokeRateLimitHttpError,
         NotCompletionAppError,
-        NotFoundError,
         ProviderModelCurrentlyNotSupportError,
         ProviderNotInitializeError,
         ProviderQuotaExceededError,
-        UnauthorizedError,
     )
     @console_ns.expect(console_ns.models[CompletionRequest.__name__])
     @console_ns.response(HTTPStatus.OK, "Success")
@@ -1001,7 +988,7 @@ class TrialAppParameterApi(Resource):
 
 @console_ns.route("/trial-apps/<uuid:app_id>", endpoint="trial_app")
 class AppApi(Resource):
-    @error_responses(AppNotFoundError, AppPreviewSiteUnavailableHttpError, AppUnavailableError, UnauthorizedError)
+    @error_responses(AppNotFoundError, AppPreviewSiteUnavailableHttpError, AppUnavailableError)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[TrialAppDetailResponse.__name__])
     @console_account_admission()
     @get_preview_app

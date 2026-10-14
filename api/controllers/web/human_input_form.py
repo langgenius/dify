@@ -109,7 +109,7 @@ _FORM_UPLOAD_TOKEN_RATE_LIMITER = RateLimiter(
 class HumanInputFormUploadTokenApi(Resource):
     """API for issuing HITL upload tokens for active human input forms."""
 
-    @error_responses(NotFoundError, WebFormRateLimitExceededError)
+    @error_responses(WebFormRateLimitExceededError)
     @web_ns.doc("create_human_input_form_upload_token")
     @web_ns.doc(description="Issue an upload token for an active human input form")
     @web_ns.doc(params={"form_token": "Human input form token"})
@@ -153,7 +153,7 @@ class HumanInputFormApi(Resource):
 
     # NOTE(QuantumGhost): this endpoint is unauthenticated on purpose for now.
 
-    @error_responses(FormExpiredError, FormSubmittedError, NotFoundError, WebFormRateLimitExceededError)
+    @error_responses(FormExpiredError, FormSubmittedError, WebFormRateLimitExceededError)
     @web_ns.doc("get_human_input_form")
     @web_ns.doc(description="Get a human input form definition by token")
     @web_ns.doc(params={"form_token": "Human input form token"})
@@ -215,9 +215,7 @@ class HumanInputFormApi(Resource):
             ),
         )
 
-    @error_responses(
-        FormExpiredError, FormSubmittedError, InvalidFormDataError, NotFoundError, WebFormRateLimitExceededError
-    )
+    @error_responses(FormExpiredError, FormSubmittedError, InvalidFormDataError, WebFormRateLimitExceededError)
     @web_ns.expect(web_ns.models[HumanInputFormSubmitPayload.__name__])
     @web_ns.doc("submit_human_input_form")
     @web_ns.doc(description="Submit a human input form by token")

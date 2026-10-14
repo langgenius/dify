@@ -89,7 +89,7 @@ class ConsoleHumanInputFormApi(Resource):
         if not is_recipient_type_allowed_for_surface(form.recipient_type, HumanInputSurface.CONSOLE):
             raise NotFoundError("form not found")
 
-    @error_responses(FormSubmittedError, NotFoundError)
+    @error_responses(FormSubmittedError)
     @setup_required
     @login_required
     @account_initialization_required
@@ -110,7 +110,7 @@ class ConsoleHumanInputFormApi(Resource):
 
         return _jsonify_form_definition(form)
 
-    @error_responses(FormExpiredError, FormSubmittedError, InvalidFormDataError, NotFoundError)
+    @error_responses(FormExpiredError, FormSubmittedError, InvalidFormDataError)
     @account_initialization_required
     @login_required
     @with_current_user
@@ -165,7 +165,6 @@ class ConsoleHumanInputFormApi(Resource):
 class ConsoleWorkflowEventsApi(Resource):
     """Console API for getting workflow execution events after resume."""
 
-    @error_responses(NotFoundError)
     @console_ns.response(200, "SSE event stream", console_ns.models[EventStreamResponse.__name__])
     @account_initialization_required
     @login_required

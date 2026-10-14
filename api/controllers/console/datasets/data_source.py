@@ -172,7 +172,7 @@ class DataSourceIntegrationListApi(Resource):
 
 @console_ns.route("/data-source/integrates/<uuid:binding_id>/<string:action>")
 class DataSourceIntegrationApi(Resource):
-    @error_responses(InvalidActionError, NotFoundError)
+    @error_responses(InvalidActionError)
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @console_account_admission(
         allowed_roles=_ADMIN_OR_OWNER_ROLES,
@@ -203,7 +203,7 @@ class DataSourceIntegrationApi(Resource):
 
 @console_ns.route("/notion/pre-import/pages")
 class DataSourceNotionListApi(Resource):
-    @error_responses(DatasetAccessDeniedRequestError, NotFoundError)
+    @error_responses(DatasetAccessDeniedRequestError)
     @console_ns.doc(params=query_params_from_model(DataSourceNotionListQuery))
     @console_ns.response(200, "Success", console_ns.models[NotionIntegrateInfoListResponse.__name__])
     @console_account_admission()
@@ -232,7 +232,6 @@ class DataSourceNotionListApi(Resource):
 class DataSourceNotionPreviewApi(Resource):
     """Preview one authorized Notion page through the datasource credential."""
 
-    @error_responses(NotFoundError)
     @console_ns.doc(params=query_params_from_model(DataSourceNotionPreviewQuery))
     @console_ns.response(200, "Success", console_ns.models[TextContentResponse.__name__])
     @console_account_admission()
@@ -264,7 +263,7 @@ class DataSourceNotionPreviewApi(Resource):
 class DataSourceNotionIndexingEstimateApi(Resource):
     """Estimate indexing work for selected Notion pages."""
 
-    @error_responses(IndexingEstimateError, NotFoundError, ProviderNotInitializeError)
+    @error_responses(IndexingEstimateError, ProviderNotInitializeError)
     @console_ns.expect(console_ns.models[NotionEstimatePayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[IndexingEstimate.__name__])
     @console_account_admission()
@@ -307,7 +306,7 @@ class DataSourceNotionIndexingEstimateApi(Resource):
 
 @console_ns.route("/datasets/<uuid:dataset_id>/notion/sync")
 class DataSourceNotionDatasetSyncApi(Resource):
-    @error_responses(DatasetAccessDeniedRequestError, NotFoundError)
+    @error_responses(DatasetAccessDeniedRequestError)
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @console_account_admission(
         rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),),
@@ -322,7 +321,7 @@ class DataSourceNotionDatasetSyncApi(Resource):
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/notion/sync")
 class DataSourceNotionDocumentSyncApi(Resource):
-    @error_responses(DatasetAccessDeniedRequestError, NotFoundError)
+    @error_responses(DatasetAccessDeniedRequestError)
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @console_account_admission(
         rbac_checks=(RBACCheck(RBACPermission.DATASET_EDIT, DatasetId()),),

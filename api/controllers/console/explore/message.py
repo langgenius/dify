@@ -121,7 +121,6 @@ def _message_errors[**P, R](view: Callable[P, R]) -> Callable[P, R]:
         decorated,
         InstalledAppNotFoundHTTPError,
         AppUnavailableError,
-        UnauthorizedError,
         NotChatAppError,
         NotCompletionAppError,
         MessageNotFoundHTTPError,
@@ -223,7 +222,7 @@ class MessageMoreLikeThisApi(Resource):
     endpoint="installed_app_suggested_question",
 )
 class MessageSuggestedQuestionApi(Resource):
-    @error_responses(InternalServerError, NotChatAppError)
+    @error_responses(NotChatAppError)
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SuggestedQuestionsResponse.__name__])
     @console_account_admission()
     @get_installed_app

@@ -25,7 +25,6 @@ from core.trigger.trigger_manager import TriggerManager
 from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from fields.base import ResponseModel
-from libs.external_api import error_responses
 from libs.helper import dump_response
 from libs.login import login_required
 from models.account import Account
@@ -460,7 +459,6 @@ class TriggerSubscriptionBuilderBuildApi(Resource):
     "/workspaces/current/trigger-provider/<path:subscription_id>/subscriptions/update",
 )
 class TriggerSubscriptionUpdateApi(Resource):
-    @error_responses(NotFoundError)
     @console_ns.expect(console_ns.models[TriggerSubscriptionBuilderUpdatePayload.__name__])
     @console_ns.response(
         200, "Trigger subscription updated successfully", console_ns.models[SimpleResultResponse.__name__]
@@ -559,7 +557,6 @@ class TriggerSubscriptionDeleteApi(Resource):
 @console_ns.route("/workspaces/current/trigger-provider/<path:provider>/subscriptions/oauth/authorize")
 class TriggerOAuthAuthorizeApi(Resource):
     # response-contract:ignore cookie-bearing Flask response
-    @error_responses(NotFoundError)
     @console_ns.response(
         200,
         "Trigger OAuth authorization URL generated successfully",

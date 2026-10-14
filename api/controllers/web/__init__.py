@@ -1,6 +1,7 @@
 from flask import Blueprint
 from flask_restx import Namespace
 
+from controllers.common.errors import InternalServerError, NotFoundError, UnauthorizedError
 from controllers.console.error import NotInitValidateError, NotSetupError
 from controllers.web.error import (
     WebAppAccessServiceUnavailableError,
@@ -20,6 +21,8 @@ api = ExternalApi(
 )
 # The passport guard on every Web API resource raises these; the web client answers them
 # centrally (sign-in redirect, access-denied and not-found pages), so no operation lists them.
+# ``not_found``, ``unauthorized`` and ``internal_server_error`` are the codes Werkzeug's own
+# exceptions already produce on every operation.
 api.document_generic_errors(
     NotSetupError,
     NotInitValidateError,
@@ -27,6 +30,9 @@ api.document_generic_errors(
     WebAppAuthRequiredError,
     WebAppAuthAccessDeniedError,
     WebAppAccessServiceUnavailableError,
+    NotFoundError,
+    UnauthorizedError,
+    InternalServerError,
 )
 
 # Create namespace
