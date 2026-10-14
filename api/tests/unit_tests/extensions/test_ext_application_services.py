@@ -28,7 +28,8 @@ from extensions.ext_database import db
 from extensions.ext_redis import RedisClientWrapper
 from machinery.context import RequestContext
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
-from models.enums import CustomizeTokenStrategy
+from models.enums import ConversationFromSource, CustomizeTokenStrategy
+from models.enums import InvokeFrom as ModelInvokeFrom
 from models.model import (
     AccountTrialAppRecord,
     App,
@@ -1661,11 +1662,11 @@ def test_installed_app_conversations_wire_real_persistence_naming_and_cleanup(
             app_id=app.id,
             mode=AppMode.CHAT,
             name="Original",
-            inputs={"enabled": False},
-            from_source="console",
+            _inputs={"enabled": False},
+            from_source=ConversationFromSource.CONSOLE,
             from_account_id=account_id,
             from_end_user_id=None,
-            invoke_from="explore",
+            invoke_from=ModelInvokeFrom.EXPLORE,
         )
         session.add(conversation)
         session.flush()
@@ -1674,14 +1675,14 @@ def test_installed_app_conversations_wire_real_persistence_naming_and_cleanup(
             Message(
                 app_id=app.id,
                 conversation_id=conversation.id,
-                inputs={},
+                _inputs={},
                 query="First question",
                 message={},
                 message_unit_price=Decimal(0),
                 answer="Answer",
                 answer_unit_price=Decimal(0),
                 currency="USD",
-                from_source="console",
+                from_source=ConversationFromSource.CONSOLE,
                 from_account_id=account_id,
             )
         )

@@ -62,7 +62,10 @@ def persist_app(session: Session, *, tenant_id: str, **values: object) -> str:
         "enable_site": False,
     }
     attributes.update(values)
-    session.add(App(**attributes))
+    app = App()
+    for key, value in attributes.items():
+        setattr(app, key, value)
+    session.add(app)
     session.commit()
     return app_id
 
