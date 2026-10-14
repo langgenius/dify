@@ -5,7 +5,6 @@ from functools import partial
 from threading import Event, get_ident
 from types import TracebackType
 from typing import override
-from unittest.mock import MagicMock
 
 import pytest
 from flask import current_app, g
@@ -23,8 +22,9 @@ from core.workflow.workflow_tool_container_handler import WorkflowToolContainerH
 from dify_app import DifyApp
 from graphon.engine import Engine
 from graphon.engine.layer import Layer
-from graphon.engine_events import GraphRunSucceededEvent, NodeEvent
+from graphon.engine_events import GraphRunSucceededEvent, NodeEvent, NodeRunStreamChunkEvent
 from graphon.entities.base_node_data import BaseNodeData
+from graphon.enums import BuiltinNodeTypes
 from graphon.node_events.base import NodeEventPayload
 from graphon.nodes.base.node import Node
 from graphon.nodes.container_effects import ContainerAwaitRequest, ContainerRunResult
@@ -168,11 +168,25 @@ def test_interleaved_snippets_restore_caller_flask_context(
             tool, _, _ = _workflow_tool_node()
             node = _outer_graph(tool).root_node
 
-            def run_node() -> Generator[MagicMock]:
+            def run_node() -> Generator[NodeRunStreamChunkEvent]:
                 observed.append((current_app.name, g._login_user, request_id.get()))
-                yield MagicMock()
+                yield NodeRunStreamChunkEvent(
+                    id="snippet-execution",
+                    node_id="outer-start",
+                    node_type=BuiltinNodeTypes.START,
+                    selector=["outer-start", "text"],
+                    chunk="part",
+                    is_final=False,
+                )
                 observed.append((current_app.name, g._login_user, request_id.get()))
-                yield MagicMock()
+                yield NodeRunStreamChunkEvent(
+                    id="snippet-execution",
+                    node_id="outer-start",
+                    node_type=BuiltinNodeTypes.START,
+                    selector=["outer-start", "text"],
+                    chunk="part",
+                    is_final=False,
+                )
 
             monkeypatch.setattr(node, "run", run_node)
             snippets.append(WorkflowEntry._run_node_with_layers(node))

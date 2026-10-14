@@ -1,4 +1,4 @@
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping
 from datetime import UTC, datetime
 from decimal import Decimal
 from types import SimpleNamespace
@@ -917,12 +917,12 @@ def test_dify_tool_node_runtime_builds_workflow_tool_container_payload(monkeypat
         ),
         runtime=ToolRuntime(tenant_id="tenant-id", invoke_from=InvokeFrom.DEBUGGER),
     )
-    prepare_container_inputs = MagicMock(
-        return_value=(
-            {"amount": Decimal("1.25")},
-            [{"id": "file-id", "name": "input.txt"}],
-        )
-    )
+    prepared_parameters: list[Mapping[str, object]] = []
+
+    def prepare_container_inputs(parameters: Mapping[str, object]) -> tuple[dict[str, object], list[dict[str, str]]]:
+        prepared_parameters.append(parameters)
+        return {"amount": Decimal("1.25")}, [{"id": "file-id", "name": "input.txt"}]
+
     monkeypatch.setattr(tool, "prepare_container_inputs", prepare_container_inputs)
     runtime = DifyToolNodeRuntime(_build_run_context())
 
@@ -943,7 +943,7 @@ def test_dify_tool_node_runtime_builds_workflow_tool_container_payload(monkeypat
         "inputs_for_log": {"amount": 1.25},
         "call_depth": 3,
     }
-    prepare_container_inputs.assert_called_once_with({"amount": "1.25"})
+    assert prepared_parameters == [{"amount": "1.25"}]
 
 
 def test_dify_tool_node_runtime_rejects_non_workflow_tool_container_payload() -> None:

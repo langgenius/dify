@@ -6,9 +6,11 @@ from contextlib import closing
 from unittest.mock import MagicMock, patch
 
 import pytest
-from aliyun.log import GetLogsRequest
+from aliyun.log import GetLogsRequest, GetLogsResponse
+from pytest_mock import MockerFixture
 
 from extensions.logstore.aliyun_logstore import AliyunLogStore
+from extensions.logstore.aliyun_logstore_pg import AliyunLogStorePG
 from extensions.logstore.repositories.logstore_api_workflow_node_execution_repository import (
     LogstoreAPIWorkflowNodeExecutionRepository,
     _dict_to_workflow_node_execution_model,
@@ -17,12 +19,15 @@ from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTri
 
 
 @pytest.fixture(params=["pg", "sdk"])
-def sql_repository(request: pytest.FixtureRequest):
+def sql_repository(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch, mocker: MockerFixture):
     """Exercise the real protocol adapter while executing its SQL against local records."""
-    store = object.__new__(AliyunLogStore)
+    monkeypatch.setattr(AliyunLogStore, "_instance", None)
+    monkeypatch.setattr(AliyunLogStore, "_initialized", False)
+    monkeypatch.setenv("ALIYUN_SLS_ENDPOINT", "localhost")
+    mocker.patch.object(AliyunLogStore, "_check_endpoint_connectivity")
+    store = AliyunLogStore()
     store._use_pg_protocol = request.param == "pg"
-    store._pg_client = MagicMock()
-    store.client = MagicMock()
+    store._pg_client = AliyunLogStorePG("key", "secret", "localhost", "test")
     store.project_name = "test"
     store.log_enabled = False
     with closing(sqlite3.connect(":memory:")) as database:
@@ -37,15 +42,11 @@ def sql_repository(request: pytest.FixtureRequest):
             assert search
             assert log_request.get_from() == 0
             assert log_request.get_to() <= int(time.time())
-            return MagicMock(get_logs=lambda: [MagicMock(get_contents=lambda row=row: row) for row in execute(sql)])
+            return GetLogsResponse({"meta": {"progress": "Complete"}, "data": execute(sql)}, {})
 
-        store._pg_client.execute_sql.side_effect = execute
-        store.client.get_logs.side_effect = get_logs
-        with patch(
-            "extensions.logstore.repositories.logstore_api_workflow_node_execution_repository.AliyunLogStore",
-            return_value=store,
-        ):
-            repository = LogstoreAPIWorkflowNodeExecutionRepository(session_maker=None)
+        mocker.patch.object(store._pg_client, "execute_sql", side_effect=execute)
+        mocker.patch.object(store.client, "get_logs", side_effect=get_logs)
+        repository = LogstoreAPIWorkflowNodeExecutionRepository(session_maker=None)
         yield repository, database
 
 
