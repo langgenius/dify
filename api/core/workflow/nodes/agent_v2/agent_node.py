@@ -479,7 +479,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         )
         if stream_text and (metadata.get("agent_backend") or {}).get("agent_message_delta_count"):
             yield StreamChunkEvent(selector=[self._node_id, "text"], chunk="", is_final=True)
-        return result
+        return result  # noqa: B901  # StopIteration.value is the generator completion result.
 
     def _read_event_stream(
         self,
@@ -577,7 +577,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
             reason=self._stream_stop_reason() if self._is_graph_aborted() else "stream_ended_without_terminal_event",
             after=last_event_id,
         )
-        return cancellation, None
+        return cancellation, None  # noqa: B901  # StopIteration.value is the generator completion result.
 
     def _is_graph_aborted(self) -> bool:
         """Let Agent SSE consumption observe Engine's cooperative abort state."""
