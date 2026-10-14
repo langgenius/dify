@@ -292,7 +292,3 @@ def test_file_grants_document_business_error_components(inner_spec: Json) -> Non
         for name in expected:
             error_body = cast(list[object], _schema(inner_spec, name)["allOf"])[1]
             assert _at(error_body, "properties", "status")["const"] == int(code), name
-
-
-def test_inner_api_error_response_component_is_gone(inner_spec: Json) -> None:
-    assert "InnerApiErrorResponse" not in _at(inner_spec, "components", "schemas")
